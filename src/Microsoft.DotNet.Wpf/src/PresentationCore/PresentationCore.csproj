@@ -420,9 +420,13 @@
     <Compile Include="System\Windows\Ole\DataObjectAdapter.cs" />
     <Compile Include="System\Windows\Ole\WpfOleServices.cs" />
     <Compile Include="System\Windows\PortableClipboardService.cs" />
+    <Compile Include="System\Windows\IPortablePresentationSourceHost.cs" />
+    <Compile Include="System\Windows\IPortableVisualOwnerHost.cs" />
     <Compile Include="System\Windows\PortableManagedDataObject.cs" />
+    <Compile Include="System\Windows\PortablePresentationSourceHost.cs" />
     <Compile Include="System\Windows\PresentationSource.cs" />
     <Compile Include="System\Windows\PortablePresentationSource.cs" />
+    <Compile Include="System\Windows\PortableVisualOwnerKind.cs" />
     <Compile Include="System\Windows\QueryContinueDragEventArgs.cs" />
     <Compile Include="System\Windows\QueryContinueDragEventHandler.cs" />
     <Compile Include="System\Windows\Readability.cs" />

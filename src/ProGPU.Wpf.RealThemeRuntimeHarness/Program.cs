@@ -1,11 +1,11 @@
 using System.Collections;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Windows.Media.ProGPU;
 
 internal static class Program
 {
     private const string CompilerHarnessAssemblyName = "ProGPU.Wpf.RealXamlCompilerHarness";
+    private const string ProGpuWpfAssemblyName = "ProGPU.Wpf";
     private const string FluentThemeAssemblyName = "PresentationFramework.Fluent";
     private const string AppTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow";
@@ -22,8 +22,9 @@ internal static class Program
             string presentationCorePath = FindArtifactAssembly(repoRoot, "PresentationCore");
             string compilerHarnessPath = FindArtifactAssembly(repoRoot, CompilerHarnessAssemblyName);
             string fluentThemePath = FindArtifactAssembly(repoRoot, FluentThemeAssemblyName);
+            string proGpuWpfPath = FindOutputAssembly(ProGpuWpfAssemblyName);
 
-            RunHarness(repoRoot, presentationFrameworkPath, presentationCorePath, compilerHarnessPath, fluentThemePath);
+            RunHarness(repoRoot, presentationFrameworkPath, presentationCorePath, compilerHarnessPath, fluentThemePath, proGpuWpfPath);
             Console.WriteLine("Real WPF Fluent theme runtime smoke succeeded.");
             return 0;
         }
@@ -39,15 +40,18 @@ internal static class Program
         string presentationFrameworkPath,
         string presentationCorePath,
         string compilerHarnessPath,
-        string fluentThemePath)
+        string fluentThemePath,
+        string proGpuWpfPath)
     {
         var loadContext = new WpfAssemblyLoadContext(
             repoRoot,
             presentationFrameworkPath,
             presentationCorePath,
             compilerHarnessPath,
-            fluentThemePath);
+            fluentThemePath,
+            proGpuWpfPath);
         Assembly presentationFramework = loadContext.LoadFromAssemblyPath(presentationFrameworkPath);
+        Assembly proGpuWpf = loadContext.LoadFromAssemblyPath(proGpuWpfPath);
         Assembly windowsBase = loadContext.LoadFromAssemblyName(new AssemblyName("WindowsBase"));
         loadContext.LoadFromAssemblyPath(fluentThemePath);
         Assembly compilerHarness = loadContext.LoadFromAssemblyPath(compilerHarnessPath);
@@ -66,9 +70,10 @@ internal static class Program
             MergeThemeDictionary(application, themeDictionary);
             ApplyRepresentativeFluentStyles(presentationFramework, application, window, themeDictionary);
             ValidateThemedRuntimeState(window, application, themeDictionary);
-            ValidateThemedVisualReplay(windowsBase, window);
+            ValidateThemedVisualReplay(proGpuWpf, windowsBase, window);
 
             RegisterPortableActivation(
+                proGpuWpf,
                 presentationFramework,
                 window,
                 out activationServiceType,
@@ -1100,7 +1105,7 @@ internal static class Program
         AssertCollectionContainsSame(mergedDictionaries, themeDictionary, "merged Fluent dictionary");
     }
 
-    private static void ValidateThemedVisualReplay(Assembly windowsBase, object window)
+    private static void ValidateThemedVisualReplay(Assembly proGpuWpf, Assembly windowsBase, object window)
     {
         const uint pixelWidth = 420;
         const uint pixelHeight = 260;
@@ -1109,16 +1114,26 @@ internal static class Program
 
         MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight);
 
-        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
-        var replayResult = target.ReplayVisualSubtreeRetained(content, pixelWidth, pixelHeight);
+        Type targetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+        MethodInfo createHeadless = targetType.GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .Single(method => method.Name == "CreateHeadless");
+        object?[] createHeadlessParameters = createHeadless.GetParameters().Length == 0
+            ? Array.Empty<object?>()
+            : new[] { createHeadless.GetParameters()[0].DefaultValue };
+        using IDisposable target = (IDisposable)(createHeadless.Invoke(null, createHeadlessParameters)
+            ?? throw new InvalidOperationException("CreateHeadless returned null."));
+        object replayResult = Invoke(target, "ReplayVisualSubtreeRetained", content, pixelWidth, pixelHeight, null, null);
+        object renderData = GetProperty(replayResult, "RenderData");
+        object retainedRoot = GetProperty(target, "RetainedWpfVisualRoot");
+        object retainedRootChildren = GetProperty(retainedRoot, "Children");
 
-        AssertAtLeast(1, replayResult.VisualCount, "Fluent themed visual replay count");
-        AssertAtLeast(1, replayResult.ContentCount, "Fluent themed visual replay content count");
-        AssertAtLeast(1, replayResult.RenderData.AppliedCount, "Fluent themed render-data applied commands");
-        AssertAtLeast(1, replayResult.ChildEdgeCount, "Fluent themed visual child edges");
-        AssertAtLeast(1, target.RetainedVisualBranchCount, "retained Fluent themed visual branch map");
-        AssertAtLeast(1, target.RetainedWpfVisualRoot.Children.Count, "retained Fluent themed visual root children");
-        AssertAtLeast(1, CountRetainedCommands(target.RetainedWpfVisualRoot), "retained Fluent themed ProGPU commands");
+        AssertAtLeast(1, GetProperty(replayResult, "VisualCount"), "Fluent themed visual replay count");
+        AssertAtLeast(1, GetProperty(replayResult, "ContentCount"), "Fluent themed visual replay content count");
+        AssertAtLeast(1, GetProperty(renderData, "AppliedCount"), "Fluent themed render-data applied commands");
+        AssertAtLeast(1, GetProperty(replayResult, "ChildEdgeCount"), "Fluent themed visual child edges");
+        AssertAtLeast(1, GetProperty(target, "RetainedVisualBranchCount"), "retained Fluent themed visual branch map");
+        AssertAtLeast(1, GetProperty(retainedRootChildren, "Count"), "retained Fluent themed visual root children");
+        AssertAtLeast(1, CountRetainedCommands(retainedRoot), "retained Fluent themed ProGPU commands");
     }
 
     private static void MeasureAndArrange(Assembly windowsBase, object element, double width, double height)
@@ -1154,14 +1169,21 @@ internal static class Program
     }
 
     private static void RegisterPortableActivation(
+        Assembly proGpuWpf,
         Assembly presentationFramework,
         object window,
         out Type activationServiceType,
         out object activation)
     {
-        if (!WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation(
-                presentationFramework,
-                hostFactory: w => new ProGpuWpfWindowHost(WpfPortableWindowActivation.CreateHostOptions(w))))
+        Type portableActivationType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.WpfPortableWindowActivation");
+        MethodInfo registerMethod = portableActivationType.GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .SingleOrDefault(static method =>
+                method.Name == "TryRegisterPresentationFrameworkActivation" &&
+                method.GetParameters().Length == 2)
+            ?? throw new MissingMethodException(portableActivationType.FullName, "TryRegisterPresentationFrameworkActivation");
+        object registered = registerMethod.Invoke(null, new object?[] { presentationFramework, null })
+            ?? throw new InvalidOperationException("ProGPU portable activation registration returned null.");
+        if (!Convert.ToBoolean(registered))
         {
             throw new InvalidOperationException("Failed to register ProGPU portable activation with real PresentationFramework.");
         }
@@ -1180,15 +1202,19 @@ internal static class Program
         }
 
         activation = parameters[1]!;
-        if (activation is not WpfPortableWindowActivation portableActivation)
+        if (!string.Equals(
+                activation.GetType().FullName,
+                "System.Windows.Media.ProGPU.WpfPortableWindowActivation",
+                StringComparison.Ordinal))
         {
             throw new InvalidOperationException($"Expected a ProGPU activation, got {activation.GetType().FullName}.");
         }
 
-        AssertSame(window, portableActivation.Window, "activation window");
-        AssertEqual("ProGPU WPF XAML smoke", portableActivation.Host.Title, "host title");
-        AssertEqual(420, portableActivation.Host.Width, "host width");
-        AssertEqual(260, portableActivation.Host.Height, "host height");
+        object host = GetProperty(activation, "Host");
+        AssertSame(window, GetProperty(activation, "Window"), "activation window");
+        AssertEqual("ProGPU WPF XAML smoke", GetProperty(host, "Title"), "host title");
+        AssertEqual(420, GetProperty(host, "Width"), "host width");
+        AssertEqual(260, GetProperty(host, "Height"), "host height");
     }
 
     private static object Create(Assembly assembly, string typeName, params object?[] parameters)
@@ -1265,6 +1291,25 @@ internal static class Program
             ?? throw new MissingMethodException(instance.GetType().FullName, methodName);
 
         return method.Invoke(instance, parameters) ?? new object();
+    }
+
+    private static object InvokeStatic(Type type, string methodName, params object?[] parameters)
+    {
+        MethodInfo method = type.GetMethods(
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(candidate =>
+            {
+                if (!string.Equals(candidate.Name, methodName, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                ParameterInfo[] candidateParameters = candidate.GetParameters();
+                return candidateParameters.Length == parameters.Length;
+            })
+            ?? throw new MissingMethodException(type.FullName, methodName);
+
+        return method.Invoke(null, parameters) ?? new object();
     }
 
     private static void SetProperty(object instance, string propertyName, object value)
@@ -1430,12 +1475,13 @@ internal static class Program
         }
     }
 
-    private static void AssertAtLeast(int expectedMinimum, int actual, string description)
+    private static void AssertAtLeast(int expectedMinimum, object actual, string description)
     {
-        if (actual < expectedMinimum)
+        int actualValue = Convert.ToInt32(actual);
+        if (actualValue < expectedMinimum)
         {
             throw new InvalidOperationException(
-                $"Expected {description} to be at least {expectedMinimum}, got {actual}.");
+                $"Expected {description} to be at least {expectedMinimum}, got {actualValue}.");
         }
     }
 
@@ -1574,6 +1620,16 @@ internal static class Program
             .FirstOrDefault();
     }
 
+    private static string FindOutputAssembly(string assemblyName)
+    {
+        string outputAssemblyPath = Path.Combine(
+            AppContext.BaseDirectory,
+            $"{assemblyName}.dll");
+        return File.Exists(outputAssemblyPath)
+            ? outputAssemblyPath
+            : throw new FileNotFoundException($"Could not locate {assemblyName}.dll beside the theme runtime harness.", outputAssemblyPath);
+    }
+
     private static string FindRepoRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
@@ -1618,6 +1674,7 @@ internal static class Program
         private readonly string _presentationCorePath;
         private readonly string _compilerHarnessPath;
         private readonly string _fluentThemePath;
+        private readonly string _proGpuWpfPath;
         private readonly AssemblyDependencyResolver _resolver;
 
         public WpfAssemblyLoadContext(
@@ -1625,7 +1682,8 @@ internal static class Program
             string presentationFrameworkPath,
             string presentationCorePath,
             string compilerHarnessPath,
-            string fluentThemePath)
+            string fluentThemePath,
+            string proGpuWpfPath)
             : base(isCollectible: true)
         {
             _repoRoot = repoRoot;
@@ -1633,6 +1691,7 @@ internal static class Program
             _presentationCorePath = presentationCorePath;
             _compilerHarnessPath = compilerHarnessPath;
             _fluentThemePath = fluentThemePath;
+            _proGpuWpfPath = proGpuWpfPath;
             _resolver = new AssemblyDependencyResolver(fluentThemePath);
         }
 
@@ -1646,6 +1705,11 @@ internal static class Program
             if (string.Equals(assemblyName.Name, FluentThemeAssemblyName, StringComparison.Ordinal))
             {
                 return LoadFromAssemblyPath(_fluentThemePath);
+            }
+
+            if (string.Equals(assemblyName.Name, ProGpuWpfAssemblyName, StringComparison.Ordinal))
+            {
+                return LoadFromAssemblyPath(_proGpuWpfPath);
             }
 
             if (string.Equals(assemblyName.Name, "PresentationFramework", StringComparison.Ordinal))

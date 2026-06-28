@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Windows;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
 using Xunit;
@@ -1160,13 +1161,33 @@ public sealed class WpfPortableWindowActivationTests
         ToolWindow
     }
 
-    private sealed class FakePortablePresentationSource : IDisposable
+    private sealed class FakePortablePresentationSource : IPortablePresentationSourceHost
     {
         private object? _rootVisual;
 
-        internal event EventHandler? RenderRequested;
+        public event EventHandler? RenderRequested;
+
+        event EventHandler? IPortablePresentationSourceHost.CursorRequested
+        {
+            add { }
+            remove { }
+        }
 
         public object CompositionTarget { get; } = new();
+
+        public IntPtr Handle => IntPtr.Zero;
+
+        public object? RequestedCursor => null;
+
+        public string? RequestedCursorName => null;
+
+        public Func<double, double, object?>? HitTestOverride { get; set; }
+
+        public Func<double, double, object?[]?>? HitTestAllOverride { get; set; }
+
+        public Func<double, double, double, double, object?[]?>? HitTestBoundsOverride { get; set; }
+
+        public Func<double, double, double, double, object?[]?>? HitTestEllipseBoundsOverride { get; set; }
 
         public object? RootVisual
         {
@@ -1184,7 +1205,12 @@ public sealed class WpfPortableWindowActivationTests
 
         public int ClientSizeChangeCount { get; private set; }
 
-        internal void SetClientSize(double width, double height)
+        public void SetDeviceScale(double dpiScaleX, double dpiScaleY)
+        {
+            RenderRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetClientSize(double width, double height)
         {
             ClientWidth = width;
             ClientHeight = height;

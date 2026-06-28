@@ -64,7 +64,7 @@ namespace System.Windows
     /// </remarks>
 
     [UidProperty("Uid")]
-    public partial class UIElement : Visual, IInputElement, IAnimatable
+    public partial class UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost
     {
         static UIElement()
         {
@@ -120,6 +120,21 @@ namespace System.Windows
             {
                 PerfService.GetPerfElementID(this);
             }
+        }
+
+        object IPortableVisualOwnerHost.PortableVisualParent
+        {
+            get { return VisualTreeHelper.GetParentInternal(this); }
+        }
+
+        bool IPortableVisualOwnerHost.IsPortableInputEnabled
+        {
+            get { return IsEnabled && IsVisible && IsHitTestVisible; }
+        }
+
+        PortableVisualOwnerKind IPortableVisualOwnerHost.PortableVisualOwnerKind
+        {
+            get { return PortableVisualOwnerKind.Content; }
         }
 
         #region AllowDrop

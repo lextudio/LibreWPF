@@ -28,7 +28,7 @@ using Win32Error = MS.Internal.Interop.Win32Error;
 namespace System.Windows
 {
     [Localizability(LocalizationCategory.Ignore)]
-    public class Window : ContentControl, IWindowService
+    public class Window : ContentControl, IWindowService, IPortableVisualOwnerHost
     {
         //---------------------------------------------------
         //
@@ -92,6 +92,11 @@ namespace System.Windows
 
             Window.DpiChangedEvent = EventManager.RegisterRoutedEvent("DpiChanged", RoutingStrategy.Bubble,
                 typeof (System.Windows.DpiChangedEventHandler), typeof (Window));
+        }
+
+        PortableVisualOwnerKind IPortableVisualOwnerHost.PortableVisualOwnerKind
+        {
+            get { return PortableVisualOwnerKind.Window; }
         }
 
         /// <summary>

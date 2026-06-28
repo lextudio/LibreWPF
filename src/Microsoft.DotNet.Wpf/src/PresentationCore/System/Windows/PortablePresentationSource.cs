@@ -15,7 +15,7 @@ namespace System.Windows
     /// <summary>
     /// Presentation source for non-HWND hosts.
     /// </summary>
-    internal sealed class PortablePresentationSource : PresentationSource, IDisposable
+    internal sealed class PortablePresentationSource : PresentationSource, IPortablePresentationSourceHost, IDisposable
     {
         private readonly PortableCompositionTarget _compositionTarget;
         private readonly PortableKeyboardInputProvider _keyboardInputProvider;
@@ -24,6 +24,10 @@ namespace System.Windows
         private readonly IntPtr _handle;
         private Visual _rootVisual;
         private Size _clientSize;
+        private Func<double, double, object> _hostHitTestOverride;
+        private Func<double, double, object[]> _hostHitTestAllOverride;
+        private Func<double, double, double, double, object[]> _hostHitTestBoundsOverride;
+        private Func<double, double, double, double, object[]> _hostHitTestEllipseBoundsOverride;
         private bool _hasClientSize;
         private bool _contentRenderedQueued;
         private bool _isDisposed;
@@ -69,6 +73,106 @@ namespace System.Windows
         internal Func<Point, Point, object[]> HitTestBoundsOverride { get; set; }
 
         internal Func<Point, Point, object[]> HitTestEllipseBoundsOverride { get; set; }
+
+        event EventHandler IPortablePresentationSourceHost.RenderRequested
+        {
+            add { RenderRequested += value; }
+            remove { RenderRequested -= value; }
+        }
+
+        event EventHandler IPortablePresentationSourceHost.CursorRequested
+        {
+            add { CursorRequested += value; }
+            remove { CursorRequested -= value; }
+        }
+
+        object IPortablePresentationSourceHost.RootVisual
+        {
+            get { return RootVisual; }
+            set
+            {
+                if (value != null && value is not Visual)
+                {
+                    throw new ArgumentException("Portable presentation source root must be a Visual.", nameof(value));
+                }
+
+                RootVisual = (Visual)value;
+            }
+        }
+
+        object IPortablePresentationSourceHost.CompositionTarget
+        {
+            get { return _isDisposed ? null : _compositionTarget; }
+        }
+
+        IntPtr IPortablePresentationSourceHost.Handle
+        {
+            get { return _isDisposed ? IntPtr.Zero : _handle; }
+        }
+
+        object IPortablePresentationSourceHost.RequestedCursor
+        {
+            get { return RequestedCursor; }
+        }
+
+        string IPortablePresentationSourceHost.RequestedCursorName
+        {
+            get { return RequestedCursor?.ToString(); }
+        }
+
+        Func<double, double, object> IPortablePresentationSourceHost.HitTestOverride
+        {
+            get { return _hostHitTestOverride; }
+            set
+            {
+                _hostHitTestOverride = value;
+                HitTestOverride = value == null ? null : (point) => value(point.X, point.Y);
+            }
+        }
+
+        Func<double, double, object[]> IPortablePresentationSourceHost.HitTestAllOverride
+        {
+            get { return _hostHitTestAllOverride; }
+            set
+            {
+                _hostHitTestAllOverride = value;
+                HitTestAllOverride = value == null ? null : (point) => value(point.X, point.Y);
+            }
+        }
+
+        Func<double, double, double, double, object[]> IPortablePresentationSourceHost.HitTestBoundsOverride
+        {
+            get { return _hostHitTestBoundsOverride; }
+            set
+            {
+                _hostHitTestBoundsOverride = value;
+                HitTestBoundsOverride = value == null
+                    ? null
+                    : (min, max) => value(min.X, min.Y, max.X, max.Y);
+            }
+        }
+
+        Func<double, double, double, double, object[]> IPortablePresentationSourceHost.HitTestEllipseBoundsOverride
+        {
+            get { return _hostHitTestEllipseBoundsOverride; }
+            set
+            {
+                _hostHitTestEllipseBoundsOverride = value;
+                HitTestEllipseBoundsOverride = value == null
+                    ? null
+                    : (min, max) => value(min.X, min.Y, max.X, max.Y);
+            }
+        }
+
+        void IPortablePresentationSourceHost.SetDeviceScale(double dpiScaleX, double dpiScaleY)
+        {
+            SetDeviceScale(dpiScaleX, dpiScaleY);
+        }
+
+        void IPortablePresentationSourceHost.SetClientSize(double width, double height)
+        {
+            SetClientSize(width, height);
+        }
 
         public override bool IsDisposed
         {

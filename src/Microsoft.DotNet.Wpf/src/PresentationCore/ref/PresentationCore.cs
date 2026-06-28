@@ -1144,6 +1144,28 @@ namespace System.Windows
         Modifiable = 1,
         Inherit = 2,
     }
+    public partial interface IPortablePresentationSourceHost : System.IDisposable
+    {
+        object CompositionTarget { get; }
+        System.Func<double, double, object[]> HitTestAllOverride { get; set; }
+        System.Func<double, double, double, double, object[]> HitTestBoundsOverride { get; set; }
+        System.Func<double, double, double, double, object[]> HitTestEllipseBoundsOverride { get; set; }
+        System.Func<double, double, object> HitTestOverride { get; set; }
+        System.IntPtr Handle { get; }
+        object RequestedCursor { get; }
+        string RequestedCursorName { get; }
+        object RootVisual { get; set; }
+        event System.EventHandler CursorRequested;
+        event System.EventHandler RenderRequested;
+        void SetClientSize(double width, double height);
+        void SetDeviceScale(double dpiScaleX, double dpiScaleY);
+    }
+    public partial interface IPortableVisualOwnerHost
+    {
+        bool IsPortableInputEnabled { get; }
+        object PortableVisualParent { get; }
+        System.Windows.PortableVisualOwnerKind PortableVisualOwnerKind { get; }
+    }
     public abstract partial class PresentationSource : System.Windows.Threading.DispatcherObject
     {
         protected PresentationSource() { }
@@ -1161,6 +1183,17 @@ namespace System.Windows
         protected void RemoveSource() { }
         public static void RemoveSourceChangedHandler(System.Windows.IInputElement e, System.Windows.SourceChangedEventHandler handler) { }
         protected void RootChanged(System.Windows.Media.Visual oldRoot, System.Windows.Media.Visual newRoot) { }
+    }
+    public static partial class PortablePresentationSourceHost
+    {
+        public static System.Windows.IPortablePresentationSourceHost Create(double dpiScaleX = 1, double dpiScaleY = 1) { throw null; }
+    }
+    public enum PortableVisualOwnerKind
+    {
+        Content = 0,
+        PointerInfrastructure = 1,
+        TransparentPointerOverlay = 2,
+        Window = 3,
     }
     public sealed partial class QueryContinueDragEventArgs : System.Windows.RoutedEventArgs
     {
@@ -1399,8 +1432,11 @@ namespace System.Windows
         Wrap = 2,
     }
     [System.Windows.Markup.UidPropertyAttribute("Uid")]
-    public partial class UIElement : System.Windows.Media.Visual, System.Windows.IInputElement, System.Windows.Media.Animation.IAnimatable
+    public partial class UIElement : System.Windows.Media.Visual, System.Windows.IInputElement, System.Windows.IPortableVisualOwnerHost, System.Windows.Media.Animation.IAnimatable
     {
+        bool System.Windows.IPortableVisualOwnerHost.IsPortableInputEnabled { get { throw null; } }
+        object System.Windows.IPortableVisualOwnerHost.PortableVisualParent { get { throw null; } }
+        System.Windows.PortableVisualOwnerKind System.Windows.IPortableVisualOwnerHost.PortableVisualOwnerKind { get { throw null; } }
         public static readonly System.Windows.DependencyProperty AllowDropProperty;
         public static readonly System.Windows.DependencyProperty AreAnyTouchesCapturedProperty;
         public static readonly System.Windows.DependencyProperty AreAnyTouchesCapturedWithinProperty;

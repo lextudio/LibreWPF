@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
 using ProGPU.Vector;
@@ -178,10 +179,10 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.NotNull(source.HitTestAllOverride);
         Assert.NotNull(source.HitTestBoundsOverride);
         Assert.NotNull(source.HitTestEllipseBoundsOverride);
-        Assert.Null(source.HitTestOverride(new System.Windows.Point(12, 24)));
-        Assert.Null(source.HitTestAllOverride(new System.Windows.Point(12, 24)));
-        Assert.Null(source.HitTestBoundsOverride(new System.Windows.Point(0, 0), new System.Windows.Point(12, 24)));
-        Assert.Null(source.HitTestEllipseBoundsOverride(new System.Windows.Point(0, 0), new System.Windows.Point(12, 24)));
+        Assert.Null(source.HitTestOverride(12, 24));
+        Assert.Null(source.HitTestAllOverride(12, 24));
+        Assert.Null(source.HitTestBoundsOverride(0, 0, 12, 24));
+        Assert.Null(source.HitTestEllipseBoundsOverride(0, 0, 12, 24));
 
         bridge!.Dispose();
 
@@ -208,10 +209,10 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.NotNull(source.HitTestAllOverride);
         Assert.NotNull(source.HitTestBoundsOverride);
         Assert.NotNull(source.HitTestEllipseBoundsOverride);
-        Assert.Same(source, source.HitTestOverride(new System.Windows.Point(12, 24)));
-        Assert.Empty(source.HitTestAllOverride(new System.Windows.Point(12, 24))!);
-        Assert.Empty(source.HitTestBoundsOverride(new System.Windows.Point(0, 0), new System.Windows.Point(12, 24))!);
-        Assert.Empty(source.HitTestEllipseBoundsOverride(new System.Windows.Point(0, 0), new System.Windows.Point(12, 24))!);
+        Assert.Same(source, source.HitTestOverride(12, 24));
+        Assert.Empty(source.HitTestAllOverride(12, 24)!);
+        Assert.Empty(source.HitTestBoundsOverride(0, 0, 12, 24)!);
+        Assert.Empty(source.HitTestEllipseBoundsOverride(0, 0, 12, 24)!);
     }
 
     [Fact]
@@ -223,6 +224,52 @@ public sealed class WpfPortablePresentationSourceBridgeTests
 
         Assert.False(bound);
         Assert.Null(bridge);
+    }
+
+    [Fact]
+    public void TryBindUsesTypedPortableSourceContractWithoutReflectiveShape()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var source = new FakeTypedPortablePresentationSource();
+        var root = new object();
+
+        var bound = WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge);
+
+        Assert.True(bound);
+        Assert.NotNull(bridge);
+        Assert.Same(source.CompositionTargetValue, bridge!.CompositionTarget);
+        Assert.Equal(source.HandleValue, bridge.Handle);
+        Assert.NotNull(source.HitTestOverrideValue);
+        Assert.NotNull(source.HitTestAllOverrideValue);
+        Assert.NotNull(source.HitTestBoundsOverrideValue);
+        Assert.NotNull(source.HitTestEllipseBoundsOverrideValue);
+        Assert.Null(source.HitTestOverrideValue!(12, 24));
+        Assert.Null(source.HitTestAllOverrideValue!(12, 24));
+        Assert.Null(source.HitTestBoundsOverrideValue!(0, 0, 12, 24));
+        Assert.Null(source.HitTestEllipseBoundsOverrideValue!(0, 0, 12, 24));
+
+        bridge.RootVisual = root;
+        Assert.Same(root, source.RootVisualValue);
+        Assert.Same(root, host.WpfRootVisual);
+        Assert.True(bridge.TrySetDeviceScale(2.0, 1.5));
+        Assert.True(bridge.TrySetClientSize(420, 840));
+        Assert.Equal((2.0, 1.5), source.DeviceScale);
+        Assert.Equal((420d, 840d), source.ClientSize);
+
+        source.RequestCursor(new FakeCursor("Wait"));
+        Assert.Equal(WpfCursor.Wait, host.LastPortableCursor);
+
+        bridge.Dispose();
+
+        Assert.Null(source.HitTestOverrideValue);
+        Assert.Null(source.HitTestAllOverrideValue);
+        Assert.Null(source.HitTestBoundsOverrideValue);
+        Assert.Null(source.HitTestEllipseBoundsOverrideValue);
+        Assert.False(source.IsDisposed);
     }
 
     private static void InstallCompositionTarget(ProGpuWpfWindowHost host, ProGpuWpfCompositionTarget target)
@@ -240,27 +287,29 @@ public sealed class WpfPortablePresentationSourceBridgeTests
             .Invoke(target.Compositor, new object[] { index });
     }
 
-    private sealed class FakePortablePresentationSource : IDisposable
+    private sealed class FakePortablePresentationSource : IPortablePresentationSourceHost
     {
         private object? _rootVisual;
 
-        internal event EventHandler? RenderRequested;
+        public event EventHandler? RenderRequested;
 
-        internal event EventHandler? CursorRequested;
+        public event EventHandler? CursorRequested;
 
         public object CompositionTarget { get; } = new();
 
         public IntPtr Handle { get; init; }
 
-        internal object? RequestedCursor { get; private set; }
+        public object? RequestedCursor { get; private set; }
 
-        internal Func<System.Windows.Point, object?>? HitTestOverride { get; set; }
+        public string? RequestedCursorName => RequestedCursor?.ToString();
 
-        internal Func<System.Windows.Point, object?[]?>? HitTestAllOverride { get; set; }
+        public Func<double, double, object?>? HitTestOverride { get; set; }
 
-        internal Func<System.Windows.Point, System.Windows.Point, object?[]?>? HitTestBoundsOverride { get; set; }
+        public Func<double, double, object?[]?>? HitTestAllOverride { get; set; }
 
-        internal Func<System.Windows.Point, System.Windows.Point, object?[]?>? HitTestEllipseBoundsOverride { get; set; }
+        public Func<double, double, double, double, object?[]?>? HitTestBoundsOverride { get; set; }
+
+        public Func<double, double, double, double, object?[]?>? HitTestEllipseBoundsOverride { get; set; }
 
         public object? RootVisual
         {
@@ -282,14 +331,14 @@ public sealed class WpfPortablePresentationSourceBridgeTests
 
         public bool IsDisposed { get; private set; }
 
-        internal void SetDeviceScale(double dpiScaleX, double dpiScaleY)
+        public void SetDeviceScale(double dpiScaleX, double dpiScaleY)
         {
             DpiScaleX = dpiScaleX;
             DpiScaleY = dpiScaleY;
             RenderRequested?.Invoke(this, EventArgs.Empty);
         }
 
-        internal void SetClientSize(double width, double height)
+        public void SetClientSize(double width, double height)
         {
             ClientWidth = width;
             ClientHeight = height;
@@ -316,6 +365,110 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         }
 
         public string CursorType { get; }
+
+        public override string ToString()
+        {
+            return CursorType;
+        }
+    }
+
+    private sealed class FakeTypedPortablePresentationSource : IPortablePresentationSourceHost
+    {
+        private object? _rootVisual;
+        private object? _requestedCursor;
+        private Func<double, double, object?>? _hitTestOverride;
+        private Func<double, double, object?[]?>? _hitTestAllOverride;
+        private Func<double, double, double, double, object?[]?>? _hitTestBoundsOverride;
+        private Func<double, double, double, double, object?[]?>? _hitTestEllipseBoundsOverride;
+
+        public event EventHandler? RenderRequested;
+
+        public event EventHandler? CursorRequested;
+
+        public object CompositionTargetValue { get; } = new();
+
+        public IntPtr HandleValue { get; } = new(0x50575047);
+
+        public object? RootVisualValue => _rootVisual;
+
+        public (double X, double Y) DeviceScale { get; private set; } = (1.0, 1.0);
+
+        public (double Width, double Height) ClientSize { get; private set; }
+
+        public Func<double, double, object?>? HitTestOverrideValue => _hitTestOverride;
+
+        public Func<double, double, object?[]?>? HitTestAllOverrideValue => _hitTestAllOverride;
+
+        public Func<double, double, double, double, object?[]?>? HitTestBoundsOverrideValue => _hitTestBoundsOverride;
+
+        public Func<double, double, double, double, object?[]?>? HitTestEllipseBoundsOverrideValue => _hitTestEllipseBoundsOverride;
+
+        public bool IsDisposed { get; private set; }
+
+        object? IPortablePresentationSourceHost.RootVisual
+        {
+            get => _rootVisual;
+            set
+            {
+                _rootVisual = value;
+                RenderRequested?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        object? IPortablePresentationSourceHost.CompositionTarget => CompositionTargetValue;
+
+        IntPtr IPortablePresentationSourceHost.Handle => HandleValue;
+
+        object? IPortablePresentationSourceHost.RequestedCursor => _requestedCursor;
+
+        string? IPortablePresentationSourceHost.RequestedCursorName => _requestedCursor?.ToString();
+
+        Func<double, double, object?>? IPortablePresentationSourceHost.HitTestOverride
+        {
+            get => _hitTestOverride;
+            set => _hitTestOverride = value;
+        }
+
+        Func<double, double, object?[]?>? IPortablePresentationSourceHost.HitTestAllOverride
+        {
+            get => _hitTestAllOverride;
+            set => _hitTestAllOverride = value;
+        }
+
+        Func<double, double, double, double, object?[]?>? IPortablePresentationSourceHost.HitTestBoundsOverride
+        {
+            get => _hitTestBoundsOverride;
+            set => _hitTestBoundsOverride = value;
+        }
+
+        Func<double, double, double, double, object?[]?>? IPortablePresentationSourceHost.HitTestEllipseBoundsOverride
+        {
+            get => _hitTestEllipseBoundsOverride;
+            set => _hitTestEllipseBoundsOverride = value;
+        }
+
+        public void SetDeviceScale(double dpiScaleX, double dpiScaleY)
+        {
+            DeviceScale = (dpiScaleX, dpiScaleY);
+            RenderRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetClientSize(double width, double height)
+        {
+            ClientSize = (width, height);
+            RenderRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void RequestCursor(object cursor)
+        {
+            _requestedCursor = cursor;
+            CursorRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void Dispose()
+        {
+            IsDisposed = true;
+        }
     }
 
     private sealed class TestRenderScheduler : IWpfRenderScheduler

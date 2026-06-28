@@ -2,12 +2,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Windows.Media.ProGPU;
-using System.Windows.Media.ProGPU.Platform;
 
 internal static class Program
 {
     private const string CompilerHarnessAssemblyName = "ProGPU.Wpf.RealXamlCompilerHarness";
+    private const string ProGpuWpfAssemblyName = "ProGPU.Wpf";
     private const string AppTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow";
     private const string PortableClipboardServiceTypeName = "System.Windows.PortableClipboardService";
@@ -24,8 +23,9 @@ internal static class Program
             string presentationFrameworkPath = FindArtifactAssembly(repoRoot, "PresentationFramework");
             string presentationCorePath = FindArtifactAssembly(repoRoot, "PresentationCore");
             string compilerHarnessPath = FindArtifactAssembly(repoRoot, CompilerHarnessAssemblyName);
+            string proGpuWpfPath = FindOutputAssembly(ProGpuWpfAssemblyName);
 
-            RunHarness(repoRoot, presentationFrameworkPath, presentationCorePath, compilerHarnessPath);
+            RunHarness(repoRoot, presentationFrameworkPath, presentationCorePath, compilerHarnessPath, proGpuWpfPath);
             Console.WriteLine("Real WPF XAML runtime smoke succeeded.");
             return 0;
         }
@@ -40,16 +40,19 @@ internal static class Program
         string repoRoot,
         string presentationFrameworkPath,
         string presentationCorePath,
-        string compilerHarnessPath)
+        string compilerHarnessPath,
+        string proGpuWpfPath)
     {
         var loadContext = new WpfAssemblyLoadContext(
             repoRoot,
             presentationFrameworkPath,
             presentationCorePath,
-            compilerHarnessPath);
+            compilerHarnessPath,
+            proGpuWpfPath);
         Assembly presentationCore = loadContext.LoadFromAssemblyPath(presentationCorePath);
         Assembly presentationFramework = loadContext.LoadFromAssemblyPath(presentationFrameworkPath);
         Assembly compilerHarness = loadContext.LoadFromAssemblyPath(compilerHarnessPath);
+        Assembly proGpuWpf = loadContext.LoadFromAssemblyPath(proGpuWpfPath);
         Assembly systemXaml = loadContext.LoadFromAssemblyName(new AssemblyName("System.Xaml"));
 
         object? application = null;
@@ -82,6 +85,7 @@ internal static class Program
             ValidateMainWindow(presentationCore, window, application);
 
             ShowPortableActivation(
+                proGpuWpf,
                 presentationFramework,
                 window,
                 out activationServiceType,
@@ -1687,11 +1691,7 @@ internal static class Program
 
     private static void ValidatePortableInputBindingActivation(Assembly presentationCore, object activation, object window)
     {
-        if (activation is not WpfPortableWindowActivation portableActivation)
-        {
-            throw new InvalidOperationException(
-                $"Expected a ProGPU portable activation for input routing, got '{activation.GetType().FullName}'.");
-        }
+        object host = GetPortableHost(activation, "input routing");
 
         object inputBox = GetField(window, "InputBox");
         Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
@@ -1699,23 +1699,25 @@ internal static class Program
         AssertSame(inputBox, focused, "portable input KeyBinding focused target");
 
         int initialExecutionCount = Convert.ToInt32(GetProperty(window, "RoutedCommandExecutionCount"));
-        var keyDown = new WpfInputEventArgs(
-            WpfInputEventKind.KeyDown,
+        object keyDown = CreateWpfInputEventArgs(
+            activation,
+            "KeyDown",
             key: "F6",
             scanCode: 0,
-            modifiers: WpfInputModifiers.Control);
-        RaiseHostInput(portableActivation.Host, keyDown);
+            modifiers: "Control");
+        RaiseHostInput(host, keyDown);
 
-        AssertEqual(true, keyDown.Handled, "portable input KeyBinding handled state");
+        AssertEqual(true, GetProperty(keyDown, "Handled"), "portable input KeyBinding handled state");
         AssertEqual(initialExecutionCount + 1, GetProperty(window, "RoutedCommandExecutionCount"), "portable input KeyBinding command execution count");
         AssertEqual("input binding payload", GetProperty(window, "LastRoutedCommandParameter"), "portable input KeyBinding command parameter");
 
-        var keyUp = new WpfInputEventArgs(
-            WpfInputEventKind.KeyUp,
+        object keyUp = CreateWpfInputEventArgs(
+            activation,
+            "KeyUp",
             key: "F6",
             scanCode: 0,
-            modifiers: WpfInputModifiers.None);
-        RaiseHostInput(portableActivation.Host, keyUp);
+            modifiers: "None");
+        RaiseHostInput(host, keyUp);
         AssertEqual(initialExecutionCount + 1, GetProperty(window, "RoutedCommandExecutionCount"), "portable input KeyBinding ignores key up");
 
         object classCommandTarget = GetField(window, "ClassCommandTargetBox");
@@ -1724,23 +1726,25 @@ internal static class Program
         AssertSame(classCommandTarget, classFocused, "portable class input KeyBinding focused target");
 
         int initialClassExecutionCount = Convert.ToInt32(GetProperty(classCommandTarget, "ClassCommandExecutionCount"));
-        var classKeyDown = new WpfInputEventArgs(
-            WpfInputEventKind.KeyDown,
+        object classKeyDown = CreateWpfInputEventArgs(
+            activation,
+            "KeyDown",
             key: "F7",
             scanCode: 0,
-            modifiers: WpfInputModifiers.Control);
-        RaiseHostInput(portableActivation.Host, classKeyDown);
+            modifiers: "Control");
+        RaiseHostInput(host, classKeyDown);
 
-        AssertEqual(true, classKeyDown.Handled, "portable class input KeyBinding handled state");
+        AssertEqual(true, GetProperty(classKeyDown, "Handled"), "portable class input KeyBinding handled state");
         AssertEqual(initialClassExecutionCount + 1, GetProperty(classCommandTarget, "ClassCommandExecutionCount"), "portable class input KeyBinding command execution count");
         AssertEqual("class input payload", GetProperty(classCommandTarget, "LastClassCommandParameter"), "portable class input KeyBinding command parameter");
 
-        var classKeyUp = new WpfInputEventArgs(
-            WpfInputEventKind.KeyUp,
+        object classKeyUp = CreateWpfInputEventArgs(
+            activation,
+            "KeyUp",
             key: "F7",
             scanCode: 0,
-            modifiers: WpfInputModifiers.None);
-        RaiseHostInput(portableActivation.Host, classKeyUp);
+            modifiers: "None");
+        RaiseHostInput(host, classKeyUp);
         AssertEqual(initialClassExecutionCount + 1, GetProperty(classCommandTarget, "ClassCommandExecutionCount"), "portable class input KeyBinding ignores key up");
 
         InvokeStatic(keyboardType, "ClearFocus");
@@ -1749,23 +1753,20 @@ internal static class Program
 
     private static void ValidatePortableAccessKeyActivation(Assembly presentationCore, object activation, object window)
     {
-        if (activation is not WpfPortableWindowActivation portableActivation)
-        {
-            throw new InvalidOperationException(
-                $"Expected a ProGPU portable activation for access-key routing, got '{activation.GetType().FullName}'.");
-        }
+        object host = GetPortableHost(activation, "access-key routing");
 
         object accessTarget = GetField(window, "AccessTargetBox");
         Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
         InvokeStatic(keyboardType, "ClearFocus");
 
-        var accessText = new WpfInputEventArgs(
-            WpfInputEventKind.TextInput,
+        object accessText = CreateWpfInputEventArgs(
+            activation,
+            "TextInput",
             character: 'a',
-            modifiers: WpfInputModifiers.Alt);
-        RaiseHostInput(portableActivation.Host, accessText);
+            modifiers: "Alt");
+        RaiseHostInput(host, accessText);
 
-        AssertEqual(true, accessText.Handled, "portable access key handled state");
+        AssertEqual(true, GetProperty(accessText, "Handled"), "portable access key handled state");
         AssertSame(accessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "portable access key focused target");
 
         InvokeStatic(keyboardType, "ClearFocus");
@@ -1774,11 +1775,7 @@ internal static class Program
 
     private static void ValidatePortableKeyboardNavigationActivation(Assembly presentationCore, object activation, object window)
     {
-        if (activation is not WpfPortableWindowActivation portableActivation)
-        {
-            throw new InvalidOperationException(
-                $"Expected a ProGPU portable activation for keyboard navigation, got '{activation.GetType().FullName}'.");
-        }
+        object host = GetPortableHost(activation, "keyboard navigation");
 
         object accessTarget = GetField(window, "AccessTargetBox");
         object alternateAccessTarget = GetField(window, "AlternateAccessTargetBox");
@@ -1786,41 +1783,45 @@ internal static class Program
 
         AssertSame(accessTarget, InvokeStatic(keyboardType, "Focus", accessTarget), "portable Tab navigation initial focus");
 
-        var tabDown = new WpfInputEventArgs(
-            WpfInputEventKind.KeyDown,
+        object tabDown = CreateWpfInputEventArgs(
+            activation,
+            "KeyDown",
             key: "Tab",
             scanCode: 0,
-            modifiers: WpfInputModifiers.None);
-        RaiseHostInput(portableActivation.Host, tabDown);
+            modifiers: "None");
+        RaiseHostInput(host, tabDown);
 
-        AssertEqual(true, tabDown.Handled, "portable Tab navigation handled state");
+        AssertEqual(true, GetProperty(tabDown, "Handled"), "portable Tab navigation handled state");
         AssertSame(alternateAccessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "portable Tab navigation focused target");
 
         RaiseHostInput(
-            portableActivation.Host,
-            new WpfInputEventArgs(
-                WpfInputEventKind.KeyUp,
+            host,
+            CreateWpfInputEventArgs(
+                activation,
+                "KeyUp",
                 key: "Tab",
                 scanCode: 0,
-                modifiers: WpfInputModifiers.None));
+                modifiers: "None"));
 
-        var shiftTabDown = new WpfInputEventArgs(
-            WpfInputEventKind.KeyDown,
+        object shiftTabDown = CreateWpfInputEventArgs(
+            activation,
+            "KeyDown",
             key: "Tab",
             scanCode: 0,
-            modifiers: WpfInputModifiers.Shift);
-        RaiseHostInput(portableActivation.Host, shiftTabDown);
+            modifiers: "Shift");
+        RaiseHostInput(host, shiftTabDown);
 
-        AssertEqual(true, shiftTabDown.Handled, "portable Shift+Tab navigation handled state");
+        AssertEqual(true, GetProperty(shiftTabDown, "Handled"), "portable Shift+Tab navigation handled state");
         AssertSame(accessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "portable Shift+Tab navigation focused target");
 
         RaiseHostInput(
-            portableActivation.Host,
-            new WpfInputEventArgs(
-                WpfInputEventKind.KeyUp,
+            host,
+            CreateWpfInputEventArgs(
+                activation,
+                "KeyUp",
                 key: "Tab",
                 scanCode: 0,
-                modifiers: WpfInputModifiers.None));
+                modifiers: "None"));
 
         InvokeStatic(keyboardType, "ClearFocus");
         AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Tab navigation clear focus");
@@ -1828,11 +1829,7 @@ internal static class Program
 
     private static void ValidatePortableMouseBindingActivation(Assembly presentationCore, object activation, object window)
     {
-        if (activation is not WpfPortableWindowActivation portableActivation)
-        {
-            throw new InvalidOperationException(
-                $"Expected a ProGPU portable activation for mouse binding routing, got '{activation.GetType().FullName}'.");
-        }
+        object host = GetPortableHost(activation, "mouse binding routing");
 
         object mouseBindingSurface = GetField(window, "MouseBindingSurface");
         Invoke(window, "UpdateLayout");
@@ -1841,11 +1838,12 @@ internal static class Program
         object? directHit = InvokeNullable(window, "InputHitTest", GetElementCenterPointInWindow(mouseBindingSurface, window));
 
         int initialExecutionCount = Convert.ToInt32(GetProperty(window, "RoutedCommandExecutionCount"));
-        var mouseMove = new WpfInputEventArgs(
-            WpfInputEventKind.MouseMove,
+        object mouseMove = CreateWpfInputEventArgs(
+            activation,
+            "MouseMove",
             x: x,
             y: y);
-        RaiseHostInput(portableActivation.Host, mouseMove);
+        RaiseHostInput(host, mouseMove);
 
         Type mouseType = GetRequiredType(presentationCore, "System.Windows.Input.Mouse");
         object? directlyOverAfterMove = TryGetStaticProperty(mouseType, "DirectlyOver");
@@ -1853,15 +1851,16 @@ internal static class Program
         {
             throw new InvalidOperationException(
                 $"Expected portable mouse move to update Mouse.DirectlyOver for MouseBinding. " +
-                $"MoveHandled={mouseMove.Handled}, Input=({x}, {y}), InputHitTest={DescribeInputElement(directHit)}.");
+                $"MoveHandled={GetProperty(mouseMove, "Handled")}, Input=({x}, {y}), InputHitTest={DescribeInputElement(directHit)}.");
         }
 
-        var rightDown = new WpfInputEventArgs(
-            WpfInputEventKind.MouseDown,
+        object rightDown = CreateWpfInputEventArgs(
+            activation,
+            "MouseDown",
             x: x,
             y: y,
-            button: WpfMouseButton.Right);
-        RaiseHostInput(portableActivation.Host, rightDown);
+            button: "Right");
+        RaiseHostInput(host, rightDown);
 
         AssertPortableMouseBindingCommand(
             presentationCore,
@@ -1875,12 +1874,13 @@ internal static class Program
         AssertEqual("mouse binding payload", GetProperty(window, "LastRoutedCommandParameter"), "portable mouse MouseBinding command parameter");
 
         RaiseHostInput(
-            portableActivation.Host,
-            new WpfInputEventArgs(
-                WpfInputEventKind.MouseUp,
+            host,
+            CreateWpfInputEventArgs(
+                activation,
+                "MouseUp",
                 x: x,
                 y: y,
-                button: WpfMouseButton.Right));
+                button: "Right"));
 
         AssertEqual(initialExecutionCount + 1, GetProperty(window, "RoutedCommandExecutionCount"), "portable mouse MouseBinding ignores mouse up");
     }
@@ -1915,11 +1915,7 @@ internal static class Program
 
     private static void ValidatePortableTextInputActivation(Assembly presentationCore, object activation, object window)
     {
-        if (activation is not WpfPortableWindowActivation portableActivation)
-        {
-            throw new InvalidOperationException(
-                $"Expected a ProGPU portable activation for text input routing, got '{activation.GetType().FullName}'.");
-        }
+        object host = GetPortableHost(activation, "text input routing");
 
         object inputBox = GetField(window, "InputBox");
         Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
@@ -1928,12 +1924,13 @@ internal static class Program
         object focused = InvokeStatic(keyboardType, "Focus", inputBox);
         AssertSame(inputBox, focused, "portable text input focused target");
 
-        var textInput = new WpfInputEventArgs(
-            WpfInputEventKind.TextInput,
+        object textInput = CreateWpfInputEventArgs(
+            activation,
+            "TextInput",
             character: 'x');
-        RaiseHostInput(portableActivation.Host, textInput);
+        RaiseHostInput(host, textInput);
 
-        AssertEqual(true, textInput.Handled, "portable text input handled state");
+        AssertEqual(true, GetProperty(textInput, "Handled"), "portable text input handled state");
         AssertEqual("portable x", GetProperty(inputBox, "Text"), "portable text input TextBox text");
         AssertEqual("portable x".Length, GetProperty(inputBox, "SelectionStart"), "portable text input caret index");
         AssertEqual(0, GetProperty(inputBox, "SelectionLength"), "portable text input selection length");
@@ -1944,11 +1941,7 @@ internal static class Program
 
     private static void ValidatePortableMouseClickActivation(Assembly presentationCore, object activation, object window)
     {
-        if (activation is not WpfPortableWindowActivation portableActivation)
-        {
-            throw new InvalidOperationException(
-                $"Expected a ProGPU portable activation for mouse input routing, got '{activation.GetType().FullName}'.");
-        }
+        object host = GetPortableHost(activation, "mouse input routing");
 
         object eventButton = GetField(window, "EventButton");
         Invoke(window, "UpdateLayout");
@@ -1957,12 +1950,13 @@ internal static class Program
         object? directHit = InvokeNullable(window, "InputHitTest", GetElementCenterPointInWindow(eventButton, window));
 
         int initialClickCount = Convert.ToInt32(GetProperty(window, "XamlClickCount"));
-        var mouseMove = new WpfInputEventArgs(
-            WpfInputEventKind.MouseMove,
+        object mouseMove = CreateWpfInputEventArgs(
+            activation,
+            "MouseMove",
             x: x,
             y: y);
         RaiseHostInput(
-            portableActivation.Host,
+            host,
             mouseMove);
         Type mouseType = GetRequiredType(presentationCore, "System.Windows.Input.Mouse");
         object? directlyOverAfterMove = TryGetStaticProperty(mouseType, "DirectlyOver");
@@ -1970,18 +1964,19 @@ internal static class Program
         {
             throw new InvalidOperationException(
                 $"Expected portable mouse move to update Mouse.DirectlyOver. " +
-                $"MoveHandled={mouseMove.Handled}, Input=({x}, {y}), InputHitTest={DescribeInputElement(directHit)}.");
+                $"MoveHandled={GetProperty(mouseMove, "Handled")}, Input=({x}, {y}), InputHitTest={DescribeInputElement(directHit)}.");
         }
 
         int initialGotCaptureCount = Convert.ToInt32(GetProperty(window, "XamlGotMouseCaptureCount"));
         int initialLostCaptureCount = Convert.ToInt32(GetProperty(window, "XamlLostMouseCaptureCount"));
         RaiseHostInput(
-            portableActivation.Host,
-            new WpfInputEventArgs(
-                WpfInputEventKind.MouseDown,
+            host,
+            CreateWpfInputEventArgs(
+                activation,
+                "MouseDown",
                 x: x,
                 y: y,
-                button: WpfMouseButton.Left));
+                button: "Left"));
         object capturedAfterDown = TryGetStaticProperty(mouseType, "Captured")
             ?? throw new InvalidOperationException("Expected portable mouse capture after mouse down.");
         AssertSame(eventButton, capturedAfterDown, "portable mouse captured element after down");
@@ -1992,12 +1987,13 @@ internal static class Program
         AssertEqual("GotMouseCapture", GetProperty(window, "LastXamlGotMouseCaptureRoutedEventName"), "portable mouse GotMouseCapture event name");
 
         RaiseHostInput(
-            portableActivation.Host,
-            new WpfInputEventArgs(
-                WpfInputEventKind.MouseUp,
+            host,
+            CreateWpfInputEventArgs(
+                activation,
+                "MouseUp",
                 x: x,
                 y: y,
-                button: WpfMouseButton.Left));
+                button: "Left"));
         AssertEqual(null, TryGetStaticProperty(mouseType, "Captured"), "portable mouse captured element after up");
         AssertEqual(false, GetProperty(eventButton, "IsMouseCaptured"), "portable mouse ButtonBase IsMouseCaptured after up");
         AssertEqual(false, GetProperty(eventButton, "IsPressed"), "portable mouse ButtonBase IsPressed after up");
@@ -2020,11 +2016,7 @@ internal static class Program
 
     private static void ValidatePortableMouseWheelActivation(Assembly presentationCore, object activation, object window)
     {
-        if (activation is not WpfPortableWindowActivation portableActivation)
-        {
-            throw new InvalidOperationException(
-                $"Expected a ProGPU portable activation for mouse wheel routing, got '{activation.GetType().FullName}'.");
-        }
+        object host = GetPortableHost(activation, "mouse wheel routing");
 
         object eventButton = GetField(window, "EventButton");
         Invoke(window, "UpdateLayout");
@@ -2033,9 +2025,10 @@ internal static class Program
 
         int initialWheelCount = Convert.ToInt32(GetProperty(window, "XamlMouseWheelCount"));
         RaiseHostInput(
-            portableActivation.Host,
-            new WpfInputEventArgs(
-                WpfInputEventKind.MouseWheel,
+            host,
+            CreateWpfInputEventArgs(
+                activation,
+                "MouseWheel",
                 x: x,
                 y: y,
                 deltaY: 1));
@@ -5836,14 +5829,21 @@ internal static class Program
     }
 
     private static void ShowPortableActivation(
+        Assembly proGpuWpf,
         Assembly presentationFramework,
         object window,
         out Type activationServiceType,
         out object activation)
     {
-        if (!WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation(
-                presentationFramework,
-                hostFactory: w => new ProGpuWpfWindowHost(WpfPortableWindowActivation.CreateHostOptions(w))))
+        Type portableActivationType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.WpfPortableWindowActivation");
+        MethodInfo registerMethod = portableActivationType.GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .SingleOrDefault(static method =>
+                method.Name == "TryRegisterPresentationFrameworkActivation" &&
+                method.GetParameters().Length == 2)
+            ?? throw new MissingMethodException(portableActivationType.FullName, "TryRegisterPresentationFrameworkActivation");
+        object registered = registerMethod.Invoke(null, new object?[] { presentationFramework, null })
+            ?? throw new InvalidOperationException("ProGPU portable activation registration returned null.");
+        if (!Convert.ToBoolean(registered))
         {
             throw new InvalidOperationException("Failed to register ProGPU portable activation with real PresentationFramework.");
         }
@@ -5854,19 +5854,17 @@ internal static class Program
         Invoke(window, "Show");
         Invoke(window, "UpdateLayout");
         activation = GetProperty(window, "PortableWindowActivation");
-        if (activation is not WpfPortableWindowActivation portableActivation)
-        {
-            throw new InvalidOperationException($"Expected a ProGPU activation, got {activation.GetType().FullName}.");
-        }
+        AssertPortableActivation(activation, "portable window show");
 
-        AssertSame(window, portableActivation.Window, "activation window");
-        AssertSame(window, portableActivation.RootVisual, "activation root visual");
+        object host = GetPortableHost(activation, "portable window show");
+        AssertSame(window, GetProperty(activation, "Window"), "activation window");
+        AssertSame(window, GetProperty(activation, "RootVisual"), "activation root visual");
         AssertEqual("Visible", GetProperty(window, "Visibility").ToString(), "portable window visibility");
         AssertEqual(true, GetProperty(window, "IsVisible"), "portable window visible state");
-        AssertEqual(true, portableActivation.Host.IsVisible, "host visible state");
-        AssertEqual("ProGPU WPF XAML smoke", portableActivation.Host.Title, "host title");
-        AssertEqual(420, portableActivation.Host.Width, "host width");
-        AssertEqual(260, portableActivation.Host.Height, "host height");
+        AssertEqual(true, GetProperty(host, "IsVisible"), "host visible state");
+        AssertEqual("ProGPU WPF XAML smoke", GetProperty(host, "Title"), "host title");
+        AssertEqual(420, GetProperty(host, "Width"), "host width");
+        AssertEqual(260, GetProperty(host, "Height"), "host height");
     }
 
     private static void ValidatePortableMessageBox(Assembly presentationFramework, object window)
@@ -6066,12 +6064,67 @@ internal static class Program
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(null, null);
     }
 
-    private static void RaiseHostInput(ProGpuWpfWindowHost host, WpfInputEventArgs input)
+    private static object GetPortableHost(object activation, string scenario)
     {
-        MethodInfo inputMethod = typeof(ProGpuWpfWindowHost).GetMethod(
+        AssertPortableActivation(activation, scenario);
+        return GetProperty(activation, "Host")
+            ?? throw new InvalidOperationException($"Expected ProGPU portable activation host for {scenario}.");
+    }
+
+    private static void AssertPortableActivation(object activation, string scenario)
+    {
+        if (!string.Equals(
+                activation.GetType().FullName,
+                "System.Windows.Media.ProGPU.WpfPortableWindowActivation",
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Expected a ProGPU portable activation for {scenario}, got '{activation.GetType().FullName}'.");
+        }
+    }
+
+    private static object CreateWpfInputEventArgs(
+        object activation,
+        string kind,
+        string? key = null,
+        int scanCode = 0,
+        char? character = null,
+        double x = 0,
+        double y = 0,
+        double deltaX = 0,
+        double deltaY = 0,
+        string button = "None",
+        string modifiers = "None")
+    {
+        Assembly proGpuWpf = activation.GetType().Assembly;
+        Type eventArgsType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.Platform.WpfInputEventArgs");
+        Type kindType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.Platform.WpfInputEventKind");
+        Type buttonType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.Platform.WpfMouseButton");
+        Type modifiersType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.Platform.WpfInputModifiers");
+
+        ConstructorInfo constructor = eventArgsType.GetConstructors()
+            .Single(candidate => candidate.GetParameters().Length == 10);
+        return constructor.Invoke(new object?[]
+        {
+            Enum.Parse(kindType, kind),
+            key,
+            scanCode,
+            character,
+            x,
+            y,
+            deltaX,
+            deltaY,
+            Enum.Parse(buttonType, button),
+            Enum.Parse(modifiersType, modifiers)
+        });
+    }
+
+    private static void RaiseHostInput(object host, object input)
+    {
+        MethodInfo inputMethod = host.GetType().GetMethod(
             "OnPlatformInputReceived",
             BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new MissingMethodException(typeof(ProGpuWpfWindowHost).FullName, "OnPlatformInputReceived");
+            ?? throw new MissingMethodException(host.GetType().FullName, "OnPlatformInputReceived");
 
         inputMethod.Invoke(host, new object?[] { null, input });
     }
@@ -6850,6 +6903,16 @@ internal static class Program
             .FirstOrDefault();
     }
 
+    private static string FindOutputAssembly(string assemblyName)
+    {
+        string outputAssemblyPath = Path.Combine(
+            AppContext.BaseDirectory,
+            $"{assemblyName}.dll");
+        return File.Exists(outputAssemblyPath)
+            ? outputAssemblyPath
+            : throw new FileNotFoundException($"Could not locate {assemblyName}.dll beside the runtime harness.", outputAssemblyPath);
+    }
+
     private static string FindRepoRoot()
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
@@ -6880,19 +6943,22 @@ internal static class Program
         private readonly string _presentationFrameworkPath;
         private readonly string _presentationCorePath;
         private readonly string _compilerHarnessPath;
+        private readonly string _proGpuWpfPath;
         private readonly AssemblyDependencyResolver _resolver;
 
         public WpfAssemblyLoadContext(
             string repoRoot,
             string presentationFrameworkPath,
             string presentationCorePath,
-            string compilerHarnessPath)
+            string compilerHarnessPath,
+            string proGpuWpfPath)
             : base(isCollectible: true)
         {
             _repoRoot = repoRoot;
             _presentationFrameworkPath = presentationFrameworkPath;
             _presentationCorePath = presentationCorePath;
             _compilerHarnessPath = compilerHarnessPath;
+            _proGpuWpfPath = proGpuWpfPath;
             _resolver = new AssemblyDependencyResolver(compilerHarnessPath);
         }
 
@@ -6901,6 +6967,11 @@ internal static class Program
             if (string.Equals(assemblyName.Name, CompilerHarnessAssemblyName, StringComparison.Ordinal))
             {
                 return LoadFromAssemblyPath(_compilerHarnessPath);
+            }
+
+            if (string.Equals(assemblyName.Name, ProGpuWpfAssemblyName, StringComparison.Ordinal))
+            {
+                return LoadFromAssemblyPath(_proGpuWpfPath);
             }
 
             if (string.Equals(assemblyName.Name, "PresentationFramework", StringComparison.Ordinal))

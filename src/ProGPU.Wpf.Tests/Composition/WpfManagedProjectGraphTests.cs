@@ -385,10 +385,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("markerOperation.Abort()", activationService, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.PushFrame(frame)", activationService, StringComparison.Ordinal);
         Assert.Contains("using MS.Internal;", activationService, StringComparison.Ordinal);
-        Assert.Contains("Point clientPoint = ToMouseClientPoint(source, input);", activationService, StringComparison.Ordinal);
+        Assert.Contains("Point clientPoint = ToMouseClientPoint(source, window, input);", activationService, StringComparison.Ordinal);
         Assert.Contains("ToInputCoordinate(clientPoint.X)", activationService, StringComparison.Ordinal);
         Assert.Contains("ToInputCoordinate(clientPoint.Y)", activationService, StringComparison.Ordinal);
-        Assert.Contains("private static Point ToMouseClientPoint(PresentationSource source, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("private static Point ToMouseClientPoint(PresentationSource source, Window window, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
         Assert.Contains("PointUtil.RootToClient(rootPoint, source)", activationService, StringComparison.Ordinal);
         Assert.Contains("public interface IWpfDelayedRenderScheduler : IWpfRenderScheduler", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("void RequestRender(TimeSpan delay)", proGpuScheduler, StringComparison.Ordinal);
@@ -565,24 +565,33 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_target.TryQueryHitTestBoundsOwners(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryQueryHitTestBoundsCandidates(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryQueryHitTestEllipseCandidates(", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("private const string HitTestOverridePropertyName = \"HitTestOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("private const string HitTestAllOverridePropertyName = \"HitTestAllOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("private const string HitTestBoundsOverridePropertyName = \"HitTestBoundsOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("private const string HitTestEllipseBoundsOverridePropertyName = \"HitTestEllipseBoundsOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("bridge.TryInstallHitTestOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("bridge.TryInstallHitTestAllOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("bridge.TryInstallHitTestBoundsOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("bridge.TryInstallHitTestEllipseBoundsOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("private object? TryHitTestOwner(System.Windows.Point rootPoint)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("private object?[]? HitTestOwners(System.Windows.Point rootPoint)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("private object?[]? HitTestBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("private object?[]? HitTestEllipseBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("_host.TryHitTestOwner(rootPoint.X, rootPoint.Y, out object? owner)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("_host.TryHitTestOwners(rootPoint.X, rootPoint.Y, out object?[] owners)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("source = PortablePresentationSourceHost.Create(dpiScaleX, dpiScaleY);", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("presentationSource is not IPortablePresentationSourceHost source", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("bridge.SubscribeToSource();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("bridge.InstallHitTestOverrides();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_source.RenderRequested += OnSourceRenderRequested;", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_source.CursorRequested += OnSourceCursorRequested;", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_source.HitTestOverride = _hitTestOverrideHandler;", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("PropertyInfo", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("MethodInfo", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryCreatePointHitTestDelegate", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("IPortableVisualOwnerHost", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("PortableVisualOwnerKind.TransparentPointerOverlay", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("PortableVisualOwnerKind.PointerInfrastructure", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("PortableVisualOwnerKind.Window", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private object? TryHitTestOwner(double rootX, double rootY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private object?[]? HitTestOwners(double rootX, double rootY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private object?[]? HitTestEllipseBoundsOwners(double minX, double minY, double maxX, double maxY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.TryHitTestOwner(rootX, rootY, out object? owner)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.TryHitTestOwners(rootX, rootY, out object?[] owners)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryQueryHitTestBoundsCandidates(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryQueryHitTestEllipseCandidates(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Source : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Array.Empty<object>() : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("TryBindUsesTypedPortableSourceContractWithoutReflectiveShape", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("TryBindInstallsGpuHitTestOverrideWhenSourceExposesHook", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestOverridesReturnHandledMissWhenCacheExists", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("Assert.Empty(source.HitTestEllipseBoundsOverride", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
@@ -631,20 +640,22 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private RenderTargetViewport? _explicitRenderTargetViewport;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("uint renderWidth = _explicitRenderTargetWidth ?? width", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("ApplyRenderPassViewport(pass, renderWidth, renderHeight, useRenderTargetViewport: true)", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("private readonly GpuRenderCommandHitTestCacheBuilder _hitTestCacheBuilder = new();", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private readonly GpuRenderCommandHitTestCacheBuilder _hitTestCacheBuilder;", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("_hitTestCacheBuilder = new GpuRenderCommandHitTestCacheBuilder(_pathAtlas);", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private GpuHitTestDeviceIndex? _lastHitTestDeviceIndex;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public GpuHitTestIndex? LastHitTestIndex", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public GpuHitTestDeviceIndex? LastHitTestDeviceIndex => _lastHitTestDeviceIndex;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private bool _suspendHitTestCacheWrites;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private void AddHitTestCommand(RenderCommand command, Matrix4x4 transform)", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("AddHitTestCommand(cmd, activeTransform);", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("AddHitTestStateCommand(cmd, activeTransform);", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private void AddHitTestDrawCommand(RenderCommand command, Matrix4x4 transform)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("_suspendHitTestCacheWrites = true;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreateDashedStrokePath(PathGeometry source, Pen pen, out PathGeometry dashedPath)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("internal static Pen CreateUndashedPen(Pen pen)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("SetLastHitTestIndex(_hitTestCacheBuilder.BuildIndex());", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("if (pen?.HasDashPattern != true)", proGpuHitTestCache, StringComparison.Ordinal);
-        Assert.Contains("Compositor.TryCreateDashedStrokePath(command.Path, pen, out var strokePath)", proGpuHitTestCache, StringComparison.Ordinal);
-        Assert.Contains("TryAddPathStrokePrimitive(strokePath, transform, id, zIndex, Compositor.CreateUndashedPen(pen));", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("TryGetDashedStrokePath(command, commandPath, pen, out var strokePath, out var strokePen)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("TryAddPathStrokePrimitive(strokePath, transform, id, zIndex, strokePen);", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("AddPathStrokePrimitive(path, transform, id, zIndex, pen);", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("RenderCommandCacheUsesDashedPathSegmentsForStrokeHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("RenderCommandCacheFeedsGpuCombinedPathFillHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -654,7 +665,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryQueryBoundsAllClassifiesEllipseRectRegionIntersectionDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsEllipseStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryHitTestPointAllReportsTotalHitCountWhenCallerCapacityTruncates", proGpuHitTestingTests, StringComparison.Ordinal);
-        Assert.Contains("Assert.Equal(112, Marshal.SizeOf<GpuHitTestPrimitive>());", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("Assert.Equal(128, Marshal.SizeOf<GpuHitTestPrimitive>());", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsRoundedRectangleCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsRectangleStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryEllipseAllRejectsQueryBoundsCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -797,7 +808,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("IWpfMessageBoxService MessageBoxes", proGpuPlatformServices, StringComparison.Ordinal);
         Assert.Contains("string Show(WpfMessageBoxOptions options)", proGpuPlatformServices, StringComparison.Ordinal);
         Assert.Contains("_window.Update += OnUpdate", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("_window.Update -= OnUpdate", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("window.Update -= OnUpdate", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private void OnUpdate(double deltaSeconds)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TryProcessDispatcherWorkWakeup();", proGpuHost, StringComparison.Ordinal);
     }
@@ -1110,7 +1121,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("window.HandleActivate(isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void ProcessInput(Window window, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
         Assert.Contains("PresentationSource.CriticalFromVisual(window)", activationService, StringComparison.Ordinal);
-        Assert.Contains("input.Handled = ProcessInput(source, input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("input.Handled = ProcessInput(source, window, input)", activationService, StringComparison.Ordinal);
         Assert.Contains("InputManager.UnsecureCurrent", activationService, StringComparison.Ordinal);
         Assert.Contains("new RawKeyboardInputReport", activationService, StringComparison.Ordinal);
         Assert.Contains("new RawTextInputReport", activationService, StringComparison.Ordinal);
@@ -3404,11 +3415,22 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExecuteSliderCommand(slider, dataContext, progress, \"IncreaseSmall\", 40.1", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Slider MaximizeValue command", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ProgressBar value after source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfAssemblyName = \"ProGPU.Wpf\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("string proGpuWpfPath = FindOutputAssembly(ProGpuWpfAssemblyName)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Assembly proGpuWpf = loadContext.LoadFromAssemblyPath(proGpuWpfPath)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ShowPortableActivation(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("proGpuWpf,", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.WpfPortableWindowActivation\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("registerMethod.Invoke(null, new object?[] { presentationFramework, null })", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetPortableHost(activation, \"portable window show\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableInputBindingActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("RaiseHostInput(portableActivation.Host, keyDown)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("object host = GetPortableHost(activation, \"input routing\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreateWpfInputEventArgs(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"KeyDown\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(host, keyDown)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableMouseBindingActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("WpfInputEventKind.MouseDown", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"MouseDown\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse MouseBinding command execution count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse MouseBinding command parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse MouseBinding ignores mouse up", harnessProgram, StringComparison.Ordinal);
@@ -3416,13 +3438,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portable text input TextBox text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable text input caret index", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableMouseClickActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("WpfInputEventKind.MouseDown", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"MouseDown\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse captured element after down", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse GotMouseCapture count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse LostMouseCapture count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse routed Click count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableMouseWheelActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("WpfInputEventKind.MouseWheel", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"MouseWheel\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse wheel routed event count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse wheel routed event delta", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetTransformToDevice(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
@@ -3702,8 +3724,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePostShowGroupStyleHeader(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupStyle header generated binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("new ProGpuWpfWindowHost(WpfPortableWindowActivation.CreateHostOptions(w))", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.WpfPortableWindowActivation\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("registerMethod.Invoke(null, new object?[] { presentationFramework, null })", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"Show\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"UpdateLayout\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetProperty(window, \"PortableWindowActivation\")", harnessProgram, StringComparison.Ordinal);
@@ -4916,20 +4938,25 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetCollectionItem(children, childCount - 3)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetCollectionItem(children, childCount - 2)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetCollectionItem(children, childCount - 1)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateThemedVisualReplay(windowsBase, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfAssemblyName = \"ProGPU.Wpf\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("string proGpuWpfPath = FindOutputAssembly(ProGpuWpfAssemblyName)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Assembly proGpuWpf = loadContext.LoadFromAssemblyPath(proGpuWpfPath)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateThemedVisualReplay(proGpuWpf, windowsBase, window)", harnessProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("Invoke(window, \"FindName\", \"ImplicitStyleCheckBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.DoesNotContain("SetEnumProperty(implicitStyleCheckBox, \"Visibility\", \"Collapsed\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(element, \"Measure\", availableSize)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(element, \"Arrange\", finalRect)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPositiveSize(GetProperty(element, \"DesiredSize\")", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("target.ReplayVisualSubtreeRetained(content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("replayResult.ContentCount", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("replayResult.RenderData.AppliedCount", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("target.RetainedVisualBranchCount", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("target.RetainedWpfVisualRoot.Children.Count", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("CountRetainedCommands(target.RetainedWpfVisualRoot)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ReplayVisualSubtreeRetained\", content, pixelWidth, pixelHeight, null, null", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(replayResult, \"ContentCount\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(renderData, \"AppliedCount\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(target, \"RetainedVisualBranchCount\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(retainedRootChildren, \"Count\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CountRetainedCommands(retainedRoot)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.WpfPortableWindowActivation\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("registerMethod.Invoke(null, new object?[] { presentationFramework, null })", harnessProgram, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -12356,6 +12383,14 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortablePresentationSource.cs");
+        var portableSourceHostPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "IPortablePresentationSourceHost.cs");
         var presentationSourcePath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -12388,6 +12423,13 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "PresentationCore",
             "PresentationCore.csproj");
+        var presentationCoreRefPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ref",
+            "PresentationCore.cs");
         var portableSourceBridgePath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -12400,10 +12442,12 @@ public sealed class WpfManagedProjectGraphTests
         var compositionTarget = File.ReadAllText(compositionTargetPath);
         var portableTarget = File.ReadAllText(portableTargetPath);
         var portableSource = File.ReadAllText(portableSourcePath);
+        var portableSourceHost = File.ReadAllText(portableSourceHostPath);
         var presentationSource = File.ReadAllText(presentationSourcePath);
         var hwndSource = File.ReadAllText(hwndSourcePath);
         var hwndTarget = File.ReadAllText(hwndTargetPath);
         var project = File.ReadAllText(projectPath);
+        var presentationCoreRef = File.ReadAllText(presentationCoreRefPath);
         var portableSourceBridge = File.ReadAllText(portableSourceBridgePath);
         var proGpuHost = File.ReadAllText(proGpuHostPath);
 
@@ -12429,7 +12473,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void SetDeviceScaleCore", portableTarget, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableCompositionTarget.cs"" />", project, StringComparison.Ordinal);
 
-        Assert.Contains("internal sealed class PortablePresentationSource : PresentationSource, IDisposable", portableSource, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortablePresentationSourceHost", portableSourceHost, StringComparison.Ordinal);
+        Assert.Contains("event EventHandler RenderRequested", portableSourceHost, StringComparison.Ordinal);
+        Assert.Contains("object RootVisual { get; set; }", portableSourceHost, StringComparison.Ordinal);
+        Assert.Contains("Func<double, double, object> HitTestOverride", portableSourceHost, StringComparison.Ordinal);
+        Assert.Contains("public partial interface IPortablePresentationSourceHost : System.IDisposable", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("System.Func<double, double, object> HitTestOverride", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("event System.EventHandler RenderRequested", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("internal sealed class PortablePresentationSource : PresentationSource, IPortablePresentationSourceHost, IDisposable", portableSource, StringComparison.Ordinal);
         Assert.Contains("private readonly PortableCompositionTarget _compositionTarget", portableSource, StringComparison.Ordinal);
         Assert.Contains("private readonly PortableKeyboardInputProvider _keyboardInputProvider", portableSource, StringComparison.Ordinal);
         Assert.Contains("private readonly PortableMouseInputProvider _mouseInputProvider", portableSource, StringComparison.Ordinal);
@@ -12444,6 +12495,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_keyboardInputProvider.OnRootChanged(oldRootVisual, _rootVisual)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal event EventHandler RenderRequested", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal event EventHandler CursorRequested", portableSource, StringComparison.Ordinal);
+        Assert.Contains("event EventHandler IPortablePresentationSourceHost.RenderRequested", portableSource, StringComparison.Ordinal);
+        Assert.Contains("event EventHandler IPortablePresentationSourceHost.CursorRequested", portableSource, StringComparison.Ordinal);
+        Assert.Contains("object IPortablePresentationSourceHost.RootVisual", portableSource, StringComparison.Ordinal);
+        Assert.Contains("object IPortablePresentationSourceHost.CompositionTarget", portableSource, StringComparison.Ordinal);
+        Assert.Contains("get { return _isDisposed ? null : _compositionTarget; }", portableSource, StringComparison.Ordinal);
+        Assert.Contains("Func<double, double, object> IPortablePresentationSourceHost.HitTestOverride", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal Cursor RequestedCursor { get; private set; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal void SetDeviceScale(double dpiScaleX, double dpiScaleY)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal void SetClientSize(double width, double height)", portableSource, StringComparison.Ordinal);
@@ -12466,6 +12523,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return _source.RequestCursor(cursor);", portableSource, StringComparison.Ordinal);
         Assert.Contains("RawMouseActions.Activate | RawMouseActions.CancelCapture", portableSource, StringComparison.Ordinal);
         Assert.Contains("_site.ReportInput(report)", portableSource, StringComparison.Ordinal);
+        Assert.Contains(@"<Compile Include=""System\Windows\IPortablePresentationSourceHost.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortablePresentationSource.cs"" />", project, StringComparison.Ordinal);
 
         Assert.Contains("return ToPublicPresentationSource(CriticalFromVisual(visual));", presentationSource, StringComparison.Ordinal);
@@ -12484,11 +12542,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_portableOwner.RootVisual = value;", hwndSource, StringComparison.Ordinal);
         Assert.Contains("internal bool IsPortable", hwndSource, StringComparison.Ordinal);
 
-        Assert.Contains("private const string CursorRequestedEventName = \"CursorRequested\";", portableSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("private const string RequestedCursorPropertyName = \"RequestedCursor\";", portableSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("bridge.TrySubscribeToCursorRequested(cursorRequestedEvent);", portableSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("CursorRequestedEventName", portableSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("RequestedCursorPropertyName", portableSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("TrySubscribeToCursorRequested", portableSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_source.CursorRequested += OnSourceCursorRequested;", portableSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private void OnSourceCursorRequested(object? sender, EventArgs e)", portableSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("_host.ApplyPortableCursor(ToWpfCursor(cursor));", portableSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.ApplyPortableCursor(ToWpfCursor(_source.RequestedCursorName ?? _source.RequestedCursor?.ToString()));", portableSourceBridge, StringComparison.Ordinal);
         Assert.Contains("\"Hand\" => WpfCursor.Hand", portableSourceBridge, StringComparison.Ordinal);
         Assert.Contains("internal WpfCursor? LastPortableCursor { get; private set; }", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool ApplyPortableCursor(WpfCursor cursor)", proGpuHost, StringComparison.Ordinal);

@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
+using ProGPU.Wpf.Interop;
 using Xunit;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
@@ -23,6 +24,23 @@ public sealed class WpfVisualContentReflectionBridgeTests
         var visual = new FakeDrawingVisual(content);
 
         Assert.Same(content, WpfVisualContentReflectionBridge.ExtractContent(visual));
+    }
+
+    [Fact]
+    public void ExtractContentUsesPortableDrawingContentSource()
+    {
+        var content = new object();
+        var visual = new FakePortableDrawingVisual(content);
+
+        Assert.Same(content, WpfVisualContentReflectionBridge.ExtractContent(visual));
+    }
+
+    [Fact]
+    public void ExtractContentAllowsNullPortableDrawingContent()
+    {
+        var visual = new FakePortableDrawingVisual(null);
+
+        Assert.Null(WpfVisualContentReflectionBridge.ExtractContent(visual));
     }
 
     [Fact]
@@ -120,6 +138,22 @@ public sealed class WpfVisualContentReflectionBridgeTests
         public FakeDrawingVisual(object? content)
         {
             _content = content;
+        }
+    }
+
+    private sealed class FakePortableDrawingVisual : IPortableDrawingContentSource
+    {
+        private readonly object? _content;
+
+        public FakePortableDrawingVisual(object? content)
+        {
+            _content = content;
+        }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _content;
+            return true;
         }
     }
 

@@ -5843,10 +5843,11 @@ namespace System.Windows.Media
         public new System.Windows.Media.DrawingImage CloneCurrentValue() { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
-    public partial class DrawingVisual : System.Windows.Media.ContainerVisual
+    public partial class DrawingVisual : System.Windows.Media.ContainerVisual, ProGPU.Wpf.Interop.IPortableDrawingContentSource
     {
         public DrawingVisual() { }
         public System.Windows.Media.DrawingGroup Drawing { get { throw null; } }
+        bool ProGPU.Wpf.Interop.IPortableDrawingContentSource.TryGetPortableDrawingContent(out object content) { throw null; }
         protected override System.Windows.Media.GeometryHitTestResult HitTestCore(System.Windows.Media.GeometryHitTestParameters hitTestParameters) { throw null; }
         protected override System.Windows.Media.HitTestResult HitTestCore(System.Windows.Media.PointHitTestParameters hitTestParameters) { throw null; }
         public System.Windows.Media.DrawingContext RenderOpen() { throw null; }

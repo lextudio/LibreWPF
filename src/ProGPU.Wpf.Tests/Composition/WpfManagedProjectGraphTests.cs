@@ -4974,7 +4974,7 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
-    public void VisualContentReflectionBridgeReadsUiElementDrawingContent()
+    public void VisualContentBridgePrefersPortableDrawingContent()
     {
         var bridgeSource = File.ReadAllText(FindRepoPath(
             "src",
@@ -4982,9 +4982,22 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfVisualContentReflectionBridge.cs"));
+        var drawingVisual = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "DrawingVisual.cs"));
 
+        Assert.Contains("drawingVisual is PortableDrawingContentSource drawingContentSource", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("drawingContentSource.TryGetPortableDrawingContent(out content)", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("FindField(visualType, \"_content\")", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("FindField(visualType, \"_drawingContent\")", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("DrawingVisual : ContainerVisual, IPortableDrawingContentSource", drawingVisual, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableDrawingContent(out object content)", drawingVisual, StringComparison.Ordinal);
     }
 
     [Fact]

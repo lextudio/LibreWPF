@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using System.Windows.Media.ProGPU.Composition;
+using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -36,6 +37,12 @@ public sealed class WpfVisualContentReflectionBridge
     public static bool TryExtractContent(object drawingVisual, out object? content)
     {
         ArgumentNullException.ThrowIfNull(drawingVisual);
+
+        if (drawingVisual is PortableDrawingContentSource drawingContentSource
+            && drawingContentSource.TryGetPortableDrawingContent(out content))
+        {
+            return true;
+        }
 
         Type visualType = drawingVisual.GetType();
         var contentField = FindField(visualType, "_content")

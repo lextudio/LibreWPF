@@ -226,6 +226,68 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void NativeHostClosingUsesTypedCloseBeforeReflectionFallback()
+    {
+        var service = new TestWindowActivationServiceRegistrar
+        {
+            HandleCloseWindow = true,
+            CloseWindowResult = PortableWindowCloseResult.Closed
+        };
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        bool? canceled = null;
+        host.Closing += (_, args) => canceled = args.Cancel;
+
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, Array.Empty<object>());
+
+        Assert.Equal(1, service.CloseWindowCount);
+        Assert.Same(window, service.LastCloseWindow);
+        Assert.Equal(0, window.CloseCount);
+        Assert.False(canceled.GetValueOrDefault());
+    }
+
+    [Fact]
+    public void NativeHostClosingUsesTypedCloseCancellationBeforeReflectionFallback()
+    {
+        var service = new TestWindowActivationServiceRegistrar
+        {
+            HandleCloseWindow = true,
+            CloseWindowResult = PortableWindowCloseResult.Canceled
+        };
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        bool? canceled = null;
+        host.Closing += (_, args) => canceled = args.Cancel;
+
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, Array.Empty<object>());
+
+        Assert.Equal(1, service.CloseWindowCount);
+        Assert.Same(window, service.LastCloseWindow);
+        Assert.Equal(0, window.CloseCount);
+        Assert.True(canceled);
+    }
+
+    [Fact]
     public void NativeHostClosingCancelsWhenWindowCloseIsCanceled()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -1623,6 +1685,28 @@ public sealed class WpfPortableWindowActivationTests
             Callbacks = callbacks;
         }
 
+        public bool HandleCloseWindow { get; set; }
+
+        public PortableWindowCloseResult CloseWindowResult { get; set; }
+
+        public int CloseWindowCount { get; private set; }
+
+        public object? LastCloseWindow { get; private set; }
+
+        public bool TryCloseWindow(object window, out PortableWindowCloseResult result)
+        {
+            if (!HandleCloseWindow)
+            {
+                result = PortableWindowCloseResult.NotInvoked;
+                return false;
+            }
+
+            CloseWindowCount++;
+            LastCloseWindow = window;
+            result = CloseWindowResult;
+            return true;
+        }
+
         public bool TrySetActivationState(object window, bool isActive)
         {
             SetActivationStateCount++;
@@ -1688,6 +1772,7 @@ public sealed class WpfPortableWindowActivationTests
         public void Clear()
         {
             Callbacks = null;
+            LastCloseWindow = null;
             LastActivationStateWindow = null;
             LastBeginInvokeInputWindow = null;
             LastBeginInvokeInputCallback = null;

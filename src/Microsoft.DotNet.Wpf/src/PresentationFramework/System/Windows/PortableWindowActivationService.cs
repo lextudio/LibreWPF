@@ -809,6 +809,21 @@ namespace System.Windows
                     callbacks.GetHandle);
             }
 
+            public bool TryCloseWindow(object window, out PortableWindowCloseResult result)
+            {
+                result = PortableWindowCloseResult.NotInvoked;
+                if (window is not Window typedWindow)
+                {
+                    return false;
+                }
+
+                typedWindow.Close();
+                result = typedWindow.IsDisposed
+                    ? PortableWindowCloseResult.Closed
+                    : PortableWindowCloseResult.Canceled;
+                return true;
+            }
+
             public bool TrySetActivationState(object window, bool isActive)
             {
                 if (window is not Window typedWindow)

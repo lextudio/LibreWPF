@@ -1462,6 +1462,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static WpfWindowCloseResult TryInvokeWindowClose(object window)
     {
+        if (TryGetWindowActivationService(window, out var activationService) &&
+            activationService.TryCloseWindow(window, out var typedCloseResult))
+        {
+            return MapCloseResult(typedCloseResult);
+        }
+
         var closeMethod = window.GetType().GetMethod(
             "Close",
             BindingFlags.Instance | BindingFlags.Public,
@@ -1477,6 +1483,16 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return TryReadWindowClosedState(window, out bool isClosed) && !isClosed
             ? WpfWindowCloseResult.Canceled
             : WpfWindowCloseResult.Closed;
+    }
+
+    private static WpfWindowCloseResult MapCloseResult(PortableWindowCloseResult result)
+    {
+        return result switch
+        {
+            PortableWindowCloseResult.Closed => WpfWindowCloseResult.Closed,
+            PortableWindowCloseResult.Canceled => WpfWindowCloseResult.Canceled,
+            _ => WpfWindowCloseResult.NotInvoked
+        };
     }
 
     private enum WpfWindowCloseResult

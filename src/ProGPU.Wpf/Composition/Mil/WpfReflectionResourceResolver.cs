@@ -16,6 +16,8 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaPenLineCap = System.Windows.Media.PenLineCap;
 using MediaTransform = System.Windows.Media.Transform;
+using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
+using PortableTransformMatrixSource = ProGPU.Wpf.Interop.IPortableTransformMatrixSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -1911,6 +1913,12 @@ public sealed class WpfReflectionResourceResolver :
             return TryReadMatrix4x4(nativeMatrix, out matrix);
         }
 
+        if (resource is PortableTransformMatrixSource portableTransform
+            && portableTransform.TryGetPortableTransformMatrix(out var portableMatrix))
+        {
+            return TryUseFiniteMatrix(ToWpfMatrix2D(portableMatrix), out matrix);
+        }
+
         if (TryGetPropertyValue(resource, "Value", out var matrixValue)
             && matrixValue != null
             && TryReadMatrix(matrixValue, out matrix))
@@ -2151,6 +2159,17 @@ public sealed class WpfReflectionResourceResolver :
             && double.IsFinite(value.M22)
             && double.IsFinite(value.OffsetX)
             && double.IsFinite(value.OffsetY);
+    }
+
+    private static WpfMatrix2D ToWpfMatrix2D(PortableMatrix3x2 matrix)
+    {
+        return new WpfMatrix2D(
+            matrix.M11,
+            matrix.M12,
+            matrix.M21,
+            matrix.M22,
+            matrix.OffsetX,
+            matrix.OffsetY);
     }
 
     private static Matrix4x4 ToMatrix4x4(WpfMatrix2D matrix)

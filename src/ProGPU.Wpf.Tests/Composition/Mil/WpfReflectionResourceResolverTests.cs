@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using ProGPU.Text;
+using ProGPU.Wpf.Interop;
 using Xunit;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
@@ -255,6 +256,32 @@ public sealed class WpfReflectionResourceResolverTests
     public void DecodePushTransformAdaptsWpfShapedMatrixTransform()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 2, 3, 4, 10, 20));
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
+        var sink = new TestSink();
+
+        var pushPayload = new byte[8];
+        WriteUInt32(pushPayload, 0, 1);
+        var renderData = CreateRecord(WpfMilCommandId.PushTransform, pushPayload)
+            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
+            .ToArray();
+
+        var result = new WpfMilRenderDataDecoder().Decode(renderData, sink, resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(2, 2, 0, 0), result);
+        var adaptedTransform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
+        Assert.Equal(1, adaptedTransform.Matrix.M11);
+        Assert.Equal(2, adaptedTransform.Matrix.M12);
+        Assert.Equal(3, adaptedTransform.Matrix.M21);
+        Assert.Equal(4, adaptedTransform.Matrix.M22);
+        Assert.Equal(10, adaptedTransform.Matrix.OffsetX);
+        Assert.Equal(20, adaptedTransform.Matrix.OffsetY);
+        Assert.Equal(1, sink.PopCount);
+    }
+
+    [Fact]
+    public void DecodePushTransformAdaptsPortableTransformMatrixSource()
+    {
+        var transform = new FakePortableTransform(new PortableMatrix3x2(1, 2, 3, 4, 10, 20));
         var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
         var sink = new TestSink();
 
@@ -2989,6 +3016,22 @@ public sealed class WpfReflectionResourceResolverTests
         }
 
         public FakeMatrix Value { get; }
+    }
+
+    private sealed class FakePortableTransform : IPortableTransformMatrixSource
+    {
+        private readonly PortableMatrix3x2 _matrix;
+
+        public FakePortableTransform(PortableMatrix3x2 matrix)
+        {
+            _matrix = matrix;
+        }
+
+        public bool TryGetPortableTransformMatrix(out PortableMatrix3x2 matrix)
+        {
+            matrix = _matrix;
+            return true;
+        }
     }
 
     private sealed class FakeTransformGroup

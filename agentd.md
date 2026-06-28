@@ -8,6 +8,6 @@ After the current paid Xceed DataGrid/App work, prioritize replacing reflection-
 
 Bridge contracts used by package-mode apps must avoid shim-owned WPF structs/classes in public callback signatures. Prefer primitives, neutral DTOs, or source-integrated WPF interfaces/factories over runtime type lookup, reflected properties/events, or expression-built adapter delegates.
 
-Use the existing `IPortableGeometryPathSource` and `IPortableGuidelineSetSource` seams as the pattern for future cleanup: expose narrow typed contracts from source-built WPF internals, keep DTOs package-neutral, and update tests to assert that hot-path readers do not use `System.Reflection`, `BindingFlags`, property probing, or duck-typed fake shapes.
+Use the existing `IPortableGeometryPathSource`, `IPortableGuidelineSetSource`, and `IPortableTransformMatrixSource` seams as the pattern for future cleanup: expose narrow typed contracts from source-built WPF internals, keep DTOs package-neutral, and update tests to assert that hot-path readers do not use `System.Reflection`, `BindingFlags`, property probing, or duck-typed fake shapes.
 
 Normal WPF managed code reuse remains the goal. Modify upstream WPF managed code only where necessary to expose portable seams, replace Windows-only calls, or route native rendering/platform work into ProGPU and Silk.NET.

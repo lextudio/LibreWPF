@@ -9969,6 +9969,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeSink.PushNativeTransform(transform)", wpfPortableCommandSinkBridge, StringComparison.Ordinal);
         Assert.Contains("TryCreateManagedMatrixTransform(transform, out var mediaTransform)", wpfPortableCommandSinkBridge, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreateManagedMatrixTransform(", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("resource is PortableTransformMatrixSource portableTransform", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("portableTransform.TryGetPortableTransformMatrix(out var portableMatrix)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("ToWpfMatrix2D(portableMatrix)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("matrixTransformType = typeof(MediaTransform).Assembly.GetType(\"System.Windows.Media.MatrixTransform\")", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("private readonly Func<object?, MediaImageSource?>? _imageSourceAdapter", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushRectangle(brush, pen, rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);

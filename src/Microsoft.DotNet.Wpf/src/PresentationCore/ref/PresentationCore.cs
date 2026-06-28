@@ -7621,7 +7621,7 @@ namespace System.Windows.Media
     [System.ComponentModel.TypeConverterAttribute(typeof(System.Windows.Media.TransformConverter))]
     [System.Windows.LocalizabilityAttribute(System.Windows.LocalizationCategory.None, Readability = System.Windows.Readability.Unreadable)]
     [System.Windows.Markup.ValueSerializerAttribute(typeof(System.Windows.Media.Converters.TransformValueSerializer))]
-    public abstract partial class Transform : System.Windows.Media.GeneralTransform
+    public abstract partial class Transform : System.Windows.Media.GeneralTransform, ProGPU.Wpf.Interop.IPortableTransformMatrixSource
     {
         internal Transform() { }
         public static System.Windows.Media.Transform Identity { get { throw null; } }
@@ -7629,6 +7629,7 @@ namespace System.Windows.Media
         public abstract System.Windows.Media.Matrix Value { get; }
         public new System.Windows.Media.Transform Clone() { throw null; }
         public new System.Windows.Media.Transform CloneCurrentValue() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableTransformMatrixSource.TryGetPortableTransformMatrix(out ProGPU.Wpf.Interop.PortableMatrix3x2 matrix) { throw null; }
         public static System.Windows.Media.Transform Parse(string source) { throw null; }
         public override System.Windows.Rect TransformBounds(System.Windows.Rect rect) { throw null; }
         public override bool TryTransform(System.Windows.Point inPoint, out System.Windows.Point result) { throw null; }

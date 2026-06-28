@@ -68,36 +68,33 @@ public sealed class SilkNetWpfMonitorServiceTests
     }
 
     [Fact]
-    public void ToMonitorInfoReadsReflectedScalarDpiScale()
+    public void ToMonitorInfoUsesTypedDpiScaleProvider()
     {
         var monitor = new FakeMonitor(
             "Scaled",
             0,
             new Rectangle<int>(0, 0, 1920, 1080),
-            new VideoMode(new Vector2D<int>(1920, 1080), 60))
-        {
-            DpiScale = 1.75
-        };
+            new VideoMode(new Vector2D<int>(1920, 1080), 60));
 
-        var mapped = SilkNetWpfMonitorService.ToMonitorInfo(monitor, monitor);
+        var mapped = SilkNetWpfMonitorService.ToMonitorInfo(monitor, monitor, _ => 1.75);
 
         Assert.Equal(1.75, mapped.DpiScale);
     }
 
     [Fact]
-    public void ToMonitorInfoReadsReflectedDpiPair()
+    public void GetMonitorsUsesTypedDpiScaleProvider()
     {
         var monitor = new FakeMonitor(
             "Dpi",
             0,
             new Rectangle<int>(0, 0, 1920, 1080),
-            new VideoMode(new Vector2D<int>(1920, 1080), 60))
-        {
-            DpiX = 144,
-            DpiY = 192
-        };
+            new VideoMode(new Vector2D<int>(1920, 1080), 60));
+        var service = new SilkNetWpfMonitorService(
+            () => new IMonitor[] { monitor },
+            () => monitor,
+            _ => 1.75);
 
-        var mapped = SilkNetWpfMonitorService.ToMonitorInfo(monitor, monitor);
+        var mapped = Assert.Single(service.GetMonitors());
 
         Assert.Equal(1.75, mapped.DpiScale);
     }
@@ -109,12 +106,9 @@ public sealed class SilkNetWpfMonitorServiceTests
             "InvalidScale",
             0,
             new Rectangle<int>(0, 0, 1920, 1080),
-            new VideoMode(new Vector2D<int>(3840, 2160), 60))
-        {
-            DpiScale = 0
-        };
+            new VideoMode(new Vector2D<int>(3840, 2160), 60));
 
-        var mapped = SilkNetWpfMonitorService.ToMonitorInfo(monitor, monitor);
+        var mapped = SilkNetWpfMonitorService.ToMonitorInfo(monitor, monitor, _ => 0);
 
         Assert.Equal(2.0, mapped.DpiScale);
     }
@@ -136,12 +130,6 @@ public sealed class SilkNetWpfMonitorServiceTests
         public Rectangle<int> Bounds { get; }
 
         public VideoMode VideoMode { get; }
-
-        public double? DpiScale { get; init; }
-
-        public double? DpiX { get; init; }
-
-        public double? DpiY { get; init; }
 
         public float Gamma { get; set; } = 1.0f;
 

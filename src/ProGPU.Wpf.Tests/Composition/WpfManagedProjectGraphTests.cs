@@ -247,6 +247,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Platform",
             "IWpfPlatformServices.cs");
+        var silkNetMonitorServicePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "SilkNetWpfMonitorService.cs");
         var proGpuHostPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -340,6 +345,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
         var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
         var proGpuPlatformServices = File.ReadAllText(proGpuPlatformServicesPath);
+        var silkNetMonitorService = File.ReadAllText(silkNetMonitorServicePath);
         var proGpuHost = File.ReadAllText(proGpuHostPath);
         var proGpuPortablePresentationSourceBridge = File.ReadAllText(proGpuPortablePresentationSourceBridgePath);
         var proGpuOptions = File.ReadAllText(proGpuOptionsPath);
@@ -517,6 +523,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DisplayScaleResolver.ResolveWindowDisplayScale(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("DisplayScaleResolver.ResolveDisplayScaleWithPlatformFallback(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("DisplayScaleResolver.NormalizeDisplayScale(dpiScale)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("Func<IMonitor, double?>? getDpiScale", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.Contains("ResolveDpiScale(monitor, width, height, getDpiScale?.Invoke(monitor))", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.Contains("monitor.VideoMode.Resolution is Vector2D<int> resolution", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", silkNetMonitorService, StringComparison.Ordinal);
         Assert.DoesNotContain("ResolveNativePlatformDpiScale", proGpuHost, StringComparison.Ordinal);
         Assert.DoesNotContain("TryResolveMacOsBackingScaleFactor", proGpuHost, StringComparison.Ordinal);
         Assert.DoesNotContain("window is not INativeWindowSource nativeWindowSource", proGpuHost, StringComparison.Ordinal);

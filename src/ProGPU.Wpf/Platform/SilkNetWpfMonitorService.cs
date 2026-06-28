@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 
@@ -9,10 +8,9 @@ namespace System.Windows.Media.ProGPU.Platform;
 
 public sealed class SilkNetWpfMonitorService : IWpfMonitorService
 {
-    private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
     private readonly Func<IEnumerable<IMonitor>> _getMonitors;
     private readonly Func<IMonitor?> _getMainMonitor;
+    private readonly Func<IMonitor, double?>? _getDpiScale;
 
     public SilkNetWpfMonitorService()
         : this(GetDefaultMonitors, GetDefaultMainMonitor)
@@ -29,21 +27,31 @@ public sealed class SilkNetWpfMonitorService : IWpfMonitorService
 
     public SilkNetWpfMonitorService(
         Func<IEnumerable<IMonitor>> getMonitors,
-        Func<IMonitor?> getMainMonitor)
+        Func<IMonitor?> getMainMonitor,
+        Func<IMonitor, double?>? getDpiScale = null)
     {
         _getMonitors = getMonitors ?? throw new ArgumentNullException(nameof(getMonitors));
         _getMainMonitor = getMainMonitor ?? throw new ArgumentNullException(nameof(getMainMonitor));
+        _getDpiScale = getDpiScale;
     }
 
     public IReadOnlyList<WpfMonitorInfo> GetMonitors()
     {
         var mainMonitor = _getMainMonitor();
         return _getMonitors()
-            .Select(monitor => ToMonitorInfo(monitor, mainMonitor))
+            .Select(monitor => ToMonitorInfo(monitor, mainMonitor, _getDpiScale))
             .ToArray();
     }
 
     public static WpfMonitorInfo ToMonitorInfo(IMonitor monitor, IMonitor? mainMonitor)
+    {
+        return ToMonitorInfo(monitor, mainMonitor, getDpiScale: null);
+    }
+
+    public static WpfMonitorInfo ToMonitorInfo(
+        IMonitor monitor,
+        IMonitor? mainMonitor,
+        Func<IMonitor, double?>? getDpiScale)
     {
         ArgumentNullException.ThrowIfNull(monitor);
 
@@ -63,22 +71,26 @@ public sealed class SilkNetWpfMonitorService : IWpfMonitorService
             bounds.Origin.Y,
             Math.Max(0, width),
             Math.Max(0, height),
-            ResolveDpiScale(monitor, width, height),
+            ResolveDpiScale(monitor, width, height, getDpiScale?.Invoke(monitor)),
             IsPrimary: ReferenceEquals(monitor, mainMonitor) || monitor.Index == mainMonitor?.Index);
     }
 
     internal static double ResolveDpiScale(IMonitor monitor, int boundsWidth, int boundsHeight)
     {
+        return ResolveDpiScale(monitor, boundsWidth, boundsHeight, explicitScale: null);
+    }
+
+    internal static double ResolveDpiScale(
+        IMonitor monitor,
+        int boundsWidth,
+        int boundsHeight,
+        double? explicitScale)
+    {
         ArgumentNullException.ThrowIfNull(monitor);
 
-        if (TryReadScalarScale(monitor, out var scalarScale))
+        if (explicitScale is double scale && IsUsableScale(scale))
         {
-            return scalarScale;
-        }
-
-        if (TryReadDpiScale(monitor, out var dpiScale))
-        {
-            return dpiScale;
+            return NormalizeScale(scale);
         }
 
         if (boundsWidth > 0
@@ -96,108 +108,6 @@ public sealed class SilkNetWpfMonitorService : IWpfMonitorService
         }
 
         return 1.0;
-    }
-
-    private static bool TryReadScalarScale(IMonitor monitor, out double scale)
-    {
-        foreach (var propertyName in new[] { "DpiScale", "Scale", "ContentScale", "PixelScale", "BackingScaleFactor" })
-        {
-            if (TryGetPropertyValue(monitor, propertyName, out var value)
-                && TryConvertToDouble(value, out var candidate)
-                && IsUsableScale(candidate))
-            {
-                scale = NormalizeScale(candidate);
-                return true;
-            }
-        }
-
-        scale = 0;
-        return false;
-    }
-
-    private static bool TryReadDpiScale(IMonitor monitor, out double scale)
-    {
-        if (TryReadDpiPair(monitor, "DpiX", "DpiY", out scale)
-            || TryReadDpiPair(monitor, "HorizontalDpi", "VerticalDpi", out scale))
-        {
-            return true;
-        }
-
-        foreach (var propertyName in new[] { "Dpi", "PixelsPerInch" })
-        {
-            if (TryGetPropertyValue(monitor, propertyName, out var value)
-                && TryConvertToDouble(value, out var dpi)
-                && dpi > 0)
-            {
-                var candidate = dpi / 96.0;
-                if (IsUsableScale(candidate))
-                {
-                    scale = NormalizeScale(candidate);
-                    return true;
-                }
-            }
-        }
-
-        scale = 0;
-        return false;
-    }
-
-    private static bool TryReadDpiPair(IMonitor monitor, string xPropertyName, string yPropertyName, out double scale)
-    {
-        scale = 0;
-        if (!TryGetPropertyValue(monitor, xPropertyName, out var xValue)
-            || !TryGetPropertyValue(monitor, yPropertyName, out var yValue)
-            || !TryConvertToDouble(xValue, out var dpiX)
-            || !TryConvertToDouble(yValue, out var dpiY)
-            || dpiX <= 0
-            || dpiY <= 0)
-        {
-            return false;
-        }
-
-        var candidate = ((dpiX / 96.0) + (dpiY / 96.0)) / 2.0;
-        if (!IsUsableScale(candidate))
-        {
-            return false;
-        }
-
-        scale = NormalizeScale(candidate);
-        return true;
-    }
-
-    private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
-    {
-        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
-        if (property == null || property.GetIndexParameters().Length != 0)
-        {
-            value = null;
-            return false;
-        }
-
-        value = property.GetValue(instance);
-        return true;
-    }
-
-    private static bool TryConvertToDouble(object? value, out double result)
-    {
-        switch (value)
-        {
-            case double doubleValue:
-                result = doubleValue;
-                return true;
-            case float floatValue:
-                result = floatValue;
-                return true;
-            case int intValue:
-                result = intValue;
-                return true;
-            case uint uintValue:
-                result = uintValue;
-                return true;
-            default:
-                result = 0;
-                return false;
-        }
     }
 
     private static bool IsUsableScale(double scale)

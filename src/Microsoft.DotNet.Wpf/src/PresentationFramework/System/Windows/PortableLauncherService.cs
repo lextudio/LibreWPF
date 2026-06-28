@@ -3,6 +3,8 @@
 
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Reflection;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows
 {
@@ -25,6 +27,8 @@ namespace System.Windows
     internal static class PortableLauncherService
     {
         private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        private static readonly LauncherServiceRegistrar s_registrar = new LauncherServiceRegistrar();
+        private static IDisposable s_registrarRegistration;
         private static Func<PortableLaunchRequest, bool> s_launch;
 
         internal static bool IsEnabled
@@ -33,6 +37,11 @@ namespace System.Windows
             {
                 return !s_isWindows && Volatile.Read(ref s_launch) != null;
             }
+        }
+
+        internal static void RegisterPortableInteropService()
+        {
+            s_registrarRegistration ??= PortableWpfServiceRegistry.RegisterLauncherService(s_registrar);
         }
 
         internal static IDisposable Register(Func<object, bool> launch)
@@ -105,6 +114,27 @@ namespace System.Windows
 
             public void Dispose()
             {
+            }
+        }
+
+        private sealed class LauncherServiceRegistrar : IPortableLauncherServiceRegistrar
+        {
+            public Assembly SourceAssembly
+            {
+                get
+                {
+                    return typeof(PortableLauncherService).Assembly;
+                }
+            }
+
+            public IDisposable Register(Func<object, bool> launch)
+            {
+                return PortableLauncherService.Register(launch);
+            }
+
+            public void Clear()
+            {
+                PortableLauncherService.Clear();
             }
         }
     }

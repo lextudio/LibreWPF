@@ -26,6 +26,34 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void PresentationFrameworkServiceRegistrationUsesTypedInteropBeforeReflectionFallback()
+    {
+        var launcherService = new TestLauncherServiceRegistrar();
+        var messageBoxService = new TestMessageBoxServiceRegistrar();
+        var fileDialogService = new TestFileDialogServiceRegistrar();
+        using var launcherRegistration = PortableWpfServiceRegistry.RegisterLauncherService(launcherService);
+        using var messageBoxRegistration = PortableWpfServiceRegistry.RegisterMessageBoxService(messageBoxService);
+        using var fileDialogRegistration = PortableWpfServiceRegistry.RegisterFileDialogService(fileDialogService);
+
+        var launcherRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkLauncherService(
+            launcherService.SourceAssembly);
+        var messageBoxRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkMessageBoxService(
+            messageBoxService.SourceAssembly);
+        var fileDialogRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkFileDialogService(
+            fileDialogService.SourceAssembly);
+
+        Assert.True(launcherRegistered);
+        Assert.True(messageBoxRegistered);
+        Assert.True(fileDialogRegistered);
+        Assert.Equal(1, launcherService.RegisterCount);
+        Assert.Equal(1, messageBoxService.RegisterCount);
+        Assert.Equal(1, fileDialogService.RegisterCount);
+        Assert.NotNull(launcherService.Launch);
+        Assert.NotNull(messageBoxService.Show);
+        Assert.NotNull(fileDialogService.ShowDialog);
+    }
+
+    [Fact]
     public void SetTitleAndClientSizeForwardWindowPropertyChangesToHost()
     {
         var scheduler = new TestRenderScheduler();
@@ -1185,6 +1213,94 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     private sealed class TestClipboardRegistration : IDisposable
+    {
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class TestLauncherServiceRegistrar : IPortableLauncherServiceRegistrar
+    {
+        public int RegisterCount { get; private set; }
+
+        public Func<object, bool>? Launch { get; private set; }
+
+        public Assembly SourceAssembly
+        {
+            get
+            {
+                return typeof(TestLauncherServiceRegistrar).Assembly;
+            }
+        }
+
+        public IDisposable Register(Func<object, bool> launch)
+        {
+            RegisterCount++;
+            Launch = launch;
+            return new TestPortableServiceRegistration();
+        }
+
+        public void Clear()
+        {
+            Launch = null;
+        }
+    }
+
+    private sealed class TestMessageBoxServiceRegistrar : IPortableMessageBoxServiceRegistrar
+    {
+        public int RegisterCount { get; private set; }
+
+        public Func<object, object?>? Show { get; private set; }
+
+        public Assembly SourceAssembly
+        {
+            get
+            {
+                return typeof(TestMessageBoxServiceRegistrar).Assembly;
+            }
+        }
+
+        public IDisposable Register(Func<object, object?> show)
+        {
+            RegisterCount++;
+            Show = show;
+            return new TestPortableServiceRegistration();
+        }
+
+        public void Clear()
+        {
+            Show = null;
+        }
+    }
+
+    private sealed class TestFileDialogServiceRegistrar : IPortableFileDialogServiceRegistrar
+    {
+        public int RegisterCount { get; private set; }
+
+        public Func<object, string?>? ShowDialog { get; private set; }
+
+        public Assembly SourceAssembly
+        {
+            get
+            {
+                return typeof(TestFileDialogServiceRegistrar).Assembly;
+            }
+        }
+
+        public IDisposable Register(Func<object, string?> showDialog)
+        {
+            RegisterCount++;
+            ShowDialog = showDialog;
+            return new TestPortableServiceRegistration();
+        }
+
+        public void Clear()
+        {
+            ShowDialog = null;
+        }
+    }
+
+    private sealed class TestPortableServiceRegistration : IDisposable
     {
         public void Dispose()
         {

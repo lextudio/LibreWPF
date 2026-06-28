@@ -1290,6 +1290,18 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortableMessageBoxService.cs");
+        var moduleInitializerPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "ModuleInitializer.cs");
+        var portableWpfServiceRegistryPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableWpfServiceRegistry.cs");
         var projectPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -1315,6 +1327,8 @@ public sealed class WpfManagedProjectGraphTests
 
         var messageBox = File.ReadAllText(messageBoxPath);
         var messageBoxService = File.ReadAllText(messageBoxServicePath);
+        var moduleInitializer = File.ReadAllText(moduleInitializerPath);
+        var portableWpfServiceRegistry = File.ReadAllText(portableWpfServiceRegistryPath);
         var project = File.ReadAllText(projectPath);
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
         var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
@@ -1322,8 +1336,16 @@ public sealed class WpfManagedProjectGraphTests
         var sdkRuntimeHarness = File.ReadAllText(sdkRuntimeHarnessPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\PortableMessageBoxService.cs"" />", project, StringComparison.Ordinal);
+        Assert.Contains(@"<Compile Include=""ModuleInitializer.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains("internal readonly struct PortableMessageBoxRequest", messageBoxService, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMessageBoxService", messageBoxService, StringComparison.Ordinal);
+        Assert.Contains("using ProGPU.Wpf.Interop;", messageBoxService, StringComparison.Ordinal);
+        Assert.Contains("internal static void RegisterPortableInteropService()", messageBoxService, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.RegisterMessageBoxService(s_registrar)", messageBoxService, StringComparison.Ordinal);
+        Assert.Contains("private sealed class MessageBoxServiceRegistrar : IPortableMessageBoxServiceRegistrar", messageBoxService, StringComparison.Ordinal);
+        Assert.Contains("PortableMessageBoxService.RegisterPortableInteropService();", moduleInitializer, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableMessageBoxServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetMessageBoxService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Func<object, object> show)", messageBoxService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryShow(", messageBoxService, StringComparison.Ordinal);
         Assert.Contains("return MessageBox.GetPortableFallbackResult(DefaultResult, Button)", messageBoxService, StringComparison.Ordinal);
@@ -1343,6 +1365,12 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("PortableMessageBoxServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.TryGetMessageBoxService(", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationFrameworkMessageBoxServiceByReflection(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.True(
+            proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetMessageBoxService(", StringComparison.Ordinal)
+                < proGpuActivation.IndexOf("TryRegisterPresentationFrameworkMessageBoxServiceByReflection(presentationFrameworkAssembly)", StringComparison.Ordinal),
+            "The typed message-box service registry must be tried before the transitional reflected service adapter.");
         Assert.Contains("typeof(Func<object, object>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ShowPortableMessageBox", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("new WpfMessageBoxOptions", proGpuActivation, StringComparison.Ordinal);
@@ -1390,6 +1418,18 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortableLauncherService.cs");
+        var moduleInitializerPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "ModuleInitializer.cs");
+        var portableWpfServiceRegistryPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableWpfServiceRegistry.cs");
         var projectPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -1403,12 +1443,21 @@ public sealed class WpfManagedProjectGraphTests
 
         var appSecurityManager = File.ReadAllText(appSecurityManagerPath);
         var launcherService = File.ReadAllText(launcherServicePath);
+        var moduleInitializer = File.ReadAllText(moduleInitializerPath);
+        var portableWpfServiceRegistry = File.ReadAllText(portableWpfServiceRegistryPath);
         var project = File.ReadAllText(projectPath);
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\PortableLauncherService.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains("internal readonly struct PortableLaunchRequest", launcherService, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableLauncherService", launcherService, StringComparison.Ordinal);
+        Assert.Contains("using ProGPU.Wpf.Interop;", launcherService, StringComparison.Ordinal);
+        Assert.Contains("internal static void RegisterPortableInteropService()", launcherService, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.RegisterLauncherService(s_registrar)", launcherService, StringComparison.Ordinal);
+        Assert.Contains("private sealed class LauncherServiceRegistrar : IPortableLauncherServiceRegistrar", launcherService, StringComparison.Ordinal);
+        Assert.Contains("PortableLauncherService.RegisterPortableInteropService();", moduleInitializer, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableLauncherServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetLauncherService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Func<object, bool> launch)", launcherService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryLaunch(Uri uri, string targetFrame, bool isTopLevel, out bool launched)", launcherService, StringComparison.Ordinal);
         Assert.Contains("return !s_isWindows && Volatile.Read(ref s_launch) != null", launcherService, StringComparison.Ordinal);
@@ -1428,6 +1477,12 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("PortableLauncherServiceTypeName = \"System.Windows.PortableLauncherService\"", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterPresentationFrameworkLauncherService(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.TryGetLauncherService(", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationFrameworkLauncherServiceByReflection(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.True(
+            proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetLauncherService(", StringComparison.Ordinal)
+                < proGpuActivation.IndexOf("TryRegisterPresentationFrameworkLauncherServiceByReflection(presentationFrameworkAssembly)", StringComparison.Ordinal),
+            "The typed launcher service registry must be tried before the transitional reflected service adapter.");
         Assert.Contains("typeof(Func<object, bool>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("LaunchPortableUri", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CrossPlatformWpfPlatformServices.Instance.Launcher", proGpuActivation, StringComparison.Ordinal);
@@ -1671,6 +1726,18 @@ public sealed class WpfManagedProjectGraphTests
             "Microsoft",
             "Win32",
             "PortableFileDialogService.cs");
+        var moduleInitializerPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "ModuleInitializer.cs");
+        var portableWpfServiceRegistryPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableWpfServiceRegistry.cs");
         var activationPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -1693,6 +1760,8 @@ public sealed class WpfManagedProjectGraphTests
         var commonItemDialog = File.ReadAllText(commonItemDialogPath);
         var fileDialog = File.ReadAllText(fileDialogPath);
         var service = File.ReadAllText(servicePath);
+        var moduleInitializer = File.ReadAllText(moduleInitializerPath);
+        var portableWpfServiceRegistry = File.ReadAllText(portableWpfServiceRegistryPath);
         var activation = File.ReadAllText(activationPath);
         var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
         var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
@@ -1700,7 +1769,14 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains(@"<Compile Include=""Microsoft\Win32\PortableFileDialogService.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableFileDialogService", service, StringComparison.Ordinal);
+        Assert.Contains("using ProGPU.Wpf.Interop;", service, StringComparison.Ordinal);
         Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", service, StringComparison.Ordinal);
+        Assert.Contains("internal static void RegisterPortableInteropService()", service, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.RegisterFileDialogService(s_registrar)", service, StringComparison.Ordinal);
+        Assert.Contains("private sealed class FileDialogServiceRegistrar : IPortableFileDialogServiceRegistrar", service, StringComparison.Ordinal);
+        Assert.Contains("PortableFileDialogService.RegisterPortableInteropService();", moduleInitializer, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableFileDialogServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetFileDialogService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Func<object, string> showDialog)", service, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryShowDialog(CommonItemDialog dialog, out string selectedPath)", service, StringComparison.Ordinal);
         Assert.Contains("private sealed class PortableFileDialogRequest", service, StringComparison.Ordinal);
@@ -1728,6 +1804,12 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", activation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly)", activation, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.TryGetFileDialogService(", activation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationFrameworkFileDialogServiceByReflection(presentationFrameworkAssembly)", activation, StringComparison.Ordinal);
+        Assert.True(
+            activation.IndexOf("PortableWpfServiceRegistry.TryGetFileDialogService(", StringComparison.Ordinal)
+                < activation.IndexOf("TryRegisterPresentationFrameworkFileDialogServiceByReflection(presentationFrameworkAssembly)", StringComparison.Ordinal),
+            "The typed file-dialog service registry must be tried before the transitional reflected service adapter.");
         Assert.Contains("CrossPlatformWpfPlatformServices.Instance.FileDialogs", activation, StringComparison.Ordinal);
         Assert.Contains("ReadFileDialogPatterns(request)", activation, StringComparison.Ordinal);
 

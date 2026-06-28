@@ -303,6 +303,19 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
 
+        if (PortableWpfServiceRegistry.TryGetLauncherService(
+                presentationFrameworkAssembly,
+                out var launcherService))
+        {
+            launcherService.Register(LaunchPortableUri);
+            return true;
+        }
+
+        return TryRegisterPresentationFrameworkLauncherServiceByReflection(presentationFrameworkAssembly);
+    }
+
+    private static bool TryRegisterPresentationFrameworkLauncherServiceByReflection(Assembly presentationFrameworkAssembly)
+    {
         var serviceType = presentationFrameworkAssembly.GetType(
             PortableLauncherServiceTypeName,
             throwOnError: false);
@@ -332,6 +345,19 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
 
+        if (PortableWpfServiceRegistry.TryGetMessageBoxService(
+                presentationFrameworkAssembly,
+                out var messageBoxService))
+        {
+            messageBoxService.Register(ShowPortableMessageBox);
+            return true;
+        }
+
+        return TryRegisterPresentationFrameworkMessageBoxServiceByReflection(presentationFrameworkAssembly);
+    }
+
+    private static bool TryRegisterPresentationFrameworkMessageBoxServiceByReflection(Assembly presentationFrameworkAssembly)
+    {
         var serviceType = presentationFrameworkAssembly.GetType(
             PortableMessageBoxServiceTypeName,
             throwOnError: false);
@@ -361,6 +387,19 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
 
+        if (PortableWpfServiceRegistry.TryGetFileDialogService(
+                presentationFrameworkAssembly,
+                out var fileDialogService))
+        {
+            fileDialogService.Register(ShowPortableFileDialog);
+            return true;
+        }
+
+        return TryRegisterPresentationFrameworkFileDialogServiceByReflection(presentationFrameworkAssembly);
+    }
+
+    private static bool TryRegisterPresentationFrameworkFileDialogServiceByReflection(Assembly presentationFrameworkAssembly)
+    {
         var serviceType = presentationFrameworkAssembly.GetType(
             PortableFileDialogServiceTypeName,
             throwOnError: false);

@@ -3,12 +3,16 @@
 
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Reflection;
+using ProGPU.Wpf.Interop;
 
 namespace Microsoft.Win32
 {
     internal static class PortableFileDialogService
     {
         private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        private static readonly FileDialogServiceRegistrar s_registrar = new FileDialogServiceRegistrar();
+        private static IDisposable s_registrarRegistration;
         private static Func<object, string> s_showDialog;
 
         internal static bool IsEnabled
@@ -17,6 +21,11 @@ namespace Microsoft.Win32
             {
                 return !s_isWindows;
             }
+        }
+
+        internal static void RegisterPortableInteropService()
+        {
+            s_registrarRegistration ??= PortableWpfServiceRegistry.RegisterFileDialogService(s_registrar);
         }
 
         internal static IDisposable Register(Func<object, string> showDialog)
@@ -158,6 +167,27 @@ namespace Microsoft.Win32
 
             public void Dispose()
             {
+            }
+        }
+
+        private sealed class FileDialogServiceRegistrar : IPortableFileDialogServiceRegistrar
+        {
+            public Assembly SourceAssembly
+            {
+                get
+                {
+                    return typeof(PortableFileDialogService).Assembly;
+                }
+            }
+
+            public IDisposable Register(Func<object, string> showDialog)
+            {
+                return PortableFileDialogService.Register(showDialog);
+            }
+
+            public void Clear()
+            {
+                PortableFileDialogService.Clear();
             }
         }
     }

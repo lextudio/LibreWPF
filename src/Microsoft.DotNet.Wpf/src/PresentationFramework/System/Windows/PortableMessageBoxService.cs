@@ -4,6 +4,8 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Reflection;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows
 {
@@ -53,6 +55,8 @@ namespace System.Windows
     internal static class PortableMessageBoxService
     {
         private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        private static readonly MessageBoxServiceRegistrar s_registrar = new MessageBoxServiceRegistrar();
+        private static IDisposable s_registrarRegistration;
         private static Func<PortableMessageBoxRequest, MessageBoxResult> s_show;
 
         internal static bool IsEnabled
@@ -61,6 +65,11 @@ namespace System.Windows
             {
                 return !s_isWindows && Volatile.Read(ref s_show) != null;
             }
+        }
+
+        internal static void RegisterPortableInteropService()
+        {
+            s_registrarRegistration ??= PortableWpfServiceRegistry.RegisterMessageBoxService(s_registrar);
         }
 
         internal static IDisposable Register(Func<object, object> show)
@@ -175,6 +184,27 @@ namespace System.Windows
 
             public void Dispose()
             {
+            }
+        }
+
+        private sealed class MessageBoxServiceRegistrar : IPortableMessageBoxServiceRegistrar
+        {
+            public Assembly SourceAssembly
+            {
+                get
+                {
+                    return typeof(PortableMessageBoxService).Assembly;
+                }
+            }
+
+            public IDisposable Register(Func<object, object> show)
+            {
+                return PortableMessageBoxService.Register(show);
+            }
+
+            public void Clear()
+            {
+                PortableMessageBoxService.Clear();
             }
         }
     }

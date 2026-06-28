@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
@@ -1722,9 +1721,7 @@ public sealed class ProGpuCompositionCommandSink :
 
     private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
     {
-        var property = instance.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        var property = instance.GetType().GetProperty(propertyName);
         if (property == null)
         {
             value = null;

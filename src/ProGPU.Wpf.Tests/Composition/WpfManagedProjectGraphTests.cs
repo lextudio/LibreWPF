@@ -9905,6 +9905,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var figure in geometry.Figures)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("geometry is NativePathGeometrySource nativePathSource", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("nativePathSource.TryGetPathGeometry(out path, out var nativeTransform)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry.GetType().GetMethod(", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("drawMethod.Invoke(", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry.Draw(recordingContext", proGpuWpfCommandSink, StringComparison.Ordinal);

@@ -7810,8 +7810,10 @@ namespace System.Windows.Media
         public new System.Windows.Media.VideoDrawing CloneCurrentValue() { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
-    public abstract partial class Visual : System.Windows.DependencyObject
+    public abstract partial class Visual : System.Windows.DependencyObject, ProGPU.Wpf.Interop.IPortableVisualChildrenSource
     {
+        bool ProGPU.Wpf.Interop.IPortableVisualChildrenSource.TryGetPortableVisualChild(int index, out object child) { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableVisualChildrenSource.TryGetPortableVisualChildCount(out int count) { throw null; }
         protected Visual() { }
         [System.ObsoleteAttribute("BitmapEffects are deprecated and no longer function.  Consider using Effects where appropriate instead.")]
         protected internal System.Windows.Media.Effects.BitmapEffect VisualBitmapEffect { get { throw null; } protected set { } }

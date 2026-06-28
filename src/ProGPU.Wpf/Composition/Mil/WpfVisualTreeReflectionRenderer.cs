@@ -13,6 +13,7 @@ using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
+using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -1046,6 +1047,11 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static IReadOnlyList<object> ExtractChildren(object visual)
     {
+        if (visual is PortableVisualChildrenSource visualChildrenSource)
+        {
+            return ExtractPortableVisualChildren(visualChildrenSource);
+        }
+
         if (!TryGetPropertyValue(visual, "Children", out var children) || children == null)
         {
             return ExtractVisualChildren(visual);
@@ -1067,6 +1073,25 @@ public sealed class WpfVisualTreeReflectionRenderer
         {
             var child = getChild(children, i);
             if (child != null)
+            {
+                result.Add(child);
+            }
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<object> ExtractPortableVisualChildren(PortableVisualChildrenSource visualChildrenSource)
+    {
+        if (!visualChildrenSource.TryGetPortableVisualChildCount(out var count) || count <= 0)
+        {
+            return Array.Empty<object>();
+        }
+
+        var result = new List<object>(count);
+        for (var i = 0; i < count; i++)
+        {
+            if (visualChildrenSource.TryGetPortableVisualChild(i, out var child) && child != null)
             {
                 result.Add(child);
             }

@@ -5011,6 +5011,40 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void VisualTreeRendererPrefersPortableVisualChildren()
+    {
+        var rendererSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeReflectionRenderer.cs"));
+        var visualSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Visual.cs"));
+        var interopSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableVisualChildren.cs"));
+
+        Assert.Contains("using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("visual is PortableVisualChildrenSource visualChildrenSource", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("ExtractPortableVisualChildren(visualChildrenSource)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource", visualSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableVisualChildrenSource.TryGetPortableVisualChildCount(out int count)", visualSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableVisualChildrenSource.TryGetPortableVisualChild(int index, out object child)", visualSource, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableVisualChildrenSource", interopSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints()
     {
         var compositionExports = File.ReadAllText(FindRepoPath(

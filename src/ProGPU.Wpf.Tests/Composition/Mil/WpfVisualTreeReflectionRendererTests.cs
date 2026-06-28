@@ -25,6 +25,7 @@ using ProGpuEffectBase = ProGPU.Scene.EffectBase;
 using ProGpuWpfShaderEffect = ProGPU.Scene.WpfShaderEffect;
 using ProGpuWpfShaderEffectSampler = ProGPU.Scene.WpfShaderEffectSampler;
 using ProGpuTextureSamplingMode = ProGPU.Scene.TextureSamplingMode;
+using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
@@ -58,6 +59,26 @@ public sealed class WpfVisualTreeReflectionRendererTests
     public void ReplaySubtreeRecursesThroughProtectedVisualChildren()
     {
         var root = new FakeVisualChildrenVisual();
+        var childBrush = Brushes.Blue;
+        root.AddChild(new FakeDrawingVisual(CreateRenderData(childBrush)));
+        var sink = new TestSink();
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(1, result.ChildEdgeCount);
+        Assert.Equal(0, result.UnsupportedContentCount);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        var rectangle = Assert.Single(sink.DrawRectangles);
+        Assert.Same(childBrush, rectangle.Brush);
+    }
+
+    [Fact]
+    public void ReplaySubtreeRecursesThroughPortableVisualChildren()
+    {
+        var root = new FakePortableVisualChildrenVisual();
         var childBrush = Brushes.Blue;
         root.AddChild(new FakeDrawingVisual(CreateRenderData(childBrush)));
         var sink = new TestSink();
@@ -1852,6 +1873,30 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
     private sealed class FakeVisualChildrenVisual : FakeProtectedVisualChildrenBase
     {
+    }
+
+    private sealed class FakePortableVisualChildrenVisual : PortableVisualChildrenSource
+    {
+        private readonly List<object> _children = new();
+
+        public void AddChild(object child)
+        {
+            _children.Add(child);
+        }
+
+        public bool TryGetPortableVisualChildCount(out int count)
+        {
+            count = _children.Count;
+            return true;
+        }
+
+        public bool TryGetPortableVisualChild(int index, out object? child)
+        {
+            child = index >= 0 && index < _children.Count
+                ? _children[index]
+                : null;
+            return child != null;
+        }
     }
 
     private sealed class FakeDrawingResource

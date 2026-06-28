@@ -131,7 +131,7 @@ This bridge is intentionally narrow. It does not yet walk `ContainerVisual.Child
 `WpfVisualTreeReflectionRenderer` is the first whole-subtree transition renderer. It:
 
 - replays `DrawingVisual` content when `_content` is backed by `RenderData`;
-- recurses through a public `Children` property with WPF's `VisualCollection` shape;
+- recurses through source-built WPF `IPortableVisualChildrenSource` for normal `VisualChildrenCount`/`GetVisualChild(int)` traversal, with public `Children`/protected visual-member reflection kept only as transitional fallback;
 - routes WPF-shaped `Viewport3DVisual` content through `IWpfViewport3DCommandSink` instead of recursing its `Visual3DCollection` as 2D visuals;
 - applies compatible `Transform`, `Offset`, local geometry `Clip`, rectangular native-scissor `Clip`/`ScrollableAreaClip` plus real WPF `VisualScrollableAreaClip`, `Opacity`, `OpacityMask` with exposed or inferred finite bounds, guideline state, and supported bitmap-scaling state through `IWpfCompositionCommandSink`;
 - aggregates decoded MIL record counts and unsupported content/state counts in `WpfVisualReplayResult`.

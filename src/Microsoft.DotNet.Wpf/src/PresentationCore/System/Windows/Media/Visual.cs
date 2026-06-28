@@ -13,6 +13,7 @@ using System.Windows.Interop;
 using MS.Internal;
 using MS.Internal.Media;
 using MS.Internal.Media3D;
+using ProGPU.Wpf.Interop;
 
 //------------------------------------------------------------------------------
 // This section lists various things that we could improve on the Visual class.
@@ -74,7 +75,7 @@ namespace System.Windows.Media
     /// Derived Visuals render their content first and then render the children, or in other
     /// words, the content of a Visual is always behind the content of its children.
     /// </summary>
-    public abstract partial class Visual : DependencyObject, DUCE.IResource
+    public abstract partial class Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource
     {
         // --------------------------------------------------------------------
         //
@@ -2481,6 +2482,12 @@ namespace System.Windows.Media
             }
         }
 
+        bool IPortableVisualChildrenSource.TryGetPortableVisualChildCount(out int count)
+        {
+            count = VisualChildrenCount;
+            return true;
+        }
+
         /// <summary>
         /// Returns the number of children of this object (in most cases this will be
         /// the number of Visuals, but it some cases, Viewport3DVisual for instance,
@@ -2534,6 +2541,12 @@ namespace System.Windows.Media
         {
             // Call the right virtual method.
             return GetVisualChild(index);
+        }
+
+        bool IPortableVisualChildrenSource.TryGetPortableVisualChild(int index, out object child)
+        {
+            child = GetVisualChild(index);
+            return true;
         }
 
         /// <summary>

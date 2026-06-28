@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using System.Windows.Media.ProGPU.Composition;
 using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
+using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -71,7 +72,7 @@ public sealed class WpfVisualContentReflectionBridge
             return default;
         }
 
-        if (!HasRenderDataShape(content.GetType()))
+        if (!HasRenderDataShape(content))
         {
             throw new NotSupportedException(
                 $"WPF visual content type '{content.GetType().FullName}' is not supported by the ProGPU RenderData replay bridge.");
@@ -80,8 +81,14 @@ public sealed class WpfVisualContentReflectionBridge
         return _renderDataBridge.Replay(content, sink, resources, imageSourceAdapter);
     }
 
-    private static bool HasRenderDataShape(Type contentType)
+    private static bool HasRenderDataShape(object content)
     {
+        if (content is PortableRenderDataSource)
+        {
+            return true;
+        }
+
+        var contentType = content.GetType();
         return FindField(contentType, "_buffer") != null
             && FindField(contentType, "_curOffset") != null
             && FindField(contentType, "_dependentResources") != null;

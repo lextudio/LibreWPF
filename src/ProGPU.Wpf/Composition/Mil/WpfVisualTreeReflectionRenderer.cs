@@ -396,42 +396,20 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         Vector2? size = null;
-        WpfReplayRect? contentBounds = null;
-        var retainedOffset = offset;
-        var retainedTransform = transform;
-        var retainedClipBounds = clipBounds;
-        var retainedOpacityMaskBounds = opacityMaskBounds;
-        if (TryReadRetainedVisualBounds(visual, out var bounds))
+        if (TryReadRenderSizeBounds(visual, out var bounds))
         {
             size = new Vector2((float)bounds.Width, (float)bounds.Height);
-            contentBounds = bounds;
-            retainedClipBounds = clipBounds.HasValue
-                ? OffsetBounds(clipBounds.Value, -bounds.X, -bounds.Y)
-                : null;
-            retainedOpacityMaskBounds = opacityMaskBounds.HasValue
-                ? OffsetBounds(opacityMaskBounds.Value, -bounds.X, -bounds.Y)
-                : null;
-
-            var boundsOffset = new Vector2((float)bounds.X, (float)bounds.Y);
-            if (transform == Matrix4x4.Identity)
-            {
-                retainedOffset = offset + boundsOffset;
-            }
-            else
-            {
-                retainedTransform = Matrix4x4.CreateTranslation((float)bounds.X, (float)bounds.Y, 0f) * transform;
-            }
         }
 
         state = new WpfRetainedVisualState(
-            retainedOffset,
-            retainedTransform,
+            offset,
+            transform,
             opacity,
-            retainedClipBounds,
+            clipBounds,
             size,
-            contentBounds: contentBounds,
+            contentBounds: null,
             opacityMask: opacityMask,
-            opacityMaskBounds: retainedOpacityMaskBounds,
+            opacityMaskBounds: opacityMaskBounds,
             outerClipBounds: outerClipBounds);
         return true;
     }

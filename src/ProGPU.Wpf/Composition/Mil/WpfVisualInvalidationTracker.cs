@@ -583,6 +583,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             builder.SetClip(clip);
         }
 
+        if (TryReadBoolProperty(source, "ClipToBounds", out var clipToBounds))
+        {
+            builder.SetClipToBounds(clipToBounds);
+        }
+
         if (TryGetLayoutClip(source, out var layoutClip))
         {
             builder.SetLayoutClip(layoutClip);
@@ -639,12 +644,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private static bool TryGetLayoutClip(object source, out object? value)
     {
         value = null;
-        var method = source.GetType().GetMethod(
-            "GetLayoutClipInternal",
-            MemberFlags,
-            binder: null,
-            types: Type.EmptyTypes,
-            modifiers: null);
+        var method = FindParameterlessMethod(source.GetType(), "GetLayoutClipInternal");
         if (method == null)
         {
             return false;
@@ -660,6 +660,25 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             value = null;
             return false;
         }
+    }
+
+    private static MethodInfo? FindParameterlessMethod(Type type, string name)
+    {
+        for (var current = type; current != null; current = current.BaseType)
+        {
+            var method = current.GetMethod(
+                name,
+                MemberFlags,
+                binder: null,
+                types: Type.EmptyTypes,
+                modifiers: null);
+            if (method != null)
+            {
+                return method;
+            }
+        }
+
+        return null;
     }
 
     private static bool TryReadRectangleClipBounds(object? clip, out double x, out double y, out double width, out double height)
@@ -714,6 +733,23 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             && value != null
             && TryReadDoubleProperty(value, "Width", out width)
             && TryReadDoubleProperty(value, "Height", out height);
+    }
+
+    private static bool TryReadBoolProperty(object instance, string propertyName, out bool value)
+    {
+        value = false;
+        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue) || propertyValue == null)
+        {
+            return false;
+        }
+
+        if (propertyValue is bool boolValue)
+        {
+            value = boolValue;
+            return true;
+        }
+
+        return bool.TryParse(propertyValue.ToString(), out value);
     }
 
     private static bool TryReadRect(object value, out double x, out double y, out double width, out double height)
@@ -852,28 +888,101 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
     {
-        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
+        if (instance == null)
+        {
+            value = null;
+            return false;
+        }
+
+        var property = FindProperty(instance.GetType(), propertyName);
         if (property == null || property.GetIndexParameters().Length != 0)
         {
             value = null;
             return false;
         }
 
-        value = property.GetValue(instance);
-        return true;
+        try
+        {
+            value = property.GetValue(instance);
+            return true;
+        }
+        catch (TargetInvocationException)
+        {
+        }
+        catch (ArgumentException)
+        {
+        }
+        catch (MethodAccessException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
+        value = null;
+        return false;
     }
 
     private static bool TryGetFieldValue(object instance, string fieldName, out object? value)
     {
-        var field = instance.GetType().GetField(fieldName, MemberFlags);
+        if (instance == null)
+        {
+            value = null;
+            return false;
+        }
+
+        var field = FindField(instance.GetType(), fieldName);
         if (field == null)
         {
             value = null;
             return false;
         }
 
-        value = field.GetValue(instance);
-        return true;
+        try
+        {
+            value = field.GetValue(instance);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+        }
+        catch (FieldAccessException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
+        value = null;
+        return false;
+    }
+
+    private static PropertyInfo? FindProperty(Type type, string name)
+    {
+        for (var current = type; current != null; current = current.BaseType)
+        {
+            var property = current.GetProperty(name, MemberFlags);
+            if (property != null)
+            {
+                return property;
+            }
+        }
+
+        return null;
+    }
+
+    private static FieldInfo? FindField(Type type, string name)
+    {
+        for (var current = type; current != null; current = current.BaseType)
+        {
+            var field = current.GetField(name, MemberFlags);
+            if (field != null)
+            {
+                return field;
+            }
+        }
+
+        return null;
     }
 
     private static bool TryReadIntProperty(object instance, string propertyName, out int value)
@@ -929,6 +1038,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             double offsetY,
             bool hasClipProperty,
             object? clipReference,
+            bool hasClipToBounds,
+            bool clipToBounds,
             bool hasLayoutClipProperty,
             bool hasLayoutClipBounds,
             double layoutClipX,
@@ -956,6 +1067,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             OffsetY = offsetY;
             HasClipProperty = hasClipProperty;
             ClipReference = clipReference;
+            HasClipToBounds = hasClipToBounds;
+            ClipToBounds = clipToBounds;
             HasLayoutClipProperty = hasLayoutClipProperty;
             HasLayoutClipBounds = hasLayoutClipBounds;
             LayoutClipX = layoutClipX;
@@ -988,6 +1101,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private bool HasClipProperty { get; }
 
         private object? ClipReference { get; }
+
+        private bool HasClipToBounds { get; }
+
+        private bool ClipToBounds { get; }
 
         private bool HasLayoutClipProperty { get; }
 
@@ -1038,6 +1155,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 OffsetY.Equals(other.OffsetY) &&
                 HasClipProperty == other.HasClipProperty &&
                 ReferenceEquals(ClipReference, other.ClipReference) &&
+                HasClipToBounds == other.HasClipToBounds &&
+                ClipToBounds == other.ClipToBounds &&
                 HasLayoutClipProperty == other.HasLayoutClipProperty &&
                 HasLayoutClipBounds == other.HasLayoutClipBounds &&
                 LayoutClipX.Equals(other.LayoutClipX) &&
@@ -1074,6 +1193,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             hash.Add(OffsetY);
             hash.Add(HasClipProperty);
             hash.Add(GetReferenceHashCode(ClipReference));
+            hash.Add(HasClipToBounds);
+            hash.Add(ClipToBounds);
             hash.Add(HasLayoutClipProperty);
             hash.Add(HasLayoutClipBounds);
             hash.Add(LayoutClipX);
@@ -1111,6 +1232,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private double _offsetY;
         private bool _hasClipProperty;
         private object? _clipReference;
+        private bool _hasClipToBounds;
+        private bool _clipToBounds;
         private bool _hasLayoutClipProperty;
         private bool _hasLayoutClipBounds;
         private double _layoutClipX;
@@ -1148,6 +1271,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             HasState = true;
             _hasClipProperty = true;
             _clipReference = clip;
+        }
+
+        public void SetClipToBounds(bool clipToBounds)
+        {
+            HasState = true;
+            _hasClipToBounds = true;
+            _clipToBounds = clipToBounds;
         }
 
         public void SetLayoutClip(object? clip)
@@ -1210,6 +1340,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 _offsetY,
                 _hasClipProperty,
                 _clipReference,
+                _hasClipToBounds,
+                _clipToBounds,
                 _hasLayoutClipProperty,
                 _hasLayoutClipBounds,
                 _layoutClipX,

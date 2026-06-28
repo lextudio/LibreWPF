@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
@@ -28,6 +30,8 @@ namespace ProGPU.Wpf.Tests.Composition.Mil;
 
 public sealed class WpfVisualTreeReflectionRendererTests
 {
+    private static readonly Lazy<Type> s_xceedDataCellType = new(CreateXceedDataCellType);
+
     [Fact]
     public void ReplaySubtreeRecursesThroughChildren()
     {
@@ -169,6 +173,37 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         AssertReplayRect(4, 5, 60, 70, sink.RetainedVisualStates[0].ClipBounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void ReplaySubtreeLowersClipToBoundsRenderSizeIntoRetainedOwnerScopes()
+    {
+        var root = new FakeVisual
+        {
+            ClipToBounds = true,
+            RenderSize = new Size(80, 35)
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        AssertReplayRect(0, 0, 80, 35, sink.RetainedVisualStates[0].ClipBounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void ReplaySubtreeSynthesizesXceedDataGridCellClipFromRenderSize()
+    {
+        var root = CreateXceedDataCellVisual(new Size(55, 18));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 55, 18, state.ClipBounds);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
     }
 
@@ -1041,6 +1076,26 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeAppliesClipToBoundsRenderSizeAsRectangleClip()
+    {
+        var root = new FakeVisual
+        {
+            ClipToBounds = true,
+            RenderSize = new Size(40, 50)
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushNativeClip", "DrawRectangle", "Pop" }, sink.Operations);
+        var clip = Assert.Single(sink.NativeClips);
+        AssertReplayRect(0, 0, 40, 50, clip);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreeProjectsScrollableAreaClipOutsideVisualOffsetForFallbackRendering()
     {
         var root = new FakeVisual
@@ -1620,6 +1675,52 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(height, bounds.Height);
     }
 
+    private static object CreateXceedDataCellVisual(Size renderSize)
+    {
+        var visual = Activator.CreateInstance(s_xceedDataCellType.Value)!;
+        s_xceedDataCellType.Value.GetProperty("RenderSize")!.SetValue(visual, renderSize);
+        return visual;
+    }
+
+    private static Type CreateXceedDataCellType()
+    {
+        var assembly = AssemblyBuilder.DefineDynamicAssembly(
+            new AssemblyName("ProGPU.Wpf.Tests.DynamicXceed"),
+            AssemblyBuilderAccess.Run);
+        var module = assembly.DefineDynamicModule("Main");
+        var type = module.DefineType(
+            "Xceed.Wpf.DataGrid.DataCell",
+            TypeAttributes.Public | TypeAttributes.Class);
+
+        var renderSizeField = type.DefineField("_renderSize", typeof(object), FieldAttributes.Private);
+        var renderSizeProperty = type.DefineProperty("RenderSize", PropertyAttributes.None, typeof(object), Type.EmptyTypes);
+        var getRenderSize = type.DefineMethod(
+            "get_RenderSize",
+            MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+            typeof(object),
+            Type.EmptyTypes);
+        var getRenderSizeIl = getRenderSize.GetILGenerator();
+        getRenderSizeIl.Emit(OpCodes.Ldarg_0);
+        getRenderSizeIl.Emit(OpCodes.Ldfld, renderSizeField);
+        getRenderSizeIl.Emit(OpCodes.Ret);
+
+        var setRenderSize = type.DefineMethod(
+            "set_RenderSize",
+            MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+            null,
+            new[] { typeof(object) });
+        var setRenderSizeIl = setRenderSize.GetILGenerator();
+        setRenderSizeIl.Emit(OpCodes.Ldarg_0);
+        setRenderSizeIl.Emit(OpCodes.Ldarg_1);
+        setRenderSizeIl.Emit(OpCodes.Stfld, renderSizeField);
+        setRenderSizeIl.Emit(OpCodes.Ret);
+
+        renderSizeProperty.SetGetMethod(getRenderSize);
+        renderSizeProperty.SetSetMethod(setRenderSize);
+        type.DefineDefaultConstructor(MethodAttributes.Public);
+        return type.CreateType();
+    }
+
     private class FakeVisual
     {
         public FakeVisualCollection Children { get; } = new();
@@ -1635,6 +1736,10 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public object? VisualClip { get; init; }
 
         public object? LayoutClip { get; init; }
+
+        public bool ClipToBounds { get; init; }
+
+        public object? RenderSize { get; init; }
 
         public object? Bounds { get; init; }
 

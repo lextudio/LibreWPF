@@ -425,6 +425,37 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void RequestRenderAndWakeNativeLoopIgnoresDisposedRenderScheduler()
+    {
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = new DisposedRenderScheduler()
+        };
+
+        host.RequestRenderAndWakeNativeLoop();
+
+        Assert.Equal(0, host.NativeLoopWakeupCount);
+    }
+
+    [Fact]
+    public void LatePlatformInputAfterDisposeIsIgnored()
+    {
+        var scheduler = new TestRenderScheduler();
+        var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var receivedCount = 0;
+        host.InputReceived += (_, _) => receivedCount++;
+
+        host.Dispose();
+        RaisePlatformInput(host, new WpfInputEventArgs(WpfInputEventKind.MouseMove, x: 10, y: 20));
+
+        Assert.Equal(0, receivedCount);
+        Assert.Equal(0, scheduler.RequestCount);
+    }
+
+    [Fact]
     public void ShouldRenderFrameReturnsTrueWhenCoalescingIsDisabled()
     {
         using var host = new ProGpuWpfWindowHost
@@ -1779,6 +1810,31 @@ public sealed class ProGpuWpfWindowHostTests
         }
     }
 
+    private sealed class DisposedRenderScheduler : IWpfRenderScheduler
+    {
+        public event EventHandler? RenderRequested
+        {
+            add { }
+            remove { }
+        }
+
+        public bool HasPendingRenderRequest => false;
+
+        public void RequestRender()
+        {
+            throw new ObjectDisposedException(nameof(DisposedRenderScheduler));
+        }
+
+        public bool ConsumeRenderRequest()
+        {
+            return false;
+        }
+
+        public void Reset()
+        {
+        }
+    }
+
     private sealed class TestRegistration : IDisposable
     {
         public bool IsDisposed { get; private set; }
@@ -1864,5 +1920,12 @@ public sealed class ProGpuWpfWindowHostTests
         typeof(ProGpuWpfWindowHost)
             .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(instance, value);
+    }
+
+    private static void RaisePlatformInput(ProGpuWpfWindowHost host, WpfInputEventArgs args)
+    {
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnPlatformInputReceived", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, new object?[] { null, args });
     }
 }

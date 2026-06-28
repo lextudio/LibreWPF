@@ -507,6 +507,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
+        _isDisposed = true;
+
         IWindow? window = _window;
         bool disposeNativeWindow = window != null && !_isInNativeWindowCloseCallback && !_isRendering;
 
@@ -535,7 +537,6 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         _target = null;
         _window = null;
-        _isDisposed = true;
     }
 
     private void EnsureWindow()
@@ -1891,6 +1892,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnPlatformInputReceived(object? sender, WpfInputEventArgs e)
     {
+        if (_isDisposed || _isInNativeWindowCloseCallback)
+        {
+            return;
+        }
+
         TraceInputEvent("native", e);
         var input = NormalizeInputEventForCurrentRenderSurface(e);
         TraceInputEvent("wpf", input);
@@ -2277,6 +2283,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnRenderSchedulerRenderRequested(object? sender, EventArgs e)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         RenderSchedulerWakeupCount++;
         RenderWakeupRequested?.Invoke(this, EventArgs.Empty);
         if (!TryProcessRenderSchedulerWakeup())
@@ -2293,7 +2304,20 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal void RequestRenderAndWakeNativeLoop()
     {
-        WpfRenderScheduler.RequestRender();
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            WpfRenderScheduler.RequestRender();
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
+
         TryRequestNativeLoopWakeup();
     }
 
@@ -2340,7 +2364,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal bool TryProcessRenderSchedulerWakeup()
     {
-        if (_window == null || _isRendering || _isProcessingRenderSchedulerWakeup)
+        if (_isDisposed || _window == null || _isRendering || _isProcessingRenderSchedulerWakeup)
         {
             return false;
         }
@@ -2360,13 +2384,35 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _isProcessingRenderSchedulerWakeup = true;
         try
         {
-            _window.DoRender();
+            try
+            {
+                _window.DoRender();
+            }
+            catch (Exception ex) when (IsRecoverableDispatcherRenderException(ex))
+            {
+                RequestRenderAndWakeNativeLoop();
+                return false;
+            }
+
             return true;
         }
         finally
         {
             _isProcessingRenderSchedulerWakeup = false;
         }
+    }
+
+    private static bool IsRecoverableDispatcherRenderException(Exception exception)
+    {
+        while (exception is TargetInvocationException { InnerException: { } innerException })
+        {
+            exception = innerException;
+        }
+
+        return exception is InvalidOperationException invalidOperation &&
+            invalidOperation.Message.IndexOf(
+                "dispatcher processing is suspended",
+                StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     internal bool UpdatePortablePresentationSourceDpiScale(double dpiScaleX, double dpiScaleY)

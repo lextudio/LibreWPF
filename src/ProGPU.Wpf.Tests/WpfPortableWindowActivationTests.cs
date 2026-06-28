@@ -563,6 +563,28 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void RenderWakeupTreatsSuspendedDispatcherFlushAsDeferred()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var window = new FakeSuspendedDispatcherFlushWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        Exception? exception = Record.Exception(scheduler.RequestRender);
+
+        Assert.Null(exception);
+        Assert.True(window.FlushCount > 0);
+    }
+
+    [Fact]
     public void DisposingActivationStopsInputForwarding()
     {
         using var host = new ProGpuWpfWindowHost
@@ -874,6 +896,25 @@ public sealed class WpfPortableWindowActivationTests
         public void FlushDispatcherOperations(string priorityName, TimeSpan timeout)
         {
             FlushedPriorities.Add(priorityName);
+        }
+    }
+
+    private sealed class FakeSuspendedDispatcherFlushWindow :
+        System.Windows.IPortableWindowActivationServiceTestTarget,
+        System.Windows.IPortableDispatcherFlushTarget
+    {
+        public int FlushCount { get; private set; }
+
+        public void FlushDispatcherOperations(string priorityName)
+        {
+            FlushCount++;
+            throw new InvalidOperationException("Cannot perform this operation while dispatcher processing is suspended.");
+        }
+
+        public void FlushDispatcherOperations(string priorityName, TimeSpan timeout)
+        {
+            FlushCount++;
+            throw new InvalidOperationException("Cannot perform this operation while dispatcher processing is suspended.");
         }
     }
 

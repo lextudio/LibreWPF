@@ -343,6 +343,11 @@ public sealed class WpfVisualTreeReflectionRenderer
             clipBounds = combinedClipBounds;
         }
 
+        if (!clipBounds.HasValue && TryCreateImplicitRetainedVisualClip(visual, out var implicitClipBounds))
+        {
+            clipBounds = implicitClipBounds;
+        }
+
         if (TryGetScrollableAreaClip(visual, out var scrollableAreaClip) && scrollableAreaClip != null)
         {
             if (!TryReadRect(scrollableAreaClip, out var scrollableClipBounds) || !IsUsableBounds(scrollableClipBounds))
@@ -394,7 +399,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         var retainedTransform = transform;
         var retainedClipBounds = clipBounds;
         var retainedOpacityMaskBounds = opacityMaskBounds;
-        if (TryReadOpacityMaskBounds(visual, out var bounds))
+        if (TryReadRetainedVisualBounds(visual, out var bounds))
         {
             size = new Vector2((float)bounds.Width, (float)bounds.Height);
             contentBounds = bounds;
@@ -541,7 +546,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         var retainedTransform = transform;
         var retainedClipBounds = clipBounds;
         var retainedOpacityMaskBounds = opacityMaskBounds;
-        if (TryReadOpacityMaskBounds(visual, out var bounds))
+        if (TryReadRetainedVisualBounds(visual, out var bounds))
         {
             size = new Vector2((float)bounds.Width, (float)bounds.Height);
             contentBounds = bounds;
@@ -1199,6 +1204,63 @@ public sealed class WpfVisualTreeReflectionRenderer
         return false;
     }
 
+    private static bool TryReadRetainedVisualBounds(object visual, out WpfReplayRect bounds)
+    {
+        if (TryReadRenderSizeBounds(visual, out bounds))
+        {
+            return true;
+        }
+
+        return TryReadOpacityMaskBounds(visual, out bounds);
+    }
+
+    private static bool TryCreateImplicitRetainedVisualClip(object visual, out WpfReplayRect clipBounds)
+    {
+        if (!RequiresImplicitRetainedVisualClip(visual))
+        {
+            clipBounds = default;
+            return false;
+        }
+
+        return TryReadRenderSizeBounds(visual, out clipBounds);
+    }
+
+    private static bool TryReadRenderSizeBounds(object visual, out WpfReplayRect bounds)
+    {
+        if (TryGetPropertyValue(visual, "RenderSize", out var renderSize)
+            && renderSize != null
+            && TryReadSize(renderSize, out var width, out var height)
+            && width > 0
+            && height > 0)
+        {
+            bounds = new WpfReplayRect(0, 0, width, height);
+            return true;
+        }
+
+        if (TryReadDoubleProperty(visual, "ActualWidth", out width)
+            && TryReadDoubleProperty(visual, "ActualHeight", out height)
+            && width > 0
+            && height > 0)
+        {
+            bounds = new WpfReplayRect(0, 0, width, height);
+            return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static bool RequiresImplicitRetainedVisualClip(object visual)
+    {
+        var type = visual.GetType();
+        if (type.FullName?.StartsWith("Xceed.Wpf.DataGrid.", StringComparison.Ordinal) != true)
+        {
+            return false;
+        }
+
+        return type.Name.Contains("Cell", StringComparison.Ordinal);
+    }
+
     private static void TraceRetainedVisualOwnerState(object visual, string state)
     {
         if (!IsRetainedVisualTraceEnabled())
@@ -1380,8 +1442,49 @@ public sealed class WpfVisualTreeReflectionRenderer
             return true;
         }
 
+        if (TryCreateClipToBoundsClip(visual, out var clipToBoundsClip))
+        {
+            if (hasExplicitClip)
+            {
+                return TryCreateIntersectedClip(clipToBoundsClip!, explicitClip!, out clip);
+            }
+
+            clip = clipToBoundsClip;
+            return true;
+        }
+
         clip = explicitClip;
         return hasExplicitClip;
+    }
+
+    private static bool TryCreateClipToBoundsClip(object visual, out object? clip)
+    {
+        clip = null;
+        if (!TryReadBoolProperty(visual, "ClipToBounds", out var clipToBounds) || !clipToBounds)
+        {
+            return false;
+        }
+
+        if (TryGetPropertyValue(visual, "RenderSize", out var renderSize)
+            && renderSize != null
+            && TryReadSize(renderSize, out var width, out var height)
+            && width > 0
+            && height > 0)
+        {
+            clip = new ReflectedRectangleClip(0, 0, width, height);
+            return true;
+        }
+
+        if (TryReadDoubleProperty(visual, "ActualWidth", out width)
+            && TryReadDoubleProperty(visual, "ActualHeight", out height)
+            && width > 0
+            && height > 0)
+        {
+            clip = new ReflectedRectangleClip(0, 0, width, height);
+            return true;
+        }
+
+        return false;
     }
 
     private static bool TryGetLayoutClip(object visual, out object? clip)
@@ -1411,7 +1514,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             && TryReadRectangleClipBounds(second, out var secondBounds))
         {
             var combined = CombineClipBounds(firstBounds, secondBounds);
-            clip = new System.Windows.Media.RectangleGeometry(ToMediaRect(combined));
+            clip = new ReflectedRectangleClip(combined);
             return true;
         }
 
@@ -1508,9 +1611,28 @@ public sealed class WpfVisualTreeReflectionRenderer
         return IsUsableBounds(clipped) ? clipped : null;
     }
 
-    private static Rect ToMediaRect(WpfReplayRect bounds)
+    private sealed class ReflectedRectangleClip
     {
-        return new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+        public ReflectedRectangleClip(double x, double y, double width, double height)
+        {
+            X = x;
+            Y = y;
+            Width = width;
+            Height = height;
+        }
+
+        public ReflectedRectangleClip(WpfReplayRect bounds)
+            : this(bounds.X, bounds.Y, bounds.Width, bounds.Height)
+        {
+        }
+
+        public double X { get; }
+
+        public double Y { get; }
+
+        public double Width { get; }
+
+        public double Height { get; }
     }
 
     private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)
@@ -1522,6 +1644,23 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         return TryConvertToDouble(propertyValue, out value);
+    }
+
+    private static bool TryReadBoolProperty(object instance, string propertyName, out bool value)
+    {
+        value = false;
+        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue) || propertyValue == null)
+        {
+            return false;
+        }
+
+        if (propertyValue is bool boolValue)
+        {
+            value = boolValue;
+            return true;
+        }
+
+        return bool.TryParse(propertyValue.ToString(), out value);
     }
 
     private static bool HasNonNullProperty(object instance, string propertyName)
@@ -1548,6 +1687,12 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
     {
+        if (instance == null)
+        {
+            value = null;
+            return false;
+        }
+
         var property = FindProperty(instance.GetType(), propertyName);
         if (property == null || property.GetIndexParameters().Length != 0)
         {
@@ -1555,12 +1700,36 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
-        value = property.GetValue(instance);
-        return true;
+        try
+        {
+            value = property.GetValue(instance);
+            return true;
+        }
+        catch (TargetInvocationException)
+        {
+        }
+        catch (ArgumentException)
+        {
+        }
+        catch (MethodAccessException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
+        value = null;
+        return false;
     }
 
     private static bool TryGetFieldValue(object instance, string fieldName, out object? value)
     {
+        if (instance == null)
+        {
+            value = null;
+            return false;
+        }
+
         var field = FindField(instance.GetType(), fieldName);
         if (field == null)
         {
@@ -1568,8 +1737,23 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
-        value = field.GetValue(instance);
-        return true;
+        try
+        {
+            value = field.GetValue(instance);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+        }
+        catch (FieldAccessException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
+        value = null;
+        return false;
     }
 
     private static Func<object, int, object?>? FindIndexer(Type type)

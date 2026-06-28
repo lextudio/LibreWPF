@@ -204,6 +204,22 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void ClipToBoundsChangeMarksTrackerDirtyWithoutEvent()
+    {
+        var root = new FakeVisual();
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        root.ClipToBounds = true;
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Contains(root, tracker.DirtySources);
+    }
+
+    [Fact]
     public void PrivateVersionFieldChangeMarksTrackerDirtyWithoutEvent()
     {
         var brush = new FakePrivateVersionResource();
@@ -510,6 +526,8 @@ public sealed class WpfVisualInvalidationTrackerTests
         public object? VisualClip { get; set; }
 
         public object? LayoutClip { get; set; }
+
+        public bool ClipToBounds { get; set; }
 
         public object? Effect { get; init; }
 

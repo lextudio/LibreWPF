@@ -762,6 +762,19 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return exception is ArgumentException or InvalidOperationException;
     }
 
+    private static bool IsRecoverableDispatcherFlushException(Exception exception)
+    {
+        while (exception is TargetInvocationException { InnerException: { } innerException })
+        {
+            exception = innerException;
+        }
+
+        return exception is InvalidOperationException invalidOperation &&
+            invalidOperation.Message.IndexOf(
+                "dispatcher processing is suspended",
+                StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
     private void OnHostRenderWakeupRequested(object? sender, EventArgs e)
     {
         if (_isDisposed || _isFlushingWpfDispatcher)
@@ -1419,8 +1432,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
                     continue;
                 }
 
-                object? result = method.Invoke(null, new object[] { window, markerPriority, timeout.Value });
-                return result is not bool completed || completed;
+                try
+                {
+                    object? result = method.Invoke(null, new object[] { window, markerPriority, timeout.Value });
+                    return result is not bool completed || completed;
+                }
+                catch (Exception ex) when (IsRecoverableDispatcherFlushException(ex))
+                {
+                    return false;
+                }
             }
         }
 
@@ -1444,8 +1464,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 continue;
             }
 
-            method.Invoke(null, new[] { window, markerPriority });
-            return true;
+            try
+            {
+                method.Invoke(null, new[] { window, markerPriority });
+                return true;
+            }
+            catch (Exception ex) when (IsRecoverableDispatcherFlushException(ex))
+            {
+                return false;
+            }
         }
 
         return false;

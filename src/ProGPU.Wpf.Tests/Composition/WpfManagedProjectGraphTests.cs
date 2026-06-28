@@ -9903,8 +9903,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryAppendPathSegment(segment", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TypeNameEndsWith(segment, \"LineSegment\")", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var figure in geometry.Figures)", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("geometry.GetType().GetMethod(", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("typeof(global::ProGPU.Scene.DrawingContext)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("geometry is NativePathGeometrySource nativePathSource", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("nativePathSource.TryGetPathGeometry(out path, out var nativeTransform)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("geometry.GetType().GetMethod(", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("drawMethod.Invoke(", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry.Draw(recordingContext", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("CreateGlyphRunBounds", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfPen", proGpuWpfCommandSink, StringComparison.Ordinal);

@@ -31,6 +31,7 @@ using VectorPenLineCap = ProGPU.Vector.PenLineCap;
 using VectorPenLineJoin = ProGPU.Vector.PenLineJoin;
 using VectorSolidColorBrush = ProGPU.Vector.SolidColorBrush;
 using VectorSweepDirection = ProGPU.Vector.SweepDirection;
+using NativePathGeometrySource = ProGPU.Scene.INativePathGeometrySource;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
@@ -1467,11 +1468,13 @@ public sealed class ProGpuCompositionCommandSink :
             return allowEmpty || path.Figures.Count > 0;
         }
 
-        if (TryRecordGeometryPath(geometry, out path))
+        if (geometry is NativePathGeometrySource nativePathSource
+            && nativePathSource.TryGetPathGeometry(out path, out var nativeTransform))
         {
-            if (!transform.IsIdentity)
+            var combinedTransform = nativeTransform * transform;
+            if (!combinedTransform.IsIdentity)
             {
-                path = path.CreateTransformed(transform);
+                path = path.CreateTransformed(combinedTransform);
             }
 
             return true;
@@ -2005,44 +2008,4 @@ public sealed class ProGpuCompositionCommandSink :
             out arc);
     }
 
-    private static bool TryRecordGeometryPath(MediaGeometry geometry, out VectorPathGeometry path)
-    {
-        var drawMethod = geometry.GetType().GetMethod(
-            "Draw",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types:
-            [
-                typeof(global::ProGPU.Scene.DrawingContext),
-                typeof(VectorBrush),
-                typeof(VectorPen)
-            ],
-            modifiers: null);
-        if (drawMethod == null)
-        {
-            path = new VectorPathGeometry();
-            return false;
-        }
-
-        var recordingContext = new global::ProGPU.Scene.DrawingContext();
-        drawMethod.Invoke(
-            geometry,
-            [
-                recordingContext,
-                new VectorSolidColorBrush(new Vector4(1f, 1f, 1f, 1f)),
-                null
-            ]);
-
-        foreach (var command in recordingContext.Commands)
-        {
-            if (command.Type == global::ProGPU.Scene.RenderCommandType.DrawPath && command.Path != null)
-            {
-                path = command.Path;
-                return true;
-            }
-        }
-
-        path = new VectorPathGeometry();
-        return false;
-    }
 }

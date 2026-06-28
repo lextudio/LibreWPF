@@ -245,6 +245,12 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortableWindowActivationService.cs");
+        var presentationFrameworkModuleInitializerPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "ModuleInitializer.cs");
         var proGpuActivationPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -356,6 +362,7 @@ public sealed class WpfManagedProjectGraphTests
         var dragDrop = File.ReadAllText(dragDropPath);
         var presentationCoreProject = File.ReadAllText(presentationCoreProjectPath);
         var activationService = File.ReadAllText(activationServicePath);
+        var presentationFrameworkModuleInitializer = File.ReadAllText(presentationFrameworkModuleInitializerPath);
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
         var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
         var proGpuPlatformServices = File.ReadAllText(proGpuPlatformServicesPath);
@@ -388,6 +395,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableMediaContextRenderService.RegisterPortableInteropService();", moduleInitializer, StringComparison.Ordinal);
         Assert.Contains("public interface IPortableMediaContextRenderServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetMediaContextRenderService(", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableWindowActivationCallbacks", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableWindowActivationServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetWindowActivationService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("List<Action<object, TimeSpan>>", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Action requestRender)", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Action<TimeSpan> requestRender)", renderService, StringComparison.Ordinal);
@@ -408,6 +418,11 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("internal static void FlushDispatcherOperations(object window, DispatcherPriority markerPriority)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool FlushDispatcherOperations(object window, DispatcherPriority markerPriority, TimeSpan timeout)", activationService, StringComparison.Ordinal);
+        Assert.Contains("using ProGPU.Wpf.Interop;", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static void RegisterPortableInteropService()", activationService, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.RegisterWindowActivationService(s_registrar)", activationService, StringComparison.Ordinal);
+        Assert.Contains("private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar", activationService, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.RegisterPortableInteropService();", presentationFrameworkModuleInitializer, StringComparison.Ordinal);
         Assert.Contains("FlushDispatcherOperations(window, markerPriority, Timeout.InfiniteTimeSpan)", activationService, StringComparison.Ordinal);
         Assert.Contains("markerOperation.Abort()", activationService, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.PushFrame(frame)", activationService, StringComparison.Ordinal);
@@ -419,6 +434,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PointUtil.RootToClient(rootPoint, source)", activationService, StringComparison.Ordinal);
         Assert.Contains("public interface IWpfDelayedRenderScheduler : IWpfRenderScheduler", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("void RequestRender(TimeSpan delay)", proGpuScheduler, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("CreateWindowActivationCallbacks(hostFactory)", proGpuActivation, StringComparison.Ordinal);
+        Assert.True(
+            proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetWindowActivationService(", StringComparison.Ordinal)
+                < proGpuActivation.IndexOf("presentationFrameworkAssembly.GetType(", StringComparison.Ordinal),
+            "The typed window activation service registry must be tried before the transitional reflected activation adapter.");
         Assert.Contains("PortableMediaContextRenderServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterMediaContextRenderService(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetMediaContextRenderService(", proGpuActivation, StringComparison.Ordinal);
@@ -449,10 +470,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Host.SetTopmost(topmost)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("typeof(Action<object, object, object>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("typeof(Func<object, IntPtr>)", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("Func<object, IntPtr> getHandle", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("getHandle: activation =>", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortablePresentationSourceBridge?.Handle", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("14 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, setWindowBorder, close, run, dispose, dragMove, getHandle }", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("13 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, setWindowBorder, close, run, dispose, dragMove }", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("callbacks.SetWindowBorder", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("callbacks.GetHandle", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public void SetWindowBorder(object? resizeMode, object? windowStyle)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetWindowBorder(ResolveWindowBorder(resizeMode, windowStyle, Host.WindowBorder))", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ResolveWindowBorder(window, options.WindowBorder)", proGpuActivation, StringComparison.Ordinal);

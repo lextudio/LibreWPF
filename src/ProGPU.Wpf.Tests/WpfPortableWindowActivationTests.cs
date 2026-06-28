@@ -12,6 +12,34 @@ namespace ProGPU.Wpf.Tests;
 public sealed class WpfPortableWindowActivationTests
 {
     [Fact]
+    public void PresentationFrameworkActivationRegistrationUsesTypedInteropBeforeReflectionFallback()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+
+        var registered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation(
+            service.SourceAssembly);
+
+        Assert.True(registered);
+        Assert.Equal(1, service.RegisterCount);
+        Assert.NotNull(service.Callbacks);
+        Assert.NotNull(service.Callbacks.Activate);
+        Assert.NotNull(service.Callbacks.Show);
+        Assert.NotNull(service.Callbacks.Hide);
+        Assert.NotNull(service.Callbacks.SetWindowState);
+        Assert.NotNull(service.Callbacks.SetTitle);
+        Assert.NotNull(service.Callbacks.SetClientSize);
+        Assert.NotNull(service.Callbacks.SetPosition);
+        Assert.NotNull(service.Callbacks.SetTopmost);
+        Assert.NotNull(service.Callbacks.SetWindowBorder);
+        Assert.NotNull(service.Callbacks.Close);
+        Assert.NotNull(service.Callbacks.Run);
+        Assert.NotNull(service.Callbacks.Dispose);
+        Assert.NotNull(service.Callbacks.DragMove);
+        Assert.NotNull(service.Callbacks.GetHandle);
+    }
+
+    [Fact]
     public void ClipboardRegistrationUsesTypedInteropServiceBeforeReflectionFallback()
     {
         var service = new TestClipboardServiceRegistrar();
@@ -1319,6 +1347,32 @@ public sealed class WpfPortableWindowActivationTests
         public void Clear()
         {
             ShowDialog = null;
+        }
+    }
+
+    private sealed class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
+    {
+        public int RegisterCount { get; private set; }
+
+        public PortableWindowActivationCallbacks? Callbacks { get; private set; }
+
+        public Assembly SourceAssembly
+        {
+            get
+            {
+                return typeof(TestWindowActivationServiceRegistrar).Assembly;
+            }
+        }
+
+        public void Register(PortableWindowActivationCallbacks callbacks)
+        {
+            RegisterCount++;
+            Callbacks = callbacks;
+        }
+
+        public void Clear()
+        {
+            Callbacks = null;
         }
     }
 

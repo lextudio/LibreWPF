@@ -3,15 +3,19 @@
 
 using System;
 using System.Collections.Specialized;
+using System.Reflection;
 using System.Threading;
 using System.Windows.Input;
 using System.Windows.Threading;
 using MS.Internal;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows
 {
     internal static class PortableWindowActivationService
     {
+        private static readonly WindowActivationServiceRegistrar s_registrar = new WindowActivationServiceRegistrar();
+        private static IDisposable s_registrarRegistration;
         private static Func<object, object> _activate;
         private static Action<object> _show;
         private static Action<object> _hide;
@@ -33,6 +37,11 @@ namespace System.Windows
             {
                 return !OperatingSystem.IsWindows() && Volatile.Read(ref _activate) != null;
             }
+        }
+
+        internal static void RegisterPortableInteropService()
+        {
+            s_registrarRegistration ??= PortableWpfServiceRegistry.RegisterWindowActivationService(s_registrar);
         }
 
         internal static void Register(
@@ -766,6 +775,43 @@ namespace System.Windows
             else if (activation is IDisposable disposable)
             {
                 disposable.Dispose();
+            }
+        }
+
+        private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
+        {
+            public Assembly SourceAssembly
+            {
+                get
+                {
+                    return typeof(PortableWindowActivationService).Assembly;
+                }
+            }
+
+            public void Register(PortableWindowActivationCallbacks callbacks)
+            {
+                ArgumentNullException.ThrowIfNull(callbacks);
+
+                PortableWindowActivationService.Register(
+                    callbacks.Activate,
+                    callbacks.Show,
+                    callbacks.Hide,
+                    callbacks.SetWindowState,
+                    callbacks.SetTitle,
+                    callbacks.SetClientSize,
+                    callbacks.SetPosition,
+                    callbacks.SetTopmost,
+                    callbacks.SetWindowBorder,
+                    callbacks.Close,
+                    callbacks.Run,
+                    callbacks.Dispose,
+                    callbacks.DragMove,
+                    callbacks.GetHandle);
+            }
+
+            public void Clear()
+            {
+                PortableWindowActivationService.Clear();
             }
         }
     }

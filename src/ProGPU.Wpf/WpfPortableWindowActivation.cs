@@ -56,6 +56,17 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
 
+        if (PortableWpfServiceRegistry.TryGetWindowActivationService(
+                presentationFrameworkAssembly,
+                out var activationService))
+        {
+            activationService.Register(CreateWindowActivationCallbacks(hostFactory));
+            TryRegisterPresentationFrameworkLauncherService(presentationFrameworkAssembly);
+            TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly);
+            TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly);
+            return true;
+        }
+
         var serviceType = presentationFrameworkAssembly.GetType(
             PortableWindowActivationServiceTypeName,
             throwOnError: false);
@@ -201,49 +212,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
             }
         }
 
-        Func<object, object?> activate = window =>
-        {
-            return TryCreateActivation(window, hostFactory, out var activation)
-                ? activation
-                : null;
-        };
-        Action<object> show = activation =>
-            ((WpfPortableWindowActivation)activation).Show();
-        Action<object> hide = activation =>
-            ((WpfPortableWindowActivation)activation).Hide();
-        Action<object, object> setWindowState = (activation, windowState) =>
-            ((WpfPortableWindowActivation)activation).SetWindowState(windowState);
-        Action<object, string> setTitle = (activation, title) =>
-            ((WpfPortableWindowActivation)activation).SetTitle(title);
-        Action<object, double, double> setClientSize = (activation, width, height) =>
-            ((WpfPortableWindowActivation)activation).SetClientSize(width, height);
-        Action<object, double, double> setPosition = (activation, left, top) =>
-            ((WpfPortableWindowActivation)activation).SetPosition(left, top);
-        Action<object, bool> setTopmost = (activation, topmost) =>
-            ((WpfPortableWindowActivation)activation).SetTopmost(topmost);
-        Action<object, object, object> setWindowBorder = (activation, resizeMode, windowStyle) =>
-            ((WpfPortableWindowActivation)activation).SetWindowBorder(resizeMode, windowStyle);
-        Action<object> close = activation =>
-            ((WpfPortableWindowActivation)activation).Close();
-        Action<object> run = activation =>
-            ((WpfPortableWindowActivation)activation).Run();
-        Action<object> dispose = activation =>
-            ((WpfPortableWindowActivation)activation).Dispose();
-        Func<object, bool> dragMove = activation =>
-            ((WpfPortableWindowActivation)activation).TryDragMove();
-        Func<object, IntPtr> getHandle = activation =>
-            ((WpfPortableWindowActivation)activation).Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero;
-
-        var parameters = registerMethod.GetParameters().Length switch
-        {
-            14 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, setWindowBorder, close, run, dispose, dragMove, getHandle },
-            13 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, setWindowBorder, close, run, dispose, dragMove },
-            12 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, close, run, dispose, dragMove },
-            11 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, close, run, dispose, dragMove },
-            10 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose, dragMove },
-            9 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose },
-            _ => new object[] { activate, show, hide, setWindowState, close, run, dispose }
-        };
+        var callbacks = CreateWindowActivationCallbacks(hostFactory);
+        var parameters = CreateWindowActivationReflectionParameters(
+            callbacks,
+            registerMethod.GetParameters().Length);
         registerMethod.Invoke(
             obj: null,
             parameters: parameters);
@@ -251,6 +223,144 @@ public sealed class WpfPortableWindowActivation : IDisposable
         TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly);
         TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly);
         return true;
+    }
+
+    private static PortableWindowActivationCallbacks CreateWindowActivationCallbacks(
+        Func<object, ProGpuWpfWindowHost>? hostFactory)
+    {
+        return new PortableWindowActivationCallbacks(
+            activate: window =>
+            {
+                return TryCreateActivation(window, hostFactory, out var activation)
+                    ? activation
+                    : null;
+            },
+            show: activation => ((WpfPortableWindowActivation)activation).Show(),
+            hide: activation => ((WpfPortableWindowActivation)activation).Hide(),
+            setWindowState: (activation, windowState) =>
+                ((WpfPortableWindowActivation)activation).SetWindowState(windowState),
+            setTitle: (activation, title) =>
+                ((WpfPortableWindowActivation)activation).SetTitle(title),
+            setClientSize: (activation, width, height) =>
+                ((WpfPortableWindowActivation)activation).SetClientSize(width, height),
+            setPosition: (activation, left, top) =>
+                ((WpfPortableWindowActivation)activation).SetPosition(left, top),
+            setTopmost: (activation, topmost) =>
+                ((WpfPortableWindowActivation)activation).SetTopmost(topmost),
+            setWindowBorder: (activation, resizeMode, windowStyle) =>
+                ((WpfPortableWindowActivation)activation).SetWindowBorder(resizeMode, windowStyle),
+            close: activation => ((WpfPortableWindowActivation)activation).Close(),
+            run: activation => ((WpfPortableWindowActivation)activation).Run(),
+            dispose: activation => ((WpfPortableWindowActivation)activation).Dispose(),
+            dragMove: activation => ((WpfPortableWindowActivation)activation).TryDragMove(),
+            getHandle: activation =>
+                ((WpfPortableWindowActivation)activation).Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero);
+    }
+
+    private static object[] CreateWindowActivationReflectionParameters(
+        PortableWindowActivationCallbacks callbacks,
+        int parameterCount)
+    {
+        return parameterCount switch
+        {
+            14 =>
+            [
+                callbacks.Activate,
+                callbacks.Show!,
+                callbacks.Hide!,
+                callbacks.SetWindowState!,
+                callbacks.SetTitle!,
+                callbacks.SetClientSize!,
+                callbacks.SetPosition!,
+                callbacks.SetTopmost!,
+                callbacks.SetWindowBorder!,
+                callbacks.Close!,
+                callbacks.Run!,
+                callbacks.Dispose!,
+                callbacks.DragMove!,
+                callbacks.GetHandle!
+            ],
+            13 =>
+            [
+                callbacks.Activate,
+                callbacks.Show!,
+                callbacks.Hide!,
+                callbacks.SetWindowState!,
+                callbacks.SetTitle!,
+                callbacks.SetClientSize!,
+                callbacks.SetPosition!,
+                callbacks.SetTopmost!,
+                callbacks.SetWindowBorder!,
+                callbacks.Close!,
+                callbacks.Run!,
+                callbacks.Dispose!,
+                callbacks.DragMove!
+            ],
+            12 =>
+            [
+                callbacks.Activate,
+                callbacks.Show!,
+                callbacks.Hide!,
+                callbacks.SetWindowState!,
+                callbacks.SetTitle!,
+                callbacks.SetClientSize!,
+                callbacks.SetPosition!,
+                callbacks.SetTopmost!,
+                callbacks.Close!,
+                callbacks.Run!,
+                callbacks.Dispose!,
+                callbacks.DragMove!
+            ],
+            11 =>
+            [
+                callbacks.Activate,
+                callbacks.Show!,
+                callbacks.Hide!,
+                callbacks.SetWindowState!,
+                callbacks.SetTitle!,
+                callbacks.SetClientSize!,
+                callbacks.SetPosition!,
+                callbacks.Close!,
+                callbacks.Run!,
+                callbacks.Dispose!,
+                callbacks.DragMove!
+            ],
+            10 =>
+            [
+                callbacks.Activate,
+                callbacks.Show!,
+                callbacks.Hide!,
+                callbacks.SetWindowState!,
+                callbacks.SetTitle!,
+                callbacks.SetClientSize!,
+                callbacks.Close!,
+                callbacks.Run!,
+                callbacks.Dispose!,
+                callbacks.DragMove!
+            ],
+            9 =>
+            [
+                callbacks.Activate,
+                callbacks.Show!,
+                callbacks.Hide!,
+                callbacks.SetWindowState!,
+                callbacks.SetTitle!,
+                callbacks.SetClientSize!,
+                callbacks.Close!,
+                callbacks.Run!,
+                callbacks.Dispose!
+            ],
+            _ =>
+            [
+                callbacks.Activate,
+                callbacks.Show!,
+                callbacks.Hide!,
+                callbacks.SetWindowState!,
+                callbacks.Close!,
+                callbacks.Run!,
+                callbacks.Dispose!
+            ]
+        };
     }
 
     public static bool TryRegisterPresentationCoreClipboardService(Assembly presentationCoreAssembly)

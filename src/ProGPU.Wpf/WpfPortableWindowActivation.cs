@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
+using ProGPU.Wpf.Interop;
 using System.Windows.Media.ProGPU.Platform;
 
 namespace System.Windows.Media.ProGPU;
@@ -256,6 +257,19 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
 
+        if (PortableWpfServiceRegistry.TryGetClipboardService(
+                presentationCoreAssembly,
+                out var clipboardService))
+        {
+            clipboardService.Register(GetPortableClipboardText, SetPortableClipboardText);
+            return true;
+        }
+
+        return TryRegisterPresentationCoreClipboardServiceByReflection(presentationCoreAssembly);
+    }
+
+    private static bool TryRegisterPresentationCoreClipboardServiceByReflection(Assembly presentationCoreAssembly)
+    {
         var serviceType = presentationCoreAssembly.GetType(
             PortableClipboardServiceTypeName,
             throwOnError: false);

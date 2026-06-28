@@ -5,9 +5,11 @@
 
 using System.Collections.Specialized;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Threading;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows;
 
@@ -15,6 +17,8 @@ internal static class PortableClipboardService
 {
     private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
     private static readonly object s_sync = new object();
+    private static readonly ClipboardServiceRegistrar s_registrar = new ClipboardServiceRegistrar();
+    private static IDisposable? s_registrarRegistration;
     private static IDataObject? s_dataObject;
     private static bool s_hasManagedClipboardState;
     private static Func<string?>? s_getText;
@@ -26,6 +30,11 @@ internal static class PortableClipboardService
         {
             return !s_isWindows;
         }
+    }
+
+    internal static void RegisterPortableInteropService()
+    {
+        s_registrarRegistration ??= PortableWpfServiceRegistry.RegisterClipboardService(s_registrar);
     }
 
     internal static IDisposable Register(Func<string?> getText, Action<string?> setText)
@@ -268,4 +277,24 @@ internal static class PortableClipboardService
         }
     }
 
+    private sealed class ClipboardServiceRegistrar : IPortableClipboardServiceRegistrar
+    {
+        public Assembly SourceAssembly
+        {
+            get
+            {
+                return typeof(PortableClipboardService).Assembly;
+            }
+        }
+
+        public IDisposable Register(Func<string?> getText, Action<string?> setText)
+        {
+            return PortableClipboardService.Register(getText, setText);
+        }
+
+        public void Clear()
+        {
+            PortableClipboardService.Clear();
+        }
+    }
 }

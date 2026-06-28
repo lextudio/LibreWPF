@@ -1453,6 +1453,18 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortableClipboardService.cs");
+        var moduleInitializerPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ModuleInitializer.cs");
+        var portableWpfServiceRegistryPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableWpfServiceRegistry.cs");
         var portableManagedDataObjectPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -1508,6 +1520,8 @@ public sealed class WpfManagedProjectGraphTests
 
         var clipboard = File.ReadAllText(clipboardPath);
         var clipboardService = File.ReadAllText(clipboardServicePath);
+        var moduleInitializer = File.ReadAllText(moduleInitializerPath);
+        var portableWpfServiceRegistry = File.ReadAllText(portableWpfServiceRegistryPath);
         var portableManagedDataObject = File.ReadAllText(portableManagedDataObjectPath);
         var dataObject = File.ReadAllText(dataObjectPath);
         var portableClipboardServiceTests = File.ReadAllText(portableClipboardServiceTestsPath);
@@ -1521,7 +1535,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains(@"<Compile Include=""System\Windows\PortableClipboardService.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortableManagedDataObject.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableClipboardService", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("using ProGPU.Wpf.Interop;", clipboardService, StringComparison.Ordinal);
         Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("internal static void RegisterPortableInteropService()", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.RegisterClipboardService(s_registrar)", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("private sealed class ClipboardServiceRegistrar : IPortableClipboardServiceRegistrar", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("PortableClipboardService.RegisterPortableInteropService();", moduleInitializer, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableClipboardServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetClipboardService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Func<string?> getText, Action<string?> setText)", clipboardService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryGetDataObject(out IDataObject? dataObject)", clipboardService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TrySetDataObject(IDataObject dataObject, bool copy)", clipboardService, StringComparison.Ordinal);
@@ -1595,6 +1616,12 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("PortableClipboardServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterPresentationCoreClipboardService", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.TryGetClipboardService(", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationCoreClipboardServiceByReflection(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.True(
+            proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetClipboardService(", StringComparison.Ordinal)
+                < proGpuActivation.IndexOf("TryRegisterPresentationCoreClipboardServiceByReflection(presentationCoreAssembly)", StringComparison.Ordinal),
+            "The typed clipboard service registry must be tried before the transitional reflected service adapter.");
         Assert.Contains("typeof(Func<string?>), typeof(Action<string?>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("GetPortableClipboardText", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("SetPortableClipboardText", proGpuActivation, StringComparison.Ordinal);

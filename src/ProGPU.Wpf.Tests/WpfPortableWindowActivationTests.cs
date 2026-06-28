@@ -4,12 +4,27 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Wpf.Interop;
 using Xunit;
 
 namespace ProGPU.Wpf.Tests;
 
 public sealed class WpfPortableWindowActivationTests
 {
+    [Fact]
+    public void ClipboardRegistrationUsesTypedInteropServiceBeforeReflectionFallback()
+    {
+        var service = new TestClipboardServiceRegistrar();
+        using var registration = PortableWpfServiceRegistry.RegisterClipboardService(service);
+
+        var registered = WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService(service.SourceAssembly);
+
+        Assert.True(registered);
+        Assert.Equal(1, service.RegisterCount);
+        Assert.NotNull(service.GetText);
+        Assert.NotNull(service.SetText);
+    }
+
     [Fact]
     public void SetTitleAndClientSizeForwardWindowPropertyChangesToHost()
     {
@@ -1135,6 +1150,44 @@ public sealed class WpfPortableWindowActivationTests
         {
             DropCount++;
             LastFiles = files;
+        }
+    }
+
+    private sealed class TestClipboardServiceRegistrar : IPortableClipboardServiceRegistrar
+    {
+        public int RegisterCount { get; private set; }
+
+        public Func<string?>? GetText { get; private set; }
+
+        public Action<string?>? SetText { get; private set; }
+
+        public Assembly SourceAssembly
+        {
+            get
+            {
+                return typeof(TestClipboardServiceRegistrar).Assembly;
+            }
+        }
+
+        public IDisposable Register(Func<string?> getText, Action<string?> setText)
+        {
+            RegisterCount++;
+            GetText = getText;
+            SetText = setText;
+            return new TestClipboardRegistration();
+        }
+
+        public void Clear()
+        {
+            GetText = null;
+            SetText = null;
+        }
+    }
+
+    private sealed class TestClipboardRegistration : IDisposable
+    {
+        public void Dispose()
+        {
         }
     }
 

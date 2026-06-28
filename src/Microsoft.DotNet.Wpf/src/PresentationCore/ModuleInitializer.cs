@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using MS.Internal.Text.TextInterface;
+using System.Windows;
 
 internal static class ModuleInitializer
 {
@@ -20,6 +21,8 @@ internal static class ModuleInitializer
     [ModuleInitializer]
     public static void Initialize()
     {
+        PortableClipboardService.RegisterPortableInteropService();
+
         if (!OperatingSystem.IsWindows())
         {
             return;

@@ -25,6 +25,7 @@ using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using System.Runtime.InteropServices;
 using MS.Win32;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows
 {
@@ -64,7 +65,7 @@ namespace System.Windows
     /// </remarks>
 
     [UidProperty("Uid")]
-    public partial class UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost
+    public partial class UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource
     {
         static UIElement()
         {
@@ -135,6 +136,12 @@ namespace System.Windows
         PortableVisualOwnerKind IPortableVisualOwnerHost.PortableVisualOwnerKind
         {
             get { return PortableVisualOwnerKind.Content; }
+        }
+
+        bool IPortableDrawingContentSource.TryGetPortableDrawingContent(out object content)
+        {
+            content = _drawingContent;
+            return true;
         }
 
         #region AllowDrop

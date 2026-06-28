@@ -1432,8 +1432,9 @@ namespace System.Windows
         Wrap = 2,
     }
     [System.Windows.Markup.UidPropertyAttribute("Uid")]
-    public partial class UIElement : System.Windows.Media.Visual, System.Windows.IInputElement, System.Windows.IPortableVisualOwnerHost, System.Windows.Media.Animation.IAnimatable
+    public partial class UIElement : System.Windows.Media.Visual, System.Windows.IInputElement, System.Windows.IPortableVisualOwnerHost, System.Windows.Media.Animation.IAnimatable, ProGPU.Wpf.Interop.IPortableDrawingContentSource
     {
+        bool ProGPU.Wpf.Interop.IPortableDrawingContentSource.TryGetPortableDrawingContent(out object content) { throw null; }
         bool System.Windows.IPortableVisualOwnerHost.IsPortableInputEnabled { get { throw null; } }
         object System.Windows.IPortableVisualOwnerHost.PortableVisualParent { get { throw null; } }
         System.Windows.PortableVisualOwnerKind System.Windows.IPortableVisualOwnerHost.PortableVisualOwnerKind { get { throw null; } }

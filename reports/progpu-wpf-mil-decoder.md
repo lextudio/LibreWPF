@@ -122,7 +122,7 @@ Drawing-group `Effect` descriptors and context-bound emulatable legacy `BitmapEf
 
 ## DrawingVisual Content Bridge
 
-`WpfVisualContentReflectionBridge` moves the transition boundary one level above raw `RenderData`. It reads `DrawingVisual`'s private `_content` field and, when the content has the `RenderData` private field shape, delegates to `WpfRenderDataReflectionBridge`.
+`WpfVisualContentReflectionBridge` moves the transition boundary one level above raw `RenderData`. Source-built `DrawingVisual` and `UIElement` expose their retained drawing content through `IPortableDrawingContentSource`; when that content has the `RenderData` private field shape, the bridge delegates to `WpfRenderDataReflectionBridge`. Private `_content`/`_drawingContent` field reads remain only as transitional compatibility fallback for fakes and non-source-integrated visual shapes.
 
 This bridge is intentionally narrow. It does not yet walk `ContainerVisual.Children`, nor does it apply visual-level clip, opacity, opacity mask, transform, offset, guidelines, effects, or cache state. Those properties belong in the later `Visual`/`CompositionTarget` port layer, where child traversal and retained scene invalidation can be modeled against ProGPU directly.
 

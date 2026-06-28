@@ -811,6 +811,44 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostDragDropUsesTypedActivationServiceBeforeReflectionFallback()
+    {
+        System.Windows.PortableWindowActivationService.Reset();
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakePortableDropWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfDragDropEventArgs(
+            WpfDragDropEventKind.Drop,
+            new WpfDragDropData(new[] { "/tmp/typed.txt" }, "typed text"),
+            WpfDragDropEffects.Copy | WpfDragDropEffects.Move,
+            WpfDragDropEffects.Copy,
+            x: 42,
+            y: 84);
+        RaiseHostDragDropEvent(host, args);
+
+        Assert.Equal(0, window.DropCount);
+        Assert.Equal(0, System.Windows.PortableWindowActivationService.DropCount);
+        Assert.Equal(1, service.DragDropCount);
+        Assert.Same(window, service.LastDragDropWindow);
+        Assert.Equal((int)WpfDragDropEventKind.Drop, service.LastDragDropKind);
+        Assert.Equal(new[] { "/tmp/typed.txt" }, service.LastDragDropFiles);
+        Assert.Equal("typed text", service.LastDragDropText);
+        Assert.Equal(42, service.LastDragDropX);
+        Assert.Equal(84, service.LastDragDropY);
+        Assert.Equal((int)(WpfDragDropEffects.Copy | WpfDragDropEffects.Move), service.LastDragDropAllowedEffects);
+        Assert.Equal((int)WpfDragDropEffects.Copy, service.LastDragDropAcceptedEffect);
+        Assert.Equal(WpfDragDropEffects.Link, args.AcceptedEffect);
+    }
+
+    [Fact]
     public void HostDragEnterUsesPortableWindowActivationServiceWithoutFallback()
     {
         System.Windows.PortableWindowActivationService.Reset();
@@ -840,6 +878,41 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(7, System.Windows.PortableWindowActivationService.LastX);
         Assert.Equal(9, System.Windows.PortableWindowActivationService.LastY);
         Assert.Equal(WpfDragDropEffects.Move, args.AcceptedEffect);
+    }
+
+    [Fact]
+    public void HostDragEnterUsesTypedActivationServiceWithoutReflectionFallback()
+    {
+        System.Windows.PortableWindowActivationService.Reset();
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakePortableDropWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfDragDropEventArgs(
+            WpfDragDropEventKind.DragEnter,
+            new WpfDragDropData(new[] { "/tmp/typed-enter.txt" }, "typed enter"),
+            WpfDragDropEffects.Copy | WpfDragDropEffects.Move,
+            WpfDragDropEffects.Copy,
+            x: 11,
+            y: 13);
+        RaiseHostDragDropEvent(host, args);
+
+        Assert.Equal(0, window.DropCount);
+        Assert.Equal(0, System.Windows.PortableWindowActivationService.DropCount);
+        Assert.Equal(1, service.DragDropCount);
+        Assert.Equal((int)WpfDragDropEventKind.DragEnter, service.LastDragDropKind);
+        Assert.Equal(new[] { "/tmp/typed-enter.txt" }, service.LastDragDropFiles);
+        Assert.Equal("typed enter", service.LastDragDropText);
+        Assert.Equal(11, service.LastDragDropX);
+        Assert.Equal(13, service.LastDragDropY);
+        Assert.Equal(WpfDragDropEffects.Link, args.AcceptedEffect);
     }
 
     [Fact]
@@ -1420,6 +1493,24 @@ public sealed class WpfPortableWindowActivationTests
 
         public List<TimeSpan?> FlushTimeouts { get; } = new List<TimeSpan?>();
 
+        public int DragDropCount { get; private set; }
+
+        public object? LastDragDropWindow { get; private set; }
+
+        public int LastDragDropKind { get; private set; }
+
+        public string[] LastDragDropFiles { get; private set; } = Array.Empty<string>();
+
+        public string? LastDragDropText { get; private set; }
+
+        public double LastDragDropX { get; private set; }
+
+        public double LastDragDropY { get; private set; }
+
+        public int LastDragDropAllowedEffects { get; private set; }
+
+        public int LastDragDropAcceptedEffect { get; private set; }
+
         public Assembly SourceAssembly
         {
             get
@@ -1450,11 +1541,38 @@ public sealed class WpfPortableWindowActivationTests
             return true;
         }
 
+        public bool TryProcessDragDropEvent(
+            object window,
+            int dragDropEventKind,
+            string[] files,
+            string? text,
+            double x,
+            double y,
+            int allowedEffects,
+            int acceptedEffect,
+            out int result)
+        {
+            DragDropCount++;
+            LastDragDropWindow = window;
+            LastDragDropKind = dragDropEventKind;
+            LastDragDropFiles = files;
+            LastDragDropText = text;
+            LastDragDropX = x;
+            LastDragDropY = y;
+            LastDragDropAllowedEffects = allowedEffects;
+            LastDragDropAcceptedEffect = acceptedEffect;
+            result = (int)WpfDragDropEffects.Link;
+            return true;
+        }
+
         public void Clear()
         {
             Callbacks = null;
             LastActivationStateWindow = null;
             LastFlushWindow = null;
+            LastDragDropWindow = null;
+            LastDragDropFiles = Array.Empty<string>();
+            LastDragDropText = null;
             FlushedPriorities.Clear();
             FlushTimeouts.Clear();
         }

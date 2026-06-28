@@ -839,6 +839,35 @@ namespace System.Windows
                 return true;
             }
 
+            public bool TryProcessDragDropEvent(
+                object window,
+                int dragDropEventKind,
+                string[] files,
+                string text,
+                double x,
+                double y,
+                int allowedEffects,
+                int acceptedEffect,
+                out int result)
+            {
+                if (window is not Window typedWindow)
+                {
+                    result = (int)DragDropEffects.None;
+                    return false;
+                }
+
+                result = PortableWindowActivationService.ProcessDragDropEvent(
+                    typedWindow,
+                    dragDropEventKind,
+                    files,
+                    text,
+                    x,
+                    y,
+                    allowedEffects,
+                    acceptedEffect);
+                return true;
+            }
+
             public void Clear()
             {
                 PortableWindowActivationService.Clear();

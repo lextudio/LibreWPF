@@ -1200,6 +1200,27 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryProcessPortableDragDrop(object window, WpfDragDropEventArgs e)
     {
+        if (TryGetWindowActivationService(window, out var activationService) &&
+            activationService.TryProcessDragDropEvent(
+                window,
+                (int)e.Kind,
+                e.Data.Files.ToArray(),
+                e.Data.Text,
+                e.X,
+                e.Y,
+                (int)e.AllowedEffects,
+                (int)e.AcceptedEffect,
+                out int typedAcceptedEffect))
+        {
+            e.AcceptedEffect = (WpfDragDropEffects)typedAcceptedEffect;
+            return true;
+        }
+
+        return TryProcessPortableDragDropByReflection(window, e);
+    }
+
+    private static bool TryProcessPortableDragDropByReflection(object window, WpfDragDropEventArgs e)
+    {
         Type? serviceType = FindPortableWindowActivationServiceType(window);
         if (serviceType == null)
         {

@@ -400,6 +400,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public static bool TryGetWindowActivationService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TrySetActivationState(object window, bool isActive);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout);", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("bool TryProcessDragDropEvent(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("List<Action<object, TimeSpan>>", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Action requestRender)", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Action<TimeSpan> requestRender)", renderService, StringComparison.Ordinal);
@@ -428,6 +429,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.SetActivationState(typedWindow, isActive);", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout)", activationService, StringComparison.Ordinal);
         Assert.Contains("Enum.TryParse(markerPriorityName, ignoreCase: false, out DispatcherPriority markerPriority)", activationService, StringComparison.Ordinal);
+        Assert.Contains("public bool TryProcessDragDropEvent(", activationService, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.ProcessDragDropEvent(", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.RegisterPortableInteropService();", presentationFrameworkModuleInitializer, StringComparison.Ordinal);
         Assert.Contains("FlushDispatcherOperations(window, markerPriority, Timeout.InfiniteTimeSpan)", activationService, StringComparison.Ordinal);
         Assert.Contains("markerOperation.Abort()", activationService, StringComparison.Ordinal);
@@ -444,6 +447,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CreateWindowActivationCallbacks(hostFactory)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TrySetActivationState(window, isActive)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryFlushDispatcherOperations(window, markerPriorityName, timeout)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("activationService.TryProcessDragDropEvent(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
         Assert.True(
             proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetWindowActivationService(", StringComparison.Ordinal)
@@ -517,6 +521,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ToDragDropRoutedEvent(dragDropEventKind)", activationService, StringComparison.Ordinal);
         Assert.Contains("DragDrop.ProcessPortableDragDrop(", activationService, StringComparison.Ordinal);
         Assert.Contains("TryProcessPortableDragDrop(window, e)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryProcessPortableDragDropByReflection(window, e)", proGpuActivation, StringComparison.Ordinal);
+        Assert.True(
+            proGpuActivation.IndexOf("activationService.TryProcessDragDropEvent(", StringComparison.Ordinal)
+                < proGpuActivation.IndexOf("TryProcessPortableDragDropByReflection(window, e)", StringComparison.Ordinal),
+            "The typed drag/drop service registry must be tried before the transitional reflected drag/drop adapter.");
         Assert.Contains("\"ProcessDragDropEvent\"", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("\"ProcessDragDrop\"", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public bool TryBeginDragMove()", proGpuHost, StringComparison.Ordinal);

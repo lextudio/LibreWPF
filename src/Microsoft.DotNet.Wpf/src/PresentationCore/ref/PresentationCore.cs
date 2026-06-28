@@ -6745,7 +6745,7 @@ namespace System.Windows.Media
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() { throw null; }
         public bool TryGetValue(System.Windows.Markup.XmlLanguage key, out string value) { throw null; }
     }
-    public sealed partial class LinearGradientBrush : System.Windows.Media.GradientBrush
+    public sealed partial class LinearGradientBrush : System.Windows.Media.GradientBrush, ProGPU.Wpf.Interop.IPortableBrushSource
     {
         public static readonly System.Windows.DependencyProperty EndPointProperty;
         public static readonly System.Windows.DependencyProperty StartPointProperty;
@@ -6759,6 +6759,7 @@ namespace System.Windows.Media
         public System.Windows.Point StartPoint { get { throw null; } set { } }
         public new System.Windows.Media.LinearGradientBrush Clone() { throw null; }
         public new System.Windows.Media.LinearGradientBrush CloneCurrentValue() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableBrushSource.TryGetPortableBrush(out ProGPU.Wpf.Interop.PortableBrush brush) { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
     public sealed partial class LineGeometry : System.Windows.Media.Geometry
@@ -7300,7 +7301,7 @@ namespace System.Windows.Media
         public new System.Windows.Media.QuadraticBezierSegment CloneCurrentValue() { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
-    public sealed partial class RadialGradientBrush : System.Windows.Media.GradientBrush
+    public sealed partial class RadialGradientBrush : System.Windows.Media.GradientBrush, ProGPU.Wpf.Interop.IPortableBrushSource
     {
         public static readonly System.Windows.DependencyProperty CenterProperty;
         public static readonly System.Windows.DependencyProperty GradientOriginProperty;
@@ -7315,6 +7316,7 @@ namespace System.Windows.Media
         public double RadiusY { get { throw null; } set { } }
         public new System.Windows.Media.RadialGradientBrush Clone() { throw null; }
         public new System.Windows.Media.RadialGradientBrush CloneCurrentValue() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableBrushSource.TryGetPortableBrush(out ProGPU.Wpf.Interop.PortableBrush brush) { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
     public sealed partial class RectangleGeometry : System.Windows.Media.Geometry

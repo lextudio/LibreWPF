@@ -10068,8 +10068,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("new ProGpuCombinedGeometry", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("resource is PortableBrushSource portableBrushSource", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("resource is PortablePenSource portablePenSource", wpfReflectionResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("AdaptNativePortableBrush(portableBrush, out unsupportedStateCount)", wpfReflectionResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("AdaptNativePortablePen(portablePen, out unsupportedStateCount)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativePortableBrush(portableBrush, bounds, out unsupportedStateCount)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativePortablePen(portablePen, bounds, out unsupportedStateCount)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("PortableBrushKind.LinearGradient", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("PortableBrushKind.RadialGradient", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("adaptedPen.DashStyle = new DashStyle(dashArray, dashOffset)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("TryAssignDashStyle", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("GetType(\"System.Windows.Media.DashStyle\"", wpfReflectionResourceResolver, StringComparison.Ordinal);

@@ -104,6 +104,82 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void DecodeRectangleAdaptsPortableLinearGradientBrush()
+    {
+        var brush = new FakePortableBrush(
+            PortableBrush.LinearGradient(
+                new PortablePoint(0, 0),
+                new PortablePoint(1, 1),
+                new[]
+                {
+                    new PortableGradientStop(new PortableColor(255, 255, 0, 0), 0),
+                    new PortableGradientStop(new PortableColor(128, 0, 0, 255), 1)
+                },
+                opacity: 0.75,
+                spreadMethod: PortableGradientSpreadMethod.Repeat,
+                colorInterpolationMode: PortableGradientColorInterpolationMode.ScRgbLinearInterpolation));
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var sink = new TestSink();
+
+        var payload = new byte[40];
+        WriteRect(payload, 0, 1, 2, 30, 40);
+        WriteUInt32(payload, 32, 1);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawRectangle, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(Assert.Single(sink.DrawRectangles).Brush!.ToNative());
+        Assert.Equal(0, nativeBrush.StartPoint.X);
+        Assert.Equal(0, nativeBrush.StartPoint.Y);
+        Assert.Equal(1, nativeBrush.EndPoint.X);
+        Assert.Equal(1, nativeBrush.EndPoint.Y);
+        Assert.Equal(0.75f, nativeBrush.Opacity);
+        Assert.Equal(ProGPU.Vector.GradientSpreadMethod.Repeat, nativeBrush.SpreadMethod);
+        Assert.Equal(ProGPU.Vector.GradientColorInterpolationMode.ScRgbLinearInterpolation, nativeBrush.ColorInterpolationMode);
+        Assert.Equal(2, nativeBrush.Stops.Length);
+        Assert.Equal(0f, nativeBrush.Stops[0].Offset);
+        Assert.Equal(1f, nativeBrush.Stops[1].Offset);
+        Assert.Equal(1f, nativeBrush.Stops[0].Color.X);
+        Assert.Equal(0.5f, nativeBrush.Stops[1].Color.W, precision: 2);
+    }
+
+    [Fact]
+    public void AdaptNativeBrushMapsPortableRelativeRadialGradient()
+    {
+        var brush = new FakePortableBrush(
+            PortableBrush.RadialGradient(
+                new PortablePoint(0.5, 0.5),
+                new PortablePoint(0.25, 0.75),
+                radiusX: 0.25,
+                radiusY: 0.5,
+                new[]
+                {
+                    new PortableGradientStop(new PortableColor(255, 0, 255, 0), 0),
+                    new PortableGradientStop(new PortableColor(255, 0, 0, 0), 1)
+                },
+                spreadMethod: PortableGradientSpreadMethod.Reflect));
+
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(10, 20, 100, 50),
+            out var unsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        var radialBrush = Assert.IsType<ProGpuRadialGradientBrush>(nativeBrush);
+        Assert.Equal(60, radialBrush.Center.X);
+        Assert.Equal(45, radialBrush.Center.Y);
+        Assert.Equal(35, radialBrush.GradientOrigin.X);
+        Assert.Equal(57.5f, radialBrush.GradientOrigin.Y);
+        Assert.Equal(25, radialBrush.RadiusX);
+        Assert.Equal(25, radialBrush.RadiusY);
+        Assert.Equal(ProGPU.Vector.GradientSpreadMethod.Reflect, radialBrush.SpreadMethod);
+        Assert.Equal(2, radialBrush.Stops.Length);
+    }
+
+    [Fact]
     public void AdaptNativePenUsesPortableSolidBrushAndPen()
     {
         var pen = new FakePortablePen(

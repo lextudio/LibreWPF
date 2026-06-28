@@ -200,6 +200,26 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeUsesPortableLayoutStateForLayoutClip()
+    {
+        var root = new FakePortableVisualLayoutVisual(new PortableVisualLayoutState
+        {
+            HasLayoutClip = true,
+            LayoutClip = new FakeRectangleGeometry(new FakeRect(7, 8, 90, 20)),
+            HasClipToBounds = true,
+            ClipToBounds = false
+        });
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        AssertReplayRect(7, 8, 90, 20, sink.RetainedVisualStates[0].ClipBounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeLowersClipToBoundsRenderSizeIntoRetainedOwnerScopes()
     {
         var root = new FakeVisual

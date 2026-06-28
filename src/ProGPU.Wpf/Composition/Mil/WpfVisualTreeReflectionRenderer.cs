@@ -1517,7 +1517,19 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         var hasExplicitClip = TryGetPropertyValue(visual, "Clip", out var explicitClip) && explicitClip != null;
-        if (TryGetLayoutClip(visual, out var layoutClip) && layoutClip != null)
+        var hasPortableLayoutState = TryGetPortableVisualLayoutState(visual, out var layoutState);
+        if (hasPortableLayoutState && layoutState.HasLayoutClip && layoutState.LayoutClip != null)
+        {
+            if (hasExplicitClip)
+            {
+                return TryCreateIntersectedClip(layoutState.LayoutClip, explicitClip!, out clip);
+            }
+
+            clip = layoutState.LayoutClip;
+            return true;
+        }
+
+        if (!hasPortableLayoutState && TryGetLayoutClip(visual, out var layoutClip) && layoutClip != null)
         {
             if (hasExplicitClip)
             {

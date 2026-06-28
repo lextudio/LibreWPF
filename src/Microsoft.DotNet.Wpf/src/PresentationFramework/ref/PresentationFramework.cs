@@ -575,7 +575,7 @@ namespace System.Windows
     [System.Windows.Markup.UsableDuringInitializationAttribute(true)]
     [System.Windows.Markup.XmlLangPropertyAttribute("Language")]
     [System.Windows.StyleTypedPropertyAttribute(Property="FocusVisualStyle", StyleTargetType=typeof(System.Windows.Controls.Control))]
-    public partial class FrameworkElement : System.Windows.UIElement, System.ComponentModel.ISupportInitialize, System.Windows.IFrameworkInputElement, System.Windows.IInputElement, System.Windows.Markup.IQueryAmbient
+    public partial class FrameworkElement : System.Windows.UIElement, System.ComponentModel.ISupportInitialize, System.Windows.IFrameworkInputElement, System.Windows.IInputElement, System.Windows.Markup.IQueryAmbient, ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource
     {
         public static readonly System.Windows.DependencyProperty ActualHeightProperty;
         public static readonly System.Windows.DependencyProperty ActualWidthProperty;
@@ -742,6 +742,7 @@ namespace System.Windows
         public object TryFindResource(object resourceKey) { throw null; }
         public void UnregisterName(string name) { }
         public void UpdateDefaultStyle() { }
+        bool ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource.TryGetPortableVisualLayoutState(out ProGPU.Wpf.Interop.PortableVisualLayoutState state) { throw null; }
     }
     [System.Windows.LocalizabilityAttribute(System.Windows.LocalizationCategory.NeverLocalize)]
     public partial class FrameworkElementFactory

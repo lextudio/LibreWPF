@@ -4,6 +4,9 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using Xunit;
+using PortableSize = ProGPU.Wpf.Interop.PortableSize;
+using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
+using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
@@ -197,6 +200,44 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.False(tracker.IsDirty);
 
         root.LayoutClip = new RectangleGeometry(new Rect(0, 0, 100, 56));
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+    }
+
+    [Fact]
+    public void PortableLayoutStateChangeMarksTrackerDirtyWithoutEvent()
+    {
+        var state = new PortableVisualLayoutState
+        {
+            HasRenderSize = true,
+            RenderSize = new PortableSize(40, 20),
+            HasClipToBounds = true,
+            ClipToBounds = false
+        };
+        var root = new FakePortableLayoutVisual(state);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        state.RenderSize = new PortableSize(41, 20);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Contains(root, tracker.DirtySources);
+
+        tracker.ConsumeDirty();
+        state.HasLayoutClip = true;
+        state.LayoutClip = new RectangleGeometry(new Rect(0, 0, 100, 40));
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+
+        tracker.ConsumeDirty();
+        state.ClipToBounds = true;
 
         Assert.True(tracker.DetectVersionChanges());
         Assert.True(tracker.IsDirty);
@@ -550,6 +591,22 @@ public sealed class WpfVisualInvalidationTrackerTests
         public void RaisePropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    private sealed class FakePortableLayoutVisual : PortableVisualLayoutStateSource
+    {
+        private readonly PortableVisualLayoutState _state;
+
+        public FakePortableLayoutVisual(PortableVisualLayoutState state)
+        {
+            _state = state;
+        }
+
+        public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
+        {
+            state = _state;
+            return true;
         }
     }
 

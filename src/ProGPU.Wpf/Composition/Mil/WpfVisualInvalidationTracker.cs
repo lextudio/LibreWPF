@@ -4,6 +4,8 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
+using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -570,6 +572,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private static bool TryReadVisualStateSnapshot(object source, out VisualStateSnapshot snapshot)
     {
         var builder = new VisualStateSnapshotBuilder();
+        var hasPortableLayoutState = TryGetPortableVisualLayoutState(source, out var layoutState);
 
         if (TryReadVectorLikeProperty(source, "Offset", out var offsetX, out var offsetY) ||
             TryReadVectorLikeProperty(source, "VisualOffset", out offsetX, out offsetY) ||
@@ -583,12 +586,20 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             builder.SetClip(clip);
         }
 
-        if (TryReadBoolProperty(source, "ClipToBounds", out var clipToBounds))
+        if (hasPortableLayoutState && layoutState.HasClipToBounds)
+        {
+            builder.SetClipToBounds(layoutState.ClipToBounds);
+        }
+        else if (!hasPortableLayoutState && TryReadBoolProperty(source, "ClipToBounds", out var clipToBounds))
         {
             builder.SetClipToBounds(clipToBounds);
         }
 
-        if (TryGetLayoutClip(source, out var layoutClip))
+        if (hasPortableLayoutState && layoutState.HasLayoutClip)
+        {
+            builder.SetLayoutClip(layoutState.LayoutClip);
+        }
+        else if (!hasPortableLayoutState && TryGetLayoutClip(source, out var layoutClip))
         {
             builder.SetLayoutClip(layoutClip);
         }
@@ -610,15 +621,49 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             builder.SetOpacity(opacity);
         }
 
-        if (TryReadSizeProperty(source, "RenderSize", out var width, out var height) ||
-            (TryReadDoubleProperty(source, "ActualWidth", out width) &&
-             TryReadDoubleProperty(source, "ActualHeight", out height)))
+        if (hasPortableLayoutState && TryReadPortableRenderSize(layoutState, out var width, out var height))
+        {
+            builder.SetRenderSize(width, height);
+        }
+        else if (!hasPortableLayoutState &&
+            (TryReadSizeProperty(source, "RenderSize", out width, out height) ||
+                (TryReadDoubleProperty(source, "ActualWidth", out width) &&
+                 TryReadDoubleProperty(source, "ActualHeight", out height))))
         {
             builder.SetRenderSize(width, height);
         }
 
         snapshot = builder.ToSnapshot();
         return builder.HasState;
+    }
+
+    private static bool TryGetPortableVisualLayoutState(object source, out PortableVisualLayoutState state)
+    {
+        if (source is PortableVisualLayoutStateSource visualLayoutSource
+            && visualLayoutSource.TryGetPortableVisualLayoutState(out state))
+        {
+            return true;
+        }
+
+        state = null!;
+        return false;
+    }
+
+    private static bool TryReadPortableRenderSize(
+        PortableVisualLayoutState state,
+        out double width,
+        out double height)
+    {
+        if (state.HasRenderSize)
+        {
+            width = state.RenderSize.Width;
+            height = state.RenderSize.Height;
+            return true;
+        }
+
+        width = 0;
+        height = 0;
+        return false;
     }
 
     private static bool TryGetScrollableAreaClip(object source, out object? value)

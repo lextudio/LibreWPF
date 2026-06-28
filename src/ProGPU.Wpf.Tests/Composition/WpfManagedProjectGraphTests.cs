@@ -635,9 +635,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TrySubscribeInvalidationCallback(", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("TryRunInvalidationSubscriptionAction", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("IsIgnorableInvalidationSubscriptionFailure", proGpuInvalidationTracker, StringComparison.Ordinal);
-        Assert.Contains("TryGetLayoutClip(source, out var layoutClip)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("source is PortableVisualLayoutStateSource visualLayoutSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("layoutState.HasLayoutClip", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("!hasPortableLayoutState && TryGetLayoutClip(source, out var layoutClip)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("SetLayoutClip(object? clip)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("LayoutClipChangeMarksTrackerDirtyWithoutEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.Contains("PortableLayoutStateChangeMarksTrackerDirtyWithoutEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Present(\n                    logicalWidth,\n                    logicalHeight,\n                    pixelWidth,\n                    pixelHeight,\n                    viewportX,\n                    viewportY,\n                    viewportWidth,\n                    viewportHeight,\n                    dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("new ProGpuRenderTargetViewport(", proGpuHost, StringComparison.Ordinal);
@@ -5100,6 +5103,14 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "UIElement.cs"));
+        var frameworkElementSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "FrameworkElement.cs"));
         var interopSource = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -5112,11 +5123,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetPortableVisualLayoutState(out state)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableRenderSizeBounds(layoutState, out bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableRenderSizeBounds(layoutState, out var portableBounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("layoutState.HasLayoutClip", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("layoutState.LayoutClip", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("!hasPortableLayoutState && TryGetLayoutClip(visual, out var layoutClip)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource, IPortableVisualLayoutStateSource", uiElementSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualLayoutStateSource.TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)", uiElementSource, StringComparison.Ordinal);
         Assert.Contains("RenderSize = new PortableSize(renderSize.Width, renderSize.Height)", uiElementSource, StringComparison.Ordinal);
         Assert.Contains("ClipToBounds = ClipToBounds", uiElementSource, StringComparison.Ordinal);
+        Assert.Contains("FrameworkElement : UIElement, IFrameworkInputElement, ISupportInitialize, IHaveResources, IQueryAmbient, IPortableVisualLayoutStateSource", frameworkElementSource, StringComparison.Ordinal);
+        Assert.Contains("Geometry layoutClip = GetLayoutClipInternal();", frameworkElementSource, StringComparison.Ordinal);
+        Assert.Contains("HasLayoutClip = layoutClip != null", frameworkElementSource, StringComparison.Ordinal);
+        Assert.Contains("LayoutClip = layoutClip", frameworkElementSource, StringComparison.Ordinal);
         Assert.Contains("interface IPortableVisualLayoutStateSource", interopSource, StringComparison.Ordinal);
+        Assert.Contains("object? LayoutClip", interopSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -6323,10 +6342,13 @@ public sealed class WpfManagedProjectGraphTests
     {
         var projectPath = FindRepoPath(relativeProjectPath.Split('/'));
         var project = File.ReadAllText(projectPath);
+        var projectWithoutInteropContract = project
+            .Replace(@"$(WpfSourceDir)..\..\..\external\ProGPU\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj", string.Empty, StringComparison.Ordinal)
+            .Replace(@"..\..\..\..\external\ProGPU\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj", string.Empty, StringComparison.Ordinal);
 
-        Assert.DoesNotContain("ProGPU.Wpf", project, StringComparison.Ordinal);
-        Assert.DoesNotContain(@"external\ProGPU", project, StringComparison.Ordinal);
-        Assert.DoesNotContain("ProGPU.Scene", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGPU.Wpf", projectWithoutInteropContract, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"external\ProGPU", projectWithoutInteropContract, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGPU.Scene", projectWithoutInteropContract, StringComparison.Ordinal);
     }
 
     [Fact]

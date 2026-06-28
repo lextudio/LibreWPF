@@ -812,6 +812,7 @@
     <Compile Include="System\Windows\Media\ICyclicBrush.cs" />
     <Compile Include="System\Windows\Media\IDrawingContent.cs" />
     <Compile Include="System\Windows\Media\IFreezeFreezables.cs" />
+    <Compile Include="System\Windows\Media\IPortableRenderDataDrawingContextSink.cs" />
     <Compile Include="System\Windows\Media\ImageBrush.cs" />
     <Compile Include="System\Windows\Media\ImageDrawing.cs" />
     <Compile Include="System\Windows\Media\ImageMetadata.cs" />
@@ -858,6 +859,7 @@
     <Compile Include="System\Windows\Media\PolyQuadraticBezierSegment.cs" />
     <Compile Include="System\Windows\Media\PortableCompositionTarget.cs" />
     <Compile Include="System\Windows\Media\PortableMediaContextRenderService.cs" />
+    <Compile Include="System\Windows\Media\PortableRenderDataDrawingContextSinkProvider.cs" />
     <!--Compile Include="System\Windows\Media\printcontext.cs" /-->
     <Compile Include="System\Windows\Media\QuadraticBezierSegment.cs" />
     <Compile Include="System\Windows\Media\RadialGradientBrush.cs" />

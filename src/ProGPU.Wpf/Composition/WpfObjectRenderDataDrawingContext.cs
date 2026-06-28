@@ -7,12 +7,13 @@ using MediaBrush = System.Windows.Media.Brush;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaPortableRenderDataSink = System.Windows.Media.IPortableRenderDataDrawingContextSink;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
-public sealed class WpfObjectRenderDataDrawingContext : IDisposable
+public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataSink, IDisposable
 {
     private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 

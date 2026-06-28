@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using MediaPortableRenderDataSink = System.Windows.Media.IPortableRenderDataDrawingContextSink;
 using ProGpuContainerVisual = global::ProGPU.Scene.ContainerVisual;
 using ProGpuDrawingVisual = global::ProGPU.Scene.DrawingVisual;
 using ProGpuVisual = global::ProGPU.Scene.Visual;
@@ -243,7 +244,7 @@ public sealed class ProGpuWpfDrawingFrame
             imageSourceAdapter);
     }
 
-    public Func<object?, object> CreateObjectRenderDataSinkFactory(
+    public Func<object?, MediaPortableRenderDataSink> CreateObjectRenderDataSinkFactory(
         IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
         return ownerVisual => OpenObjectRenderDataSinkContext(ownerVisual, imageSourceAdapter);

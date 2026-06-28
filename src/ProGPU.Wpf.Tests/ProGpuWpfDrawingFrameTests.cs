@@ -1394,14 +1394,22 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
-    public void TryRegisterRenderDataSinkProviderReturnsFalseWhenProviderIsAbsent()
+    public void TryRegisterRenderDataSinkProviderPushesPortableObjectSinkFactory()
     {
         var frame = new ProGpuWpfDrawingFrame(new ProGpuDrawingVisual(), 200, 100);
 
         var registered = frame.TryRegisterRenderDataSinkProvider(out var registration);
 
-        Assert.False(registered);
-        Assert.Null(registration);
+        Assert.True(registered);
+        Assert.NotNull(registration);
+        Assert.NotNull(PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory);
+
+        var sink = Assert.IsType<WpfObjectRenderDataDrawingContext>(
+            PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory!(new object()));
+        sink.Close();
+
+        registration.Dispose();
+        Assert.Null(PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory);
     }
 
     private static void AssertGradientDependencyTargetsOwner(

@@ -55,7 +55,9 @@ namespace System.Windows.Media
                 delegate(Visual ownerVisual)
                 {
                     object sink = sinkFactory(ownerVisual);
-                    return sink == null ? null : new ObjectRenderDataDrawingContextSink(sink);
+                    return sink is IPortableRenderDataDrawingContextSink portableSink
+                        ? new ObjectRenderDataDrawingContextSink(portableSink)
+                        : null;
                 });
         }
 

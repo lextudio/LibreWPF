@@ -2,7 +2,7 @@
 
 ## Reflection-Free Port Priority
 
-The ProGPU WPF port must converge on a reflection-free, high-performance implementation. Runtime reflection in the WPF bridge or ProGPU is temporary scaffolding only: keep it limited to compatibility probes, diagnostics, or transitional adapters that are documented with an exit path.
+The ProGPU WPF port must now prioritize a reflection-free, high-performance implementation. Runtime reflection in the WPF bridge or ProGPU is temporary scaffolding only: keep it limited to compatibility probes, diagnostics, or transitional adapters that are documented with an exit path, and replace product hot-path reflection with typed/source-integrated seams as soon as the local blocker is handled.
 
 After the current paid Xceed DataGrid/App work, prioritize replacing reflection-heavy retained visual, MIL/resource, invalidation, hit-test, and platform shims with typed APIs, generated accessors, reusable ProGPU scene/vector/text primitives, or source-integrated WPF internals. Do not add new managed WPF workarounds when the correct fix belongs in ProGPU rendering, shaders, layout/cache metadata, input, or DirectX/Silk.NET platform support.
 

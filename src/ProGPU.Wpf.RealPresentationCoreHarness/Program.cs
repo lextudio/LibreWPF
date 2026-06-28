@@ -1,16 +1,20 @@
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Windows.Media.ProGPU;
+using System.Windows.Media.ProGPU.Composition.Mil;
 using ProGpuContainerVisual = global::ProGPU.Scene.ContainerVisual;
 using ProGpuDrawingContext = global::ProGPU.Scene.DrawingContext;
 using ProGpuRenderCommand = global::ProGPU.Scene.RenderCommand;
 using ProGpuRenderCommandType = global::ProGPU.Scene.RenderCommandType;
 using ProGpuVisual = global::ProGPU.Scene.Visual;
 
-internal static class Program
+public static class Program
 {
     private const string ProviderTypeName = "System.Windows.Media.RenderDataDrawingContextSinkProvider";
+    private const string PortableProviderTypeName = "System.Windows.Media.PortableRenderDataDrawingContextSinkProvider";
+    private const string PortableSinkInterfaceTypeName = "System.Windows.Media.IPortableRenderDataDrawingContextSink";
     private const string SinkInterfaceTypeName = "System.Windows.Media.IRenderDataDrawingContextSink";
 
     private static int Main()
@@ -47,15 +51,10 @@ internal static class Program
             BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new MissingMethodException(providerType.FullName, "CreateSink");
 
-        if (!WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider(
-                presentationCore,
-                frame,
-                imageSourceAdapter: null,
-                out IDisposable? registration) ||
-            registration == null)
-        {
-            throw new InvalidOperationException("Failed to register ProGPU object sink factory against real PresentationCore.");
-        }
+        IDisposable registration = RegisterRealPortableObjectSinkProvider(
+            presentationCore,
+            frame,
+            imageSourceAdapter: null);
 
         object ownerVisual = RuntimeHelpers.GetUninitializedObject(drawingVisualType);
 
@@ -65,11 +64,11 @@ internal static class Program
                 ?? throw new InvalidOperationException("Real PresentationCore provider returned a null sink.");
 
             if (frame.ObjectRenderDataSinkContextCount != 1 ||
-                frame.DrawingContextCount != 1 ||
+                frame.DrawingContextCount != 0 ||
                 !ReferenceEquals(frame.LastOwnerVisual, ownerVisual))
             {
                 throw new InvalidOperationException(
-                    $"Expected one object sink, one drawing context, and the owner visual; got object sinks={frame.ObjectRenderDataSinkContextCount}, drawing contexts={frame.DrawingContextCount}, owner={frame.LastOwnerVisual}.");
+                    $"Expected one object sink, zero drawing contexts, and the owner visual; got object sinks={frame.ObjectRenderDataSinkContextCount}, drawing contexts={frame.DrawingContextCount}, owner={frame.LastOwnerVisual}.");
             }
 
             MethodInfo pushOpacity = sinkInterfaceType.GetMethod(
@@ -138,6 +137,186 @@ internal static class Program
         }
 
         loadContext.Unload();
+    }
+
+    private static IDisposable RegisterRealPortableObjectSinkProvider(
+        Assembly presentationCore,
+        ProGpuWpfDrawingFrame frame,
+        IWpfImageSourceAdapter? imageSourceAdapter)
+    {
+        Type providerType = GetRequiredType(presentationCore, PortableProviderTypeName);
+        Type portableSinkInterfaceType = GetRequiredType(presentationCore, PortableSinkInterfaceTypeName);
+        Type proxyType = BuildPortableSinkProxyType(portableSinkInterfaceType);
+        Type factoryType = BuildPortableSinkFactoryType(portableSinkInterfaceType, proxyType);
+
+        object factory = Activator.CreateInstance(factoryType, frame, imageSourceAdapter)
+            ?? throw new InvalidOperationException("Failed to create the portable sink factory proxy.");
+        Type delegateType = typeof(Func<,>).MakeGenericType(typeof(object), portableSinkInterfaceType);
+        MethodInfo createMethod = factoryType.GetMethod(
+            "Create",
+            BindingFlags.Instance | BindingFlags.Public)
+            ?? throw new MissingMethodException(factoryType.FullName, "Create");
+        Delegate sinkFactory = Delegate.CreateDelegate(delegateType, factory, createMethod);
+
+        MethodInfo pushMethod = providerType.GetMethod(
+            "PushObjectSinkFactory",
+            BindingFlags.Static | BindingFlags.Public,
+            binder: null,
+            types: new[] { delegateType },
+            modifiers: null)
+            ?? throw new MissingMethodException(providerType.FullName, "PushObjectSinkFactory");
+
+        return (IDisposable)(pushMethod.Invoke(null, new object[] { sinkFactory })
+            ?? throw new InvalidOperationException("Real PresentationCore portable provider returned null registration."));
+    }
+
+    private static Type BuildPortableSinkFactoryType(Type portableSinkInterfaceType, Type proxyType)
+    {
+        AssemblyName assemblyName = new("ProGpuWpfRealPortableSinkFactoryProxy");
+        AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndCollect);
+        ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName.Name!);
+        TypeBuilder typeBuilder = moduleBuilder.DefineType(
+            "PortableSinkFactoryProxy",
+            TypeAttributes.Public | TypeAttributes.Sealed);
+        FieldBuilder frameField = typeBuilder.DefineField(
+            "_frame",
+            typeof(ProGpuWpfDrawingFrame),
+            FieldAttributes.Private | FieldAttributes.InitOnly);
+        FieldBuilder imageSourceAdapterField = typeBuilder.DefineField(
+            "_imageSourceAdapter",
+            typeof(IWpfImageSourceAdapter),
+            FieldAttributes.Private | FieldAttributes.InitOnly);
+
+        ConstructorBuilder constructor = typeBuilder.DefineConstructor(
+            MethodAttributes.Public,
+            CallingConventions.Standard,
+            new[] { typeof(ProGpuWpfDrawingFrame), typeof(IWpfImageSourceAdapter) });
+        ILGenerator ctorIl = constructor.GetILGenerator();
+        ctorIl.Emit(OpCodes.Ldarg_0);
+        ctorIl.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes)!);
+        ctorIl.Emit(OpCodes.Ldarg_0);
+        ctorIl.Emit(OpCodes.Ldarg_1);
+        ctorIl.Emit(OpCodes.Stfld, frameField);
+        ctorIl.Emit(OpCodes.Ldarg_0);
+        ctorIl.Emit(OpCodes.Ldarg_2);
+        ctorIl.Emit(OpCodes.Stfld, imageSourceAdapterField);
+        ctorIl.Emit(OpCodes.Ret);
+
+        MethodInfo openSinkContext = typeof(ProGpuWpfDrawingFrame).GetMethod(
+            nameof(ProGpuWpfDrawingFrame.OpenObjectRenderDataSinkContext),
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: new[] { typeof(object), typeof(IWpfImageSourceAdapter) },
+            modifiers: null)
+            ?? throw new MissingMethodException(typeof(ProGpuWpfDrawingFrame).FullName, nameof(ProGpuWpfDrawingFrame.OpenObjectRenderDataSinkContext));
+        ConstructorInfo proxyConstructor = proxyType.GetConstructor(new[] { typeof(object) })
+            ?? throw new MissingMethodException(proxyType.FullName, ".ctor(object)");
+        MethodBuilder createMethod = typeBuilder.DefineMethod(
+            "Create",
+            MethodAttributes.Public,
+            portableSinkInterfaceType,
+            new[] { typeof(object) });
+        ILGenerator createIl = createMethod.GetILGenerator();
+        createIl.Emit(OpCodes.Ldarg_0);
+        createIl.Emit(OpCodes.Ldfld, frameField);
+        createIl.Emit(OpCodes.Ldarg_1);
+        createIl.Emit(OpCodes.Ldarg_0);
+        createIl.Emit(OpCodes.Ldfld, imageSourceAdapterField);
+        createIl.Emit(OpCodes.Callvirt, openSinkContext);
+        createIl.Emit(OpCodes.Newobj, proxyConstructor);
+        createIl.Emit(OpCodes.Castclass, portableSinkInterfaceType);
+        createIl.Emit(OpCodes.Ret);
+
+        return typeBuilder.CreateTypeInfo()!.AsType();
+    }
+
+    private static Type BuildPortableSinkProxyType(Type portableSinkInterfaceType)
+    {
+        AssemblyName assemblyName = new("ProGpuWpfRealPortableSinkProxy");
+        AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndCollect);
+        ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName.Name!);
+        TypeBuilder typeBuilder = moduleBuilder.DefineType(
+            "PortableSinkProxy",
+            TypeAttributes.Public | TypeAttributes.Sealed);
+        typeBuilder.AddInterfaceImplementation(portableSinkInterfaceType);
+        FieldBuilder innerField = typeBuilder.DefineField(
+            "_inner",
+            typeof(object),
+            FieldAttributes.Private | FieldAttributes.InitOnly);
+
+        ConstructorBuilder constructor = typeBuilder.DefineConstructor(
+            MethodAttributes.Public,
+            CallingConventions.Standard,
+            new[] { typeof(object) });
+        ILGenerator ctorIl = constructor.GetILGenerator();
+        ctorIl.Emit(OpCodes.Ldarg_0);
+        ctorIl.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes)!);
+        ctorIl.Emit(OpCodes.Ldarg_0);
+        ctorIl.Emit(OpCodes.Ldarg_1);
+        ctorIl.Emit(OpCodes.Stfld, innerField);
+        ctorIl.Emit(OpCodes.Ret);
+
+        MethodInfo forwardMethod = typeof(Program).GetMethod(
+            nameof(ForwardPortableSinkCall),
+            BindingFlags.Static | BindingFlags.Public)
+            ?? throw new MissingMethodException(typeof(Program).FullName, nameof(ForwardPortableSinkCall));
+
+        foreach (MethodInfo interfaceMethod in portableSinkInterfaceType.GetMethods())
+        {
+            if (interfaceMethod.ReturnType != typeof(void))
+            {
+                throw new NotSupportedException($"Portable sink method '{interfaceMethod.Name}' must return void.");
+            }
+
+            ParameterInfo[] parameters = interfaceMethod.GetParameters();
+            Type[] parameterTypes = parameters.Select(parameter => parameter.ParameterType).ToArray();
+            MethodBuilder methodBuilder = typeBuilder.DefineMethod(
+                interfaceMethod.Name,
+                MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.HideBySig | MethodAttributes.NewSlot,
+                typeof(void),
+                parameterTypes);
+            ILGenerator il = methodBuilder.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Ldfld, innerField);
+            il.Emit(OpCodes.Ldstr, interfaceMethod.Name);
+            il.Emit(OpCodes.Ldc_I4, parameterTypes.Length);
+            il.Emit(OpCodes.Ldc_I4, parameterTypes.Length);
+            il.Emit(OpCodes.Newarr, typeof(object));
+            for (int i = 0; i < parameterTypes.Length; i++)
+            {
+                il.Emit(OpCodes.Dup);
+                il.Emit(OpCodes.Ldc_I4, i);
+                il.Emit(OpCodes.Ldarg, i + 1);
+                if (parameterTypes[i].IsValueType)
+                {
+                    il.Emit(OpCodes.Box, parameterTypes[i]);
+                }
+
+                il.Emit(OpCodes.Stelem_Ref);
+            }
+
+            il.Emit(OpCodes.Call, forwardMethod);
+            il.Emit(OpCodes.Ret);
+            typeBuilder.DefineMethodOverride(methodBuilder, interfaceMethod);
+        }
+
+        return typeBuilder.CreateTypeInfo()!.AsType();
+    }
+
+    public static void ForwardPortableSinkCall(
+        object sink,
+        string methodName,
+        int parameterCount,
+        object?[] arguments)
+    {
+        MethodInfo method = sink.GetType()
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .FirstOrDefault(candidate =>
+                candidate.Name == methodName &&
+                candidate.GetParameters().Length == parameterCount)
+            ?? throw new MissingMethodException(sink.GetType().FullName, $"{methodName}({parameterCount} args)");
+
+        method.Invoke(sink, arguments);
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)

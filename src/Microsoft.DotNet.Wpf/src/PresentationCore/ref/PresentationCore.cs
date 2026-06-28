@@ -5770,6 +5770,40 @@ namespace System.Windows.Media
         void System.IDisposable.Dispose() { }
         protected virtual void VerifyApiNonstructuralChange() { }
     }
+    public partial interface IPortableRenderDataDrawingContextSink
+    {
+        void Close();
+        void DrawDrawing(object drawing);
+        void DrawEllipse(object brush, object pen, object center, object radiusX, object radiusY);
+        void DrawEllipse(object brush, object pen, object center, object centerAnimations, object radiusX, object radiusXAnimations, object radiusY, object radiusYAnimations);
+        void DrawGeometry(object brush, object pen, object geometry);
+        void DrawGlyphRun(object foregroundBrush, object glyphRun);
+        void DrawImage(object imageSource, object rectangle);
+        void DrawImage(object imageSource, object rectangle, object rectangleAnimations);
+        void DrawLine(object pen, object point0, object point1);
+        void DrawLine(object pen, object point0, object point0Animations, object point1, object point1Animations);
+        void DrawRectangle(object brush, object pen, object rectangle);
+        void DrawRectangle(object brush, object pen, object rectangle, object rectangleAnimations);
+        void DrawRoundedRectangle(object brush, object pen, object rectangle, object radiusX, object radiusY);
+        void DrawRoundedRectangle(object brush, object pen, object rectangle, object rectangleAnimations, object radiusX, object radiusXAnimations, object radiusY, object radiusYAnimations);
+        void DrawVideo(object player, object rectangle);
+        void DrawVideo(object player, object rectangle, object rectangleAnimations);
+        void Pop();
+        void PushClip(object clipGeometry);
+        void PushEffect(object effect, object effectInput);
+        void PushGuidelineSet(object guidelines);
+        void PushGuidelineY1(object coordinate);
+        void PushGuidelineY2(object leadingCoordinate, object offsetToDrivenCoordinate);
+        void PushOpacity(object opacity);
+        void PushOpacity(object opacity, object opacityAnimations);
+        void PushOpacityMask(object opacityMask);
+        void PushTransform(object transform);
+    }
+    public static partial class PortableRenderDataDrawingContextSinkProvider
+    {
+        public static System.IDisposable PushDrawingContextFactory(System.Func<object, System.Windows.Media.DrawingContext> drawingContextFactory) { throw null; }
+        public static System.IDisposable PushObjectSinkFactory(System.Func<object, System.Windows.Media.IPortableRenderDataDrawingContextSink> sinkFactory) { throw null; }
+    }
     [System.Windows.Markup.ContentPropertyAttribute("Children")]
     public sealed partial class DrawingGroup : System.Windows.Media.Drawing
     {

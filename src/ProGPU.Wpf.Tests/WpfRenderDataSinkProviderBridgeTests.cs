@@ -13,15 +13,13 @@ namespace ProGPU.Wpf.Tests;
 public sealed class WpfRenderDataSinkProviderBridgeTests
 {
     [Fact]
-    public void TryRegisterDrawingContextFactoryAdaptsObjectFactoryToProviderDelegate()
+    public void TryRegisterDrawingContextFactoryPushesTypedProviderFactory()
     {
-        FakeRenderDataDrawingContextSinkProvider.Reset();
         using var expectedContext = new DrawingContext(new ProGPU.Scene.DrawingContext());
         var ownerVisual = new FakeVisual();
         object? capturedOwner = null;
 
         var registered = WpfRenderDataSinkProviderBridge.TryRegisterDrawingContextFactory(
-            typeof(FakeRenderDataDrawingContextSinkProvider),
             owner =>
             {
                 capturedOwner = owner;
@@ -31,48 +29,47 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
 
         Assert.True(registered);
         Assert.NotNull(registration);
-        Assert.NotNull(FakeRenderDataDrawingContextSinkProvider.LastFactory);
-        Assert.Same(expectedContext, FakeRenderDataDrawingContextSinkProvider.LastFactory(ownerVisual));
+        Assert.NotNull(PortableRenderDataDrawingContextSinkProvider.DrawingContextFactory);
+        Assert.Same(expectedContext, PortableRenderDataDrawingContextSinkProvider.DrawingContextFactory(ownerVisual));
         Assert.Same(ownerVisual, capturedOwner);
 
         registration.Dispose();
 
-        Assert.True(FakeRenderDataDrawingContextSinkProvider.LastScope!.IsDisposed);
+        Assert.Null(PortableRenderDataDrawingContextSinkProvider.DrawingContextFactory);
     }
 
     [Fact]
     public void TryRegisterDrawingFrameUsesFrameDrawingContextFactory()
     {
-        FakeRenderDataDrawingContextSinkProvider.Reset();
         var root = new ProGpuDrawingVisual();
         var frame = new ProGpuWpfDrawingFrame(root, 100, 50);
 
         var registered = WpfRenderDataSinkProviderBridge.TryRegisterDrawingContextFactory(
-            typeof(FakeRenderDataDrawingContextSinkProvider),
             frame.CreateDrawingContextFactory(),
             out var registration);
 
         Assert.True(registered);
         Assert.NotNull(registration);
+        Assert.NotNull(PortableRenderDataDrawingContextSinkProvider.DrawingContextFactory);
 
-        using (var context = FakeRenderDataDrawingContextSinkProvider.LastFactory!(new FakeVisual()))
+        using (var context = PortableRenderDataDrawingContextSinkProvider.DrawingContextFactory!(new FakeVisual())!)
         {
             context.DrawRectangle(Brushes.Red, null, new System.Windows.Rect(1, 2, 3, 4));
         }
 
         Assert.Single(root.Context.Commands);
+
+        registration.Dispose();
     }
 
     [Fact]
-    public void TryRegisterObjectSinkFactoryAdaptsObjectFactoryToProviderDelegate()
+    public void TryRegisterObjectSinkFactoryPushesTypedProviderFactory()
     {
-        FakeObjectRenderDataDrawingContextSinkProvider.Reset();
-        var expectedSink = new object();
+        var expectedSink = new RecordingPortableSink();
         var ownerVisual = new FakeVisual();
         object? capturedOwner = null;
 
         var registered = WpfRenderDataSinkProviderBridge.TryRegisterObjectSinkFactory(
-            typeof(FakeObjectRenderDataDrawingContextSinkProvider),
             owner =>
             {
                 capturedOwner = owner;
@@ -82,47 +79,46 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
 
         Assert.True(registered);
         Assert.NotNull(registration);
-        Assert.NotNull(FakeObjectRenderDataDrawingContextSinkProvider.LastFactory);
-        Assert.Same(expectedSink, FakeObjectRenderDataDrawingContextSinkProvider.LastFactory!(ownerVisual));
+        Assert.NotNull(PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory);
+        Assert.Same(expectedSink, PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory!(ownerVisual));
         Assert.Same(ownerVisual, capturedOwner);
 
         registration.Dispose();
 
-        Assert.True(FakeObjectRenderDataDrawingContextSinkProvider.LastScope!.IsDisposed);
+        Assert.Null(PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory);
     }
 
     [Fact]
     public void TryRegisterRenderDataSinkProviderPrefersObjectSinkFactory()
     {
-        FakeCombinedRenderDataDrawingContextSinkProvider.Reset();
         var root = new ProGpuDrawingVisual();
         var frame = new ProGpuWpfDrawingFrame(root, 100, 50);
 
         var registered = WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider(
-            typeof(FakeCombinedRenderDataDrawingContextSinkProvider),
             frame,
             imageSourceAdapter: null,
             out var registration);
 
         Assert.True(registered);
         Assert.NotNull(registration);
-        Assert.NotNull(FakeCombinedRenderDataDrawingContextSinkProvider.LastObjectFactory);
-        Assert.Null(FakeCombinedRenderDataDrawingContextSinkProvider.LastDrawingContextFactory);
+        Assert.NotNull(PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory);
+        Assert.Null(PortableRenderDataDrawingContextSinkProvider.DrawingContextFactory);
 
         var context = Assert.IsType<WpfObjectRenderDataDrawingContext>(
-            FakeCombinedRenderDataDrawingContextSinkProvider.LastObjectFactory!(new FakeVisual()));
+            PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory!(new FakeVisual()));
         context.DrawRectangle(Brushes.Red, null, new Rect(1, 2, 3, 4));
         context.Close();
 
         Assert.Equal(1, frame.ObjectRenderDataSinkContextCount);
         Assert.Equal(0, frame.DrawingContextCount);
         Assert.Single(root.Context.Commands);
+
+        registration.Dispose();
     }
 
     [Fact]
     public void TryRegisterRenderDataSinkProviderRoutesObjectSinkOwnersToRetainedBranches()
     {
-        FakeCombinedRenderDataDrawingContextSinkProvider.Reset();
         var branchMap = new WpfRetainedVisualBranchMap();
         var retainedRoot = new ProGpuContainerVisual();
         var flatRoot = new ProGpuDrawingVisual();
@@ -137,17 +133,16 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         var brush = Brushes.Red;
 
         var registered = WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider(
-            typeof(FakeCombinedRenderDataDrawingContextSinkProvider),
             frame,
             imageSourceAdapter: null,
             out var registration);
 
         Assert.True(registered);
         Assert.NotNull(registration);
-        Assert.NotNull(FakeCombinedRenderDataDrawingContextSinkProvider.LastObjectFactory);
+        Assert.NotNull(PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory);
 
         using (var context = Assert.IsType<WpfObjectRenderDataDrawingContext>(
-                   FakeCombinedRenderDataDrawingContextSinkProvider.LastObjectFactory!(ownerVisual)))
+                   PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory!(ownerVisual)))
         {
             context.DrawRectangle(brush, null, new Rect(1, 2, 3, 4));
         }
@@ -169,27 +164,19 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
     }
 
     [Fact]
-    public void TryRegisterReturnsFalseWhenProviderShapeIsUnavailable()
+    public void RenderDataSinkProviderBridgeUsesTypedProviderWithoutReflection()
     {
-        var registered = WpfRenderDataSinkProviderBridge.TryRegisterDrawingContextFactory(
-            typeof(object),
-            _ => new DrawingContext(new ProGPU.Scene.DrawingContext()),
-            out var registration);
+        var source = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "WpfRenderDataSinkProviderBridge.cs"));
 
-        Assert.False(registered);
-        Assert.Null(registration);
-    }
-
-    [Fact]
-    public void TryRegisterReturnsFalseWhenProviderDelegateReturnTypeIsIncompatible()
-    {
-        var registered = WpfRenderDataSinkProviderBridge.TryRegisterDrawingContextFactory(
-            typeof(IncompatibleRenderDataDrawingContextSinkProvider),
-            _ => new DrawingContext(new ProGPU.Scene.DrawingContext()),
-            out var registration);
-
-        Assert.False(registered);
-        Assert.Null(registration);
+        Assert.Contains("PortableRenderDataDrawingContextSinkProvider", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("MethodInfo", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Expression.", source, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Invoke(", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -272,87 +259,75 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
     {
     }
 
-    private static class FakeRenderDataDrawingContextSinkProvider
+    private sealed class RecordingPortableSink : IPortableRenderDataDrawingContextSink
     {
-        public static Func<FakeVisual, DrawingContext>? LastFactory { get; private set; }
+        public void DrawLine(object? pen, object? point0, object? point1) { }
 
-        public static FakeScope? LastScope { get; private set; }
+        public void DrawLine(object? pen, object? point0, object? point0Animations, object? point1, object? point1Animations) { }
 
-        public static IDisposable PushDrawingContextFactory(Func<FakeVisual, DrawingContext> drawingContextFactory)
-        {
-            LastFactory = drawingContextFactory;
-            LastScope = new FakeScope();
-            return LastScope;
-        }
+        public void DrawRectangle(object? brush, object? pen, object? rectangle) { }
 
-        public static void Reset()
-        {
-            LastFactory = null;
-            LastScope = null;
-        }
-    }
+        public void DrawRectangle(object? brush, object? pen, object? rectangle, object? rectangleAnimations) { }
 
-    private static class FakeObjectRenderDataDrawingContextSinkProvider
-    {
-        public static Func<FakeVisual, object>? LastFactory { get; private set; }
+        public void DrawRoundedRectangle(object? brush, object? pen, object? rectangle, object? radiusX, object? radiusY) { }
 
-        public static FakeScope? LastScope { get; private set; }
+        public void DrawRoundedRectangle(
+            object? brush,
+            object? pen,
+            object? rectangle,
+            object? rectangleAnimations,
+            object? radiusX,
+            object? radiusXAnimations,
+            object? radiusY,
+            object? radiusYAnimations) { }
 
-        public static IDisposable PushObjectSinkFactory(Func<FakeVisual, object> objectSinkFactory)
-        {
-            LastFactory = objectSinkFactory;
-            LastScope = new FakeScope();
-            return LastScope;
-        }
+        public void DrawEllipse(object? brush, object? pen, object? center, object? radiusX, object? radiusY) { }
 
-        public static void Reset()
-        {
-            LastFactory = null;
-            LastScope = null;
-        }
-    }
+        public void DrawEllipse(
+            object? brush,
+            object? pen,
+            object? center,
+            object? centerAnimations,
+            object? radiusX,
+            object? radiusXAnimations,
+            object? radiusY,
+            object? radiusYAnimations) { }
 
-    private static class FakeCombinedRenderDataDrawingContextSinkProvider
-    {
-        public static Func<FakeVisual, object>? LastObjectFactory { get; private set; }
+        public void DrawGeometry(object? brush, object? pen, object? geometry) { }
 
-        public static Func<FakeVisual, DrawingContext>? LastDrawingContextFactory { get; private set; }
+        public void DrawImage(object? imageSource, object? rectangle) { }
 
-        public static IDisposable PushObjectSinkFactory(Func<FakeVisual, object> objectSinkFactory)
-        {
-            LastObjectFactory = objectSinkFactory;
-            return new FakeScope();
-        }
+        public void DrawImage(object? imageSource, object? rectangle, object? rectangleAnimations) { }
 
-        public static IDisposable PushDrawingContextFactory(Func<FakeVisual, DrawingContext> drawingContextFactory)
-        {
-            LastDrawingContextFactory = drawingContextFactory;
-            return new FakeScope();
-        }
+        public void DrawGlyphRun(object? foregroundBrush, object? glyphRun) { }
 
-        public static void Reset()
-        {
-            LastObjectFactory = null;
-            LastDrawingContextFactory = null;
-        }
-    }
+        public void DrawDrawing(object? drawing) { }
 
-    private static class IncompatibleRenderDataDrawingContextSinkProvider
-    {
-        public static IDisposable PushDrawingContextFactory(Func<FakeVisual, string> drawingContextFactory)
-        {
-            return new FakeScope();
-        }
-    }
+        public void DrawVideo(object? player, object? rectangle) { }
 
-    private sealed class FakeScope : IDisposable
-    {
-        public bool IsDisposed { get; private set; }
+        public void DrawVideo(object? player, object? rectangle, object? rectangleAnimations) { }
 
-        public void Dispose()
-        {
-            IsDisposed = true;
-        }
+        public void PushClip(object? clipGeometry) { }
+
+        public void PushOpacityMask(object? opacityMask) { }
+
+        public void PushOpacity(object? opacity) { }
+
+        public void PushOpacity(object? opacity, object? opacityAnimations) { }
+
+        public void PushTransform(object? transform) { }
+
+        public void PushGuidelineSet(object? guidelines) { }
+
+        public void PushGuidelineY1(object? coordinate) { }
+
+        public void PushGuidelineY2(object? leadingCoordinate, object? offsetToDrivenCoordinate) { }
+
+        public void PushEffect(object? effect, object? effectInput) { }
+
+        public void Pop() { }
+
+        public void Close() { }
     }
 
     private static string FindRepoPath(params string[] pathSegments)

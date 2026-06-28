@@ -396,9 +396,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public interface IPortableMediaContextRenderServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetMediaContextRenderService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableWindowActivationCallbacks", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableWindowInputEvent", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public interface IPortableWindowActivationServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetWindowActivationService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TrySetActivationState(object window, bool isActive);", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("bool TryProcessInputEvent(object window, PortableWindowInputEvent input);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryProcessDragDropEvent(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("List<Action<object, TimeSpan>>", renderService, StringComparison.Ordinal);
@@ -427,6 +429,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TrySetActivationState(object window, bool isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetActivationState(typedWindow, isActive);", activationService, StringComparison.Ordinal);
+        Assert.Contains("public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("var mappedInput = new PortableInputEventArgs(", activationService, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.ProcessInput(typedWindow, mappedInput);", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout)", activationService, StringComparison.Ordinal);
         Assert.Contains("Enum.TryParse(markerPriorityName, ignoreCase: false, out DispatcherPriority markerPriority)", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryProcessDragDropEvent(", activationService, StringComparison.Ordinal);
@@ -446,6 +451,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWpfServiceRegistry.TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CreateWindowActivationCallbacks(hostFactory)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TrySetActivationState(window, isActive)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("activationService.TryProcessInputEvent(window, input)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("private static PortableWindowInputEvent CreatePortableWindowInputEvent(WpfInputEventArgs e)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryFlushDispatcherOperations(window, markerPriorityName, timeout)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryProcessDragDropEvent(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
@@ -1203,6 +1210,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source.GetInputProvider(typeof(MouseDevice))?.NotifyDeactivate()", activationService, StringComparison.Ordinal);
         Assert.Contains("window.HandleActivate(isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void ProcessInput(Window window, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("(PortableInputEventKind)input.Kind", activationService, StringComparison.Ordinal);
+        Assert.Contains("(PortableMouseButton)input.Button", activationService, StringComparison.Ordinal);
+        Assert.Contains("(PortableInputModifiers)input.Modifiers", activationService, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.ProcessInput(typedWindow, mappedInput);", activationService, StringComparison.Ordinal);
+        Assert.Contains("input.Handled = mappedInput.Handled;", activationService, StringComparison.Ordinal);
         Assert.Contains("PresentationSource.CriticalFromVisual(window)", activationService, StringComparison.Ordinal);
         Assert.Contains("input.Handled = ProcessInput(source, window, input)", activationService, StringComparison.Ordinal);
         Assert.Contains("InputManager.UnsecureCurrent", activationService, StringComparison.Ordinal);

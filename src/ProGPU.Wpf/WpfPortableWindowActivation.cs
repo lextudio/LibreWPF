@@ -1100,6 +1100,16 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryForwardInputToWindow(object window, WpfInputEventArgs e)
     {
+        if (TryGetWindowActivationService(window, out var activationService))
+        {
+            var input = CreatePortableWindowInputEvent(e);
+            if (activationService.TryProcessInputEvent(window, input))
+            {
+                e.Handled = input.Handled;
+                return true;
+            }
+        }
+
         var windowType = window.GetType();
         var inputMethod =
             FindInstanceMethod(windowType, "OnPortableInput", typeof(WpfInputEventArgs)) ??
@@ -1145,6 +1155,21 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return false;
+    }
+
+    private static PortableWindowInputEvent CreatePortableWindowInputEvent(WpfInputEventArgs e)
+    {
+        return new PortableWindowInputEvent(
+            (int)e.Kind,
+            e.Key,
+            e.ScanCode,
+            e.Character,
+            e.X,
+            e.Y,
+            e.DeltaX,
+            e.DeltaY,
+            (int)e.Button,
+            (int)e.Modifiers);
     }
 
     private void OnHostDragDropReceived(object? sender, WpfDragDropEventArgs e)

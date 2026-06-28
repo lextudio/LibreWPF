@@ -546,6 +546,49 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostInputUsesTypedActivationServiceBeforeReflectionFallback()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var window = new FakePortableInputWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            key: "Ignored",
+            scanCode: 42,
+            x: 12,
+            y: 24,
+            button: WpfMouseButton.XButton1,
+            modifiers: WpfInputModifiers.Shift | WpfInputModifiers.Alt);
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(0, window.InputCount);
+        Assert.Equal(1, service.InputCount);
+        Assert.Same(window, service.LastInputWindow);
+        Assert.NotNull(service.LastInput);
+        Assert.Equal((int)WpfInputEventKind.MouseDown, service.LastInput.Kind);
+        Assert.Equal("Ignored", service.LastInput.Key);
+        Assert.Equal(42, service.LastInput.ScanCode);
+        Assert.Equal(12, service.LastInput.X);
+        Assert.Equal(24, service.LastInput.Y);
+        Assert.Equal((int)WpfMouseButton.XButton1, service.LastInput.Button);
+        Assert.Equal((int)(WpfInputModifiers.Shift | WpfInputModifiers.Alt), service.LastInput.Modifiers);
+        Assert.True(args.Handled);
+        Assert.True(scheduler.RequestCount >= 1);
+    }
+
+    [Fact]
     public void HostInputFromNonDispatcherThreadQueuesInputAndRenderWakeupProcessesIt()
     {
         var scheduler = new TestRenderScheduler();
@@ -1487,6 +1530,12 @@ public sealed class WpfPortableWindowActivationTests
 
         public bool LastActivationState { get; private set; }
 
+        public int InputCount { get; private set; }
+
+        public object? LastInputWindow { get; private set; }
+
+        public PortableWindowInputEvent? LastInput { get; private set; }
+
         public object? LastFlushWindow { get; private set; }
 
         public List<string> FlushedPriorities { get; } = new List<string>();
@@ -1533,6 +1582,15 @@ public sealed class WpfPortableWindowActivationTests
             return true;
         }
 
+        public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)
+        {
+            InputCount++;
+            LastInputWindow = window;
+            LastInput = input;
+            input.Handled = true;
+            return true;
+        }
+
         public bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout)
         {
             LastFlushWindow = window;
@@ -1569,6 +1627,8 @@ public sealed class WpfPortableWindowActivationTests
         {
             Callbacks = null;
             LastActivationStateWindow = null;
+            LastInputWindow = null;
+            LastInput = null;
             LastFlushWindow = null;
             LastDragDropWindow = null;
             LastDragDropFiles = Array.Empty<string>();

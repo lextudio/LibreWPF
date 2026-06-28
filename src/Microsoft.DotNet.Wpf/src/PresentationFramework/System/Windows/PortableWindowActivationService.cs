@@ -820,6 +820,30 @@ namespace System.Windows
                 return true;
             }
 
+            public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)
+            {
+                if (window is not Window typedWindow || input == null)
+                {
+                    return false;
+                }
+
+                var mappedInput = new PortableInputEventArgs(
+                    (PortableInputEventKind)input.Kind,
+                    input.Key,
+                    input.ScanCode,
+                    input.Character,
+                    input.X,
+                    input.Y,
+                    input.DeltaX,
+                    input.DeltaY,
+                    (PortableMouseButton)input.Button,
+                    (PortableInputModifiers)input.Modifiers);
+
+                PortableWindowActivationService.ProcessInput(typedWindow, mappedInput);
+                input.Handled = mappedInput.Handled;
+                return true;
+            }
+
             public bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout)
             {
                 if (!Enum.TryParse(markerPriorityName, ignoreCase: false, out DispatcherPriority markerPriority))

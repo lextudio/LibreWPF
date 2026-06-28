@@ -1819,6 +1819,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool IsCurrentApplicationMainWindow(object window)
     {
+        if (TryGetWindowActivationService(window, out var activationService) &&
+            activationService.TryIsCurrentApplicationMainWindow(window, out bool isMainWindow))
+        {
+            return isMainWindow;
+        }
+
         Type? applicationType = null;
         for (Type? currentType = window.GetType(); currentType != null; currentType = currentType.BaseType)
         {

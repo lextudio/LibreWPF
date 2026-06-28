@@ -342,6 +342,34 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void ShowUsesTypedMainWindowQueryBeforeReflectionFallback()
+    {
+        var service = new TestWindowActivationServiceRegistrar
+        {
+            HandleMainWindowQuery = true,
+            IsMainWindow = true
+        };
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        activation.Show();
+
+        Assert.Equal(1, service.MainWindowQueryCount);
+        Assert.Same(window, service.LastMainWindowQueryWindow);
+        Assert.Null(
+            typeof(ProGpuWpfWindowHost)
+                .GetField("_window", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(host));
+    }
+
+    [Fact]
     public void CreateHostOptionsReadsFiniteWindowShape()
     {
         var fallback = new ProGpuWpfWindowOptions
@@ -1685,6 +1713,28 @@ public sealed class WpfPortableWindowActivationTests
             Callbacks = callbacks;
         }
 
+        public bool HandleMainWindowQuery { get; set; }
+
+        public bool IsMainWindow { get; set; }
+
+        public int MainWindowQueryCount { get; private set; }
+
+        public object? LastMainWindowQueryWindow { get; private set; }
+
+        public bool TryIsCurrentApplicationMainWindow(object window, out bool isMainWindow)
+        {
+            if (!HandleMainWindowQuery)
+            {
+                isMainWindow = false;
+                return false;
+            }
+
+            MainWindowQueryCount++;
+            LastMainWindowQueryWindow = window;
+            isMainWindow = IsMainWindow;
+            return true;
+        }
+
         public bool HandleCloseWindow { get; set; }
 
         public PortableWindowCloseResult CloseWindowResult { get; set; }
@@ -1772,6 +1822,7 @@ public sealed class WpfPortableWindowActivationTests
         public void Clear()
         {
             Callbacks = null;
+            LastMainWindowQueryWindow = null;
             LastCloseWindow = null;
             LastActivationStateWindow = null;
             LastBeginInvokeInputWindow = null;

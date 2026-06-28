@@ -809,6 +809,18 @@ namespace System.Windows
                     callbacks.GetHandle);
             }
 
+            public bool TryIsCurrentApplicationMainWindow(object window, out bool isMainWindow)
+            {
+                isMainWindow = false;
+                if (window is not Window typedWindow)
+                {
+                    return false;
+                }
+
+                isMainWindow = ReferenceEquals(Application.Current?.MainWindow, typedWindow);
+                return true;
+            }
+
             public bool TryCloseWindow(object window, out PortableWindowCloseResult result)
             {
                 result = PortableWindowCloseResult.NotInvoked;

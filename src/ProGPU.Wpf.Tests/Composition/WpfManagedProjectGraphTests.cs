@@ -400,6 +400,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public enum PortableWindowCloseResult", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public interface IPortableWindowActivationServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetWindowActivationService(", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("bool TryIsCurrentApplicationMainWindow(object window, out bool isMainWindow);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryCloseWindow(object window, out PortableWindowCloseResult result);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TrySetActivationState(object window, bool isActive);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryBeginInvokeInput(object window, Action callback);", portableWpfServiceRegistry, StringComparison.Ordinal);
@@ -430,6 +431,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static void RegisterPortableInteropService()", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.RegisterWindowActivationService(s_registrar)", activationService, StringComparison.Ordinal);
         Assert.Contains("private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar", activationService, StringComparison.Ordinal);
+        Assert.Contains("public bool TryIsCurrentApplicationMainWindow(object window, out bool isMainWindow)", activationService, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(Application.Current?.MainWindow, typedWindow)", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryCloseWindow(object window, out PortableWindowCloseResult result)", activationService, StringComparison.Ordinal);
         Assert.Contains("typedWindow.Close();", activationService, StringComparison.Ordinal);
         Assert.Contains("typedWindow.IsDisposed", activationService, StringComparison.Ordinal);
@@ -458,6 +461,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("void RequestRender(TimeSpan delay)", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CreateWindowActivationCallbacks(hostFactory)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("activationService.TryIsCurrentApplicationMainWindow(window, out bool isMainWindow)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryCloseWindow(window, out var typedCloseResult)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private static WpfWindowCloseResult MapCloseResult(PortableWindowCloseResult result)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TrySetActivationState(window, isActive)", proGpuActivation, StringComparison.Ordinal);
@@ -1221,6 +1225,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source.GetInputProvider(typeof(MouseDevice))?.NotifyDeactivate()", activationService, StringComparison.Ordinal);
         Assert.Contains("window.HandleActivate(isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void ProcessInput(Window window, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("public bool TryIsCurrentApplicationMainWindow(object window, out bool isMainWindow)", activationService, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(Application.Current?.MainWindow, typedWindow)", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryCloseWindow(object window, out PortableWindowCloseResult result)", activationService, StringComparison.Ordinal);
         Assert.Contains("typedWindow.Close();", activationService, StringComparison.Ordinal);
         Assert.Contains("typedWindow.IsDisposed", activationService, StringComparison.Ordinal);

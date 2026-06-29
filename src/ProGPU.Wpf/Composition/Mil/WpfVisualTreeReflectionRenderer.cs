@@ -246,12 +246,38 @@ public sealed class WpfVisualTreeReflectionRenderer
     private static void RegisterRetainedVisualStateDependencies(object visual, IWpfCompositionCommandSink sink)
     {
         RegisterRetainedVisualPropertyDirectDependency(visual, "Children", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "Transform", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "VisualClip", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "Clip", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "ScrollableAreaClip", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "VisualScrollableAreaClip", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "OpacityMask", sink);
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            if (visualState.HasTransform)
+            {
+                RegisterRetainedVisualDependency(visualState.Transform, sink);
+            }
+
+            if (visualState.HasClip)
+            {
+                RegisterRetainedVisualDependency(visualState.Clip, sink);
+            }
+
+            if (visualState.HasOpacityMask)
+            {
+                RegisterRetainedVisualDependency(visualState.OpacityMask, sink);
+            }
+        }
+        else
+        {
+            RegisterRetainedVisualPropertyDependency(visual, "Transform", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "VisualClip", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "Clip", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "ScrollableAreaClip", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "VisualScrollableAreaClip", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "OpacityMask", sink);
+        }
+
+        if (TryGetPortableVisualLayoutState(visual, out var layoutState) && layoutState.HasLayoutClip)
+        {
+            RegisterRetainedVisualDependency(layoutState.LayoutClip, sink);
+        }
+
         RegisterRetainedVisualPropertyDependency(visual, "Effect", sink);
         RegisterRetainedVisualPropertyDependency(visual, "BitmapEffect", sink);
         RegisterRetainedVisualPropertyDependency(visual, "BitmapEffectInput", sink);

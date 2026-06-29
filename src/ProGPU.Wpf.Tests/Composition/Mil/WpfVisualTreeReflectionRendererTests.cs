@@ -247,6 +247,68 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeRegistersPortableVisualStateResourcesAsRetainedDependencies()
+    {
+        var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4));
+        var clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50));
+        var opacityMask = Brushes.White;
+        var layoutClip = new FakeRectangleGeometry(new FakeRect(1, 2, 30, 40));
+        var root = new FakePortableVisualStateAndLayoutDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(0, 0),
+                HasTransform = true,
+                Transform = transform,
+                HasClip = true,
+                Clip = clip,
+                HasOpacity = true,
+                Opacity = 1,
+                HasOpacityMask = true,
+                OpacityMask = opacityMask
+            },
+            new PortableVisualLayoutState
+            {
+                HasRenderSize = true,
+                RenderSize = new ProGPU.Wpf.Interop.PortableSize(100, 50),
+                HasLayoutClip = true,
+                LayoutClip = layoutClip
+            });
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Contains(transform, sink.VisualDependencies);
+        Assert.Contains(clip, sink.VisualDependencies);
+        Assert.Contains(opacityMask, sink.VisualDependencies);
+        Assert.Contains(layoutClip, sink.VisualDependencies);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void ReplaySubtreeDoesNotReflectAbsentPortableVisualStateDependencies()
+    {
+        var root = new ThrowingPortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(0, 0),
+                HasOpacity = true,
+                Opacity = 1
+            });
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(0, root.ReflectedStateProbeCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeLowersClipToBoundsRenderSizeIntoRetainedOwnerScopes()
     {
         var root = new FakeVisual
@@ -2055,6 +2117,37 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             ReflectedStateProbeCount++;
             throw new InvalidOperationException($"Reflected state property '{propertyName}' should not be read.");
+        }
+    }
+
+    private sealed class FakePortableVisualStateAndLayoutDrawingVisual :
+        PortableVisualStateSource,
+        PortableVisualLayoutStateSource
+    {
+        private readonly object? _content;
+        private readonly PortableVisualState _visualState;
+        private readonly PortableVisualLayoutState _layoutState;
+
+        public FakePortableVisualStateAndLayoutDrawingVisual(
+            object? content,
+            PortableVisualState visualState,
+            PortableVisualLayoutState layoutState)
+        {
+            _content = content;
+            _visualState = visualState;
+            _layoutState = layoutState;
+        }
+
+        public bool TryGetPortableVisualState(out PortableVisualState state)
+        {
+            state = _visualState;
+            return true;
+        }
+
+        public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
+        {
+            state = _layoutState;
+            return true;
         }
     }
 

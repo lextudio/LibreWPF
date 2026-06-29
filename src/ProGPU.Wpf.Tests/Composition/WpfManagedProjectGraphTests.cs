@@ -5410,6 +5410,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("if (visualState.HasScrollableAreaClip)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("!hasPortableVisualState && TryGetPropertyValue(visual, \"VisualClip\"", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("RegisterRetainedVisualDependency(visualState.Transform, sink)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("RegisterRetainedVisualDependency(visualState.Clip, sink)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("RegisterRetainedVisualDependency(visualState.OpacityMask, sink)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("RegisterRetainedVisualPropertyDependency(visual, \"Transform\", sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualStateSource.TryGetPortableVisualState(out PortableVisualState state)", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualOffset", visualSource, StringComparison.Ordinal);
@@ -5418,6 +5422,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("VisualScrollableAreaClip", visualSource, StringComparison.Ordinal);
         Assert.Contains("interface IPortableVisualStateSource", interopSource, StringComparison.Ordinal);
         Assert.Contains("CanReplaySubtreeTreatsAbsentPortableVisualStateValuesAsAuthoritative", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeDoesNotReflectAbsentPortableVisualStateDependencies", rendererTests, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -5459,6 +5464,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryReadPortableRenderSizeBounds(layoutState, out var portableBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("layoutState.HasLayoutClip", rendererSource, StringComparison.Ordinal);
         Assert.Contains("layoutState.LayoutClip", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("RegisterRetainedVisualDependency(layoutState.LayoutClip, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("!hasPortableLayoutState && TryGetLayoutClip(visual, out var layoutClip)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource, IPortableVisualLayoutStateSource", uiElementSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualLayoutStateSource.TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)", uiElementSource, StringComparison.Ordinal);

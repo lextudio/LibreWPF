@@ -1769,13 +1769,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         return IsUsableBounds(clipped) ? clipped : null;
     }
 
-    private static bool TypeNameEndsWith(object instance, string suffix)
-    {
-        var type = instance.GetType();
-        return type.Name.EndsWith(suffix, StringComparison.Ordinal)
-            || (type.FullName?.EndsWith("." + suffix, StringComparison.Ordinal) ?? false);
-    }
-
     private sealed class PortableRectangleClipGeometry : IPortableGeometryPathSource
     {
         private readonly PortableGeometryPath _path;

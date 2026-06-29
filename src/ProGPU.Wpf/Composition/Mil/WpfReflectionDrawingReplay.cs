@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
 using MediaBrush = System.Windows.Media.Brush;
@@ -38,7 +37,6 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 internal static class WpfReflectionDrawingReplay
 {
-    private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
     private const int MaxTileBrushReplayTiles = 1024;
 
     private enum SupportedTileMode
@@ -1270,17 +1268,6 @@ internal static class WpfReflectionDrawingReplay
             : new Rect(rect.X, rect.Y, rect.Width, rect.Height);
     }
 
-    private static bool RelativeRectPropertyIsAbsentOrFull(object instance, string propertyName)
-    {
-        if (!TryGetPropertyValue(instance, propertyName, out var rectValue) || rectValue == null)
-        {
-            return true;
-        }
-
-        return TryReadRect(rectValue, out var rect)
-            && IsFullRelativeRect(rect);
-    }
-
     private static bool IsFullRelativeRect(Rect rect)
     {
         return NearlyEqual(rect.X, 0)
@@ -1520,20 +1507,6 @@ internal static class WpfReflectionDrawingReplay
             drawingGroupState,
             imageSourceAdapter,
             out bounds);
-    }
-
-    private static bool HasExplicitRenderingHint(object source, string propertyName)
-    {
-        if (!TryGetPropertyValue(source, propertyName, out var value))
-        {
-            return false;
-        }
-
-        var text = value?.ToString();
-        return !string.IsNullOrWhiteSpace(text)
-            && !string.Equals(text, "Unspecified", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(text, "Default", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(text, "Auto", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool TryGetPortableDrawingGroupState(
@@ -2326,15 +2299,6 @@ internal static class WpfReflectionDrawingReplay
             out bounds);
     }
 
-    private static bool TryReadFiniteRectProperty(object instance, string propertyName, out Rect bounds)
-    {
-        bounds = default;
-        return TryGetPropertyValue(instance, propertyName, out var boundsValue)
-            && boundsValue != null
-            && TryReadRect(boundsValue, out var rect)
-            && IsUsableRect(rect, out bounds);
-    }
-
     private static Rect UnionBounds(Rect left, Rect right)
     {
         var x1 = Math.Min(left.X, right.X);
@@ -2399,11 +2363,6 @@ internal static class WpfReflectionDrawingReplay
         return new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
-    private static bool HasNonNullProperty(object instance, string propertyName)
-    {
-        return TryGetPropertyValue(instance, propertyName, out var value) && value != null;
-    }
-
     private static IReadOnlyList<object> ExtractChildren(
         object drawingGroup,
         bool hasPortableDrawingGroupState,
@@ -2429,118 +2388,9 @@ internal static class WpfReflectionDrawingReplay
         return true;
     }
 
-    private static bool TryReadRect(object rectValue, out Rect rectangle)
-    {
-        if (rectValue is Rect mediaRect)
-        {
-            rectangle = mediaRect;
-            return true;
-        }
-
-        if (TryReadDoubleProperty(rectValue, "X", out var x)
-            && TryReadDoubleProperty(rectValue, "Y", out var y)
-            && TryReadDoubleProperty(rectValue, "Width", out var width)
-            && TryReadDoubleProperty(rectValue, "Height", out var height))
-        {
-            rectangle = new Rect(x, y, width, height);
-            return true;
-        }
-
-        rectangle = default;
-        return false;
-    }
-
-    private static bool TryReadIntProperty(object instance, string propertyName, out int value)
-    {
-        value = 0;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
-        {
-            return false;
-        }
-
-        if (propertyValue is int intValue)
-        {
-            value = intValue;
-            return true;
-        }
-
-        return false;
-    }
-
-    private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)
-    {
-        value = 0;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
-        {
-            return false;
-        }
-
-        return TryConvertToDouble(propertyValue, out value);
-    }
-
-    private static bool TryConvertToDouble(object? value, out double result)
-    {
-        switch (value)
-        {
-            case double doubleValue:
-                result = doubleValue;
-                return true;
-            case float floatValue:
-                result = floatValue;
-                return true;
-            case int intValue:
-                result = intValue;
-                return true;
-            case uint uintValue:
-                result = uintValue;
-                return true;
-            case byte byteValue:
-                result = byteValue;
-                return true;
-            default:
-                result = 0;
-                return false;
-        }
-    }
-
-    private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
-    {
-        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
-        if (property == null || property.GetIndexParameters().Length != 0)
-        {
-            value = null;
-            return false;
-        }
-
-        value = property.GetValue(instance);
-        return true;
-    }
-
-    private static Func<object, int, object?>? FindIndexer(Type type)
-    {
-        var indexer = type.GetProperty("Item", MemberFlags, binder: null, returnType: null, types: new[] { typeof(int) }, modifiers: null);
-        if (indexer != null)
-        {
-            return (instance, index) => indexer.GetValue(instance, new object[] { index });
-        }
-
-        var getter = type.GetMethod("get_Item", MemberFlags, binder: null, types: new[] { typeof(int) }, modifiers: null);
-        if (getter != null)
-        {
-            return (instance, index) => getter.Invoke(instance, new object[] { index });
-        }
-
-        return null;
-    }
-
     internal static bool IsTileBrush(object? brush)
     {
         return brush is PortableTileBrushSource;
-    }
-
-    private static bool TypeNameEndsWith(object resource, string typeName)
-    {
-        return resource.GetType().Name.EndsWith(typeName, StringComparison.Ordinal);
     }
 
     private sealed class DelegateImageSourceAdapter : IWpfImageSourceAdapter

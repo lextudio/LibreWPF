@@ -5522,6 +5522,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static WpfReplayRect ToReplayRect(PortableRect bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetVisualClipBounds(object visual, out WpfReplayRect bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryCreateClipToBoundsClipBounds(object visual, out WpfReplayRect bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("clip is IPortableGeometryPathSource portableGeometry", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryReadPortableRectangleClipBounds(portablePath, out bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeUsesPortableGeometryPathForVisualClipWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("if (hasPortableVisualState && visualState.HasClip)", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadVectorLikeProperty(visual, \"Offset\"", rendererSource, StringComparison.Ordinal);

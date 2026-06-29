@@ -39,6 +39,11 @@ using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunD
 using PortableGlyphRunSource = ProGPU.Wpf.Interop.IPortableGlyphRunSource;
 using PortableImageDrawingState = ProGPU.Wpf.Interop.PortableImageDrawingState;
 using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;
+using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
+using PortableGeometryPathKind = ProGPU.Wpf.Interop.PortableGeometryPathKind;
+using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
+using PortablePathFigure = ProGPU.Wpf.Interop.PortablePathFigure;
+using PortablePathSegment = ProGPU.Wpf.Interop.PortablePathSegment;
 using PortablePixelShader = ProGPU.Wpf.Interop.PortablePixelShader;
 using PortableShaderEffect = ProGPU.Wpf.Interop.PortableShaderEffect;
 using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;
@@ -258,6 +263,26 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         AssertReplayRect(5, 6, 70, 80, sink.RetainedVisualStates[0].ClipBounds);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void ReplaySubtreeUsesPortableGeometryPathForVisualClipWithoutReflection()
+    {
+        var clip = new PortableRectangleClipGeometry(5, 6, 70, 80);
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
+        {
+            HasClip = true,
+            Clip = clip
+        });
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        AssertReplayRect(5, 6, 70, 80, sink.RetainedVisualStates[0].ClipBounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(0, clip.ReflectedGeometryProbeCount);
     }
 
     [Fact]
@@ -3511,6 +3536,82 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public double RadiusX { get; init; }
 
         public double RadiusY { get; init; }
+    }
+
+    private sealed class PortableRectangleClipGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+        private readonly FakeRect _rect;
+
+        public PortableRectangleClipGeometry(double x, double y, double width, double height)
+        {
+            _rect = new FakeRect(x, y, width, height);
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = new PortableRect(x, y, width, height),
+                Transform = PortableMatrix3x2.Identity,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(x, y),
+                        IsClosed = true,
+                        IsFilled = true,
+                        Segments =
+                        [
+                            PortablePathSegment.Line(new PortablePoint(x + width, y), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(x + width, y + height), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(x, y + height), isSmoothJoin: false, isStroked: true)
+                        ]
+                    }
+                ]
+            };
+        }
+
+        public int ReflectedGeometryProbeCount { get; private set; }
+
+        public FakeRect Rect
+        {
+            get
+            {
+                ReflectedGeometryProbeCount++;
+                return _rect;
+            }
+        }
+
+        public double RadiusX
+        {
+            get
+            {
+                ReflectedGeometryProbeCount++;
+                return 0;
+            }
+        }
+
+        public double RadiusY
+        {
+            get
+            {
+                ReflectedGeometryProbeCount++;
+                return 0;
+            }
+        }
+
+        public object? Transform
+        {
+            get
+            {
+                ReflectedGeometryProbeCount++;
+                return null;
+            }
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
     }
 
     private readonly record struct FakeRect(double X, double Y, double Width, double Height);

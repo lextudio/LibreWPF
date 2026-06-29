@@ -363,11 +363,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
-        if (!clipBounds.HasValue && TryCreateImplicitRetainedVisualClip(visual, out var implicitClipBounds))
-        {
-            clipBounds = implicitClipBounds;
-        }
-
         if (TryGetScrollableAreaClipBounds(visual, out var scrollableClipBounds))
         {
             if (!IsUsableBounds(scrollableClipBounds))
@@ -1404,17 +1399,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         return TryReadOpacityMaskBounds(visual, out bounds);
     }
 
-    private static bool TryCreateImplicitRetainedVisualClip(object visual, out WpfReplayRect clipBounds)
-    {
-        if (!RequiresImplicitRetainedVisualClip(visual))
-        {
-            clipBounds = default;
-            return false;
-        }
-
-        return TryReadRenderSizeBounds(visual, out clipBounds);
-    }
-
     private static bool TryReadRenderSizeBounds(object visual, out WpfReplayRect bounds)
     {
         if (TryGetPortableVisualLayoutState(visual, out var layoutState)
@@ -1439,17 +1423,6 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         bounds = default;
         return false;
-    }
-
-    private static bool RequiresImplicitRetainedVisualClip(object visual)
-    {
-        var type = visual.GetType();
-        if (type.FullName?.StartsWith("Xceed.Wpf.DataGrid.", StringComparison.Ordinal) != true)
-        {
-            return false;
-        }
-
-        return type.Name.Contains("Cell", StringComparison.Ordinal);
     }
 
     private static void TraceRetainedVisualOwnerState(object visual, string state)

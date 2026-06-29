@@ -5524,6 +5524,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static bool TryCreateClipToBoundsClipBounds(object visual, out WpfReplayRect bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("else if (HasExplicitRetainedVisualClipState(visual))", rendererSource, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeKeepsRoundedClipInCommandScopeForNativeOwnerSink", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeSynthesizesCellClipFromPortableClipToBoundsState", rendererTests, StringComparison.Ordinal);
         Assert.Contains("FakeVisual : PortableVisualChildrenSource, PortableVisualBoundsSource", rendererTests, StringComparison.Ordinal);
         Assert.Contains("clip is IPortableGeometryPathSource portableGeometry", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableRectangleClipBounds(portablePath, out bounds)", rendererSource, StringComparison.Ordinal);
@@ -5554,6 +5555,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("scrollableAreaClip = new ReflectedRectangleClip", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadRect(scrollableAreaClip", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ReflectedRectangleClip", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("RequiresImplicitRetainedVisualClip", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Xceed.Wpf.DataGrid", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReplaySubtreeSynthesizesXceedDataGridCellClipFromRenderSize", rendererTests, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"VisualClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"ScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"VisualScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);

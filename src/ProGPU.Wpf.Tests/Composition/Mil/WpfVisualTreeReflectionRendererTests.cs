@@ -457,9 +457,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void ReplaySubtreeSynthesizesXceedDataGridCellClipFromRenderSize()
+    public void ReplaySubtreeSynthesizesCellClipFromPortableClipToBoundsState()
     {
-        var root = new Xceed.Wpf.DataGrid.DataCell(55, 18);
+        var root = new FakePortableVisualLayoutVisual(new PortableVisualLayoutState
+        {
+            HasRenderSize = true,
+            RenderSize = new ProGPU.Wpf.Interop.PortableSize(55, 18),
+            HasClipToBounds = true,
+            ClipToBounds = true
+        });
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);

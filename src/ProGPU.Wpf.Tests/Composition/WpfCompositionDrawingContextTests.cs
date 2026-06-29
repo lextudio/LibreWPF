@@ -904,7 +904,37 @@ public sealed class WpfCompositionDrawingContextTests
     {
     }
 
-    private sealed class FakeImageBrush
+    private static bool TryCreatePortableTileBrush(
+        PortableTileBrushKind kind,
+        object? content,
+        out PortableTileBrush brush)
+    {
+        brush = null!;
+        if (content == null)
+        {
+            return false;
+        }
+
+        brush = new PortableTileBrush(
+            kind,
+            content,
+            opacity: 1,
+            viewport: new PortableRect(0, 0, 1, 1),
+            viewbox: new PortableRect(0, 0, 1, 1),
+            viewportUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+            viewboxUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+            tileMode: PortableTileMode.None,
+            stretch: PortableStretch.Fill,
+            alignmentX: PortableAlignmentX.Center,
+            alignmentY: PortableAlignmentY.Center,
+            hasTransform: false,
+            transform: PortableMatrix3x2.Identity,
+            hasRelativeTransform: false,
+            relativeTransform: PortableMatrix3x2.Identity);
+        return true;
+    }
+
+    private sealed class FakeImageBrush : IPortableTileBrushSource
     {
         public FakeImageBrush(object? imageSource)
         {
@@ -912,9 +942,14 @@ public sealed class WpfCompositionDrawingContextTests
         }
 
         public object? ImageSource { get; }
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            return TryCreatePortableTileBrush(PortableTileBrushKind.Image, ImageSource, out brush);
+        }
     }
 
-    private sealed class FakeMediaImageBrush : MediaBrush
+    private sealed class FakeMediaImageBrush : MediaBrush, IPortableTileBrushSource
     {
         public FakeMediaImageBrush(object? imageSource)
         {
@@ -927,9 +962,14 @@ public sealed class WpfCompositionDrawingContextTests
         {
             return Brushes.Red.ToNative();
         }
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            return TryCreatePortableTileBrush(PortableTileBrushKind.Image, ImageSource, out brush);
+        }
     }
 
-    private sealed class FakeDrawingBrush
+    private sealed class FakeDrawingBrush : IPortableTileBrushSource
     {
         public FakeDrawingBrush(object? drawing)
         {
@@ -937,9 +977,14 @@ public sealed class WpfCompositionDrawingContextTests
         }
 
         public object? Drawing { get; }
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            return TryCreatePortableTileBrush(PortableTileBrushKind.Drawing, Drawing, out brush);
+        }
     }
 
-    private sealed class FakeMediaDrawingBrush : MediaBrush
+    private sealed class FakeMediaDrawingBrush : MediaBrush, IPortableTileBrushSource
     {
         public FakeMediaDrawingBrush(object? drawing)
         {
@@ -951,6 +996,11 @@ public sealed class WpfCompositionDrawingContextTests
         public override global::ProGPU.Vector.Brush ToNative()
         {
             return Brushes.Blue.ToNative();
+        }
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            return TryCreatePortableTileBrush(PortableTileBrushKind.Drawing, Drawing, out brush);
         }
     }
 

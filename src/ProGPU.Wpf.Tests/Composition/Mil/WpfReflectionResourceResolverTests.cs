@@ -3588,7 +3588,184 @@ public sealed class WpfReflectionResourceResolverTests
         }
     }
 
-    private sealed class FakeImageBrush
+    private static bool TryCreatePortableTileBrush(
+        PortableTileBrushKind kind,
+        object? content,
+        double opacity,
+        FakeRect? viewport,
+        FakeRect? viewbox,
+        string viewportUnits,
+        string viewboxUnits,
+        string tileMode,
+        string stretch,
+        string alignmentX,
+        string alignmentY,
+        object? transformValue,
+        object? relativeTransformValue,
+        out PortableTileBrush brush)
+    {
+        brush = null!;
+        if (content == null
+            || !TryMapBrushMappingMode(viewportUnits, out var portableViewportUnits)
+            || !TryMapBrushMappingMode(viewboxUnits, out var portableViewboxUnits)
+            || !TryMapTileMode(tileMode, out var portableTileMode)
+            || !TryMapStretch(stretch, out var portableStretch)
+            || !TryMapAlignmentX(alignmentX, out var portableAlignmentX)
+            || !TryMapAlignmentY(alignmentY, out var portableAlignmentY)
+            || !TryMapOptionalTransform(transformValue, out var hasTransform, out var transform)
+            || !TryMapOptionalTransform(relativeTransformValue, out var hasRelativeTransform, out var relativeTransform))
+        {
+            return false;
+        }
+
+        brush = new PortableTileBrush(
+            kind,
+            content,
+            opacity,
+            ToPortableRect(viewport ?? new FakeRect(0, 0, 1, 1)),
+            ToPortableRect(viewbox ?? new FakeRect(0, 0, 1, 1)),
+            portableViewportUnits,
+            portableViewboxUnits,
+            portableTileMode,
+            portableStretch,
+            portableAlignmentX,
+            portableAlignmentY,
+            hasTransform,
+            transform,
+            hasRelativeTransform,
+            relativeTransform);
+        return true;
+    }
+
+    private static PortableRect ToPortableRect(FakeRect rect)
+    {
+        return new PortableRect(rect.X, rect.Y, rect.Width, rect.Height);
+    }
+
+    private static bool TryMapOptionalTransform(
+        object? transformValue,
+        out bool hasTransform,
+        out PortableMatrix3x2 transform)
+    {
+        hasTransform = false;
+        transform = PortableMatrix3x2.Identity;
+        if (transformValue == null)
+        {
+            return true;
+        }
+
+        if (transformValue is IPortableTransformMatrixSource transformSource
+            && transformSource.TryGetPortableTransformMatrix(out transform))
+        {
+            hasTransform = true;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryMapBrushMappingMode(string value, out PortableBrushMappingMode mode)
+    {
+        switch (value)
+        {
+            case "RelativeToBoundingBox":
+                mode = PortableBrushMappingMode.RelativeToBoundingBox;
+                return true;
+            case "Absolute":
+                mode = PortableBrushMappingMode.Absolute;
+                return true;
+            default:
+                mode = PortableBrushMappingMode.RelativeToBoundingBox;
+                return false;
+        }
+    }
+
+    private static bool TryMapTileMode(string value, out PortableTileMode mode)
+    {
+        switch (value)
+        {
+            case "None":
+                mode = PortableTileMode.None;
+                return true;
+            case "Tile":
+                mode = PortableTileMode.Tile;
+                return true;
+            case "FlipX":
+                mode = PortableTileMode.FlipX;
+                return true;
+            case "FlipY":
+                mode = PortableTileMode.FlipY;
+                return true;
+            case "FlipXY":
+                mode = PortableTileMode.FlipXY;
+                return true;
+            default:
+                mode = PortableTileMode.None;
+                return false;
+        }
+    }
+
+    private static bool TryMapStretch(string value, out PortableStretch stretch)
+    {
+        switch (value)
+        {
+            case "None":
+                stretch = PortableStretch.None;
+                return true;
+            case "Fill":
+                stretch = PortableStretch.Fill;
+                return true;
+            case "Uniform":
+                stretch = PortableStretch.Uniform;
+                return true;
+            case "UniformToFill":
+                stretch = PortableStretch.UniformToFill;
+                return true;
+            default:
+                stretch = PortableStretch.Fill;
+                return false;
+        }
+    }
+
+    private static bool TryMapAlignmentX(string value, out PortableAlignmentX alignment)
+    {
+        switch (value)
+        {
+            case "Left":
+                alignment = PortableAlignmentX.Left;
+                return true;
+            case "Center":
+                alignment = PortableAlignmentX.Center;
+                return true;
+            case "Right":
+                alignment = PortableAlignmentX.Right;
+                return true;
+            default:
+                alignment = PortableAlignmentX.Center;
+                return false;
+        }
+    }
+
+    private static bool TryMapAlignmentY(string value, out PortableAlignmentY alignment)
+    {
+        switch (value)
+        {
+            case "Top":
+                alignment = PortableAlignmentY.Top;
+                return true;
+            case "Center":
+                alignment = PortableAlignmentY.Center;
+                return true;
+            case "Bottom":
+                alignment = PortableAlignmentY.Bottom;
+                return true;
+            default:
+                alignment = PortableAlignmentY.Center;
+                return false;
+        }
+    }
+
+    private sealed class FakeImageBrush : IPortableTileBrushSource
     {
         public FakeImageBrush(object? imageSource)
         {
@@ -3618,9 +3795,28 @@ public sealed class WpfReflectionResourceResolverTests
         public string AlignmentX { get; init; } = "Center";
 
         public string AlignmentY { get; init; } = "Center";
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            return TryCreatePortableTileBrush(
+                PortableTileBrushKind.Image,
+                ImageSource,
+                Opacity,
+                Viewport,
+                Viewbox,
+                ViewportUnits,
+                ViewboxUnits,
+                TileMode,
+                Stretch,
+                AlignmentX,
+                AlignmentY,
+                Transform,
+                RelativeTransform,
+                out brush);
+        }
     }
 
-    private sealed class FakeDrawingBrush
+    private sealed class FakeDrawingBrush : IPortableTileBrushSource
     {
         public FakeDrawingBrush(object? drawing)
         {
@@ -3650,9 +3846,28 @@ public sealed class WpfReflectionResourceResolverTests
         public string AlignmentX { get; init; } = "Center";
 
         public string AlignmentY { get; init; } = "Center";
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            return TryCreatePortableTileBrush(
+                PortableTileBrushKind.Drawing,
+                Drawing,
+                Opacity,
+                Viewport,
+                Viewbox,
+                ViewportUnits,
+                ViewboxUnits,
+                TileMode,
+                Stretch,
+                AlignmentX,
+                AlignmentY,
+                Transform,
+                RelativeTransform,
+                out brush);
+        }
     }
 
-    private sealed class FakeVisualBrush
+    private sealed class FakeVisualBrush : IPortableTileBrushSource
     {
         public FakeVisualBrush(object? visual)
         {
@@ -3682,6 +3897,25 @@ public sealed class WpfReflectionResourceResolverTests
         public string AlignmentX { get; init; } = "Center";
 
         public string AlignmentY { get; init; } = "Center";
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            return TryCreatePortableTileBrush(
+                PortableTileBrushKind.Visual,
+                Visual,
+                Opacity,
+                Viewport,
+                Viewbox,
+                ViewportUnits,
+                ViewboxUnits,
+                TileMode,
+                Stretch,
+                AlignmentX,
+                AlignmentY,
+                Transform,
+                RelativeTransform,
+                out brush);
+        }
     }
 
     private sealed class FakeGradientStopCollection

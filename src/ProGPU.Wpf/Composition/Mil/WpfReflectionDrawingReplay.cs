@@ -217,22 +217,6 @@ internal static class WpfReflectionDrawingReplay
             return TryReplayPortableTileBrushFill(portableSource, geometry, sink, imageSourceAdapter, out status);
         }
 
-        if (TryReplayImageBrushFill(brush, geometry, sink, imageSourceAdapter))
-        {
-            status = WpfDrawingReplayStatus.Applied;
-            return true;
-        }
-
-        if (TryReplayDrawingBrushFill(brush, geometry, sink, imageSourceAdapter, out status))
-        {
-            return true;
-        }
-
-        if (TryReplayVisualBrushFill(brush, geometry, sink, imageSourceAdapter, out status))
-        {
-            return true;
-        }
-
         status = WpfDrawingReplayStatus.Skipped;
         return false;
     }
@@ -484,299 +468,6 @@ internal static class WpfReflectionDrawingReplay
         if (brush.Opacity != 1)
         {
             sink.PushOpacity(Math.Clamp(brush.Opacity, 0, 1));
-            popCount++;
-        }
-
-        if (relativeTransform != null)
-        {
-            WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform);
-            popCount++;
-        }
-
-        if (brushTransform != null)
-        {
-            WpfPortableCommandSinkBridge.PushTransform(sink, brushTransform);
-            popCount++;
-        }
-
-        var appliedAny = false;
-        var unsupportedAny = false;
-        foreach (var tile in tileBounds)
-        {
-            if (!TryGetStretchedTile(tile, sourceBounds, stretch, alignmentX, alignmentY, out var stretchedTile, out var needsTileClip)
-                || !TryCreateBoundsMappingTransform(sourceBounds, stretchedTile, tileMode, out var transform))
-            {
-                continue;
-            }
-
-            var tilePopCount = 0;
-            if (needsTileClip)
-            {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(tile.Bounds));
-                tilePopCount++;
-            }
-
-            WpfPortableCommandSinkBridge.PushTransform(sink, transform);
-            tilePopCount++;
-
-            if (hasSourceClip)
-            {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(sourceBounds));
-                tilePopCount++;
-            }
-
-            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(
-                visualValue,
-                sink,
-                resources: null,
-                imageSourceAdapter: CreateImageSourceAdapter(imageSourceAdapter));
-            var tileStatus = ToDrawingReplayStatus(result);
-            appliedAny |= tileStatus == WpfDrawingReplayStatus.Applied
-                || tileStatus == WpfDrawingReplayStatus.PartiallyApplied;
-            unsupportedAny |= tileStatus == WpfDrawingReplayStatus.Unsupported
-                || tileStatus == WpfDrawingReplayStatus.PartiallyApplied;
-
-            for (var i = 0; i < tilePopCount; i++)
-            {
-                sink.Pop();
-            }
-        }
-
-        status = appliedAny
-            ? unsupportedAny ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
-            : unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
-
-        for (var i = 0; i < popCount; i++)
-        {
-            sink.Pop();
-        }
-
-        return status == WpfDrawingReplayStatus.Applied
-            || status == WpfDrawingReplayStatus.PartiallyApplied;
-    }
-
-    internal static bool TryReplayImageBrushFill(
-        object brush,
-        MediaGeometry geometry,
-        IWpfCompositionCommandSink sink,
-        Func<object?, MediaImageSource?>? imageSourceAdapter)
-    {
-        if (!TypeNameEndsWith(brush, "ImageBrush"))
-        {
-            return false;
-        }
-
-        if (!TryGetOptionalBrushTransform(brush, "Transform", out var brushTransform)
-            || !TryGetSupportedTileMode(brush, out var tileMode)
-            || !TryGetSupportedStretch(brush, out var stretch)
-            || !TryGetTileBrushAlignment(brush, out var alignmentX, out var alignmentY)
-            || !IsUsableRect(geometry.Bounds, out var geometryBounds)
-            || !TryGetOptionalRelativeBrushTransform(brush, geometryBounds, out var relativeTransform)
-            || !TryGetPropertyValue(brush, "ImageSource", out var imageValue)
-            || ResolveImageSource(imageValue, imageSourceAdapter) is not { } imageSource
-            || !TryGetTileBrushDestinationBounds(brush, geometryBounds, out var imageBounds)
-            || !TryGetImageBrushSourceRect(brush, imageSource, out var sourceRect)
-            || !TryGetImageStretchSourceBounds(stretch, sourceRect, imageSource, out var imageStretchSourceBounds)
-            || !TryGetTileBounds(imageBounds, geometryBounds, tileMode, out var tileBounds))
-        {
-            return false;
-        }
-
-        var popCount = 0;
-        sink.PushClip(geometry);
-        popCount++;
-
-        if (TryReadDoubleProperty(brush, "Opacity", out var opacity) && opacity != 1)
-        {
-            sink.PushOpacity(Math.Clamp(opacity, 0, 1));
-            popCount++;
-        }
-
-        if (relativeTransform != null)
-        {
-            WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform);
-            popCount++;
-        }
-
-        if (brushTransform != null)
-        {
-            WpfPortableCommandSinkBridge.PushTransform(sink, brushTransform);
-            popCount++;
-        }
-
-        foreach (var tile in tileBounds)
-        {
-            if (!TryGetStretchedTile(tile, imageStretchSourceBounds, stretch, alignmentX, alignmentY, out var stretchedTile, out var needsTileClip))
-            {
-                continue;
-            }
-
-            var tilePopCount = 0;
-            if (needsTileClip)
-            {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(tile.Bounds));
-                tilePopCount++;
-            }
-
-            if (TryCreateTileFlipTransform(stretchedTile, tileMode, out var tileTransform))
-            {
-                WpfPortableCommandSinkBridge.PushTransform(sink, tileTransform);
-                tilePopCount++;
-            }
-
-            if (sourceRect.HasValue)
-            {
-                sink.DrawImage(imageSource, stretchedTile.Bounds, sourceRect.Value);
-            }
-            else
-            {
-                sink.DrawImage(imageSource, stretchedTile.Bounds);
-            }
-
-            for (var i = 0; i < tilePopCount; i++)
-            {
-                sink.Pop();
-            }
-        }
-
-        for (var i = 0; i < popCount; i++)
-        {
-            sink.Pop();
-        }
-
-        return true;
-    }
-
-    private static bool TryReplayDrawingBrushFill(
-        object brush,
-        MediaGeometry geometry,
-        IWpfCompositionCommandSink sink,
-        Func<object?, MediaImageSource?>? imageSourceAdapter,
-        out WpfDrawingReplayStatus status)
-    {
-        status = WpfDrawingReplayStatus.Skipped;
-        if (!TypeNameEndsWith(brush, "DrawingBrush")
-            || !TryGetOptionalBrushTransform(brush, "Transform", out var brushTransform)
-            || !TryGetSupportedTileMode(brush, out var tileMode)
-            || !TryGetSupportedStretch(brush, out var stretch)
-            || !TryGetTileBrushAlignment(brush, out var alignmentX, out var alignmentY)
-            || !TryGetPropertyValue(brush, "Drawing", out var drawingValue)
-            || drawingValue == null
-            || !IsUsableRect(geometry.Bounds, out var geometryBounds)
-            || !TryGetOptionalRelativeBrushTransform(brush, geometryBounds, out var relativeTransform)
-            || !TryGetDrawingBounds(drawingValue, imageSourceAdapter, out var drawingBounds)
-            || !TryGetTileBrushDestinationBounds(brush, geometryBounds, out var destinationBounds)
-            || !TryGetTileBrushSourceBounds(brush, drawingBounds, out var sourceBounds, out var hasSourceClip)
-            || !TryGetTileBounds(destinationBounds, geometryBounds, tileMode, out var tileBounds))
-        {
-            return false;
-        }
-
-        var popCount = 0;
-        sink.PushClip(geometry);
-        popCount++;
-
-        if (TryReadDoubleProperty(brush, "Opacity", out var opacity) && opacity != 1)
-        {
-            sink.PushOpacity(Math.Clamp(opacity, 0, 1));
-            popCount++;
-        }
-
-        if (relativeTransform != null)
-        {
-            WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform);
-            popCount++;
-        }
-
-        if (brushTransform != null)
-        {
-            WpfPortableCommandSinkBridge.PushTransform(sink, brushTransform);
-            popCount++;
-        }
-
-        var appliedAny = false;
-        var unsupportedAny = false;
-        foreach (var tile in tileBounds)
-        {
-            if (!TryGetStretchedTile(tile, sourceBounds, stretch, alignmentX, alignmentY, out var stretchedTile, out var needsTileClip)
-                || !TryCreateBoundsMappingTransform(sourceBounds, stretchedTile, tileMode, out var transform))
-            {
-                continue;
-            }
-
-            var tilePopCount = 0;
-            if (needsTileClip)
-            {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(tile.Bounds));
-                tilePopCount++;
-            }
-
-            WpfPortableCommandSinkBridge.PushTransform(sink, transform);
-            tilePopCount++;
-
-            if (hasSourceClip)
-            {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(sourceBounds));
-                tilePopCount++;
-            }
-
-            var tileStatus = Replay(drawingValue, sink, imageSourceAdapter);
-            appliedAny |= tileStatus == WpfDrawingReplayStatus.Applied
-                || tileStatus == WpfDrawingReplayStatus.PartiallyApplied;
-            unsupportedAny |= tileStatus == WpfDrawingReplayStatus.Unsupported
-                || tileStatus == WpfDrawingReplayStatus.PartiallyApplied;
-
-            for (var i = 0; i < tilePopCount; i++)
-            {
-                sink.Pop();
-            }
-        }
-
-        status = appliedAny
-            ? unsupportedAny ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
-            : unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
-
-        for (var i = 0; i < popCount; i++)
-        {
-            sink.Pop();
-        }
-
-        return status == WpfDrawingReplayStatus.Applied
-            || status == WpfDrawingReplayStatus.PartiallyApplied;
-    }
-
-    private static bool TryReplayVisualBrushFill(
-        object brush,
-        MediaGeometry geometry,
-        IWpfCompositionCommandSink sink,
-        Func<object?, MediaImageSource?>? imageSourceAdapter,
-        out WpfDrawingReplayStatus status)
-    {
-        status = WpfDrawingReplayStatus.Skipped;
-        if (!TypeNameEndsWith(brush, "VisualBrush")
-            || !TryGetOptionalBrushTransform(brush, "Transform", out var brushTransform)
-            || !TryGetSupportedTileMode(brush, out var tileMode)
-            || !TryGetSupportedStretch(brush, out var stretch)
-            || !TryGetTileBrushAlignment(brush, out var alignmentX, out var alignmentY)
-            || !TryGetPropertyValue(brush, "Visual", out var visualValue)
-            || visualValue == null
-            || !IsUsableRect(geometry.Bounds, out var geometryBounds)
-            || !TryGetOptionalRelativeBrushTransform(brush, geometryBounds, out var relativeTransform)
-            || !TryGetVisualBounds(visualValue, out var visualBounds)
-            || !TryGetTileBrushDestinationBounds(brush, geometryBounds, out var destinationBounds)
-            || !TryGetTileBrushSourceBounds(brush, visualBounds, out var sourceBounds, out var hasSourceClip)
-            || !TryGetTileBounds(destinationBounds, geometryBounds, tileMode, out var tileBounds))
-        {
-            return false;
-        }
-
-        var popCount = 0;
-        sink.PushClip(geometry);
-        popCount++;
-
-        if (TryReadDoubleProperty(brush, "Opacity", out var opacity) && opacity != 1)
-        {
-            sink.PushOpacity(Math.Clamp(opacity, 0, 1));
             popCount++;
         }
 
@@ -1128,76 +819,6 @@ internal static class WpfReflectionDrawingReplay
     }
 
     private static bool TryGetOptionalBrushTransform(
-        object brush,
-        string propertyName,
-        out MediaTransform? transform)
-    {
-        transform = null;
-        if (!TryGetPropertyValue(brush, propertyName, out var transformValue) || transformValue == null)
-        {
-            return true;
-        }
-
-        if (WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out var matrix))
-        {
-            if (WpfReflectionResourceResolver.IsIdentityMatrix(matrix))
-            {
-                return true;
-            }
-
-            return TryCreateMatrixTransform(matrix, out transform);
-        }
-
-        transform = WpfReflectionResourceResolver.AdaptTransform(transformValue);
-        if (transform == null)
-        {
-            return false;
-        }
-
-        if (transform.Value.IsIdentity)
-        {
-            transform = null;
-        }
-
-        return true;
-    }
-
-    private static bool TryGetOptionalRelativeBrushTransform(
-        object brush,
-        Rect fillBounds,
-        out MediaTransform? transform)
-    {
-        transform = null;
-        if (!TryGetPropertyValue(brush, "RelativeTransform", out var transformValue) || transformValue == null)
-        {
-            return true;
-        }
-
-        if (WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out var relativeMatrix))
-        {
-            if (WpfReflectionResourceResolver.IsIdentityMatrix(relativeMatrix))
-            {
-                return true;
-            }
-
-            return TryCreateRelativeBoundsTransform(relativeMatrix, fillBounds, out transform);
-        }
-
-        var relativeTransform = WpfReflectionResourceResolver.AdaptTransform(transformValue);
-        if (relativeTransform == null)
-        {
-            return false;
-        }
-
-        if (relativeTransform.Value.IsIdentity)
-        {
-            return true;
-        }
-
-        return TryCreateRelativeBoundsTransform(relativeTransform.Value, fillBounds, out transform);
-    }
-
-    private static bool TryGetOptionalBrushTransform(
         PortableTileBrush brush,
         out MediaTransform? transform)
     {
@@ -1296,47 +917,6 @@ internal static class WpfReflectionDrawingReplay
         return true;
     }
 
-    private static bool TryGetSupportedTileMode(object brush, out SupportedTileMode tileMode)
-    {
-        tileMode = SupportedTileMode.None;
-        if (!TryGetPropertyValue(brush, "TileMode", out var value) || value == null)
-        {
-            return true;
-        }
-
-        var name = value.ToString();
-        if (string.Equals(name, "None", StringComparison.Ordinal))
-        {
-            return true;
-        }
-
-        if (string.Equals(name, "Tile", StringComparison.Ordinal))
-        {
-            tileMode = SupportedTileMode.Tile;
-            return true;
-        }
-
-        if (string.Equals(name, "FlipX", StringComparison.Ordinal))
-        {
-            tileMode = SupportedTileMode.FlipX;
-            return true;
-        }
-
-        if (string.Equals(name, "FlipY", StringComparison.Ordinal))
-        {
-            tileMode = SupportedTileMode.FlipY;
-            return true;
-        }
-
-        if (string.Equals(name, "FlipXY", StringComparison.Ordinal))
-        {
-            tileMode = SupportedTileMode.FlipXY;
-            return true;
-        }
-
-        return false;
-    }
-
     private static bool TryGetSupportedTileMode(PortableTileBrush brush, out SupportedTileMode tileMode)
     {
         switch (brush.TileMode)
@@ -1362,41 +942,6 @@ internal static class WpfReflectionDrawingReplay
         }
     }
 
-    private static bool TryGetSupportedStretch(object brush, out SupportedStretch stretch)
-    {
-        stretch = SupportedStretch.Fill;
-        if (!TryGetPropertyValue(brush, "Stretch", out var value) || value == null)
-        {
-            return true;
-        }
-
-        var name = value.ToString();
-        if (string.Equals(name, "None", StringComparison.Ordinal))
-        {
-            stretch = SupportedStretch.None;
-            return true;
-        }
-
-        if (string.Equals(name, "Fill", StringComparison.Ordinal))
-        {
-            return true;
-        }
-
-        if (string.Equals(name, "Uniform", StringComparison.Ordinal))
-        {
-            stretch = SupportedStretch.Uniform;
-            return true;
-        }
-
-        if (string.Equals(name, "UniformToFill", StringComparison.Ordinal))
-        {
-            stretch = SupportedStretch.UniformToFill;
-            return true;
-        }
-
-        return false;
-    }
-
     private static bool TryGetSupportedStretch(PortableTileBrush brush, out SupportedStretch stretch)
     {
         switch (brush.Stretch)
@@ -1417,69 +962,6 @@ internal static class WpfReflectionDrawingReplay
                 stretch = SupportedStretch.Fill;
                 return false;
         }
-    }
-
-    private static bool EnumPropertyIsAbsentOrNamed(object instance, string propertyName, string supportedName)
-    {
-        if (!TryGetPropertyValue(instance, propertyName, out var value) || value == null)
-        {
-            return true;
-        }
-
-        return string.Equals(value.ToString(), supportedName, StringComparison.Ordinal);
-    }
-
-    private static bool TryGetTileBrushAlignment(
-        object brush,
-        out SupportedAlignmentX alignmentX,
-        out SupportedAlignmentY alignmentY)
-    {
-        alignmentX = SupportedAlignmentX.Center;
-        alignmentY = SupportedAlignmentY.Center;
-
-        if (TryGetPropertyValue(brush, "AlignmentX", out var alignmentXValue) && alignmentXValue != null)
-        {
-            var name = alignmentXValue.ToString();
-            if (string.Equals(name, "Left", StringComparison.Ordinal))
-            {
-                alignmentX = SupportedAlignmentX.Left;
-            }
-            else if (string.Equals(name, "Center", StringComparison.Ordinal))
-            {
-                alignmentX = SupportedAlignmentX.Center;
-            }
-            else if (string.Equals(name, "Right", StringComparison.Ordinal))
-            {
-                alignmentX = SupportedAlignmentX.Right;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        if (TryGetPropertyValue(brush, "AlignmentY", out var alignmentYValue) && alignmentYValue != null)
-        {
-            var name = alignmentYValue.ToString();
-            if (string.Equals(name, "Top", StringComparison.Ordinal))
-            {
-                alignmentY = SupportedAlignmentY.Top;
-            }
-            else if (string.Equals(name, "Center", StringComparison.Ordinal))
-            {
-                alignmentY = SupportedAlignmentY.Center;
-            }
-            else if (string.Equals(name, "Bottom", StringComparison.Ordinal))
-            {
-                alignmentY = SupportedAlignmentY.Bottom;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private static bool TryGetTileBrushAlignment(
@@ -1504,20 +986,6 @@ internal static class WpfReflectionDrawingReplay
         return true;
     }
 
-    private static bool TryGetTileBrushDestinationBounds(object brush, Rect fillBounds, out Rect destinationBounds)
-    {
-        destinationBounds = default;
-        var viewport = new Rect(0, 0, 1, 1);
-        if (!TryGetPropertyValue(brush, "Viewport", out var viewportValue) || viewportValue == null)
-        {
-            return TryGetViewportDestinationBounds(brush, fillBounds, viewport, out destinationBounds);
-        }
-
-        return TryReadRect(viewportValue, out viewport)
-            && IsUsableRect(viewport, out viewport)
-            && TryGetViewportDestinationBounds(brush, fillBounds, viewport, out destinationBounds);
-    }
-
     private static bool TryGetTileBrushDestinationBounds(
         PortableTileBrush brush,
         Rect fillBounds,
@@ -1527,35 +995,6 @@ internal static class WpfReflectionDrawingReplay
         var viewport = ToRect(brush.Viewport);
         return IsUsableRect(viewport, out viewport)
             && TryGetViewportDestinationBounds(brush, fillBounds, viewport, out destinationBounds);
-    }
-
-    private static bool TryGetViewportDestinationBounds(
-        object brush,
-        Rect fillBounds,
-        Rect viewport,
-        out Rect destinationBounds)
-    {
-        destinationBounds = default;
-
-        if (!TryGetPropertyValue(brush, "ViewportUnits", out var viewportUnitsValue)
-            || viewportUnitsValue == null
-            || string.Equals(viewportUnitsValue.ToString(), "RelativeToBoundingBox", StringComparison.Ordinal))
-        {
-            return IsUsableRect(
-                new Rect(
-                    fillBounds.X + fillBounds.Width * viewport.X,
-                    fillBounds.Y + fillBounds.Height * viewport.Y,
-                    fillBounds.Width * viewport.Width,
-                    fillBounds.Height * viewport.Height),
-                out destinationBounds);
-        }
-
-        if (string.Equals(viewportUnitsValue.ToString(), "Absolute", StringComparison.Ordinal))
-        {
-            return IsUsableRect(viewport, out destinationBounds);
-        }
-
-        return false;
     }
 
     private static bool TryGetViewportDestinationBounds(
@@ -1724,62 +1163,6 @@ internal static class WpfReflectionDrawingReplay
     }
 
     private static bool TryGetImageBrushSourceRect(
-        object brush,
-        MediaImageSource imageSource,
-        out Rect? sourceRect)
-    {
-        sourceRect = null;
-        if (!TryGetPropertyValue(brush, "Viewbox", out var viewboxValue) || viewboxValue == null)
-        {
-            if (EnumPropertyIsAbsentOrNamed(brush, "ViewboxUnits", "RelativeToBoundingBox"))
-            {
-                return true;
-            }
-
-            if (EnumPropertyIsAbsentOrNamed(brush, "ViewboxUnits", "Absolute"))
-            {
-                sourceRect = new Rect(0, 0, 1, 1);
-                return true;
-            }
-
-            return false;
-        }
-
-        if (!TryReadRect(viewboxValue, out var viewbox)
-            || !IsUsableRect(viewbox, out viewbox))
-        {
-            return false;
-        }
-
-        if (!TryGetPropertyValue(brush, "ViewboxUnits", out var viewboxUnitsValue)
-            || viewboxUnitsValue == null
-            || string.Equals(viewboxUnitsValue.ToString(), "RelativeToBoundingBox", StringComparison.Ordinal))
-        {
-            if (IsFullRelativeRect(viewbox))
-            {
-                return true;
-            }
-
-            if (!TryGetImagePixelBounds(imageSource, out var imageBounds))
-            {
-                return false;
-            }
-
-            return IsUsableRect(
-                    new Rect(
-                        imageBounds.X + imageBounds.Width * viewbox.X,
-                        imageBounds.Y + imageBounds.Height * viewbox.Y,
-                        imageBounds.Width * viewbox.Width,
-                        imageBounds.Height * viewbox.Height),
-                    out var relativeSourceRect)
-                && AssignSourceRect(relativeSourceRect, out sourceRect);
-        }
-
-        return string.Equals(viewboxUnitsValue.ToString(), "Absolute", StringComparison.Ordinal)
-            && AssignSourceRect(viewbox, out sourceRect);
-    }
-
-    private static bool TryGetImageBrushSourceRect(
         PortableTileBrush brush,
         MediaImageSource imageSource,
         out Rect? sourceRect)
@@ -1837,64 +1220,6 @@ internal static class WpfReflectionDrawingReplay
         }
 
         bounds = default;
-        return false;
-    }
-
-    private static bool TryGetTileBrushSourceBounds(
-        object brush,
-        Rect contentBounds,
-        out Rect sourceBounds,
-        out bool hasSourceClip)
-    {
-        sourceBounds = contentBounds;
-        hasSourceClip = false;
-
-        if (!TryGetPropertyValue(brush, "Viewbox", out var viewboxValue) || viewboxValue == null)
-        {
-            if (EnumPropertyIsAbsentOrNamed(brush, "ViewboxUnits", "RelativeToBoundingBox"))
-            {
-                return true;
-            }
-
-            sourceBounds = new Rect(0, 0, 1, 1);
-            hasSourceClip = true;
-            return EnumPropertyIsAbsentOrNamed(brush, "ViewboxUnits", "Absolute")
-                && IsUsableRect(sourceBounds, out sourceBounds);
-        }
-
-        if (!TryReadRect(viewboxValue, out var viewbox)
-            || !IsUsableRect(viewbox, out viewbox))
-        {
-            return false;
-        }
-
-        if (!TryGetPropertyValue(brush, "ViewboxUnits", out var viewboxUnitsValue)
-            || viewboxUnitsValue == null
-            || string.Equals(viewboxUnitsValue.ToString(), "RelativeToBoundingBox", StringComparison.Ordinal))
-        {
-            if (IsFullRelativeRect(viewbox))
-            {
-                return true;
-            }
-
-            sourceBounds = new Rect(
-                contentBounds.X + contentBounds.Width * viewbox.X,
-                contentBounds.Y + contentBounds.Height * viewbox.Y,
-                contentBounds.Width * viewbox.Width,
-                contentBounds.Height * viewbox.Height);
-            hasSourceClip = true;
-            return IsUsableRect(sourceBounds, out sourceBounds);
-        }
-
-        if (string.Equals(viewboxUnitsValue.ToString(), "Absolute", StringComparison.Ordinal))
-        {
-            sourceBounds = viewbox;
-            hasSourceClip = !RectNearlyEqual(sourceBounds, contentBounds);
-            return IsUsableRect(sourceBounds, out sourceBounds);
-        }
-
-        sourceBounds = default;
-        hasSourceClip = false;
         return false;
     }
 
@@ -3219,11 +2544,7 @@ internal static class WpfReflectionDrawingReplay
 
     internal static bool IsTileBrush(object? brush)
     {
-        return brush != null
-            && (brush is PortableTileBrushSource
-                || TypeNameEndsWith(brush, "ImageBrush")
-                || TypeNameEndsWith(brush, "DrawingBrush")
-                || TypeNameEndsWith(brush, "VisualBrush"));
+        return brush is PortableTileBrushSource;
     }
 
     private static bool TypeNameEndsWith(object resource, string typeName)

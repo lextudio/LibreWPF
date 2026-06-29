@@ -285,7 +285,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
         else
         {
-            RegisterRetainedVisualPropertyDependency(visual, "Transform", sink);
             RegisterRetainedVisualPropertyDependency(visual, "Effect", sink);
             RegisterRetainedVisualPropertyDependency(visual, "BitmapEffect", sink);
             RegisterRetainedVisualPropertyDependency(visual, "BitmapEffectInput", sink);
@@ -1344,17 +1343,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasTransform && transform != null;
         }
 
-        if (TryGetPropertyValue(visual, "Transform", out transform) && transform != null)
-        {
-            return true;
-        }
-
-        if (TryGetPropertyValue(visual, "VisualTransform", out transform) && transform != null)
-        {
-            return true;
-        }
-
-        return TryGetFieldValue(visual, "_transform", out transform) && transform != null;
+        transform = null;
+        return false;
     }
 
     private static bool TryReadOpacity(object visual, out double opacity)

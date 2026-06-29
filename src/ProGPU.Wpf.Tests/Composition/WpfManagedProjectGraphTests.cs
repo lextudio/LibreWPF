@@ -5422,6 +5422,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("if (visualState.HasScrollableAreaClip)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("if (hasPortableVisualState && visualState.HasClip)", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"Transform\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualTransform\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetFieldValue(visual, \"_transform\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"Transform\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"ScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
@@ -5442,7 +5446,6 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetVisualBitmapScalingMode(visual, out var bitmapScalingMode)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryGetVisualTextRenderingMode(visual, out var textRenderingMode)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("visualState.HasSnappingGuidelinesX || visualState.HasSnappingGuidelinesY", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("RegisterRetainedVisualPropertyDependency(visual, \"Transform\", sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualStateSource.TryGetPortableVisualState(out PortableVisualState state)", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualOffset", visualSource, StringComparison.Ordinal);

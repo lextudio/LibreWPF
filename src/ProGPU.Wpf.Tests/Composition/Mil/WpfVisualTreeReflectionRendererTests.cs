@@ -1065,9 +1065,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesWpfVisualTransformAroundContent()
     {
-        var root = new FakeVisualTransformDrawingVisual(
+        var root = new FakePortableVisualStateDrawingVisual(
             CreateRenderData(Brushes.Green),
-            new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)));
+            new PortableVisualState
+            {
+                HasTransform = true,
+                Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4))
+            });
         var sink = new TestSink();
 
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
@@ -2477,25 +2481,6 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
 
         private WpfVector VisualOffset { get; }
-
-        public bool TryGetPortableDrawingContent(out object? content)
-        {
-            content = _content;
-            return true;
-        }
-    }
-
-    private sealed class FakeVisualTransformDrawingVisual : PortableDrawingContentSource
-    {
-        private readonly object? _content;
-
-        public FakeVisualTransformDrawingVisual(object? content, object? visualTransform)
-        {
-            _content = content;
-            VisualTransform = visualTransform;
-        }
-
-        private object? VisualTransform { get; }
 
         public bool TryGetPortableDrawingContent(out object? content)
         {

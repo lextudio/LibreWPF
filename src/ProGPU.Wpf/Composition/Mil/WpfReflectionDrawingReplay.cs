@@ -208,9 +208,9 @@ internal static class WpfReflectionDrawingReplay
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out WpfDrawingReplayStatus status)
     {
-        if (TryReplayPortableTileBrushFill(brush, geometry, sink, imageSourceAdapter, out status))
+        if (brush is PortableTileBrushSource portableSource)
         {
-            return true;
+            return TryReplayPortableTileBrushFill(portableSource, geometry, sink, imageSourceAdapter, out status);
         }
 
         if (TryReplayImageBrushFill(brush, geometry, sink, imageSourceAdapter))
@@ -234,15 +234,14 @@ internal static class WpfReflectionDrawingReplay
     }
 
     private static bool TryReplayPortableTileBrushFill(
-        object brush,
+        PortableTileBrushSource portableSource,
         MediaGeometry geometry,
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out WpfDrawingReplayStatus status)
     {
         status = WpfDrawingReplayStatus.Skipped;
-        if (brush is not PortableTileBrushSource portableSource
-            || !portableSource.TryGetPortableTileBrush(out var portableBrush))
+        if (!portableSource.TryGetPortableTileBrush(out var portableBrush))
         {
             return false;
         }

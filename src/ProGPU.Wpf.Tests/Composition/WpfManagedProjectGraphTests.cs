@@ -6041,10 +6041,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TileBrush : System.Windows.Media.Brush, ProGPU.Wpf.Interop.IPortableTileBrushSource", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("bool ProGPU.Wpf.Interop.IPortableTileBrushSource.TryGetPortableTileBrush", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;", drawingReplay, StringComparison.Ordinal);
-        Assert.Contains("brush is PortableTileBrushSource", drawingReplay, StringComparison.Ordinal);
-        Assert.Contains("TryReplayPortableTileBrushFill(brush, geometry, sink, imageSourceAdapter, out status)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("brush is PortableTileBrushSource portableSource", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("return TryReplayPortableTileBrushFill(portableSource, geometry, sink, imageSourceAdapter, out status)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("PortableTileBrushSourceAbsenceDoesNotFallBackToReflectedImageBrushShape", resolverTests, StringComparison.Ordinal);
         Assert.True(
-            drawingReplay.IndexOf("TryReplayPortableTileBrushFill(brush, geometry, sink, imageSourceAdapter, out status)", StringComparison.Ordinal)
+            drawingReplay.IndexOf("return TryReplayPortableTileBrushFill(portableSource, geometry, sink, imageSourceAdapter, out status)", StringComparison.Ordinal)
                 < drawingReplay.IndexOf("TryReplayImageBrushFill(brush, geometry, sink, imageSourceAdapter)", StringComparison.Ordinal),
             "Typed portable tile brushes must be tried before reflected ImageBrush/DrawingBrush/VisualBrush shape probing.");
         Assert.Contains("using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;", samplerCache, StringComparison.Ordinal);

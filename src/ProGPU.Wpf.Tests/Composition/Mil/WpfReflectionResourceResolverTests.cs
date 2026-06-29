@@ -789,6 +789,25 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void PortableTileBrushSourceAbsenceDoesNotFallBackToReflectedImageBrushShape()
+    {
+        var brush = new FakeUnavailablePortableImageBrush(new FakeBitmapSource());
+        var sink = new TestSink();
+
+        var replayed = WpfReflectionDrawingReplay.TryReplayTileBrushFill(
+            brush,
+            new RectangleGeometry(new Rect(0, 0, 10, 10)),
+            sink,
+            imageSourceAdapter: _ => new FakeImageSource(),
+            out var status);
+
+        Assert.False(replayed);
+        Assert.Equal(WpfDrawingReplayStatus.Skipped, status);
+        Assert.Empty(sink.Operations);
+        Assert.Equal(0, brush.ReflectedPropertyProbeCount);
+    }
+
+    [Fact]
     public void DecodeDrawDrawingReplaysWpfShapedImageBrushWithAbsoluteViewport()
     {
         var imageSource = new FakeBitmapSource();
@@ -3281,6 +3300,54 @@ public sealed class WpfReflectionResourceResolverTests
         {
             brush = _brush;
             return true;
+        }
+    }
+
+    private sealed class FakeUnavailablePortableImageBrush : IPortableTileBrushSource
+    {
+        private readonly object? _imageSource;
+
+        public FakeUnavailablePortableImageBrush(object? imageSource)
+        {
+            _imageSource = imageSource;
+        }
+
+        public int ReflectedPropertyProbeCount { get; private set; }
+
+        public object? ImageSource => Probe(_imageSource);
+
+        public FakeRect? Viewport => Probe<FakeRect?>(null);
+
+        public FakeRect? Viewbox => Probe<FakeRect?>(null);
+
+        public string TileMode => Probe("None");
+
+        public string Stretch => Probe("Fill");
+
+        public string ViewportUnits => Probe("RelativeToBoundingBox");
+
+        public string ViewboxUnits => Probe("RelativeToBoundingBox");
+
+        public double Opacity => Probe(1.0);
+
+        public object? Transform => Probe<object?>(null);
+
+        public object? RelativeTransform => Probe<object?>(null);
+
+        public string AlignmentX => Probe("Center");
+
+        public string AlignmentY => Probe("Center");
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            brush = null!;
+            return false;
+        }
+
+        private T Probe<T>(T value)
+        {
+            ReflectedPropertyProbeCount++;
+            return value;
         }
     }
 

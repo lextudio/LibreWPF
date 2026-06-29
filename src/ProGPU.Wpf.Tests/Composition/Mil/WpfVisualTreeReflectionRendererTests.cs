@@ -56,6 +56,8 @@ using PortableTransformMatrixSource = ProGPU.Wpf.Interop.IPortableTransformMatri
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
+using PortableVisualBounds = ProGPU.Wpf.Interop.PortableVisualBounds;
+using PortableVisualBoundsSource = ProGPU.Wpf.Interop.IPortableVisualBoundsSource;
 using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
 using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
 using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
@@ -928,7 +930,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         Assert.Contains(renderData, sink.VisualDependencies);
         Assert.Contains(nestedDrawing, sink.VisualDependencies);
-        Assert.Contains(nestedBrush, sink.VisualDependencies);
+        Assert.DoesNotContain(nestedBrush, sink.VisualDependencies);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
@@ -943,7 +945,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Contains(shaderEffect, sink.VisualDependencies);
-        Assert.Contains(shaderEffect.PixelShader, sink.VisualDependencies);
+        Assert.Contains(sink.VisualDependencies, dependency => dependency is PortablePixelShader);
+        Assert.DoesNotContain(shaderEffect.PixelShader, sink.VisualDependencies);
         Assert.Equal(1, result.VisualCount);
         Assert.Equal(1, result.UnsupportedVisualStateCount);
     }
@@ -2420,7 +2423,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(height, bounds.Height);
     }
 
-    private class FakeVisual : PortableVisualChildrenSource
+    private class FakeVisual : PortableVisualChildrenSource, PortableVisualBoundsSource
     {
         public FakeVisualCollection Children { get; } = new();
 
@@ -2450,6 +2453,40 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             child = Children[index];
             return true;
+        }
+
+        public bool TryGetPortableVisualBounds(out PortableVisualBounds bounds)
+        {
+            if (TryReadBounds(out var portableBounds))
+            {
+                bounds = new PortableVisualBounds
+                {
+                    HasContentBounds = true,
+                    ContentBounds = portableBounds,
+                    HasDescendantBounds = true,
+                    DescendantBounds = portableBounds
+                };
+                return true;
+            }
+
+            bounds = null!;
+            return false;
+        }
+
+        private bool TryReadBounds(out PortableRect bounds)
+        {
+            switch (Bounds)
+            {
+                case FakeRect rect:
+                    bounds = new PortableRect(rect.X, rect.Y, rect.Width, rect.Height);
+                    return true;
+                case PortableRect rect:
+                    bounds = rect;
+                    return !rect.IsEmpty;
+                default:
+                    bounds = PortableRect.Empty;
+                    return false;
+            }
         }
     }
 

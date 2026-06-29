@@ -358,6 +358,10 @@ public sealed class WpfVisualTreeReflectionRenderer
 
             clipBounds = combinedClipBounds;
         }
+        else if (HasExplicitRetainedVisualClipState(visual))
+        {
+            return false;
+        }
 
         if (!clipBounds.HasValue && TryCreateImplicitRetainedVisualClip(visual, out var implicitClipBounds))
         {
@@ -1659,6 +1663,20 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         return true;
+    }
+
+    private static bool HasExplicitRetainedVisualClipState(object visual)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState)
+            && visualState.HasClip
+            && visualState.Clip != null)
+        {
+            return true;
+        }
+
+        return TryGetPortableVisualLayoutState(visual, out var layoutState)
+            && layoutState.HasLayoutClip
+            && layoutState.LayoutClip != null;
     }
 
     private static bool TryGetVisualClip(object visual, out object? clip)

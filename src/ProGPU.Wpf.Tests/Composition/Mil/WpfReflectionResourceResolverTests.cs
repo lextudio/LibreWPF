@@ -14,6 +14,7 @@ using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
 using ProGpuBlurEffect = ProGPU.Scene.BlurEffect;
@@ -4651,14 +4652,20 @@ public sealed class WpfReflectionResourceResolverTests
 
     private sealed class FakeImageSource : MediaImageSource
     {
-        public int PixelWidth { get; init; } = 200;
+    }
 
-        public int PixelHeight { get; init; } = 100;
+    private sealed class FakeAdaptedBitmapSource : MediaBitmapSource
+    {
+        public override int PixelWidth => 200;
+
+        public override int PixelHeight => 100;
+
+        public override global::ProGPU.Backend.GpuTexture GpuTexture => null!;
     }
 
     private sealed class FakeImageSourceAdapter : IWpfImageSourceAdapter
     {
-        public MediaImageSource AdaptedImageSource { get; } = new FakeImageSource();
+        public MediaImageSource AdaptedImageSource { get; } = new FakeAdaptedBitmapSource();
 
         public object? LastImageSource { get; private set; }
 

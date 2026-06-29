@@ -1210,15 +1210,6 @@ internal static class WpfReflectionDrawingReplay
             return true;
         }
 
-        if (TryReadIntProperty(imageSource, "PixelWidth", out var width)
-            && TryReadIntProperty(imageSource, "PixelHeight", out var height)
-            && width > 0
-            && height > 0)
-        {
-            bounds = new Rect(0, 0, width, height);
-            return true;
-        }
-
         bounds = default;
         return false;
     }

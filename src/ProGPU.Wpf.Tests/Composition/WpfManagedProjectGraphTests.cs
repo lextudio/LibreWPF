@@ -6274,6 +6274,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryGetPropertyValue(brush, \"Visual\"", drawingReplay, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(brush, \"Viewbox\"", drawingReplay, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(brush, \"Viewport\"", drawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadIntProperty(imageSource, \"PixelWidth\"", drawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadIntProperty(imageSource, \"PixelHeight\"", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("return brush is PortableTileBrushSource;", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;", samplerCache, StringComparison.Ordinal);
         Assert.Contains("brush is PortableTileBrushSource portableSource", samplerCache, StringComparison.Ordinal);

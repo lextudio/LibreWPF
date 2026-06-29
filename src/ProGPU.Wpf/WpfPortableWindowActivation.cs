@@ -8,7 +8,6 @@ namespace System.Windows.Media.ProGPU;
 
 public sealed class WpfPortableWindowActivation : IDisposable
 {
-    private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
     private static readonly TimeSpan ApplicationIdleFlushTimeout = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan UpdateTickFlushTimeout = TimeSpan.FromMilliseconds(8);
     private bool _isDisposed;
@@ -870,98 +869,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return true;
         }
 
-        return TryProcessPortableDragDropByReflection(window, e);
-    }
-
-    private static bool TryProcessPortableDragDropByReflection(object window, WpfDragDropEventArgs e)
-    {
-        Type? serviceType = FindPortableWindowActivationServiceType(window);
-        if (serviceType == null)
-        {
-            return false;
-        }
-
-        foreach (var method in serviceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-        {
-            if (!string.Equals(method.Name, "ProcessDragDropEvent", StringComparison.Ordinal) ||
-                method.ReturnType != typeof(int))
-            {
-                continue;
-            }
-
-            var parameters = method.GetParameters();
-            if (parameters.Length != 8 ||
-                !parameters[0].ParameterType.IsAssignableFrom(window.GetType()) ||
-                parameters[1].ParameterType != typeof(int) ||
-                parameters[2].ParameterType != typeof(string[]) ||
-                parameters[3].ParameterType != typeof(string) ||
-                parameters[4].ParameterType != typeof(double) ||
-                parameters[5].ParameterType != typeof(double) ||
-                parameters[6].ParameterType != typeof(int) ||
-                parameters[7].ParameterType != typeof(int))
-            {
-                continue;
-            }
-
-            var acceptedEffect = (int)method.Invoke(
-                obj: null,
-                parameters: new object?[]
-                {
-                    window,
-                    (int)e.Kind,
-                    e.Data.Files.ToArray(),
-                    e.Data.Text,
-                    e.X,
-                    e.Y,
-                    (int)e.AllowedEffects,
-                    (int)e.AcceptedEffect
-                })!;
-            e.AcceptedEffect = (WpfDragDropEffects)acceptedEffect;
-            return true;
-        }
-
-        if (e.Kind != WpfDragDropEventKind.Drop)
-        {
-            return false;
-        }
-
-        foreach (var method in serviceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-        {
-            if (!string.Equals(method.Name, "ProcessDragDrop", StringComparison.Ordinal) ||
-                method.ReturnType != typeof(int))
-            {
-                continue;
-            }
-
-            var parameters = method.GetParameters();
-            if (parameters.Length != 7 ||
-                !parameters[0].ParameterType.IsAssignableFrom(window.GetType()) ||
-                parameters[1].ParameterType != typeof(string[]) ||
-                parameters[2].ParameterType != typeof(string) ||
-                parameters[3].ParameterType != typeof(double) ||
-                parameters[4].ParameterType != typeof(double) ||
-                parameters[5].ParameterType != typeof(int) ||
-                parameters[6].ParameterType != typeof(int))
-            {
-                continue;
-            }
-
-            var acceptedEffect = (int)method.Invoke(
-                obj: null,
-                parameters: new object?[]
-                {
-                    window,
-                    e.Data.Files.ToArray(),
-                    e.Data.Text,
-                    e.X,
-                    e.Y,
-                    (int)e.AllowedEffects,
-                    (int)e.AcceptedEffect
-                })!;
-            e.AcceptedEffect = (WpfDragDropEffects)acceptedEffect;
-            return true;
-        }
-
         return false;
     }
 
@@ -1090,21 +997,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return MapCloseResult(typedCloseResult);
         }
 
-        var closeMethod = window.GetType().GetMethod(
-            "Close",
-            BindingFlags.Instance | BindingFlags.Public,
-            binder: null,
-            types: Type.EmptyTypes,
-            modifiers: null);
-        if (closeMethod == null)
-        {
-            return WpfWindowCloseResult.NotInvoked;
-        }
-
-        closeMethod.Invoke(window, Array.Empty<object>());
-        return TryReadWindowClosedState(window, out bool isClosed) && !isClosed
-            ? WpfWindowCloseResult.Canceled
-            : WpfWindowCloseResult.Closed;
+        return WpfWindowCloseResult.NotInvoked;
     }
 
     private static WpfWindowCloseResult MapCloseResult(PortableWindowCloseResult result)
@@ -1124,19 +1017,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Canceled
     }
 
-    private static bool TryReadWindowClosedState(object window, out bool isClosed)
-    {
-        if (TryReadBooleanProperty(window, "IsClosed", out isClosed) ||
-            TryReadBooleanProperty(window, "IsDisposed", out isClosed) ||
-            TryReadBooleanField(window, "_disposed", out isClosed))
-        {
-            return true;
-        }
-
-        isClosed = false;
-        return false;
-    }
-
     private static bool TrySetWindowActivationState(object window, bool isActive)
     {
         if (TryGetWindowActivationService(window, out var activationService) &&
@@ -1145,24 +1025,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return true;
         }
 
-        if (TryInvokePortableWindowActivationService(window, isActive))
-        {
-            return true;
-        }
-
-        var handleActivateMethod = window.GetType().GetMethod(
-            "HandleActivate",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: new[] { typeof(bool) },
-            modifiers: null);
-        if (handleActivateMethod == null)
-        {
-            return false;
-        }
-
-        handleActivateMethod.Invoke(window, new object[] { isActive });
-        return true;
+        return false;
     }
 
     private bool TryRegisterMediaContextRenderService(Assembly presentationCoreAssembly)
@@ -1234,78 +1097,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
             }
         }
 
-        Type? serviceType = FindPortableWindowActivationServiceType(window);
-        if (serviceType == null)
-        {
-            return false;
-        }
-
-        if (timeout.HasValue)
-        {
-            foreach (var method in serviceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-            {
-                if (!string.Equals(method.Name, "FlushDispatcherOperations", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                var parameters = method.GetParameters();
-                if (parameters.Length != 3 ||
-                    !parameters[0].ParameterType.IsAssignableFrom(window.GetType()) ||
-                    !parameters[1].ParameterType.IsEnum ||
-                    parameters[2].ParameterType != typeof(TimeSpan))
-                {
-                    continue;
-                }
-
-                if (!Enum.TryParse(parameters[1].ParameterType, markerPriorityName, ignoreCase: false, out object? markerPriority))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    object? result = method.Invoke(null, new object[] { window, markerPriority, timeout.Value });
-                    return result is not bool completed || completed;
-                }
-                catch (Exception ex) when (IsRecoverableDispatcherFlushException(ex))
-                {
-                    return false;
-                }
-            }
-        }
-
-        foreach (var method in serviceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-        {
-            if (!string.Equals(method.Name, "FlushDispatcherOperations", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var parameters = method.GetParameters();
-            if (parameters.Length != 2 ||
-                !parameters[0].ParameterType.IsAssignableFrom(window.GetType()) ||
-                !parameters[1].ParameterType.IsEnum)
-            {
-                continue;
-            }
-
-            if (!Enum.TryParse(parameters[1].ParameterType, markerPriorityName, ignoreCase: false, out object? markerPriority))
-            {
-                continue;
-            }
-
-            try
-            {
-                method.Invoke(null, new[] { window, markerPriority });
-                return true;
-            }
-            catch (Exception ex) when (IsRecoverableDispatcherFlushException(ex))
-            {
-                return false;
-            }
-        }
-
         return false;
     }
 
@@ -1327,60 +1118,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    private static bool TryInvokePortableWindowActivationService(object window, bool isActive)
-    {
-        Type? serviceType = FindPortableWindowActivationServiceType(window);
-        if (serviceType == null)
-        {
-            return false;
-        }
-
-        var setActivationStateMethod = serviceType.GetMethod(
-            "SetActivationState",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: new[] { window.GetType(), typeof(bool) },
-            modifiers: null);
-        setActivationStateMethod ??= serviceType
-            .GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-            .FirstOrDefault(method =>
-            {
-                if (!string.Equals(method.Name, "SetActivationState", StringComparison.Ordinal))
-                {
-                    return false;
-                }
-
-                var parameters = method.GetParameters();
-                return parameters.Length == 2 &&
-                    parameters[0].ParameterType.IsAssignableFrom(window.GetType()) &&
-                    parameters[1].ParameterType == typeof(bool);
-            });
-
-        if (setActivationStateMethod == null)
-        {
-            return false;
-        }
-
-        setActivationStateMethod.Invoke(null, new object[] { window, isActive });
-        return true;
-    }
-
-    private static Type? FindPortableWindowActivationServiceType(object window)
-    {
-        for (Type? currentType = window.GetType(); currentType != null; currentType = currentType.BaseType)
-        {
-            Type? serviceType = currentType.Assembly.GetType(
-                PortableWindowActivationServiceTypeName,
-                throwOnError: false);
-            if (serviceType != null)
-            {
-                return serviceType;
-            }
-        }
-
-        return null;
-    }
-
     private static bool IsCurrentApplicationMainWindow(object window)
     {
         if (TryGetWindowActivationService(window, out var activationService) &&
@@ -1389,34 +1126,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return isMainWindow;
         }
 
-        Type? applicationType = null;
-        for (Type? currentType = window.GetType(); currentType != null; currentType = currentType.BaseType)
-        {
-            applicationType = currentType.Assembly.GetType(
-                "System.Windows.Application",
-                throwOnError: false);
-            if (applicationType != null)
-            {
-                break;
-            }
-        }
-
-        if (applicationType == null)
-        {
-            return false;
-        }
-
-        var currentProperty = applicationType.GetProperty(
-            "Current",
-            BindingFlags.Static | BindingFlags.Public);
-        var mainWindowProperty = applicationType.GetProperty(
-            "MainWindow",
-            BindingFlags.Instance | BindingFlags.Public);
-        object? currentApplication = currentProperty?.GetValue(null);
-        object? mainWindow = currentApplication == null
-            ? null
-            : mainWindowProperty?.GetValue(currentApplication);
-        return ReferenceEquals(mainWindow, window);
+        return false;
     }
 
     private static object ShowPortableMessageBox(object request)
@@ -1653,26 +1363,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         value = (bool)property.GetValue(instance)!;
         return true;
-    }
-
-    private static bool TryReadBooleanField(object instance, string fieldName, out bool value)
-    {
-        value = false;
-        for (Type? type = instance.GetType(); type != null; type = type.BaseType)
-        {
-            var field = type.GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            if (field == null || field.FieldType != typeof(bool))
-            {
-                continue;
-            }
-
-            value = (bool)field.GetValue(instance)!;
-            return true;
-        }
-
-        return false;
     }
 
     private static bool TryMapWindowState(object? windowState, out ProGpuWpfWindowState mappedWindowState)

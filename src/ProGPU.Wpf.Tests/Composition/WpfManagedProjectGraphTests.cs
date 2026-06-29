@@ -497,6 +497,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("activationService.TryFlushDispatcherOperations(window, markerPriorityName, timeout)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryProcessDragDropEvent(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortableWindowActivationServiceTypeName", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("FindPortableWindowActivationServiceType", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryInvokePortableWindowActivationService", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryProcessPortableDragDropByReflection", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Windows.Application", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("presentationFrameworkAssembly.GetType(", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateWindowActivationReflectionParameters", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("PortableMediaContextRenderServiceTypeName", proGpuActivation, StringComparison.Ordinal);
@@ -549,8 +554,6 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("FlushWpfDispatcherOperations(\"ApplicationIdle\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperation(markerPriorityName, timeout)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName, timeout)", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("parameters[2].ParameterType != typeof(TimeSpan)", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("FindPortableWindowActivationServiceType(window)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryDragMove()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.TryBeginDragMove()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("internal static DragDropEffects ProcessPortableDrop", dragDrop, StringComparison.Ordinal);
@@ -561,13 +564,6 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ToDragDropRoutedEvent(dragDropEventKind)", activationService, StringComparison.Ordinal);
         Assert.Contains("DragDrop.ProcessPortableDragDrop(", activationService, StringComparison.Ordinal);
         Assert.Contains("TryProcessPortableDragDrop(window, e)", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("TryProcessPortableDragDropByReflection(window, e)", proGpuActivation, StringComparison.Ordinal);
-        Assert.True(
-            proGpuActivation.IndexOf("activationService.TryProcessDragDropEvent(", StringComparison.Ordinal)
-                < proGpuActivation.IndexOf("TryProcessPortableDragDropByReflection(window, e)", StringComparison.Ordinal),
-            "The typed drag/drop service registry must be tried before the transitional reflected drag/drop adapter.");
-        Assert.Contains("\"ProcessDragDropEvent\"", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("\"ProcessDragDrop\"", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public bool TryBeginDragMove()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("PlatformServices.WindowDecorations.TryBeginDragMove(_window)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Width => _clientWidth;", proGpuHost, StringComparison.Ordinal);
@@ -1025,7 +1021,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ShouldRenderFrameReturnsTrueWhenLogicalSizeChanges", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("ShouldRenderFrameReturnsTrueWhenDpiScaleChanges", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("TryAttachSynchronizesInitialWindowShapeBeforeFirstRender", proGpuActivationTests, StringComparison.Ordinal);
-        Assert.Contains("HostDragDropUsesPortableWindowActivationServiceBeforeFallback", proGpuActivationTests, StringComparison.Ordinal);
+        Assert.Contains("HostDragDropDoesNotUseReflectedPortableWindowActivationService", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            renderTargetViewport,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);

@@ -12,7 +12,7 @@ namespace ProGPU.Wpf.Tests;
 public sealed class WpfPortableWindowActivationTests
 {
     [Fact]
-    public void PresentationFrameworkActivationRegistrationUsesTypedInteropBeforeReflectionFallback()
+    public void PresentationFrameworkActivationRegistrationUsesTypedInteropOnly()
     {
         var service = new TestWindowActivationServiceRegistrar();
         using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
@@ -40,7 +40,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void ClipboardRegistrationUsesTypedInteropServiceBeforeReflectionFallback()
+    public void ClipboardRegistrationUsesTypedInteropServiceOnly()
     {
         var service = new TestClipboardServiceRegistrar();
         using var registration = PortableWpfServiceRegistry.RegisterClipboardService(service);
@@ -54,7 +54,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void PresentationFrameworkServiceRegistrationUsesTypedInteropBeforeReflectionFallback()
+    public void PresentationFrameworkServiceRegistrationUsesTypedInteropOnly()
     {
         var launcherService = new TestLauncherServiceRegistrar();
         var messageBoxService = new TestMessageBoxServiceRegistrar();
@@ -82,7 +82,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void AttachUsesTypedMediaContextRenderInteropServiceBeforeReflectionFallback()
+    public void AttachUsesTypedMediaContextRenderInteropServiceOnly()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakeWindow();
@@ -207,7 +207,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void NativeHostClosingInvokesWindowClose()
+    public void NativeHostClosingDoesNotUseReflectedWindowCloseFallback()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakeWindow();
@@ -222,11 +222,11 @@ public sealed class WpfPortableWindowActivationTests
             .GetMethod("OnClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
             .Invoke(host, Array.Empty<object>());
 
-        Assert.Equal(1, window.CloseCount);
+        Assert.Equal(0, window.CloseCount);
     }
 
     [Fact]
-    public void NativeHostClosingUsesTypedCloseBeforeReflectionFallback()
+    public void NativeHostClosingUsesTypedCloseService()
     {
         var service = new TestWindowActivationServiceRegistrar
         {
@@ -257,7 +257,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void NativeHostClosingUsesTypedCloseCancellationBeforeReflectionFallback()
+    public void NativeHostClosingUsesTypedCloseCancellation()
     {
         var service = new TestWindowActivationServiceRegistrar
         {
@@ -288,7 +288,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void NativeHostClosingCancelsWhenWindowCloseIsCanceled()
+    public void NativeHostClosingDoesNotUseReflectedCloseCancellationFallback()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakeWindow
@@ -309,13 +309,13 @@ public sealed class WpfPortableWindowActivationTests
             .GetMethod("OnClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
             .Invoke(host, Array.Empty<object>());
 
-        Assert.Equal(1, window.CloseCount);
+        Assert.Equal(0, window.CloseCount);
         Assert.False(window.IsClosed);
-        Assert.True(canceled);
+        Assert.False(canceled.GetValueOrDefault());
     }
 
     [Fact]
-    public void NativeHostClosingInfersCancellationFromWpfDisposedField()
+    public void NativeHostClosingDoesNotReadReflectedDisposedStateForCancellation()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakeDisposedWindow
@@ -336,13 +336,13 @@ public sealed class WpfPortableWindowActivationTests
             .GetMethod("OnClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
             .Invoke(host, Array.Empty<object>());
 
-        Assert.Equal(1, window.CloseCount);
+        Assert.Equal(0, window.CloseCount);
         Assert.False(window.DisposedStateForTest);
-        Assert.True(canceled);
+        Assert.False(canceled.GetValueOrDefault());
     }
 
     [Fact]
-    public void ShowUsesTypedMainWindowQueryBeforeReflectionFallback()
+    public void ShowUsesTypedMainWindowQueryService()
     {
         var service = new TestWindowActivationServiceRegistrar
         {
@@ -509,7 +509,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostActivationEventsForwardToWpfWindowActivationState()
+    public void HostActivationEventsDoNotUseReflectedHandleActivateFallback()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakeActivatableWindow();
@@ -527,12 +527,12 @@ public sealed class WpfPortableWindowActivationTests
         RaiseHostWindowEvent(host, WpfWindowEventKind.Deactivated);
 
         Assert.False(window.IsActive);
-        Assert.Equal(1, window.ActivatedCount);
-        Assert.Equal(1, window.DeactivatedCount);
+        Assert.Equal(0, window.ActivatedCount);
+        Assert.Equal(0, window.DeactivatedCount);
     }
 
     [Fact]
-    public void HostActivationEventsUseTypedWindowActivationServiceBeforeReflectionFallback()
+    public void HostActivationEventsUseTypedWindowActivationService()
     {
         var service = new TestWindowActivationServiceRegistrar();
         using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
@@ -559,28 +559,25 @@ public sealed class WpfPortableWindowActivationTests
     [Fact]
     public void HostDeactivationDoesNotBubblePortableCaptureCleanupFailure()
     {
-        System.Windows.PortableWindowActivationService.Reset();
-        System.Windows.PortableWindowActivationService.ThrowOnDeactivate = true;
-        try
+        var service = new TestWindowActivationServiceRegistrar
         {
-            using var host = new ProGpuWpfWindowHost();
-            var window = new FakePortableServiceActivationWindow();
-            var source = new FakePortablePresentationSource();
+            ThrowOnDeactivate = true
+        };
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeActivatableWindow();
+        var source = new FakePortablePresentationSource();
 
-            var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
 
-            Assert.True(attached);
-            Assert.NotNull(activation);
+        Assert.True(attached);
+        Assert.NotNull(activation);
 
-            RaiseHostWindowEvent(host, WpfWindowEventKind.Deactivated);
+        RaiseHostWindowEvent(host, WpfWindowEventKind.Deactivated);
 
-            Assert.Equal(1, System.Windows.PortableWindowActivationService.ActivationStateCallCount);
-            Assert.False(System.Windows.PortableWindowActivationService.LastActivationState);
-        }
-        finally
-        {
-            System.Windows.PortableWindowActivationService.Reset();
-        }
+        Assert.Equal(1, service.SetActivationStateCount);
+        Assert.Same(window, service.LastActivationStateWindow);
+        Assert.False(service.LastActivationState);
     }
 
     [Fact]
@@ -636,7 +633,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostInputUsesTypedActivationServiceBeforeReflectionFallback()
+    public void HostInputUsesTypedActivationServiceBeforeDirectInputFallback()
     {
         var service = new TestWindowActivationServiceRegistrar();
         using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
@@ -681,6 +678,12 @@ public sealed class WpfPortableWindowActivationTests
     [Fact]
     public void HostInputFromNonDispatcherThreadQueuesInputAndRenderWakeupProcessesIt()
     {
+        var service = new TestWindowActivationServiceRegistrar
+        {
+            FlushFakeDispatcherOnInput = true,
+            HandleInputEvent = false
+        };
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
         var scheduler = new TestRenderScheduler();
         using var host = new ProGpuWpfWindowHost
         {
@@ -711,7 +714,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostInputUsesTypedDispatcherQueueBeforeReflectionFallback()
+    public void HostInputUsesTypedDispatcherQueueBeforeDispatcherFallback()
     {
         var service = new TestWindowActivationServiceRegistrar
         {
@@ -752,7 +755,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostInputActivatesWindowBeforeForwardingInput()
+    public void HostInputDoesNotUseReflectedHandleActivateBeforeForwardingInput()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakeActivatablePortableInputWindow();
@@ -766,8 +769,8 @@ public sealed class WpfPortableWindowActivationTests
         var args = new WpfInputEventArgs(WpfInputEventKind.KeyDown, key: "A", scanCode: 42);
         RaiseHostInputEvent(host, args);
 
-        Assert.True(window.IsActive);
-        Assert.Equal(1, window.ActivatedCount);
+        Assert.False(window.IsActive);
+        Assert.Equal(0, window.ActivatedCount);
         Assert.Equal(1, window.InputCount);
     }
 
@@ -827,6 +830,12 @@ public sealed class WpfPortableWindowActivationTests
     [Fact]
     public void RenderWakeupFlushesQueuedDispatcherInputBeforeRendering()
     {
+        var service = new TestWindowActivationServiceRegistrar
+        {
+            FlushFakeDispatcherOnInput = true,
+            HandleInputEvent = false
+        };
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
         var scheduler = new TestRenderScheduler();
         using var host = new ProGpuWpfWindowHost
         {
@@ -856,7 +865,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void RenderWakeupUsesTypedDispatcherFlushBeforeReflectionFallback()
+    public void RenderWakeupUsesTypedDispatcherFlushService()
     {
         var service = new TestWindowActivationServiceRegistrar();
         using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
@@ -883,14 +892,19 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void RenderWakeupTreatsSuspendedDispatcherFlushAsDeferred()
+    public void RenderWakeupTreatsSuspendedTypedDispatcherFlushAsDeferred()
     {
+        var service = new TestWindowActivationServiceRegistrar
+        {
+            ThrowOnDispatcherFlush = true
+        };
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
         var scheduler = new TestRenderScheduler();
         using var host = new ProGpuWpfWindowHost
         {
             WpfRenderScheduler = scheduler
         };
-        var window = new FakeSuspendedDispatcherFlushWindow();
+        var window = new FakeWindow();
         var source = new FakePortablePresentationSource();
 
         var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
@@ -901,7 +915,7 @@ public sealed class WpfPortableWindowActivationTests
         Exception? exception = Record.Exception(scheduler.RequestRender);
 
         Assert.Null(exception);
-        Assert.True(window.FlushCount > 0);
+        Assert.NotEmpty(service.FlushedPriorities);
     }
 
     [Fact]
@@ -952,7 +966,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostDragDropUsesPortableWindowActivationServiceBeforeFallback()
+    public void HostDragDropDoesNotUseReflectedPortableWindowActivationService()
     {
         System.Windows.PortableWindowActivationService.Reset();
         using var host = new ProGpuWpfWindowHost();
@@ -973,19 +987,13 @@ public sealed class WpfPortableWindowActivationTests
             y: 24);
         RaiseHostDragDropEvent(host, args);
 
-        Assert.Equal(0, window.DropCount);
-        Assert.Equal(1, System.Windows.PortableWindowActivationService.DropCount);
-        Assert.Equal(new[] { "/tmp/a.txt" }, System.Windows.PortableWindowActivationService.LastFiles);
-        Assert.Equal("portable text", System.Windows.PortableWindowActivationService.LastText);
-        Assert.Equal(12, System.Windows.PortableWindowActivationService.LastX);
-        Assert.Equal(24, System.Windows.PortableWindowActivationService.LastY);
-        Assert.Equal((int)(WpfDragDropEffects.Copy | WpfDragDropEffects.Move), System.Windows.PortableWindowActivationService.LastAllowedEffects);
-        Assert.Equal((int)WpfDragDropEffects.Copy, System.Windows.PortableWindowActivationService.LastAcceptedEffect);
+        Assert.Equal(1, window.DropCount);
+        Assert.Equal(0, System.Windows.PortableWindowActivationService.DropCount);
         Assert.Equal(WpfDragDropEffects.Move, args.AcceptedEffect);
     }
 
     [Fact]
-    public void HostDragDropUsesTypedActivationServiceBeforeReflectionFallback()
+    public void HostDragDropUsesTypedActivationServiceBeforeDirectDropHandler()
     {
         System.Windows.PortableWindowActivationService.Reset();
         var service = new TestWindowActivationServiceRegistrar();
@@ -1023,7 +1031,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostDragEnterUsesPortableWindowActivationServiceWithoutFallback()
+    public void HostDragEnterDoesNotUseReflectedPortableWindowActivationService()
     {
         System.Windows.PortableWindowActivationService.Reset();
         using var host = new ProGpuWpfWindowHost();
@@ -1045,17 +1053,12 @@ public sealed class WpfPortableWindowActivationTests
         RaiseHostDragDropEvent(host, args);
 
         Assert.Equal(0, window.DropCount);
-        Assert.Equal(1, System.Windows.PortableWindowActivationService.DropCount);
-        Assert.Equal((int)WpfDragDropEventKind.DragEnter, System.Windows.PortableWindowActivationService.LastKind);
-        Assert.Equal(new[] { "/tmp/enter.txt" }, System.Windows.PortableWindowActivationService.LastFiles);
-        Assert.Equal("enter text", System.Windows.PortableWindowActivationService.LastText);
-        Assert.Equal(7, System.Windows.PortableWindowActivationService.LastX);
-        Assert.Equal(9, System.Windows.PortableWindowActivationService.LastY);
-        Assert.Equal(WpfDragDropEffects.Move, args.AcceptedEffect);
+        Assert.Equal(0, System.Windows.PortableWindowActivationService.DropCount);
+        Assert.Equal(WpfDragDropEffects.Copy, args.AcceptedEffect);
     }
 
     [Fact]
-    public void HostDragEnterUsesTypedActivationServiceWithoutReflectionFallback()
+    public void HostDragEnterUsesTypedActivationService()
     {
         System.Windows.PortableWindowActivationService.Reset();
         var service = new TestWindowActivationServiceRegistrar();
@@ -1661,6 +1664,8 @@ public sealed class WpfPortableWindowActivationTests
 
         public bool LastActivationState { get; private set; }
 
+        public bool ThrowOnDeactivate { get; set; }
+
         public bool QueueInputCallbacks { get; set; }
 
         public int BeginInvokeInputCount { get; private set; }
@@ -1675,11 +1680,17 @@ public sealed class WpfPortableWindowActivationTests
 
         public PortableWindowInputEvent? LastInput { get; private set; }
 
+        public bool HandleInputEvent { get; set; } = true;
+
         public object? LastFlushWindow { get; private set; }
 
         public List<string> FlushedPriorities { get; } = new List<string>();
 
         public List<TimeSpan?> FlushTimeouts { get; } = new List<TimeSpan?>();
+
+        public bool ThrowOnDispatcherFlush { get; set; }
+
+        public bool FlushFakeDispatcherOnInput { get; set; }
 
         public int DragDropCount { get; private set; }
 
@@ -1762,6 +1773,11 @@ public sealed class WpfPortableWindowActivationTests
             SetActivationStateCount++;
             LastActivationStateWindow = window;
             LastActivationState = isActive;
+            if (!isActive && ThrowOnDeactivate)
+            {
+                throw new ArgumentException("Simulated capture-cancel layout failure.");
+            }
+
             return true;
         }
 
@@ -1780,6 +1796,11 @@ public sealed class WpfPortableWindowActivationTests
 
         public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)
         {
+            if (!HandleInputEvent)
+            {
+                return false;
+            }
+
             InputCount++;
             LastInputWindow = window;
             LastInput = input;
@@ -1792,6 +1813,17 @@ public sealed class WpfPortableWindowActivationTests
             LastFlushWindow = window;
             FlushedPriorities.Add(markerPriorityName);
             FlushTimeouts.Add(timeout);
+            if (FlushFakeDispatcherOnInput &&
+                window is FakeDispatchingPortableInputWindow dispatchingWindow)
+            {
+                dispatchingWindow.FlushDispatcherOperations(markerPriorityName);
+            }
+
+            if (ThrowOnDispatcherFlush)
+            {
+                throw new InvalidOperationException("Cannot perform this operation while dispatcher processing is suspended.");
+            }
+
             return true;
         }
 

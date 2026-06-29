@@ -283,28 +283,10 @@ public sealed class WpfVisualTreeReflectionRenderer
                 RegisterRetainedVisualDependency(visualState.CacheMode, sink);
             }
         }
-        else
-        {
-            RegisterRetainedVisualPropertyDependency(visual, "XSnappingGuidelines", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "YSnappingGuidelines", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "VisualXSnappingGuidelines", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "VisualYSnappingGuidelines", sink);
-        }
 
         if (TryGetPortableVisualLayoutState(visual, out var layoutState) && layoutState.HasLayoutClip)
         {
             RegisterRetainedVisualDependency(layoutState.LayoutClip, sink);
-        }
-    }
-
-    private static void RegisterRetainedVisualPropertyDependency(
-        object visual,
-        string propertyName,
-        IWpfCompositionCommandSink sink)
-    {
-        if (TryGetPropertyValue(visual, propertyName, out var dependency))
-        {
-            RegisterRetainedVisualDependency(dependency, sink);
         }
     }
 
@@ -572,8 +554,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasBitmapScalingMode && bitmapScalingMode != null;
         }
 
-        return TryGetPropertyValue(visual, "BitmapScalingMode", out bitmapScalingMode)
-            && WpfBitmapScalingModeReflection.HasExplicitValue(bitmapScalingMode);
+        bitmapScalingMode = null;
+        return false;
     }
 
     private static bool TryGetVisualEdgeMode(object visual, out object? edgeMode)
@@ -584,8 +566,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasEdgeMode && edgeMode != null;
         }
 
-        return TryGetPropertyValue(visual, "EdgeMode", out edgeMode)
-            && WpfEdgeModeReflection.HasExplicitValue(edgeMode);
+        edgeMode = null;
+        return false;
     }
 
     private static bool TryGetVisualClearTypeHint(object visual, out object? clearTypeHint)
@@ -596,8 +578,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasClearTypeHint && clearTypeHint != null;
         }
 
-        return TryGetPropertyValue(visual, "ClearTypeHint", out clearTypeHint)
-            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint);
+        clearTypeHint = null;
+        return false;
     }
 
     private static bool TryGetVisualTextRenderingMode(object visual, out object? textRenderingMode)
@@ -608,8 +590,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasTextRenderingMode && textRenderingMode != null;
         }
 
-        return TryGetPropertyValue(visual, "TextRenderingMode", out textRenderingMode)
-            && WpfTextRenderingModeReflection.HasExplicitValue(textRenderingMode);
+        textRenderingMode = null;
+        return false;
     }
 
     private static bool TryGetVisualTextHintingMode(object visual, out object? textHintingMode)
@@ -620,8 +602,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasTextHintingMode && textHintingMode != null;
         }
 
-        return TryGetPropertyValue(visual, "TextHintingMode", out textHintingMode)
-            && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode);
+        textHintingMode = null;
+        return false;
     }
 
     private static bool TryCreateSingleNativeRetainedVisualScopeState(
@@ -1036,11 +1018,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             sink.PushGuidelineSet(guidelineSet);
             popCount++;
         }
-        else if (HasVisualGuidelines(visual))
-        {
-            sink.PushGuidelineSet();
-            popCount++;
-        }
 
         if (TryGetVisualBitmapScalingMode(visual, out var bitmapScalingMode))
         {
@@ -1133,19 +1110,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         return count;
     }
 
-    private static bool HasVisualGuidelines(object visual)
-    {
-        if (TryGetPortableVisualState(visual, out var visualState))
-        {
-            return visualState.HasSnappingGuidelinesX || visualState.HasSnappingGuidelinesY;
-        }
-
-        return HasNonNullProperty(visual, "XSnappingGuidelines")
-            || HasNonNullProperty(visual, "YSnappingGuidelines")
-            || HasNonNullProperty(visual, "VisualXSnappingGuidelines")
-            || HasNonNullProperty(visual, "VisualYSnappingGuidelines");
-    }
-
     private static bool TryCreateVisualGuidelineSet(object visual, out object guidelineSet)
     {
         if (TryGetPortableVisualState(visual, out var visualState))
@@ -1162,38 +1126,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             return true;
         }
 
-        var hasX = TryReadVisualGuidelines(
-            visual,
-            new[] { "XSnappingGuidelines", "VisualXSnappingGuidelines" },
-            out var guidelinesX);
-        var hasY = TryReadVisualGuidelines(
-            visual,
-            new[] { "YSnappingGuidelines", "VisualYSnappingGuidelines" },
-            out var guidelinesY);
-
-        if (!hasX && !hasY)
-        {
-            guidelineSet = null!;
-            return false;
-        }
-
-        guidelineSet = new VisualGuidelineSet(guidelinesX, guidelinesY);
-        return true;
-    }
-
-    private static bool TryReadVisualGuidelines(object visual, string[] propertyNames, out double[] guidelines)
-    {
-        foreach (var propertyName in propertyNames)
-        {
-            if (TryGetPropertyValue(visual, propertyName, out var collection)
-                && collection != null
-                && WpfGuidelineSetReader.TryReadDoubleCollection(collection, out guidelines))
-            {
-                return true;
-            }
-        }
-
-        guidelines = Array.Empty<double>();
+        guidelineSet = null!;
         return false;
     }
 
@@ -1900,11 +1833,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         return bool.TryParse(propertyValue.ToString(), out value);
-    }
-
-    private static bool HasNonNullProperty(object instance, string propertyName)
-    {
-        return TryGetPropertyValue(instance, propertyName, out var value) && value != null;
     }
 
     private static bool TryReadIntProperty(object instance, string propertyName, out int value)

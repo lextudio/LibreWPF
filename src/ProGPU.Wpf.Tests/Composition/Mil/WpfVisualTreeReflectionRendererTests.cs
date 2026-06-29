@@ -1293,10 +1293,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesGuidelineCollectionsAsNoOpScope()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
-            XSnappingGuidelines = new[] { 10d }
-        };
+            HasSnappingGuidelinesX = true,
+            SnappingGuidelinesX = new[] { 10d }
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -2080,10 +2081,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesLowQualityBitmapScalingAsLinearState()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
+            HasBitmapScalingMode = true,
             BitmapScalingMode = new FakeRenderingHint("LowQuality")
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -2098,10 +2100,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesHighQualityBitmapScalingAsCubicState()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
+            HasBitmapScalingMode = true,
             BitmapScalingMode = new FakeRenderingHint("HighQuality")
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -2116,10 +2119,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesClearTypeTextRenderingMode()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
+            HasTextRenderingMode = true,
             TextRenderingMode = new FakeRenderingHint("ClearType")
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -2134,10 +2138,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesClearTypeHintAsTextRenderingMode()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
+            HasClearTypeHint = true,
             ClearTypeHint = new FakeRenderingHint("Enabled")
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -2152,10 +2157,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesAnimatedTextHintingMode()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
+            HasTextHintingMode = true,
             TextHintingMode = new FakeRenderingHint("Animated")
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -2350,21 +2356,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public object? OpacityMask { get; init; }
 
-        public object? XSnappingGuidelines { get; init; }
-
         public object? ScrollableAreaClip { get; init; }
 
         public object? VisualScrollableAreaClip { get; init; }
-
-        public object? EdgeMode { get; init; }
-
-        public object? BitmapScalingMode { get; init; }
-
-        public object? ClearTypeHint { get; init; }
-
-        public object? TextRenderingMode { get; init; }
-
-        public object? TextHintingMode { get; init; }
 
         public object? GetLayoutClipInternal()
         {

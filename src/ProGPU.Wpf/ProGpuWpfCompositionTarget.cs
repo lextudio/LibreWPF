@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using ProGPU.Wpf.Interop;
 using Silk.NET.WebGPU;
 using Silk.NET.Windowing;
 using System.Windows.Media.ProGPU.Composition;
@@ -607,7 +608,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             if (GpuHitTestOwnerMap.TryGetOwner(results[i].Id, out object? owner) &&
                 owner != null)
             {
-                candidates[candidateCount++] = new ProGpuWpfGeometryHitTestCandidate(
+                candidates[candidateCount++] = new PortableGeometryHitTestCandidate(
                     owner,
                     results[i].IntersectionDetail);
             }
@@ -933,17 +934,4 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         SceneRootVisual.AddChild(RetainedWpfVisualRoot);
         SceneRootVisual.AddChild(RootVisual);
     }
-}
-
-internal sealed class ProGpuWpfGeometryHitTestCandidate
-{
-    internal ProGpuWpfGeometryHitTestCandidate(object visualHit, uint intersectionDetail)
-    {
-        VisualHit = visualHit;
-        IntersectionDetail = intersectionDetail;
-    }
-
-    public object VisualHit { get; }
-
-    public uint IntersectionDetail { get; }
 }

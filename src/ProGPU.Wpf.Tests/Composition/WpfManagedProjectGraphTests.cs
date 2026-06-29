@@ -1001,7 +1001,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool TryQueryHitTestBoundsOwners(", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public bool TryQueryHitTestBoundsCandidates(", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public bool TryQueryHitTestEllipseCandidates(", proGpuCompositionTarget, StringComparison.Ordinal);
-        Assert.Contains("new ProGpuWpfGeometryHitTestCandidate(", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("new PortableGeometryHitTestCandidate(", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfGeometryHitTestCandidate", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, results, out int hitCount, out summary)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.TryQueryHitTestEllipseAll(logicalMin, logicalMax, results, out int hitCount, out summary)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("WpfGpuHitTestOwnerMap? hitTestOwnerMap = null", proGpuDrawingFrame, StringComparison.Ordinal);
@@ -13877,6 +13878,16 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "ProGpuWpfWindowHost.cs");
+        var proGpuCompositionTargetPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfCompositionTarget.cs");
+        var portableGeometryHitTestCandidatePath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableGeometryHitTestCandidate.cs");
 
         var compositionTarget = File.ReadAllText(compositionTargetPath);
         var portableTarget = File.ReadAllText(portableTargetPath);
@@ -13889,6 +13900,8 @@ public sealed class WpfManagedProjectGraphTests
         var presentationCoreRef = File.ReadAllText(presentationCoreRefPath);
         var portableSourceBridge = File.ReadAllText(portableSourceBridgePath);
         var proGpuHost = File.ReadAllText(proGpuHostPath);
+        var proGpuCompositionTarget = File.ReadAllText(proGpuCompositionTargetPath);
+        var portableGeometryHitTestCandidate = File.ReadAllText(portableGeometryHitTestCandidatePath);
 
         Assert.Contains("internal virtual bool UsesDuceComposition", compositionTarget, StringComparison.Ordinal);
         Assert.Contains("internal virtual void OnRootVisualChanged", compositionTarget, StringComparison.Ordinal);
@@ -13940,6 +13953,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("object IPortablePresentationSourceHost.CompositionTarget", portableSource, StringComparison.Ordinal);
         Assert.Contains("get { return _isDisposed ? null : _compositionTarget; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("Func<double, double, object> IPortablePresentationSourceHost.HitTestOverride", portableSource, StringComparison.Ordinal);
+        Assert.Contains("candidate is PortableGeometryHitTestCandidate portableCandidate", portableSource, StringComparison.Ordinal);
+        Assert.Contains("ToIntersectionDetail(portableCandidate.IntersectionDetail)", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection;", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(\"VisualHit\"", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(\"IntersectionDetail\"", portableSource, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableGeometryHitTestCandidate", portableGeometryHitTestCandidate, StringComparison.Ordinal);
+        Assert.Contains("public object VisualHit { get; }", portableGeometryHitTestCandidate, StringComparison.Ordinal);
+        Assert.Contains("public uint IntersectionDetail { get; }", portableGeometryHitTestCandidate, StringComparison.Ordinal);
+        Assert.Contains("new PortableGeometryHitTestCandidate(", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfGeometryHitTestCandidate", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("internal Cursor RequestedCursor { get; private set; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal void SetDeviceScale(double dpiScaleX, double dpiScaleY)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal void SetClientSize(double width, double height)", portableSource, StringComparison.Ordinal);

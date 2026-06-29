@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Composition;
 using System.Numerics;
+using ProGPU.Wpf.Interop;
 using Xunit;
 using GpuHitTestIndex = ProGPU.Vector.GpuHitTestIndex;
 using GpuHitTestPrimitive = ProGPU.Vector.GpuHitTestPrimitive;
@@ -1105,8 +1106,8 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.True(hit);
         Assert.Equal(2, candidateCount);
         Assert.Equal(3u, summary.Hit);
-        Assert.Same(firstOwner, Assert.IsType<ProGpuWpfGeometryHitTestCandidate>(candidates[0]).VisualHit);
-        Assert.Same(secondOwner, Assert.IsType<ProGpuWpfGeometryHitTestCandidate>(candidates[1]).VisualHit);
+        Assert.Same(firstOwner, Assert.IsType<PortableGeometryHitTestCandidate>(candidates[0]).VisualHit);
+        Assert.Same(secondOwner, Assert.IsType<PortableGeometryHitTestCandidate>(candidates[1]).VisualHit);
     }
 
     [Fact]
@@ -1138,8 +1139,8 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.True(hit);
         Assert.Equal(2, candidateCount);
         Assert.Equal(3u, summary.Hit);
-        Assert.Same(firstOwner, Assert.IsType<ProGpuWpfGeometryHitTestCandidate>(candidates[0]).VisualHit);
-        Assert.Same(secondOwner, Assert.IsType<ProGpuWpfGeometryHitTestCandidate>(candidates[1]).VisualHit);
+        Assert.Same(firstOwner, Assert.IsType<PortableGeometryHitTestCandidate>(candidates[0]).VisualHit);
+        Assert.Same(secondOwner, Assert.IsType<PortableGeometryHitTestCandidate>(candidates[1]).VisualHit);
     }
 
     [Fact]

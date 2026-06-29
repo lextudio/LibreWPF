@@ -2,8 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using MS.Internal;
+using ProGPU.Wpf.Interop;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -652,56 +652,30 @@ namespace System.Windows
                 return true;
             }
 
+            if (candidate is PortableGeometryHitTestCandidate portableCandidate)
+            {
+                if (portableCandidate.VisualHit is not Visual portableVisualHit)
+                {
+                    return false;
+                }
+
+                visualHit = portableVisualHit;
+                intersectionDetail = ToIntersectionDetail(portableCandidate.IntersectionDetail);
+                return true;
+            }
+
             if (candidate is Visual visual)
             {
                 visualHit = visual;
                 return true;
             }
 
-            if (candidate == null)
-            {
-                return false;
-            }
-
-            Type candidateType = candidate.GetType();
-            object reflectedVisual = candidateType
-                .GetProperty("VisualHit", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                ?.GetValue(candidate);
-            if (reflectedVisual is not Visual reflectedVisualHit)
-            {
-                return false;
-            }
-
-            visualHit = reflectedVisualHit;
-            object reflectedDetail = candidateType
-                .GetProperty("IntersectionDetail", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                ?.GetValue(candidate);
-            intersectionDetail = ToIntersectionDetail(reflectedDetail);
-            return true;
+            return false;
         }
 
-        private static IntersectionDetail ToIntersectionDetail(object detail)
+        private static IntersectionDetail ToIntersectionDetail(uint detail)
         {
-            if (detail is IntersectionDetail intersectionDetail)
-            {
-                return intersectionDetail;
-            }
-
-            uint value;
-            if (detail is uint unsigned)
-            {
-                value = unsigned;
-            }
-            else if (detail is int signed && signed >= 0)
-            {
-                value = (uint)signed;
-            }
-            else
-            {
-                return IntersectionDetail.Intersects;
-            }
-
-            return value switch
+            return detail switch
             {
                 2u => IntersectionDetail.FullyInside,
                 3u => IntersectionDetail.FullyContains,

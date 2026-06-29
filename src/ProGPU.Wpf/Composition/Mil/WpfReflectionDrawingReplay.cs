@@ -16,8 +16,12 @@ using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
 using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
 using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
 using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
+using PortableGlyphRunDrawingState = ProGPU.Wpf.Interop.PortableGlyphRunDrawingState;
+using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource;
 using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
 using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
+using PortableImageDrawingState = ProGPU.Wpf.Interop.PortableImageDrawingState;
+using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableStretch = ProGPU.Wpf.Interop.PortableStretch;
@@ -1088,10 +1092,12 @@ internal static class WpfReflectionDrawingReplay
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter)
     {
-        if (!TryGetPropertyValue(drawing, "ImageSource", out var imageValue)
-            || !TryGetPropertyValue(drawing, "Rect", out var rectValue)
-            || rectValue == null
-            || !TryReadRect(rectValue, out var rectangle)
+        var hasPortableImageDrawingState = TryGetPortableImageDrawingState(
+            drawing,
+            out var imageDrawingState);
+
+        if (!TryGetImageDrawingImageSource(drawing, hasPortableImageDrawingState, imageDrawingState, out var imageValue)
+            || !TryGetImageDrawingRect(drawing, hasPortableImageDrawingState, imageDrawingState, out var rectangle)
             || ResolveImageSource(imageValue, imageSourceAdapter) is not { } imageSource)
         {
             return false;
@@ -2023,13 +2029,21 @@ internal static class WpfReflectionDrawingReplay
 
     private static bool TryReplayGlyphRunDrawing(object drawing, IWpfCompositionCommandSink sink)
     {
-        if (!TryGetPropertyValue(drawing, "GlyphRun", out var glyphRunValue)
+        var hasPortableGlyphRunDrawingState = TryGetPortableGlyphRunDrawingState(
+            drawing,
+            out var glyphRunDrawingState);
+
+        if (!TryGetGlyphRunDrawingGlyphRun(drawing, hasPortableGlyphRunDrawingState, glyphRunDrawingState, out var glyphRunValue)
             || WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is not { } glyphRun)
         {
             return false;
         }
 
-        TryGetPropertyValue(drawing, "ForegroundBrush", out var foregroundBrushValue);
+        TryGetGlyphRunDrawingForegroundBrush(
+            drawing,
+            hasPortableGlyphRunDrawingState,
+            glyphRunDrawingState,
+            out var foregroundBrushValue);
         sink.DrawGlyphRun(WpfReflectionResourceResolver.AdaptBrush(foregroundBrushValue), glyphRun);
         return true;
     }
@@ -2205,6 +2219,36 @@ internal static class WpfReflectionDrawingReplay
         return false;
     }
 
+    private static bool TryGetPortableImageDrawingState(
+        object drawing,
+        out PortableImageDrawingState? state)
+    {
+        if (drawing is PortableImageDrawingStateSource imageDrawingStateSource
+            && imageDrawingStateSource.TryGetPortableImageDrawingState(out var portableState))
+        {
+            state = portableState;
+            return true;
+        }
+
+        state = null;
+        return false;
+    }
+
+    private static bool TryGetPortableGlyphRunDrawingState(
+        object drawing,
+        out PortableGlyphRunDrawingState? state)
+    {
+        if (drawing is PortableGlyphRunDrawingStateSource glyphRunDrawingStateSource
+            && glyphRunDrawingStateSource.TryGetPortableGlyphRunDrawingState(out var portableState))
+        {
+            state = portableState;
+            return true;
+        }
+
+        state = null;
+        return false;
+    }
+
     private static bool TryGetGeometryDrawingGeometry(
         object drawing,
         bool hasPortableGeometryDrawingState,
@@ -2248,6 +2292,75 @@ internal static class WpfReflectionDrawingReplay
         }
 
         return TryGetPropertyValue(drawing, "Pen", out pen) && pen != null;
+    }
+
+    private static bool TryGetImageDrawingImageSource(
+        object drawing,
+        bool hasPortableImageDrawingState,
+        PortableImageDrawingState? imageDrawingState,
+        out object? imageSource)
+    {
+        if (hasPortableImageDrawingState)
+        {
+            imageSource = imageDrawingState!.ImageSource;
+            return imageDrawingState.HasImageSource && imageSource != null;
+        }
+
+        return TryGetPropertyValue(drawing, "ImageSource", out imageSource) && imageSource != null;
+    }
+
+    private static bool TryGetImageDrawingRect(
+        object drawing,
+        bool hasPortableImageDrawingState,
+        PortableImageDrawingState? imageDrawingState,
+        out Rect rectangle)
+    {
+        if (hasPortableImageDrawingState)
+        {
+            return TryReadPortableRect(imageDrawingState!.Rect, out rectangle)
+                && imageDrawingState.HasRect
+                && IsUsableRect(rectangle, out rectangle);
+        }
+
+        if (TryGetPropertyValue(drawing, "Rect", out var rectValue)
+            && rectValue != null
+            && TryReadRect(rectValue, out rectangle))
+        {
+            return true;
+        }
+
+        rectangle = default;
+        return false;
+    }
+
+    private static bool TryGetGlyphRunDrawingGlyphRun(
+        object drawing,
+        bool hasPortableGlyphRunDrawingState,
+        PortableGlyphRunDrawingState? glyphRunDrawingState,
+        out object? glyphRun)
+    {
+        if (hasPortableGlyphRunDrawingState)
+        {
+            glyphRun = glyphRunDrawingState!.GlyphRun;
+            return glyphRunDrawingState.HasGlyphRun && glyphRun != null;
+        }
+
+        return TryGetPropertyValue(drawing, "GlyphRun", out glyphRun) && glyphRun != null;
+    }
+
+    private static bool TryGetGlyphRunDrawingForegroundBrush(
+        object drawing,
+        bool hasPortableGlyphRunDrawingState,
+        PortableGlyphRunDrawingState? glyphRunDrawingState,
+        out object? foregroundBrush)
+    {
+        if (hasPortableGlyphRunDrawingState)
+        {
+            foregroundBrush = glyphRunDrawingState!.ForegroundBrush;
+            return glyphRunDrawingState.HasForegroundBrush && foregroundBrush != null;
+        }
+
+        return TryGetPropertyValue(drawing, "ForegroundBrush", out foregroundBrush) && foregroundBrush != null;
     }
 
     private static bool TryGetDrawingGroupBounds(
@@ -2599,15 +2712,27 @@ internal static class WpfReflectionDrawingReplay
 
         if (TypeNameEndsWith(drawing, "ImageDrawing"))
         {
-            return TryGetPropertyValue(drawing, "Rect", out var rectValue)
-                && rectValue != null
-                && TryReadRect(rectValue, out var imageRect)
+            var hasPortableImageDrawingState = TryGetPortableImageDrawingState(
+                drawing,
+                out var imageDrawingState);
+            return TryGetImageDrawingRect(
+                    drawing,
+                    hasPortableImageDrawingState,
+                    imageDrawingState,
+                    out var imageRect)
                 && IsUsableRect(imageRect, out bounds);
         }
 
         if (TypeNameEndsWith(drawing, "GlyphRunDrawing"))
         {
-            return TryGetPropertyValue(drawing, "GlyphRun", out var glyphRunValue)
+            var hasPortableGlyphRunDrawingState = TryGetPortableGlyphRunDrawingState(
+                drawing,
+                out var glyphRunDrawingState);
+            return TryGetGlyphRunDrawingGlyphRun(
+                    drawing,
+                    hasPortableGlyphRunDrawingState,
+                    glyphRunDrawingState,
+                    out var glyphRunValue)
                 && WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is { } glyphRun
                 && TryGetGlyphRunBounds(glyphRun, out bounds);
         }

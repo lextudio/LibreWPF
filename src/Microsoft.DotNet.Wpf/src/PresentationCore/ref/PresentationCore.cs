@@ -6376,7 +6376,7 @@ namespace System.Windows.Media
         void System.ComponentModel.ISupportInitialize.BeginInit() { }
         void System.ComponentModel.ISupportInitialize.EndInit() { }
     }
-    public sealed partial class GlyphRunDrawing : System.Windows.Media.Drawing
+    public sealed partial class GlyphRunDrawing : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource
     {
         public static readonly System.Windows.DependencyProperty ForegroundBrushProperty;
         public static readonly System.Windows.DependencyProperty GlyphRunProperty;
@@ -6384,6 +6384,7 @@ namespace System.Windows.Media
         public GlyphRunDrawing(System.Windows.Media.Brush foregroundBrush, System.Windows.Media.GlyphRun glyphRun) { }
         public System.Windows.Media.Brush ForegroundBrush { get { throw null; } set { } }
         public System.Windows.Media.GlyphRun GlyphRun { get { throw null; } set { } }
+        bool ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource.TryGetPortableGlyphRunDrawingState(out ProGPU.Wpf.Interop.PortableGlyphRunDrawingState state) { throw null; }
         public new System.Windows.Media.GlyphRunDrawing Clone() { throw null; }
         public new System.Windows.Media.GlyphRunDrawing CloneCurrentValue() { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
@@ -6585,7 +6586,7 @@ namespace System.Windows.Media
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
         protected override void GetContentBounds(out System.Windows.Rect contentBounds) { throw null; }
     }
-    public sealed partial class ImageDrawing : System.Windows.Media.Drawing
+    public sealed partial class ImageDrawing : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableImageDrawingStateSource
     {
         public static readonly System.Windows.DependencyProperty ImageSourceProperty;
         public static readonly System.Windows.DependencyProperty RectProperty;
@@ -6593,6 +6594,7 @@ namespace System.Windows.Media
         public ImageDrawing(System.Windows.Media.ImageSource imageSource, System.Windows.Rect rect) { }
         public System.Windows.Media.ImageSource ImageSource { get { throw null; } set { } }
         public System.Windows.Rect Rect { get { throw null; } set { } }
+        bool ProGPU.Wpf.Interop.IPortableImageDrawingStateSource.TryGetPortableImageDrawingState(out ProGPU.Wpf.Interop.PortableImageDrawingState state) { throw null; }
         public new System.Windows.Media.ImageDrawing Clone() { throw null; }
         public new System.Windows.Media.ImageDrawing CloneCurrentValue() { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }

@@ -31,6 +31,10 @@ using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
 using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
 using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
 using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
+using PortableGlyphRunDrawingState = ProGPU.Wpf.Interop.PortableGlyphRunDrawingState;
+using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource;
+using PortableImageDrawingState = ProGPU.Wpf.Interop.PortableImageDrawingState;
+using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;
 using PortablePixelShader = ProGPU.Wpf.Interop.PortablePixelShader;
 using PortableShaderEffect = ProGPU.Wpf.Interop.PortableShaderEffect;
 using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;
@@ -1421,6 +1425,61 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplayAppliesPortableImageDrawingStateWithoutReflection()
+    {
+        var source = new object();
+        var drawing = new ThrowingPortableImageDrawing(new PortableImageDrawingState
+        {
+            HasImageSource = true,
+            ImageSource = source,
+            HasRect = true,
+            Rect = new PortableRect(1, 2, 10, 12)
+        });
+        var sink = new TestSink();
+        var adapter = new FakeImageSourceAdapter();
+
+        var status = WpfReflectionDrawingReplay.Replay(drawing, sink, adapter.AdaptImageSource);
+
+        Assert.Equal(new[] { "DrawImage" }, sink.Operations);
+        var image = Assert.Single(sink.Images);
+        Assert.Same(adapter.AdaptedImageSource, image.ImageSource);
+        Assert.Equal(new Rect(1, 2, 10, 12), image.Rectangle);
+        Assert.Same(source, adapter.LastImageSource);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayDoesNotReflectAbsentPortableImageDrawingState()
+    {
+        var drawing = new ThrowingPortableImageDrawing(new PortableImageDrawingState());
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+
+        Assert.Empty(sink.Operations);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Unsupported, status);
+    }
+
+    [Fact]
+    public void ReplayDoesNotReflectAbsentPortableGlyphRunDrawingState()
+    {
+        var drawing = new ThrowingPortableGlyphRunDrawing(new PortableGlyphRunDrawingState
+        {
+            HasForegroundBrush = true,
+            ForegroundBrush = Brushes.Green
+        });
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+
+        Assert.Empty(sink.Operations);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Unsupported, status);
+    }
+
+    [Fact]
     public void ReplaySubtreeAppliesPortableDrawingGroupStateWithoutReflection()
     {
         var group = new ThrowingPortableDrawingGroup(new PortableDrawingGroupState
@@ -2429,6 +2488,62 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             ReflectedStateProbeCount++;
             throw new InvalidOperationException($"Reflected geometry drawing property '{propertyName}' should not be read.");
+        }
+    }
+
+    private sealed class ThrowingPortableImageDrawing : PortableImageDrawingStateSource
+    {
+        private readonly PortableImageDrawingState _state;
+
+        public ThrowingPortableImageDrawing(PortableImageDrawingState state)
+        {
+            _state = state;
+        }
+
+        public int ReflectedStateProbeCount { get; private set; }
+
+        public object? ImageSource => ThrowReflectedStateProbe();
+
+        public object? Rect => ThrowReflectedStateProbe();
+
+        public bool TryGetPortableImageDrawingState(out PortableImageDrawingState state)
+        {
+            state = _state;
+            return true;
+        }
+
+        private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedStateProbeCount++;
+            throw new InvalidOperationException($"Reflected image drawing property '{propertyName}' should not be read.");
+        }
+    }
+
+    private sealed class ThrowingPortableGlyphRunDrawing : PortableGlyphRunDrawingStateSource
+    {
+        private readonly PortableGlyphRunDrawingState _state;
+
+        public ThrowingPortableGlyphRunDrawing(PortableGlyphRunDrawingState state)
+        {
+            _state = state;
+        }
+
+        public int ReflectedStateProbeCount { get; private set; }
+
+        public object? GlyphRun => ThrowReflectedStateProbe();
+
+        public object? ForegroundBrush => ThrowReflectedStateProbe();
+
+        public bool TryGetPortableGlyphRunDrawingState(out PortableGlyphRunDrawingState state)
+        {
+            state = _state;
+            return true;
+        }
+
+        private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedStateProbeCount++;
+            throw new InvalidOperationException($"Reflected glyph drawing property '{propertyName}' should not be read.");
         }
     }
 

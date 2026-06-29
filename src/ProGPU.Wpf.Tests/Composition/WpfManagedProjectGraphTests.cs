@@ -5559,6 +5559,82 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void DrawingReplayPrefersPortableImageAndGlyphRunDrawingState()
+    {
+        var replaySource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfReflectionDrawingReplay.cs"));
+        var imageDrawingSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "ImageDrawing.cs"));
+        var glyphRunDrawingSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "GlyphRunDrawing.cs"));
+        var presentationCoreRef = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ref",
+            "PresentationCore.cs"));
+        var imageInteropSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableImageDrawingState.cs"));
+        var glyphInteropSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableGlyphRunDrawingState.cs"));
+        var rendererTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeReflectionRendererTests.cs"));
+
+        Assert.Contains("using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;", replaySource, StringComparison.Ordinal);
+        Assert.Contains("using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource;", replaySource, StringComparison.Ordinal);
+        Assert.Contains("drawing is PortableImageDrawingStateSource imageDrawingStateSource", replaySource, StringComparison.Ordinal);
+        Assert.Contains("drawing is PortableGlyphRunDrawingStateSource glyphRunDrawingStateSource", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetImageDrawingImageSource(drawing, hasPortableImageDrawingState, imageDrawingState", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetGlyphRunDrawingGlyphRun(drawing, hasPortableGlyphRunDrawingState, glyphRunDrawingState", replaySource, StringComparison.Ordinal);
+        Assert.Contains("ImageDrawing : Drawing, IPortableImageDrawingStateSource", imageDrawingSource, StringComparison.Ordinal);
+        Assert.Contains("GlyphRunDrawing : Drawing, IPortableGlyphRunDrawingStateSource", glyphRunDrawingSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableImageDrawingStateSource.TryGetPortableImageDrawingState(out PortableImageDrawingState state)", imageDrawingSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableGlyphRunDrawingStateSource.TryGetPortableGlyphRunDrawingState(out PortableGlyphRunDrawingState state)", glyphRunDrawingSource, StringComparison.Ordinal);
+        Assert.Contains("ImageDrawing : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableImageDrawingStateSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("GlyphRunDrawing : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableImageDrawingStateSource", imageInteropSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasImageSource", imageInteropSource, StringComparison.Ordinal);
+        Assert.Contains("public PortableRect Rect", imageInteropSource, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableGlyphRunDrawingStateSource", glyphInteropSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasGlyphRun", glyphInteropSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasForegroundBrush", glyphInteropSource, StringComparison.Ordinal);
+        Assert.Contains("ReplayAppliesPortableImageDrawingStateWithoutReflection", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayDoesNotReflectAbsentPortableImageDrawingState", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayDoesNotReflectAbsentPortableGlyphRunDrawingState", rendererTests, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void VisualTreeRendererPrefersPortableVisualLayoutState()
     {
         var rendererSource = File.ReadAllText(FindRepoPath(

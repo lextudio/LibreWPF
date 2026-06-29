@@ -286,7 +286,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         else
         {
             RegisterRetainedVisualPropertyDependency(visual, "Transform", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "Clip", sink);
             RegisterRetainedVisualPropertyDependency(visual, "OpacityMask", sink);
             RegisterRetainedVisualPropertyDependency(visual, "Effect", sink);
             RegisterRetainedVisualPropertyDependency(visual, "BitmapEffect", sink);
@@ -1687,22 +1686,20 @@ public sealed class WpfVisualTreeReflectionRenderer
     private static bool TryGetVisualClip(object visual, out object? clip)
     {
         var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);
+        object? currentClip = null;
+        var hasCurrentClip = false;
         if (hasPortableVisualState && visualState.HasClip)
         {
-            clip = visualState.Clip;
-            return clip != null;
+            currentClip = visualState.Clip;
+            hasCurrentClip = currentClip != null;
         }
 
-        object? explicitClip = null;
-        var hasExplicitClip = !hasPortableVisualState
-            && TryGetPropertyValue(visual, "Clip", out explicitClip)
-            && explicitClip != null;
         var hasPortableLayoutState = TryGetPortableVisualLayoutState(visual, out var layoutState);
         if (hasPortableLayoutState && layoutState.HasLayoutClip && layoutState.LayoutClip != null)
         {
-            if (hasExplicitClip)
+            if (hasCurrentClip)
             {
-                return TryCreateIntersectedClip(layoutState.LayoutClip, explicitClip!, out clip);
+                return TryCreateIntersectedClip(layoutState.LayoutClip, currentClip!, out clip);
             }
 
             clip = layoutState.LayoutClip;
@@ -1711,9 +1708,9 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (!hasPortableLayoutState && TryGetLayoutClip(visual, out var layoutClip) && layoutClip != null)
         {
-            if (hasExplicitClip)
+            if (hasCurrentClip)
             {
-                return TryCreateIntersectedClip(layoutClip, explicitClip!, out clip);
+                return TryCreateIntersectedClip(layoutClip, currentClip!, out clip);
             }
 
             clip = layoutClip;
@@ -1722,17 +1719,17 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryCreateClipToBoundsClip(visual, out var clipToBoundsClip))
         {
-            if (hasExplicitClip)
+            if (hasCurrentClip)
             {
-                return TryCreateIntersectedClip(clipToBoundsClip!, explicitClip!, out clip);
+                return TryCreateIntersectedClip(clipToBoundsClip!, currentClip!, out clip);
             }
 
             clip = clipToBoundsClip;
             return true;
         }
 
-        clip = explicitClip;
-        return hasExplicitClip;
+        clip = currentClip;
+        return hasCurrentClip;
     }
 
     private static bool TryCreateClipToBoundsClip(object visual, out object? clip)

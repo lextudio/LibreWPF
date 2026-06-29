@@ -169,13 +169,17 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeLowersNativeVisualStateIntoRetainedOwnerScopes()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
+            HasTransform = true,
             Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
-            Offset = new WpfVector(10, 20),
+            HasOffset = true,
+            Offset = new PortablePoint(10, 20),
+            HasOpacity = true,
             Opacity = 0.5,
+            HasClip = true,
             Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50))
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
@@ -404,11 +408,17 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeIntersectsLayoutAndExplicitClipsForRetainedOwnerScopes()
     {
-        var root = new FakeVisual
-        {
-            Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 50, 50)),
-            LayoutClip = new FakeRectangleGeometry(new FakeRect(10, 12, 60, 70))
-        };
+        var root = new FakePortableVisualStateAndLayoutVisual(
+            new PortableVisualState
+            {
+                HasClip = true,
+                Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 50, 50))
+            },
+            new PortableVisualLayoutState
+            {
+                HasLayoutClip = true,
+                LayoutClip = new FakeRectangleGeometry(new FakeRect(10, 12, 60, 70))
+            });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
@@ -566,13 +576,22 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualReappliesNativeCacheState()
     {
-        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        var cacheMode = new object();
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(2, 3),
+                HasOpacity = true,
+                Opacity = 0.35,
+                HasClip = true,
+                Clip = new FakeRectangleGeometry(new FakeRect(10, 11, 20, 30)),
+                HasCacheMode = true,
+                CacheMode = cacheMode
+            })
         {
-            Bounds = new FakeRect(5, 6, 70, 80),
-            CacheMode = new object(),
-            Opacity = 0.35,
-            Offset = new WpfVector(2, 3),
-            Clip = new FakeRectangleGeometry(new FakeRect(10, 11, 20, 30))
+            Bounds = new FakeRect(5, 6, 70, 80)
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
         var renderer = new WpfVisualTreeReflectionRenderer();
@@ -652,13 +671,21 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualReappliesNativeEffectWithOuterTransform()
     {
-        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasTransform = true,
+                Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
+                HasOffset = true,
+                Offset = new PortablePoint(11, 13),
+                HasClip = true,
+                Clip = new FakeRectangleGeometry(new FakeRect(10, 12, 20, 25)),
+                HasEffect = true,
+                Effect = new FakeBlurEffect(4)
+            })
         {
-            Bounds = new FakeRect(5, 6, 70, 80),
-            Effect = new FakeBlurEffect(4),
-            Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
-            Offset = new WpfVector(11, 13),
-            Clip = new FakeRectangleGeometry(new FakeRect(10, 12, 20, 25))
+            Bounds = new FakeRect(5, 6, 70, 80)
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
         var renderer = new WpfVisualTreeReflectionRenderer();
@@ -934,14 +961,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeKeepsRoundedClipInCommandScopeForNativeOwnerSink()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
+            HasClip = true,
             Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50))
             {
                 RadiusX = 4,
                 RadiusY = 4
             }
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
@@ -1049,11 +1077,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAdaptsWpfShapedTransformAndClip()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
+            HasTransform = true,
             Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
+            HasClip = true,
             Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50))
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -1159,12 +1189,17 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             OpacityMask = Brushes.White
         };
-        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green))
-        {
-            Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 5, 7)),
-            Offset = new WpfVector(10, 20),
-            Clip = new FakeRectangleGeometry(new FakeRect(5, 6, 10, 12))
-        });
+        root.Children.Add(new FakePortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasTransform = true,
+                Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 5, 7)),
+                HasOffset = true,
+                Offset = new PortablePoint(10, 20),
+                HasClip = true,
+                Clip = new FakeRectangleGeometry(new FakeRect(5, 6, 10, 12))
+            }));
 
         var sink = new TestSink();
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
@@ -2359,6 +2394,35 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public bool TryGetPortableVisualState(out PortableVisualState state)
         {
             state = _state;
+            return true;
+        }
+    }
+
+    private sealed class FakePortableVisualStateAndLayoutVisual :
+        FakeVisual,
+        PortableVisualStateSource,
+        PortableVisualLayoutStateSource
+    {
+        private readonly PortableVisualState _visualState;
+        private readonly PortableVisualLayoutState _layoutState;
+
+        public FakePortableVisualStateAndLayoutVisual(
+            PortableVisualState visualState,
+            PortableVisualLayoutState layoutState)
+        {
+            _visualState = visualState;
+            _layoutState = layoutState;
+        }
+
+        public bool TryGetPortableVisualState(out PortableVisualState state)
+        {
+            state = _visualState;
+            return true;
+        }
+
+        public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
+        {
+            state = _layoutState;
             return true;
         }
     }

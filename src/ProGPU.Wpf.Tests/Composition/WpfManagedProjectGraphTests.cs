@@ -5709,7 +5709,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("drawing is PortableImageDrawingStateSource imageDrawingStateSource", replaySource, StringComparison.Ordinal);
         Assert.Contains("drawing is PortableGlyphRunDrawingStateSource glyphRunDrawingStateSource", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetImageDrawingImageSource(drawing, hasPortableImageDrawingState, imageDrawingState", replaySource, StringComparison.Ordinal);
-        Assert.Contains("TryGetGlyphRunDrawingGlyphRun(drawing, hasPortableGlyphRunDrawingState, glyphRunDrawingState", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetGlyphRunDrawingGlyphRun(", replaySource, StringComparison.Ordinal);
+        Assert.Contains("sink is IWpfNativePrimitiveCommandSink nativeSink", replaySource, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeGlyphRun(foregroundBrush, glyphRunValue!)", replaySource, StringComparison.Ordinal);
         Assert.Contains("ImageDrawing : Drawing, IPortableImageDrawingStateSource", imageDrawingSource, StringComparison.Ordinal);
         Assert.Contains("GlyphRunDrawing : Drawing, IPortableGlyphRunDrawingStateSource", glyphRunDrawingSource, StringComparison.Ordinal);
         Assert.Contains("IPortableImageDrawingStateSource.TryGetPortableImageDrawingState(out PortableImageDrawingState state)", imageDrawingSource, StringComparison.Ordinal);
@@ -5724,6 +5726,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool HasForegroundBrush", glyphInteropSource, StringComparison.Ordinal);
         Assert.Contains("ReplayAppliesPortableImageDrawingStateWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDoesNotReflectAbsentPortableImageDrawingState", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayUsesNativeSinkForPortableGlyphRunDrawingState", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDoesNotReflectAbsentPortableGlyphRunDrawingState", rendererTests, StringComparison.Ordinal);
     }
 
@@ -11001,6 +11004,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DrawNativeGlyphRun", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("TryResolveRawResource", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("TryAdaptNativeGlyphRun", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("using PortableGlyphRunSource = ProGPU.Wpf.Interop.IPortableGlyphRunSource;", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("resource is PortableGlyphRunSource portableGlyphRunSource", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("portableGlyphRunSource.TryGetPortableGlyphRun(out var portableGlyphRun)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("TryAdaptPortableNativeGlyphRun(portableGlyphRun, out glyphRun)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("AdaptPortableGlyphRun(portableGlyphRun)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeBrush", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativePen", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("TryReadReplayPoint(startPointValue", wpfReflectionResourceResolver, StringComparison.Ordinal);
@@ -11020,6 +11028,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableBrushSourceAbsenceDoesNotFallBackToReflectedBrushShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("PortablePenSourceAbsenceDoesNotFallBackToReflectedPenShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("PortableTransformSourceAbsenceDoesNotFallBackToReflectedTransformShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("AdaptGlyphRunSkipsUnavailablePortableGlyphRunWithoutReflectionFallback", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("return portableBrushSource.TryGetPortableBrush(out var portableBrush)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("return portablePenSource.TryGetPortablePen(out var portablePen)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("if (portableTransform.TryGetPortableTransformMatrix(out var portableMatrix))", wpfReflectionResourceResolver, StringComparison.Ordinal);

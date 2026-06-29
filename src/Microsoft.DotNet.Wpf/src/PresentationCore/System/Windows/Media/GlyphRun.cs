@@ -23,6 +23,7 @@ using MS.Internal;
 using MS.Internal.FontCache;
 using MS.Internal.TextFormatting;
 using MS.Internal.Text.TextInterface;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Media
 {
@@ -33,7 +34,7 @@ namespace System.Windows.Media
     /// <remarks>
     ///  Consider adding [XmlLangProperty("Language")] 
     /// </remarks>
-    public class GlyphRun : DUCE.IResource, ISupportInitialize
+    public class GlyphRun : DUCE.IResource, ISupportInitialize, IPortableGlyphRunSource
     {
         //------------------------------------------------------
         //
@@ -2441,6 +2442,113 @@ namespace System.Windows.Media
 
         #endregion Private Enumerations
 
+        //------------------------------------------------------
+        //
+        //  Portable ProGPU interop
+        //
+        //------------------------------------------------------
+        #region Portable ProGPU interop
+
+        bool IPortableGlyphRunSource.TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)
+        {
+            glyphRun = new PortableGlyphRun();
+            if ((_flags & GlyphRunFlags.IsInitialized) == 0
+                || _glyphIndices == null
+                || _glyphIndices.Count == 0
+                || _renderingEmSize <= 0)
+            {
+                return false;
+            }
+
+            StyleSimulations styleSimulations = _glyphTypeface?.StyleSimulations ?? StyleSimulations.None;
+            glyphRun = new PortableGlyphRun
+            {
+                GlyphIndices = CopyUShorts(_glyphIndices),
+                AdvanceWidths = CopyDoubles(_advanceWidths),
+                GlyphOffsets = CopyPoints(_glyphOffsets),
+                BaselineOrigin = ToPortablePoint(_baselineOrigin),
+                FontRenderingEmSize = _renderingEmSize,
+                FontUri = _glyphTypeface?.FontUri?.OriginalString,
+                FontFamilyNames = CopyFamilyNames(_glyphTypeface?.FamilyNames),
+                IsBold = (styleSimulations & StyleSimulations.BoldSimulation) != 0,
+                IsItalic = (styleSimulations & StyleSimulations.ItalicSimulation) != 0
+            };
+
+            return true;
+        }
+
+        private static ushort[] CopyUShorts(IList<ushort> source)
+        {
+            if (source == null || source.Count == 0)
+            {
+                return Array.Empty<ushort>();
+            }
+
+            ushort[] result = new ushort[source.Count];
+            for (int i = 0; i < result.Length; i++)
+            {
+                result[i] = source[i];
+            }
+
+            return result;
+        }
+
+        private static double[] CopyDoubles(IList<double> source)
+        {
+            if (source == null || source.Count == 0)
+            {
+                return Array.Empty<double>();
+            }
+
+            double[] result = new double[source.Count];
+            for (int i = 0; i < result.Length; i++)
+            {
+                result[i] = source[i];
+            }
+
+            return result;
+        }
+
+        private static PortablePoint[] CopyPoints(IList<Point> source)
+        {
+            if (source == null || source.Count == 0)
+            {
+                return Array.Empty<PortablePoint>();
+            }
+
+            PortablePoint[] result = new PortablePoint[source.Count];
+            for (int i = 0; i < result.Length; i++)
+            {
+                result[i] = ToPortablePoint(source[i]);
+            }
+
+            return result;
+        }
+
+        private static PortablePoint ToPortablePoint(Point point)
+        {
+            return new PortablePoint(point.X, point.Y);
+        }
+
+        private static string[] CopyFamilyNames(System.Collections.Generic.IDictionary<System.Globalization.CultureInfo, string> names)
+        {
+            if (names == null || names.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            var result = new string[names.Count];
+            int index = 0;
+            foreach (string value in names.Values)
+            {
+                result[index++] = value;
+            }
+
+            return result;
+        }
+
+        #endregion Portable ProGPU interop
+
 
         //------------------------------------------------------
         //
@@ -2489,4 +2597,3 @@ namespace System.Windows.Media
         #endregion Private Fields
     }
 }
-

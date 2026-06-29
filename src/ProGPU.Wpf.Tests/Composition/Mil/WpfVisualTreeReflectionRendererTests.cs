@@ -33,8 +33,10 @@ using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
 using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
 using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
 using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
+using PortableGlyphRun = ProGPU.Wpf.Interop.PortableGlyphRun;
 using PortableGlyphRunDrawingState = ProGPU.Wpf.Interop.PortableGlyphRunDrawingState;
 using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource;
+using PortableGlyphRunSource = ProGPU.Wpf.Interop.IPortableGlyphRunSource;
 using PortableImageDrawingState = ProGPU.Wpf.Interop.PortableImageDrawingState;
 using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;
 using PortablePixelShader = ProGPU.Wpf.Interop.PortablePixelShader;
@@ -1647,6 +1649,36 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplayUsesNativeSinkForPortableGlyphRunDrawingState()
+    {
+        var glyphRun = new ThrowingPortableGlyphRunSource(new PortableGlyphRun
+        {
+            GlyphIndices = new ushort[] { 7 },
+            BaselineOrigin = new PortablePoint(2, 3),
+            FontRenderingEmSize = 14,
+            FontFamilyNames = new[] { "Arial" }
+        });
+        var drawing = new ThrowingPortableGlyphRunDrawing(new PortableGlyphRunDrawingState
+        {
+            HasGlyphRun = true,
+            GlyphRun = glyphRun,
+            HasForegroundBrush = true,
+            ForegroundBrush = Brushes.Green
+        });
+        var sink = new NativeGlyphRunTestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+        var nativeGlyphRun = Assert.Single(sink.NativeGlyphRuns);
+        Assert.Same(Brushes.Green, nativeGlyphRun.ForegroundBrush);
+        Assert.Same(glyphRun, nativeGlyphRun.GlyphRun);
+        Assert.Empty(sink.GlyphRuns);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
+    }
+
+    [Fact]
     public void ReplaySkipsUnavailablePortableGlyphRunDrawingStateWithoutReflectionFallback()
     {
         var drawing = new UnavailablePortableGlyphRunDrawing();
@@ -2858,6 +2890,105 @@ public sealed class WpfVisualTreeReflectionRendererTests
             ReflectedStateProbeCount++;
             throw new InvalidOperationException($"Reflected glyph drawing property '{propertyName}' should not be read.");
         }
+    }
+
+    private sealed class ThrowingPortableGlyphRunSource : PortableGlyphRunSource
+    {
+        private readonly PortableGlyphRun _glyphRun;
+
+        public ThrowingPortableGlyphRunSource(PortableGlyphRun glyphRun)
+        {
+            _glyphRun = glyphRun;
+        }
+
+        public int ReflectedGlyphRunProbeCount { get; private set; }
+
+        public object? GlyphIndices => ThrowReflectedGlyphRunProbe();
+
+        public object? AdvanceWidths => ThrowReflectedGlyphRunProbe();
+
+        public object? GlyphOffsets => ThrowReflectedGlyphRunProbe();
+
+        public object? BaselineOrigin => ThrowReflectedGlyphRunProbe();
+
+        public object? FontRenderingEmSize => ThrowReflectedGlyphRunProbe();
+
+        public object? GlyphTypeface => ThrowReflectedGlyphRunProbe();
+
+        public object? Font => ThrowReflectedGlyphRunProbe();
+
+        public bool TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)
+        {
+            glyphRun = _glyphRun;
+            return true;
+        }
+
+        private object? ThrowReflectedGlyphRunProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedGlyphRunProbeCount++;
+            throw new InvalidOperationException($"Reflected glyph-run property '{propertyName}' should not be read.");
+        }
+    }
+
+    private sealed class NativeGlyphRunTestSink : IWpfCompositionCommandSink, IWpfNativePrimitiveCommandSink
+    {
+        public List<(MediaBrush? ForegroundBrush, MediaGlyphRun GlyphRun)> GlyphRuns { get; } = new();
+
+        public List<(MediaBrush? ForegroundBrush, object GlyphRun)> NativeGlyphRuns { get; } = new();
+
+        public MediaDrawingContext DrawingContext => null!;
+
+        public void DrawLine(MediaPen? pen, Point point0, Point point1) { }
+
+        public void DrawRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle) { }
+
+        public void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY) { }
+
+        public void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY) { }
+
+        public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry) { }
+
+        public void DrawImage(MediaImageSource imageSource, Rect rectangle) { }
+
+        public void DrawText(FormattedText formattedText, Point origin) { }
+
+        public void DrawGlyphRun(MediaBrush? foregroundBrush, MediaGlyphRun glyphRun)
+        {
+            GlyphRuns.Add((foregroundBrush, glyphRun));
+        }
+
+        public void PushClip(MediaGeometry clipGeometry) { }
+
+        public void PushOpacity(double opacity) { }
+
+        public void PushOpacityMask(MediaBrush? opacityMask, Rect bounds) { }
+
+        public void PushTransform(MediaTransform transform) { }
+
+        public void Pop() { }
+
+        public void Close() { }
+
+        public void Dispose() { }
+
+        public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1) { }
+
+        public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle) { }
+
+        public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY) { }
+
+        public void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY) { }
+
+        public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle) { }
+
+        public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle, WpfReplayRect sourceRectangle) { }
+
+        public void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRun)
+        {
+            NativeGlyphRuns.Add((foregroundBrush, glyphRun));
+        }
+
+        public void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds) { }
     }
 
     private sealed class FakePortableVisualStateAndLayoutDrawingVisual :

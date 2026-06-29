@@ -29,6 +29,8 @@ using PortableFillRule = ProGPU.Wpf.Interop.PortableFillRule;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
 using PortableGeometryPathKind = ProGPU.Wpf.Interop.PortableGeometryPathKind;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
+using PortableGlyphRun = ProGPU.Wpf.Interop.PortableGlyphRun;
+using PortableGlyphRunSource = ProGPU.Wpf.Interop.IPortableGlyphRunSource;
 using PortablePathSegment = ProGPU.Wpf.Interop.PortablePathSegment;
 using PortablePathSegmentKind = ProGPU.Wpf.Interop.PortablePathSegmentKind;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
@@ -1375,6 +1377,28 @@ public sealed class WpfReflectionResourceResolver :
             return false;
         }
 
+        if (resource is PortableGlyphRunSource portableGlyphRunSource)
+        {
+            return portableGlyphRunSource.TryGetPortableGlyphRun(out var portableGlyphRun)
+                && TryAdaptPortableNativeGlyphRun(portableGlyphRun, out glyphRun);
+        }
+
+        if (resource is MediaGlyphRun mediaGlyphRun)
+        {
+            glyphRun = new WpfNativeGlyphRun(
+                mediaGlyphRun.GlyphIndices,
+                mediaGlyphRun.GlyphPositions,
+                mediaGlyphRun.Font,
+                mediaGlyphRun.FontSize,
+                mediaGlyphRun.Position,
+                mediaGlyphRun.Transform,
+                mediaGlyphRun.IsBold,
+                mediaGlyphRun.IsItalic);
+            return mediaGlyphRun.GlyphIndices.Length > 0
+                && mediaGlyphRun.FontSize > 0
+                && mediaGlyphRun.Font != null;
+        }
+
         if (!TryGetPropertyValue(resource, "GlyphIndices", out var glyphIndicesValue)
             || glyphIndicesValue == null
             || !TryReadUShortList(glyphIndicesValue, out var glyphIndices)
@@ -1421,6 +1445,13 @@ public sealed class WpfReflectionResourceResolver :
             return null;
         }
 
+        if (resource is PortableGlyphRunSource portableGlyphRunSource)
+        {
+            return portableGlyphRunSource.TryGetPortableGlyphRun(out var portableGlyphRun)
+                ? AdaptPortableGlyphRun(portableGlyphRun)
+                : null;
+        }
+
         if (resource is MediaGlyphRun glyphRun)
         {
             return glyphRun;
@@ -1459,6 +1490,146 @@ public sealed class WpfReflectionResourceResolver :
             IsBold = styleSimulations.IsBold,
             IsItalic = styleSimulations.IsItalic
         };
+    }
+
+    private static bool TryAdaptPortableNativeGlyphRun(PortableGlyphRun portableGlyphRun, out WpfNativeGlyphRun glyphRun)
+    {
+        glyphRun = default;
+        if (!TryValidatePortableGlyphRun(portableGlyphRun, out var font))
+        {
+            return false;
+        }
+
+        var transform = Matrix4x4.Identity;
+        if (portableGlyphRun.HasTransform)
+        {
+            var matrix = ToWpfMatrix2D(portableGlyphRun.Transform);
+            if (!TryUseFiniteMatrix(matrix, out matrix))
+            {
+                return false;
+            }
+
+            transform = ToMatrix4x4(matrix);
+        }
+
+        glyphRun = new WpfNativeGlyphRun(
+            portableGlyphRun.GlyphIndices,
+            CreatePortableGlyphPositions(portableGlyphRun),
+            font,
+            (float)portableGlyphRun.FontRenderingEmSize,
+            ToVector2(portableGlyphRun.BaselineOrigin),
+            transform,
+            portableGlyphRun.IsBold,
+            portableGlyphRun.IsItalic);
+        return true;
+    }
+
+    private static MediaGlyphRun? AdaptPortableGlyphRun(PortableGlyphRun portableGlyphRun)
+    {
+        if (!TryValidatePortableGlyphRun(portableGlyphRun, out var font))
+        {
+            return null;
+        }
+
+        var transform = Matrix4x4.Identity;
+        if (portableGlyphRun.HasTransform)
+        {
+            var matrix = ToWpfMatrix2D(portableGlyphRun.Transform);
+            if (!TryUseFiniteMatrix(matrix, out matrix))
+            {
+                return null;
+            }
+
+            transform = ToMatrix4x4(matrix);
+        }
+
+        return new MediaGlyphRun(
+            font,
+            (float)portableGlyphRun.FontRenderingEmSize,
+            portableGlyphRun.GlyphIndices,
+            CreatePortableGlyphPositions(portableGlyphRun))
+        {
+            Position = ToVector2(portableGlyphRun.BaselineOrigin),
+            Transform = transform,
+            IsBold = portableGlyphRun.IsBold,
+            IsItalic = portableGlyphRun.IsItalic
+        };
+    }
+
+    private static bool TryValidatePortableGlyphRun(PortableGlyphRun portableGlyphRun, out TtfFont font)
+    {
+        font = null!;
+        if (portableGlyphRun.GlyphIndices.Length == 0
+            || portableGlyphRun.FontRenderingEmSize <= 0
+            || TryResolvePortableGlyphRunFont(portableGlyphRun) is not { } resolvedFont)
+        {
+            return false;
+        }
+
+        font = resolvedFont;
+        return true;
+    }
+
+    private static Vector2[] CreatePortableGlyphPositions(PortableGlyphRun portableGlyphRun)
+    {
+        var glyphCount = portableGlyphRun.GlyphIndices.Length;
+        if (portableGlyphRun.GlyphPositions.Length >= glyphCount)
+        {
+            var positions = new Vector2[glyphCount];
+            for (var i = 0; i < positions.Length; i++)
+            {
+                positions[i] = ToVector2(portableGlyphRun.GlyphPositions[i]);
+            }
+
+            return positions;
+        }
+
+        var computedPositions = new Vector2[glyphCount];
+        double x = 0;
+        for (var i = 0; i < computedPositions.Length; i++)
+        {
+            var offset = i < portableGlyphRun.GlyphOffsets.Length
+                ? portableGlyphRun.GlyphOffsets[i]
+                : new PortablePoint(0, 0);
+            computedPositions[i] = new Vector2((float)(x + offset.X), (float)offset.Y);
+
+            if (i < portableGlyphRun.AdvanceWidths.Length)
+            {
+                x += portableGlyphRun.AdvanceWidths[i];
+            }
+        }
+
+        return computedPositions;
+    }
+
+    private static TtfFont? TryResolvePortableGlyphRunFont(PortableGlyphRun glyphRun)
+    {
+        if (glyphRun.NativeFont is TtfFont font)
+        {
+            return font;
+        }
+
+        if (!string.IsNullOrWhiteSpace(glyphRun.FontUri)
+            && TryResolveFontFileValue(glyphRun.FontUri) is { } fontFromUri)
+        {
+            return fontFromUri;
+        }
+
+        foreach (var familyName in glyphRun.FontFamilyNames)
+        {
+            if (string.IsNullOrWhiteSpace(familyName))
+            {
+                continue;
+            }
+
+            var resolved = TryResolveFontFamily(familyName);
+            if (resolved != null)
+            {
+                return resolved;
+            }
+        }
+
+        return TryResolveFontFamily("Arial");
     }
 
     public static MediaGeometry? AdaptGeometry(object? resource)

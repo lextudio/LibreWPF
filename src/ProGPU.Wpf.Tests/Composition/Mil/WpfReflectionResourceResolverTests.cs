@@ -2789,6 +2789,70 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void AdaptGlyphRunAdaptsPortableGlyphRunWithoutTypeNameShape()
+    {
+        var glyphRun = new FakePortableGlyphRunSource(new PortableGlyphRun
+        {
+            GlyphIndices = new ushort[] { 3, 4 },
+            GlyphPositions =
+            [
+                new PortablePoint(2, 3),
+                new PortablePoint(7, -1)
+            ],
+            BaselineOrigin = new PortablePoint(10, 20),
+            FontRenderingEmSize = 12.5,
+            FontFamilyNames = new[] { "Arial" },
+            IsBold = true,
+            IsItalic = true
+        });
+
+        var adapted = WpfReflectionResourceResolver.AdaptGlyphRun(glyphRun);
+
+        Assert.NotNull(adapted);
+        Assert.Equal(new ushort[] { 3, 4 }, adapted.GlyphIndices);
+        Assert.Equal(12.5f, adapted.FontSize);
+        Assert.Equal(new Vector2(10, 20), adapted.Position);
+        Assert.Equal(new Vector2(2, 3), adapted.GlyphPositions[0]);
+        Assert.Equal(new Vector2(7, -1), adapted.GlyphPositions[1]);
+        Assert.True(adapted.IsBold);
+        Assert.True(adapted.IsItalic);
+    }
+
+    [Fact]
+    public void AdaptNativeGlyphRunAdaptsPortableGlyphRunWithoutReflection()
+    {
+        var glyphRun = new FakePortableGlyphRunSource(new PortableGlyphRun
+        {
+            GlyphIndices = new ushort[] { 5 },
+            AdvanceWidths = new[] { 9.0 },
+            GlyphOffsets = [new PortablePoint(1, 2)],
+            BaselineOrigin = new PortablePoint(3, 4),
+            FontRenderingEmSize = 14,
+            FontFamilyNames = new[] { "Arial" },
+            HasTransform = true,
+            Transform = new PortableMatrix3x2(1, 0, 0, 1, 6, 7)
+        });
+
+        Assert.True(WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var adapted));
+        Assert.Equal(new ushort[] { 5 }, adapted.GlyphIndices);
+        Assert.Equal(14f, adapted.FontSize);
+        Assert.Equal(new Vector2(3, 4), adapted.Position);
+        Assert.Equal(new Vector2(1, 2), adapted.GlyphPositions[0]);
+        Assert.Equal(6, adapted.Transform.M41);
+        Assert.Equal(7, adapted.Transform.M42);
+    }
+
+    [Fact]
+    public void AdaptGlyphRunSkipsUnavailablePortableGlyphRunWithoutReflectionFallback()
+    {
+        var glyphRun = new UnavailablePortableGlyphRun();
+
+        Assert.Null(WpfReflectionResourceResolver.AdaptGlyphRun(glyphRun));
+        Assert.False(WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _));
+        Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
+    }
+
+    [Fact]
     public void DecodeDrawDrawingReplaysWpfShapedGlyphRunDrawing()
     {
         var drawing = new FakeGlyphRunDrawing(
@@ -4423,6 +4487,53 @@ public sealed class WpfReflectionResourceResolverTests
         public double FontRenderingEmSize { get; }
 
         public FakeGlyphTypeface GlyphTypeface { get; }
+    }
+
+    private sealed class FakePortableGlyphRunSource : IPortableGlyphRunSource
+    {
+        private readonly PortableGlyphRun _glyphRun;
+
+        public FakePortableGlyphRunSource(PortableGlyphRun glyphRun)
+        {
+            _glyphRun = glyphRun;
+        }
+
+        public bool TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)
+        {
+            glyphRun = _glyphRun;
+            return true;
+        }
+    }
+
+    private sealed class UnavailablePortableGlyphRun : IPortableGlyphRunSource
+    {
+        public int ReflectedGlyphRunProbeCount { get; private set; }
+
+        public object? GlyphIndices => ThrowReflectedGlyphRunProbe();
+
+        public object? AdvanceWidths => ThrowReflectedGlyphRunProbe();
+
+        public object? GlyphOffsets => ThrowReflectedGlyphRunProbe();
+
+        public object? BaselineOrigin => ThrowReflectedGlyphRunProbe();
+
+        public object? FontRenderingEmSize => ThrowReflectedGlyphRunProbe();
+
+        public object? GlyphTypeface => ThrowReflectedGlyphRunProbe();
+
+        public object? Font => ThrowReflectedGlyphRunProbe();
+
+        public bool TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)
+        {
+            glyphRun = null!;
+            return false;
+        }
+
+        private object? ThrowReflectedGlyphRunProbe([System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+        {
+            ReflectedGlyphRunProbeCount++;
+            throw new InvalidOperationException($"Reflected glyph-run property '{propertyName}' should not be read.");
+        }
     }
 
     private sealed class FakeGlyphTypeface

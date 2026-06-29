@@ -2064,8 +2064,11 @@ internal static class WpfReflectionDrawingReplay
             return WpfDrawingReplayStatus.Skipped;
         }
 
-        if (!TryGetGlyphRunDrawingGlyphRun(drawing, hasPortableGlyphRunDrawingState, glyphRunDrawingState, out var glyphRunValue)
-            || WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is not { } glyphRun)
+        if (!TryGetGlyphRunDrawingGlyphRun(
+                drawing,
+                hasPortableGlyphRunDrawingState,
+                glyphRunDrawingState,
+                out var glyphRunValue))
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
@@ -2075,7 +2078,20 @@ internal static class WpfReflectionDrawingReplay
             hasPortableGlyphRunDrawingState,
             glyphRunDrawingState,
             out var foregroundBrushValue);
-        sink.DrawGlyphRun(WpfReflectionResourceResolver.AdaptBrush(foregroundBrushValue), glyphRun);
+        var foregroundBrush = WpfReflectionResourceResolver.AdaptBrush(foregroundBrushValue);
+        if (sink is IWpfNativePrimitiveCommandSink nativeSink
+            && WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out _))
+        {
+            nativeSink.DrawNativeGlyphRun(foregroundBrush, glyphRunValue!);
+            return WpfDrawingReplayStatus.Applied;
+        }
+
+        if (WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is not { } glyphRun)
+        {
+            return WpfDrawingReplayStatus.Unsupported;
+        }
+
+        sink.DrawGlyphRun(foregroundBrush, glyphRun);
         return WpfDrawingReplayStatus.Applied;
     }
 
@@ -2783,12 +2799,22 @@ internal static class WpfReflectionDrawingReplay
                 return false;
             }
 
-            return TryGetGlyphRunDrawingGlyphRun(
+            if (!TryGetGlyphRunDrawingGlyphRun(
                     drawing,
                     hasPortableGlyphRunDrawingState,
                     glyphRunDrawingState,
-                    out var glyphRunValue)
-                && WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is { } glyphRun
+                    out var glyphRunValue))
+            {
+                bounds = default;
+                return false;
+            }
+
+            if (WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out var nativeGlyphRun))
+            {
+                return TryGetGlyphRunBounds(nativeGlyphRun, out bounds);
+            }
+
+            return WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is { } glyphRun
                 && TryGetGlyphRunBounds(glyphRun, out bounds);
         }
 
@@ -2894,6 +2920,41 @@ internal static class WpfReflectionDrawingReplay
     }
 
     private static bool TryGetGlyphRunBounds(MediaGlyphRun glyphRun, out Rect bounds)
+    {
+        bounds = default;
+
+        if (glyphRun.FontSize <= 0)
+        {
+            return false;
+        }
+
+        var minX = glyphRun.Position.X;
+        var minY = glyphRun.Position.Y - glyphRun.FontSize;
+        var maxX = glyphRun.Position.X;
+        var maxY = glyphRun.Position.Y;
+
+        if (glyphRun.GlyphPositions.Length == 0)
+        {
+            maxX += glyphRun.FontSize;
+        }
+        else
+        {
+            foreach (var position in glyphRun.GlyphPositions)
+            {
+                minX = Math.Min(minX, glyphRun.Position.X + position.X);
+                minY = Math.Min(minY, glyphRun.Position.Y + position.Y - glyphRun.FontSize);
+                maxX = Math.Max(maxX, glyphRun.Position.X + position.X + glyphRun.FontSize);
+                maxY = Math.Max(maxY, glyphRun.Position.Y + position.Y);
+            }
+        }
+
+        return IsUsableRect(TransformBounds(
+            new Rect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY)),
+            glyphRun.Transform),
+            out bounds);
+    }
+
+    private static bool TryGetGlyphRunBounds(WpfNativeGlyphRun glyphRun, out Rect bounds)
     {
         bounds = default;
 

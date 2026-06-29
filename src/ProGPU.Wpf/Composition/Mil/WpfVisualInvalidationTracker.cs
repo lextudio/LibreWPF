@@ -490,11 +490,22 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private static bool ShouldScanReferenceProperties(object source)
     {
-        return source is not PortableDrawingContentSource
-            && source is not PortableRenderDataSource
-            && source is not PortableVisualChildrenSource
-            && source is not PortableVisualStateSource
-            && source is not PortableVisualLayoutStateSource;
+        return !IsPortableGraphSource(source);
+    }
+
+    private static bool ShouldReadVersionProperties(object source)
+    {
+        return source is not PortableInvalidationSource
+            && !IsPortableGraphSource(source);
+    }
+
+    private static bool IsPortableGraphSource(object source)
+    {
+        return source is PortableDrawingContentSource
+            || source is PortableRenderDataSource
+            || source is PortableVisualChildrenSource
+            || source is PortableVisualStateSource
+            || source is PortableVisualLayoutStateSource;
     }
 
     private static IReadOnlyList<object> CollectVersionChanges(
@@ -577,6 +588,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private static bool TryReadVersionValue(object source, out object version)
     {
+        if (!ShouldReadVersionProperties(source))
+        {
+            version = 0;
+            return false;
+        }
+
         foreach (var propertyName in s_versionPropertyNames)
         {
             if (TryGetVersionPropertyValue(source, propertyName, out version))

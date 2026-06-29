@@ -74,6 +74,24 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.Contains(root, tracker.DirtySources);
         Assert.True(root.PortableSubscriptionCount > 0);
         Assert.Equal(0, root.ReflectedChangedSubscriptionCount);
+        Assert.Equal(0, root.ReflectedVersionProbeCount);
+    }
+
+    [Fact]
+    public void PortableInvalidationSourceDoesNotProbeReflectedVersionProperties()
+    {
+        var root = new FakePortableInvalidationResource();
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        Assert.False(tracker.DetectVersionChanges());
+
+        root.RaisePortableInvalidated();
+
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Equal(0, root.ReflectedVersionProbeCount);
     }
 
     [Fact]
@@ -301,6 +319,30 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.True(tracker.IsDirty);
         Assert.Same(effect, tracker.LastDirtySource);
         Assert.Equal(0, root.ReflectedPropertyProbeCount);
+        Assert.Equal(0, root.ReflectedVersionProbeCount);
+    }
+
+    [Fact]
+    public void PortableVisualSourceDoesNotProbeReflectedVersionProperties()
+    {
+        var state = new PortableVisualState
+        {
+            HasOpacity = true,
+            Opacity = 1.0
+        };
+        var root = new ThrowingPortableStateVisual(state);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        Assert.False(tracker.DetectVersionChanges());
+
+        state.Opacity = 0.5;
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Equal(0, root.ReflectedVersionProbeCount);
     }
 
     [Fact]
@@ -760,6 +802,10 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         public int ReflectedPropertyProbeCount { get; private set; }
 
+        public int ReflectedVersionProbeCount { get; private set; }
+
+        public int Version => ThrowReflectedVersionProbe();
+
         public object? Children => ThrowReflectedPropertyProbe();
 
         public object? Clip => ThrowReflectedPropertyProbe();
@@ -780,6 +826,12 @@ public sealed class WpfVisualInvalidationTrackerTests
         {
             ReflectedPropertyProbeCount++;
             throw new InvalidOperationException("Reflected property probe should not be used for portable visual sources.");
+        }
+
+        private int ThrowReflectedVersionProbe()
+        {
+            ReflectedVersionProbeCount++;
+            throw new InvalidOperationException("Reflected version probe should not be used for portable visual sources.");
         }
     }
 
@@ -903,6 +955,17 @@ public sealed class WpfVisualInvalidationTrackerTests
         public int ReflectedChangedSubscriptionCount { get; private set; }
 
         public int ReflectedChangedUnsubscriptionCount { get; private set; }
+
+        public int ReflectedVersionProbeCount { get; private set; }
+
+        public int Version
+        {
+            get
+            {
+                ReflectedVersionProbeCount++;
+                throw new InvalidOperationException("Reflected version probe should not be used for portable invalidation sources.");
+            }
+        }
 
         public bool TrySubscribeInvalidated(EventHandler handler, out IDisposable subscription)
         {

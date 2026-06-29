@@ -681,6 +681,39 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             builder.SetOpacityMask(opacityMask);
         }
 
+        if (hasPortableVisualState)
+        {
+            if (visualState.HasEffect)
+            {
+                builder.SetEffect(visualState.Effect);
+            }
+
+            if (visualState.HasBitmapEffect)
+            {
+                builder.SetBitmapEffect(visualState.BitmapEffect);
+            }
+
+            if (visualState.HasBitmapEffectInput)
+            {
+                builder.SetBitmapEffectInput(visualState.BitmapEffectInput);
+            }
+
+            if (visualState.HasCacheMode)
+            {
+                builder.SetCacheMode(visualState.CacheMode);
+            }
+
+            if (visualState.HasSnappingGuidelinesX)
+            {
+                builder.SetSnappingGuidelinesX(visualState.SnappingGuidelinesX);
+            }
+
+            if (visualState.HasSnappingGuidelinesY)
+            {
+                builder.SetSnappingGuidelinesY(visualState.SnappingGuidelinesY);
+            }
+        }
+
         if (hasPortableLayoutState && TryReadPortableRenderSize(layoutState, out var width, out var height))
         {
             builder.SetRenderSize(width, height);
@@ -1034,17 +1067,61 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             foreach (var dependency in renderDataSnapshot.DependentResources)
             {
-                if (dependency == null)
-                {
-                    continue;
-                }
+                AddPortableDependency(ref dependencies, dependency);
+            }
+        }
 
-                dependencies ??= new List<object?>();
-                dependencies.Add(dependency);
+        if (source is PortableVisualStateSource visualStateSource
+            && visualStateSource.TryGetPortableVisualState(out var visualState))
+        {
+            if (visualState.HasTransform)
+            {
+                AddPortableDependency(ref dependencies, visualState.Transform);
+            }
+
+            if (visualState.HasClip)
+            {
+                AddPortableDependency(ref dependencies, visualState.Clip);
+            }
+
+            if (visualState.HasOpacityMask)
+            {
+                AddPortableDependency(ref dependencies, visualState.OpacityMask);
+            }
+
+            if (visualState.HasEffect)
+            {
+                AddPortableDependency(ref dependencies, visualState.Effect);
+            }
+
+            if (visualState.HasBitmapEffect)
+            {
+                AddPortableDependency(ref dependencies, visualState.BitmapEffect);
+            }
+
+            if (visualState.HasBitmapEffectInput)
+            {
+                AddPortableDependency(ref dependencies, visualState.BitmapEffectInput);
+            }
+
+            if (visualState.HasCacheMode)
+            {
+                AddPortableDependency(ref dependencies, visualState.CacheMode);
             }
         }
 
         return dependencies ?? (IReadOnlyList<object?>)Array.Empty<object?>();
+    }
+
+    private static void AddPortableDependency(ref List<object?>? dependencies, object? dependency)
+    {
+        if (dependency == null)
+        {
+            return;
+        }
+
+        dependencies ??= new List<object?>();
+        dependencies.Add(dependency);
     }
 
     private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
@@ -1221,6 +1298,18 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             double opacity,
             bool hasOpacityMaskProperty,
             object? opacityMaskReference,
+            bool hasEffectProperty,
+            object? effectReference,
+            bool hasBitmapEffectProperty,
+            object? bitmapEffectReference,
+            bool hasBitmapEffectInputProperty,
+            object? bitmapEffectInputReference,
+            bool hasCacheModeProperty,
+            object? cacheModeReference,
+            bool hasSnappingGuidelinesX,
+            double[]? snappingGuidelinesX,
+            bool hasSnappingGuidelinesY,
+            double[]? snappingGuidelinesY,
             bool hasRenderSize,
             double renderWidth,
             double renderHeight)
@@ -1252,6 +1341,18 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             Opacity = opacity;
             HasOpacityMaskProperty = hasOpacityMaskProperty;
             OpacityMaskReference = opacityMaskReference;
+            HasEffectProperty = hasEffectProperty;
+            EffectReference = effectReference;
+            HasBitmapEffectProperty = hasBitmapEffectProperty;
+            BitmapEffectReference = bitmapEffectReference;
+            HasBitmapEffectInputProperty = hasBitmapEffectInputProperty;
+            BitmapEffectInputReference = bitmapEffectInputReference;
+            HasCacheModeProperty = hasCacheModeProperty;
+            CacheModeReference = cacheModeReference;
+            HasSnappingGuidelinesX = hasSnappingGuidelinesX;
+            SnappingGuidelinesX = snappingGuidelinesX ?? Array.Empty<double>();
+            HasSnappingGuidelinesY = hasSnappingGuidelinesY;
+            SnappingGuidelinesY = snappingGuidelinesY ?? Array.Empty<double>();
             HasRenderSize = hasRenderSize;
             RenderWidth = renderWidth;
             RenderHeight = renderHeight;
@@ -1311,6 +1412,30 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         private object? OpacityMaskReference { get; }
 
+        private bool HasEffectProperty { get; }
+
+        private object? EffectReference { get; }
+
+        private bool HasBitmapEffectProperty { get; }
+
+        private object? BitmapEffectReference { get; }
+
+        private bool HasBitmapEffectInputProperty { get; }
+
+        private object? BitmapEffectInputReference { get; }
+
+        private bool HasCacheModeProperty { get; }
+
+        private object? CacheModeReference { get; }
+
+        private bool HasSnappingGuidelinesX { get; }
+
+        private double[] SnappingGuidelinesX { get; }
+
+        private bool HasSnappingGuidelinesY { get; }
+
+        private double[] SnappingGuidelinesY { get; }
+
         private bool HasRenderSize { get; }
 
         private double RenderWidth { get; }
@@ -1346,6 +1471,18 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 Opacity.Equals(other.Opacity) &&
                 HasOpacityMaskProperty == other.HasOpacityMaskProperty &&
                 ReferenceEquals(OpacityMaskReference, other.OpacityMaskReference) &&
+                HasEffectProperty == other.HasEffectProperty &&
+                ReferenceEquals(EffectReference, other.EffectReference) &&
+                HasBitmapEffectProperty == other.HasBitmapEffectProperty &&
+                ReferenceEquals(BitmapEffectReference, other.BitmapEffectReference) &&
+                HasBitmapEffectInputProperty == other.HasBitmapEffectInputProperty &&
+                ReferenceEquals(BitmapEffectInputReference, other.BitmapEffectInputReference) &&
+                HasCacheModeProperty == other.HasCacheModeProperty &&
+                ReferenceEquals(CacheModeReference, other.CacheModeReference) &&
+                HasSnappingGuidelinesX == other.HasSnappingGuidelinesX &&
+                DoubleArraysEqual(SnappingGuidelinesX, other.SnappingGuidelinesX) &&
+                HasSnappingGuidelinesY == other.HasSnappingGuidelinesY &&
+                DoubleArraysEqual(SnappingGuidelinesY, other.SnappingGuidelinesY) &&
                 HasRenderSize == other.HasRenderSize &&
                 RenderWidth.Equals(other.RenderWidth) &&
                 RenderHeight.Equals(other.RenderHeight);
@@ -1386,10 +1523,54 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             hash.Add(Opacity);
             hash.Add(HasOpacityMaskProperty);
             hash.Add(GetReferenceHashCode(OpacityMaskReference));
+            hash.Add(HasEffectProperty);
+            hash.Add(GetReferenceHashCode(EffectReference));
+            hash.Add(HasBitmapEffectProperty);
+            hash.Add(GetReferenceHashCode(BitmapEffectReference));
+            hash.Add(HasBitmapEffectInputProperty);
+            hash.Add(GetReferenceHashCode(BitmapEffectInputReference));
+            hash.Add(HasCacheModeProperty);
+            hash.Add(GetReferenceHashCode(CacheModeReference));
+            hash.Add(HasSnappingGuidelinesX);
+            AddDoubleArrayHash(ref hash, SnappingGuidelinesX);
+            hash.Add(HasSnappingGuidelinesY);
+            AddDoubleArrayHash(ref hash, SnappingGuidelinesY);
             hash.Add(HasRenderSize);
             hash.Add(RenderWidth);
             hash.Add(RenderHeight);
             return hash.ToHashCode();
+        }
+
+        private static bool DoubleArraysEqual(double[] left, double[] right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            if (left.Length != right.Length)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < left.Length; i++)
+            {
+                if (!left[i].Equals(right[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static void AddDoubleArrayHash(ref HashCode hash, double[] values)
+        {
+            hash.Add(values.Length);
+            for (var i = 0; i < values.Length; i++)
+            {
+                hash.Add(values[i]);
+            }
         }
 
         private static int GetReferenceHashCode(object? value)
@@ -1427,6 +1608,18 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private double _opacity;
         private bool _hasOpacityMaskProperty;
         private object? _opacityMaskReference;
+        private bool _hasEffectProperty;
+        private object? _effectReference;
+        private bool _hasBitmapEffectProperty;
+        private object? _bitmapEffectReference;
+        private bool _hasBitmapEffectInputProperty;
+        private object? _bitmapEffectInputReference;
+        private bool _hasCacheModeProperty;
+        private object? _cacheModeReference;
+        private bool _hasSnappingGuidelinesX;
+        private double[]? _snappingGuidelinesX;
+        private bool _hasSnappingGuidelinesY;
+        private double[]? _snappingGuidelinesY;
         private bool _hasRenderSize;
         private double _renderWidth;
         private double _renderHeight;
@@ -1518,6 +1711,48 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             _opacityMaskReference = opacityMask;
         }
 
+        public void SetEffect(object? effect)
+        {
+            HasState = true;
+            _hasEffectProperty = true;
+            _effectReference = effect;
+        }
+
+        public void SetBitmapEffect(object? bitmapEffect)
+        {
+            HasState = true;
+            _hasBitmapEffectProperty = true;
+            _bitmapEffectReference = bitmapEffect;
+        }
+
+        public void SetBitmapEffectInput(object? bitmapEffectInput)
+        {
+            HasState = true;
+            _hasBitmapEffectInputProperty = true;
+            _bitmapEffectInputReference = bitmapEffectInput;
+        }
+
+        public void SetCacheMode(object? cacheMode)
+        {
+            HasState = true;
+            _hasCacheModeProperty = true;
+            _cacheModeReference = cacheMode;
+        }
+
+        public void SetSnappingGuidelinesX(double[]? guidelines)
+        {
+            HasState = true;
+            _hasSnappingGuidelinesX = true;
+            _snappingGuidelinesX = guidelines ?? Array.Empty<double>();
+        }
+
+        public void SetSnappingGuidelinesY(double[]? guidelines)
+        {
+            HasState = true;
+            _hasSnappingGuidelinesY = true;
+            _snappingGuidelinesY = guidelines ?? Array.Empty<double>();
+        }
+
         public void SetRenderSize(double width, double height)
         {
             HasState = true;
@@ -1556,6 +1791,18 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 _opacity,
                 _hasOpacityMaskProperty,
                 _opacityMaskReference,
+                _hasEffectProperty,
+                _effectReference,
+                _hasBitmapEffectProperty,
+                _bitmapEffectReference,
+                _hasBitmapEffectInputProperty,
+                _bitmapEffectInputReference,
+                _hasCacheModeProperty,
+                _cacheModeReference,
+                _hasSnappingGuidelinesX,
+                _snappingGuidelinesX,
+                _hasSnappingGuidelinesY,
+                _snappingGuidelinesY,
                 _hasRenderSize,
                 _renderWidth,
                 _renderHeight);

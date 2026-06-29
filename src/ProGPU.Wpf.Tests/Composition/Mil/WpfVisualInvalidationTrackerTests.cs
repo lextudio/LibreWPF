@@ -178,6 +178,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.True(tracker.DetectVersionChanges());
         Assert.True(tracker.IsDirty);
         Assert.Same(root, tracker.LastDirtySource);
+
     }
 
     [Fact]
@@ -201,6 +202,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.True(tracker.DetectVersionChanges());
         Assert.True(tracker.IsDirty);
         Assert.Same(root, tracker.LastDirtySource);
+
     }
 
     [Fact]
@@ -229,6 +231,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.True(tracker.DetectVersionChanges());
         Assert.True(tracker.IsDirty);
         Assert.Same(root, tracker.LastDirtySource);
+
     }
 
     [Fact]
@@ -302,6 +305,30 @@ public sealed class WpfVisualInvalidationTrackerTests
         tracker.ConsumeDirty();
         state.HasOpacityMask = true;
         state.OpacityMask = new FakeResource();
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+
+        tracker.ConsumeDirty();
+        state.HasEffect = true;
+        state.Effect = new FakeResource();
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+
+        tracker.ConsumeDirty();
+        state.HasCacheMode = true;
+        state.CacheMode = new FakeResource();
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+
+        tracker.ConsumeDirty();
+        state.HasSnappingGuidelinesX = true;
+        state.SnappingGuidelinesX = new[] { 10d, 20d };
 
         Assert.True(tracker.DetectVersionChanges());
         Assert.True(tracker.IsDirty);
@@ -469,6 +496,34 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.Contains(brush, dependencies);
         Assert.Equal(1, root.ContentReadCount);
         Assert.Equal(1, renderData.SnapshotReadCount);
+    }
+
+    [Fact]
+    public void EnumerateTrackedDependenciesUsesPortableVisualStateResources()
+    {
+        var transform = new FakeResource();
+        var clip = new FakeResource();
+        var effect = new FakeResource();
+        var cacheMode = new FakeResource();
+        var root = new FakePortableStateVisual(new PortableVisualState
+        {
+            HasTransform = true,
+            Transform = transform,
+            HasClip = true,
+            Clip = clip,
+            HasEffect = true,
+            Effect = effect,
+            HasCacheMode = true,
+            CacheMode = cacheMode
+        });
+
+        var dependencies = WpfVisualInvalidationTracker.EnumerateTrackedDependencies(root);
+
+        Assert.Contains(root, dependencies);
+        Assert.Contains(transform, dependencies);
+        Assert.Contains(clip, dependencies);
+        Assert.Contains(effect, dependencies);
+        Assert.Contains(cacheMode, dependencies);
     }
 
     [Fact]

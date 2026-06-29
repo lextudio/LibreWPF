@@ -2556,6 +2556,12 @@ namespace System.Windows.Media
             Transform transform = VisualTransform;
             Geometry clip = VisualClip;
             Brush opacityMask = VisualOpacityMask;
+            Effect effect = VisualEffectInternal;
+            BitmapEffect bitmapEffect = VisualBitmapEffectInternal;
+            BitmapEffectInput bitmapEffectInput = VisualBitmapEffectInputInternal;
+            CacheMode cacheMode = VisualCacheMode;
+            DoubleCollection guidelinesX = VisualXSnappingGuidelines;
+            DoubleCollection guidelinesY = VisualYSnappingGuidelines;
 
             state = new PortableVisualState
             {
@@ -2576,9 +2582,37 @@ namespace System.Windows.Media
                 HasOpacity = true,
                 Opacity = VisualOpacity,
                 HasOpacityMask = opacityMask != null,
-                OpacityMask = opacityMask
+                OpacityMask = opacityMask,
+                HasEffect = effect != null,
+                Effect = effect,
+                HasBitmapEffect = bitmapEffect != null,
+                BitmapEffect = bitmapEffect,
+                HasBitmapEffectInput = bitmapEffectInput != null,
+                BitmapEffectInput = bitmapEffectInput,
+                HasCacheMode = cacheMode != null,
+                CacheMode = cacheMode,
+                HasSnappingGuidelinesX = guidelinesX != null,
+                SnappingGuidelinesX = CopyPortableVisualGuidelines(guidelinesX),
+                HasSnappingGuidelinesY = guidelinesY != null,
+                SnappingGuidelinesY = CopyPortableVisualGuidelines(guidelinesY)
             };
             return true;
+        }
+
+        private static double[] CopyPortableVisualGuidelines(DoubleCollection guidelines)
+        {
+            if (guidelines == null || guidelines.Count == 0)
+            {
+                return global::System.Array.Empty<double>();
+            }
+
+            double[] values = new double[guidelines.Count];
+            for (int i = 0; i < values.Length; i++)
+            {
+                values[i] = guidelines[i];
+            }
+
+            return values;
         }
 
         /// <summary>

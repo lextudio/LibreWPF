@@ -783,6 +783,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("builder.SetScrollableAreaClip(scrollClip.X, scrollClip.Y, scrollClip.Width, scrollClip.Height);", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("hasPortableVisualState && visualState.HasOpacityMask", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("SetOpacityMask(object? opacityMask)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("visualState.HasEffect", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("visualState.HasCacheMode", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("visualState.HasSnappingGuidelinesX", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("PortableVisualStateChangeMarksTrackerDirtyWithoutEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.True(
             proGpuInvalidationTracker.IndexOf("hasPortableVisualState && visualState.HasOffset", StringComparison.Ordinal)
@@ -5413,6 +5416,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RegisterRetainedVisualDependency(visualState.Transform, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.Clip, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.OpacityMask, sink)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("RegisterRetainedVisualDependency(visualState.Effect, sink)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("RegisterRetainedVisualDependency(visualState.CacheMode, sink)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetVisualEffect(visual, out var effect)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("visualState.HasSnappingGuidelinesX || visualState.HasSnappingGuidelinesY", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualPropertyDependency(visual, \"Transform\", sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualStateSource.TryGetPortableVisualState(out PortableVisualState state)", visualSource, StringComparison.Ordinal);
@@ -5420,9 +5427,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("VisualTransform", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualClip", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualScrollableAreaClip", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualEffectInternal", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualBitmapEffectInternal", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualCacheMode", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualXSnappingGuidelines", visualSource, StringComparison.Ordinal);
         Assert.Contains("interface IPortableVisualStateSource", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasEffect", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasCacheMode", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasSnappingGuidelinesX", interopSource, StringComparison.Ordinal);
         Assert.Contains("CanReplaySubtreeTreatsAbsentPortableVisualStateValuesAsAuthoritative", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeDoesNotReflectAbsentPortableVisualStateDependencies", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeAppliesPortableVisualGuidelinesWithoutReflection", rendererTests, StringComparison.Ordinal);
     }
 
     [Fact]

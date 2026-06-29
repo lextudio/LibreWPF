@@ -252,6 +252,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4));
         var clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50));
         var opacityMask = Brushes.White;
+        var effect = new FakeBlurEffect(3);
+        var cacheMode = new object();
         var layoutClip = new FakeRectangleGeometry(new FakeRect(1, 2, 30, 40));
         var root = new FakePortableVisualStateAndLayoutDrawingVisual(
             CreateRenderData(Brushes.Green),
@@ -266,7 +268,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
                 HasOpacity = true,
                 Opacity = 1,
                 HasOpacityMask = true,
-                OpacityMask = opacityMask
+                OpacityMask = opacityMask,
+                HasEffect = true,
+                Effect = effect,
+                HasCacheMode = true,
+                CacheMode = cacheMode
             },
             new PortableVisualLayoutState
             {
@@ -282,6 +288,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Contains(transform, sink.VisualDependencies);
         Assert.Contains(clip, sink.VisualDependencies);
         Assert.Contains(opacityMask, sink.VisualDependencies);
+        Assert.Contains(effect, sink.VisualDependencies);
+        Assert.Contains(cacheMode, sink.VisualDependencies);
         Assert.Contains(layoutClip, sink.VisualDependencies);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
@@ -1171,6 +1179,32 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushGuidelineSetObject", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAppliesPortableVisualGuidelinesWithoutReflection()
+    {
+        var root = new ThrowingPortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(0, 0),
+                HasOpacity = true,
+                Opacity = 1,
+                HasSnappingGuidelinesX = true,
+                SnappingGuidelinesX = new[] { 10d },
+                HasSnappingGuidelinesY = true,
+                SnappingGuidelinesY = new[] { 20d, 21d }
+            });
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushGuidelineSetObject", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(0, root.ReflectedStateProbeCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
@@ -2106,6 +2140,22 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public object? ScrollableAreaClip => ThrowReflectedStateProbe();
 
         public object? VisualScrollableAreaClip => ThrowReflectedStateProbe();
+
+        public object? Effect => ThrowReflectedStateProbe();
+
+        public object? BitmapEffect => ThrowReflectedStateProbe();
+
+        public object? BitmapEffectInput => ThrowReflectedStateProbe();
+
+        public object? CacheMode => ThrowReflectedStateProbe();
+
+        public object? XSnappingGuidelines => ThrowReflectedStateProbe();
+
+        public object? YSnappingGuidelines => ThrowReflectedStateProbe();
+
+        public object? VisualXSnappingGuidelines => ThrowReflectedStateProbe();
+
+        public object? VisualYSnappingGuidelines => ThrowReflectedStateProbe();
 
         public bool TryGetPortableVisualState(out PortableVisualState state)
         {

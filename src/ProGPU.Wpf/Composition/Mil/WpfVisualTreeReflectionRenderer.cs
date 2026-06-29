@@ -262,6 +262,26 @@ public sealed class WpfVisualTreeReflectionRenderer
             {
                 RegisterRetainedVisualDependency(visualState.OpacityMask, sink);
             }
+
+            if (visualState.HasEffect)
+            {
+                RegisterRetainedVisualDependency(visualState.Effect, sink);
+            }
+
+            if (visualState.HasBitmapEffect)
+            {
+                RegisterRetainedVisualDependency(visualState.BitmapEffect, sink);
+            }
+
+            if (visualState.HasBitmapEffectInput)
+            {
+                RegisterRetainedVisualDependency(visualState.BitmapEffectInput, sink);
+            }
+
+            if (visualState.HasCacheMode)
+            {
+                RegisterRetainedVisualDependency(visualState.CacheMode, sink);
+            }
         }
         else
         {
@@ -271,21 +291,20 @@ public sealed class WpfVisualTreeReflectionRenderer
             RegisterRetainedVisualPropertyDependency(visual, "ScrollableAreaClip", sink);
             RegisterRetainedVisualPropertyDependency(visual, "VisualScrollableAreaClip", sink);
             RegisterRetainedVisualPropertyDependency(visual, "OpacityMask", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "Effect", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "BitmapEffect", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "BitmapEffectInput", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "CacheMode", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "XSnappingGuidelines", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "YSnappingGuidelines", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "VisualXSnappingGuidelines", sink);
+            RegisterRetainedVisualPropertyDependency(visual, "VisualYSnappingGuidelines", sink);
         }
 
         if (TryGetPortableVisualLayoutState(visual, out var layoutState) && layoutState.HasLayoutClip)
         {
             RegisterRetainedVisualDependency(layoutState.LayoutClip, sink);
         }
-
-        RegisterRetainedVisualPropertyDependency(visual, "Effect", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "BitmapEffect", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "BitmapEffectInput", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "CacheMode", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "XSnappingGuidelines", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "YSnappingGuidelines", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "VisualXSnappingGuidelines", sink);
-        RegisterRetainedVisualPropertyDependency(visual, "VisualYSnappingGuidelines", sink);
     }
 
     private static void RegisterRetainedVisualPropertyDependency(
@@ -481,10 +500,74 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool HasNativeRetainedVisualScopeState(object visual)
     {
-        return HasNonNullProperty(visual, "Effect")
-            || HasNonNullProperty(visual, "BitmapEffect")
-            || HasNonNullProperty(visual, "BitmapEffectInput")
-            || HasNonNullProperty(visual, "CacheMode");
+        return HasVisualEffect(visual)
+            || HasVisualBitmapEffect(visual)
+            || HasVisualBitmapEffectInput(visual)
+            || HasVisualCacheMode(visual);
+    }
+
+    private static bool HasVisualEffect(object visual)
+    {
+        return TryGetVisualEffect(visual, out _);
+    }
+
+    private static bool TryGetVisualEffect(object visual, out object? effect)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            effect = visualState.Effect;
+            return visualState.HasEffect && effect != null;
+        }
+
+        return TryGetPropertyValue(visual, "Effect", out effect) && effect != null;
+    }
+
+    private static bool HasVisualBitmapEffect(object visual)
+    {
+        return TryGetVisualBitmapEffect(visual, out _);
+    }
+
+    private static bool TryGetVisualBitmapEffect(object visual, out object? bitmapEffect)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            bitmapEffect = visualState.BitmapEffect;
+            return visualState.HasBitmapEffect && bitmapEffect != null;
+        }
+
+        return TryGetPropertyValue(visual, "BitmapEffect", out bitmapEffect) && bitmapEffect != null;
+    }
+
+    private static bool HasVisualBitmapEffectInput(object visual)
+    {
+        return TryGetVisualBitmapEffectInput(visual, out _);
+    }
+
+    private static bool TryGetVisualBitmapEffectInput(object visual, out object? bitmapEffectInput)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            bitmapEffectInput = visualState.BitmapEffectInput;
+            return visualState.HasBitmapEffectInput && bitmapEffectInput != null;
+        }
+
+        return TryGetPropertyValue(visual, "BitmapEffectInput", out bitmapEffectInput) && bitmapEffectInput != null;
+    }
+
+    private static bool HasVisualCacheMode(object visual)
+    {
+        return TryGetVisualCacheMode(visual, out _);
+    }
+
+    private static bool TryGetVisualCacheMode(object visual, out object? cacheMode)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            cacheMode = visualState.CacheMode;
+            return visualState.HasCacheMode && cacheMode != null;
+        }
+
+        return TryGetPropertyValue(visual, "CacheMode", out cacheMode) && cacheMode != null;
     }
 
     private static bool TryCreateSingleNativeRetainedVisualScopeState(
@@ -505,7 +588,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         global::ProGPU.Scene.EffectBase? effect = null;
         var cacheAsLayer = false;
 
-        if (TryGetPropertyValue(visual, "Effect", out var effectValue) && effectValue != null)
+        if (TryGetVisualEffect(visual, out var effectValue))
         {
             if (!WpfEffectReflection.TryCreateProGpuEffect(effectValue, out effect, imageSourceAdapter))
             {
@@ -515,14 +598,14 @@ public sealed class WpfVisualTreeReflectionRenderer
             effectStateCount++;
         }
 
-        if (TryGetPropertyValue(visual, "BitmapEffect", out var bitmapEffect) && bitmapEffect != null)
+        if (TryGetVisualBitmapEffect(visual, out var bitmapEffect))
         {
             if (effectStateCount != 0)
             {
                 return false;
             }
 
-            TryGetPropertyValue(visual, "BitmapEffectInput", out var bitmapEffectInput);
+            TryGetVisualBitmapEffectInput(visual, out var bitmapEffectInput);
             if (!WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out effect, imageSourceAdapter))
             {
                 return false;
@@ -530,12 +613,12 @@ public sealed class WpfVisualTreeReflectionRenderer
 
             effectStateCount++;
         }
-        else if (HasNonNullProperty(visual, "BitmapEffectInput"))
+        else if (HasVisualBitmapEffectInput(visual))
         {
             return false;
         }
 
-        if (HasNonNullProperty(visual, "CacheMode"))
+        if (HasVisualCacheMode(visual))
         {
             cacheAsLayer = true;
         }
@@ -843,7 +926,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
         }
 
-        if (TryGetPropertyValue(visual, "Effect", out var effect) && effect != null)
+        if (TryGetVisualEffect(visual, out var effect))
         {
             if (WpfEffectReflection.TryCreateProGpuEffect(effect, out var proGpuEffect, imageSourceAdapter)
                 && WpfPortableCommandSinkBridge.TryPushVisualEffect(
@@ -859,9 +942,9 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
         }
 
-        if (TryGetPropertyValue(visual, "BitmapEffect", out var bitmapEffect) && bitmapEffect != null)
+        if (TryGetVisualBitmapEffect(visual, out var bitmapEffect))
         {
-            TryGetPropertyValue(visual, "BitmapEffectInput", out var bitmapEffectInput);
+            TryGetVisualBitmapEffectInput(visual, out var bitmapEffectInput);
             if (WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out var proGpuBitmapEffect, imageSourceAdapter)
                 && WpfPortableCommandSinkBridge.TryPushVisualEffect(
                     sink,
@@ -875,12 +958,12 @@ public sealed class WpfVisualTreeReflectionRenderer
                 stats.UnsupportedVisualStateCount++;
             }
         }
-        else if (TryGetPropertyValue(visual, "BitmapEffectInput", out var bitmapEffectInput) && bitmapEffectInput != null)
+        else if (HasVisualBitmapEffectInput(visual))
         {
             stats.UnsupportedVisualStateCount++;
         }
 
-        if (TryGetPropertyValue(visual, "CacheMode", out var cacheMode) && cacheMode != null)
+        if (HasVisualCacheMode(visual))
         {
             if (WpfPortableCommandSinkBridge.TryPushVisualCache(
                 sink,
@@ -1004,6 +1087,11 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool HasVisualGuidelines(object visual)
     {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            return visualState.HasSnappingGuidelinesX || visualState.HasSnappingGuidelinesY;
+        }
+
         return HasNonNullProperty(visual, "XSnappingGuidelines")
             || HasNonNullProperty(visual, "YSnappingGuidelines")
             || HasNonNullProperty(visual, "VisualXSnappingGuidelines")
@@ -1012,6 +1100,20 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryCreateVisualGuidelineSet(object visual, out object guidelineSet)
     {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            if (!visualState.HasSnappingGuidelinesX && !visualState.HasSnappingGuidelinesY)
+            {
+                guidelineSet = null!;
+                return false;
+            }
+
+            guidelineSet = new VisualGuidelineSet(
+                visualState.HasSnappingGuidelinesX ? visualState.SnappingGuidelinesX ?? Array.Empty<double>() : Array.Empty<double>(),
+                visualState.HasSnappingGuidelinesY ? visualState.SnappingGuidelinesY ?? Array.Empty<double>() : Array.Empty<double>());
+            return true;
+        }
+
         var hasX = TryReadVisualGuidelines(
             visual,
             new[] { "XSnappingGuidelines", "VisualXSnappingGuidelines" },

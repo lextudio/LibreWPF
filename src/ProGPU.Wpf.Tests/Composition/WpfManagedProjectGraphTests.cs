@@ -10968,6 +10968,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayPoint(object? pointValue, out WpfReplayPoint point)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("pointValue is Point mediaPoint", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("rectValue is Rect mediaRect", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("if (mediaBrush != null)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("_sink is IWpfNativeTransformCommandSink nativeTransformSink", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
@@ -10979,6 +10985,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GeneratedDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextPushesReflectedTransformsThroughNativeSink", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextAdaptsTypedPrimitiveValues", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.DoesNotContain("ObjectRenderDataDrawingContextAdaptsReflectedPrimitiveValues", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextUsesNativeRectangleWhenAvailable", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("DecodePushTransformFallsBackToLocalMatrixTransformWhenForeignAssemblyShadowsType", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("\"System.Windows.Media.MatrixTransform\"", wpfReflectionResourceResolverTests, StringComparison.Ordinal);

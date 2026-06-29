@@ -69,16 +69,16 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void ObjectRenderDataDrawingContextAdaptsReflectedPrimitiveValues()
+    public void ObjectRenderDataDrawingContextAdaptsTypedPrimitiveValues()
     {
         var sink = new RecordingSink();
         using var context = new WpfObjectRenderDataDrawingContext(sink);
         var pen = new MediaPen(Brushes.Black, 2);
 
-        context.DrawLine(pen, new FakePoint(1, 2), new FakePoint(3, 4));
-        context.DrawRectangle(Brushes.Red, pen, new FakeRect(5, 6, 7, 8));
-        context.DrawRoundedRectangle(Brushes.Green, pen, new FakeRect(9, 10, 11, 12), 2, 3);
-        context.DrawEllipse(Brushes.Blue, null, new FakePoint(13, 14), 15, 16);
+        context.DrawLine(pen, new Point(1, 2), new Point(3, 4));
+        context.DrawRectangle(Brushes.Red, pen, new Rect(5, 6, 7, 8));
+        context.DrawRoundedRectangle(Brushes.Green, pen, new Rect(9, 10, 11, 12), 2, 3);
+        context.DrawEllipse(Brushes.Blue, null, new Point(13, 14), 15, 16);
 
         Assert.Equal(new[]
         {
@@ -107,11 +107,11 @@ public sealed class WpfCompositionDrawingContextTests
             baselineOrigin: new FakePoint(21, 22),
             fontRenderingEmSize: 12);
 
-        context.DrawLine(pen, new FakePoint(1, 2), new FakePoint(3, 4));
-        context.DrawRectangle(Brushes.Red, pen, new FakeRect(5, 6, 7, 8));
-        context.DrawRoundedRectangle(Brushes.Green, pen, new FakeRect(9, 10, 11, 12), 2, 3);
-        context.DrawEllipse(Brushes.Blue, null, new FakePoint(13, 14), 15, 16);
-        context.DrawImage(image, new FakeRect(17, 18, 19, 20));
+        context.DrawLine(pen, new Point(1, 2), new Point(3, 4));
+        context.DrawRectangle(Brushes.Red, pen, new Rect(5, 6, 7, 8));
+        context.DrawRoundedRectangle(Brushes.Green, pen, new Rect(9, 10, 11, 12), 2, 3);
+        context.DrawEllipse(Brushes.Blue, null, new Point(13, 14), 15, 16);
+        context.DrawImage(image, new Rect(17, 18, 19, 20));
         context.DrawGlyphRun(Brushes.Black, glyphRun);
 
         Assert.Equal(new[]
@@ -146,7 +146,7 @@ public sealed class WpfCompositionDrawingContextTests
         var adapter = new FakeImageSourceAdapter();
         using var context = new WpfObjectRenderDataDrawingContext(sink, adapter);
 
-        context.DrawImage(imageSource, new FakeRect(17, 18, 19, 20));
+        context.DrawImage(imageSource, new Rect(17, 18, 19, 20));
 
         Assert.Same(imageSource, adapter.LastImageSource);
         var replayed = Assert.Single(sink.Images);
@@ -164,7 +164,7 @@ public sealed class WpfCompositionDrawingContextTests
         var adapter = new FakeImageSourceAdapter();
         using var context = new WpfObjectRenderDataDrawingContext(sink, adapter);
 
-        context.DrawRectangle(imageBrush, null, new FakeRect(1, 2, 30, 40));
+        context.DrawRectangle(imageBrush, null, new Rect(1, 2, 30, 40));
 
         Assert.Equal(new[] { "PushClip", "DrawImage", "Pop" }, sink.Operations);
         Assert.Same(imageSource, adapter.LastImageSource);
@@ -186,7 +186,7 @@ public sealed class WpfCompositionDrawingContextTests
         var drawingBrush = new FakeDrawingBrush(nestedDrawing);
         using var context = new WpfObjectRenderDataDrawingContext(sink);
 
-        context.DrawRectangle(drawingBrush, null, new FakeRect(1, 2, 30, 40));
+        context.DrawRectangle(drawingBrush, null, new Rect(1, 2, 30, 40));
 
         Assert.Equal(new[] { "PushClip", "PushNativeTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
         Assert.Single(sink.NativeTransforms);
@@ -285,7 +285,7 @@ public sealed class WpfCompositionDrawingContextTests
         var drawingBrush = new FakeDrawingBrush(nestedGroup);
         using var context = new WpfObjectRenderDataDrawingContext(sink);
 
-        context.DrawRectangle(drawingBrush, null, new FakeRect(1, 2, 30, 40));
+        context.DrawRectangle(drawingBrush, null, new Rect(1, 2, 30, 40));
 
         Assert.Equal(new[] { "PushClip", "PushNativeTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
         Assert.Single(sink.NativeTransforms);
@@ -346,9 +346,9 @@ public sealed class WpfCompositionDrawingContextTests
             null,
             new FakeRectangleGeometry(new FakeRect(5, 6, 7, 8)));
 
-        context.DrawRectangle(brush, pen, new FakeRect(1, 2, 3, 4));
+        context.DrawRectangle(brush, pen, new Rect(1, 2, 3, 4));
         context.DrawGeometry(Brushes.Green, null, geometry);
-        context.DrawImage(imageSource, new FakeRect(5, 6, 7, 8));
+        context.DrawImage(imageSource, new Rect(5, 6, 7, 8));
         context.PushClip(geometry);
         context.PushOpacityMask(Brushes.Yellow);
         context.PushTransform(transform);

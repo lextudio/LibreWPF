@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
@@ -15,8 +14,6 @@ namespace System.Windows.Media.ProGPU.Composition;
 
 public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataSink, IDisposable
 {
-    private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
     private readonly IWpfCompositionCommandSink _sink;
     private readonly WpfReflectionResourceResolver _resources;
     private readonly IWpfImageSourceAdapter? _imageSourceAdapter;
@@ -856,14 +853,6 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return true;
         }
 
-        if (pointValue != null
-            && TryReadDoubleProperty(pointValue, "X", out var x)
-            && TryReadDoubleProperty(pointValue, "Y", out var y))
-        {
-            point = new Point(x, y);
-            return true;
-        }
-
         point = default;
         return false;
     }
@@ -876,11 +865,9 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return true;
         }
 
-        if (pointValue != null
-            && TryReadDoubleProperty(pointValue, "X", out var x)
-            && TryReadDoubleProperty(pointValue, "Y", out var y))
+        if (pointValue is Point mediaPoint)
         {
-            point = new WpfReplayPoint(x, y);
+            point = new WpfReplayPoint(mediaPoint.X, mediaPoint.Y);
             return true;
         }
 
@@ -896,16 +883,6 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return true;
         }
 
-        if (rectValue != null
-            && TryReadDoubleProperty(rectValue, "X", out var x)
-            && TryReadDoubleProperty(rectValue, "Y", out var y)
-            && TryReadDoubleProperty(rectValue, "Width", out var width)
-            && TryReadDoubleProperty(rectValue, "Height", out var height))
-        {
-            rectangle = new Rect(x, y, width, height);
-            return true;
-        }
-
         rectangle = default;
         return false;
     }
@@ -918,30 +895,14 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return true;
         }
 
-        if (rectValue != null
-            && TryReadDoubleProperty(rectValue, "X", out var x)
-            && TryReadDoubleProperty(rectValue, "Y", out var y)
-            && TryReadDoubleProperty(rectValue, "Width", out var width)
-            && TryReadDoubleProperty(rectValue, "Height", out var height))
+        if (rectValue is Rect mediaRect)
         {
-            rectangle = new WpfReplayRect(x, y, width, height);
+            rectangle = new WpfReplayRect(mediaRect.X, mediaRect.Y, mediaRect.Width, mediaRect.Height);
             return true;
         }
 
         rectangle = default;
         return false;
-    }
-
-    private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)
-    {
-        value = 0;
-        PropertyInfo? property = instance.GetType().GetProperty(propertyName, MemberFlags);
-        if (property == null)
-        {
-            return false;
-        }
-
-        return TryReadDouble(property.GetValue(instance), out value);
     }
 
     private static bool TryReadDouble(object? value, out double result)

@@ -1,12 +1,19 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
+using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
+using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
+using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource;
+using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;
 using PortableInvalidationSource = ProGPU.Wpf.Interop.IPortableInvalidationSource;
 using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
+using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;
+using PortableShaderSamplerKind = ProGPU.Wpf.Interop.PortableShaderSamplerKind;
+using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
@@ -17,55 +24,6 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 public sealed class WpfVisualInvalidationTracker : IDisposable
 {
-    private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-    private static readonly string[] s_referencePropertyNames =
-    {
-        "Children",
-        "Content",
-        "Drawing",
-        "Drawings",
-        "Visual",
-        "Brush",
-        "ForegroundBrush",
-        "Pen",
-        "Geometry",
-        "Geometry1",
-        "Geometry2",
-        "Figures",
-        "Segments",
-        "Points",
-        "ImageSource",
-        "GlyphRun",
-        "Transform",
-        "RelativeTransform",
-        "VisualClip",
-        "Clip",
-        "ClipGeometry",
-        "OpacityMask",
-        "Effect",
-        "BitmapEffect",
-        "BitmapEffectInput",
-        "CacheMode",
-        "Input",
-        "PixelShader",
-        "GuidelineSet",
-        "XSnappingGuidelines",
-        "YSnappingGuidelines",
-        "VisualXSnappingGuidelines",
-        "VisualYSnappingGuidelines",
-        "GradientStops",
-        "Camera",
-        "Model",
-        "ContentBounds",
-        "Material",
-        "BackMaterial",
-        "Geometry3D",
-        "Positions",
-        "TriangleIndices",
-        "Normals",
-        "TextureCoordinates"
-    };
     private readonly List<Action> _unsubscribeActions = new();
     private readonly Dictionary<object, VisualStateSnapshot> _visualStateSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<object, object?[]> _visualChildrenSnapshots = new(ReferenceEqualityComparer.Instance);
@@ -278,15 +236,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             SubscribeObject(dependency, visited);
         }
-
-        foreach (var propertyName in EnumerateReferencePropertyNames(source))
-        {
-            if (TryGetPropertyValue(source, propertyName, out var value))
-            {
-                SubscribeObject(value, visited);
-            }
-        }
-
     }
 
     private void CaptureVisualStateSnapshot(object source)
@@ -345,15 +294,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             CaptureObjectVisualStates(dependency, snapshots, visited);
         }
-
-        foreach (var propertyName in EnumerateReferencePropertyNames(source))
-        {
-            if (TryGetPropertyValue(source, propertyName, out var value))
-            {
-                CaptureObjectVisualStates(value, snapshots, visited);
-            }
-        }
-
     }
 
     private static void CaptureObjectVisualChildren(
@@ -380,15 +320,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             CaptureObjectVisualChildren(dependency, snapshots, visited);
         }
-
-        foreach (var propertyName in EnumerateReferencePropertyNames(source))
-        {
-            if (TryGetPropertyValue(source, propertyName, out var value))
-            {
-                CaptureObjectVisualChildren(value, snapshots, visited);
-            }
-        }
-
     }
 
     private static void CollectTrackedDependencies(
@@ -412,34 +343,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             CollectTrackedDependencies(dependency, dependencies, visited);
         }
-
-        foreach (var propertyName in EnumerateReferencePropertyNames(source))
-        {
-            if (TryGetPropertyValue(source, propertyName, out var value))
-            {
-                CollectTrackedDependencies(value, dependencies, visited);
-            }
-        }
-
-    }
-
-    private static IEnumerable<string> EnumerateReferencePropertyNames(object source)
-    {
-        return ShouldScanReferenceProperties(source) ? s_referencePropertyNames : Array.Empty<string>();
-    }
-
-    private static bool ShouldScanReferenceProperties(object source)
-    {
-        return !IsPortableGraphSource(source);
-    }
-
-    private static bool IsPortableGraphSource(object source)
-    {
-        return source is PortableDrawingContentSource
-            || source is PortableRenderDataSource
-            || source is PortableVisualChildrenSource
-            || source is PortableVisualStateSource
-            || source is PortableVisualLayoutStateSource;
     }
 
     private static List<object> CollectVisualStateChanges(
@@ -712,69 +615,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return false;
     }
 
-    private static bool TryReadRectangleClipBounds(object? clip, out double x, out double y, out double width, out double height)
-    {
-        x = 0;
-        y = 0;
-        width = 0;
-        height = 0;
-        if (clip == null)
-        {
-            return false;
-        }
-
-        if (TryReadRect(clip, out x, out y, out width, out height))
-        {
-            return true;
-        }
-
-        return TryGetPropertyValue(clip, "Rect", out var rectValue)
-            && rectValue != null
-            && TryReadRect(rectValue, out x, out y, out width, out height);
-    }
-
-    private static bool TryReadRect(object value, out double x, out double y, out double width, out double height)
-    {
-        x = 0;
-        y = 0;
-        width = 0;
-        height = 0;
-
-        return TryReadDoubleProperty(value, "X", out x)
-            && TryReadDoubleProperty(value, "Y", out y)
-            && TryReadDoubleProperty(value, "Width", out width)
-            && TryReadDoubleProperty(value, "Height", out height);
-    }
-
-    private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)
-    {
-        value = 0;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
-        {
-            return false;
-        }
-
-        if (propertyValue is IConvertible convertible)
-        {
-            try
-            {
-                value = convertible.ToDouble(System.Globalization.CultureInfo.InvariantCulture);
-                return true;
-            }
-            catch (FormatException)
-            {
-            }
-            catch (InvalidCastException)
-            {
-            }
-            catch (OverflowException)
-            {
-            }
-        }
-
-        return false;
-    }
-
     private void SubscribeInvalidationEvents(object source)
     {
         if (source is PortableInvalidationSource invalidationSource)
@@ -813,9 +653,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             action();
             return true;
         }
-        catch (TargetInvocationException ex) when (IsIgnorableInvalidationSubscriptionFailure(ex.InnerException))
-        {
-        }
         catch (InvalidOperationException)
         {
         }
@@ -832,31 +669,17 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return false;
     }
 
-    private static bool IsIgnorableInvalidationSubscriptionFailure(Exception? exception)
-    {
-        return exception is InvalidOperationException
-            or ArgumentException
-            or MethodAccessException
-            or NotSupportedException;
-    }
-
     private static IReadOnlyList<object?> EnumerateCollection(object source)
     {
-        if (!TryReadIntProperty(source, "Count", out var count) || count <= 0)
+        if (source is not IEnumerable enumerable)
         {
             return Array.Empty<object?>();
         }
 
-        var indexer = FindIndexer(source.GetType());
-        if (indexer == null)
+        var result = new List<object?>();
+        foreach (var item in enumerable)
         {
-            return Array.Empty<object?>();
-        }
-
-        var result = new object?[count];
-        for (var i = 0; i < count; i++)
-        {
-            result[i] = indexer(source, i);
+            result.Add(item);
         }
 
         return result;
@@ -929,6 +752,125 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
+        if (source is PortableVisualLayoutStateSource visualLayoutSource
+            && visualLayoutSource.TryGetPortableVisualLayoutState(out var layoutState)
+            && layoutState.HasLayoutClip)
+        {
+            AddPortableDependency(ref dependencies, layoutState.LayoutClip);
+        }
+
+        if (source is PortableGeometryDrawingStateSource geometryDrawingSource
+            && geometryDrawingSource.TryGetPortableGeometryDrawingState(out var geometryDrawingState))
+        {
+            if (geometryDrawingState.HasGeometry)
+            {
+                AddPortableDependency(ref dependencies, geometryDrawingState.Geometry);
+            }
+
+            if (geometryDrawingState.HasBrush)
+            {
+                AddPortableDependency(ref dependencies, geometryDrawingState.Brush);
+            }
+
+            if (geometryDrawingState.HasPen)
+            {
+                AddPortableDependency(ref dependencies, geometryDrawingState.Pen);
+            }
+        }
+
+        if (source is PortableImageDrawingStateSource imageDrawingSource
+            && imageDrawingSource.TryGetPortableImageDrawingState(out var imageDrawingState)
+            && imageDrawingState.HasImageSource)
+        {
+            AddPortableDependency(ref dependencies, imageDrawingState.ImageSource);
+        }
+
+        if (source is PortableGlyphRunDrawingStateSource glyphRunDrawingSource
+            && glyphRunDrawingSource.TryGetPortableGlyphRunDrawingState(out var glyphRunDrawingState))
+        {
+            if (glyphRunDrawingState.HasGlyphRun)
+            {
+                AddPortableDependency(ref dependencies, glyphRunDrawingState.GlyphRun);
+            }
+
+            if (glyphRunDrawingState.HasForegroundBrush)
+            {
+                AddPortableDependency(ref dependencies, glyphRunDrawingState.ForegroundBrush);
+            }
+        }
+
+        if (source is PortableDrawingGroupStateSource drawingGroupSource
+            && drawingGroupSource.TryGetPortableDrawingGroupState(out var drawingGroupState))
+        {
+            if (drawingGroupState.HasTransform)
+            {
+                AddPortableDependency(ref dependencies, drawingGroupState.Transform);
+            }
+
+            if (drawingGroupState.HasClipGeometry)
+            {
+                AddPortableDependency(ref dependencies, drawingGroupState.ClipGeometry);
+            }
+
+            if (drawingGroupState.HasOpacityMask)
+            {
+                AddPortableDependency(ref dependencies, drawingGroupState.OpacityMask);
+            }
+
+            if (drawingGroupState.HasGuidelineSet)
+            {
+                AddPortableDependency(ref dependencies, drawingGroupState.GuidelineSet);
+            }
+
+            if (drawingGroupState.HasEffect)
+            {
+                AddPortableDependency(ref dependencies, drawingGroupState.Effect);
+            }
+
+            if (drawingGroupState.HasBitmapEffect)
+            {
+                AddPortableDependency(ref dependencies, drawingGroupState.BitmapEffect);
+            }
+
+            if (drawingGroupState.HasBitmapEffectInput)
+            {
+                AddPortableDependency(ref dependencies, drawingGroupState.BitmapEffectInput);
+            }
+
+            if (drawingGroupState.HasCacheMode)
+            {
+                AddPortableDependency(ref dependencies, drawingGroupState.CacheMode);
+            }
+
+            foreach (var child in drawingGroupState.Children)
+            {
+                AddPortableDependency(ref dependencies, child);
+            }
+        }
+
+        if (source is PortableTileBrushSource tileBrushSource
+            && tileBrushSource.TryGetPortableTileBrush(out var tileBrush))
+        {
+            AddPortableDependency(ref dependencies, tileBrush.Content);
+        }
+
+        if (source is PortableShaderEffectSource shaderEffectSource
+            && shaderEffectSource.TryGetPortableShaderEffect(out var shaderEffect))
+        {
+            AddPortableDependency(ref dependencies, shaderEffect.PixelShader);
+            foreach (var sampler in shaderEffect.Samplers)
+            {
+                if (sampler.Kind == PortableShaderSamplerKind.Brush)
+                {
+                    AddPortableDependency(ref dependencies, sampler.Brush);
+                }
+                else if (sampler.Kind == PortableShaderSamplerKind.ImageSource)
+                {
+                    AddPortableDependency(ref dependencies, sampler.ImageSource);
+                }
+            }
+        }
+
         return dependencies ?? (IReadOnlyList<object?>)Array.Empty<object?>();
     }
 
@@ -941,91 +883,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         dependencies ??= new List<object?>();
         dependencies.Add(dependency);
-    }
-
-    private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
-    {
-        if (instance == null)
-        {
-            value = null;
-            return false;
-        }
-
-        var property = FindProperty(instance.GetType(), propertyName);
-        if (property == null || property.GetIndexParameters().Length != 0)
-        {
-            value = null;
-            return false;
-        }
-
-        try
-        {
-            value = property.GetValue(instance);
-            return true;
-        }
-        catch (TargetInvocationException)
-        {
-        }
-        catch (ArgumentException)
-        {
-        }
-        catch (MethodAccessException)
-        {
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-
-        value = null;
-        return false;
-    }
-
-    private static PropertyInfo? FindProperty(Type type, string name)
-    {
-        for (var current = type; current != null; current = current.BaseType)
-        {
-            var property = current.GetProperty(name, MemberFlags);
-            if (property != null)
-            {
-                return property;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool TryReadIntProperty(object instance, string propertyName, out int value)
-    {
-        value = 0;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
-        {
-            return false;
-        }
-
-        if (propertyValue is int intValue)
-        {
-            value = intValue;
-            return true;
-        }
-
-        return false;
-    }
-
-    private static Func<object, int, object?>? FindIndexer(Type type)
-    {
-        var indexer = type.GetProperty("Item", MemberFlags, binder: null, returnType: null, types: new[] { typeof(int) }, modifiers: null);
-        if (indexer != null)
-        {
-            return (instance, index) => indexer.GetValue(instance, new object[] { index });
-        }
-
-        var getter = type.GetMethod("get_Item", MemberFlags, binder: null, types: new[] { typeof(int) }, modifiers: null);
-        if (getter != null)
-        {
-            return (instance, index) => getter.Invoke(instance, new object[] { index });
-        }
-
-        return null;
     }
 
     private static bool IsTerminalValue(object value)
@@ -1050,11 +907,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             bool hasClipToBounds,
             bool clipToBounds,
             bool hasLayoutClipProperty,
-            bool hasLayoutClipBounds,
-            double layoutClipX,
-            double layoutClipY,
-            double layoutClipWidth,
-            double layoutClipHeight,
             object? layoutClipReference,
             bool hasTransformProperty,
             object? transformReference,
@@ -1064,7 +916,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             double scrollClipY,
             double scrollClipWidth,
             double scrollClipHeight,
-            object? scrollClipReference,
             bool hasOpacity,
             double opacity,
             bool hasOpacityMaskProperty,
@@ -1103,11 +954,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             HasClipToBounds = hasClipToBounds;
             ClipToBounds = clipToBounds;
             HasLayoutClipProperty = hasLayoutClipProperty;
-            HasLayoutClipBounds = hasLayoutClipBounds;
-            LayoutClipX = layoutClipX;
-            LayoutClipY = layoutClipY;
-            LayoutClipWidth = layoutClipWidth;
-            LayoutClipHeight = layoutClipHeight;
             LayoutClipReference = layoutClipReference;
             HasTransformProperty = hasTransformProperty;
             TransformReference = transformReference;
@@ -1117,7 +963,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             ScrollClipY = scrollClipY;
             ScrollClipWidth = scrollClipWidth;
             ScrollClipHeight = scrollClipHeight;
-            ScrollClipReference = scrollClipReference;
             HasOpacity = hasOpacity;
             Opacity = opacity;
             HasOpacityMaskProperty = hasOpacityMaskProperty;
@@ -1165,16 +1010,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         private bool HasLayoutClipProperty { get; }
 
-        private bool HasLayoutClipBounds { get; }
-
-        private double LayoutClipX { get; }
-
-        private double LayoutClipY { get; }
-
-        private double LayoutClipWidth { get; }
-
-        private double LayoutClipHeight { get; }
-
         private object? LayoutClipReference { get; }
 
         private bool HasTransformProperty { get; }
@@ -1192,8 +1027,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private double ScrollClipWidth { get; }
 
         private double ScrollClipHeight { get; }
-
-        private object? ScrollClipReference { get; }
 
         private bool HasOpacity { get; }
 
@@ -1263,12 +1096,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 HasClipToBounds == other.HasClipToBounds &&
                 ClipToBounds == other.ClipToBounds &&
                 HasLayoutClipProperty == other.HasLayoutClipProperty &&
-                HasLayoutClipBounds == other.HasLayoutClipBounds &&
-                LayoutClipX.Equals(other.LayoutClipX) &&
-                LayoutClipY.Equals(other.LayoutClipY) &&
-                LayoutClipWidth.Equals(other.LayoutClipWidth) &&
-                LayoutClipHeight.Equals(other.LayoutClipHeight) &&
-                (HasLayoutClipBounds || ReferenceEquals(LayoutClipReference, other.LayoutClipReference)) &&
+                ReferenceEquals(LayoutClipReference, other.LayoutClipReference) &&
                 HasTransformProperty == other.HasTransformProperty &&
                 ReferenceEquals(TransformReference, other.TransformReference) &&
                 HasScrollableAreaClipProperty == other.HasScrollableAreaClipProperty &&
@@ -1277,7 +1105,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 ScrollClipY.Equals(other.ScrollClipY) &&
                 ScrollClipWidth.Equals(other.ScrollClipWidth) &&
                 ScrollClipHeight.Equals(other.ScrollClipHeight) &&
-                ReferenceEquals(ScrollClipReference, other.ScrollClipReference) &&
                 HasOpacity == other.HasOpacity &&
                 Opacity.Equals(other.Opacity) &&
                 HasOpacityMaskProperty == other.HasOpacityMaskProperty &&
@@ -1325,12 +1152,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             hash.Add(HasClipToBounds);
             hash.Add(ClipToBounds);
             hash.Add(HasLayoutClipProperty);
-            hash.Add(HasLayoutClipBounds);
-            hash.Add(LayoutClipX);
-            hash.Add(LayoutClipY);
-            hash.Add(LayoutClipWidth);
-            hash.Add(LayoutClipHeight);
-            hash.Add(HasLayoutClipBounds ? 0 : GetReferenceHashCode(LayoutClipReference));
+            hash.Add(GetReferenceHashCode(LayoutClipReference));
             hash.Add(HasTransformProperty);
             hash.Add(GetReferenceHashCode(TransformReference));
             hash.Add(HasScrollableAreaClipProperty);
@@ -1339,7 +1161,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             hash.Add(ScrollClipY);
             hash.Add(ScrollClipWidth);
             hash.Add(ScrollClipHeight);
-            hash.Add(GetReferenceHashCode(ScrollClipReference));
             hash.Add(HasOpacity);
             hash.Add(Opacity);
             hash.Add(HasOpacityMaskProperty);
@@ -1420,11 +1241,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private bool _hasClipToBounds;
         private bool _clipToBounds;
         private bool _hasLayoutClipProperty;
-        private bool _hasLayoutClipBounds;
-        private double _layoutClipX;
-        private double _layoutClipY;
-        private double _layoutClipWidth;
-        private double _layoutClipHeight;
         private object? _layoutClipReference;
         private bool _hasTransformProperty;
         private object? _transformReference;
@@ -1434,7 +1250,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private double _scrollClipY;
         private double _scrollClipWidth;
         private double _scrollClipHeight;
-        private object? _scrollClipReference;
         private bool _hasOpacity;
         private double _opacity;
         private bool _hasOpacityMaskProperty;
@@ -1494,14 +1309,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             HasState = true;
             _hasLayoutClipProperty = true;
             _layoutClipReference = clip;
-            if (TryReadRectangleClipBounds(clip, out var x, out var y, out var width, out var height))
-            {
-                _hasLayoutClipBounds = true;
-                _layoutClipX = x;
-                _layoutClipY = y;
-                _layoutClipWidth = width;
-                _layoutClipHeight = height;
-            }
         }
 
         public void SetTransform(object? transform)
@@ -1509,21 +1316,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             HasState = true;
             _hasTransformProperty = true;
             _transformReference = transform;
-        }
-
-        public void SetScrollableAreaClip(object? clip)
-        {
-            HasState = true;
-            _hasScrollableAreaClipProperty = true;
-            _scrollClipReference = clip;
-            if (clip != null && TryReadRect(clip, out var x, out var y, out var width, out var height))
-            {
-                _hasScrollableAreaClipRect = true;
-                _scrollClipX = x;
-                _scrollClipY = y;
-                _scrollClipWidth = width;
-                _scrollClipHeight = height;
-            }
         }
 
         public void SetScrollableAreaClip(double x, double y, double width, double height)
@@ -1535,7 +1327,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             _scrollClipY = y;
             _scrollClipWidth = width;
             _scrollClipHeight = height;
-            _scrollClipReference = null;
         }
 
         public void SetOpacity(double opacity)
@@ -1648,11 +1439,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 _hasClipToBounds,
                 _clipToBounds,
                 _hasLayoutClipProperty,
-                _hasLayoutClipBounds,
-                _layoutClipX,
-                _layoutClipY,
-                _layoutClipWidth,
-                _layoutClipHeight,
                 _layoutClipReference,
                 _hasTransformProperty,
                 _transformReference,
@@ -1662,7 +1448,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 _scrollClipY,
                 _scrollClipWidth,
                 _scrollClipHeight,
-                _scrollClipReference,
                 _hasOpacity,
                 _opacity,
                 _hasOpacityMaskProperty,

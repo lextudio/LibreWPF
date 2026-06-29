@@ -4,6 +4,14 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using Xunit;
+using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
+using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
+using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
+using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
+using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
+using PortableGlyphRunDrawingState = ProGPU.Wpf.Interop.PortableGlyphRunDrawingState;
+using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource;
+using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableSize = ProGPU.Wpf.Interop.PortableSize;
@@ -16,6 +24,11 @@ using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
 using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
+using PortableStretch = ProGPU.Wpf.Interop.PortableStretch;
+using PortableTileBrush = ProGPU.Wpf.Interop.PortableTileBrush;
+using PortableTileBrushKind = ProGPU.Wpf.Interop.PortableTileBrushKind;
+using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;
+using PortableTileMode = ProGPU.Wpf.Interop.PortableTileMode;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
@@ -353,7 +366,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
-    public void CollectionChangeRefreshesSubscriptionsForNewChildren()
+    public void NonPortableChildrenCollectionChangeDoesNotMarkTrackerDirty()
     {
         var root = new FakeVisual();
         using var tracker = new WpfVisualInvalidationTracker();
@@ -363,13 +376,13 @@ public sealed class WpfVisualInvalidationTrackerTests
         var child = new FakeVisual();
         root.Children.Add(child);
 
-        Assert.True(tracker.IsDirty);
-        Assert.Same(root.Children, tracker.LastDirtySource);
-        tracker.ConsumeDirty();
+        Assert.False(tracker.IsDirty);
+        Assert.Null(tracker.LastDirtySource);
 
         child.RaisePropertyChanged(nameof(FakeVisual.Opacity));
 
-        Assert.True(tracker.IsDirty);
+        Assert.False(tracker.IsDirty);
+        Assert.DoesNotContain(child, tracker.DirtySources);
     }
 
     [Fact]
@@ -399,13 +412,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     public void DrawingForegroundBrushChangeMarksTrackerDirty()
     {
         var brush = new FakeResource();
-        var root = new FakeVisual
-        {
-            Drawing = new FakeGlyphRunDrawing
-            {
-                ForegroundBrush = brush
-            }
-        };
+        var root = new FakePortableDrawingVisual(new FakeGlyphRunDrawing(brush));
         using var tracker = new WpfVisualInvalidationTracker();
         tracker.Attach(root);
         tracker.ConsumeDirty();
@@ -413,19 +420,15 @@ public sealed class WpfVisualInvalidationTrackerTests
         brush.RaisePortableInvalidated();
 
         Assert.True(tracker.IsDirty);
+        Assert.Same(brush, tracker.LastDirtySource);
+        Assert.Contains(brush, tracker.DirtySources);
     }
 
     [Fact]
     public void VisualBrushVisualChangeMarksTrackerDirty()
     {
         var brushVisual = new FakeVisual();
-        var root = new FakeVisual
-        {
-            Brush = new FakeVisualBrush
-            {
-                Visual = brushVisual
-            }
-        };
+        var root = new FakePortableDrawingVisual(new FakeVisualBrush(brushVisual));
         using var tracker = new WpfVisualInvalidationTracker();
         tracker.Attach(root);
         tracker.ConsumeDirty();
@@ -441,10 +444,11 @@ public sealed class WpfVisualInvalidationTrackerTests
     public void VisualEffectChangeMarksTrackerDirty()
     {
         var effect = new FakeResource();
-        var root = new FakeVisual
+        var root = new FakePortableStateVisual(new PortableVisualState
         {
+            HasEffect = true,
             Effect = effect
-        };
+        });
         using var tracker = new WpfVisualInvalidationTracker();
         tracker.Attach(root);
         tracker.ConsumeDirty();
@@ -460,10 +464,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     public void EnumerateTrackedDependenciesIncludesNestedResourceGraph()
     {
         var brush = new FakeResource();
-        var drawing = new FakeGlyphRunDrawing
-        {
-            ForegroundBrush = brush
-        };
+        var drawing = new FakeGlyphRunDrawing(brush);
 
         var dependencies = WpfVisualInvalidationTracker.EnumerateTrackedDependencies(drawing);
 
@@ -568,7 +569,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
-    public void EnumerateTrackedDependenciesIncludesGradientStopGraph()
+    public void EnumerateTrackedDependenciesDoesNotExpandGradientStopGraphByReflection()
     {
         var firstStop = new GradientStop(Colors.Red, 0);
         var secondStop = new GradientStop(Colors.Blue, 1);
@@ -586,13 +587,13 @@ public sealed class WpfVisualInvalidationTrackerTests
         var dependencies = WpfVisualInvalidationTracker.EnumerateTrackedDependencies(brush);
 
         Assert.Contains(brush, dependencies);
-        Assert.Contains(brush.GradientStops, dependencies);
-        Assert.Contains(firstStop, dependencies);
-        Assert.Contains(secondStop, dependencies);
+        Assert.DoesNotContain(brush.GradientStops, dependencies);
+        Assert.DoesNotContain(firstStop, dependencies);
+        Assert.DoesNotContain(secondStop, dependencies);
     }
 
     [Fact]
-    public void GradientStopChangeMarksTrackerDirty()
+    public void GradientStopChangeInvalidatesTrackedPortableBrush()
     {
         var stop = new GradientStop(Colors.Red, 0);
         var brush = new LinearGradientBrush
@@ -603,10 +604,7 @@ public sealed class WpfVisualInvalidationTrackerTests
                 new GradientStop(Colors.Blue, 1)
             }
         };
-        var root = new FakeVisual
-        {
-            Brush = brush
-        };
+        var root = new FakePortableDrawingVisual(new FakeGeometryDrawing(brush));
         using var tracker = new WpfVisualInvalidationTracker();
         tracker.Attach(root);
         tracker.ConsumeDirty();
@@ -614,7 +612,8 @@ public sealed class WpfVisualInvalidationTrackerTests
         stop.Offset = 0.25;
 
         Assert.True(tracker.IsDirty);
-        Assert.Contains(stop, tracker.DirtySources);
+        Assert.Same(brush, tracker.LastDirtySource);
+        Assert.Contains(brush, tracker.DirtySources);
     }
 
     [Fact]
@@ -632,7 +631,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
-    public void GradientStopCollectionChangeRefreshesSubscriptionsForNewStops()
+    public void GradientStopCollectionChangeInvalidatesTrackedPortableBrush()
     {
         var brush = new LinearGradientBrush
         {
@@ -641,10 +640,7 @@ public sealed class WpfVisualInvalidationTrackerTests
                 new GradientStop(Colors.Red, 0)
             }
         };
-        var root = new FakeVisual
-        {
-            Brush = brush
-        };
+        var root = new FakePortableDrawingVisual(new FakeGeometryDrawing(brush));
         using var tracker = new WpfVisualInvalidationTracker();
         tracker.Attach(root);
         tracker.ConsumeDirty();
@@ -653,42 +649,31 @@ public sealed class WpfVisualInvalidationTrackerTests
         brush.GradientStops.Add(addedStop);
 
         Assert.True(tracker.IsDirty);
-        Assert.Contains(brush.GradientStops, tracker.DirtySources);
+        Assert.Same(brush, tracker.LastDirtySource);
+        Assert.Contains(brush, tracker.DirtySources);
         tracker.ConsumeDirty();
 
         addedStop.Color = Colors.Yellow;
 
         Assert.True(tracker.IsDirty);
-        Assert.Contains(addedStop, tracker.DirtySources);
+        Assert.Same(brush, tracker.LastDirtySource);
+        Assert.Contains(brush, tracker.DirtySources);
     }
 
     [Fact]
-    public void PathGeometryCollectionChangesRefreshNestedSegmentSubscriptions()
+    public void GeometryDrawingGeometryChangeMarksTrackerDirty()
     {
-        var geometry = new FakePathGeometry();
-        var root = new FakeVisual
-        {
-            Clip = geometry
-        };
+        var geometry = new FakeResource();
+        var root = new FakePortableDrawingVisual(new FakeGeometryDrawing(geometry: geometry));
         using var tracker = new WpfVisualInvalidationTracker();
         tracker.Attach(root);
         tracker.ConsumeDirty();
 
-        var figure = new FakePathFigure();
-        geometry.Figures.Add(figure);
+        geometry.RaisePortableInvalidated();
 
         Assert.True(tracker.IsDirty);
-        tracker.ConsumeDirty();
-
-        var segment = new FakeResource();
-        figure.Segments.Add(segment);
-
-        Assert.True(tracker.IsDirty);
-        tracker.ConsumeDirty();
-
-        segment.RaisePortableInvalidated();
-
-        Assert.True(tracker.IsDirty);
+        Assert.Same(geometry, tracker.LastDirtySource);
+        Assert.Contains(geometry, tracker.DirtySources);
     }
 
     [Fact]
@@ -822,14 +807,79 @@ public sealed class WpfVisualInvalidationTrackerTests
         }
     }
 
-    private sealed class FakeGlyphRunDrawing
+    private sealed class FakeGeometryDrawing : PortableGeometryDrawingStateSource
     {
-        public object? ForegroundBrush { get; init; }
+        private readonly object? _geometry;
+        private readonly object? _brush;
+
+        public FakeGeometryDrawing(object? brush = null, object? geometry = null)
+        {
+            _geometry = geometry;
+            _brush = brush;
+        }
+
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = new PortableGeometryDrawingState
+            {
+                HasGeometry = _geometry != null,
+                Geometry = _geometry,
+                HasBrush = _brush != null,
+                Brush = _brush
+            };
+            return true;
+        }
     }
 
-    private sealed class FakeVisualBrush
+    private sealed class FakeGlyphRunDrawing : PortableGlyphRunDrawingStateSource
     {
-        public object? Visual { get; init; }
+        private readonly object? _foregroundBrush;
+
+        public FakeGlyphRunDrawing(object? foregroundBrush)
+        {
+            _foregroundBrush = foregroundBrush;
+        }
+
+        public bool TryGetPortableGlyphRunDrawingState(out PortableGlyphRunDrawingState state)
+        {
+            state = new PortableGlyphRunDrawingState
+            {
+                HasForegroundBrush = true,
+                ForegroundBrush = _foregroundBrush
+            };
+            return true;
+        }
+    }
+
+    private sealed class FakeVisualBrush : PortableTileBrushSource
+    {
+        private readonly object _visual;
+
+        public FakeVisualBrush(object visual)
+        {
+            _visual = visual;
+        }
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            brush = new PortableTileBrush(
+                PortableTileBrushKind.Visual,
+                _visual,
+                opacity: 1.0,
+                viewport: new PortableRect(0, 0, 1, 1),
+                viewbox: new PortableRect(0, 0, 1, 1),
+                viewportUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+                viewboxUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+                tileMode: PortableTileMode.None,
+                stretch: PortableStretch.Fill,
+                alignmentX: PortableAlignmentX.Center,
+                alignmentY: PortableAlignmentY.Center,
+                hasTransform: false,
+                PortableMatrix3x2.Identity,
+                hasRelativeTransform: false,
+                PortableMatrix3x2.Identity);
+            return true;
+        }
     }
 
     private sealed class FakePortableVisualChildrenOnly : PortableVisualChildrenSource
@@ -905,16 +955,6 @@ public sealed class WpfVisualInvalidationTrackerTests
     private sealed class FakeRenderContent
     {
         public object? Brush { get; init; }
-    }
-
-    private sealed class FakePathGeometry
-    {
-        public FakeVisualCollection Figures { get; } = new();
-    }
-
-    private sealed class FakePathFigure
-    {
-        public FakeVisualCollection Segments { get; } = new();
     }
 
     private sealed class FakeResource : PortableInvalidationSource

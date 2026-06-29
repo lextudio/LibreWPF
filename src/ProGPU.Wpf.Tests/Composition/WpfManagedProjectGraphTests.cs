@@ -789,16 +789,22 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("visualState.HasTextRenderingMode", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("visualState.HasSnappingGuidelinesX", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("PortableVisualStateChangeMarksTrackerDirtyWithoutEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
-        Assert.True(
-            proGpuInvalidationTracker.IndexOf("hasPortableVisualState && visualState.HasOffset", StringComparison.Ordinal)
-                < proGpuInvalidationTracker.IndexOf("TryReadVectorLikeProperty(source, \"Offset\"", StringComparison.Ordinal),
-            "The invalidation tracker must snapshot typed visual state before probing reflected offset properties.");
         Assert.Contains("source is PortableVisualLayoutStateSource visualLayoutSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("layoutState.HasLayoutClip", proGpuInvalidationTracker, StringComparison.Ordinal);
-        Assert.Contains("!hasPortableLayoutState && TryGetLayoutClip(source, out var layoutClip)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("SetLayoutClip(object? clip)", proGpuInvalidationTracker, StringComparison.Ordinal);
-        Assert.Contains("LayoutClipChangeMarksTrackerDirtyWithoutEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("PortableLayoutStateChangeMarksTrackerDirtyWithoutEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.Contains("NonPortableVisualStatePropertyChangesDoNotMarkTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadVectorLikeProperty(source", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadVectorLikeField(source", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadSizeProperty(source", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadBoolProperty(source", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetVisualClip(source", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetScrollableAreaClip(source", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("!hasPortableLayoutState && TryGetLayoutClip(source", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static bool TryGetLayoutClip", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetLayoutClipInternal", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(source, \"Transform\"", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(source, \"OpacityMask\"", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Present(\n                    logicalWidth,\n                    logicalHeight,\n                    pixelWidth,\n                    pixelHeight,\n                    viewportX,\n                    viewportY,\n                    viewportWidth,\n                    viewportHeight,\n                    dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("new ProGpuRenderTargetViewport(", proGpuHost, StringComparison.Ordinal);

@@ -140,99 +140,30 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
-    public void VisualOffsetChangeMarksTrackerDirtyWithoutEvent()
+    public void NonPortableVisualStatePropertyChangesDoNotMarkTrackerDirty()
     {
         var root = new FakeVisual
         {
-            VisualOffset = new System.Windows.Vector(0, 0)
+            VisualOffset = new System.Windows.Vector(0, 0),
+            VisualScrollableAreaClip = new Rect(0, 0, 100, 40),
+            VisualClip = new Rect(0, 0, 100, 40),
+            LayoutClip = new RectangleGeometry(new Rect(0, 0, 100, 40)),
+            ClipToBounds = false
         };
         using var tracker = new WpfVisualInvalidationTracker();
         tracker.Attach(root);
         tracker.ConsumeDirty();
 
         root.VisualOffset = new System.Windows.Vector(0, -120);
-
-        Assert.True(tracker.DetectVersionChanges());
-        Assert.True(tracker.IsDirty);
-        Assert.Same(root, tracker.LastDirtySource);
-        Assert.Contains(root, tracker.DirtySources);
-    }
-
-    [Fact]
-    public void VisualScrollableAreaClipChangeMarksTrackerDirtyWithoutEvent()
-    {
-        var root = new FakeVisual();
-        using var tracker = new WpfVisualInvalidationTracker();
-        tracker.Attach(root);
-        tracker.ConsumeDirty();
-
-        root.VisualScrollableAreaClip = new Rect(0, 0, 100, 40);
-
-        Assert.True(tracker.DetectVersionChanges());
-        Assert.True(tracker.IsDirty);
-        Assert.Same(root, tracker.LastDirtySource);
-        Assert.Contains(root, tracker.DirtySources);
-
-        tracker.ConsumeDirty();
         root.VisualScrollableAreaClip = new Rect(0, 0, 100, 56);
-
-        Assert.True(tracker.DetectVersionChanges());
-        Assert.True(tracker.IsDirty);
-        Assert.Same(root, tracker.LastDirtySource);
-
-    }
-
-    [Fact]
-    public void VisualClipChangeMarksTrackerDirtyWithoutEvent()
-    {
-        var root = new FakeVisual();
-        using var tracker = new WpfVisualInvalidationTracker();
-        tracker.Attach(root);
-        tracker.ConsumeDirty();
-
-        root.VisualClip = new Rect(0, 0, 100, 40);
-
-        Assert.True(tracker.DetectVersionChanges());
-        Assert.True(tracker.IsDirty);
-        Assert.Same(root, tracker.LastDirtySource);
-        Assert.Contains(root, tracker.DirtySources);
-
-        tracker.ConsumeDirty();
         root.VisualClip = new Rect(0, 0, 100, 56);
-
-        Assert.True(tracker.DetectVersionChanges());
-        Assert.True(tracker.IsDirty);
-        Assert.Same(root, tracker.LastDirtySource);
-
-    }
-
-    [Fact]
-    public void LayoutClipChangeMarksTrackerDirtyWithoutEvent()
-    {
-        var root = new FakeVisual();
-        using var tracker = new WpfVisualInvalidationTracker();
-        tracker.Attach(root);
-        tracker.ConsumeDirty();
-
-        root.LayoutClip = new RectangleGeometry(new Rect(0, 0, 100, 40));
-
-        Assert.True(tracker.DetectVersionChanges());
-        Assert.True(tracker.IsDirty);
-        Assert.Same(root, tracker.LastDirtySource);
-        Assert.Contains(root, tracker.DirtySources);
-
-        tracker.ConsumeDirty();
-        root.LayoutClip = new RectangleGeometry(new Rect(0, 0, 100, 40));
+        root.LayoutClip = new RectangleGeometry(new Rect(0, 0, 100, 56));
+        root.ClipToBounds = true;
 
         Assert.False(tracker.DetectVersionChanges());
         Assert.False(tracker.IsDirty);
-
-        root.LayoutClip = new RectangleGeometry(new Rect(0, 0, 100, 56));
-
-        Assert.True(tracker.DetectVersionChanges());
-        Assert.True(tracker.IsDirty);
-        Assert.Same(root, tracker.LastDirtySource);
-
+        Assert.Null(tracker.LastDirtySource);
+        Assert.DoesNotContain(root, tracker.DirtySources);
     }
 
     [Fact]
@@ -350,22 +281,6 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.True(tracker.DetectVersionChanges());
         Assert.True(tracker.IsDirty);
         Assert.Same(root, tracker.LastDirtySource);
-    }
-
-    [Fact]
-    public void ClipToBoundsChangeMarksTrackerDirtyWithoutEvent()
-    {
-        var root = new FakeVisual();
-        using var tracker = new WpfVisualInvalidationTracker();
-        tracker.Attach(root);
-        tracker.ConsumeDirty();
-
-        root.ClipToBounds = true;
-
-        Assert.True(tracker.DetectVersionChanges());
-        Assert.True(tracker.IsDirty);
-        Assert.Same(root, tracker.LastDirtySource);
-        Assert.Contains(root, tracker.DirtySources);
     }
 
     [Fact]
@@ -769,11 +684,6 @@ public sealed class WpfVisualInvalidationTrackerTests
         public System.Windows.Vector VisualOffset { get; set; }
 
         public Rect? VisualScrollableAreaClip { get; set; }
-
-        private object? GetLayoutClipInternal()
-        {
-            return LayoutClip;
-        }
 
         public void RaiseChanged()
         {

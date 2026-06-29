@@ -697,50 +697,25 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             builder.SetOffset(visualState.Offset.X, visualState.Offset.Y);
         }
-        else if (TryReadVectorLikeProperty(source, "Offset", out var offsetX, out var offsetY) ||
-            TryReadVectorLikeProperty(source, "VisualOffset", out offsetX, out offsetY) ||
-            TryReadVectorLikeField(source, "_offset", out offsetX, out offsetY))
-        {
-            builder.SetOffset(offsetX, offsetY);
-        }
 
         if (hasPortableVisualState && visualState.HasClip)
         {
             builder.SetClip(visualState.Clip);
-        }
-        else if (!hasPortableVisualState && TryGetVisualClip(source, out var clip))
-        {
-            builder.SetClip(clip);
         }
 
         if (hasPortableLayoutState && layoutState.HasClipToBounds)
         {
             builder.SetClipToBounds(layoutState.ClipToBounds);
         }
-        else if (!hasPortableLayoutState && TryReadBoolProperty(source, "ClipToBounds", out var clipToBounds))
-        {
-            builder.SetClipToBounds(clipToBounds);
-        }
 
         if (hasPortableLayoutState && layoutState.HasLayoutClip)
         {
             builder.SetLayoutClip(layoutState.LayoutClip);
         }
-        else if (!hasPortableLayoutState && TryGetLayoutClip(source, out var layoutClip))
-        {
-            builder.SetLayoutClip(layoutClip);
-        }
 
         if (hasPortableVisualState && visualState.HasTransform)
         {
             builder.SetTransform(visualState.Transform);
-        }
-        else if (!hasPortableVisualState &&
-            (TryGetPropertyValue(source, "Transform", out var transform) ||
-            TryGetPropertyValue(source, "VisualTransform", out transform) ||
-            TryGetFieldValue(source, "_transform", out transform)))
-        {
-            builder.SetTransform(transform);
         }
 
         if (hasPortableVisualState && visualState.HasScrollableAreaClip)
@@ -748,30 +723,15 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             var scrollClip = visualState.ScrollableAreaClip;
             builder.SetScrollableAreaClip(scrollClip.X, scrollClip.Y, scrollClip.Width, scrollClip.Height);
         }
-        else if (!hasPortableVisualState && TryGetScrollableAreaClip(source, out var scrollClip))
-        {
-            builder.SetScrollableAreaClip(scrollClip);
-        }
 
         if (hasPortableVisualState && visualState.HasOpacity)
         {
             builder.SetOpacity(visualState.Opacity);
         }
-        else if (!hasPortableVisualState && TryReadDoubleProperty(source, "Opacity", out var opacity))
-        {
-            builder.SetOpacity(opacity);
-        }
 
         if (hasPortableVisualState && visualState.HasOpacityMask)
         {
             builder.SetOpacityMask(visualState.OpacityMask);
-        }
-        else if (!hasPortableVisualState &&
-            (TryGetPropertyValue(source, "OpacityMask", out var opacityMask) ||
-             TryGetPropertyValue(source, "VisualOpacityMask", out opacityMask)) &&
-            opacityMask != null)
-        {
-            builder.SetOpacityMask(opacityMask);
         }
 
         if (hasPortableVisualState)
@@ -833,13 +793,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         if (hasPortableLayoutState && TryReadPortableRenderSize(layoutState, out var width, out var height))
-        {
-            builder.SetRenderSize(width, height);
-        }
-        else if (!hasPortableLayoutState &&
-            (TryReadSizeProperty(source, "RenderSize", out width, out height) ||
-                (TryReadDoubleProperty(source, "ActualWidth", out width) &&
-                 TryReadDoubleProperty(source, "ActualHeight", out height))))
         {
             builder.SetRenderSize(width, height);
         }
@@ -952,66 +905,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return false;
     }
 
-    private static bool TryGetScrollableAreaClip(object source, out object? value)
-    {
-        if (TryGetPropertyValue(source, "ScrollableAreaClip", out value))
-        {
-            return true;
-        }
-
-        return TryGetPropertyValue(source, "VisualScrollableAreaClip", out value);
-    }
-
-    private static bool TryGetVisualClip(object source, out object? value)
-    {
-        if (TryGetPropertyValue(source, "VisualClip", out value) && value != null)
-        {
-            return true;
-        }
-
-        return TryGetPropertyValue(source, "Clip", out value);
-    }
-
-    private static bool TryGetLayoutClip(object source, out object? value)
-    {
-        value = null;
-        var method = FindParameterlessMethod(source.GetType(), "GetLayoutClipInternal");
-        if (method == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            value = method.Invoke(source, null);
-            return true;
-        }
-        catch (TargetInvocationException)
-        {
-            value = null;
-            return false;
-        }
-    }
-
-    private static MethodInfo? FindParameterlessMethod(Type type, string name)
-    {
-        for (var current = type; current != null; current = current.BaseType)
-        {
-            var method = current.GetMethod(
-                name,
-                MemberFlags,
-                binder: null,
-                types: Type.EmptyTypes,
-                modifiers: null);
-            if (method != null)
-            {
-                return method;
-            }
-        }
-
-        return null;
-    }
-
     private static bool TryReadRectangleClipBounds(object? clip, out double x, out double y, out double width, out double height)
     {
         x = 0;
@@ -1031,56 +924,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return TryGetPropertyValue(clip, "Rect", out var rectValue)
             && rectValue != null
             && TryReadRect(rectValue, out x, out y, out width, out height);
-    }
-
-    private static bool TryReadVectorLikeProperty(object instance, string propertyName, out double x, out double y)
-    {
-        x = 0;
-        y = 0;
-
-        return TryGetPropertyValue(instance, propertyName, out var value)
-            && value != null
-            && TryReadDoubleProperty(value, "X", out x)
-            && TryReadDoubleProperty(value, "Y", out y);
-    }
-
-    private static bool TryReadVectorLikeField(object instance, string fieldName, out double x, out double y)
-    {
-        x = 0;
-        y = 0;
-
-        return TryGetFieldValue(instance, fieldName, out var value)
-            && value != null
-            && TryReadDoubleProperty(value, "X", out x)
-            && TryReadDoubleProperty(value, "Y", out y);
-    }
-
-    private static bool TryReadSizeProperty(object instance, string propertyName, out double width, out double height)
-    {
-        width = 0;
-        height = 0;
-
-        return TryGetPropertyValue(instance, propertyName, out var value)
-            && value != null
-            && TryReadDoubleProperty(value, "Width", out width)
-            && TryReadDoubleProperty(value, "Height", out height);
-    }
-
-    private static bool TryReadBoolProperty(object instance, string propertyName, out bool value)
-    {
-        value = false;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue) || propertyValue == null)
-        {
-            return false;
-        }
-
-        if (propertyValue is bool boolValue)
-        {
-            value = boolValue;
-            return true;
-        }
-
-        return bool.TryParse(propertyValue.ToString(), out value);
     }
 
     private static bool TryReadRect(object value, out double x, out double y, out double width, out double height)

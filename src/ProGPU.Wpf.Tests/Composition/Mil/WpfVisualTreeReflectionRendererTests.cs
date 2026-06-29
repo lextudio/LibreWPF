@@ -129,7 +129,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void ReplaySubtreeRecursesThroughProtectedVisualChildren()
+    public void ReplaySubtreeIgnoresNonPortableProtectedVisualChildren()
     {
         var root = new FakeVisualChildrenVisual();
         var childBrush = Brushes.Blue;
@@ -138,14 +138,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
-        Assert.Equal(2, result.VisualCount);
-        Assert.Equal(1, result.ContentCount);
-        Assert.Equal(1, result.ChildEdgeCount);
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(0, result.ContentCount);
+        Assert.Equal(0, result.ChildEdgeCount);
         Assert.Equal(0, result.UnsupportedContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
-        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
-        var rectangle = Assert.Single(sink.DrawRectangles);
-        Assert.Same(childBrush, rectangle.Brush);
+        Assert.Equal(default, result.RenderData);
+        Assert.Empty(sink.DrawRectangles);
     }
 
     [Fact]
@@ -839,7 +838,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new object[] { root }, sink.VisualOwners);
-        Assert.Contains(root.Children, sink.VisualDependencies);
+        Assert.DoesNotContain(root.Children, sink.VisualDependencies);
         Assert.Contains(renderData, sink.VisualDependencies);
         Assert.Contains(brush, sink.VisualDependencies);
         Assert.Equal(1, result.ContentCount);
@@ -876,7 +875,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new object[] { root }, sink.VisualOwners);
-        Assert.Contains(root.Children, sink.VisualDependencies);
+        Assert.DoesNotContain(root.Children, sink.VisualDependencies);
         Assert.Contains(renderData, sink.VisualDependencies);
         Assert.Contains(brush, sink.VisualDependencies);
         Assert.Equal(1, result.ContentCount);
@@ -921,7 +920,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void ReplaySubtreeRegistersVisualChildrenCollectionAsShallowRetainedDependency()
+    public void ReplaySubtreeDoesNotRegisterVisualChildrenCollectionAsReflectedDependency()
     {
         var root = new FakeVisual();
         var child = new FakeDrawingVisual(CreateRenderData(Brushes.Green));
@@ -931,7 +930,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new object[] { root, child }, sink.VisualOwners);
-        Assert.Contains(root.Children, sink.VisualDependencies);
+        Assert.DoesNotContain(root.Children, sink.VisualDependencies);
         Assert.DoesNotContain(child, sink.VisualDependencies);
         Assert.Equal(2, result.VisualCount);
         Assert.Equal(1, result.ChildEdgeCount);
@@ -954,7 +953,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             out var result));
 
         Assert.Equal(new object[] { root }, sink.VisualOwners);
-        Assert.Contains(root.Children, sink.VisualDependencies);
+        Assert.DoesNotContain(root.Children, sink.VisualDependencies);
         Assert.Contains(renderData, sink.VisualDependencies);
         Assert.Contains(brush, sink.VisualDependencies);
         Assert.Equal(1, result.ContentCount);
@@ -2291,7 +2290,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(height, bounds.Height);
     }
 
-    private class FakeVisual
+    private class FakeVisual : PortableVisualChildrenSource
     {
         public FakeVisualCollection Children { get; } = new();
 
@@ -2311,6 +2310,17 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public object? VisualScrollableAreaClip { get; init; }
 
+        public bool TryGetPortableVisualChildCount(out int count)
+        {
+            count = Children.Count;
+            return true;
+        }
+
+        public bool TryGetPortableVisualChild(int index, out object? child)
+        {
+            child = Children[index];
+            return true;
+        }
     }
 
     private sealed class FakeDrawingVisual : FakeVisual, PortableDrawingContentSource

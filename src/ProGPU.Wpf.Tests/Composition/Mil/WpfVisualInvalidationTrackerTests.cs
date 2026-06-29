@@ -11,6 +11,7 @@ using PortableRenderDataSnapshot = ProGPU.Wpf.Interop.PortableRenderDataSnapshot
 using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
 using PortableInvalidationSource = ProGPU.Wpf.Interop.IPortableInvalidationSource;
+using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
@@ -404,6 +405,29 @@ public sealed class WpfVisualInvalidationTrackerTests
         child.RaiseChanged();
 
         Assert.True(tracker.IsDirty);
+    }
+
+    [Fact]
+    public void PortableVisualChildrenChangeMarksTrackerDirtyWithoutReflectedChildrenCollection()
+    {
+        var root = new FakePortableVisualChildrenOnly();
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        var child = new FakeVisual();
+        root.AddChild(child);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Contains(root, tracker.DirtySources);
+        tracker.ConsumeDirty();
+
+        child.RaiseChanged();
+
+        Assert.True(tracker.IsDirty);
+        Assert.Same(child, tracker.LastDirtySource);
     }
 
     [Fact]
@@ -802,6 +826,28 @@ public sealed class WpfVisualInvalidationTrackerTests
     private sealed class FakeVisualBrush
     {
         public object? Visual { get; init; }
+    }
+
+    private sealed class FakePortableVisualChildrenOnly : PortableVisualChildrenSource
+    {
+        private readonly List<object> _children = new();
+
+        public void AddChild(object child)
+        {
+            _children.Add(child);
+        }
+
+        public bool TryGetPortableVisualChildCount(out int count)
+        {
+            count = _children.Count;
+            return true;
+        }
+
+        public bool TryGetPortableVisualChild(int index, out object? child)
+        {
+            child = _children[index];
+            return true;
+        }
     }
 
     private sealed class FakeUiElementVisual

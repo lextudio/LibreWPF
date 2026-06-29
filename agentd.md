@@ -16,6 +16,8 @@ Visual state, visual content, and render-data extraction must require typed port
 
 Visual layout state in retained replay must come from `IPortableVisualLayoutStateSource`/`PortableVisualLayoutState`. Do not reintroduce `RenderSize`, `ActualWidth`, `ActualHeight`, `ClipToBounds`, or `GetLayoutClipInternal()` probing in `WpfVisualTreeReflectionRenderer`; source-built `UIElement`/`FrameworkElement` owns render size, clip-to-bounds, and layout-clip snapshots, and third-party/Xceed cell-like controls used in tests should model that seam directly.
 
+Visual child traversal in retained replay must come from `IPortableVisualChildrenSource`. Do not reintroduce `Children` property probing, `VisualChildrenCount` probing, protected `GetVisualChild` method invocation, or direct reflected `Children` collection dependency registration in `WpfVisualTreeReflectionRenderer`; source-built `Visual` owns child enumeration, and retained invalidation should snapshot typed child topology through the same portable seam.
+
 Retained invalidation dependency traversal must also follow the typed content/render-data seams. Do not reintroduce `_content` or `_drawingContent` field-name scanning in `WpfVisualInvalidationTracker`; source-built `DrawingVisual` and `UIElement` retained content must be reached through `IPortableDrawingContentSource`, and render-data resources through `IPortableRenderDataSource`.
 
 Bitmap-source adaptation should not manufacture shim `WriteableBitmap` instances through reflection. Normal WPF bitmap sources must provide pixels through `IPortableBitmapSourcePixelsSource` and/or backend textures through `IProGpuTextureSource`; arbitrary non-media object shapes should not be converted into shim imaging types on the product path.

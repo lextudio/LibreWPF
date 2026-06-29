@@ -245,7 +245,6 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static void RegisterRetainedVisualStateDependencies(object visual, IWpfCompositionCommandSink sink)
     {
-        RegisterRetainedVisualPropertyDirectDependency(visual, "Children", sink);
         if (TryGetPortableVisualState(visual, out var visualState))
         {
             if (visualState.HasTransform)
@@ -303,17 +302,6 @@ public sealed class WpfVisualTreeReflectionRenderer
     private static void RegisterRetainedVisualDependency(object? dependency, IWpfCompositionCommandSink sink)
     {
         WpfRetainedVisualDependencyRegistrar.Register(sink, dependency);
-    }
-
-    private static void RegisterRetainedVisualPropertyDirectDependency(
-        object visual,
-        string propertyName,
-        IWpfCompositionCommandSink sink)
-    {
-        if (TryGetPropertyValue(visual, propertyName, out var dependency))
-        {
-            RegisterRetainedVisualDirectDependency(dependency, sink);
-        }
     }
 
     private static void RegisterRetainedVisualDirectDependency(object? dependency, IWpfCompositionCommandSink sink)
@@ -1137,33 +1125,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             return ExtractPortableVisualChildren(visualChildrenSource);
         }
 
-        if (!TryGetPropertyValue(visual, "Children", out var children) || children == null)
-        {
-            return ExtractVisualChildren(visual);
-        }
-
-        if (!TryReadIntProperty(children, "Count", out var count) || count <= 0)
-        {
-            return ExtractVisualChildren(visual);
-        }
-
-        var getChild = FindIndexer(children.GetType());
-        if (getChild == null)
-        {
-            return ExtractVisualChildren(visual);
-        }
-
-        var result = new List<object>(count);
-        for (var i = 0; i < count; i++)
-        {
-            var child = getChild(children, i);
-            if (child != null)
-            {
-                result.Add(child);
-            }
-        }
-
-        return result;
+        return Array.Empty<object>();
     }
 
     private static IReadOnlyList<object> ExtractPortableVisualChildren(PortableVisualChildrenSource visualChildrenSource)
@@ -1207,35 +1169,6 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         state = null!;
         return false;
-    }
-
-    private static IReadOnlyList<object> ExtractVisualChildren(object visual)
-    {
-        if (!TryReadIntProperty(visual, "VisualChildrenCount", out var count) || count <= 0)
-        {
-            return Array.Empty<object>();
-        }
-
-        var getVisualChild = FindMethod(
-            visual.GetType(),
-            "GetVisualChild",
-            typeof(int));
-        if (getVisualChild == null)
-        {
-            return Array.Empty<object>();
-        }
-
-        var result = new List<object>(count);
-        for (var i = 0; i < count; i++)
-        {
-            var child = getVisualChild.Invoke(visual, new object[] { i });
-            if (child != null)
-            {
-                result.Add(child);
-            }
-        }
-
-        return result;
     }
 
     private static bool TryReadOffset(object visual, out double x, out double y)

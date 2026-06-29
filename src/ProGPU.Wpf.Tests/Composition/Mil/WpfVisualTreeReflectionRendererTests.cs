@@ -1722,6 +1722,38 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsUsesPortableDrawingStateBeforeGenericBounds()
+    {
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = new RectangleGeometry(new Rect(1, 2, 10, 12))
+        });
+
+        var hasBounds = WpfReflectionDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(1, 2, 10, 12), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsDoesNotReflectUnavailablePortableDrawingState()
+    {
+        var geometryDrawing = new UnavailablePortableGeometryDrawing();
+        var imageDrawing = new UnavailablePortableImageDrawing();
+        var glyphRunDrawing = new UnavailablePortableGlyphRunDrawing();
+
+        Assert.False(WpfReflectionDrawingReplay.TryGetDrawingBounds(geometryDrawing, null, out _));
+        Assert.False(WpfReflectionDrawingReplay.TryGetDrawingBounds(imageDrawing, null, out _));
+        Assert.False(WpfReflectionDrawingReplay.TryGetDrawingBounds(glyphRunDrawing, null, out _));
+
+        Assert.Equal(0, geometryDrawing.ReflectedStateProbeCount);
+        Assert.Equal(0, imageDrawing.ReflectedStateProbeCount);
+        Assert.Equal(0, glyphRunDrawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeAppliesPortableDrawingGroupStateWithoutReflection()
     {
         var group = new ThrowingPortableDrawingGroup(new PortableDrawingGroupState
@@ -2800,6 +2832,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public int ReflectedStateProbeCount { get; private set; }
 
+        public object? Bounds => ThrowReflectedStateProbe();
+
         public object? Geometry => ThrowReflectedStateProbe();
 
         public object? Brush => ThrowReflectedStateProbe();
@@ -2839,6 +2873,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
     {
         public int ReflectedStateProbeCount { get; private set; }
 
+        public object? Bounds => ThrowReflectedStateProbe();
+
         public object? Geometry => ThrowReflectedStateProbe();
 
         public object? Brush => ThrowReflectedStateProbe();
@@ -2869,6 +2905,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public int ReflectedStateProbeCount { get; private set; }
 
+        public object? Bounds => ThrowReflectedStateProbe();
+
         public object? ImageSource => ThrowReflectedStateProbe();
 
         public object? Rect => ThrowReflectedStateProbe();
@@ -2889,6 +2927,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
     private sealed class UnavailablePortableImageDrawing : PortableImageDrawingStateSource
     {
         public int ReflectedStateProbeCount { get; private set; }
+
+        public object? Bounds => ThrowReflectedStateProbe();
 
         public object? ImageSource => ThrowReflectedStateProbe();
 
@@ -2918,6 +2958,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public int ReflectedStateProbeCount { get; private set; }
 
+        public object? Bounds => ThrowReflectedStateProbe();
+
         public object? GlyphRun => ThrowReflectedStateProbe();
 
         public object? ForegroundBrush => ThrowReflectedStateProbe();
@@ -2938,6 +2980,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
     private sealed class UnavailablePortableGlyphRunDrawing : PortableGlyphRunDrawingStateSource
     {
         public int ReflectedStateProbeCount { get; private set; }
+
+        public object? Bounds => ThrowReflectedStateProbe();
 
         public object? GlyphRun => ThrowReflectedStateProbe();
 

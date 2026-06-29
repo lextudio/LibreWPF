@@ -2748,11 +2748,6 @@ internal static class WpfReflectionDrawingReplay
             return false;
         }
 
-        if (TryReadFiniteRectProperty(drawing, "Bounds", out bounds))
-        {
-            return true;
-        }
-
         if (drawing is PortableGeometryDrawingStateSource || TypeNameEndsWith(drawing, "GeometryDrawing"))
         {
             var hasPortableGeometryDrawingState = TryGetPortableGeometryDrawingState(
@@ -2764,13 +2759,18 @@ internal static class WpfReflectionDrawingReplay
                 return false;
             }
 
-            return TryGetGeometryDrawingGeometry(
+            if (!TryGetGeometryDrawingGeometry(
                     drawing,
                     hasPortableGeometryDrawingState,
                     geometryDrawingState,
                     out var geometryValue)
-                && WpfReflectionResourceResolver.AdaptGeometry(geometryValue) is { } geometry
-                && IsUsableRect(geometry.Bounds, out bounds);
+                || WpfReflectionResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
+            {
+                bounds = default;
+                return false;
+            }
+
+            return IsUsableRect(geometry.Bounds, out bounds);
         }
 
         if (drawing is PortableImageDrawingStateSource || TypeNameEndsWith(drawing, "ImageDrawing"))
@@ -2784,12 +2784,17 @@ internal static class WpfReflectionDrawingReplay
                 return false;
             }
 
-            return TryGetImageDrawingRect(
+            if (!TryGetImageDrawingRect(
                     drawing,
                     hasPortableImageDrawingState,
                     imageDrawingState,
-                    out var imageRect)
-                && IsUsableRect(imageRect, out bounds);
+                    out var imageRect))
+            {
+                bounds = default;
+                return false;
+            }
+
+            return IsUsableRect(imageRect, out bounds);
         }
 
         if (drawing is PortableGlyphRunDrawingStateSource || TypeNameEndsWith(drawing, "GlyphRunDrawing"))
@@ -2818,8 +2823,18 @@ internal static class WpfReflectionDrawingReplay
                 return TryGetGlyphRunBounds(nativeGlyphRun, out bounds);
             }
 
-            return WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is { } glyphRun
-                && TryGetGlyphRunBounds(glyphRun, out bounds);
+            if (WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is not { } glyphRun)
+            {
+                bounds = default;
+                return false;
+            }
+
+            return TryGetGlyphRunBounds(glyphRun, out bounds);
+        }
+
+        if (TryReadFiniteRectProperty(drawing, "Bounds", out bounds))
+        {
+            return true;
         }
 
         bounds = default;

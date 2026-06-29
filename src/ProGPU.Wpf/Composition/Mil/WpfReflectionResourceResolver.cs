@@ -13,6 +13,8 @@ using MediaColor = System.Windows.Media.Color;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaMatrix = System.Windows.Media.Matrix;
+using MediaMatrixTransform = System.Windows.Media.MatrixTransform;
 using MediaPen = System.Windows.Media.Pen;
 using MediaPenLineCap = System.Windows.Media.PenLineCap;
 using MediaTransform = System.Windows.Media.Transform;
@@ -1300,7 +1302,7 @@ public sealed class WpfReflectionResourceResolver :
             return null;
         }
 
-        return TryCreateMatrixTransform(resource, matrix, out var transform)
+        return TryCreateMatrixTransform(matrix, out var transform)
             ? transform
             : null;
     }
@@ -1323,7 +1325,7 @@ public sealed class WpfReflectionResourceResolver :
     {
         transform = null!;
         if (!TryReadMatrix4x4(matrix, out var matrix2D)
-            || !TryCreateMatrixTransform(typeof(MediaTransform), matrix2D, out var mediaTransform)
+            || !TryCreateMatrixTransform(matrix2D, out var mediaTransform)
             || mediaTransform == null)
         {
             return false;
@@ -2502,96 +2504,18 @@ public sealed class WpfReflectionResourceResolver :
             1);
     }
 
-    private static bool TryCreateMatrixTransform(
-        object resource,
-        WpfMatrix2D matrix,
-        out MediaTransform? transform)
+    private static bool TryCreateMatrixTransform(WpfMatrix2D matrix, out MediaTransform? transform)
     {
-        transform = null;
-        var matrixTransformType = resource.GetType().Assembly.GetType("System.Windows.Media.MatrixTransform");
-        if (matrixTransformType == null || !typeof(MediaTransform).IsAssignableFrom(matrixTransformType))
-        {
-            matrixTransformType = typeof(MediaTransform).Assembly.GetType("System.Windows.Media.MatrixTransform");
-        }
-
-        if (matrixTransformType == null || !typeof(MediaTransform).IsAssignableFrom(matrixTransformType))
-        {
-            return false;
-        }
-
-        var transformConstructor = matrixTransformType.GetConstructors(MemberFlags)
-            .FirstOrDefault(constructor =>
+        transform = new MediaMatrixTransform(
+            new MediaMatrix
             {
-                var parameters = constructor.GetParameters();
-                return parameters.Length == 1
-                    && parameters[0].ParameterType.FullName == "System.Windows.Media.Matrix";
+                M11 = matrix.M11,
+                M12 = matrix.M12,
+                M21 = matrix.M21,
+                M22 = matrix.M22,
+                OffsetX = matrix.OffsetX,
+                OffsetY = matrix.OffsetY
             });
-        if (transformConstructor == null)
-        {
-            return false;
-        }
-
-        var matrixType = transformConstructor.GetParameters()[0].ParameterType;
-        if (!TryCreateMatrixInstance(matrixType, matrix, out var matrixInstance))
-        {
-            return false;
-        }
-
-        transform = transformConstructor.Invoke(new[] { matrixInstance }) as MediaTransform;
-        return transform != null;
-    }
-
-    private static bool TryCreateMatrixInstance(Type matrixType, WpfMatrix2D matrix, out object matrixInstance)
-    {
-        var matrixConstructor = matrixType.GetConstructor(new[]
-        {
-            typeof(double),
-            typeof(double),
-            typeof(double),
-            typeof(double),
-            typeof(double),
-            typeof(double)
-        });
-        if (matrixConstructor != null)
-        {
-            matrixInstance = matrixConstructor.Invoke(new object[]
-            {
-                matrix.M11,
-                matrix.M12,
-                matrix.M21,
-                matrix.M22,
-                matrix.OffsetX,
-                matrix.OffsetY
-            });
-            return true;
-        }
-
-        var instance = Activator.CreateInstance(matrixType);
-        if (instance == null
-            || !TrySetDoubleProperty(instance, "M11", matrix.M11)
-            || !TrySetDoubleProperty(instance, "M12", matrix.M12)
-            || !TrySetDoubleProperty(instance, "M21", matrix.M21)
-            || !TrySetDoubleProperty(instance, "M22", matrix.M22)
-            || !TrySetDoubleProperty(instance, "OffsetX", matrix.OffsetX)
-            || !TrySetDoubleProperty(instance, "OffsetY", matrix.OffsetY))
-        {
-            matrixInstance = null!;
-            return false;
-        }
-
-        matrixInstance = instance;
-        return true;
-    }
-
-    private static bool TrySetDoubleProperty(object instance, string propertyName, double value)
-    {
-        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
-        if (property == null || !property.CanWrite)
-        {
-            return false;
-        }
-
-        property.SetValue(instance, value);
         return true;
     }
 

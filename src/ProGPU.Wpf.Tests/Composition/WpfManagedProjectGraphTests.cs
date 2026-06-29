@@ -10944,7 +10944,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("resource is PortableTransformMatrixSource portableTransform", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("portableTransform.TryGetPortableTransformMatrix(out var portableMatrix)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("ToWpfMatrix2D(portableMatrix)", wpfReflectionResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("matrixTransformType = typeof(MediaTransform).Assembly.GetType(\"System.Windows.Media.MatrixTransform\")", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("new MediaMatrixTransform(", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("new MediaMatrix", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("Assembly.GetType(\"System.Windows.Media.MatrixTransform\")", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("Activator.CreateInstance", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetConstructors(MemberFlags)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("private readonly Func<object?, MediaImageSource?>? _imageSourceAdapter", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushRectangle(brush, pen, rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);

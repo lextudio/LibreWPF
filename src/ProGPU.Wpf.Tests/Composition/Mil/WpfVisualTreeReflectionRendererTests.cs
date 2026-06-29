@@ -1530,6 +1530,25 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplayAppliesPortableGeometryDrawingStateWithoutTypeNameShape()
+    {
+        var drawing = new PortableGeometryStateHost(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = new RectangleGeometry(new Rect(1, 2, 10, 12)),
+            HasBrush = true,
+            Brush = Brushes.Green
+        });
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Same(Brushes.Green, Assert.Single(sink.DrawGeometries).Brush);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
     public void ReplayDoesNotReflectAbsentPortableGeometryDrawingState()
     {
         var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
@@ -1537,6 +1556,19 @@ public sealed class WpfVisualTreeReflectionRendererTests
             HasGeometry = true,
             Geometry = new RectangleGeometry(new Rect(1, 2, 10, 12))
         });
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+
+        Assert.Empty(sink.Operations);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Skipped, status);
+    }
+
+    [Fact]
+    public void ReplaySkipsUnavailablePortableGeometryDrawingStateWithoutReflectionFallback()
+    {
+        var drawing = new UnavailablePortableGeometryDrawing();
         var sink = new TestSink();
 
         var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
@@ -1585,6 +1617,19 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySkipsUnavailablePortableImageDrawingStateWithoutReflectionFallback()
+    {
+        var drawing = new UnavailablePortableImageDrawing();
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+
+        Assert.Empty(sink.Operations);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Skipped, status);
+    }
+
+    [Fact]
     public void ReplayDoesNotReflectAbsentPortableGlyphRunDrawingState()
     {
         var drawing = new ThrowingPortableGlyphRunDrawing(new PortableGlyphRunDrawingState
@@ -1599,6 +1644,19 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Empty(sink.Operations);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Unsupported, status);
+    }
+
+    [Fact]
+    public void ReplaySkipsUnavailablePortableGlyphRunDrawingStateWithoutReflectionFallback()
+    {
+        var drawing = new UnavailablePortableGlyphRunDrawing();
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+
+        Assert.Empty(sink.Operations);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Skipped, status);
     }
 
     [Fact]
@@ -1688,6 +1746,19 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
         Assert.Equal(0, group.ReflectedStateProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplaySubtreeSkipsUnavailablePortableDrawingGroupStateWithoutReflectionFallback()
+    {
+        var group = new UnavailablePortableDrawingGroup();
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(group, sink);
+
+        Assert.Empty(sink.Operations);
+        Assert.Equal(0, group.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Skipped, status);
     }
 
     [Fact]
@@ -2573,6 +2644,55 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
+    private sealed class UnavailablePortableDrawingGroup : PortableDrawingGroupStateSource
+    {
+        public int ReflectedStateProbeCount { get; private set; }
+
+        public object? Bounds => ThrowReflectedStateProbe();
+
+        public object? Transform => ThrowReflectedStateProbe();
+
+        public object? ClipGeometry => ThrowReflectedStateProbe();
+
+        public object? Opacity => ThrowReflectedStateProbe();
+
+        public object? OpacityMask => ThrowReflectedStateProbe();
+
+        public object? GuidelineSet => ThrowReflectedStateProbe();
+
+        public object? Effect => ThrowReflectedStateProbe();
+
+        public object? BitmapEffect => ThrowReflectedStateProbe();
+
+        public object? BitmapEffectInput => ThrowReflectedStateProbe();
+
+        public object? CacheMode => ThrowReflectedStateProbe();
+
+        public object? BitmapScalingMode => ThrowReflectedStateProbe();
+
+        public object? EdgeMode => ThrowReflectedStateProbe();
+
+        public object? ClearTypeHint => ThrowReflectedStateProbe();
+
+        public object? TextRenderingMode => ThrowReflectedStateProbe();
+
+        public object? TextHintingMode => ThrowReflectedStateProbe();
+
+        public object? Children => ThrowReflectedStateProbe();
+
+        public bool TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)
+        {
+            state = null!;
+            return false;
+        }
+
+        private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedStateProbeCount++;
+            throw new InvalidOperationException($"Reflected drawing group property '{propertyName}' should not be read.");
+        }
+    }
+
     private sealed class ThrowingPortableGeometryDrawing : PortableGeometryDrawingStateSource
     {
         private readonly PortableGeometryDrawingState _state;
@@ -2594,6 +2714,45 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             state = _state;
             return true;
+        }
+
+        private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedStateProbeCount++;
+            throw new InvalidOperationException($"Reflected geometry drawing property '{propertyName}' should not be read.");
+        }
+    }
+
+    private sealed class PortableGeometryStateHost : PortableGeometryDrawingStateSource
+    {
+        private readonly PortableGeometryDrawingState _state;
+
+        public PortableGeometryStateHost(PortableGeometryDrawingState state)
+        {
+            _state = state;
+        }
+
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = _state;
+            return true;
+        }
+    }
+
+    private sealed class UnavailablePortableGeometryDrawing : PortableGeometryDrawingStateSource
+    {
+        public int ReflectedStateProbeCount { get; private set; }
+
+        public object? Geometry => ThrowReflectedStateProbe();
+
+        public object? Brush => ThrowReflectedStateProbe();
+
+        public object? Pen => ThrowReflectedStateProbe();
+
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = null!;
+            return false;
         }
 
         private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
@@ -2631,6 +2790,27 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
+    private sealed class UnavailablePortableImageDrawing : PortableImageDrawingStateSource
+    {
+        public int ReflectedStateProbeCount { get; private set; }
+
+        public object? ImageSource => ThrowReflectedStateProbe();
+
+        public object? Rect => ThrowReflectedStateProbe();
+
+        public bool TryGetPortableImageDrawingState(out PortableImageDrawingState state)
+        {
+            state = null!;
+            return false;
+        }
+
+        private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedStateProbeCount++;
+            throw new InvalidOperationException($"Reflected image drawing property '{propertyName}' should not be read.");
+        }
+    }
+
     private sealed class ThrowingPortableGlyphRunDrawing : PortableGlyphRunDrawingStateSource
     {
         private readonly PortableGlyphRunDrawingState _state;
@@ -2650,6 +2830,27 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             state = _state;
             return true;
+        }
+
+        private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedStateProbeCount++;
+            throw new InvalidOperationException($"Reflected glyph drawing property '{propertyName}' should not be read.");
+        }
+    }
+
+    private sealed class UnavailablePortableGlyphRunDrawing : PortableGlyphRunDrawingStateSource
+    {
+        public int ReflectedStateProbeCount { get; private set; }
+
+        public object? GlyphRun => ThrowReflectedStateProbe();
+
+        public object? ForegroundBrush => ThrowReflectedStateProbe();
+
+        public bool TryGetPortableGlyphRunDrawingState(out PortableGlyphRunDrawingState state)
+        {
+            state = null!;
+            return false;
         }
 
         private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)

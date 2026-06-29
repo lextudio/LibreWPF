@@ -2049,7 +2049,7 @@ namespace System.Windows
         public string To { get { throw null; } set { } }
     }
     [System.Windows.LocalizabilityAttribute(System.Windows.LocalizationCategory.Ignore)]
-    public partial class Window : System.Windows.Controls.ContentControl, System.Windows.IPortableVisualOwnerHost
+    public partial class Window : System.Windows.Controls.ContentControl, System.Windows.IPortableVisualOwnerHost, ProGPU.Wpf.Interop.IPortableWindowStateSource
     {
         public static readonly System.Windows.DependencyProperty AllowsTransparencyProperty;
         public static readonly System.Windows.RoutedEvent DpiChangedEvent;
@@ -2097,6 +2097,7 @@ namespace System.Windows
         public System.Windows.WindowStartupLocation WindowStartupLocation { get { throw null; } set { } }
         public System.Windows.WindowState WindowState { get { throw null; } set { } }
         public System.Windows.WindowStyle WindowStyle { get { throw null; } set { } }
+        bool ProGPU.Wpf.Interop.IPortableWindowStateSource.TryGetPortableWindowState(out ProGPU.Wpf.Interop.PortableWindowState state) { throw null; }
         public event System.EventHandler Activated { add { } remove { } }
         public event System.EventHandler Closed { add { } remove { } }
         public event System.ComponentModel.CancelEventHandler Closing { add { } remove { } }

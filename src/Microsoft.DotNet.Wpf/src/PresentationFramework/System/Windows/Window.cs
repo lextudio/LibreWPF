@@ -18,6 +18,7 @@ using MS.Internal.AppModel;
 using MS.Internal.Interop;
 using MS.Internal.KnownBoxes;
 using MS.Win32;
+using ProGPU.Wpf.Interop;
 using System.Diagnostics.CodeAnalysis;
 
 using BuildInfo = MS.Internal.PresentationFramework.BuildInfo;
@@ -28,7 +29,7 @@ using Win32Error = MS.Internal.Interop.Win32Error;
 namespace System.Windows
 {
     [Localizability(LocalizationCategory.Ignore)]
-    public class Window : ContentControl, IWindowService, IPortableVisualOwnerHost
+    public class Window : ContentControl, IWindowService, IPortableVisualOwnerHost, IPortableWindowStateSource
     {
         //---------------------------------------------------
         //
@@ -97,6 +98,36 @@ namespace System.Windows
         PortableVisualOwnerKind IPortableVisualOwnerHost.PortableVisualOwnerKind
         {
             get { return PortableVisualOwnerKind.Window; }
+        }
+
+        bool IPortableWindowStateSource.TryGetPortableWindowState(out PortableWindowState state)
+        {
+            state = new PortableWindowState
+            {
+                HasTitle = true,
+                Title = Title,
+                HasWidth = true,
+                Width = Width,
+                HasHeight = true,
+                Height = Height,
+                HasActualWidth = true,
+                ActualWidth = ActualWidth,
+                HasActualHeight = true,
+                ActualHeight = ActualHeight,
+                HasLeft = true,
+                Left = Left,
+                HasTop = true,
+                Top = Top,
+                HasWindowState = true,
+                WindowState = (int)WindowState,
+                HasTopmost = true,
+                Topmost = Topmost,
+                HasResizeMode = true,
+                ResizeMode = (int)ResizeMode,
+                HasWindowStyle = true,
+                WindowStyle = (int)WindowStyle
+            };
+            return true;
         }
 
         /// <summary>

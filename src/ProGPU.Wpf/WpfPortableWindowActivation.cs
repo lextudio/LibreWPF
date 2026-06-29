@@ -374,77 +374,108 @@ public sealed class WpfPortableWindowActivation : IDisposable
             WindowState = fallback.WindowState
         };
 
-        if (TryReadStringProperty(window, "Title", out var title) &&
-            !string.IsNullOrWhiteSpace(title))
+        if (TryGetPortableWindowState(window, out var windowState))
         {
-            options.Title = title;
+            ApplyPortableWindowState(windowState, options);
         }
-
-        if (TryReadPositiveDimension(window, "Width", out var width) ||
-            TryReadPositiveDimension(window, "ActualWidth", out width))
-        {
-            options.Width = ToLogicalClientDimension(width);
-        }
-
-        if (TryReadPositiveDimension(window, "Height", out var height) ||
-            TryReadPositiveDimension(window, "ActualHeight", out height))
-        {
-            options.Height = ToLogicalClientDimension(height);
-        }
-
-        if (TryReadFiniteDimension(window, "Left", out var left))
-        {
-            options.Left = ToLogicalPositionDimension(left);
-        }
-
-        if (TryReadFiniteDimension(window, "Top", out var top))
-        {
-            options.Top = ToLogicalPositionDimension(top);
-        }
-
-        if (TryReadProperty(window, "WindowState", out object? windowState) &&
-            TryMapWindowState(windowState, out ProGpuWpfWindowState mappedWindowState))
-        {
-            options.WindowState = mappedWindowState;
-        }
-
-        if (TryReadBooleanProperty(window, "Topmost", out var topmost))
-        {
-            options.Topmost = topmost;
-        }
-
-        options.WindowBorder = ResolveWindowBorder(window, options.WindowBorder);
 
         return options;
     }
 
     private void SynchronizeInitialWindowState(bool updatePortablePresentationSource)
     {
-        if (TryReadStringProperty(Window, "Title", out var title) &&
-            !string.IsNullOrWhiteSpace(title))
+        if (TryGetPortableWindowState(Window, out var windowState))
         {
-            Host.SetTitle(title);
+            SynchronizeInitialWindowState(windowState, updatePortablePresentationSource);
+            return;
         }
 
-        if (TryReadProperty(Window, "WindowState", out object? windowState) &&
-            TryMapWindowState(windowState, out ProGpuWpfWindowState mappedWindowState))
+        SetHostClientSize(Host.Width, Host.Height, updatePortablePresentationSource);
+    }
+
+    private static bool TryGetPortableWindowState(object window, out PortableWindowState state)
+    {
+        if (window is IPortableWindowStateSource stateSource &&
+            stateSource.TryGetPortableWindowState(out state))
+        {
+            return true;
+        }
+
+        state = null!;
+        return false;
+    }
+
+    private static void ApplyPortableWindowState(
+        PortableWindowState state,
+        ProGpuWpfWindowOptions options)
+    {
+        if (state.HasTitle && !string.IsNullOrWhiteSpace(state.Title))
+        {
+            options.Title = state.Title!;
+        }
+
+        if (TryGetPositiveDimension(state.HasWidth, state.Width, out var width) ||
+            TryGetPositiveDimension(state.HasActualWidth, state.ActualWidth, out width))
+        {
+            options.Width = ToLogicalClientDimension(width);
+        }
+
+        if (TryGetPositiveDimension(state.HasHeight, state.Height, out var height) ||
+            TryGetPositiveDimension(state.HasActualHeight, state.ActualHeight, out height))
+        {
+            options.Height = ToLogicalClientDimension(height);
+        }
+
+        if (TryGetFiniteDimension(state.HasLeft, state.Left, out var left))
+        {
+            options.Left = ToLogicalPositionDimension(left);
+        }
+
+        if (TryGetFiniteDimension(state.HasTop, state.Top, out var top))
+        {
+            options.Top = ToLogicalPositionDimension(top);
+        }
+
+        if (TryMapPortableWindowState(state, out var mappedWindowState))
+        {
+            options.WindowState = mappedWindowState;
+        }
+
+        if (state.HasTopmost)
+        {
+            options.Topmost = state.Topmost;
+        }
+
+        options.WindowBorder = ResolveWindowBorder(state, options.WindowBorder);
+    }
+
+    private void SynchronizeInitialWindowState(
+        PortableWindowState state,
+        bool updatePortablePresentationSource)
+    {
+        if (state.HasTitle && !string.IsNullOrWhiteSpace(state.Title))
+        {
+            Host.SetTitle(state.Title!);
+        }
+
+        if (TryMapPortableWindowState(state, out var mappedWindowState))
         {
             Host.SetWindowState(mappedWindowState);
         }
 
-        if (TryReadBooleanProperty(Window, "Topmost", out var topmost))
+        if (state.HasTopmost)
         {
-            Host.SetTopmost(topmost);
+            Host.SetTopmost(state.Topmost);
         }
 
-        Host.SetWindowBorder(ResolveWindowBorder(Window, Host.WindowBorder));
+        Host.SetWindowBorder(ResolveWindowBorder(state, Host.WindowBorder));
 
         var hasWidth =
-            TryReadPositiveDimension(Window, "Width", out var width) ||
-            TryReadPositiveDimension(Window, "ActualWidth", out width);
+            TryGetPositiveDimension(state.HasWidth, state.Width, out var width) ||
+            TryGetPositiveDimension(state.HasActualWidth, state.ActualWidth, out width);
         var hasHeight =
-            TryReadPositiveDimension(Window, "Height", out var height) ||
-            TryReadPositiveDimension(Window, "ActualHeight", out height);
+            TryGetPositiveDimension(state.HasHeight, state.Height, out var height) ||
+            TryGetPositiveDimension(state.HasActualHeight, state.ActualHeight, out height);
 
         if (hasWidth || hasHeight)
         {
@@ -458,8 +489,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
             SetHostClientSize(Host.Width, Host.Height, updatePortablePresentationSource);
         }
 
-        var hasLeft = TryReadFiniteDimension(Window, "Left", out var left);
-        var hasTop = TryReadFiniteDimension(Window, "Top", out var top);
+        var hasLeft = TryGetFiniteDimension(state.HasLeft, state.Left, out var left);
+        var hasTop = TryGetFiniteDimension(state.HasTop, state.Top, out var top);
         var windowLeft = hasLeft ? ToLogicalPositionDimension(left) : Host.Left;
         var windowTop = hasTop ? ToLogicalPositionDimension(top) : Host.Top;
         if (windowLeft.HasValue && windowTop.HasValue)
@@ -1078,32 +1109,56 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return true;
     }
 
-    private static bool TryReadBooleanProperty(object instance, string propertyName, out bool value)
-    {
-        value = false;
-        var property = instance.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        if (property == null ||
-            property.GetIndexParameters().Length != 0 ||
-            property.PropertyType != typeof(bool))
-        {
-            return false;
-        }
-
-        value = (bool)property.GetValue(instance)!;
-        return true;
-    }
-
     private static bool TryMapWindowState(object? windowState, out ProGpuWpfWindowState mappedWindowState)
     {
-        mappedWindowState = ProGpuWpfWindowState.Normal;
-        if (windowState == null)
+        if (TryConvertEnumNumber(windowState, out var value) &&
+            TryMapWindowStateValue(value, out mappedWindowState))
         {
+            return true;
+        }
+
+        return TryMapWindowStateName(windowState?.ToString(), out mappedWindowState);
+    }
+
+    private static bool TryMapPortableWindowState(
+        PortableWindowState state,
+        out ProGpuWpfWindowState mappedWindowState)
+    {
+        if (!state.HasWindowState)
+        {
+            mappedWindowState = ProGpuWpfWindowState.Normal;
             return false;
         }
 
-        switch (windowState.ToString())
+        return TryMapWindowStateValue(state.WindowState, out mappedWindowState);
+    }
+
+    private static bool TryMapWindowStateValue(
+        int windowState,
+        out ProGpuWpfWindowState mappedWindowState)
+    {
+        switch (windowState)
+        {
+            case 0:
+                mappedWindowState = ProGpuWpfWindowState.Normal;
+                return true;
+            case 1:
+                mappedWindowState = ProGpuWpfWindowState.Minimized;
+                return true;
+            case 2:
+                mappedWindowState = ProGpuWpfWindowState.Maximized;
+                return true;
+            default:
+                mappedWindowState = ProGpuWpfWindowState.Normal;
+                return false;
+        }
+    }
+
+    private static bool TryMapWindowStateName(
+        string? windowState,
+        out ProGpuWpfWindowState mappedWindowState)
+    {
+        switch (windowState)
         {
             case "Minimized":
                 mappedWindowState = ProGpuWpfWindowState.Minimized;
@@ -1115,18 +1170,24 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 mappedWindowState = ProGpuWpfWindowState.Normal;
                 return true;
             default:
+                mappedWindowState = ProGpuWpfWindowState.Normal;
                 return false;
         }
     }
 
     private static ProGpuWpfWindowBorder ResolveWindowBorder(
-        object window,
+        PortableWindowState state,
         ProGpuWpfWindowBorder fallback)
     {
-        TryReadProperty(window, "ResizeMode", out object? resizeMode);
-        TryReadProperty(window, "WindowStyle", out object? windowStyle);
+        if (state.HasWindowStyle && state.WindowStyle == 0)
+        {
+            return ProGpuWpfWindowBorder.Hidden;
+        }
 
-        return ResolveWindowBorder(resizeMode, windowStyle, fallback);
+        return state.HasResizeMode &&
+            TryMapResizeModeValue(state.ResizeMode, out ProGpuWpfWindowBorder mappedBorder)
+                ? mappedBorder
+                : fallback;
     }
 
     private static ProGpuWpfWindowBorder ResolveWindowBorder(
@@ -1134,7 +1195,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         object? windowStyle,
         ProGpuWpfWindowBorder fallback)
     {
-        if (string.Equals(windowStyle?.ToString(), "None", StringComparison.Ordinal))
+        if (IsHiddenWindowStyle(windowStyle))
         {
             return ProGpuWpfWindowBorder.Hidden;
         }
@@ -1154,7 +1215,39 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return false;
         }
 
-        switch (resizeMode.ToString())
+        if (TryConvertEnumNumber(resizeMode, out var value))
+        {
+            return TryMapResizeModeValue(value, out windowBorder);
+        }
+
+        return TryMapResizeModeName(resizeMode.ToString(), out windowBorder);
+    }
+
+    private static bool TryMapResizeModeValue(
+        int resizeMode,
+        out ProGpuWpfWindowBorder windowBorder)
+    {
+        switch (resizeMode)
+        {
+            case 0:
+            case 1:
+                windowBorder = ProGpuWpfWindowBorder.Fixed;
+                return true;
+            case 2:
+            case 3:
+                windowBorder = ProGpuWpfWindowBorder.Resizable;
+                return true;
+            default:
+                windowBorder = ProGpuWpfWindowBorder.Resizable;
+                return false;
+        }
+    }
+
+    private static bool TryMapResizeModeName(
+        string? resizeMode,
+        out ProGpuWpfWindowBorder windowBorder)
+    {
+        switch (resizeMode)
         {
             case "NoResize":
             case "CanMinimize":
@@ -1165,7 +1258,45 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 windowBorder = ProGpuWpfWindowBorder.Resizable;
                 return true;
             default:
+                windowBorder = ProGpuWpfWindowBorder.Resizable;
                 return false;
+        }
+    }
+
+    private static bool IsHiddenWindowStyle(object? windowStyle)
+    {
+        if (TryConvertEnumNumber(windowStyle, out var value))
+        {
+            return value == 0;
+        }
+
+        return string.Equals(windowStyle?.ToString(), "None", StringComparison.Ordinal);
+    }
+
+    private static bool TryConvertEnumNumber(object? value, out int number)
+    {
+        number = 0;
+        if (value == null || value is string)
+        {
+            return false;
+        }
+
+        try
+        {
+            number = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        catch (InvalidCastException)
+        {
+            return false;
+        }
+        catch (OverflowException)
+        {
+            return false;
         }
     }
 
@@ -1210,42 +1341,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return null;
     }
 
-    private static bool TryReadStringProperty(object instance, string propertyName, out string? value)
-    {
-        value = null;
-        if (!TryReadProperty(instance, propertyName, out object? rawValue))
-        {
-            return false;
-        }
-
-        value = rawValue as string;
-        return value != null;
-    }
-
-    private static bool TryReadPositiveDimension(object instance, string propertyName, out double value)
-    {
-        if (!TryReadProperty(instance, propertyName, out object? rawValue) ||
-            rawValue == null)
-        {
-            value = 0.0;
-            return false;
-        }
-
-        return TryMapPositiveDimension(rawValue, out value);
-    }
-
-    private static bool TryReadFiniteDimension(object instance, string propertyName, out double value)
-    {
-        if (!TryReadProperty(instance, propertyName, out object? rawValue) ||
-            rawValue == null)
-        {
-            value = 0.0;
-            return false;
-        }
-
-        return TryMapFiniteDimension(rawValue, out value);
-    }
-
     private static bool TryMapPositiveDimension(object? value, out double mappedValue)
     {
         if (!TryMapFiniteDimension(value, out mappedValue))
@@ -1280,19 +1375,16 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return double.IsFinite(mappedValue);
     }
 
-    private static bool TryReadProperty(object instance, string propertyName, out object? value)
+    private static bool TryGetPositiveDimension(bool hasValue, double value, out double mappedValue)
     {
-        value = null;
-        var property = instance.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public);
-        if (property == null || property.GetIndexParameters().Length != 0)
-        {
-            return false;
-        }
+        mappedValue = value;
+        return hasValue && double.IsFinite(value) && value > 0.0;
+    }
 
-        value = property.GetValue(instance);
-        return true;
+    private static bool TryGetFiniteDimension(bool hasValue, double value, out double mappedValue)
+    {
+        mappedValue = value;
+        return hasValue && double.IsFinite(value);
     }
 
     private static int ToLogicalClientDimension(double value)

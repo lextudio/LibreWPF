@@ -410,6 +410,44 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void CreateHostOptionsDoesNotUseReflectedWindowShapeFallback()
+    {
+        var fallback = new ProGpuWpfWindowOptions
+        {
+            Title = "Fallback",
+            Width = 800,
+            Height = 600,
+            Left = 1,
+            Top = 2,
+            Topmost = false,
+            WindowBorder = ProGpuWpfWindowBorder.Fixed,
+            WindowState = ProGpuWpfWindowState.Normal
+        };
+        var window = new FakeReflectedWindowShape
+        {
+            Title = "Ignored",
+            Width = 640,
+            Height = 480,
+            Left = 10,
+            Top = 20,
+            Topmost = true,
+            WindowState = FakeWindowState.Maximized,
+            ResizeMode = FakeResizeMode.CanResizeWithGrip
+        };
+
+        var options = WpfPortableWindowActivation.CreateHostOptions(window, fallback);
+
+        Assert.Equal("Fallback", options.Title);
+        Assert.Equal(800, options.Width);
+        Assert.Equal(600, options.Height);
+        Assert.Equal(1, options.Left);
+        Assert.Equal(2, options.Top);
+        Assert.False(options.Topmost);
+        Assert.Equal(ProGpuWpfWindowState.Normal, options.WindowState);
+        Assert.Equal(ProGpuWpfWindowBorder.Fixed, options.WindowBorder);
+    }
+
+    [Fact]
     public void CreateHostOptionsMapsWindowStyleNoneToHiddenBorder()
     {
         var window = new FakeWindow
@@ -1136,7 +1174,7 @@ public sealed class WpfPortableWindowActivationTests
             .Invoke(host, new object?[] { null, args });
     }
 
-    private sealed class FakeWindow
+    private sealed class FakeWindow : IPortableWindowStateSource
     {
         public string? Title { get; set; }
 
@@ -1174,6 +1212,36 @@ public sealed class WpfPortableWindowActivationTests
                 IsClosed = true;
             }
         }
+
+        public bool TryGetPortableWindowState(out PortableWindowState state)
+        {
+            state = new PortableWindowState
+            {
+                HasTitle = true,
+                Title = Title,
+                HasWidth = true,
+                Width = Width,
+                HasHeight = true,
+                Height = Height,
+                HasActualWidth = true,
+                ActualWidth = ActualWidth,
+                HasActualHeight = true,
+                ActualHeight = ActualHeight,
+                HasLeft = true,
+                Left = Left,
+                HasTop = true,
+                Top = Top,
+                HasWindowState = true,
+                WindowState = (int)WindowState,
+                HasTopmost = true,
+                Topmost = Topmost,
+                HasResizeMode = true,
+                ResizeMode = (int)ResizeMode,
+                HasWindowStyle = true,
+                WindowStyle = (int)WindowStyle
+            };
+            return true;
+        }
     }
 
     private sealed class FakeDisposedWindow
@@ -1194,6 +1262,25 @@ public sealed class WpfPortableWindowActivationTests
                 _disposed = true;
             }
         }
+    }
+
+    private sealed class FakeReflectedWindowShape
+    {
+        public string? Title { get; set; }
+
+        public double Width { get; set; }
+
+        public double Height { get; set; }
+
+        public double Left { get; set; }
+
+        public double Top { get; set; }
+
+        public bool Topmost { get; set; }
+
+        public FakeWindowState WindowState { get; set; }
+
+        public FakeResizeMode ResizeMode { get; set; }
     }
 
     private sealed class FakeActivatableWindow

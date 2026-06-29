@@ -109,7 +109,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
-    public void AttachCapturesNestedVersionSnapshots()
+    public void NonPortablePublicVersionIsNotSnapshotted()
     {
         var root = new FakeVisual
         {
@@ -117,19 +117,6 @@ public sealed class WpfVisualInvalidationTrackerTests
         };
         using var tracker = new WpfVisualInvalidationTracker();
 
-        tracker.Attach(root);
-
-        Assert.Equal(1, tracker.VersionSnapshotCount);
-    }
-
-    [Fact]
-    public void DetectVersionChangesReturnsFalseWhenVersionsAreUnchanged()
-    {
-        var root = new FakeVisual
-        {
-            Brush = new FakePublicVersionResource()
-        };
-        using var tracker = new WpfVisualInvalidationTracker();
         tracker.Attach(root);
         tracker.ConsumeDirty();
 
@@ -138,7 +125,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
-    public void PublicVersionChangeMarksTrackerDirtyWithoutEvent()
+    public void NonPortablePublicVersionChangeDoesNotMarkTrackerDirty()
     {
         var brush = new FakePublicVersionResource();
         var root = new FakeVisual
@@ -151,10 +138,10 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         brush.IncrementVersion();
 
-        Assert.True(tracker.DetectVersionChanges());
-        Assert.True(tracker.IsDirty);
-        Assert.Same(brush, tracker.LastDirtySource);
-        Assert.Contains(brush, tracker.DirtySources);
+        Assert.False(tracker.DetectVersionChanges());
+        Assert.False(tracker.IsDirty);
+        Assert.Null(tracker.LastDirtySource);
+        Assert.DoesNotContain(brush, tracker.DirtySources);
     }
 
     [Fact]

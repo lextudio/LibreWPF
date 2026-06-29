@@ -19,7 +19,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 {
     private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-    private static readonly string[] s_versionPropertyNames = { "ChangeVersion", "InternalVersion", "Version" };
     private static readonly string[] s_referencePropertyNames =
     {
         "Children",
@@ -68,7 +67,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         "TextureCoordinates"
     };
     private readonly List<Action> _unsubscribeActions = new();
-    private readonly Dictionary<object, object> _versionSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<object, VisualStateSnapshot> _visualStateSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<object, object?[]> _visualChildrenSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _dirtySources = new(ReferenceEqualityComparer.Instance);
@@ -84,8 +82,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     public bool IsDirty => _isDirty;
 
     public int SubscriptionCount => _unsubscribeActions.Count;
-
-    public int VersionSnapshotCount => _versionSnapshots.Count;
 
     public int VisualStateSnapshotCount => _visualStateSnapshots.Count;
 
@@ -151,10 +147,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             return true;
         }
 
-        var currentSnapshots = CaptureVersionSnapshots(_root);
         var currentVisualStateSnapshots = CaptureVisualStateSnapshots(_root);
         var currentVisualChildrenSnapshots = CaptureVisualChildrenSnapshots(_root);
-        var changedSources = new List<object>(CollectVersionChanges(_versionSnapshots, currentSnapshots));
+        var changedSources = new List<object>();
         foreach (var changedSource in CollectVisualStateChanges(_visualStateSnapshots, currentVisualStateSnapshots))
         {
             changedSources.Add(changedSource);
@@ -199,7 +194,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     public void Detach()
     {
         ClearSubscriptions();
-        _versionSnapshots.Clear();
         _visualStateSnapshots.Clear();
         _visualChildrenSnapshots.Clear();
         _dirtySources.Clear();
@@ -240,7 +234,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         try
         {
             ClearSubscriptions();
-            _versionSnapshots.Clear();
             _visualStateSnapshots.Clear();
             _visualChildrenSnapshots.Clear();
             SubscribeGraph(_root);
@@ -265,7 +258,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         SubscribeInvalidationEvents(source);
-        CaptureVersionSnapshot(source);
         CaptureVisualStateSnapshot(source);
         CaptureVisualChildrenSnapshot(source);
 
@@ -297,14 +289,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     }
 
-    private void CaptureVersionSnapshot(object source)
-    {
-        if (TryReadVersionValue(source, out var version))
-        {
-            _versionSnapshots[source] = version;
-        }
-    }
-
     private void CaptureVisualStateSnapshot(object source)
     {
         if (TryReadVisualStateSnapshot(source, out var snapshot))
@@ -321,14 +305,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
     }
 
-    private static Dictionary<object, object> CaptureVersionSnapshots(object root)
-    {
-        var snapshots = new Dictionary<object, object>(ReferenceEqualityComparer.Instance);
-        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        CaptureObjectVersions(root, snapshots, visited);
-        return snapshots;
-    }
-
     private static Dictionary<object, VisualStateSnapshot> CaptureVisualStateSnapshots(object root)
     {
         var snapshots = new Dictionary<object, VisualStateSnapshot>(ReferenceEqualityComparer.Instance);
@@ -343,41 +319,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
         CaptureObjectVisualChildren(root, snapshots, visited);
         return snapshots;
-    }
-
-    private static void CaptureObjectVersions(
-        object? source,
-        Dictionary<object, object> snapshots,
-        HashSet<object> visited)
-    {
-        if (source == null || IsTerminalValue(source) || !visited.Add(source))
-        {
-            return;
-        }
-
-        if (TryReadVersionValue(source, out var version))
-        {
-            snapshots[source] = version;
-        }
-
-        foreach (var item in EnumerateCollection(source))
-        {
-            CaptureObjectVersions(item, snapshots, visited);
-        }
-
-        foreach (var dependency in EnumeratePortableDependencies(source))
-        {
-            CaptureObjectVersions(dependency, snapshots, visited);
-        }
-
-        foreach (var propertyName in EnumerateReferencePropertyNames(source))
-        {
-            if (TryGetPropertyValue(source, propertyName, out var value))
-            {
-                CaptureObjectVersions(value, snapshots, visited);
-            }
-        }
-
     }
 
     private static void CaptureObjectVisualStates(
@@ -492,12 +433,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return !IsPortableGraphSource(source);
     }
 
-    private static bool ShouldReadVersionProperties(object source)
-    {
-        return source is not PortableInvalidationSource
-            && !IsPortableGraphSource(source);
-    }
-
     private static bool IsPortableGraphSource(object source)
     {
         return source is PortableDrawingContentSource
@@ -505,32 +440,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             || source is PortableVisualChildrenSource
             || source is PortableVisualStateSource
             || source is PortableVisualLayoutStateSource;
-    }
-
-    private static IReadOnlyList<object> CollectVersionChanges(
-        IReadOnlyDictionary<object, object> previous,
-        IReadOnlyDictionary<object, object> current)
-    {
-        var changedSources = new List<object>();
-
-        foreach (var snapshot in current)
-        {
-            if (!previous.TryGetValue(snapshot.Key, out var previousVersion) ||
-                !Equals(previousVersion, snapshot.Value))
-            {
-                changedSources.Add(snapshot.Key);
-            }
-        }
-
-        foreach (var snapshot in previous)
-        {
-            if (!current.ContainsKey(snapshot.Key))
-            {
-                changedSources.Add(snapshot.Key);
-            }
-        }
-
-        return changedSources;
     }
 
     private static List<object> CollectVisualStateChanges(
@@ -583,66 +492,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         return changedSources;
-    }
-
-    private static bool TryReadVersionValue(object source, out object version)
-    {
-        if (!ShouldReadVersionProperties(source))
-        {
-            version = 0;
-            return false;
-        }
-
-        foreach (var propertyName in s_versionPropertyNames)
-        {
-            if (TryGetVersionPropertyValue(source, propertyName, out version))
-            {
-                return true;
-            }
-        }
-
-        version = 0;
-        return false;
-    }
-
-    private static bool TryGetVersionPropertyValue(object instance, string propertyName, out object version)
-    {
-        version = 0;
-        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
-        if (property == null || property.GetIndexParameters().Length != 0)
-        {
-            return false;
-        }
-
-        try
-        {
-            var value = property.GetValue(instance);
-            if (TryNormalizeVersionValue(value, out var normalizedVersion))
-            {
-                version = normalizedVersion;
-                return true;
-            }
-        }
-        catch (TargetInvocationException)
-        {
-        }
-        catch (MethodAccessException)
-        {
-        }
-
-        return false;
-    }
-
-    private static bool TryNormalizeVersionValue(object? value, out object version)
-    {
-        if (value is byte or sbyte or short or ushort or int or uint or long or ulong)
-        {
-            version = value;
-            return true;
-        }
-
-        version = 0;
-        return false;
     }
 
     private static bool TryReadVisualStateSnapshot(object source, out VisualStateSnapshot snapshot)

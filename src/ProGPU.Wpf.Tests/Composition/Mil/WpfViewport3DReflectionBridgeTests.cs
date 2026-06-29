@@ -76,6 +76,21 @@ public sealed class WpfViewport3DReflectionBridgeTests
     }
 
     [Fact]
+    public void ReplaySubtreeRoutesPortableViewportSceneSourceWithoutTypeName()
+    {
+        var viewport = new PortableSceneHost();
+        var sink = new ViewportSink { DrawViewport3DResult = true };
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(viewport, sink);
+
+        Assert.Equal(1, sink.DrawViewport3DCount);
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(0, result.ChildEdgeCount);
+        Assert.Equal(0, result.UnsupportedContentCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeCountsViewport3DVisualUnsupportedWhenSinkCannotDrawIt()
     {
         var viewport = CreateTriangleViewport();
@@ -305,6 +320,15 @@ public sealed class WpfViewport3DReflectionBridgeTests
                     }
                 }
             };
+            return true;
+        }
+    }
+
+    private sealed class PortableSceneHost : IPortableViewport3DSceneSource
+    {
+        public bool TryGetPortableViewport3DScene(out PortableViewport3DScene scene)
+        {
+            scene = new PortableViewport3DScene();
             return true;
         }
     }

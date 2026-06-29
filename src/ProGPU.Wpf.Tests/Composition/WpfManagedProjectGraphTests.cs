@@ -5905,6 +5905,18 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfViewport3DReflectionBridge.cs"));
+        var rendererSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeReflectionRenderer.cs"));
+        var bridgeTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfViewport3DReflectionBridgeTests.cs"));
         var viewportSource = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5946,6 +5958,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.True(portableBranchIndex >= 0);
         Assert.True(fallbackBranchIndex > portableBranchIndex);
         Assert.Contains("TryCreateReplayDataFromPortableScene", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("visual is not IPortableViewport3DSceneSource", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeRoutesPortableViewportSceneSourceWithoutTypeName", bridgeTests, StringComparison.Ordinal);
         Assert.Contains("public interface IPortableViewport3DSceneSource", interopSource, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableViewport3DScene", interopSource, StringComparison.Ordinal);
         Assert.Contains("PortableViewport3DMesh", interopSource, StringComparison.Ordinal);

@@ -949,7 +949,7 @@ public sealed class WpfCompositionDrawingContextTests
         }
     }
 
-    private sealed class FakeBlurEffect
+    private sealed class FakeBlurEffect : IPortableEffectSource
     {
         public FakeBlurEffect(double radius)
         {
@@ -957,6 +957,12 @@ public sealed class WpfCompositionDrawingContextTests
         }
 
         public double Radius { get; }
+
+        public bool TryGetPortableEffect(out PortableEffect effect)
+        {
+            effect = PortableEffect.Blur(Radius);
+            return true;
+        }
     }
 
     private sealed class FakeContextBitmapEffectInput

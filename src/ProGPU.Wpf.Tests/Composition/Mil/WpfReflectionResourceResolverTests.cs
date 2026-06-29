@@ -3845,7 +3845,7 @@ public sealed class WpfReflectionResourceResolverTests
         public object? CacheMode { get; init; }
     }
 
-    private sealed class FakeBlurEffect
+    private sealed class FakeBlurEffect : IPortableEffectSource
     {
         public FakeBlurEffect(double radius)
         {
@@ -3853,6 +3853,12 @@ public sealed class WpfReflectionResourceResolverTests
         }
 
         public double Radius { get; }
+
+        public bool TryGetPortableEffect(out PortableEffect effect)
+        {
+            effect = PortableEffect.Blur(Radius);
+            return true;
+        }
     }
 
     private sealed class FakeBlurBitmapEffect

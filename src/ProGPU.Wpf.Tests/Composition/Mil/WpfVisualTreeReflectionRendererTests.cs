@@ -26,6 +26,7 @@ using ProGpuEffectBase = ProGPU.Scene.EffectBase;
 using ProGpuWpfShaderEffect = ProGPU.Scene.WpfShaderEffect;
 using ProGpuWpfShaderEffectSampler = ProGPU.Scene.WpfShaderEffectSampler;
 using ProGpuTextureSamplingMode = ProGPU.Scene.TextureSamplingMode;
+using PortableColor = ProGPU.Wpf.Interop.PortableColor;
 using PortableEffect = ProGPU.Wpf.Interop.PortableEffect;
 using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;
 using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
@@ -2704,7 +2705,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
-    private sealed class FakeBlurEffect
+    private sealed class FakeBlurEffect : PortableEffectSource
     {
         public FakeBlurEffect(double radius)
         {
@@ -2712,9 +2713,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
 
         public double Radius { get; }
+
+        public bool TryGetPortableEffect(out PortableEffect effect)
+        {
+            effect = PortableEffect.Blur(Radius);
+            return true;
+        }
     }
 
-    private sealed class FakeDropShadowEffect
+    private sealed class FakeDropShadowEffect : PortableEffectSource
     {
         public double BlurRadius { get; init; }
 
@@ -2725,6 +2732,17 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public double Opacity { get; init; } = 1;
 
         public Color Color { get; init; } = Colors.Black;
+
+        public bool TryGetPortableEffect(out PortableEffect effect)
+        {
+            effect = PortableEffect.DropShadow(
+                BlurRadius,
+                ShadowDepth,
+                Direction,
+                Opacity,
+                new PortableColor(Color.A, Color.R, Color.G, Color.B));
+            return true;
+        }
     }
 
     private sealed class FakePortableEffectSource : PortableEffectSource
@@ -2779,7 +2797,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
-    private sealed class FakeShaderEffect
+    private sealed class FakeShaderEffect : PortableShaderEffectSource
     {
         private readonly List<FakeFloatRegister?> _floatRegisters = new();
         private readonly List<FakeSamplerData?> _samplerData = new();
@@ -2815,6 +2833,93 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
             _samplerData[registerIndex] = new FakeSamplerData(brush, samplingMode);
         }
+
+        public bool TryGetPortableShaderEffect(out PortableShaderEffect effect)
+        {
+            effect = new PortableShaderEffect(
+                GetType().FullName,
+                GetType().Name,
+                PixelShader.TryGetPortablePixelShader(),
+                CreatePortableFloatConstants(),
+                CreatePortableShaderSamplers(),
+                intConstantCount: 0,
+                boolConstantCount: 0,
+                paddingTop: 0,
+                paddingBottom: 0,
+                paddingLeft: 0,
+                paddingRight: 0,
+                ddxUvDdyUvRegisterIndex: -1);
+            return true;
+        }
+
+        private float[] CreatePortableFloatConstants()
+        {
+            if (_floatRegisters.Count == 0)
+            {
+                return Array.Empty<float>();
+            }
+
+            var constants = new float[_floatRegisters.Count * 4];
+            var highestRegister = -1;
+
+            for (var i = 0; i < _floatRegisters.Count; i++)
+            {
+                var register = _floatRegisters[i];
+                if (!register.HasValue)
+                {
+                    continue;
+                }
+
+                var offset = i * 4;
+                constants[offset] = register.Value.r;
+                constants[offset + 1] = register.Value.g;
+                constants[offset + 2] = register.Value.b;
+                constants[offset + 3] = register.Value.a;
+                highestRegister = i;
+            }
+
+            if (highestRegister < 0)
+            {
+                return Array.Empty<float>();
+            }
+
+            Array.Resize(ref constants, (highestRegister + 1) * 4);
+            return constants;
+        }
+
+        private PortableShaderSampler[] CreatePortableShaderSamplers()
+        {
+            if (_samplerData.Count == 0)
+            {
+                return Array.Empty<PortableShaderSampler>();
+            }
+
+            var samplers = new List<PortableShaderSampler>(_samplerData.Count);
+            for (var i = 0; i < _samplerData.Count; i++)
+            {
+                var sampler = _samplerData[i];
+                if (!sampler.HasValue || sampler.Value._brush == null)
+                {
+                    continue;
+                }
+
+                samplers.Add(new PortableShaderSampler(
+                    i,
+                    sampler.Value._brush,
+                    ConvertPortableSamplingMode(sampler.Value._samplingMode)));
+            }
+
+            return samplers.Count == 0 ? Array.Empty<PortableShaderSampler>() : samplers.ToArray();
+        }
+
+        private static PortableShaderSamplingMode ConvertPortableSamplingMode(object? samplingMode)
+        {
+            return samplingMode is FakeSamplingMode.NearestNeighbor
+                ? PortableShaderSamplingMode.NearestNeighbor
+                : samplingMode is FakeSamplingMode.Auto
+                    ? PortableShaderSamplingMode.Auto
+                    : PortableShaderSamplingMode.Bilinear;
+        }
     }
 
     private sealed class FakePixelShader
@@ -2827,6 +2932,16 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
 
         public Uri? UriSource { get; init; }
+
+        public PortablePixelShader TryGetPortablePixelShader()
+        {
+            return new PortablePixelShader(
+                UriSource?.ToString(),
+                UriSource != null && UriSource.IsAbsoluteUri ? UriSource.AbsoluteUri : null,
+                _shaderBytecode,
+                _shaderBytecode.Length > 1 ? (short)_shaderBytecode[1] : (short)0,
+                _shaderBytecode.Length > 0 ? (short)_shaderBytecode[0] : (short)0);
+        }
     }
 
     private readonly record struct FakeFloatRegister(float r, float g, float b, float a);

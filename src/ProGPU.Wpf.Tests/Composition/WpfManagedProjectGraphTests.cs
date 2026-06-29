@@ -5756,10 +5756,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;", effectReflection, StringComparison.Ordinal);
         Assert.Contains("effect is PortableEffectSource effectSource", effectReflection, StringComparison.Ordinal);
         Assert.Contains("TryCreatePortableEffect(portableEffect, out proGpuEffect)", effectReflection, StringComparison.Ordinal);
-        Assert.True(
-            effectReflection.IndexOf("effect is PortableEffectSource effectSource", StringComparison.Ordinal)
-                < effectReflection.IndexOf("TypeNameEndsWith(effect, \"BlurEffect\")", StringComparison.Ordinal),
-            "Typed portable effects must be tried before reflected effect type-name/property probing.");
+        Assert.DoesNotContain("TypeNameEndsWith(effect, \"BlurEffect\")", effectReflection, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(effect, \"DropShadowEffect\")", effectReflection, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty(effect", effectReflection, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreePushesPortableEffectWithoutReflectedTypeName", rendererTests, StringComparison.Ordinal);
     }
 
@@ -5830,10 +5829,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;", effectReflection, StringComparison.Ordinal);
         Assert.Contains("effect is PortableShaderEffectSource shaderEffectSource", effectReflection, StringComparison.Ordinal);
         Assert.Contains("TryCreatePortableShaderEffect(portableShaderEffect, imageSourceAdapter, out proGpuEffect)", effectReflection, StringComparison.Ordinal);
-        Assert.True(
-            effectReflection.IndexOf("effect is PortableShaderEffectSource shaderEffectSource", StringComparison.Ordinal)
-                < effectReflection.IndexOf("IsShaderEffectLike(effect)", StringComparison.Ordinal),
-            "Typed portable shader effects must be tried before reflected ShaderEffect shape probing.");
+        Assert.DoesNotContain("IsShaderEffectLike(effect)", effectReflection, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryCreateShaderEffect(", effectReflection, StringComparison.Ordinal);
+        Assert.DoesNotContain("_floatRegisters", effectReflection, StringComparison.Ordinal);
+        Assert.DoesNotContain("_samplerData", effectReflection, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreePushesPortableShaderEffectWithoutReflectedPixelShaderShape", rendererTests, StringComparison.Ordinal);
     }
 

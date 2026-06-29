@@ -18,6 +18,8 @@ Typed bridge contracts must not expose shim-owned WPF structs or classes when pa
 
 Shader-effect sampler texture caches should remain on typed portable tile-brush metadata. Source bounds for drawing and visual brush samplers must flow through `IPortableTileBrushSource`/`PortableTileBrush` plus typed drawing/visual state, not sampler-local `DrawingBrush`/`VisualBrush` type-name checks or reflected `Viewbox`, `Drawing`, `Visual`, `DesiredSize`, `Width`, or `Height` property probes.
 
+Effect conversion should remain typed-only for source-integrated WPF effects. `WpfEffectReflection` should consume `IPortableEffectSource` for blur/drop-shadow and `IPortableShaderEffectSource` for shader effects, and should not regain `BlurEffect`/`DropShadowEffect` type-name matching, reflected effect parameter reads, reflected `ShaderEffect` shape detection, or private shader register/sampler/pixel-bytecode field probing. Any remaining legacy `BitmapEffect` compatibility should route to source-built emulating effects that expose the same typed effect contracts.
+
 Retained visual content extraction should remain typed-only. `WpfVisualContentReflectionBridge` must require `IPortableDrawingContentSource` visual content and `IPortableRenderDataSource` render-data snapshots; private `_content`, `_drawingContent`, `_buffer`, `_curOffset`, and `_dependentResources` field probes are no longer part of the product bridge path.
 
 Render-data extraction itself should also remain typed-only. `WpfRenderDataReflectionBridge` now consumes `IPortableRenderDataSource` snapshots directly and should not regain `RenderData` private-field or dependent-resource collection reflection; source-built WPF must publish active bytes and dependent resources through the portable snapshot contract.

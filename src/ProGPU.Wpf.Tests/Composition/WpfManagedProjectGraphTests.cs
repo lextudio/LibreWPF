@@ -5442,6 +5442,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"Opacity\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"OpacityMask\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"OpacityMask\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"Effect\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"BitmapEffect\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"BitmapEffectInput\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"CacheMode\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"Effect\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"BitmapEffect\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"BitmapEffectInput\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"CacheMode\"", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.Transform, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.Clip, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.OpacityMask, sink)", rendererSource, StringComparison.Ordinal);

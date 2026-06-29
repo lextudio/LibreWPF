@@ -82,6 +82,33 @@ public sealed class WpfVisualTreeReflectionRendererTests
         };
     }
 
+    private static PortableVisualState CreatePortableEffectState(object effect)
+    {
+        return new PortableVisualState
+        {
+            HasEffect = true,
+            Effect = effect
+        };
+    }
+
+    private static PortableVisualState CreatePortableBitmapEffectState(object bitmapEffect)
+    {
+        return new PortableVisualState
+        {
+            HasBitmapEffect = true,
+            BitmapEffect = bitmapEffect
+        };
+    }
+
+    private static PortableVisualState CreatePortableCacheModeState(object cacheMode)
+    {
+        return new PortableVisualState
+        {
+            HasCacheMode = true,
+            CacheMode = cacheMode
+        };
+    }
+
     [Fact]
     public void ReplaySubtreeRecursesThroughChildren()
     {
@@ -742,11 +769,17 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualRejectsMultipleNativeEffectSources()
     {
-        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasEffect = true,
+                Effect = new FakeBlurEffect(4),
+                HasBitmapEffect = true,
+                BitmapEffect = new FakeBlurBitmapEffect(6)
+            })
         {
-            Bounds = new FakeRect(5, 6, 70, 80),
-            Effect = new FakeBlurEffect(4),
-            BitmapEffect = new FakeBlurBitmapEffect(6)
+            Bounds = new FakeRect(5, 6, 70, 80)
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
         var renderer = new WpfVisualTreeReflectionRenderer();
@@ -876,10 +909,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     public void ReplaySubtreeRegistersNestedVisualStateResourcesAsRetainedDependencies()
     {
         var shaderEffect = new FakeShaderEffect(new byte[] { 0, 3, 0, 0, 1, 2, 3, 4 });
-        var root = new FakeVisual
-        {
-            Effect = shaderEffect
-        };
+        var root = new FakePortableVisualStateVisual(CreatePortableEffectState(shaderEffect));
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
@@ -1408,17 +1438,25 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeCountsUnsupportedVisualEffectAndRenderingHintState()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
+            HasEffect = true,
             Effect = new FakeBlurEffect(8),
+            HasBitmapEffect = true,
             BitmapEffect = new object(),
+            HasCacheMode = true,
             CacheMode = new object(),
+            HasEdgeMode = true,
             EdgeMode = new FakeRenderingHint("Aliased"),
+            HasBitmapScalingMode = true,
             BitmapScalingMode = new FakeRenderingHint("NearestNeighbor"),
+            HasClearTypeHint = true,
             ClearTypeHint = new FakeRenderingHint("Enabled"),
+            HasTextRenderingMode = true,
             TextRenderingMode = new FakeRenderingHint("Aliased"),
+            HasTextHintingMode = true,
             TextHintingMode = new FakeRenderingHint("Fixed")
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -1652,10 +1690,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreePushesNativeBlurEffectWhenSinkSupportsVisualEffects()
     {
-        var root = new FakeVisual
-        {
-            Effect = new FakeBlurEffect(12.5)
-        };
+        var root = new FakePortableVisualStateVisual(CreatePortableEffectState(new FakeBlurEffect(12.5)));
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualEffects = true };
@@ -1671,10 +1706,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreePushesPortableEffectWithoutReflectedTypeName()
     {
-        var root = new FakeVisual
-        {
-            Effect = new FakePortableEffectSource(PortableEffect.Blur(9.5))
-        };
+        var root = new FakePortableVisualStateVisual(
+            CreatePortableEffectState(new FakePortableEffectSource(PortableEffect.Blur(9.5))));
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualEffects = true };
@@ -1690,10 +1723,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreePushesNativeCacheWhenSinkSupportsVisualCaches()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(CreatePortableCacheModeState(new object()))
         {
-            Bounds = new FakeRect(10, 20, 30, 40),
-            CacheMode = new object()
+            Bounds = new FakeRect(10, 20, 30, 40)
         };
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -1709,17 +1741,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreePushesNativeDropShadowEffectWhenSinkSupportsVisualEffects()
     {
-        var root = new FakeVisual
-        {
-            Effect = new FakeDropShadowEffect
+        var root = new FakePortableVisualStateVisual(CreatePortableEffectState(
+            new FakeDropShadowEffect
             {
                 BlurRadius = 7,
                 ShadowDepth = 10,
                 Direction = 315,
                 Opacity = 0.5,
                 Color = Color.FromArgb(128, 10, 20, 30)
-            }
-        };
+            }));
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualEffects = true };
@@ -1741,10 +1771,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreePushesNativeBitmapEffectWhenEmulationIsSupported()
     {
-        var root = new FakeVisual
-        {
-            BitmapEffect = new FakeBlurBitmapEffect(6)
-        };
+        var root = new FakePortableVisualStateVisual(
+            CreatePortableBitmapEffectState(new FakeBlurBitmapEffect(6)));
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualEffects = true };
@@ -1760,10 +1788,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeCountsSupportedEffectUnsupportedWhenSinkCannotApplyVisualEffects()
     {
-        var root = new FakeVisual
-        {
-            Effect = new FakeBlurEffect(4)
-        };
+        var root = new FakePortableVisualStateVisual(CreatePortableEffectState(new FakeBlurEffect(4)));
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -1817,7 +1842,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
                 paddingRight: 4,
                 ddxUvDdyUvRegisterIndex: -1));
 
-            var root = new FakeVisual { Effect = shaderEffect };
+            var root = new FakePortableVisualStateVisual(CreatePortableEffectState(shaderEffect));
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
@@ -1859,7 +1884,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             shaderEffect.SetFloatConstant(2, 0.25f, 0.5f, 0.75f, 1f);
             shaderEffect.SetImplicitInputSampler(1, FakeSamplingMode.NearestNeighbor);
 
-            var root = new FakeVisual { Effect = shaderEffect };
+            var root = new FakePortableVisualStateVisual(CreatePortableEffectState(shaderEffect));
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
@@ -1903,7 +1928,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             shaderEffect.SetImplicitInputSampler(0, FakeSamplingMode.Bilinear);
             shaderEffect.SetSampler(2, new FakeShaderImageBrush(rawSamplerSource), FakeSamplingMode.NearestNeighbor);
 
-            var root = new FakeVisual { Effect = shaderEffect };
+            var root = new FakePortableVisualStateVisual(CreatePortableEffectState(shaderEffect));
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
@@ -1948,7 +1973,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             shaderEffect.SetImplicitInputSampler(0, FakeSamplingMode.Bilinear);
             shaderEffect.SetSampler(3, samplerBrush, FakeSamplingMode.NearestNeighbor);
 
-            var root = new FakeVisual { Effect = shaderEffect };
+            var root = new FakePortableVisualStateVisual(CreatePortableEffectState(shaderEffect));
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
@@ -1989,7 +2014,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             shaderEffect.SetImplicitInputSampler(0, FakeSamplingMode.Bilinear);
             shaderEffect.SetSampler(2, new FakeUnsupportedSamplerBrush(), FakeSamplingMode.NearestNeighbor);
 
-            var root = new FakeVisual { Effect = shaderEffect };
+            var root = new FakePortableVisualStateVisual(CreatePortableEffectState(shaderEffect));
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
@@ -2008,10 +2033,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeCountsShaderEffectUnsupportedWhenReplacementIsMissing()
     {
-        var root = new FakeVisual
-        {
-            Effect = new FakeShaderEffect(new byte[] { 0, 3, 0, 0, 9, 9, 9, 9 })
-        };
+        var root = new FakePortableVisualStateVisual(
+            CreatePortableEffectState(new FakeShaderEffect(new byte[] { 0, 3, 0, 0, 9, 9, 9, 9 })));
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualEffects = true };
@@ -2037,7 +2060,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             var shaderEffect = new FakeShaderEffect(bytecode);
             shaderEffect.SetImplicitInputSampler(16, FakeSamplingMode.NearestNeighbor);
 
-            var root = new FakeVisual { Effect = shaderEffect };
+            var root = new FakePortableVisualStateVisual(CreatePortableEffectState(shaderEffect));
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
@@ -2328,12 +2351,6 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public object? OpacityMask { get; init; }
 
         public object? XSnappingGuidelines { get; init; }
-
-        public object? Effect { get; init; }
-
-        public object? BitmapEffect { get; init; }
-
-        public object? CacheMode { get; init; }
 
         public object? ScrollableAreaClip { get; init; }
 

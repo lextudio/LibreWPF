@@ -285,10 +285,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
         else
         {
-            RegisterRetainedVisualPropertyDependency(visual, "Effect", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "BitmapEffect", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "BitmapEffectInput", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "CacheMode", sink);
             RegisterRetainedVisualPropertyDependency(visual, "XSnappingGuidelines", sink);
             RegisterRetainedVisualPropertyDependency(visual, "YSnappingGuidelines", sink);
             RegisterRetainedVisualPropertyDependency(visual, "VisualXSnappingGuidelines", sink);
@@ -513,7 +509,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasEffect && effect != null;
         }
 
-        return TryGetPropertyValue(visual, "Effect", out effect) && effect != null;
+        effect = null;
+        return false;
     }
 
     private static bool HasVisualBitmapEffect(object visual)
@@ -529,7 +526,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasBitmapEffect && bitmapEffect != null;
         }
 
-        return TryGetPropertyValue(visual, "BitmapEffect", out bitmapEffect) && bitmapEffect != null;
+        bitmapEffect = null;
+        return false;
     }
 
     private static bool HasVisualBitmapEffectInput(object visual)
@@ -545,7 +543,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasBitmapEffectInput && bitmapEffectInput != null;
         }
 
-        return TryGetPropertyValue(visual, "BitmapEffectInput", out bitmapEffectInput) && bitmapEffectInput != null;
+        bitmapEffectInput = null;
+        return false;
     }
 
     private static bool HasVisualCacheMode(object visual)
@@ -561,7 +560,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasCacheMode && cacheMode != null;
         }
 
-        return TryGetPropertyValue(visual, "CacheMode", out cacheMode) && cacheMode != null;
+        cacheMode = null;
+        return false;
     }
 
     private static bool TryGetVisualBitmapScalingMode(object visual, out object? bitmapScalingMode)

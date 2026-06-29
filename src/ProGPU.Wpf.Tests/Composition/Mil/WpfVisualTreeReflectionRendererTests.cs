@@ -61,6 +61,19 @@ public sealed class WpfVisualTreeReflectionRendererTests
 {
     private static readonly Lazy<Type> s_xceedDataCellType = new(CreateXceedDataCellType);
 
+    private static PortableVisualState CreatePortableScrollableAreaClipState(
+        double x,
+        double y,
+        double width,
+        double height)
+    {
+        return new PortableVisualState
+        {
+            HasScrollableAreaClip = true,
+            ScrollableAreaClip = new PortableRect(x, y, width, height)
+        };
+    }
+
     [Fact]
     public void ReplaySubtreeRecursesThroughChildren()
     {
@@ -409,10 +422,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeLowersVisualScrollableAreaClipIntoRetainedOwnerScopes()
     {
-        var root = new FakeVisual
-        {
-            VisualScrollableAreaClip = new FakeRect(2, 3, 40, 50)
-        };
+        var root = new FakePortableVisualStateVisual(CreatePortableScrollableAreaClipState(2, 3, 40, 50));
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
@@ -434,12 +444,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeLowersLocalAndScrollableClipsIntoSeparateRetainedState()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
-            Offset = new WpfVector(10, 20),
+            HasOffset = true,
+            Offset = new PortablePoint(10, 20),
+            HasClip = true,
             Clip = new FakeRectangleGeometry(new FakeRect(1, 2, 30, 40)),
-            VisualScrollableAreaClip = new FakeRect(10, 20, 80, 90)
-        };
+            HasScrollableAreaClip = true,
+            ScrollableAreaClip = new PortableRect(10, 20, 80, 90)
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
@@ -593,12 +606,20 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualReappliesNativeCacheVisualScrollableAreaClip()
     {
-        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        var cacheMode = new object();
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(2, 3),
+                HasCacheMode = true,
+                CacheMode = cacheMode,
+                HasScrollableAreaClip = true,
+                ScrollableAreaClip = new PortableRect(10, 12, 20, 25)
+            })
         {
-            Bounds = new FakeRect(5, 6, 70, 80),
-            CacheMode = new object(),
-            Offset = new WpfVector(2, 3),
-            VisualScrollableAreaClip = new FakeRect(10, 12, 20, 25)
+            Bounds = new FakeRect(5, 6, 70, 80)
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
         var renderer = new WpfVisualTreeReflectionRenderer();
@@ -746,20 +767,19 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void ReplaySubtreeRegistersVisualScrollableAreaClipAsRetainedDependency()
+    public void ReplaySubtreeUsesPortableVisualScrollableAreaClipWithoutPropertyProbe()
     {
-        var scrollClip = new FakeRect(2, 3, 40, 50);
-        var root = new FakeVisual
-        {
-            VisualScrollableAreaClip = scrollClip
-        };
-        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+        var root = new ThrowingPortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            CreatePortableScrollableAreaClipState(2, 3, 40, 50));
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
-        Assert.Contains(root.Children, sink.VisualDependencies);
-        Assert.Contains(scrollClip, sink.VisualDependencies);
+        Assert.Equal(0, root.ReflectedStateProbeCount);
+        Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner" }, sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(2, 3, 40, 50, state.OuterClipBounds);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
@@ -1228,10 +1248,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesScrollableAreaClipAsRectangleClip()
     {
-        var root = new FakeVisual
-        {
-            ScrollableAreaClip = new FakeRect(2, 3, 40, 50)
-        };
+        var root = new FakePortableVisualStateVisual(CreatePortableScrollableAreaClipState(2, 3, 40, 50));
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -1247,10 +1264,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesVisualScrollableAreaClipAsRectangleClip()
     {
-        var root = new FakeVisual
-        {
-            VisualScrollableAreaClip = new FakeRect(2, 3, 40, 50)
-        };
+        var root = new FakePortableVisualStateVisual(CreatePortableScrollableAreaClipState(2, 3, 40, 50));
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -1305,11 +1319,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeProjectsScrollableAreaClipOutsideVisualOffsetForFallbackRendering()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
-            Offset = new WpfVector(10, 20),
-            VisualScrollableAreaClip = new FakeRect(2, 3, 40, 50)
-        };
+            HasOffset = true,
+            Offset = new PortablePoint(10, 20),
+            HasScrollableAreaClip = true,
+            ScrollableAreaClip = new PortableRect(2, 3, 40, 50)
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -2343,6 +2359,33 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public bool TryGetPortableVisualState(out PortableVisualState state)
         {
             state = _state;
+            return true;
+        }
+    }
+
+    private sealed class FakePortableVisualStateDrawingVisual :
+        FakeVisual,
+        PortableVisualStateSource,
+        PortableDrawingContentSource
+    {
+        private readonly object? _content;
+        private readonly PortableVisualState _state;
+
+        public FakePortableVisualStateDrawingVisual(object? content, PortableVisualState state)
+        {
+            _content = content;
+            _state = state;
+        }
+
+        public bool TryGetPortableVisualState(out PortableVisualState state)
+        {
+            state = _state;
+            return true;
+        }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _content;
             return true;
         }
     }

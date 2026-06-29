@@ -286,10 +286,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         else
         {
             RegisterRetainedVisualPropertyDependency(visual, "Transform", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "VisualClip", sink);
             RegisterRetainedVisualPropertyDependency(visual, "Clip", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "ScrollableAreaClip", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "VisualScrollableAreaClip", sink);
             RegisterRetainedVisualPropertyDependency(visual, "OpacityMask", sink);
             RegisterRetainedVisualPropertyDependency(visual, "Effect", sink);
             RegisterRetainedVisualPropertyDependency(visual, "BitmapEffect", sink);
@@ -1683,12 +1680,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
-        if (TryGetPropertyValue(visual, "ScrollableAreaClip", out scrollableAreaClip) && scrollableAreaClip != null)
-        {
-            return true;
-        }
-
-        return TryGetPropertyValue(visual, "VisualScrollableAreaClip", out scrollableAreaClip);
+        scrollableAreaClip = null;
+        return false;
     }
 
     private static bool TryGetVisualClip(object visual, out object? clip)

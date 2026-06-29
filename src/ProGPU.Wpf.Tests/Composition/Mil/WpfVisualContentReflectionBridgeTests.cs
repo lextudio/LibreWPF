@@ -19,12 +19,15 @@ namespace ProGPU.Wpf.Tests.Composition.Mil;
 public sealed class WpfVisualContentReflectionBridgeTests
 {
     [Fact]
-    public void ExtractContentReadsDrawingVisualContentField()
+    public void ExtractContentRejectsNonPortableDrawingVisualFieldShape()
     {
         var content = new object();
         var visual = new FakeDrawingVisual(content);
 
-        Assert.Same(content, WpfVisualContentReflectionBridge.ExtractContent(visual));
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => WpfVisualContentReflectionBridge.ExtractContent(visual));
+
+        Assert.Contains("portable WPF visual content source contract", exception.Message);
     }
 
     [Fact]
@@ -45,18 +48,19 @@ public sealed class WpfVisualContentReflectionBridgeTests
     }
 
     [Fact]
-    public void ExtractContentReadsUiElementDrawingContentField()
+    public void TryExtractContentRejectsNonPortableUiElementDrawingContentField()
     {
         var content = new object();
         var visual = new FakeUiElementVisual(content);
 
-        Assert.Same(content, WpfVisualContentReflectionBridge.ExtractContent(visual));
+        Assert.False(WpfVisualContentReflectionBridge.TryExtractContent(visual, out var extractedContent));
+        Assert.Null(extractedContent);
     }
 
     [Fact]
     public void ReplayContentReturnsEmptyResultWhenContentIsNull()
     {
-        var result = new WpfVisualContentReflectionBridge().ReplayContent(new FakeDrawingVisual(null), new TestSink());
+        var result = new WpfVisualContentReflectionBridge().ReplayContent(new FakePortableDrawingVisual(null), new TestSink());
 
         Assert.Equal(default, result);
     }
@@ -68,7 +72,7 @@ public sealed class WpfVisualContentReflectionBridgeTests
         var pen = new Pen(Brushes.Black, 2);
         var record = CreateRectangleRecord(1, 2);
         var renderData = new FakeRenderData(record, record.Length, new FakeDependentResources(brush, pen));
-        var visual = new FakeUiElementVisual(renderData);
+        var visual = new FakePortableDrawingVisual(renderData);
         var sink = new TestSink();
 
         var result = new WpfVisualContentReflectionBridge().ReplayContent(visual, sink);
@@ -103,7 +107,7 @@ public sealed class WpfVisualContentReflectionBridgeTests
     [Fact]
     public void ReplayContentRejectsUnsupportedContentShape()
     {
-        var visual = new FakeDrawingVisual(new object());
+        var visual = new FakePortableDrawingVisual(new object());
 
         var exception = Assert.Throws<NotSupportedException>(
             () => new WpfVisualContentReflectionBridge().ReplayContent(visual, new TestSink()));
@@ -188,7 +192,7 @@ public sealed class WpfVisualContentReflectionBridgeTests
         }
     }
 
-    private sealed class FakeRenderData
+    private sealed class FakeRenderData : IPortableRenderDataSource
     {
         private readonly byte[] _buffer;
         private readonly int _curOffset;
@@ -199,6 +203,14 @@ public sealed class WpfVisualContentReflectionBridgeTests
             _buffer = buffer;
             _curOffset = curOffset;
             _dependentResources = dependentResources;
+        }
+
+        public bool TryGetPortableRenderDataSnapshot(out PortableRenderDataSnapshot snapshot)
+        {
+            snapshot = new PortableRenderDataSnapshot(
+                _buffer.AsSpan(0, _curOffset).ToArray(),
+                _dependentResources.Items);
+            return true;
         }
     }
 
@@ -231,6 +243,8 @@ public sealed class WpfVisualContentReflectionBridgeTests
         {
             _items = items;
         }
+
+        public IReadOnlyList<object?> Items => _items;
 
         public int Count => _items.Length;
 

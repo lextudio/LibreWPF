@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using System.Windows.Media.ProGPU.Composition;
 using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
 using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
@@ -8,8 +7,6 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 public sealed class WpfVisualContentReflectionBridge
 {
-    private const BindingFlags FieldFlags = BindingFlags.Instance | BindingFlags.NonPublic;
-
     private readonly WpfRenderDataReflectionBridge _renderDataBridge;
 
     public WpfVisualContentReflectionBridge()
@@ -32,7 +29,7 @@ public sealed class WpfVisualContentReflectionBridge
         }
 
         throw new InvalidOperationException(
-            $"Type '{drawingVisual.GetType().FullName}' does not expose the expected WPF visual content field '_content' or '_drawingContent'.");
+            $"Type '{drawingVisual.GetType().FullName}' does not implement the portable WPF visual content source contract.");
     }
 
     public static bool TryExtractContent(object drawingVisual, out object? content)
@@ -45,17 +42,8 @@ public sealed class WpfVisualContentReflectionBridge
             return true;
         }
 
-        Type visualType = drawingVisual.GetType();
-        var contentField = FindField(visualType, "_content")
-            ?? FindField(visualType, "_drawingContent");
-        if (contentField == null)
-        {
-            content = null;
-            return false;
-        }
-
-        content = contentField.GetValue(drawingVisual);
-        return true;
+        content = null;
+        return false;
     }
 
     public WpfMilDecodeResult ReplayContent(
@@ -72,39 +60,12 @@ public sealed class WpfVisualContentReflectionBridge
             return default;
         }
 
-        if (!HasRenderDataShape(content))
+        if (content is not PortableRenderDataSource)
         {
             throw new NotSupportedException(
                 $"WPF visual content type '{content.GetType().FullName}' is not supported by the ProGPU RenderData replay bridge.");
         }
 
         return _renderDataBridge.Replay(content, sink, resources, imageSourceAdapter);
-    }
-
-    private static bool HasRenderDataShape(object content)
-    {
-        if (content is PortableRenderDataSource)
-        {
-            return true;
-        }
-
-        var contentType = content.GetType();
-        return FindField(contentType, "_buffer") != null
-            && FindField(contentType, "_curOffset") != null
-            && FindField(contentType, "_dependentResources") != null;
-    }
-
-    private static FieldInfo? FindField(Type type, string name)
-    {
-        for (var current = type; current != null; current = current.BaseType)
-        {
-            var field = current.GetField(name, FieldFlags);
-            if (field != null)
-            {
-                return field;
-            }
-        }
-
-        return null;
     }
 }

@@ -5287,13 +5287,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("drawingVisual is PortableDrawingContentSource drawingContentSource", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("drawingContentSource.TryGetPortableDrawingContent(out content)", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;", bridgeSource, StringComparison.Ordinal);
-        Assert.Contains("if (content is PortableRenderDataSource)", bridgeSource, StringComparison.Ordinal);
-        Assert.Contains("FindField(visualType, \"_content\")", bridgeSource, StringComparison.Ordinal);
-        Assert.Contains("FindField(visualType, \"_drawingContent\")", bridgeSource, StringComparison.Ordinal);
-        Assert.True(
-            bridgeSource.IndexOf("if (content is PortableRenderDataSource)", StringComparison.Ordinal)
-                < bridgeSource.IndexOf("FindField(contentType, \"_buffer\")", StringComparison.Ordinal),
-            "Typed RenderData content must be accepted before probing private render-data fields.");
+        Assert.Contains("content is not PortableRenderDataSource", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection;", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("FindField", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetField(", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_content\"", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_drawingContent\"", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_buffer\"", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_curOffset\"", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_dependentResources\"", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("DrawingVisual : ContainerVisual, IPortableDrawingContentSource", drawingVisual, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableDrawingContent(out object content)", drawingVisual, StringComparison.Ordinal);
         Assert.Contains("UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource", uiElement, StringComparison.Ordinal);

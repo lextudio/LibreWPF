@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
@@ -47,6 +48,9 @@ using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayout
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
 using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
 using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
+using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
+using PortableRenderDataSnapshot = ProGPU.Wpf.Interop.PortableRenderDataSnapshot;
+using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
@@ -2277,7 +2281,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
-    private sealed class FakeDrawingVisual : FakeVisual
+    private sealed class FakeDrawingVisual : FakeVisual, PortableDrawingContentSource
     {
         private readonly object? _content;
 
@@ -2285,15 +2289,27 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             _content = content;
         }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _content;
+            return true;
+        }
     }
 
-    private sealed class FakeUiElementVisual : FakeVisual
+    private sealed class FakeUiElementVisual : FakeVisual, PortableDrawingContentSource
     {
         private readonly object? _drawingContent;
 
         public FakeUiElementVisual(object? drawingContent)
         {
             _drawingContent = drawingContent;
+        }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _drawingContent;
+            return true;
         }
     }
 
@@ -2313,7 +2329,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
-    private sealed class FakeVisualOffsetDrawingVisual
+    private sealed class FakeVisualOffsetDrawingVisual : PortableDrawingContentSource
     {
         private readonly object? _content;
 
@@ -2324,9 +2340,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
 
         private WpfVector VisualOffset { get; }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _content;
+            return true;
+        }
     }
 
-    private sealed class FakeVisualTransformDrawingVisual
+    private sealed class FakeVisualTransformDrawingVisual : PortableDrawingContentSource
     {
         private readonly object? _content;
 
@@ -2337,9 +2359,17 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
 
         private object? VisualTransform { get; }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _content;
+            return true;
+        }
     }
 
-    private sealed class ThrowingPortableVisualStateDrawingVisual : PortableVisualStateSource
+    private sealed class ThrowingPortableVisualStateDrawingVisual :
+        PortableVisualStateSource,
+        PortableDrawingContentSource
     {
         private readonly object? _content;
         private readonly PortableVisualState _state;
@@ -2395,6 +2425,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public bool TryGetPortableVisualState(out PortableVisualState state)
         {
             state = _state;
+            return true;
+        }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _content;
             return true;
         }
 
@@ -2549,7 +2585,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
     private sealed class FakePortableVisualStateAndLayoutDrawingVisual :
         PortableVisualStateSource,
-        PortableVisualLayoutStateSource
+        PortableVisualLayoutStateSource,
+        PortableDrawingContentSource
     {
         private readonly object? _content;
         private readonly PortableVisualState _visualState;
@@ -2574,6 +2611,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
         {
             state = _layoutState;
+            return true;
+        }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _content;
             return true;
         }
     }
@@ -2835,7 +2878,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Auto = 2
     }
 
-    private sealed class FakeRenderData
+    private sealed class FakeRenderData : PortableRenderDataSource
     {
         private readonly byte[] _buffer;
         private readonly int _curOffset;
@@ -2847,6 +2890,14 @@ public sealed class WpfVisualTreeReflectionRendererTests
             _curOffset = curOffset;
             _dependentResources = dependentResources;
         }
+
+        public bool TryGetPortableRenderDataSnapshot(out PortableRenderDataSnapshot snapshot)
+        {
+            snapshot = new PortableRenderDataSnapshot(
+                _buffer.AsSpan(0, _curOffset).ToArray(),
+                _dependentResources.Items);
+            return true;
+        }
     }
 
     private sealed class FakeDependentResources
@@ -2857,6 +2908,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             _items = items;
         }
+
+        public IReadOnlyList<object?> Items => _items;
 
         public int Count => _items.Length;
 

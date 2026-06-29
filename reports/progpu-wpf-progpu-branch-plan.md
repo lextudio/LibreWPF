@@ -18,6 +18,8 @@ Typed bridge contracts must not expose shim-owned WPF structs or classes when pa
 
 Shader-effect sampler texture caches should remain on typed portable tile-brush metadata. Source bounds for drawing and visual brush samplers must flow through `IPortableTileBrushSource`/`PortableTileBrush` plus typed drawing/visual state, not sampler-local `DrawingBrush`/`VisualBrush` type-name checks or reflected `Viewbox`, `Drawing`, `Visual`, `DesiredSize`, `Width`, or `Height` property probes.
 
+Retained visual content extraction should remain typed-only. `WpfVisualContentReflectionBridge` must require `IPortableDrawingContentSource` visual content and `IPortableRenderDataSource` render-data snapshots; private `_content`, `_drawingContent`, `_buffer`, `_curOffset`, and `_dependentResources` field probes are no longer part of the product bridge path.
+
 ## Current Branch State
 
 The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and-leaks`. The branch has been fast-forwarded to the latest origin commits and now includes:

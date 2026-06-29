@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 using ProGPU.Backend;
@@ -12,7 +11,6 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 {
-    private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
     private static readonly ConditionalWeakTable<MediaImageSource, AdaptedTextureCache> s_adaptedTextures = new();
 
     public MediaImageSource? AdaptImageSource(object? imageSource)
@@ -28,26 +26,16 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             return mediaImageSource;
         }
 
-        int width;
-        int height;
-        Pbgra32PixelBuffer pixelBuffer;
-        if (TryCopyPortableBitmapSourceAsPbgra32Buffer(
+        if (!TryCopyPortableBitmapSourceAsPbgra32Buffer(
                 imageSource,
                 out var portablePixels,
-                out pixelBuffer))
-        {
-            width = portablePixels.Width;
-            height = portablePixels.Height;
-        }
-        else if (!TryReadIntProperty(imageSource, "PixelWidth", out width)
-            || !TryReadIntProperty(imageSource, "PixelHeight", out height)
-            || width <= 0
-            || height <= 0
-            || !TryCopyPixelsAsPbgra32Buffer(imageSource, width, height, out pixelBuffer))
+                out var pixelBuffer))
         {
             return null;
         }
 
+        var width = portablePixels.Width;
+        var height = portablePixels.Height;
         var context = ResolveGpuContext();
         if (imageSource is MediaImageSource mediaSource
             && TryCreateGpuTexture(context, width, height, pixelBuffer, out var adaptedTexture))
@@ -274,81 +262,22 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
     {
         pixelBuffer = default;
 
-        if (imageSource is IPortableBitmapSourcePixelsSource portableSource
-            && TryCopyPortableBitmapSourceAsPbgra32Buffer(
+        if (imageSource is not IPortableBitmapSourcePixelsSource portableSource
+            || !TryCopyPortableBitmapSourceAsPbgra32Buffer(
                 portableSource,
                 out var portablePixels,
                 out pixelBuffer))
         {
-            if (portablePixels.Width == width && portablePixels.Height == height)
-            {
-                return true;
-            }
-
-            pixelBuffer = default;
             return false;
         }
 
-        if (width <= 0
-            || height <= 0
-            || !TryReadPixelFormat(imageSource, out var formatKind, out _))
+        if (portablePixels.Width == width && portablePixels.Height == height)
         {
-            return false;
+            return true;
         }
 
-        var palette = Array.Empty<Pbgra32Color>();
-        if (PixelDataConverter.RequiresPalette(formatKind)
-            && !TryReadPalette(imageSource, out palette))
-        {
-            return false;
-        }
-
-        var copyPixels = imageSource.GetType().GetMethod(
-            "CopyPixels",
-            MemberFlags,
-            binder: null,
-            types: new[] { typeof(Array), typeof(int), typeof(int) },
-            modifiers: null);
-        if (copyPixels == null)
-        {
-            return false;
-        }
-
-        if (!PixelDataConverter.TryGetMinimumStride(width, formatKind, out var sourceStride)
-            || !PixelDataConverter.TryGetSourceByteLength(width, height, sourceStride, formatKind, out var sourceByteLength))
-        {
-            return false;
-        }
-
-        var sourcePixels = new byte[sourceByteLength];
-
-        try
-        {
-            copyPixels.Invoke(imageSource, new object[] { sourcePixels, sourceStride, 0 });
-        }
-        catch (TargetInvocationException)
-        {
-            return false;
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-
-        var sourceBuffer = new PixelDataBuffer(
-            width,
-            height,
-            sourceStride,
-            formatKind,
-            sourcePixels,
-            palette);
-        if (!sourceBuffer.TryConvertToPbgra32(out var pbgra32Buffer))
-        {
-            return false;
-        }
-
-        pixelBuffer = pbgra32Buffer;
-        return true;
+        pixelBuffer = default;
+        return false;
     }
 
     private static bool TryCopyPortableBitmapSourceAsPbgra32Buffer(
@@ -515,352 +444,4 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         return palette;
     }
 
-    internal static bool TryReadPixelFormat(
-        object imageSource,
-        out PixelDataFormat formatKind,
-        out int bitsPerPixel)
-    {
-        formatKind = default;
-        bitsPerPixel = 0;
-
-        if (!TryGetPropertyValue(imageSource, "Format", out var format) || format == null)
-        {
-            return false;
-        }
-
-        if (!TryReadIntProperty(format, "BitsPerPixel", out bitsPerPixel))
-        {
-            return false;
-        }
-
-        var formatName = format.ToString();
-        if (string.IsNullOrWhiteSpace(formatName))
-        {
-            if (bitsPerPixel == 32)
-            {
-                formatKind = PixelDataFormat.Pbgra32;
-                return true;
-            }
-
-            return false;
-        }
-
-        if (bitsPerPixel == 32
-            && formatName.Contains("Pbgra32", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Pbgra32;
-            return true;
-        }
-
-        if (bitsPerPixel == 32
-            && formatName.Contains("Bgra32", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Bgra32;
-            return true;
-        }
-
-        if (bitsPerPixel == 32
-            && formatName.Contains("Bgr101010", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Bgr101010;
-            return true;
-        }
-
-        if (bitsPerPixel == 32
-            && formatName.Contains("Bgr32", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Bgr32;
-            return true;
-        }
-
-        if (bitsPerPixel == 24
-            && formatName.Contains("Bgr24", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Bgr24;
-            return true;
-        }
-
-        if (bitsPerPixel == 24
-            && formatName.Contains("Rgb24", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Rgb24;
-            return true;
-        }
-
-        if (bitsPerPixel == 1
-            && formatName.Contains("BlackWhite", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.BlackWhite;
-            return true;
-        }
-
-        if (bitsPerPixel == 2
-            && formatName.Contains("Gray2", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Gray2;
-            return true;
-        }
-
-        if (bitsPerPixel == 4
-            && formatName.Contains("Gray4", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Gray4;
-            return true;
-        }
-
-        if (bitsPerPixel == 8
-            && formatName.Contains("Gray8", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Gray8;
-            return true;
-        }
-
-        if (bitsPerPixel == 16
-            && formatName.Contains("Gray16", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Gray16;
-            return true;
-        }
-
-        if (bitsPerPixel == 16
-            && formatName.Contains("Bgr555", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Bgr555;
-            return true;
-        }
-
-        if (bitsPerPixel == 16
-            && formatName.Contains("Bgr565", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Bgr565;
-            return true;
-        }
-
-        if (bitsPerPixel == 48
-            && formatName.Contains("Rgb48", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Rgb48;
-            return true;
-        }
-
-        if (bitsPerPixel == 64
-            && formatName.Contains("Prgba64", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Prgba64;
-            return true;
-        }
-
-        if (bitsPerPixel == 64
-            && formatName.Contains("Rgba64", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Rgba64;
-            return true;
-        }
-
-        if (bitsPerPixel == 32
-            && formatName.Contains("Cmyk32", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Cmyk32;
-            return true;
-        }
-
-        if (bitsPerPixel == 32
-            && formatName.Contains("Gray32Float", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Gray32Float;
-            return true;
-        }
-
-        if (bitsPerPixel == 128
-            && formatName.Contains("Prgba128Float", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Prgba128Float;
-            return true;
-        }
-
-        if (bitsPerPixel == 128
-            && formatName.Contains("Rgba128Float", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Rgba128Float;
-            return true;
-        }
-
-        if (bitsPerPixel == 128
-            && formatName.Contains("Rgb128Float", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Rgb128Float;
-            return true;
-        }
-
-        if (bitsPerPixel == 1
-            && formatName.Contains("Indexed1", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Indexed1;
-            return true;
-        }
-
-        if (bitsPerPixel == 2
-            && formatName.Contains("Indexed2", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Indexed2;
-            return true;
-        }
-
-        if (bitsPerPixel == 4
-            && formatName.Contains("Indexed4", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Indexed4;
-            return true;
-        }
-
-        if (bitsPerPixel == 8
-            && formatName.Contains("Indexed8", StringComparison.OrdinalIgnoreCase))
-        {
-            formatKind = PixelDataFormat.Indexed8;
-            return true;
-        }
-
-        return false;
-    }
-
-    private static bool TryReadPalette(object imageSource, out Pbgra32Color[] palette)
-    {
-        palette = Array.Empty<Pbgra32Color>();
-        if (!TryGetPropertyValue(imageSource, "Palette", out var paletteValue)
-            || paletteValue == null
-            || !TryGetPropertyValue(paletteValue, "Colors", out var colorsValue)
-            || colorsValue == null)
-        {
-            return false;
-        }
-
-        var colors = new List<Pbgra32Color>(256);
-        if (colorsValue is System.Collections.IEnumerable enumerable)
-        {
-            foreach (var colorValue in enumerable)
-            {
-                if (colors.Count >= 256)
-                {
-                    break;
-                }
-
-                if (colorValue != null && TryReadColor(colorValue, out var color))
-                {
-                    colors.Add(color);
-                }
-            }
-        }
-        else if (TryReadIntProperty(colorsValue, "Count", out var count) && count > 0)
-        {
-            var getColor = FindIndexer(colorsValue.GetType());
-            if (getColor == null)
-            {
-                return false;
-            }
-
-            for (var i = 0; i < count && colors.Count < 256; i++)
-            {
-                var colorValue = getColor(colorsValue, i);
-                if (colorValue != null && TryReadColor(colorValue, out var color))
-                {
-                    colors.Add(color);
-                }
-            }
-        }
-
-        if (colors.Count == 0)
-        {
-            return false;
-        }
-
-        palette = colors.ToArray();
-        return true;
-    }
-
-    private static bool TryReadColor(object colorValue, out Pbgra32Color color)
-    {
-        color = default;
-        if (!TryReadByteProperty(colorValue, "A", out var alpha)
-            || !TryReadByteProperty(colorValue, "R", out var red)
-            || !TryReadByteProperty(colorValue, "G", out var green)
-            || !TryReadByteProperty(colorValue, "B", out var blue))
-        {
-            return false;
-        }
-
-        color = Pbgra32Color.FromStraightArgb(alpha, red, green, blue);
-        return true;
-    }
-
-    private static bool TryReadIntProperty(object instance, string propertyName, out int value)
-    {
-        value = 0;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
-        {
-            return false;
-        }
-
-        switch (propertyValue)
-        {
-            case int intValue:
-                value = intValue;
-                return true;
-            case uint uintValue when uintValue <= int.MaxValue:
-                value = (int)uintValue;
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private static bool TryReadByteProperty(object instance, string propertyName, out byte value)
-    {
-        value = 0;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
-        {
-            return false;
-        }
-
-        switch (propertyValue)
-        {
-            case byte byteValue:
-                value = byteValue;
-                return true;
-            case int intValue when intValue is >= byte.MinValue and <= byte.MaxValue:
-                value = (byte)intValue;
-                return true;
-            case uint uintValue when uintValue <= byte.MaxValue:
-                value = (byte)uintValue;
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
-    {
-        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
-        if (property == null || property.GetIndexParameters().Length != 0)
-        {
-            value = null;
-            return false;
-        }
-
-        value = property.GetValue(instance);
-        return true;
-    }
-
-    private static Func<object, int, object?>? FindIndexer(Type type)
-    {
-        foreach (var property in type.GetProperties(MemberFlags))
-        {
-            var parameters = property.GetIndexParameters();
-            if (parameters.Length == 1 && parameters[0].ParameterType == typeof(int))
-            {
-                return (instance, index) => property.GetValue(instance, new object[] { index });
-            }
-        }
-
-        return null;
-    }
 }

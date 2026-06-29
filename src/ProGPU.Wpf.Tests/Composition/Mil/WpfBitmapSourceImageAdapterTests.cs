@@ -49,7 +49,7 @@ public sealed class WpfBitmapSourceImageAdapterTests
     }
 
     [Fact]
-    public void CopyPixelsAsPbgra32UsesTypedPortableBitmapSourceBeforeReflectionFallback()
+    public void CopyPixelsAsPbgra32UsesTypedPortableBitmapSource()
     {
         var source = new TypedPortableBitmapSource(
             new PortableBitmapSourcePixels(
@@ -459,28 +459,25 @@ public sealed class WpfBitmapSourceImageAdapterTests
         Assert.False(WpfBitmapSourceImageAdapter.TryCopyPixelsAsPbgra32(source, 1, 1, out var pixels, out var stride));
         Assert.Empty(pixels);
         Assert.Equal(0, stride);
-        Assert.Equal(0, source.CopyPixelsCallCount);
+        Assert.Equal(1, source.TypedCopyCount);
     }
 
     [Fact]
-    public void ReadPixelFormatDefaultsUnnamed32BitFormatToPbgra32()
+    public void CopyPixelsAsPbgra32RejectsNonPortableBitmapShape()
     {
-        var source = new FakeBitmapSource(
-            width: 1,
-            height: 1,
-            formatName: string.Empty,
-            bitsPerPixel: 32,
-            pixels: new byte[] { 1, 2, 3, 4 });
+        var source = new DuckTypedBitmapSource();
 
-        Assert.True(WpfBitmapSourceImageAdapter.TryReadPixelFormat(source, out var formatKind, out var bitsPerPixel));
-
-        Assert.Equal(PixelDataFormat.Pbgra32, formatKind);
-        Assert.Equal(32, bitsPerPixel);
+        Assert.False(WpfBitmapSourceImageAdapter.TryCopyPixelsAsPbgra32(source, 1, 1, out var pixels, out var stride));
+        Assert.Empty(pixels);
+        Assert.Equal(0, stride);
     }
 
-    private sealed class FakeBitmapSource
+    private sealed class FakeBitmapSource : IPortableBitmapSourcePixelsSource
     {
         private readonly byte[] _pixels;
+        private readonly int _sourceStride;
+        private readonly PortablePixelDataFormat _format;
+        private readonly FakeBitmapPalette? _palette;
 
         public FakeBitmapSource(
             int width,
@@ -492,49 +489,89 @@ public sealed class WpfBitmapSourceImageAdapterTests
         {
             PixelWidth = width;
             PixelHeight = height;
-            Format = new FakePixelFormat(formatName, bitsPerPixel);
+            _format = MapFormat(formatName);
+            _sourceStride = (width * bitsPerPixel + 7) / 8;
             _pixels = pixels;
-            Palette = palette;
+            _palette = palette;
         }
 
         public int PixelWidth { get; }
 
         public int PixelHeight { get; }
 
-        public FakePixelFormat Format { get; }
-
-        public FakeBitmapPalette? Palette { get; }
-
         public int LastStride { get; private set; }
 
-        public int CopyPixelsCallCount { get; private set; }
+        public int TypedCopyCount { get; private set; }
 
-        public void CopyPixels(Array destination, int stride, int offset)
+        public bool TryGetPortableBitmapSourcePixels(out PortableBitmapSourcePixels pixels)
         {
-            CopyPixelsCallCount++;
-            LastStride = stride;
-            var bytes = Assert.IsType<byte[]>(destination);
-            Assert.Equal(0, offset);
-            Assert.True(bytes.Length >= _pixels.Length);
-            Buffer.BlockCopy(_pixels, 0, bytes, 0, _pixels.Length);
-        }
-    }
-
-    private sealed class FakePixelFormat
-    {
-        private readonly string _formatName;
-
-        public FakePixelFormat(string formatName, int bitsPerPixel)
-        {
-            _formatName = formatName;
-            BitsPerPixel = bitsPerPixel;
+            TypedCopyCount++;
+            LastStride = _sourceStride;
+            pixels = new PortableBitmapSourcePixels(
+                PixelWidth,
+                PixelHeight,
+                96,
+                96,
+                _sourceStride,
+                _format,
+                _pixels,
+                CreatePortablePalette(_palette));
+            return true;
         }
 
-        public int BitsPerPixel { get; }
-
-        public override string ToString()
+        private static PortablePixelDataFormat MapFormat(string formatName)
         {
-            return _formatName;
+            return formatName switch
+            {
+                "Pbgra32" => PortablePixelDataFormat.Pbgra32,
+                "Bgra32" => PortablePixelDataFormat.Bgra32,
+                "Bgr32" => PortablePixelDataFormat.Bgr32,
+                "Bgr101010" => PortablePixelDataFormat.Bgr101010,
+                "Bgr24" => PortablePixelDataFormat.Bgr24,
+                "Rgb24" => PortablePixelDataFormat.Rgb24,
+                "BlackWhite" => PortablePixelDataFormat.BlackWhite,
+                "Gray2" => PortablePixelDataFormat.Gray2,
+                "Gray4" => PortablePixelDataFormat.Gray4,
+                "Gray8" => PortablePixelDataFormat.Gray8,
+                "Gray16" => PortablePixelDataFormat.Gray16,
+                "Bgr555" => PortablePixelDataFormat.Bgr555,
+                "Bgr565" => PortablePixelDataFormat.Bgr565,
+                "Rgb48" => PortablePixelDataFormat.Rgb48,
+                "Rgba64" => PortablePixelDataFormat.Rgba64,
+                "Prgba64" => PortablePixelDataFormat.Prgba64,
+                "Cmyk32" => PortablePixelDataFormat.Cmyk32,
+                "Gray32Float" => PortablePixelDataFormat.Gray32Float,
+                "Rgb128Float" => PortablePixelDataFormat.Rgb128Float,
+                "Rgba128Float" => PortablePixelDataFormat.Rgba128Float,
+                "Prgba128Float" => PortablePixelDataFormat.Prgba128Float,
+                "Indexed1" => PortablePixelDataFormat.Indexed1,
+                "Indexed2" => PortablePixelDataFormat.Indexed2,
+                "Indexed4" => PortablePixelDataFormat.Indexed4,
+                "Indexed8" => PortablePixelDataFormat.Indexed8,
+                _ => throw new ArgumentOutOfRangeException(nameof(formatName), formatName, "Unsupported test pixel format.")
+            };
+        }
+
+        private static PortablePbgra32Color[] CreatePortablePalette(FakeBitmapPalette? palette)
+        {
+            if (palette == null || palette.Colors.Length == 0)
+            {
+                return Array.Empty<PortablePbgra32Color>();
+            }
+
+            var colors = new PortablePbgra32Color[palette.Colors.Length];
+            for (var i = 0; i < colors.Length; i++)
+            {
+                var color = palette.Colors[i];
+                var premultiplied = Pbgra32Color.FromStraightArgb(color.A, color.R, color.G, color.B);
+                colors[i] = new PortablePbgra32Color(
+                    premultiplied.B,
+                    premultiplied.G,
+                    premultiplied.R,
+                    premultiplied.A);
+            }
+
+            return colors;
         }
     }
 
@@ -560,6 +597,20 @@ public sealed class WpfBitmapSourceImageAdapterTests
     }
 
     private readonly record struct FakeColor(byte A, byte R, byte G, byte B);
+
+    private sealed class DuckTypedBitmapSource
+    {
+        public int PixelWidth => 1;
+
+        public int PixelHeight => 1;
+
+        public object Format => new();
+
+        public void CopyPixels(Array destination, int stride, int offset)
+        {
+            throw new InvalidOperationException("Non-portable bitmap source should not be reflected.");
+        }
+    }
 
     private sealed class TypedPortableBitmapSource : IPortableBitmapSourcePixelsSource
     {

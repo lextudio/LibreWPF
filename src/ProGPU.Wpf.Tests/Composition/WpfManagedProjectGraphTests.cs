@@ -11101,6 +11101,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("imageSource is IPortableBitmapSourcePixelsSource portableSource", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("TryCopyPortableBitmapSourceAsPbgra32Buffer(", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("TryMapPixelDataFormat(portablePixels.Format", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetMethod(", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadPixelFormat", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadPalette", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("TryCreateShimWriteableBitmap", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("GetType(\"System.Windows.Media.Imaging.WriteableBitmap\")", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("WritePbgra32Pixels", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);

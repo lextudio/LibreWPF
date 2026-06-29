@@ -94,10 +94,22 @@ namespace System.Windows.Media.Effects
                 SamplerData sampler = samplerData.Value;
                 if (sampler._brush != null)
                 {
-                    samplers.Add(new PortableShaderSampler(
-                        i,
-                        sampler._brush,
-                        ConvertPortableSamplingMode(sampler._samplingMode)));
+                    PortableShaderSamplingMode samplingMode = ConvertPortableSamplingMode(sampler._samplingMode);
+                    if (sampler._brush is ImplicitInputBrush)
+                    {
+                        samplers.Add(PortableShaderSampler.ImplicitInput(i, samplingMode));
+                    }
+                    else if (sampler._brush is ImageBrush imageBrush)
+                    {
+                        samplers.Add(PortableShaderSampler.Image(i, imageBrush.ImageSource, samplingMode));
+                    }
+                    else
+                    {
+                        samplers.Add(new PortableShaderSampler(
+                            i,
+                            sampler._brush,
+                            samplingMode));
+                    }
                 }
             }
 

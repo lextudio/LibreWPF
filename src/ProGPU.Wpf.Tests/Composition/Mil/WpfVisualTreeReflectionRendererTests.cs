@@ -1731,9 +1731,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
                 floatConstants: constants,
                 samplers: new[]
                 {
-                    new PortableShaderSampler(
+                    PortableShaderSampler.ImplicitInput(
                         1,
-                        new FakeImplicitInputBrush(),
                         PortableShaderSamplingMode.NearestNeighbor)
                 },
                 intConstantCount: 0,
@@ -2912,10 +2911,22 @@ public sealed class WpfVisualTreeReflectionRendererTests
                     continue;
                 }
 
-                samplers.Add(new PortableShaderSampler(
-                    i,
-                    sampler.Value._brush,
-                    ConvertPortableSamplingMode(sampler.Value._samplingMode)));
+                var samplingMode = ConvertPortableSamplingMode(sampler.Value._samplingMode);
+                if (sampler.Value._brush is FakeImplicitInputBrush)
+                {
+                    samplers.Add(PortableShaderSampler.ImplicitInput(i, samplingMode));
+                }
+                else if (sampler.Value._brush is FakeShaderImageBrush imageBrush)
+                {
+                    samplers.Add(PortableShaderSampler.Image(i, imageBrush.ImageSource, samplingMode));
+                }
+                else
+                {
+                    samplers.Add(new PortableShaderSampler(
+                        i,
+                        sampler.Value._brush,
+                        samplingMode));
+                }
             }
 
             return samplers.Count == 0 ? Array.Empty<PortableShaderSampler>() : samplers.ToArray();

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Reflection;
 using ProGPU.Scene;
 using PortableColor = ProGPU.Wpf.Interop.PortableColor;
 using PortableBitmapEffectInputSource = ProGPU.Wpf.Interop.IPortableBitmapEffectInputSource;
@@ -12,6 +11,7 @@ using PortablePixelShader = ProGPU.Wpf.Interop.PortablePixelShader;
 using PortableShaderEffect = ProGPU.Wpf.Interop.PortableShaderEffect;
 using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;
 using PortableShaderSampler = ProGPU.Wpf.Interop.PortableShaderSampler;
+using PortableShaderSamplerKind = ProGPU.Wpf.Interop.PortableShaderSamplerKind;
 using PortableShaderSamplingMode = ProGPU.Wpf.Interop.PortableShaderSamplingMode;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaImageSource = System.Windows.Media.ImageSource;
@@ -20,8 +20,6 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 internal static class WpfEffectReflection
 {
-    private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
     public static bool TryCreateProGpuEffect(
         object? effect,
         out global::ProGPU.Scene.EffectBase proGpuEffect,
@@ -222,7 +220,7 @@ internal static class WpfEffectReflection
             }
 
             var samplerSamplingMode = ConvertSamplingMode(portableSampler.SamplingMode);
-            if (IsImplicitInputBrush(portableSampler.Brush))
+            if (portableSampler.Kind == PortableShaderSamplerKind.ImplicitInput)
             {
                 if (hasImplicitInput)
                 {
@@ -233,15 +231,40 @@ internal static class WpfEffectReflection
                 samplingMode = samplerSamplingMode;
                 hasImplicitInput = true;
             }
-            else if (TryCreateShaderSampler(
-                         portableSampler.Brush,
-                         imageSourceAdapter,
-                         registerIndex,
-                         samplerSamplingMode,
-                         out var shaderSampler))
+            else if (portableSampler.Kind == PortableShaderSamplerKind.ImageSource)
             {
-                samplerList ??= new List<WpfShaderEffectSampler>();
-                samplerList.Add(shaderSampler);
+                if (TryCreateImageSourceShaderSampler(
+                        portableSampler.ImageSource,
+                        imageSourceAdapter,
+                        registerIndex,
+                        samplerSamplingMode,
+                        out var imageSampler))
+                {
+                    samplerList ??= new List<WpfShaderEffectSampler>();
+                    samplerList.Add(imageSampler);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else if (portableSampler.Kind == PortableShaderSamplerKind.Brush
+                && portableSampler.Brush != null)
+            {
+                if (TryCreateShaderSamplerBrush(
+                        portableSampler.Brush,
+                        imageSourceAdapter,
+                        registerIndex,
+                        samplerSamplingMode,
+                        out var shaderSampler))
+                {
+                    samplerList ??= new List<WpfShaderEffectSampler>();
+                    samplerList.Add(shaderSampler);
+                }
+                else
+                {
+                    return false;
+                }
             }
             else
             {
@@ -265,17 +288,15 @@ internal static class WpfEffectReflection
         return true;
     }
 
-    private static bool TryCreateShaderSampler(
-        object brush,
+    private static bool TryCreateImageSourceShaderSampler(
+        object? imageSource,
         IWpfImageSourceAdapter? imageSourceAdapter,
         int registerIndex,
         TextureSamplingMode samplingMode,
         out WpfShaderEffectSampler sampler)
     {
         sampler = null!;
-        if (TypeNameEndsWith(brush, "ImageBrush")
-            && TryGetPropertyValue(brush, "ImageSource", out var imageSource)
-            && ResolveImageSource(imageSource, imageSourceAdapter) is MediaBitmapSource bitmapSource
+        if (ResolveImageSource(imageSource, imageSourceAdapter) is MediaBitmapSource bitmapSource
             && bitmapSource.PixelWidth > 0
             && bitmapSource.PixelHeight > 0
             && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
@@ -284,6 +305,18 @@ internal static class WpfEffectReflection
             return true;
         }
 
+        sampler = null!;
+        return false;
+    }
+
+    private static bool TryCreateShaderSamplerBrush(
+        object brush,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        int registerIndex,
+        TextureSamplingMode samplingMode,
+        out WpfShaderEffectSampler sampler)
+    {
+        sampler = null!;
         if (imageSourceAdapter is IWpfShaderEffectSamplerBrushAdapter samplerBrushAdapter
             && samplerBrushAdapter.TryAdaptShaderEffectSamplerBrush(
                 brush,
@@ -334,45 +367,10 @@ internal static class WpfEffectReflection
             (float)((a / 255d) * opacity));
     }
 
-    private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
-    {
-        for (var type = instance.GetType(); type != null; type = type.BaseType)
-        {
-            var property = type.GetProperty(propertyName, MemberFlags | BindingFlags.DeclaredOnly);
-            if (property == null)
-            {
-                continue;
-            }
-
-            if (property.GetIndexParameters().Length != 0)
-            {
-                break;
-            }
-
-            value = property.GetValue(instance);
-            return true;
-        }
-
-        value = null;
-        return false;
-    }
-
     private static TextureSamplingMode ConvertSamplingMode(PortableShaderSamplingMode samplingMode)
     {
         return samplingMode == PortableShaderSamplingMode.NearestNeighbor
             ? TextureSamplingMode.Nearest
             : TextureSamplingMode.Linear;
-    }
-
-    private static bool IsImplicitInputBrush(object brush)
-    {
-        return TypeNameEndsWith(brush, "ImplicitInputBrush");
-    }
-
-    private static bool TypeNameEndsWith(object instance, string suffix)
-    {
-        var type = instance.GetType();
-        return type.Name.EndsWith(suffix, StringComparison.Ordinal)
-            || (type.FullName?.EndsWith("." + suffix, StringComparison.Ordinal) ?? false);
     }
 }

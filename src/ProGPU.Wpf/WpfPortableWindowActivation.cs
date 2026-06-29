@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Globalization;
-using System.Reflection;
 using ProGPU.Wpf.Interop;
 using System.Windows.Media.ProGPU.Platform;
 
@@ -45,7 +44,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     public object PortablePresentationSource { get; }
 
     public static bool TryRegisterPresentationFrameworkActivation(
-        Assembly presentationFrameworkAssembly,
+        System.Reflection.Assembly presentationFrameworkAssembly,
         Func<object, ProGpuWpfWindowHost>? hostFactory = null)
     {
         ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
@@ -96,7 +95,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 ((WpfPortableWindowActivation)activation).Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero);
     }
 
-    public static bool TryRegisterPresentationCoreClipboardService(Assembly presentationCoreAssembly)
+    public static bool TryRegisterPresentationCoreClipboardService(System.Reflection.Assembly presentationCoreAssembly)
     {
         ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
 
@@ -111,7 +110,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    public static bool TryRegisterPresentationFrameworkLauncherService(Assembly presentationFrameworkAssembly)
+    public static bool TryRegisterPresentationFrameworkLauncherService(System.Reflection.Assembly presentationFrameworkAssembly)
     {
         ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
 
@@ -126,7 +125,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    public static bool TryRegisterPresentationFrameworkMessageBoxService(Assembly presentationFrameworkAssembly)
+    public static bool TryRegisterPresentationFrameworkMessageBoxService(System.Reflection.Assembly presentationFrameworkAssembly)
     {
         ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
 
@@ -141,7 +140,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    public static bool TryRegisterPresentationFrameworkFileDialogService(Assembly presentationFrameworkAssembly)
+    public static bool TryRegisterPresentationFrameworkFileDialogService(System.Reflection.Assembly presentationFrameworkAssembly)
     {
         ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
 
@@ -303,7 +302,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     public static bool TryAttach(
         ProGpuWpfWindowHost host,
         object window,
-        Assembly presentationCoreAssembly,
+        System.Reflection.Assembly presentationCoreAssembly,
         out WpfPortableWindowActivation? activation,
         double dpiScaleX = 1.0,
         double dpiScaleY = 1.0)
@@ -561,14 +560,14 @@ public sealed class WpfPortableWindowActivation : IDisposable
         {
             TrySetWindowActivationState(Window, isActive);
         }
-        catch (TargetInvocationException ex) when (!isActive && IsRecoverablePortableDeactivationException(ex.InnerException ?? ex))
+        catch (System.Reflection.TargetInvocationException ex) when (!isActive && IsRecoverablePortableDeactivationException(ex.InnerException ?? ex))
         {
             // A native focus-loss callback can arrive while a third-party control still owns mouse capture.
             // Keep the portable host alive if that capture-cancel path rejects an intermediate layout state.
         }
         catch (Exception ex) when (!isActive && IsRecoverablePortableDeactivationException(ex))
         {
-            // See the TargetInvocationException path above.
+            // See the System.Reflection.TargetInvocationException path above.
         }
     }
 
@@ -579,7 +578,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool IsRecoverableDispatcherFlushException(Exception exception)
     {
-        while (exception is TargetInvocationException { InnerException: { } innerException })
+        while (exception is System.Reflection.TargetInvocationException { InnerException: { } innerException })
         {
             exception = innerException;
         }
@@ -789,7 +788,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    private bool TryRegisterMediaContextRenderService(Assembly presentationCoreAssembly)
+    private bool TryRegisterMediaContextRenderService(System.Reflection.Assembly presentationCoreAssembly)
     {
         if (PortableWpfServiceRegistry.TryGetMediaContextRenderService(
                 presentationCoreAssembly,
@@ -1251,7 +1250,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         out WpfPortableWindowActivation? activation)
     {
         activation = null;
-        Assembly? presentationCoreAssembly = ResolvePresentationCoreAssembly(window);
+        System.Reflection.Assembly? presentationCoreAssembly = ResolvePresentationCoreAssembly(window);
         if (presentationCoreAssembly == null)
         {
             return false;
@@ -1268,7 +1267,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    private static Assembly? ResolvePresentationCoreAssembly(object window)
+    private static System.Reflection.Assembly? ResolvePresentationCoreAssembly(object window)
     {
         for (Type? type = window.GetType(); type != null; type = type.BaseType)
         {

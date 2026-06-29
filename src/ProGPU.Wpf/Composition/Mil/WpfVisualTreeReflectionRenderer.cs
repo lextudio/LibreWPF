@@ -338,9 +338,9 @@ public sealed class WpfVisualTreeReflectionRenderer
             offset = new Vector2((float)offsetX, (float)offsetY);
         }
 
-        if (TryGetVisualClip(visual, out var clip) && clip != null)
+        if (TryGetVisualClipBounds(visual, out var rectangleClipBounds))
         {
-            if (!TryReadRectangleClipBounds(clip, out var rectangleClipBounds))
+            if (!IsUsableBounds(rectangleClipBounds))
             {
                 return false;
             }
@@ -879,25 +879,22 @@ public sealed class WpfVisualTreeReflectionRenderer
             popCount++;
         }
 
-        if (TryGetVisualClip(visual, out var clip) && clip != null)
+        if (TryGetVisualClipBounds(visual, out var rectangleClipBounds))
         {
-            if (TryReadRectangleClipBounds(clip, out var rectangleClipBounds))
+            PushRectangleClip(sink, rectangleClipBounds);
+            popCount++;
+        }
+        else if (TryGetVisualClip(visual, out var clip) && clip != null)
+        {
+            var clipGeometry = WpfReflectionResourceResolver.AdaptGeometry(clip);
+            if (clipGeometry != null)
             {
-                PushRectangleClip(sink, rectangleClipBounds);
+                sink.PushClip(clipGeometry);
                 popCount++;
             }
             else
             {
-                var clipGeometry = WpfReflectionResourceResolver.AdaptGeometry(clip);
-                if (clipGeometry != null)
-                {
-                    sink.PushClip(clipGeometry);
-                    popCount++;
-                }
-                else
-                {
-                    stats.UnsupportedVisualStateCount++;
-                }
+                stats.UnsupportedVisualStateCount++;
             }
         }
 
@@ -1425,13 +1422,8 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         WpfReplayRect? clipBounds = null;
-        if (TryGetVisualClip(child, out var clip) && clip != null)
+        if (TryGetVisualClipBounds(child, out var childClipBounds))
         {
-            if (!TryReadRectangleClipBounds(clip, out var childClipBounds))
-            {
-                return false;
-            }
-
             clipBounds = childClipBounds;
         }
 
@@ -1481,6 +1473,51 @@ public sealed class WpfVisualTreeReflectionRenderer
         return false;
     }
 
+    private static bool TryGetVisualClipBounds(object visual, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        var hasBounds = false;
+
+        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasClip)
+        {
+            if (visualState.Clip == null || !TryReadRectangleClipBounds(visualState.Clip, out bounds))
+            {
+                bounds = default;
+                return false;
+            }
+
+            hasBounds = true;
+        }
+
+        if (TryGetPortableVisualLayoutState(visual, out var layoutState)
+            && layoutState.HasLayoutClip
+            && layoutState.LayoutClip != null)
+        {
+            if (!TryReadRectangleClipBounds(layoutState.LayoutClip, out var layoutClipBounds))
+            {
+                bounds = default;
+                return false;
+            }
+
+            bounds = hasBounds ? CombineClipBounds(bounds, layoutClipBounds) : layoutClipBounds;
+            hasBounds = true;
+        }
+
+        if (TryCreateClipToBoundsClipBounds(visual, out var clipToBoundsBounds))
+        {
+            bounds = hasBounds ? CombineClipBounds(bounds, clipToBoundsBounds) : clipToBoundsBounds;
+            hasBounds = true;
+        }
+
+        if (!hasBounds || !IsUsableBounds(bounds))
+        {
+            bounds = default;
+            return false;
+        }
+
+        return true;
+    }
+
     private static bool TryGetVisualClip(object visual, out object? clip)
     {
         var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);
@@ -1519,23 +1556,25 @@ public sealed class WpfVisualTreeReflectionRenderer
         return hasCurrentClip;
     }
 
+    private static bool TryCreateClipToBoundsClipBounds(object visual, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        if (TryGetPortableVisualLayoutState(visual, out var layoutState) && layoutState.HasClipToBounds)
+        {
+            return layoutState.ClipToBounds
+                && TryReadPortableRenderSizeBounds(layoutState, out bounds);
+        }
+
+        return false;
+    }
+
     private static bool TryCreateClipToBoundsClip(object visual, out object? clip)
     {
         clip = null;
-        if (TryGetPortableVisualLayoutState(visual, out var layoutState) && layoutState.HasClipToBounds)
+        if (TryCreateClipToBoundsClipBounds(visual, out var bounds))
         {
-            if (!layoutState.ClipToBounds)
-            {
-                return false;
-            }
-
-            if (TryReadPortableRenderSizeBounds(layoutState, out var portableBounds))
-            {
-                clip = new ReflectedRectangleClip(portableBounds);
-                return true;
-            }
-
-            return false;
+            clip = CreateRectangleClipGeometry(bounds);
+            return true;
         }
 
         return false;
@@ -1547,7 +1586,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             && TryReadRectangleClipBounds(second, out var secondBounds))
         {
             var combined = CombineClipBounds(firstBounds, secondBounds);
-            clip = new ReflectedRectangleClip(combined);
+            clip = CreateRectangleClipGeometry(combined);
             return true;
         }
 
@@ -1564,6 +1603,11 @@ public sealed class WpfVisualTreeReflectionRenderer
             firstGeometry,
             secondGeometry);
         return true;
+    }
+
+    private static System.Windows.Media.RectangleGeometry CreateRectangleClipGeometry(WpfReplayRect bounds)
+    {
+        return new System.Windows.Media.RectangleGeometry(new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height));
     }
 
     private static bool IsUsableBounds(WpfReplayRect bounds)
@@ -1632,30 +1676,6 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         var clipped = IntersectBounds(bounds, clip.Value);
         return IsUsableBounds(clipped) ? clipped : null;
-    }
-
-    private sealed class ReflectedRectangleClip
-    {
-        public ReflectedRectangleClip(double x, double y, double width, double height)
-        {
-            X = x;
-            Y = y;
-            Width = width;
-            Height = height;
-        }
-
-        public ReflectedRectangleClip(WpfReplayRect bounds)
-            : this(bounds.X, bounds.Y, bounds.Width, bounds.Height)
-        {
-        }
-
-        public double X { get; }
-
-        public double Y { get; }
-
-        public double Width { get; }
-
-        public double Height { get; }
     }
 
     private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)

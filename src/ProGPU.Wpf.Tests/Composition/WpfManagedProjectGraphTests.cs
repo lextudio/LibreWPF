@@ -5517,6 +5517,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetScrollableAreaClipBounds(visual, out var scrollableClipBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("bounds = ToReplayRect(visualState.ScrollableAreaClip);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private static WpfReplayRect ToReplayRect(PortableRect bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryGetVisualClipBounds(object visual, out WpfReplayRect bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryCreateClipToBoundsClipBounds(object visual, out WpfReplayRect bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("if (hasPortableVisualState && visualState.HasClip)", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadVectorLikeProperty(visual, \"Offset\"", rendererSource, StringComparison.Ordinal);
@@ -5533,6 +5535,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("scrollableAreaClip = new ReflectedRectangleClip", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadRect(scrollableAreaClip", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReflectedRectangleClip", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"VisualClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"ScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"VisualScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
@@ -5821,7 +5824,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("visual is PortableVisualLayoutStateSource visualLayoutSource", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableVisualLayoutState(out state)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableRenderSizeBounds(layoutState, out bounds)", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("TryReadPortableRenderSizeBounds(layoutState, out var portableBounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryCreateClipToBoundsClipBounds(visual, out var clipToBoundsBounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("return layoutState.ClipToBounds", rendererSource, StringComparison.Ordinal);
         Assert.Contains("layoutState.HasLayoutClip", rendererSource, StringComparison.Ordinal);
         Assert.Contains("layoutState.LayoutClip", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(layoutState.LayoutClip, sink)", rendererSource, StringComparison.Ordinal);

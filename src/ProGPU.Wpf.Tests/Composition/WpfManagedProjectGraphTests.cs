@@ -501,6 +501,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("FindPortableWindowActivationServiceType", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("TryInvokePortableWindowActivationService", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("TryProcessPortableDragDropByReflection", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryCreateDispatcherPriority", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryForwardCompatibleInputToWindow", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryCreateCompatibleInputEventArgs", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("CopyHandledState", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"OnPortableInput\"", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"HandlePortableInput\"", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("System.Windows.Application", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("presentationFrameworkAssembly.GetType(", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateWindowActivationReflectionParameters", proGpuActivation, StringComparison.Ordinal);
@@ -1021,6 +1027,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ShouldRenderFrameReturnsTrueWhenLogicalSizeChanges", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("ShouldRenderFrameReturnsTrueWhenDpiScaleChanges", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("TryAttachSynchronizesInitialWindowShapeBeforeFirstRender", proGpuActivationTests, StringComparison.Ordinal);
+        Assert.Contains("HostInputDoesNotUseReflectedPortableWindowInputHandler", proGpuActivationTests, StringComparison.Ordinal);
+        Assert.Contains("HostInputDoesNotUseReflectedDispatcherQueueFallback", proGpuActivationTests, StringComparison.Ordinal);
+        Assert.Contains("HostInputDoesNotUseCompatiblePresentationFrameworkInputArgsFallback", proGpuActivationTests, StringComparison.Ordinal);
+        Assert.Contains("RenderWakeupDoesNotUseReflectedDispatcherFlushForFallbackQueue", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("HostDragDropDoesNotUseReflectedPortableWindowActivationService", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            renderTargetViewport,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);

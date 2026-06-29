@@ -603,7 +603,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostInputForwardsPayloadToPortableWindowInputHandler()
+    public void HostInputDoesNotUseReflectedPortableWindowInputHandler()
     {
         var scheduler = new TestRenderScheduler();
         using var host = new ProGpuWpfWindowHost
@@ -626,14 +626,14 @@ public sealed class WpfPortableWindowActivationTests
         int requestCountBeforeInput = scheduler.RequestCount;
         RaiseHostInputEvent(host, args);
 
-        Assert.Equal(1, window.InputCount);
-        Assert.Same(args, window.LastInputArgs);
-        Assert.True(args.Handled);
+        Assert.Equal(0, window.InputCount);
+        Assert.Null(window.LastInputArgs);
+        Assert.False(args.Handled);
         Assert.True(scheduler.RequestCount > requestCountBeforeInput);
     }
 
     [Fact]
-    public void HostInputUsesTypedActivationServiceBeforeDirectInputFallback()
+    public void HostInputUsesTypedActivationService()
     {
         var service = new TestWindowActivationServiceRegistrar();
         using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
@@ -676,14 +676,8 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostInputFromNonDispatcherThreadQueuesInputAndRenderWakeupProcessesIt()
+    public void HostInputDoesNotUseReflectedDispatcherQueueFallback()
     {
-        var service = new TestWindowActivationServiceRegistrar
-        {
-            FlushFakeDispatcherOnInput = true,
-            HandleInputEvent = false
-        };
-        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
         var scheduler = new TestRenderScheduler();
         using var host = new ProGpuWpfWindowHost
         {
@@ -701,20 +695,17 @@ public sealed class WpfPortableWindowActivationTests
         var args = new WpfInputEventArgs(WpfInputEventKind.MouseDown, x: 12, y: 24, button: WpfMouseButton.Left);
         RaiseHostInputEvent(host, args);
 
-        Assert.Equal(1, window.Dispatcher.BeginInvokeCount);
+        Assert.Equal(0, window.Dispatcher.BeginInvokeCount);
         Assert.Equal(0, window.Dispatcher.InvokeCount);
-        Assert.Equal(1, window.InputCount);
-        Assert.Same(args, window.LastInputArgs);
-        Assert.Contains("Input", window.FlushedPriorities);
-        Assert.Contains("Render", window.FlushedPriorities);
-        Assert.True(
-            window.FlushedPriorities.IndexOf("Input") < window.FlushedPriorities.IndexOf("Render"),
-            "Input-priority WPF work must run before render-priority work on a render wakeup.");
+        Assert.Equal(0, window.InputCount);
+        Assert.Null(window.LastInputArgs);
+        Assert.DoesNotContain("Input", window.FlushedPriorities);
+        Assert.DoesNotContain("Render", window.FlushedPriorities);
         Assert.True(scheduler.RequestCount > requestCountBeforeInput);
     }
 
     [Fact]
-    public void HostInputUsesTypedDispatcherQueueBeforeDispatcherFallback()
+    public void HostInputUsesTypedDispatcherQueue()
     {
         var service = new TestWindowActivationServiceRegistrar
         {
@@ -755,7 +746,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostInputDoesNotUseReflectedHandleActivateBeforeForwardingInput()
+    public void HostInputDoesNotUseReflectedHandleActivateOrInputFallback()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakeActivatablePortableInputWindow();
@@ -771,11 +762,11 @@ public sealed class WpfPortableWindowActivationTests
 
         Assert.False(window.IsActive);
         Assert.Equal(0, window.ActivatedCount);
-        Assert.Equal(1, window.InputCount);
+        Assert.Equal(0, window.InputCount);
     }
 
     [Fact]
-    public void HostInputForwardsPayloadToPortableInputFallbackHandler()
+    public void HostInputDoesNotUseReflectedPortableInputFallbackHandler()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakePortableInputFallbackWindow();
@@ -793,12 +784,12 @@ public sealed class WpfPortableWindowActivationTests
             deltaY: -1);
         RaiseHostInputEvent(host, args);
 
-        Assert.Equal(1, window.InputCount);
-        Assert.Same(args, window.LastInputArgs);
+        Assert.Equal(0, window.InputCount);
+        Assert.Null(window.LastInputArgs);
     }
 
     [Fact]
-    public void HostInputMapsPayloadToPresentationFrameworkPortableInputArgs()
+    public void HostInputDoesNotUseCompatiblePresentationFrameworkInputArgsFallback()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakePresentationFrameworkPortableInputWindow();
@@ -817,25 +808,14 @@ public sealed class WpfPortableWindowActivationTests
             modifiers: WpfInputModifiers.Shift | WpfInputModifiers.Alt);
         RaiseHostInputEvent(host, args);
 
-        Assert.Equal(1, window.InputCount);
-        Assert.NotNull(window.LastInputArgs);
-        Assert.Equal(PortableInputEventKind.MouseDown, window.LastInputArgs.Kind);
-        Assert.Equal(12, window.LastInputArgs.X);
-        Assert.Equal(24, window.LastInputArgs.Y);
-        Assert.Equal(PortableMouseButton.XButton1, window.LastInputArgs.Button);
-        Assert.Equal(PortableInputModifiers.Shift | PortableInputModifiers.Alt, window.LastInputArgs.Modifiers);
-        Assert.True(args.Handled);
+        Assert.Equal(0, window.InputCount);
+        Assert.Null(window.LastInputArgs);
+        Assert.False(args.Handled);
     }
 
     [Fact]
-    public void RenderWakeupFlushesQueuedDispatcherInputBeforeRendering()
+    public void RenderWakeupDoesNotUseReflectedDispatcherFlushForFallbackQueue()
     {
-        var service = new TestWindowActivationServiceRegistrar
-        {
-            FlushFakeDispatcherOnInput = true,
-            HandleInputEvent = false
-        };
-        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
         var scheduler = new TestRenderScheduler();
         using var host = new ProGpuWpfWindowHost
         {
@@ -853,15 +833,11 @@ public sealed class WpfPortableWindowActivationTests
         var args = new WpfInputEventArgs(WpfInputEventKind.TextInput, character: 'x');
         RaiseHostInputEvent(host, args);
 
-        Assert.Equal(1, window.Dispatcher.BeginInvokeCount);
-        Assert.Equal(1, window.InputCount);
-        Assert.Same(args, window.LastInputArgs);
-        Assert.Contains("Input", window.FlushedPriorities);
-        Assert.Contains("Render", window.FlushedPriorities);
-        Assert.True(
-            window.FlushedPriorities.IndexOf("Input") < window.FlushedPriorities.IndexOf("Render"),
-            "Input-priority WPF work must run before render-priority work on a render wakeup.");
-        Assert.True(scheduler.RequestCount >= 2);
+        Assert.Equal(0, window.Dispatcher.BeginInvokeCount);
+        Assert.Equal(0, window.InputCount);
+        Assert.Null(window.LastInputArgs);
+        Assert.Empty(window.FlushedPriorities);
+        Assert.True(scheduler.RequestCount >= 1);
     }
 
     [Fact]
@@ -1680,8 +1656,6 @@ public sealed class WpfPortableWindowActivationTests
 
         public PortableWindowInputEvent? LastInput { get; private set; }
 
-        public bool HandleInputEvent { get; set; } = true;
-
         public object? LastFlushWindow { get; private set; }
 
         public List<string> FlushedPriorities { get; } = new List<string>();
@@ -1689,8 +1663,6 @@ public sealed class WpfPortableWindowActivationTests
         public List<TimeSpan?> FlushTimeouts { get; } = new List<TimeSpan?>();
 
         public bool ThrowOnDispatcherFlush { get; set; }
-
-        public bool FlushFakeDispatcherOnInput { get; set; }
 
         public int DragDropCount { get; private set; }
 
@@ -1796,11 +1768,6 @@ public sealed class WpfPortableWindowActivationTests
 
         public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)
         {
-            if (!HandleInputEvent)
-            {
-                return false;
-            }
-
             InputCount++;
             LastInputWindow = window;
             LastInput = input;
@@ -1813,12 +1780,6 @@ public sealed class WpfPortableWindowActivationTests
             LastFlushWindow = window;
             FlushedPriorities.Add(markerPriorityName);
             FlushTimeouts.Add(timeout);
-            if (FlushFakeDispatcherOnInput &&
-                window is FakeDispatchingPortableInputWindow dispatchingWindow)
-            {
-                dispatchingWindow.FlushDispatcherOperations(markerPriorityName);
-            }
-
             if (ThrowOnDispatcherFlush)
             {
                 throw new InvalidOperationException("Cannot perform this operation while dispatcher processing is suspended.");

@@ -284,6 +284,26 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void PortableVisualSourceDoesNotProbeReflectedReferenceProperties()
+    {
+        var effect = new FakeResource();
+        var root = new ThrowingPortableStateVisual(new PortableVisualState
+        {
+            HasEffect = true,
+            Effect = effect
+        });
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        effect.RaiseChanged();
+
+        Assert.True(tracker.IsDirty);
+        Assert.Same(effect, tracker.LastDirtySource);
+        Assert.Equal(0, root.ReflectedPropertyProbeCount);
+    }
+
+    [Fact]
     public void PrivateVersionFieldChangeDoesNotMarkTrackerDirty()
     {
         var brush = new FakePrivateVersionResource();
@@ -726,6 +746,40 @@ public sealed class WpfVisualInvalidationTrackerTests
         {
             state = _state;
             return true;
+        }
+    }
+
+    private sealed class ThrowingPortableStateVisual : PortableVisualStateSource
+    {
+        private readonly PortableVisualState _state;
+
+        public ThrowingPortableStateVisual(PortableVisualState state)
+        {
+            _state = state;
+        }
+
+        public int ReflectedPropertyProbeCount { get; private set; }
+
+        public object? Children => ThrowReflectedPropertyProbe();
+
+        public object? Clip => ThrowReflectedPropertyProbe();
+
+        public object? Effect => ThrowReflectedPropertyProbe();
+
+        public object? OpacityMask => ThrowReflectedPropertyProbe();
+
+        public object? Transform => ThrowReflectedPropertyProbe();
+
+        public bool TryGetPortableVisualState(out PortableVisualState state)
+        {
+            state = _state;
+            return true;
+        }
+
+        private object? ThrowReflectedPropertyProbe()
+        {
+            ReflectedPropertyProbeCount++;
+            throw new InvalidOperationException("Reflected property probe should not be used for portable visual sources.");
         }
     }
 

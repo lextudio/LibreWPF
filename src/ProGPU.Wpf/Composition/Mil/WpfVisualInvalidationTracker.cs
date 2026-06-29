@@ -288,7 +288,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             SubscribeObject(dependency, visited);
         }
 
-        foreach (var propertyName in s_referencePropertyNames)
+        foreach (var propertyName in EnumerateReferencePropertyNames(source))
         {
             if (TryGetPropertyValue(source, propertyName, out var value))
             {
@@ -371,7 +371,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             CaptureObjectVersions(dependency, snapshots, visited);
         }
 
-        foreach (var propertyName in s_referencePropertyNames)
+        foreach (var propertyName in EnumerateReferencePropertyNames(source))
         {
             if (TryGetPropertyValue(source, propertyName, out var value))
             {
@@ -406,7 +406,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             CaptureObjectVisualStates(dependency, snapshots, visited);
         }
 
-        foreach (var propertyName in s_referencePropertyNames)
+        foreach (var propertyName in EnumerateReferencePropertyNames(source))
         {
             if (TryGetPropertyValue(source, propertyName, out var value))
             {
@@ -441,7 +441,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             CaptureObjectVisualChildren(dependency, snapshots, visited);
         }
 
-        foreach (var propertyName in s_referencePropertyNames)
+        foreach (var propertyName in EnumerateReferencePropertyNames(source))
         {
             if (TryGetPropertyValue(source, propertyName, out var value))
             {
@@ -473,7 +473,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             CollectTrackedDependencies(dependency, dependencies, visited);
         }
 
-        foreach (var propertyName in s_referencePropertyNames)
+        foreach (var propertyName in EnumerateReferencePropertyNames(source))
         {
             if (TryGetPropertyValue(source, propertyName, out var value))
             {
@@ -481,6 +481,20 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
+    }
+
+    private static IEnumerable<string> EnumerateReferencePropertyNames(object source)
+    {
+        return ShouldScanReferenceProperties(source) ? s_referencePropertyNames : Array.Empty<string>();
+    }
+
+    private static bool ShouldScanReferenceProperties(object source)
+    {
+        return source is not PortableDrawingContentSource
+            && source is not PortableRenderDataSource
+            && source is not PortableVisualChildrenSource
+            && source is not PortableVisualStateSource
+            && source is not PortableVisualLayoutStateSource;
     }
 
     private static IReadOnlyList<object> CollectVersionChanges(

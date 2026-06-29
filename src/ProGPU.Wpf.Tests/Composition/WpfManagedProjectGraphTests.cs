@@ -773,6 +773,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("EnumerateTrackedDependenciesIgnoresNonPortablePrivateDrawingContentGraph", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("NonPortablePrivateDrawingContentChangeDoesNotMarkTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("PrivateVersionFieldChangeDoesNotMarkTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.Contains("PortableVisualSourceDoesNotProbeReflectedReferenceProperties", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.Contains("EnumerateReferencePropertyNames(source)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("ShouldScanReferenceProperties(object source)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("source is not PortableDrawingContentSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("source is not PortableRenderDataSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("source is not PortableVisualChildrenSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("source is not PortableVisualStateSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("source is not PortableVisualLayoutStateSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_content\"", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_drawingContent\"", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("s_versionFieldNames", proGpuInvalidationTracker, StringComparison.Ordinal);

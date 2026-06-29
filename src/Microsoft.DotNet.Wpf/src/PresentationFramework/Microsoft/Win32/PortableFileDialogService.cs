@@ -13,7 +13,7 @@ namespace Microsoft.Win32
         private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
         private static readonly FileDialogServiceRegistrar s_registrar = new FileDialogServiceRegistrar();
         private static IDisposable s_registrarRegistration;
-        private static Func<object, string> s_showDialog;
+        private static Func<PortableFileDialogRequest, string> s_showDialog;
 
         internal static bool IsEnabled
         {
@@ -29,6 +29,13 @@ namespace Microsoft.Win32
         }
 
         internal static IDisposable Register(Func<object, string> showDialog)
+        {
+            ArgumentNullException.ThrowIfNull(showDialog);
+
+            return Register((Func<PortableFileDialogRequest, string>)(request => showDialog(request)));
+        }
+
+        internal static IDisposable Register(Func<PortableFileDialogRequest, string> showDialog)
         {
             ArgumentNullException.ThrowIfNull(showDialog);
 
@@ -54,7 +61,7 @@ namespace Microsoft.Win32
                 return false;
             }
 
-            Func<object, string> showDialog = Volatile.Read(ref s_showDialog);
+            Func<PortableFileDialogRequest, string> showDialog = Volatile.Read(ref s_showDialog);
             if (showDialog == null)
             {
                 return true;
@@ -64,7 +71,7 @@ namespace Microsoft.Win32
             return true;
         }
 
-        private sealed class PortableFileDialogRequest
+        internal sealed class PortableFileDialogRequest
         {
             internal PortableFileDialogRequest(CommonItemDialog dialog)
             {
@@ -135,18 +142,32 @@ namespace Microsoft.Win32
             }
         }
 
+        private static ProGPU.Wpf.Interop.PortableFileDialogRequest CreateInteropRequest(
+            PortableFileDialogRequest request)
+        {
+            return new ProGPU.Wpf.Interop.PortableFileDialogRequest(
+                request.Kind,
+                request.Title,
+                request.InitialDirectory,
+                request.DefaultDirectory,
+                request.SuggestedItemName,
+                request.DefaultExtension,
+                request.Filter,
+                request.FilterIndex);
+        }
+
         private sealed class Registration : IDisposable
         {
-            private Func<object, string> _showDialog;
+            private Func<PortableFileDialogRequest, string> _showDialog;
 
-            internal Registration(Func<object, string> showDialog)
+            internal Registration(Func<PortableFileDialogRequest, string> showDialog)
             {
                 _showDialog = showDialog;
             }
 
             public void Dispose()
             {
-                Func<object, string> showDialog = _showDialog;
+                Func<PortableFileDialogRequest, string> showDialog = _showDialog;
                 if (showDialog == null)
                 {
                     return;
@@ -180,9 +201,12 @@ namespace Microsoft.Win32
                 }
             }
 
-            public IDisposable Register(Func<object, string> showDialog)
+            public IDisposable Register(Func<ProGPU.Wpf.Interop.PortableFileDialogRequest, string> showDialog)
             {
-                return PortableFileDialogService.Register(showDialog);
+                ArgumentNullException.ThrowIfNull(showDialog);
+
+                return PortableFileDialogService.Register(
+                    request => showDialog(CreateInteropRequest(request)));
             }
 
             public void Clear()

@@ -48,14 +48,20 @@ namespace System.Windows
         {
             ArgumentNullException.ThrowIfNull(launch);
 
+            return Register((Func<PortableLaunchRequest, bool>)(request => launch(request)));
+        }
+
+        internal static IDisposable Register(Func<PortableLaunchRequest, bool> launch)
+        {
+            ArgumentNullException.ThrowIfNull(launch);
+
             if (s_isWindows)
             {
                 return EmptyRegistration.Instance;
             }
 
-            Func<PortableLaunchRequest, bool> typedLaunch = request => launch(request);
-            Volatile.Write(ref s_launch, typedLaunch);
-            return new Registration(typedLaunch);
+            Volatile.Write(ref s_launch, launch);
+            return new Registration(launch);
         }
 
         internal static void Clear()
@@ -117,6 +123,15 @@ namespace System.Windows
             }
         }
 
+        private static ProGPU.Wpf.Interop.PortableLaunchRequest CreateInteropRequest(
+            PortableLaunchRequest request)
+        {
+            return new ProGPU.Wpf.Interop.PortableLaunchRequest(
+                request.Uri,
+                request.TargetFrame,
+                request.IsTopLevel);
+        }
+
         private sealed class LauncherServiceRegistrar : IPortableLauncherServiceRegistrar
         {
             public Assembly SourceAssembly
@@ -127,9 +142,11 @@ namespace System.Windows
                 }
             }
 
-            public IDisposable Register(Func<object, bool> launch)
+            public IDisposable Register(Func<ProGPU.Wpf.Interop.PortableLaunchRequest, bool> launch)
             {
-                return PortableLauncherService.Register(launch);
+                ArgumentNullException.ThrowIfNull(launch);
+
+                return PortableLauncherService.Register(request => launch(CreateInteropRequest(request)));
             }
 
             public void Clear()

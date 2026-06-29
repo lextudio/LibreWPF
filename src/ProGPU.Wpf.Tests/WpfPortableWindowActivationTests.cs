@@ -1638,7 +1638,7 @@ public sealed class WpfPortableWindowActivationTests
     {
         public int RegisterCount { get; private set; }
 
-        public Func<object, bool>? Launch { get; private set; }
+        public Func<PortableLaunchRequest, bool>? Launch { get; private set; }
 
         public Assembly SourceAssembly
         {
@@ -1648,7 +1648,7 @@ public sealed class WpfPortableWindowActivationTests
             }
         }
 
-        public IDisposable Register(Func<object, bool> launch)
+        public IDisposable Register(Func<PortableLaunchRequest, bool> launch)
         {
             RegisterCount++;
             Launch = launch;
@@ -1665,7 +1665,7 @@ public sealed class WpfPortableWindowActivationTests
     {
         public int RegisterCount { get; private set; }
 
-        public Func<object, object?>? Show { get; private set; }
+        public Func<PortableMessageBoxRequest, string?>? Show { get; private set; }
 
         public Assembly SourceAssembly
         {
@@ -1675,7 +1675,7 @@ public sealed class WpfPortableWindowActivationTests
             }
         }
 
-        public IDisposable Register(Func<object, object?> show)
+        public IDisposable Register(Func<PortableMessageBoxRequest, string?> show)
         {
             RegisterCount++;
             Show = show;
@@ -1692,7 +1692,7 @@ public sealed class WpfPortableWindowActivationTests
     {
         public int RegisterCount { get; private set; }
 
-        public Func<object, string?>? ShowDialog { get; private set; }
+        public Func<PortableFileDialogRequest, string?>? ShowDialog { get; private set; }
 
         public Assembly SourceAssembly
         {
@@ -1702,7 +1702,7 @@ public sealed class WpfPortableWindowActivationTests
             }
         }
 
-        public IDisposable Register(Func<object, string?> showDialog)
+        public IDisposable Register(Func<PortableFileDialogRequest, string?> showDialog)
         {
             RegisterCount++;
             ShowDialog = showDialog;

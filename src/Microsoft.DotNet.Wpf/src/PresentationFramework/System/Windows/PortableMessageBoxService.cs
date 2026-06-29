@@ -153,6 +153,19 @@ namespace System.Windows
             throw new InvalidOperationException($"Portable message box handler returned an invalid result '{result}'.");
         }
 
+        private static ProGPU.Wpf.Interop.PortableMessageBoxRequest CreateInteropRequest(
+            PortableMessageBoxRequest request)
+        {
+            return new ProGPU.Wpf.Interop.PortableMessageBoxRequest(
+                request.MessageBoxText,
+                request.Caption,
+                request.Button.ToString(),
+                request.Icon.ToString(),
+                request.DefaultResult.ToString(),
+                request.Options.ToString(),
+                request.FallbackResult.ToString());
+        }
+
         private sealed class Registration : IDisposable
         {
             private Func<PortableMessageBoxRequest, MessageBoxResult> _show;
@@ -197,9 +210,12 @@ namespace System.Windows
                 }
             }
 
-            public IDisposable Register(Func<object, object> show)
+            public IDisposable Register(Func<ProGPU.Wpf.Interop.PortableMessageBoxRequest, string> show)
             {
-                return PortableMessageBoxService.Register(show);
+                ArgumentNullException.ThrowIfNull(show);
+
+                return PortableMessageBoxService.Register(
+                    request => ConvertResult(request, show(CreateInteropRequest(request))));
             }
 
             public void Clear()

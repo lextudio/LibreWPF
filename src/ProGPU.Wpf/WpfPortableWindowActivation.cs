@@ -890,17 +890,17 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    private static object ShowPortableMessageBox(object request)
+    private static string? ShowPortableMessageBox(PortableMessageBoxRequest request)
     {
         var options = new WpfMessageBoxOptions
         {
-            MessageBoxText = ReadRequestString(request, "MessageBoxText", string.Empty),
-            Caption = ReadRequestString(request, "Caption", string.Empty),
-            Button = ReadRequestValueName(request, "Button", "OK"),
-            Icon = ReadRequestValueName(request, "Icon", "None"),
-            DefaultResult = ReadRequestValueName(request, "DefaultResult", "None"),
-            Options = ReadRequestValueName(request, "Options", "None"),
-            FallbackResult = ReadRequestValueName(request, "FallbackResult", "OK")
+            MessageBoxText = request.MessageBoxText,
+            Caption = request.Caption,
+            Button = request.Button,
+            Icon = request.Icon,
+            DefaultResult = request.DefaultResult,
+            Options = request.Options,
+            FallbackResult = request.FallbackResult
         };
 
         try
@@ -921,17 +921,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
-    private static bool LaunchPortableUri(object request)
+    private static bool LaunchPortableUri(PortableLaunchRequest request)
     {
-        if (!TryReadRequestUri(request, "Uri", out Uri? uri))
-        {
-            return false;
-        }
-
         try
         {
             CrossPlatformWpfPlatformServices.Instance.Launcher
-                .OpenUriAsync(uri!)
+                .OpenUriAsync(request.Uri)
                 .AsTask()
                 .GetAwaiter()
                 .GetResult();
@@ -997,14 +992,14 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
-    private static string? ShowPortableFileDialog(object request)
+    private static string? ShowPortableFileDialog(PortableFileDialogRequest request)
     {
-        string kind = ReadRequestString(request, "Kind", "OpenFile");
+        string kind = request.Kind;
         var options = new WpfFileDialogOptions
         {
-            Title = ReadRequestString(request, "Title", string.Empty),
-            SuggestedFileName = ReadRequestString(request, "SuggestedItemName", string.Empty),
-            FileTypePatterns = ReadFileDialogPatterns(request)
+            Title = request.Title,
+            SuggestedFileName = request.SuggestedItemName,
+            FileTypePatterns = ReadFileDialogPatterns(request.Filter)
         };
 
         try
@@ -1031,47 +1026,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
-    private static string ReadRequestString(object request, string propertyName, string fallback)
+    private static IReadOnlyList<string> ReadFileDialogPatterns(string filter)
     {
-        return TryReadRequestProperty(request, propertyName, out object? value) && value is string text
-            ? text
-            : fallback;
-    }
-
-    private static string ReadRequestValueName(object request, string propertyName, string fallback)
-    {
-        return TryReadRequestProperty(request, propertyName, out object? value) && value != null
-            ? value.ToString() ?? fallback
-            : fallback;
-    }
-
-    private static bool TryReadRequestUri(object request, string propertyName, out Uri? uri)
-    {
-        uri = null;
-        if (!TryReadRequestProperty(request, propertyName, out object? value) || value == null)
-        {
-            return false;
-        }
-
-        if (value is Uri typedUri)
-        {
-            uri = typedUri;
-            return true;
-        }
-
-        if (value is string text &&
-            Uri.TryCreate(text, UriKind.RelativeOrAbsolute, out Uri? parsedUri))
-        {
-            uri = parsedUri;
-            return true;
-        }
-
-        return false;
-    }
-
-    private static IReadOnlyList<string> ReadFileDialogPatterns(object request)
-    {
-        string filter = ReadRequestString(request, "Filter", string.Empty);
         if (string.IsNullOrEmpty(filter))
         {
             return Array.Empty<string>();
@@ -1093,22 +1049,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         return patterns;
     }
-
-    private static bool TryReadRequestProperty(object instance, string propertyName, out object? value)
-    {
-        value = null;
-        var property = instance.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        if (property == null || property.GetIndexParameters().Length != 0)
-        {
-            return false;
-        }
-
-        value = property.GetValue(instance);
-        return true;
-    }
-
     private static bool TryMapWindowState(object? windowState, out ProGpuWpfWindowState mappedWindowState)
     {
         if (TryConvertEnumNumber(windowState, out var value) &&

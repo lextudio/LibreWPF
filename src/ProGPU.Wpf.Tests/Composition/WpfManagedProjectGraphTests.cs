@@ -497,20 +497,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("activationService.TryFlushDispatcherOperations(window, markerPriorityName, timeout)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryProcessDragDropEvent(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
-        Assert.True(
-            proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetWindowActivationService(", StringComparison.Ordinal)
-                < proGpuActivation.IndexOf("presentationFrameworkAssembly.GetType(", StringComparison.Ordinal),
-            "The typed window activation service registry must be tried before the transitional reflected activation adapter.");
-        Assert.Contains("PortableMediaContextRenderServiceTypeName", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("presentationFrameworkAssembly.GetType(", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("CreateWindowActivationReflectionParameters", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortableMediaContextRenderServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterMediaContextRenderService(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetMediaContextRenderService(", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("TryRegisterMediaContextRenderServiceByReflection(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
-        Assert.True(
-            proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetMediaContextRenderService(", StringComparison.Ordinal)
-                < proGpuActivation.IndexOf("TryRegisterMediaContextRenderServiceByReflection(presentationCoreAssembly)", StringComparison.Ordinal),
-            "The typed media-context render service registry must be tried before the transitional reflected service adapter.");
-        Assert.Contains("typeof(Action<object, TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("typeof(Action<TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryRegisterMediaContextRenderServiceByReflection", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(Action<object, TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(Action<TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("IWpfDelayedRenderScheduler delayedScheduler", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ProcessHostInputAndRequestRender", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.TryRequestNativeLoopWakeup();", proGpuActivation, StringComparison.Ordinal);
@@ -529,12 +523,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Host.SetPosition(windowLeft.Value, windowTop.Value)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public void SetTopmost(bool topmost)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetTopmost(topmost)", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("typeof(Action<object, object, object>)", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("typeof(Func<object, IntPtr>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("setWindowBorder: (activation, resizeMode, windowStyle) =>", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("getHandle: activation =>", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortablePresentationSourceBridge?.Handle", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("callbacks.SetWindowBorder", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("callbacks.GetHandle", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(Action<object, object, object>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(Func<object, IntPtr>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public void SetWindowBorder(object? resizeMode, object? windowStyle)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetWindowBorder(ResolveWindowBorder(resizeMode, windowStyle, Host.WindowBorder))", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ResolveWindowBorder(window, options.WindowBorder)", proGpuActivation, StringComparison.Ordinal);
@@ -558,7 +551,6 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName, timeout)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("parameters[2].ParameterType != typeof(TimeSpan)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FindPortableWindowActivationServiceType(window)", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("typeof(Func<object, bool>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryDragMove()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.TryBeginDragMove()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("internal static DragDropEffects ProcessPortableDrop", dragDrop, StringComparison.Ordinal);
@@ -1593,15 +1585,11 @@ public sealed class WpfManagedProjectGraphTests
                 < messageBox.IndexOf("UnsafeNativeMethods.MessageBox", StringComparison.Ordinal),
             "MessageBox.ShowCore must try the portable service before the Win32 MessageBox call.");
 
-        Assert.Contains("PortableMessageBoxServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetMessageBoxService(", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("TryRegisterPresentationFrameworkMessageBoxServiceByReflection(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
-        Assert.True(
-            proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetMessageBoxService(", StringComparison.Ordinal)
-                < proGpuActivation.IndexOf("TryRegisterPresentationFrameworkMessageBoxServiceByReflection(presentationFrameworkAssembly)", StringComparison.Ordinal),
-            "The typed message-box service registry must be tried before the transitional reflected service adapter.");
-        Assert.Contains("typeof(Func<object, object>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortableMessageBoxServiceTypeName", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryRegisterPresentationFrameworkMessageBoxServiceByReflection", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(Func<object, object>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ShowPortableMessageBox", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("new WpfMessageBoxOptions", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CrossPlatformWpfPlatformServices.Instance.MessageBoxes.Show(options)", proGpuActivation, StringComparison.Ordinal);
@@ -1705,15 +1693,11 @@ public sealed class WpfManagedProjectGraphTests
                 < appSecurityManager.IndexOf("UnsafeNativeMethods.ShellExecuteInfo", StringComparison.Ordinal),
             "Default browser launch must avoid ShellExecuteEx on non-Windows.");
 
-        Assert.Contains("PortableLauncherServiceTypeName = \"System.Windows.PortableLauncherService\"", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterPresentationFrameworkLauncherService(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetLauncherService(", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("TryRegisterPresentationFrameworkLauncherServiceByReflection(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
-        Assert.True(
-            proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetLauncherService(", StringComparison.Ordinal)
-                < proGpuActivation.IndexOf("TryRegisterPresentationFrameworkLauncherServiceByReflection(presentationFrameworkAssembly)", StringComparison.Ordinal),
-            "The typed launcher service registry must be tried before the transitional reflected service adapter.");
-        Assert.Contains("typeof(Func<object, bool>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortableLauncherServiceTypeName", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryRegisterPresentationFrameworkLauncherServiceByReflection", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(Func<object, bool>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("LaunchPortableUri", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CrossPlatformWpfPlatformServices.Instance.Launcher", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains(".OpenUriAsync(uri!)", proGpuActivation, StringComparison.Ordinal);
@@ -1899,15 +1883,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portable Clipboard SDK JSON clipboard typed retrieval state", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("ClearPortableService(presentationCore, PortableClipboardServiceTypeName)", sdkRuntimeHarness, StringComparison.Ordinal);
 
-        Assert.Contains("PortableClipboardServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterPresentationCoreClipboardService", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetClipboardService(", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("TryRegisterPresentationCoreClipboardServiceByReflection(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
-        Assert.True(
-            proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetClipboardService(", StringComparison.Ordinal)
-                < proGpuActivation.IndexOf("TryRegisterPresentationCoreClipboardServiceByReflection(presentationCoreAssembly)", StringComparison.Ordinal),
-            "The typed clipboard service registry must be tried before the transitional reflected service adapter.");
-        Assert.Contains("typeof(Func<string?>), typeof(Action<string?>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortableClipboardServiceTypeName", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryRegisterPresentationCoreClipboardServiceByReflection", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(Func<string?>), typeof(Action<string?>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("GetPortableClipboardText", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("SetPortableClipboardText", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CrossPlatformWpfPlatformServices.Instance.Clipboard", proGpuActivation, StringComparison.Ordinal);
@@ -2032,14 +2012,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private protected override bool TryHandlePortableItemOk(out object restoreState)", fileDialog, StringComparison.Ordinal);
         Assert.Contains("return ProcessFileNames();", fileDialog, StringComparison.Ordinal);
 
-        Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", activation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly)", activation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetFileDialogService(", activation, StringComparison.Ordinal);
-        Assert.Contains("TryRegisterPresentationFrameworkFileDialogServiceByReflection(presentationFrameworkAssembly)", activation, StringComparison.Ordinal);
-        Assert.True(
-            activation.IndexOf("PortableWpfServiceRegistry.TryGetFileDialogService(", StringComparison.Ordinal)
-                < activation.IndexOf("TryRegisterPresentationFrameworkFileDialogServiceByReflection(presentationFrameworkAssembly)", StringComparison.Ordinal),
-            "The typed file-dialog service registry must be tried before the transitional reflected service adapter.");
+        Assert.DoesNotContain("PortableFileDialogServiceTypeName", activation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryRegisterPresentationFrameworkFileDialogServiceByReflection", activation, StringComparison.Ordinal);
         Assert.Contains("CrossPlatformWpfPlatformServices.Instance.FileDialogs", activation, StringComparison.Ordinal);
         Assert.Contains("ReadFileDialogPatterns(request)", activation, StringComparison.Ordinal);
 

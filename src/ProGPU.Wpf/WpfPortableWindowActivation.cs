@@ -9,11 +9,6 @@ namespace System.Windows.Media.ProGPU;
 public sealed class WpfPortableWindowActivation : IDisposable
 {
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
-    private const string PortableClipboardServiceTypeName = "System.Windows.PortableClipboardService";
-    private const string PortableLauncherServiceTypeName = "System.Windows.PortableLauncherService";
-    private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
-    private const string PortableFileDialogServiceTypeName = "Microsoft.Win32.PortableFileDialogService";
-    private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
     private static readonly TimeSpan ApplicationIdleFlushTimeout = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan UpdateTickFlushTimeout = TimeSpan.FromMilliseconds(8);
     private bool _isDisposed;
@@ -67,162 +62,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return true;
         }
 
-        var serviceType = presentationFrameworkAssembly.GetType(
-            PortableWindowActivationServiceTypeName,
-            throwOnError: false);
-        if (serviceType == null)
-        {
-            return false;
-        }
-
-        var registerMethod = serviceType.GetMethod(
-            "Register",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: new[]
-            {
-                typeof(Func<object, object?>),
-                typeof(Action<object>),
-                typeof(Action<object>),
-                typeof(Action<object, object>),
-                typeof(Action<object, string>),
-                typeof(Action<object, double, double>),
-                typeof(Action<object, double, double>),
-                typeof(Action<object, bool>),
-                typeof(Action<object, object, object>),
-                typeof(Action<object>),
-                typeof(Action<object>),
-                typeof(Action<object>),
-                typeof(Func<object, bool>),
-                typeof(Func<object, IntPtr>)
-            },
-            modifiers: null);
-        if (registerMethod == null)
-        {
-            registerMethod = serviceType.GetMethod(
-                "Register",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[]
-            {
-                typeof(Func<object, object?>),
-                typeof(Action<object>),
-                typeof(Action<object>),
-                typeof(Action<object, object>),
-                typeof(Action<object, string>),
-                typeof(Action<object, double, double>),
-                typeof(Action<object, double, double>),
-                typeof(Action<object, bool>),
-                typeof(Action<object, object, object>),
-                typeof(Action<object>),
-                typeof(Action<object>),
-                typeof(Action<object>),
-                typeof(Func<object, bool>)
-            },
-            modifiers: null);
-        }
-        if (registerMethod == null)
-        {
-            registerMethod = serviceType.GetMethod(
-                "Register",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[]
-                {
-                    typeof(Func<object, object?>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Action<object, object>),
-                    typeof(Action<object, string>),
-                    typeof(Action<object, double, double>),
-                    typeof(Action<object, double, double>),
-                    typeof(Action<object, bool>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Func<object, bool>)
-                },
-                modifiers: null);
-        }
-        if (registerMethod == null)
-        {
-            registerMethod = serviceType.GetMethod(
-                "Register",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[]
-                {
-                    typeof(Func<object, object?>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Action<object, object>),
-                    typeof(Action<object, string>),
-                    typeof(Action<object, double, double>),
-                    typeof(Action<object, double, double>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Func<object, bool>)
-                },
-                modifiers: null);
-        }
-
-        if (registerMethod == null)
-        {
-            registerMethod = serviceType.GetMethod(
-                "Register",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[]
-                {
-                    typeof(Func<object, object?>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Action<object, object>),
-                    typeof(Action<object, string>),
-                    typeof(Action<object, double, double>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Func<object, bool>)
-                },
-                modifiers: null);
-        }
-
-        if (registerMethod == null)
-        {
-            registerMethod = serviceType.GetMethod(
-                "Register",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[]
-                {
-                    typeof(Func<object, object?>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Action<object, object>),
-                    typeof(Action<object>),
-                    typeof(Action<object>),
-                    typeof(Action<object>)
-                },
-                modifiers: null);
-            if (registerMethod == null)
-            {
-                return false;
-            }
-        }
-
-        var callbacks = CreateWindowActivationCallbacks(hostFactory);
-        var parameters = CreateWindowActivationReflectionParameters(
-            callbacks,
-            registerMethod.GetParameters().Length);
-        registerMethod.Invoke(
-            obj: null,
-            parameters: parameters);
-        TryRegisterPresentationFrameworkLauncherService(presentationFrameworkAssembly);
-        TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly);
-        TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly);
-        return true;
+        return false;
     }
 
     private static PortableWindowActivationCallbacks CreateWindowActivationCallbacks(
@@ -257,112 +97,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 ((WpfPortableWindowActivation)activation).Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero);
     }
 
-    private static object[] CreateWindowActivationReflectionParameters(
-        PortableWindowActivationCallbacks callbacks,
-        int parameterCount)
-    {
-        return parameterCount switch
-        {
-            14 =>
-            [
-                callbacks.Activate,
-                callbacks.Show!,
-                callbacks.Hide!,
-                callbacks.SetWindowState!,
-                callbacks.SetTitle!,
-                callbacks.SetClientSize!,
-                callbacks.SetPosition!,
-                callbacks.SetTopmost!,
-                callbacks.SetWindowBorder!,
-                callbacks.Close!,
-                callbacks.Run!,
-                callbacks.Dispose!,
-                callbacks.DragMove!,
-                callbacks.GetHandle!
-            ],
-            13 =>
-            [
-                callbacks.Activate,
-                callbacks.Show!,
-                callbacks.Hide!,
-                callbacks.SetWindowState!,
-                callbacks.SetTitle!,
-                callbacks.SetClientSize!,
-                callbacks.SetPosition!,
-                callbacks.SetTopmost!,
-                callbacks.SetWindowBorder!,
-                callbacks.Close!,
-                callbacks.Run!,
-                callbacks.Dispose!,
-                callbacks.DragMove!
-            ],
-            12 =>
-            [
-                callbacks.Activate,
-                callbacks.Show!,
-                callbacks.Hide!,
-                callbacks.SetWindowState!,
-                callbacks.SetTitle!,
-                callbacks.SetClientSize!,
-                callbacks.SetPosition!,
-                callbacks.SetTopmost!,
-                callbacks.Close!,
-                callbacks.Run!,
-                callbacks.Dispose!,
-                callbacks.DragMove!
-            ],
-            11 =>
-            [
-                callbacks.Activate,
-                callbacks.Show!,
-                callbacks.Hide!,
-                callbacks.SetWindowState!,
-                callbacks.SetTitle!,
-                callbacks.SetClientSize!,
-                callbacks.SetPosition!,
-                callbacks.Close!,
-                callbacks.Run!,
-                callbacks.Dispose!,
-                callbacks.DragMove!
-            ],
-            10 =>
-            [
-                callbacks.Activate,
-                callbacks.Show!,
-                callbacks.Hide!,
-                callbacks.SetWindowState!,
-                callbacks.SetTitle!,
-                callbacks.SetClientSize!,
-                callbacks.Close!,
-                callbacks.Run!,
-                callbacks.Dispose!,
-                callbacks.DragMove!
-            ],
-            9 =>
-            [
-                callbacks.Activate,
-                callbacks.Show!,
-                callbacks.Hide!,
-                callbacks.SetWindowState!,
-                callbacks.SetTitle!,
-                callbacks.SetClientSize!,
-                callbacks.Close!,
-                callbacks.Run!,
-                callbacks.Dispose!
-            ],
-            _ =>
-            [
-                callbacks.Activate,
-                callbacks.Show!,
-                callbacks.Hide!,
-                callbacks.SetWindowState!,
-                callbacks.Close!,
-                callbacks.Run!,
-                callbacks.Dispose!
-            ]
-        };
-    }
-
     public static bool TryRegisterPresentationCoreClipboardService(Assembly presentationCoreAssembly)
     {
         ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
@@ -375,38 +109,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return true;
         }
 
-        return TryRegisterPresentationCoreClipboardServiceByReflection(presentationCoreAssembly);
-    }
-
-    private static bool TryRegisterPresentationCoreClipboardServiceByReflection(Assembly presentationCoreAssembly)
-    {
-        var serviceType = presentationCoreAssembly.GetType(
-            PortableClipboardServiceTypeName,
-            throwOnError: false);
-        if (serviceType == null)
-        {
-            return false;
-        }
-
-        var registerMethod = serviceType.GetMethod(
-            "Register",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: new[] { typeof(Func<string?>), typeof(Action<string?>) },
-            modifiers: null);
-        if (registerMethod == null || !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
-        {
-            return false;
-        }
-
-        registerMethod.Invoke(
-            obj: null,
-            parameters: new object[]
-            {
-                (Func<string?>)GetPortableClipboardText,
-                (Action<string?>)SetPortableClipboardText
-            });
-        return true;
+        return false;
     }
 
     public static bool TryRegisterPresentationFrameworkLauncherService(Assembly presentationFrameworkAssembly)
@@ -421,34 +124,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return true;
         }
 
-        return TryRegisterPresentationFrameworkLauncherServiceByReflection(presentationFrameworkAssembly);
-    }
-
-    private static bool TryRegisterPresentationFrameworkLauncherServiceByReflection(Assembly presentationFrameworkAssembly)
-    {
-        var serviceType = presentationFrameworkAssembly.GetType(
-            PortableLauncherServiceTypeName,
-            throwOnError: false);
-        if (serviceType == null)
-        {
-            return false;
-        }
-
-        var registerMethod = serviceType.GetMethod(
-            "Register",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: new[] { typeof(Func<object, bool>) },
-            modifiers: null);
-        if (registerMethod == null || !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
-        {
-            return false;
-        }
-
-        registerMethod.Invoke(
-            obj: null,
-            parameters: new object[] { (Func<object, bool>)LaunchPortableUri });
-        return true;
+        return false;
     }
 
     public static bool TryRegisterPresentationFrameworkMessageBoxService(Assembly presentationFrameworkAssembly)
@@ -463,34 +139,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return true;
         }
 
-        return TryRegisterPresentationFrameworkMessageBoxServiceByReflection(presentationFrameworkAssembly);
-    }
-
-    private static bool TryRegisterPresentationFrameworkMessageBoxServiceByReflection(Assembly presentationFrameworkAssembly)
-    {
-        var serviceType = presentationFrameworkAssembly.GetType(
-            PortableMessageBoxServiceTypeName,
-            throwOnError: false);
-        if (serviceType == null)
-        {
-            return false;
-        }
-
-        var registerMethod = serviceType.GetMethod(
-            "Register",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: new[] { typeof(Func<object, object>) },
-            modifiers: null);
-        if (registerMethod == null || !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
-        {
-            return false;
-        }
-
-        registerMethod.Invoke(
-            obj: null,
-            parameters: new object[] { (Func<object, object>)ShowPortableMessageBox });
-        return true;
+        return false;
     }
 
     public static bool TryRegisterPresentationFrameworkFileDialogService(Assembly presentationFrameworkAssembly)
@@ -505,34 +154,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return true;
         }
 
-        return TryRegisterPresentationFrameworkFileDialogServiceByReflection(presentationFrameworkAssembly);
-    }
-
-    private static bool TryRegisterPresentationFrameworkFileDialogServiceByReflection(Assembly presentationFrameworkAssembly)
-    {
-        var serviceType = presentationFrameworkAssembly.GetType(
-            PortableFileDialogServiceTypeName,
-            throwOnError: false);
-        if (serviceType == null)
-        {
-            return false;
-        }
-
-        var registerMethod = serviceType.GetMethod(
-            "Register",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: new[] { typeof(Func<object, string?>) },
-            modifiers: null);
-        if (registerMethod == null || !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
-        {
-            return false;
-        }
-
-        registerMethod.Invoke(
-            obj: null,
-            parameters: new object[] { (Func<object, string?>)ShowPortableFileDialog });
-        return true;
+        return false;
     }
 
     public void Show()
@@ -1554,65 +1176,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return _mediaContextRenderRegistration != null;
         }
 
-        return TryRegisterMediaContextRenderServiceByReflection(presentationCoreAssembly);
-    }
-
-    private bool TryRegisterMediaContextRenderServiceByReflection(Assembly presentationCoreAssembly)
-    {
-        var serviceType = presentationCoreAssembly.GetType(
-            PortableMediaContextRenderServiceTypeName,
-            throwOnError: false);
-        if (serviceType == null)
-        {
-            return false;
-        }
-
-        var registerMethod = serviceType.GetMethod(
-            "Register",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: new[] { typeof(Action<object, TimeSpan>) },
-            modifiers: null);
-        var registerParameter = registerMethod == null
-            ? null
-            : (object)(Action<object?, TimeSpan>)RequestRenderFromMediaContext;
-        if (registerMethod == null)
-        {
-            registerMethod = serviceType.GetMethod(
-                "Register",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[] { typeof(Action<TimeSpan>) },
-                modifiers: null);
-            registerParameter = registerMethod == null
-                ? null
-                : (object)(Action<TimeSpan>)RequestRenderFromMediaContext;
-        }
-        if (registerMethod == null)
-        {
-            registerMethod = serviceType.GetMethod(
-                "Register",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[] { typeof(Action) },
-                modifiers: null);
-            registerParameter = registerMethod == null
-                ? null
-                : (Action)RequestRenderFromMediaContext;
-        }
-
-        if (registerMethod == null ||
-            registerParameter == null ||
-            !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
-        {
-            return false;
-        }
-
-        _mediaContextRenderRegistration?.Dispose();
-        _mediaContextRenderRegistration = (IDisposable?)registerMethod.Invoke(
-            obj: null,
-            parameters: new[] { registerParameter });
-        return _mediaContextRenderRegistration != null;
+        return false;
     }
 
     private void RequestRenderFromMediaContext()

@@ -19,7 +19,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 {
     private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-    private static readonly string[] s_eventNames = { "Changed", "Invalidated" };
     private static readonly string[] s_versionPropertyNames = { "ChangeVersion", "InternalVersion", "Version" };
     private static readonly string[] s_referencePropertyNames =
     {
@@ -929,7 +928,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private void SubscribeInvalidationEvents(object source)
     {
-        var hasPortableInvalidationSource = source is PortableInvalidationSource;
         if (source is PortableInvalidationSource invalidationSource)
         {
             EventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
@@ -945,25 +943,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             TrySubscribeInvalidationCallback(
                 () => propertyChanged.PropertyChanged += handler,
                 () => propertyChanged.PropertyChanged -= handler);
-        }
-
-        if (hasPortableInvalidationSource)
-        {
-            return;
-        }
-
-        foreach (var eventName in s_eventNames)
-        {
-            var eventInfo = source.GetType().GetEvent(eventName, MemberFlags);
-            if (eventInfo?.EventHandlerType != typeof(EventHandler))
-            {
-                continue;
-            }
-
-            EventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
-            TrySubscribeInvalidationCallback(
-                () => eventInfo.AddEventHandler(source, handler),
-                () => eventInfo.RemoveEventHandler(source, handler));
         }
     }
 

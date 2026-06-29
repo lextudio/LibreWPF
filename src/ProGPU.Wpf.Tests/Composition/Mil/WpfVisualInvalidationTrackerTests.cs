@@ -45,7 +45,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
-    public void ReflectedChangedEventMarksTrackerDirty()
+    public void NonPortableChangedEventDoesNotMarkTrackerDirty()
     {
         var root = new FakeVisual();
         using var tracker = new WpfVisualInvalidationTracker();
@@ -54,9 +54,9 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         root.RaiseChanged();
 
-        Assert.True(tracker.IsDirty);
-        Assert.Same(root, tracker.LastDirtySource);
-        Assert.Contains(root, tracker.DirtySources);
+        Assert.False(tracker.IsDirty);
+        Assert.Null(tracker.LastDirtySource);
+        Assert.Empty(tracker.DirtySources);
     }
 
     [Fact]
@@ -314,7 +314,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         tracker.Attach(root);
         tracker.ConsumeDirty();
 
-        effect.RaiseChanged();
+        effect.RaisePortableInvalidated();
 
         Assert.True(tracker.IsDirty);
         Assert.Same(effect, tracker.LastDirtySource);
@@ -380,7 +380,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.Same(root.Children, tracker.LastDirtySource);
         tracker.ConsumeDirty();
 
-        child.RaiseChanged();
+        child.RaisePropertyChanged(nameof(FakeVisual.Opacity));
 
         Assert.True(tracker.IsDirty);
     }
@@ -402,7 +402,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.Contains(root, tracker.DirtySources);
         tracker.ConsumeDirty();
 
-        child.RaiseChanged();
+        child.RaisePropertyChanged(nameof(FakeVisual.Opacity));
 
         Assert.True(tracker.IsDirty);
         Assert.Same(child, tracker.LastDirtySource);
@@ -423,7 +423,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         tracker.Attach(root);
         tracker.ConsumeDirty();
 
-        brush.RaiseChanged();
+        brush.RaisePortableInvalidated();
 
         Assert.True(tracker.IsDirty);
     }
@@ -443,7 +443,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         tracker.Attach(root);
         tracker.ConsumeDirty();
 
-        brushVisual.RaiseChanged();
+        brushVisual.RaisePropertyChanged(nameof(FakeVisual.Opacity));
 
         Assert.True(tracker.IsDirty);
         Assert.Same(brushVisual, tracker.LastDirtySource);
@@ -462,7 +462,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         tracker.Attach(root);
         tracker.ConsumeDirty();
 
-        effect.RaiseChanged();
+        effect.RaisePortableInvalidated();
 
         Assert.True(tracker.IsDirty);
         Assert.Same(effect, tracker.LastDirtySource);
@@ -556,7 +556,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         tracker.Attach(root);
         tracker.ConsumeDirty();
 
-        brush.RaiseChanged();
+        brush.RaisePortableInvalidated();
 
         Assert.False(tracker.IsDirty);
         Assert.Null(tracker.LastDirtySource);
@@ -573,7 +573,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         tracker.Attach(root);
         tracker.ConsumeDirty();
 
-        brush.RaiseChanged();
+        brush.RaisePortableInvalidated();
 
         Assert.True(tracker.IsDirty);
         Assert.Same(brush, tracker.LastDirtySource);
@@ -699,7 +699,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.True(tracker.IsDirty);
         tracker.ConsumeDirty();
 
-        segment.RaiseChanged();
+        segment.RaisePortableInvalidated();
 
         Assert.True(tracker.IsDirty);
     }
@@ -713,7 +713,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         tracker.ConsumeDirty();
 
         tracker.Detach();
-        root.RaiseChanged();
+        root.RaisePropertyChanged(nameof(FakeVisual.Opacity));
 
         Assert.Null(tracker.Root);
         Assert.False(tracker.IsDirty);
@@ -930,13 +930,37 @@ public sealed class WpfVisualInvalidationTrackerTests
         public FakeVisualCollection Segments { get; } = new();
     }
 
-    private sealed class FakeResource
+    private sealed class FakeResource : PortableInvalidationSource
     {
-        public event EventHandler? Changed;
+        private EventHandler? _portableInvalidated;
 
-        public void RaiseChanged()
+        public void RaisePortableInvalidated()
         {
-            Changed?.Invoke(this, EventArgs.Empty);
+            _portableInvalidated?.Invoke(this, EventArgs.Empty);
+        }
+
+        public bool TrySubscribeInvalidated(EventHandler handler, out IDisposable subscription)
+        {
+            _portableInvalidated += handler;
+            subscription = new Subscription(() => _portableInvalidated -= handler);
+            return true;
+        }
+
+        private sealed class Subscription : IDisposable
+        {
+            private Action? _unsubscribe;
+
+            public Subscription(Action unsubscribe)
+            {
+                _unsubscribe = unsubscribe;
+            }
+
+            public void Dispose()
+            {
+                var unsubscribe = _unsubscribe;
+                _unsubscribe = null;
+                unsubscribe?.Invoke();
+            }
         }
     }
 

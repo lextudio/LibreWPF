@@ -761,9 +761,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Animatable : System.Windows.Freezable, System.Windows.Media.Animation.IAnimatable, ProGPU.Wpf.Interop.IPortableInvalidationSource", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("bool ProGPU.Wpf.Interop.IPortableInvalidationSource.TrySubscribeInvalidated(System.EventHandler handler, out System.IDisposable subscription)", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("source is PortableInvalidationSource invalidationSource", proGpuInvalidationTracker, StringComparison.Ordinal);
-        Assert.Contains("hasPortableInvalidationSource", proGpuInvalidationTracker, StringComparison.Ordinal);
-        Assert.Contains("return;\n        }\n\n        foreach (var eventName in s_eventNames)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("s_eventNames", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetEvent(", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddEventHandler", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("PortableInvalidationSourceMarksTrackerDirtyWithoutReflectedEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.Contains("NonPortableChangedEventDoesNotMarkTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("EnumeratePortableDependencies(source)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableDrawingContentSource drawingContentSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableRenderDataSource renderDataSource", proGpuInvalidationTracker, StringComparison.Ordinal);

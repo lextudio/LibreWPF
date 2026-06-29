@@ -1724,7 +1724,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void TryGetDrawingBoundsUsesPortableDrawingStateBeforeGenericBounds()
+    public void TryGetDrawingBoundsUsesPortableDrawingStateWithoutGenericBoundsFallback()
     {
         var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
         {
@@ -1736,6 +1736,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         Assert.True(hasBounds);
         Assert.Equal(new Rect(1, 2, 10, 12), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsIgnoresNonPortableGenericBoundsShape()
+    {
+        var drawing = new ThrowingBoundsOnlyDrawing();
+
+        Assert.False(WpfReflectionDrawingReplay.TryGetDrawingBounds(drawing, null, out _));
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
     }
 
@@ -2868,6 +2877,19 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             state = _state;
             return true;
+        }
+    }
+
+    private sealed class ThrowingBoundsOnlyDrawing
+    {
+        public int ReflectedStateProbeCount { get; private set; }
+
+        public object? Bounds => ThrowReflectedStateProbe();
+
+        private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedStateProbeCount++;
+            throw new InvalidOperationException($"Reflected drawing property '{propertyName}' should not be read.");
         }
     }
 

@@ -5730,14 +5730,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("drawing is PortableGeometryDrawingStateSource geometryDrawingStateSource", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableGeometryDrawingState(out var portableState)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetGeometryDrawingGeometry(drawing, hasPortableGeometryDrawingState, geometryDrawingState", replaySource, StringComparison.Ordinal);
-        var portableBoundsBranchIndex = replaySource.IndexOf(
+        Assert.Contains(
             "if (drawing is PortableGeometryDrawingStateSource || TypeNameEndsWith(drawing, \"GeometryDrawing\"))",
+            replaySource,
             StringComparison.Ordinal);
-        var genericBoundsFallbackIndex = replaySource.IndexOf(
-            "if (TryReadFiniteRectProperty(drawing, \"Bounds\", out bounds))",
-            StringComparison.Ordinal);
-        Assert.True(portableBoundsBranchIndex >= 0);
-        Assert.True(genericBoundsFallbackIndex > portableBoundsBranchIndex);
+        Assert.DoesNotContain("TryReadFiniteRectProperty(drawing, \"Bounds\", out bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("GeometryDrawing : Drawing, IPortableGeometryDrawingStateSource", geometryDrawingSource, StringComparison.Ordinal);
         Assert.Contains("IPortableGeometryDrawingStateSource.TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)", geometryDrawingSource, StringComparison.Ordinal);
         Assert.Contains("GeometryDrawing : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource", presentationCoreRef, StringComparison.Ordinal);
@@ -5747,7 +5744,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool HasPen", interopSource, StringComparison.Ordinal);
         Assert.Contains("ReplayAppliesPortableGeometryDrawingStateWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDoesNotReflectAbsentPortableGeometryDrawingState", rendererTests, StringComparison.Ordinal);
-        Assert.Contains("TryGetDrawingBoundsUsesPortableDrawingStateBeforeGenericBounds", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesPortableDrawingStateWithoutGenericBoundsFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsIgnoresNonPortableGenericBoundsShape", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsDoesNotReflectUnavailablePortableDrawingState", rendererTests, StringComparison.Ordinal);
     }
 

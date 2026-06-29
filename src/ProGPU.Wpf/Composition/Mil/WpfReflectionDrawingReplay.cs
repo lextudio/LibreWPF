@@ -2832,11 +2832,6 @@ internal static class WpfReflectionDrawingReplay
             return TryGetGlyphRunBounds(glyphRun, out bounds);
         }
 
-        if (TryReadFiniteRectProperty(drawing, "Bounds", out bounds))
-        {
-            return true;
-        }
-
         bounds = default;
         return false;
     }

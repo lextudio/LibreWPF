@@ -216,6 +216,40 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void PortableBrushSourceAbsenceDoesNotFallBackToReflectedBrushShape()
+    {
+        var brush = new FakeUnavailablePortableSolidColorBrush();
+
+        var mediaBrush = WpfReflectionResourceResolver.AdaptBrush(brush);
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var unsupportedStateCount);
+
+        Assert.Null(mediaBrush);
+        Assert.Null(nativeBrush);
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Equal(0, brush.ReflectedPropertyProbeCount);
+    }
+
+    [Fact]
+    public void PortablePenSourceAbsenceDoesNotFallBackToReflectedPenShape()
+    {
+        var pen = new FakeUnavailablePortablePen();
+
+        var mediaPen = WpfReflectionResourceResolver.AdaptPen(pen);
+        var nativePen = WpfReflectionResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var unsupportedStateCount);
+
+        Assert.Null(mediaPen);
+        Assert.Null(nativePen);
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Equal(0, pen.ReflectedPropertyProbeCount);
+    }
+
+    [Fact]
     public void AdaptNativeBrushUsesTypedMediaBrushWithoutReflection()
     {
         var brush = new DirectNativeBrush();
@@ -511,6 +545,19 @@ public sealed class WpfReflectionResourceResolverTests
         Assert.Equal(10, adaptedTransform.Matrix.OffsetX);
         Assert.Equal(20, adaptedTransform.Matrix.OffsetY);
         Assert.Equal(1, sink.PopCount);
+    }
+
+    [Fact]
+    public void PortableTransformSourceAbsenceDoesNotFallBackToReflectedTransformShape()
+    {
+        var transform = new FakeUnavailablePortableMatrixTransform(new FakeMatrix(1, 2, 3, 4, 10, 20));
+
+        var mediaTransform = WpfReflectionResourceResolver.AdaptTransform(transform);
+        var hasNativeMatrix = WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out _);
+
+        Assert.Null(mediaTransform);
+        Assert.False(hasNativeMatrix);
+        Assert.Equal(0, transform.ReflectedPropertyProbeCount);
     }
 
     [Fact]
@@ -3129,6 +3176,35 @@ public sealed class WpfReflectionResourceResolverTests
         }
     }
 
+    private sealed class FakeUnavailablePortableSolidColorBrush : IPortableBrushSource
+    {
+        public int ReflectedPropertyProbeCount { get; private set; }
+
+        public FakeColor Color
+        {
+            get
+            {
+                ReflectedPropertyProbeCount++;
+                return new FakeColor(255, 1, 2, 3);
+            }
+        }
+
+        public double Opacity
+        {
+            get
+            {
+                ReflectedPropertyProbeCount++;
+                return 1.0;
+            }
+        }
+
+        public bool TryGetPortableBrush(out PortableBrush brush)
+        {
+            brush = null!;
+            return false;
+        }
+    }
+
     private sealed class FakePortablePen : IPortablePenSource
     {
         private readonly PortablePen _pen;
@@ -3160,6 +3236,35 @@ public sealed class WpfReflectionResourceResolverTests
         {
             pen = _pen;
             return true;
+        }
+    }
+
+    private sealed class FakeUnavailablePortablePen : IPortablePenSource
+    {
+        public int ReflectedPropertyProbeCount { get; private set; }
+
+        public object Brush
+        {
+            get
+            {
+                ReflectedPropertyProbeCount++;
+                return new FakeSolidColorBrush(new FakeColor(255, 1, 2, 3));
+            }
+        }
+
+        public double Thickness
+        {
+            get
+            {
+                ReflectedPropertyProbeCount++;
+                return 2.0;
+            }
+        }
+
+        public bool TryGetPortablePen(out PortablePen pen)
+        {
+            pen = null!;
+            return false;
         }
     }
 
@@ -3411,6 +3516,33 @@ public sealed class WpfReflectionResourceResolverTests
         {
             matrix = _matrix;
             return true;
+        }
+    }
+
+    private sealed class FakeUnavailablePortableMatrixTransform : IPortableTransformMatrixSource
+    {
+        private readonly FakeMatrix _value;
+
+        public FakeUnavailablePortableMatrixTransform(FakeMatrix value)
+        {
+            _value = value;
+        }
+
+        public int ReflectedPropertyProbeCount { get; private set; }
+
+        public FakeMatrix Value
+        {
+            get
+            {
+                ReflectedPropertyProbeCount++;
+                return _value;
+            }
+        }
+
+        public bool TryGetPortableTransformMatrix(out PortableMatrix3x2 matrix)
+        {
+            matrix = default;
+            return false;
         }
     }
 
@@ -3901,7 +4033,7 @@ public sealed class WpfReflectionResourceResolverTests
         public FakeRect Rect { get; }
     }
 
-    private sealed class FakeDrawingVisual : IPortableDrawingContentSource
+    private sealed class FakeDrawingVisual : IPortableDrawingContentSource, IPortableVisualChildrenSource
     {
         private readonly object? _content;
 
@@ -3917,6 +4049,24 @@ public sealed class WpfReflectionResourceResolverTests
         public bool TryGetPortableDrawingContent(out object? content)
         {
             content = _content;
+            return true;
+        }
+
+        public bool TryGetPortableVisualChildCount(out int count)
+        {
+            count = Children.Count;
+            return true;
+        }
+
+        public bool TryGetPortableVisualChild(int index, out object? child)
+        {
+            if (index < 0 || index >= Children.Count)
+            {
+                child = null;
+                return false;
+            }
+
+            child = Children[index];
             return true;
         }
     }

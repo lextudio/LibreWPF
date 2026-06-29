@@ -269,10 +269,11 @@ public sealed class WpfReflectionResourceResolver :
             return brush;
         }
 
-        if (resource is PortableBrushSource portableBrushSource
-            && portableBrushSource.TryGetPortableBrush(out var portableBrush))
+        if (resource is PortableBrushSource portableBrushSource)
         {
-            return AdaptPortableBrush(portableBrush);
+            return portableBrushSource.TryGetPortableBrush(out var portableBrush)
+                ? AdaptPortableBrush(portableBrush)
+                : null;
         }
 
         if (TypeNameEndsWith(resource, "LinearGradientBrush")
@@ -374,10 +375,11 @@ public sealed class WpfReflectionResourceResolver :
             return null;
         }
 
-        if (resource is PortableBrushSource portableBrushSource
-            && portableBrushSource.TryGetPortableBrush(out var portableBrush))
+        if (resource is PortableBrushSource portableBrushSource)
         {
-            return AdaptNativePortableBrush(portableBrush, bounds, out unsupportedStateCount);
+            return portableBrushSource.TryGetPortableBrush(out var portableBrush)
+                ? AdaptNativePortableBrush(portableBrush, bounds, out unsupportedStateCount)
+                : null;
         }
 
         if (resource is ProGpuNativeBrush nativeProGpuBrush)
@@ -467,10 +469,11 @@ public sealed class WpfReflectionResourceResolver :
             return null;
         }
 
-        if (resource is PortablePenSource portablePenSource
-            && portablePenSource.TryGetPortablePen(out var portablePen))
+        if (resource is PortablePenSource portablePenSource)
         {
-            return AdaptNativePortablePen(portablePen, bounds, out unsupportedStateCount);
+            return portablePenSource.TryGetPortablePen(out var portablePen)
+                ? AdaptNativePortablePen(portablePen, bounds, out unsupportedStateCount)
+                : null;
         }
 
         if (resource is MediaPen mediaPen)
@@ -773,10 +776,11 @@ public sealed class WpfReflectionResourceResolver :
             return pen;
         }
 
-        if (resource is PortablePenSource portablePenSource
-            && portablePenSource.TryGetPortablePen(out var portablePen))
+        if (resource is PortablePenSource portablePenSource)
         {
-            return AdaptPortablePen(portablePen);
+            return portablePenSource.TryGetPortablePen(out var portablePen)
+                ? AdaptPortablePen(portablePen)
+                : null;
         }
 
         if (!TypeNameEndsWith(resource, "Pen")
@@ -2198,10 +2202,15 @@ public sealed class WpfReflectionResourceResolver :
             return TryReadMatrix4x4(nativeMatrix, out matrix);
         }
 
-        if (resource is PortableTransformMatrixSource portableTransform
-            && portableTransform.TryGetPortableTransformMatrix(out var portableMatrix))
+        if (resource is PortableTransformMatrixSource portableTransform)
         {
-            return TryUseFiniteMatrix(ToWpfMatrix2D(portableMatrix), out matrix);
+            if (portableTransform.TryGetPortableTransformMatrix(out var portableMatrix))
+            {
+                return TryUseFiniteMatrix(ToWpfMatrix2D(portableMatrix), out matrix);
+            }
+
+            matrix = default;
+            return false;
         }
 
         if (TryGetPropertyValue(resource, "Value", out var matrixValue)

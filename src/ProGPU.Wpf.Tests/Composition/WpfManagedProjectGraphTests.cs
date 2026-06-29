@@ -11016,6 +11016,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("resource is PortablePenSource portablePenSource", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativePortableBrush(portableBrush, bounds, out unsupportedStateCount)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativePortablePen(portablePen, bounds, out unsupportedStateCount)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("PortableBrushSourceAbsenceDoesNotFallBackToReflectedBrushShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("PortablePenSourceAbsenceDoesNotFallBackToReflectedPenShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("PortableTransformSourceAbsenceDoesNotFallBackToReflectedTransformShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("return portableBrushSource.TryGetPortableBrush(out var portableBrush)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("return portablePenSource.TryGetPortablePen(out var portablePen)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("if (portableTransform.TryGetPortableTransformMatrix(out var portableMatrix))", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("matrix = default;\n            return false;", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("PortableBrushKind.LinearGradient", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("PortableBrushKind.RadialGradient", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("adaptedPen.DashStyle = new DashStyle(dashArray, dashOffset)", wpfReflectionResourceResolver, StringComparison.Ordinal);

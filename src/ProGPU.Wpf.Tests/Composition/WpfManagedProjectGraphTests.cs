@@ -10867,6 +10867,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableBrushKind.LinearGradient", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("PortableBrushKind.RadialGradient", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("adaptedPen.DashStyle = new DashStyle(dashArray, dashOffset)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("resource is MediaBrush mediaBrush", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("resource is MediaPen mediaPen", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryInvokeNativeBrush", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryInvokeNativePen", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"ToNative\"", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("TryAssignDashStyle", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("GetType(\"System.Windows.Media.DashStyle\"", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain(".ToNative(ToMediaRect", wpfReflectionResourceResolver, StringComparison.Ordinal);

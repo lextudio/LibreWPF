@@ -378,9 +378,16 @@ public sealed class WpfReflectionResourceResolver :
             return AdaptNativePortableBrush(portableBrush, bounds, out unsupportedStateCount);
         }
 
-        if (TryInvokeNativeBrush(resource, bounds, out var directBrush))
+        if (resource is ProGpuNativeBrush nativeProGpuBrush)
         {
-            return directBrush;
+            unsupportedStateCount += nativeProGpuBrush.CountUnsupportedStateForBounds(bounds);
+            return nativeProGpuBrush.ToNative(bounds);
+        }
+
+        if (resource is MediaBrush mediaBrush)
+        {
+            var mediaBounds = ToMediaRect(bounds);
+            return mediaBrush.ToNative(mediaBounds);
         }
 
         if (TypeNameEndsWith(resource, "LinearGradientBrush")
@@ -464,9 +471,10 @@ public sealed class WpfReflectionResourceResolver :
             return AdaptNativePortablePen(portablePen, bounds, out unsupportedStateCount);
         }
 
-        if (TryInvokeNativePen(resource, out var directPen))
+        if (resource is MediaPen mediaPen)
         {
-            return directPen;
+            var mediaBounds = ToMediaRect(bounds);
+            return mediaPen.ToNative(mediaBounds);
         }
 
         if (!TryGetPropertyValue(resource, "Brush", out var brushValue)
@@ -501,97 +509,6 @@ public sealed class WpfReflectionResourceResolver :
             ReadVectorLineCap(resource, "DashCap"),
             dashArray,
             dashOffset);
-    }
-
-    private static bool TryInvokeNativeBrush(
-        object resource,
-        WpfReplayRect bounds,
-        out global::ProGPU.Vector.Brush? brush)
-    {
-        brush = null;
-
-        var boundsAwareMethod = resource.GetType().GetMethod(
-            "ToNative",
-            MemberFlags,
-            binder: null,
-            types: new[] { typeof(WpfReplayRect) },
-            modifiers: null);
-        if (TryInvokeNativeBrushMethod(resource, boundsAwareMethod, new object[] { bounds }, out brush))
-        {
-            return true;
-        }
-
-        var parameterlessMethod = resource.GetType().GetMethod(
-            "ToNative",
-            MemberFlags,
-            binder: null,
-            types: Type.EmptyTypes,
-            modifiers: null);
-        return TryInvokeNativeBrushMethod(resource, parameterlessMethod, Array.Empty<object>(), out brush);
-    }
-
-    private static bool TryInvokeNativeBrushMethod(
-        object resource,
-        MethodInfo? method,
-        object[] arguments,
-        out global::ProGPU.Vector.Brush? brush)
-    {
-        brush = null;
-        if (method == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            brush = method.Invoke(resource, arguments) as global::ProGPU.Vector.Brush;
-            return brush != null;
-        }
-        catch (TargetInvocationException)
-        {
-            return false;
-        }
-        catch (TypeLoadException)
-        {
-            return false;
-        }
-        catch (MissingMethodException)
-        {
-            return false;
-        }
-    }
-
-    private static bool TryInvokeNativePen(object resource, out global::ProGPU.Vector.Pen? pen)
-    {
-        pen = null;
-        var method = resource.GetType().GetMethod(
-            "ToNative",
-            MemberFlags,
-            binder: null,
-            types: Type.EmptyTypes,
-            modifiers: null);
-        if (method == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            pen = method.Invoke(resource, Array.Empty<object>()) as global::ProGPU.Vector.Pen;
-            return pen != null;
-        }
-        catch (TargetInvocationException)
-        {
-            return false;
-        }
-        catch (TypeLoadException)
-        {
-            return false;
-        }
-        catch (MissingMethodException)
-        {
-            return false;
-        }
     }
 
     private static Vector2 MapBrushPoint(
@@ -677,6 +594,11 @@ public sealed class WpfReflectionResourceResolver :
             && double.IsFinite(bounds.Y)
             && double.IsFinite(bounds.Width)
             && double.IsFinite(bounds.Height);
+    }
+
+    private static Rect ToMediaRect(WpfReplayRect bounds)
+    {
+        return new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
     private static void ApplyBrushOpacity(object resource, global::ProGPU.Vector.Brush nativeBrush)

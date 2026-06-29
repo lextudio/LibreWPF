@@ -216,6 +216,56 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void AdaptNativeBrushUsesTypedMediaBrushWithoutReflection()
+    {
+        var brush = new DirectNativeBrush();
+
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(1, 2, 30, 40),
+            out var unsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Same(brush.NativeBrush, nativeBrush);
+        Assert.Equal(1, brush.BoundsCallCount);
+        Assert.Equal(0, brush.ParameterlessCallCount);
+        Assert.Equal(1, brush.LastBounds.X);
+        Assert.Equal(2, brush.LastBounds.Y);
+        Assert.Equal(30, brush.LastBounds.Width);
+        Assert.Equal(40, brush.LastBounds.Height);
+    }
+
+    [Fact]
+    public void AdaptNativeBrushDoesNotInvokeDuckTypedToNativeMethods()
+    {
+        var brush = new DuckTypedNativeBrush();
+
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(1, 2, 30, 40),
+            out var unsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Null(nativeBrush);
+        Assert.Equal(0, brush.ToNativeCallCount);
+    }
+
+    [Fact]
+    public void AdaptNativePenDoesNotInvokeDuckTypedToNativeMethod()
+    {
+        var pen = new DuckTypedNativePen();
+
+        var nativePen = WpfReflectionResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(1, 2, 30, 40),
+            out var unsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Null(nativePen);
+        Assert.Equal(0, pen.ToNativeCallCount);
+    }
+
+    [Fact]
     public void DecodeRectanglePreservesPositiveWpfShapedPenDashStyleMetadata()
     {
         var pen = new FakePen(
@@ -2987,6 +3037,65 @@ public sealed class WpfReflectionResourceResolverTests
     private static void WriteDouble(byte[] target, int offset, double value)
     {
         BinaryPrimitives.WriteInt64LittleEndian(target.AsSpan(offset, 8), BitConverter.DoubleToInt64Bits(value));
+    }
+
+    private sealed class DirectNativeBrush : MediaBrush
+    {
+        public DirectNativeBrush()
+        {
+            NativeBrush = new ProGPU.Vector.SolidColorBrush(Vector4.One);
+        }
+
+        public ProGPU.Vector.Brush NativeBrush { get; }
+
+        public int ParameterlessCallCount { get; private set; }
+
+        public int BoundsCallCount { get; private set; }
+
+        public Rect LastBounds { get; private set; }
+
+        public override ProGPU.Vector.Brush ToNative()
+        {
+            ParameterlessCallCount++;
+            return NativeBrush;
+        }
+
+        public override ProGPU.Vector.Brush ToNative(Rect targetBounds)
+        {
+            BoundsCallCount++;
+            LastBounds = targetBounds;
+            return NativeBrush;
+        }
+    }
+
+    private sealed class DuckTypedNativeBrush
+    {
+        public int ToNativeCallCount { get; private set; }
+
+        public ProGPU.Vector.Brush ToNative()
+        {
+            ToNativeCallCount++;
+            return new ProGPU.Vector.SolidColorBrush(Vector4.One);
+        }
+
+        public ProGPU.Vector.Brush ToNative(WpfReplayRect bounds)
+        {
+            ToNativeCallCount++;
+            return new ProGPU.Vector.SolidColorBrush(Vector4.One);
+        }
+    }
+
+    private sealed class DuckTypedNativePen
+    {
+        public int ToNativeCallCount { get; private set; }
+
+        public ProGPU.Vector.Pen ToNative()
+        {
+            ToNativeCallCount++;
+            return new ProGPU.Vector.Pen(
+                new ProGPU.Vector.SolidColorBrush(Vector4.One),
+                1);
+        }
     }
 
     private sealed class FakeSolidColorBrush

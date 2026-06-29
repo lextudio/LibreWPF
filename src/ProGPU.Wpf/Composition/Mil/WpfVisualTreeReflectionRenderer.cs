@@ -286,7 +286,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         else
         {
             RegisterRetainedVisualPropertyDependency(visual, "Transform", sink);
-            RegisterRetainedVisualPropertyDependency(visual, "OpacityMask", sink);
             RegisterRetainedVisualPropertyDependency(visual, "Effect", sink);
             RegisterRetainedVisualPropertyDependency(visual, "BitmapEffect", sink);
             RegisterRetainedVisualPropertyDependency(visual, "BitmapEffectInput", sink);
@@ -1383,7 +1382,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return visualState.HasOpacityMask && opacityMask != null;
         }
 
-        return TryGetPropertyValue(visual, "OpacityMask", out opacityMask) && opacityMask != null;
+        opacityMask = null;
+        return false;
     }
 
     private static bool TryReadVectorLikeProperty(object instance, string propertyName, out double x, out double y)

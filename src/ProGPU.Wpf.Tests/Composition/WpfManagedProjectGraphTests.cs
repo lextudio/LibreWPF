@@ -5430,6 +5430,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"VisualScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"Clip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"Clip\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"OpacityMask\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"OpacityMask\"", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.Transform, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.Clip, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.OpacityMask, sink)", rendererSource, StringComparison.Ordinal);

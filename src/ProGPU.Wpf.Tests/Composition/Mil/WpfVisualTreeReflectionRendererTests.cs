@@ -74,6 +74,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
         };
     }
 
+    private static PortableVisualState CreatePortableOpacityMaskState(object opacityMask)
+    {
+        return new PortableVisualState
+        {
+            HasOpacityMask = true,
+            OpacityMask = opacityMask
+        };
+    }
+
     [Fact]
     public void ReplaySubtreeRecursesThroughChildren()
     {
@@ -370,16 +379,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeUsesPortableLayoutStateForClipToBoundsAndOpacityMaskBounds()
     {
-        var root = new FakePortableVisualLayoutVisual(new PortableVisualLayoutState
-        {
-            HasRenderSize = true,
-            RenderSize = new ProGPU.Wpf.Interop.PortableSize(42, 24),
-            HasClipToBounds = true,
-            ClipToBounds = true
-        })
-        {
-            OpacityMask = Brushes.White
-        };
+        var root = new FakePortableVisualStateAndLayoutVisual(
+            CreatePortableOpacityMaskState(Brushes.White),
+            new PortableVisualLayoutState
+            {
+                HasRenderSize = true,
+                RenderSize = new ProGPU.Wpf.Interop.PortableSize(42, 24),
+                HasClipToBounds = true,
+                ClipToBounds = true
+            });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
@@ -546,11 +554,14 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeLowersOpacityMaskAndNativeEffectIntoRetainedOwnerScope()
     {
-        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            visualState)
         {
-            Bounds = new FakeRect(10, 20, 30, 40),
-            Effect = new FakeBlurEffect(4),
-            OpacityMask = Brushes.White
+            Bounds = new FakeRect(10, 20, 30, 40)
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
@@ -746,10 +757,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualPreservesOpacityMaskNativeState()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(CreatePortableOpacityMaskState(Brushes.White))
         {
-            Bounds = new FakeRect(1, 2, 100, 50),
-            OpacityMask = Brushes.White
+            Bounds = new FakeRect(1, 2, 100, 50)
         };
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
@@ -914,10 +924,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeKeepsOpacityMaskAsNativeRetainedOwnerState()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(CreatePortableOpacityMaskState(Brushes.White))
         {
-            Bounds = new FakeRect(1, 2, 100, 50),
-            OpacityMask = Brushes.White
+            Bounds = new FakeRect(1, 2, 100, 50)
         };
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -940,10 +949,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeFallsBackWhenRetainedOpacityMaskCannotBeAdapted()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(CreatePortableOpacityMaskState(new object()))
         {
-            Bounds = new FakeRect(1, 2, 100, 50),
-            OpacityMask = new object()
+            Bounds = new FakeRect(1, 2, 100, 50)
         };
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -1103,10 +1111,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesOpacityMaskWhenBoundsAreAvailable()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(CreatePortableOpacityMaskState(Brushes.White))
         {
-            Bounds = new FakeRect(1, 2, 100, 50),
-            OpacityMask = Brushes.White
+            Bounds = new FakeRect(1, 2, 100, 50)
         };
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -1124,10 +1131,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeInfersOpacityMaskBoundsFromRenderDataContent()
     {
-        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
-        {
-            OpacityMask = Brushes.White
-        };
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            CreatePortableOpacityMaskState(Brushes.White));
 
         var sink = new TestSink();
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
@@ -1143,12 +1149,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeInfersOpacityMaskBoundsFromTransformedRenderDataContent()
     {
-        var root = new FakeDrawingVisual(CreateTransformedRenderData(
-            new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9)),
-            Brushes.Green))
-        {
-            OpacityMask = Brushes.White
-        };
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateTransformedRenderData(
+                new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9)),
+                Brushes.Green),
+            CreatePortableOpacityMaskState(Brushes.White));
 
         var sink = new TestSink();
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
@@ -1164,10 +1169,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeInfersOpacityMaskBoundsFromChildRenderDataContent()
     {
-        var root = new FakeVisual
-        {
-            OpacityMask = Brushes.White
-        };
+        var root = new FakePortableVisualStateVisual(CreatePortableOpacityMaskState(Brushes.White));
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -1185,10 +1187,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeProjectsChildVisualStateWhenInferringOpacityMaskBounds()
     {
-        var root = new FakeVisual
-        {
-            OpacityMask = Brushes.White
-        };
+        var root = new FakePortableVisualStateVisual(CreatePortableOpacityMaskState(Brushes.White));
         root.Children.Add(new FakePortableVisualStateDrawingVisual(
             CreateRenderData(Brushes.Green),
             new PortableVisualState
@@ -1218,14 +1217,14 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeDoesNotInferOpacityMaskBoundsFromUnsupportedChildVisualState()
     {
-        var root = new FakeVisual
-        {
-            OpacityMask = Brushes.White
-        };
-        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green))
-        {
-            Transform = new object()
-        });
+        var root = new FakePortableVisualStateVisual(CreatePortableOpacityMaskState(Brushes.White));
+        root.Children.Add(new FakePortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasTransform = true,
+                Transform = new object()
+            }));
 
         var sink = new TestSink();
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);

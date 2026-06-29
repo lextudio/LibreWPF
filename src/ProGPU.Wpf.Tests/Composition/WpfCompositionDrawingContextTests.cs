@@ -929,7 +929,7 @@ public sealed class WpfCompositionDrawingContextTests
         public double Y { get; }
     }
 
-    private sealed class FakeBlurBitmapEffect
+    private sealed class FakeBlurBitmapEffect : IPortableEffectSource
     {
         public FakeBlurBitmapEffect(double radius)
         {
@@ -938,14 +938,10 @@ public sealed class WpfCompositionDrawingContextTests
 
         public double Radius { get; }
 
-        private bool CanBeEmulatedUsingEffectPipeline()
+        public bool TryGetPortableEffect(out PortableEffect effect)
         {
+            effect = PortableEffect.Blur(Radius);
             return true;
-        }
-
-        private FakeBlurEffect GetEmulatingEffect()
-        {
-            return new FakeBlurEffect(Radius);
         }
     }
 
@@ -965,18 +961,24 @@ public sealed class WpfCompositionDrawingContextTests
         }
     }
 
-    private sealed class FakeContextBitmapEffectInput
+    private sealed class FakeContextBitmapEffectInput : IPortableBitmapEffectInputSource
     {
-        public bool ShouldSerializeInput()
+        public bool TryGetPortableBitmapEffectInput(out PortableBitmapEffectInput input)
         {
-            return false;
+            input = new PortableBitmapEffectInput(
+                usesContextInput: true,
+                hasDefaultAreaToApplyEffect: true);
+            return true;
         }
     }
 
-    private sealed class FakeBitmapSourceEffectInput
+    private sealed class FakeBitmapSourceEffectInput : IPortableBitmapEffectInputSource
     {
-        public bool ShouldSerializeInput()
+        public bool TryGetPortableBitmapEffectInput(out PortableBitmapEffectInput input)
         {
+            input = new PortableBitmapEffectInput(
+                usesContextInput: false,
+                hasDefaultAreaToApplyEffect: true);
             return true;
         }
     }

@@ -11321,7 +11321,7 @@ namespace System.Windows.Media.Effects
         [System.ObsoleteAttribute("BitmapEffects are deprecated and no longer function.  Consider using Effects where appropriate instead.")]
         protected override void UpdateUnmanagedPropertyState(System.Runtime.InteropServices.SafeHandle unmanagedEffect) { }
     }
-    public abstract partial class BitmapEffect : System.Windows.Media.Animation.Animatable
+    public abstract partial class BitmapEffect : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortableEffectSource
     {
         protected BitmapEffect() { }
         public new System.Windows.Media.Effects.BitmapEffect Clone() { throw null; }
@@ -11338,6 +11338,7 @@ namespace System.Windows.Media.Effects
         protected static void SetValue(System.Runtime.InteropServices.SafeHandle effect, string propertyName, object value) { }
         [System.ObsoleteAttribute("BitmapEffects are deprecated and no longer function.  Consider using Effects where appropriate instead.")]
         protected abstract void UpdateUnmanagedPropertyState(System.Runtime.InteropServices.SafeHandle unmanagedEffect);
+        bool ProGPU.Wpf.Interop.IPortableEffectSource.TryGetPortableEffect(out ProGPU.Wpf.Interop.PortableEffect effect) { throw null; }
     }
     public sealed partial class BitmapEffectCollection : System.Windows.Media.Animation.Animatable, System.Collections.Generic.ICollection<System.Windows.Media.Effects.BitmapEffect>, System.Collections.Generic.IEnumerable<System.Windows.Media.Effects.BitmapEffect>, System.Collections.Generic.IList<System.Windows.Media.Effects.BitmapEffect>, System.Collections.ICollection, System.Collections.IEnumerable, System.Collections.IList
     {
@@ -11400,7 +11401,7 @@ namespace System.Windows.Media.Effects
         [System.ObsoleteAttribute("BitmapEffects are deprecated and no longer function.  Consider using Effects where appropriate instead.")]
         protected override void UpdateUnmanagedPropertyState(System.Runtime.InteropServices.SafeHandle unmanagedEffect) { }
     }
-    public sealed partial class BitmapEffectInput : System.Windows.Media.Animation.Animatable
+    public sealed partial class BitmapEffectInput : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortableBitmapEffectInputSource
     {
         public static readonly System.Windows.DependencyProperty AreaToApplyEffectProperty;
         public static readonly System.Windows.DependencyProperty AreaToApplyEffectUnitsProperty;
@@ -11416,6 +11417,7 @@ namespace System.Windows.Media.Effects
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
         public bool ShouldSerializeInput() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableBitmapEffectInputSource.TryGetPortableBitmapEffectInput(out ProGPU.Wpf.Interop.PortableBitmapEffectInput input) { throw null; }
     }
     public sealed partial class BlurBitmapEffect : System.Windows.Media.Effects.BitmapEffect
     {

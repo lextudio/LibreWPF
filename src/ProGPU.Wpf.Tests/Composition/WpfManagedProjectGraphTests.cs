@@ -5729,6 +5729,26 @@ public sealed class WpfManagedProjectGraphTests
             "Media",
             "Effects",
             "DropShadowEffect.cs"));
+        var bitmapEffect = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Effects",
+            "BitmapEffect.cs"));
+        var bitmapEffectInput = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Effects",
+            "BitmapEffectInput.cs"));
         var presentationCoreRef = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5745,17 +5765,32 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("interface IPortableEffectSource", portableEffect, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableEffect", portableEffect, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableBitmapEffectInputSource", portableEffect, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableBitmapEffectInput", portableEffect, StringComparison.Ordinal);
         Assert.Contains("PortableEffectKind.Blur", portableEffect, StringComparison.Ordinal);
         Assert.Contains("PortableEffectKind.DropShadow", portableEffect, StringComparison.Ordinal);
         Assert.Contains("public partial class BlurEffect : IPortableEffectSource", blurEffect, StringComparison.Ordinal);
         Assert.Contains("PortableEffect.Blur(Radius)", blurEffect, StringComparison.Ordinal);
         Assert.Contains("public partial class DropShadowEffect : IPortableEffectSource", dropShadowEffect, StringComparison.Ordinal);
         Assert.Contains("PortableEffect.DropShadow(", dropShadowEffect, StringComparison.Ordinal);
+        Assert.Contains("public abstract partial class BitmapEffect : IPortableEffectSource", bitmapEffect, StringComparison.Ordinal);
+        Assert.Contains("GetEmulatingEffect() is IPortableEffectSource effectSource", bitmapEffect, StringComparison.Ordinal);
+        Assert.Contains("public sealed partial class BitmapEffectInput : IPortableBitmapEffectInputSource", bitmapEffectInput, StringComparison.Ordinal);
+        Assert.Contains("new PortableBitmapEffectInput(", bitmapEffectInput, StringComparison.Ordinal);
         Assert.Contains("BlurEffect : System.Windows.Media.Effects.Effect, ProGPU.Wpf.Interop.IPortableEffectSource", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("DropShadowEffect : System.Windows.Media.Effects.Effect, ProGPU.Wpf.Interop.IPortableEffectSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("BitmapEffect : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortableEffectSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("BitmapEffectInput : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortableBitmapEffectInputSource", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;", effectReflection, StringComparison.Ordinal);
+        Assert.Contains("using PortableBitmapEffectInputSource = ProGPU.Wpf.Interop.IPortableBitmapEffectInputSource;", effectReflection, StringComparison.Ordinal);
         Assert.Contains("effect is PortableEffectSource effectSource", effectReflection, StringComparison.Ordinal);
+        Assert.Contains("effectInput is PortableBitmapEffectInputSource inputSource", effectReflection, StringComparison.Ordinal);
         Assert.Contains("TryCreatePortableEffect(portableEffect, out proGpuEffect)", effectReflection, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryCreateEmulatedBitmapEffect", effectReflection, StringComparison.Ordinal);
+        Assert.DoesNotContain("CanBeEmulatedUsingEffectPipeline", effectReflection, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetEmulatingEffect", effectReflection, StringComparison.Ordinal);
+        Assert.DoesNotContain("ShouldSerializeInput", effectReflection, StringComparison.Ordinal);
+        Assert.DoesNotContain("ContextInputSource", effectReflection, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(effect, \"BlurEffect\")", effectReflection, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(effect, \"DropShadowEffect\")", effectReflection, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadDoubleProperty(effect", effectReflection, StringComparison.Ordinal);

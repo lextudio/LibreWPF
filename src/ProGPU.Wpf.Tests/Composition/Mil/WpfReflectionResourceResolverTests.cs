@@ -3861,7 +3861,7 @@ public sealed class WpfReflectionResourceResolverTests
         }
     }
 
-    private sealed class FakeBlurBitmapEffect
+    private sealed class FakeBlurBitmapEffect : IPortableEffectSource
     {
         public FakeBlurBitmapEffect(double radius)
         {
@@ -3870,22 +3870,21 @@ public sealed class WpfReflectionResourceResolverTests
 
         public double Radius { get; }
 
-        private bool CanBeEmulatedUsingEffectPipeline()
+        public bool TryGetPortableEffect(out PortableEffect effect)
         {
+            effect = PortableEffect.Blur(Radius);
             return true;
-        }
-
-        private FakeBlurEffect GetEmulatingEffect()
-        {
-            return new FakeBlurEffect(Radius);
         }
     }
 
-    private sealed class FakeContextBitmapEffectInput
+    private sealed class FakeContextBitmapEffectInput : IPortableBitmapEffectInputSource
     {
-        private bool ShouldSerializeInput()
+        public bool TryGetPortableBitmapEffectInput(out PortableBitmapEffectInput input)
         {
-            return false;
+            input = new PortableBitmapEffectInput(
+                usesContextInput: true,
+                hasDefaultAreaToApplyEffect: true);
+            return true;
         }
     }
 

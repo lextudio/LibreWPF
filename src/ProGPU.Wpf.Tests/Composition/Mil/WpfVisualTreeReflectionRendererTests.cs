@@ -26,6 +26,8 @@ using ProGpuEffectBase = ProGPU.Scene.EffectBase;
 using ProGpuWpfShaderEffect = ProGPU.Scene.WpfShaderEffect;
 using ProGpuWpfShaderEffectSampler = ProGPU.Scene.WpfShaderEffectSampler;
 using ProGpuTextureSamplingMode = ProGPU.Scene.TextureSamplingMode;
+using PortableBitmapEffectInput = ProGPU.Wpf.Interop.PortableBitmapEffectInput;
+using PortableBitmapEffectInputSource = ProGPU.Wpf.Interop.IPortableBitmapEffectInputSource;
 using PortableColor = ProGPU.Wpf.Interop.PortableColor;
 using PortableEffect = ProGPU.Wpf.Interop.PortableEffect;
 using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;
@@ -2777,7 +2779,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
-    private sealed class FakeBlurBitmapEffect
+    private sealed class FakeBlurBitmapEffect : PortableEffectSource
     {
         public FakeBlurBitmapEffect(double radius)
         {
@@ -2786,14 +2788,21 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public double Radius { get; }
 
-        private bool CanBeEmulatedUsingEffectPipeline()
+        public bool TryGetPortableEffect(out PortableEffect effect)
         {
+            effect = PortableEffect.Blur(Radius);
             return true;
         }
+    }
 
-        private FakeBlurEffect GetEmulatingEffect()
+    private sealed class FakeContextBitmapEffectInput : PortableBitmapEffectInputSource
+    {
+        public bool TryGetPortableBitmapEffectInput(out PortableBitmapEffectInput input)
         {
-            return new FakeBlurEffect(Radius);
+            input = new PortableBitmapEffectInput(
+                usesContextInput: true,
+                hasDefaultAreaToApplyEffect: true);
+            return true;
         }
     }
 

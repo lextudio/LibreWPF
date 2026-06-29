@@ -5507,8 +5507,11 @@ public sealed class WpfManagedProjectGraphTests
             "WpfVisualTreeReflectionRendererTests.cs"));
 
         Assert.Contains("using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;", rendererSource, StringComparison.Ordinal);
         Assert.Contains("visual is PortableVisualStateSource visualStateSource", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableVisualState(out state)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("content is not PortableRenderDataSource", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("content is PortableRenderDataSource", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadOpacity(visual, out", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryGetOpacityMask(visual, out", rendererSource, StringComparison.Ordinal);
         Assert.Contains("return visualState.HasTransform && transform != null;", rendererSource, StringComparison.Ordinal);
@@ -5526,6 +5529,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryReadVectorLikeField(visual, \"_offset\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static bool TryReadVectorLikeProperty", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static bool TryReadVectorLikeField", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("HasRenderDataShape", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("FindField", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetFieldValue", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("FindIndexer", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("FindMethod", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_buffer\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_curOffset\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_dependentResources\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"Transform\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualTransform\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetFieldValue(visual, \"_transform\"", rendererSource, StringComparison.Ordinal);

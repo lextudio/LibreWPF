@@ -16,6 +16,7 @@ using MediaTransform = System.Windows.Media.Transform;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
+using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
 using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
 
@@ -818,7 +819,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             return;
         }
 
-        if (!HasRenderDataShape(content.GetType()))
+        if (content is not PortableRenderDataSource)
         {
             stats.UnsupportedContentCount++;
             return;
@@ -1336,7 +1337,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (WpfVisualContentReflectionBridge.TryExtractContent(visual, out var content)
             && content != null
-            && HasRenderDataShape(content.GetType()))
+            && content is PortableRenderDataSource)
         {
             var snapshot = WpfRenderDataReflectionBridge.Extract(content);
             var resolver = WpfReflectionResourceResolver.FromDependentResources(snapshot.DependentResources);
@@ -1689,40 +1690,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         return TryConvertToDouble(propertyValue, out value);
     }
 
-    private static bool TryReadBoolProperty(object instance, string propertyName, out bool value)
-    {
-        value = false;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue) || propertyValue == null)
-        {
-            return false;
-        }
-
-        if (propertyValue is bool boolValue)
-        {
-            value = boolValue;
-            return true;
-        }
-
-        return bool.TryParse(propertyValue.ToString(), out value);
-    }
-
-    private static bool TryReadIntProperty(object instance, string propertyName, out int value)
-    {
-        value = 0;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
-        {
-            return false;
-        }
-
-        if (propertyValue is int intValue)
-        {
-            value = intValue;
-            return true;
-        }
-
-        return false;
-    }
-
     private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
     {
         if (instance == null)
@@ -1760,57 +1727,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         return false;
     }
 
-    private static bool TryGetFieldValue(object instance, string fieldName, out object? value)
-    {
-        if (instance == null)
-        {
-            value = null;
-            return false;
-        }
-
-        var field = FindField(instance.GetType(), fieldName);
-        if (field == null)
-        {
-            value = null;
-            return false;
-        }
-
-        try
-        {
-            value = field.GetValue(instance);
-            return true;
-        }
-        catch (ArgumentException)
-        {
-        }
-        catch (FieldAccessException)
-        {
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-
-        value = null;
-        return false;
-    }
-
-    private static Func<object, int, object?>? FindIndexer(Type type)
-    {
-        var indexer = type.GetProperty("Item", MemberFlags, binder: null, returnType: null, types: new[] { typeof(int) }, modifiers: null);
-        if (indexer != null)
-        {
-            return (instance, index) => indexer.GetValue(instance, new object[] { index });
-        }
-
-        var getter = type.GetMethod("get_Item", MemberFlags, binder: null, types: new[] { typeof(int) }, modifiers: null);
-        if (getter != null)
-        {
-            return (instance, index) => getter.Invoke(instance, new object[] { index });
-        }
-
-        return null;
-    }
-
     private static PropertyInfo? FindProperty(Type type, string name)
     {
         for (var current = type; current != null; current = current.BaseType)
@@ -1819,53 +1735,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             if (property != null)
             {
                 return property;
-            }
-        }
-
-        return null;
-    }
-
-    private static MethodInfo? FindParameterlessMethod(Type type, string name)
-    {
-        for (var current = type; current != null; current = current.BaseType)
-        {
-            var method = current.GetMethod(
-                name,
-                MemberFlags,
-                binder: null,
-                types: Type.EmptyTypes,
-                modifiers: null);
-            if (method != null)
-            {
-                return method;
-            }
-        }
-
-        return null;
-    }
-
-    private static FieldInfo? FindField(Type type, string name)
-    {
-        for (var current = type; current != null; current = current.BaseType)
-        {
-            var field = current.GetField(name, MemberFlags);
-            if (field != null)
-            {
-                return field;
-            }
-        }
-
-        return null;
-    }
-
-    private static MethodInfo? FindMethod(Type type, string name, params Type[] parameterTypes)
-    {
-        for (var current = type; current != null; current = current.BaseType)
-        {
-            var method = current.GetMethod(name, MemberFlags, binder: null, types: parameterTypes, modifiers: null);
-            if (method != null)
-            {
-                return method;
             }
         }
 
@@ -1896,13 +1765,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         var type = instance.GetType();
         return type.Name.EndsWith(suffix, StringComparison.Ordinal)
             || (type.FullName?.EndsWith("." + suffix, StringComparison.Ordinal) ?? false);
-    }
-
-    private static bool HasRenderDataShape(Type contentType)
-    {
-        return FindField(contentType, "_buffer") != null
-            && FindField(contentType, "_curOffset") != null
-            && FindField(contentType, "_dependentResources") != null;
     }
 
     private sealed class BoundsAccumulatingSink : IWpfCompositionCommandSink

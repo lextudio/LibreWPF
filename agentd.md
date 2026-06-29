@@ -4,6 +4,8 @@
 
 The ProGPU WPF port must now prioritize a reflection-free, high-performance implementation. Runtime reflection in the WPF bridge or ProGPU is temporary scaffolding only: keep it limited to compatibility probes, diagnostics, or transitional adapters that are documented with an exit path, and replace product hot-path reflection with typed/source-integrated seams as soon as the local blocker is handled.
 
+As the port approaches a workable MVP, performance and clean reflection-free code are release criteria, not polish. New WPF/progpu work should fail closed or add a typed portable seam when data is missing; do not keep samples alive by adding new duck-typed property probes, private-field scans, or reflection-based fake shapes.
+
 After the currently active focused fix is completed, treat removing reflection from product hot paths as the top engineering priority before broader sample expansion. Replace reflection-heavy retained visual, MIL/resource, invalidation, hit-test, and platform shims with typed APIs, generated accessors, reusable ProGPU scene/vector/text primitives, or source-integrated WPF internals. Do not add new managed WPF workarounds when the correct fix belongs in ProGPU rendering, shaders, layout/cache metadata, input, or DirectX/Silk.NET platform support.
 
 Bridge contracts used by package-mode apps must avoid shim-owned WPF structs/classes in public callback signatures. Prefer primitives, neutral DTOs, or source-integrated WPF interfaces/factories over runtime type lookup, reflected properties/events, or expression-built adapter delegates.

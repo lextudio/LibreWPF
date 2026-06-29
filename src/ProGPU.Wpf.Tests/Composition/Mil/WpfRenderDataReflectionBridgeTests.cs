@@ -34,7 +34,7 @@ public sealed class WpfRenderDataReflectionBridgeTests
     }
 
     [Fact]
-    public void ExtractPrefersPortableRenderDataSnapshotBeforeReflectionFields()
+    public void ExtractUsesPortableRenderDataSnapshot()
     {
         var brush = Brushes.Green;
         var record = CreateRectangleRecord(1, 0);
@@ -47,6 +47,19 @@ public sealed class WpfRenderDataReflectionBridgeTests
         Assert.NotSame(portableBuffer, snapshot.RenderData);
         Assert.Equal(new object?[] { brush }, snapshot.DependentResources);
         Assert.Equal(1, renderData.TypedSnapshotCount);
+    }
+
+    [Fact]
+    public void ExtractRejectsNonPortableRenderDataFieldShape()
+    {
+        var brush = Brushes.Green;
+        var record = CreateRectangleRecord(1, 0);
+        var renderData = new LegacyRenderDataFieldShape(record, record.Length, new FakeDependentResources(brush));
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => WpfRenderDataReflectionBridge.Extract(renderData));
+
+        Assert.Contains("portable WPF RenderData source contract", exception.Message);
     }
 
     [Fact]
@@ -137,13 +150,35 @@ public sealed class WpfRenderDataReflectionBridgeTests
         BinaryPrimitives.WriteInt64LittleEndian(target.AsSpan(offset, 8), BitConverter.DoubleToInt64Bits(value));
     }
 
-    private sealed class FakeRenderData
+    private sealed class FakeRenderData : IPortableRenderDataSource
     {
         private readonly byte[] _buffer;
         private readonly int _curOffset;
         private readonly FakeDependentResources _dependentResources;
 
         public FakeRenderData(byte[] buffer, int curOffset, FakeDependentResources dependentResources)
+        {
+            _buffer = buffer;
+            _curOffset = curOffset;
+            _dependentResources = dependentResources;
+        }
+
+        public bool TryGetPortableRenderDataSnapshot(out PortableRenderDataSnapshot snapshot)
+        {
+            snapshot = new PortableRenderDataSnapshot(
+                _buffer.AsSpan(0, _curOffset).ToArray(),
+                _dependentResources.Items);
+            return true;
+        }
+    }
+
+    private sealed class LegacyRenderDataFieldShape
+    {
+        private readonly byte[] _buffer;
+        private readonly int _curOffset;
+        private readonly FakeDependentResources _dependentResources;
+
+        public LegacyRenderDataFieldShape(byte[] buffer, int curOffset, FakeDependentResources dependentResources)
         {
             _buffer = buffer;
             _curOffset = curOffset;
@@ -180,6 +215,8 @@ public sealed class WpfRenderDataReflectionBridgeTests
         {
             _items = items;
         }
+
+        public IReadOnlyList<object?> Items => _items;
 
         public int Count => _items.Length;
 

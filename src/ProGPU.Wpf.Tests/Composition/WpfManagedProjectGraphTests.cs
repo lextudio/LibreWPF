@@ -5336,11 +5336,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("renderData is PortableRenderDataSource portableSource", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryGetPortableRenderDataSnapshot(out var portableSnapshot)", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("return CreateSnapshot(portableSnapshot);", bridgeSource, StringComparison.Ordinal);
-        Assert.Contains("GetFieldValue<byte[]?>(renderDataType, renderData, \"_buffer\")", bridgeSource, StringComparison.Ordinal);
-        Assert.True(
-            bridgeSource.IndexOf("renderData is PortableRenderDataSource portableSource", StringComparison.Ordinal)
-                < bridgeSource.IndexOf("GetFieldValue<byte[]?>(renderDataType, renderData, \"_buffer\")", StringComparison.Ordinal),
-            "The typed RenderData snapshot must be attempted before the transitional private-field fallback.");
+        Assert.DoesNotContain("using System.Reflection;", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetFieldValue", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetField(", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetMethod(", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_buffer\"", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_curOffset\"", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_dependentResources\"", bridgeSource, StringComparison.Ordinal);
     }
 
     [Fact]

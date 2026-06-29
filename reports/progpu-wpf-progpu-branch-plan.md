@@ -20,6 +20,8 @@ Shader-effect sampler texture caches should remain on typed portable tile-brush 
 
 Retained visual content extraction should remain typed-only. `WpfVisualContentReflectionBridge` must require `IPortableDrawingContentSource` visual content and `IPortableRenderDataSource` render-data snapshots; private `_content`, `_drawingContent`, `_buffer`, `_curOffset`, and `_dependentResources` field probes are no longer part of the product bridge path.
 
+Render-data extraction itself should also remain typed-only. `WpfRenderDataReflectionBridge` now consumes `IPortableRenderDataSource` snapshots directly and should not regain `RenderData` private-field or dependent-resource collection reflection; source-built WPF must publish active bytes and dependent resources through the portable snapshot contract.
+
 ## Current Branch State
 
 The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and-leaks`. The branch has been fast-forwarded to the latest origin commits and now includes:

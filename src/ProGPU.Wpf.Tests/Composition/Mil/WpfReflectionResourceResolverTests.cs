@@ -3896,7 +3896,7 @@ public sealed class WpfReflectionResourceResolverTests
         public FakeRect Rect { get; }
     }
 
-    private sealed class FakeDrawingVisual
+    private sealed class FakeDrawingVisual : IPortableDrawingContentSource
     {
         private readonly object? _content;
 
@@ -3908,6 +3908,12 @@ public sealed class WpfReflectionResourceResolverTests
         public FakeVisualCollection Children { get; } = new();
 
         public object? Bounds { get; init; }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _content;
+            return true;
+        }
     }
 
     private sealed class FakeVisualCollection
@@ -3924,7 +3930,7 @@ public sealed class WpfReflectionResourceResolverTests
         }
     }
 
-    private sealed class FakeRenderData
+    private sealed class FakeRenderData : IPortableRenderDataSource
     {
         private readonly byte[] _buffer;
         private readonly int _curOffset;
@@ -3936,6 +3942,14 @@ public sealed class WpfReflectionResourceResolverTests
             _curOffset = curOffset;
             _dependentResources = dependentResources;
         }
+
+        public bool TryGetPortableRenderDataSnapshot(out PortableRenderDataSnapshot snapshot)
+        {
+            snapshot = new PortableRenderDataSnapshot(
+                _buffer.AsSpan(0, _curOffset).ToArray(),
+                _dependentResources.Items);
+            return true;
+        }
     }
 
     private sealed class FakeDependentResources
@@ -3946,6 +3960,8 @@ public sealed class WpfReflectionResourceResolverTests
         {
             _items = items;
         }
+
+        public IReadOnlyList<object?> Items => _items;
 
         public int Count => _items.Length;
 

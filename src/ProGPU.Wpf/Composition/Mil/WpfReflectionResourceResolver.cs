@@ -1391,43 +1391,7 @@ public sealed class WpfReflectionResourceResolver :
                 && mediaGlyphRun.Font != null;
         }
 
-        if (!TryGetPropertyValue(resource, "GlyphIndices", out var glyphIndicesValue)
-            || glyphIndicesValue == null
-            || !TryReadUShortList(glyphIndicesValue, out var glyphIndices)
-            || glyphIndices.Length == 0
-            || !TryReadDoubleProperty(resource, "FontRenderingEmSize", out var fontSize)
-            || fontSize <= 0
-            || TryResolveGlyphRunFont(resource) is not { } font)
-        {
-            return false;
-        }
-
-        TryGetPropertyValue(resource, "AdvanceWidths", out var advanceWidthsValue);
-        TryReadDoubleList(advanceWidthsValue, out var advanceWidths);
-
-        TryGetPropertyValue(resource, "GlyphOffsets", out var glyphOffsetsValue);
-        TryReadReplayPointList(glyphOffsetsValue, out var glyphOffsets);
-
-        var baseline = new WpfReplayPoint(0, 0);
-        if (TryGetPropertyValue(resource, "BaselineOrigin", out var baselineValue)
-            && baselineValue != null
-            && TryReadReplayPoint(baselineValue, out var baselineOrigin))
-        {
-            baseline = baselineOrigin;
-        }
-
-        var glyphPositions = CreateNativeGlyphPositions(glyphIndices.Length, advanceWidths, glyphOffsets);
-        var styleSimulations = ReadGlyphTypefaceStyleSimulations(resource);
-        glyphRun = new WpfNativeGlyphRun(
-            glyphIndices,
-            glyphPositions,
-            font,
-            (float)fontSize,
-            new Vector2((float)baseline.X, (float)baseline.Y),
-            Matrix4x4.Identity,
-            styleSimulations.IsBold,
-            styleSimulations.IsItalic);
-        return true;
+        return false;
     }
 
     public static MediaGlyphRun? AdaptGlyphRun(object? resource)
@@ -1449,39 +1413,7 @@ public sealed class WpfReflectionResourceResolver :
             return glyphRun;
         }
 
-        if (!TryGetPropertyValue(resource, "GlyphIndices", out var glyphIndicesValue)
-            || glyphIndicesValue == null
-            || !TryReadUShortList(glyphIndicesValue, out var glyphIndices)
-            || glyphIndices.Length == 0
-            || !TryReadDoubleProperty(resource, "FontRenderingEmSize", out var fontSize)
-            || fontSize <= 0
-            || TryResolveGlyphRunFont(resource) is not { } font)
-        {
-            return null;
-        }
-
-        TryGetPropertyValue(resource, "AdvanceWidths", out var advanceWidthsValue);
-        TryReadDoubleList(advanceWidthsValue, out var advanceWidths);
-
-        TryGetPropertyValue(resource, "GlyphOffsets", out var glyphOffsetsValue);
-        TryReadPointList(glyphOffsetsValue, out var glyphOffsets);
-
-        var baseline = new Point();
-        if (TryGetPropertyValue(resource, "BaselineOrigin", out var baselineValue)
-            && baselineValue != null
-            && TryReadPoint(baselineValue, out var baselineOrigin))
-        {
-            baseline = baselineOrigin;
-        }
-
-        var glyphPositions = CreateGlyphPositions(glyphIndices.Length, advanceWidths, glyphOffsets);
-        var styleSimulations = ReadGlyphTypefaceStyleSimulations(resource);
-        return new MediaGlyphRun(font, (float)fontSize, glyphIndices, glyphPositions)
-        {
-            Position = new Vector2((float)baseline.X, (float)baseline.Y),
-            IsBold = styleSimulations.IsBold,
-            IsItalic = styleSimulations.IsItalic
-        };
+        return null;
     }
 
     private static bool TryAdaptPortableNativeGlyphRun(PortableGlyphRun portableGlyphRun, out WpfNativeGlyphRun glyphRun)
@@ -2693,148 +2625,11 @@ public sealed class WpfReflectionResourceResolver :
         return false;
     }
 
-    private static Vector2[] CreateGlyphPositions(int glyphCount, double[] advanceWidths, Point[] glyphOffsets)
+    private static TtfFont? TryResolveFontFileValue(string? value)
     {
-        var positions = new Vector2[glyphCount];
-        double x = 0;
-
-        for (var i = 0; i < glyphCount; i++)
-        {
-            var offset = i < glyphOffsets.Length ? glyphOffsets[i] : new Point();
-            positions[i] = new Vector2((float)(x + offset.X), (float)offset.Y);
-
-            if (i < advanceWidths.Length)
-            {
-                x += advanceWidths[i];
-            }
-        }
-
-        return positions;
-    }
-
-    private static Vector2[] CreateNativeGlyphPositions(int glyphCount, double[] advanceWidths, WpfReplayPoint[] glyphOffsets)
-    {
-        var positions = new Vector2[glyphCount];
-        double x = 0;
-
-        for (var i = 0; i < glyphCount; i++)
-        {
-            var offset = i < glyphOffsets.Length ? glyphOffsets[i] : new WpfReplayPoint(0, 0);
-            positions[i] = new Vector2((float)(x + offset.X), (float)offset.Y);
-
-            if (i < advanceWidths.Length)
-            {
-                x += advanceWidths[i];
-            }
-        }
-
-        return positions;
-    }
-
-    private static (bool IsBold, bool IsItalic) ReadGlyphTypefaceStyleSimulations(object glyphRun)
-    {
-        if (!TryGetPropertyValue(glyphRun, "GlyphTypeface", out var glyphTypeface)
-            || glyphTypeface == null
-            || !TryGetPropertyValue(glyphTypeface, "StyleSimulations", out var styleSimulations)
-            || styleSimulations == null)
-        {
-            return default;
-        }
-
-        if (TryConvertToInt32(styleSimulations, out var flags))
-        {
-            return ((flags & 0x1) != 0, (flags & 0x2) != 0);
-        }
-
-        var text = styleSimulations.ToString();
-        return string.IsNullOrEmpty(text)
-            ? default
-            : (text.Contains("Bold", StringComparison.OrdinalIgnoreCase),
-                text.Contains("Italic", StringComparison.OrdinalIgnoreCase)
-                    || text.Contains("Oblique", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static TtfFont? TryResolveGlyphRunFont(object glyphRun)
-    {
-        if (TryGetPropertyValue(glyphRun, "Font", out var fontValue) && fontValue is TtfFont font)
-        {
-            return font;
-        }
-
-        if (TryResolveGlyphTypefaceFontFile(glyphRun) is { } fontFromFile)
-        {
-            return fontFromFile;
-        }
-
-        foreach (var familyName in EnumerateGlyphTypefaceFamilyNames(glyphRun))
-        {
-            var resolved = TryResolveFontFamily(familyName);
-            if (resolved != null)
-            {
-                return resolved;
-            }
-        }
-
-        return TryResolveFontFamily("Arial");
-    }
-
-    private static TtfFont? TryResolveGlyphTypefaceFontFile(object glyphRun)
-    {
-        if (!TryGetPropertyValue(glyphRun, "GlyphTypeface", out var glyphTypeface) || glyphTypeface == null)
-        {
-            return null;
-        }
-
-        foreach (var propertyName in new[] { "FontUri", "FilePath", "Source" })
-        {
-            if (TryGetPropertyValue(glyphTypeface, propertyName, out var fontPathValue)
-                && TryResolveFontFileValue(fontPathValue) is { } font)
-            {
-                return font;
-            }
-        }
-
-        return null;
-    }
-
-    private static TtfFont? TryResolveFontFileValue(object? value)
-    {
-        return value != null && TryGetLocalFontPath(value, out var path)
+        return !string.IsNullOrWhiteSpace(value) && TryGetLocalFontPath(value, out var path)
             ? TryLoadFontFile(path)
             : null;
-    }
-
-    private static bool TryGetLocalFontPath(object value, out string path)
-    {
-        path = string.Empty;
-
-        if (value is Uri uri)
-        {
-            return TryGetLocalFontPath(uri, out path);
-        }
-
-        if (value is string text)
-        {
-            if (TryGetLocalFontPath(text, out path))
-            {
-                return true;
-            }
-
-            path = text;
-            return File.Exists(path);
-        }
-
-        foreach (var propertyName in new[] { "LocalPath", "OriginalString", "AbsoluteUri" })
-        {
-            if (TryGetPropertyValue(value, propertyName, out var propertyValue)
-                && propertyValue is string propertyText
-                && TryGetLocalFontPath(propertyText, out path))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static bool TryGetLocalFontPath(string value, out string path)
@@ -2900,76 +2695,6 @@ public sealed class WpfReflectionResourceResolver :
             or NotSupportedException;
     }
 
-    private static IEnumerable<string> EnumerateGlyphTypefaceFamilyNames(object glyphRun)
-    {
-        if (!TryGetPropertyValue(glyphRun, "GlyphTypeface", out var glyphTypeface) || glyphTypeface == null)
-        {
-            yield break;
-        }
-
-        foreach (var propertyName in new[] { "FamilyNames", "Win32FamilyNames", "FaceNames", "Win32FaceNames" })
-        {
-            if (!TryGetPropertyValue(glyphTypeface, propertyName, out var namesValue) || namesValue == null)
-            {
-                continue;
-            }
-
-            foreach (var name in EnumerateStringValues(namesValue))
-            {
-                if (!string.IsNullOrWhiteSpace(name))
-                {
-                    yield return name;
-                }
-            }
-        }
-    }
-
-    private static IEnumerable<string> EnumerateStringValues(object value)
-    {
-        if (value is string text)
-        {
-            yield return text;
-            yield break;
-        }
-
-        if (value is IEnumerable<string> strings)
-        {
-            foreach (var item in strings)
-            {
-                yield return item;
-            }
-
-            yield break;
-        }
-
-        if (value is System.Collections.IEnumerable enumerable)
-        {
-            foreach (var item in enumerable)
-            {
-                if (item is string itemText)
-                {
-                    yield return itemText;
-                    continue;
-                }
-
-                if (item != null && TryGetPropertyValue(item, "Value", out var itemValue) && itemValue is string valueText)
-                {
-                    yield return valueText;
-                }
-            }
-
-            yield break;
-        }
-
-        if (TryGetPropertyValue(value, "Values", out var values) && values != null)
-        {
-            foreach (var item in EnumerateStringValues(values))
-            {
-                yield return item;
-            }
-        }
-    }
-
     private static TtfFont? TryResolveFontFamily(string familyName)
     {
         try
@@ -2990,11 +2715,6 @@ public sealed class WpfReflectionResourceResolver :
         }
     }
 
-    private static bool TryReadUShortList(object? listValue, out ushort[] values)
-    {
-        return TryReadList(listValue, ConvertToUShort, out values);
-    }
-
     private static bool TryReadDoubleList(object? listValue, out double[] values)
     {
         return TryReadList(listValue, TryConvertToDouble, out values);
@@ -3003,11 +2723,6 @@ public sealed class WpfReflectionResourceResolver :
     private static bool TryReadPointList(object? listValue, out Point[] values)
     {
         return TryReadList(listValue, TryReadPoint, out values);
-    }
-
-    private static bool TryReadReplayPointList(object? listValue, out WpfReplayPoint[] values)
-    {
-        return TryReadList(listValue, TryReadReplayPoint, out values);
     }
 
     private static bool TryReadList<T>(
@@ -3055,28 +2770,6 @@ public sealed class WpfReflectionResourceResolver :
     }
 
     private delegate bool TryConvertValue<T>(object value, out T result);
-
-    private static bool ConvertToUShort(object value, out ushort result)
-    {
-        switch (value)
-        {
-            case ushort ushortValue:
-                result = ushortValue;
-                return true;
-            case short shortValue when shortValue >= 0:
-                result = (ushort)shortValue;
-                return true;
-            case int intValue when intValue is >= 0 and <= ushort.MaxValue:
-                result = (ushort)intValue;
-                return true;
-            case uint uintValue when uintValue <= ushort.MaxValue:
-                result = (ushort)uintValue;
-                return true;
-            default:
-                result = 0;
-                return false;
-        }
-    }
 
     private static bool TryReadByteProperty(object instance, string propertyName, out byte value)
     {

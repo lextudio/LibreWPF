@@ -101,11 +101,14 @@ public sealed class WpfCompositionDrawingContextTests
         using var context = new WpfObjectRenderDataDrawingContext(sink);
         var pen = new MediaPen(Brushes.Black, 2);
         var image = new FakeImageSource();
-        var glyphRun = new FakeGlyphRun(
-            glyphIndices: new ushort[] { 4 },
-            advanceWidths: new[] { 7.0 },
-            baselineOrigin: new FakePoint(21, 22),
-            fontRenderingEmSize: 12);
+        var glyphRun = new FakePortableGlyphRunSource(new PortableGlyphRun
+        {
+            GlyphIndices = new ushort[] { 4 },
+            AdvanceWidths = new[] { 7.0 },
+            BaselineOrigin = new PortablePoint(21, 22),
+            FontRenderingEmSize = 12,
+            FontFamilyNames = new[] { "Arial" }
+        });
 
         context.DrawLine(pen, new Point(1, 2), new Point(3, 4));
         context.DrawRectangle(Brushes.Red, pen, new Rect(5, 6, 7, 8));
@@ -135,6 +138,7 @@ public sealed class WpfCompositionDrawingContextTests
         Assert.Equal((Brushes.Blue, null, new WpfReplayPoint(13, 14), 15d, 16d), sink.NativeEllipses.Single());
         Assert.Equal((image, new WpfReplayRect(17, 18, 19, 20)), sink.NativeImages.Single());
         Assert.Equal((Brushes.Black, glyphRun), sink.NativeGlyphRuns.Single());
+        Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
         Assert.Equal(new WpfCompositionDrawingContextResult(6, 6, 0), context.Result);
     }
 
@@ -808,35 +812,38 @@ public sealed class WpfCompositionDrawingContextTests
         public FakeRect Rect { get; }
     }
 
-    private sealed class FakeGlyphRun
+    private sealed class FakePortableGlyphRunSource : IPortableGlyphRunSource
     {
-        public FakeGlyphRun(
-            ushort[] glyphIndices,
-            double[] advanceWidths,
-            FakePoint baselineOrigin,
-            double fontRenderingEmSize)
+        private readonly PortableGlyphRun _glyphRun;
+
+        public FakePortableGlyphRunSource(PortableGlyphRun glyphRun)
         {
-            GlyphIndices = glyphIndices;
-            AdvanceWidths = advanceWidths;
-            BaselineOrigin = baselineOrigin;
-            FontRenderingEmSize = fontRenderingEmSize;
-            GlyphTypeface = new FakeGlyphTypeface();
+            _glyphRun = glyphRun;
         }
 
-        public ushort[] GlyphIndices { get; }
+        public int ReflectedGlyphRunProbeCount { get; private set; }
 
-        public double[] AdvanceWidths { get; }
+        public object? GlyphIndices => ThrowReflectedGlyphRunProbe();
 
-        public FakePoint BaselineOrigin { get; }
+        public object? AdvanceWidths => ThrowReflectedGlyphRunProbe();
 
-        public double FontRenderingEmSize { get; }
+        public object? BaselineOrigin => ThrowReflectedGlyphRunProbe();
 
-        public FakeGlyphTypeface GlyphTypeface { get; }
-    }
+        public object? FontRenderingEmSize => ThrowReflectedGlyphRunProbe();
 
-    private sealed class FakeGlyphTypeface
-    {
-        public string[] FamilyNames { get; } = ["Arial"];
+        public object? GlyphTypeface => ThrowReflectedGlyphRunProbe();
+
+        public bool TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)
+        {
+            glyphRun = _glyphRun;
+            return true;
+        }
+
+        private object? ThrowReflectedGlyphRunProbe([System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+        {
+            ReflectedGlyphRunProbeCount++;
+            throw new InvalidOperationException($"Reflected glyph-run property '{propertyName}' should not be read.");
+        }
     }
 
     private sealed class FakeImageDrawing : IPortableImageDrawingStateSource

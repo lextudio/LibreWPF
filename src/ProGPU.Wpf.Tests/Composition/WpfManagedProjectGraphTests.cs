@@ -5506,6 +5506,59 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void DrawingReplayPrefersPortableGeometryDrawingState()
+    {
+        var replaySource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfReflectionDrawingReplay.cs"));
+        var geometryDrawingSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "GeometryDrawing.cs"));
+        var presentationCoreRef = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ref",
+            "PresentationCore.cs"));
+        var interopSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableGeometryDrawingState.cs"));
+        var rendererTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeReflectionRendererTests.cs"));
+
+        Assert.Contains("using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;", replaySource, StringComparison.Ordinal);
+        Assert.Contains("drawing is PortableGeometryDrawingStateSource geometryDrawingStateSource", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableGeometryDrawingState(out var portableState)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetGeometryDrawingGeometry(drawing, hasPortableGeometryDrawingState, geometryDrawingState", replaySource, StringComparison.Ordinal);
+        Assert.Contains("GeometryDrawing : Drawing, IPortableGeometryDrawingStateSource", geometryDrawingSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableGeometryDrawingStateSource.TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)", geometryDrawingSource, StringComparison.Ordinal);
+        Assert.Contains("GeometryDrawing : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableGeometryDrawingStateSource", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasGeometry", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasBrush", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasPen", interopSource, StringComparison.Ordinal);
+        Assert.Contains("ReplayAppliesPortableGeometryDrawingStateWithoutReflection", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayDoesNotReflectAbsentPortableGeometryDrawingState", rendererTests, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void VisualTreeRendererPrefersPortableVisualLayoutState()
     {
         var rendererSource = File.ReadAllText(FindRepoPath(

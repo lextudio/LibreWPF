@@ -16,6 +16,8 @@ using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
 using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
 using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
 using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
+using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
+using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableStretch = ProGPU.Wpf.Interop.PortableStretch;
@@ -131,19 +133,29 @@ internal static class WpfReflectionDrawingReplay
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter)
     {
-        if (!TryGetPropertyValue(drawing, "Geometry", out var geometryValue)
+        var hasPortableGeometryDrawingState = TryGetPortableGeometryDrawingState(
+            drawing,
+            out var geometryDrawingState);
+
+        if (!TryGetGeometryDrawingGeometry(drawing, hasPortableGeometryDrawingState, geometryDrawingState, out var geometryValue)
             || WpfReflectionResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
 
-        TryGetPropertyValue(drawing, "Brush", out var brushValue);
-        TryGetPropertyValue(drawing, "Pen", out var penValue);
+        var hasBrush = TryGetGeometryDrawingBrush(
+            drawing,
+            hasPortableGeometryDrawingState,
+            geometryDrawingState,
+            out var brushValue);
+        var hasPen = TryGetGeometryDrawingPen(
+            drawing,
+            hasPortableGeometryDrawingState,
+            geometryDrawingState,
+            out var penValue);
 
         var brush = WpfReflectionResourceResolver.AdaptBrush(brushValue);
         var pen = WpfReflectionResourceResolver.AdaptPen(penValue);
-        var hasBrush = brushValue != null;
-        var hasPen = penValue != null;
         var appliedAny = false;
         var unsupportedAny = hasPen && pen == null;
 
@@ -2178,6 +2190,66 @@ internal static class WpfReflectionDrawingReplay
         return false;
     }
 
+    private static bool TryGetPortableGeometryDrawingState(
+        object drawing,
+        out PortableGeometryDrawingState? state)
+    {
+        if (drawing is PortableGeometryDrawingStateSource geometryDrawingStateSource
+            && geometryDrawingStateSource.TryGetPortableGeometryDrawingState(out var portableState))
+        {
+            state = portableState;
+            return true;
+        }
+
+        state = null;
+        return false;
+    }
+
+    private static bool TryGetGeometryDrawingGeometry(
+        object drawing,
+        bool hasPortableGeometryDrawingState,
+        PortableGeometryDrawingState? geometryDrawingState,
+        out object? geometry)
+    {
+        if (hasPortableGeometryDrawingState)
+        {
+            geometry = geometryDrawingState!.Geometry;
+            return geometryDrawingState.HasGeometry && geometry != null;
+        }
+
+        return TryGetPropertyValue(drawing, "Geometry", out geometry) && geometry != null;
+    }
+
+    private static bool TryGetGeometryDrawingBrush(
+        object drawing,
+        bool hasPortableGeometryDrawingState,
+        PortableGeometryDrawingState? geometryDrawingState,
+        out object? brush)
+    {
+        if (hasPortableGeometryDrawingState)
+        {
+            brush = geometryDrawingState!.Brush;
+            return geometryDrawingState.HasBrush && brush != null;
+        }
+
+        return TryGetPropertyValue(drawing, "Brush", out brush) && brush != null;
+    }
+
+    private static bool TryGetGeometryDrawingPen(
+        object drawing,
+        bool hasPortableGeometryDrawingState,
+        PortableGeometryDrawingState? geometryDrawingState,
+        out object? pen)
+    {
+        if (hasPortableGeometryDrawingState)
+        {
+            pen = geometryDrawingState!.Pen;
+            return geometryDrawingState.HasPen && pen != null;
+        }
+
+        return TryGetPropertyValue(drawing, "Pen", out pen) && pen != null;
+    }
+
     private static bool TryGetDrawingGroupBounds(
         object drawingGroup,
         bool hasPortableDrawingGroupState,
@@ -2513,7 +2585,14 @@ internal static class WpfReflectionDrawingReplay
 
         if (TypeNameEndsWith(drawing, "GeometryDrawing"))
         {
-            return TryGetPropertyValue(drawing, "Geometry", out var geometryValue)
+            var hasPortableGeometryDrawingState = TryGetPortableGeometryDrawingState(
+                drawing,
+                out var geometryDrawingState);
+            return TryGetGeometryDrawingGeometry(
+                    drawing,
+                    hasPortableGeometryDrawingState,
+                    geometryDrawingState,
+                    out var geometryValue)
                 && WpfReflectionResourceResolver.AdaptGeometry(geometryValue) is { } geometry
                 && IsUsableRect(geometry.Bounds, out bounds);
         }

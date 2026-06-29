@@ -29,6 +29,8 @@ using PortableEffect = ProGPU.Wpf.Interop.PortableEffect;
 using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;
 using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
 using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
+using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
+using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
 using PortablePixelShader = ProGPU.Wpf.Interop.PortablePixelShader;
 using PortableShaderEffect = ProGPU.Wpf.Interop.PortableShaderEffect;
 using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;
@@ -1381,6 +1383,44 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplayAppliesPortableGeometryDrawingStateWithoutReflection()
+    {
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = new RectangleGeometry(new Rect(1, 2, 10, 12)),
+            HasBrush = true,
+            Brush = Brushes.Green
+        });
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        var draw = Assert.Single(sink.DrawGeometries);
+        Assert.Same(Brushes.Green, draw.Brush);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayDoesNotReflectAbsentPortableGeometryDrawingState()
+    {
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = new RectangleGeometry(new Rect(1, 2, 10, 12))
+        });
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+
+        Assert.Empty(sink.Operations);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Skipped, status);
+    }
+
+    [Fact]
     public void ReplaySubtreeAppliesPortableDrawingGroupStateWithoutReflection()
     {
         var group = new ThrowingPortableDrawingGroup(new PortableDrawingGroupState
@@ -2359,6 +2399,36 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             ReflectedStateProbeCount++;
             throw new InvalidOperationException($"Reflected drawing group property '{propertyName}' should not be read.");
+        }
+    }
+
+    private sealed class ThrowingPortableGeometryDrawing : PortableGeometryDrawingStateSource
+    {
+        private readonly PortableGeometryDrawingState _state;
+
+        public ThrowingPortableGeometryDrawing(PortableGeometryDrawingState state)
+        {
+            _state = state;
+        }
+
+        public int ReflectedStateProbeCount { get; private set; }
+
+        public object? Geometry => ThrowReflectedStateProbe();
+
+        public object? Brush => ThrowReflectedStateProbe();
+
+        public object? Pen => ThrowReflectedStateProbe();
+
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = _state;
+            return true;
+        }
+
+        private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedStateProbeCount++;
+            throw new InvalidOperationException($"Reflected geometry drawing property '{propertyName}' should not be read.");
         }
     }
 

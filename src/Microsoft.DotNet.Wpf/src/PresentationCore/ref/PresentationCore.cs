@@ -6289,7 +6289,7 @@ namespace System.Windows.Media
         public override object ConvertFrom(System.ComponentModel.ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value) { throw null; }
         public override object ConvertTo(System.ComponentModel.ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, System.Type destinationType) { throw null; }
     }
-    public sealed partial class GeometryDrawing : System.Windows.Media.Drawing
+    public sealed partial class GeometryDrawing : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource
     {
         public static readonly System.Windows.DependencyProperty BrushProperty;
         public static readonly System.Windows.DependencyProperty GeometryProperty;
@@ -6299,6 +6299,7 @@ namespace System.Windows.Media
         public System.Windows.Media.Brush Brush { get { throw null; } set { } }
         public System.Windows.Media.Geometry Geometry { get { throw null; } set { } }
         public System.Windows.Media.Pen Pen { get { throw null; } set { } }
+        bool ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource.TryGetPortableGeometryDrawingState(out ProGPU.Wpf.Interop.PortableGeometryDrawingState state) { throw null; }
         public new System.Windows.Media.GeometryDrawing Clone() { throw null; }
         public new System.Windows.Media.GeometryDrawing CloneCurrentValue() { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }

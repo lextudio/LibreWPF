@@ -18,28 +18,14 @@ namespace ProGPU.Wpf.Tests.Composition.Mil;
 public sealed class WpfViewport3DReflectionBridgeTests
 {
     [Fact]
-    public void TryCreateReplayDataCompilesWpfShapedViewport3DVisual()
+    public void TryCreateReplayDataRejectsWpfShapedViewport3DVisual()
     {
         var viewport = CreateTriangleViewport();
 
         var replayed = WpfViewport3DReflectionBridge.TryCreateReplayData(viewport, out var replayData);
 
-        Assert.True(replayed);
-        Assert.Equal(new Vector2(200, 100), replayData.Payload.ViewportSize);
-        Assert.Equal(new global::ProGPU.Scene.Rect(10, 20, 200, 100), replayData.Viewport);
-        Assert.Null(replayData.Payload.ColorTexture);
-        Assert.Null(replayData.Payload.MsaaColorTexture);
-        Assert.Null(replayData.Payload.DepthTexture);
-
-        var mesh = Assert.Single(replayData.Payload.Meshes);
-        Assert.Equal(3, mesh.Positions.Length);
-        Assert.Equal(new[] { 0, 1, 2 }, mesh.Indices);
-        Assert.All(mesh.Normals, normal => Assert.Equal(Vector3.UnitZ, normal));
-        Assert.Equal(5, mesh.ModelTransform.M41);
-        Assert.True(mesh.Color.X > 0.9f);
-        Assert.True(mesh.Color.Y < 0.1f);
-        Assert.True(mesh.Color.Z < 0.1f);
-        Assert.Equal(1, mesh.Opacity);
+        Assert.False(replayed);
+        Assert.Equal(default, replayData);
     }
 
     [Fact]
@@ -61,16 +47,16 @@ public sealed class WpfViewport3DReflectionBridgeTests
     }
 
     [Fact]
-    public void ReplaySubtreeRoutesViewport3DVisualToViewportSinkWithout2DChildRecursion()
+    public void ReplaySubtreeRejectsWpfShapedViewport3DVisualWithoutPortableScene()
     {
         var viewport = CreateTriangleViewport();
         var sink = new ViewportSink { DrawViewport3DResult = true };
 
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(viewport, sink);
 
-        Assert.Equal(1, sink.DrawViewport3DCount);
+        Assert.Equal(0, sink.DrawViewport3DCount);
         Assert.Equal(1, result.VisualCount);
-        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(0, result.ContentCount);
         Assert.Equal(0, result.ChildEdgeCount);
         Assert.Equal(0, result.UnsupportedContentCount);
     }
@@ -91,9 +77,9 @@ public sealed class WpfViewport3DReflectionBridgeTests
     }
 
     [Fact]
-    public void ReplaySubtreeCountsViewport3DVisualUnsupportedWhenSinkCannotDrawIt()
+    public void ReplaySubtreeCountsPortableViewport3DSceneUnsupportedWhenSinkCannotDrawIt()
     {
-        var viewport = CreateTriangleViewport();
+        var viewport = new PortableSceneHost();
         var sink = new ViewportSink { DrawViewport3DResult = false };
 
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(viewport, sink);

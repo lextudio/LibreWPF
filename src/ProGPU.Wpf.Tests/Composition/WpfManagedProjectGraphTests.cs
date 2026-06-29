@@ -5919,7 +5919,7 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
-    public void Viewport3DBridgePrefersPortableSceneSnapshot()
+    public void Viewport3DBridgeRequiresPortableSceneSnapshot()
     {
         var bridgeSource = File.ReadAllText(FindRepoPath(
             "src",
@@ -5970,17 +5970,15 @@ public sealed class WpfManagedProjectGraphTests
             "PresentationCore",
             "PresentationCore.csproj"));
 
-        var portableBranchIndex = bridgeSource.IndexOf(
-            "viewportVisual is IPortableViewport3DSceneSource portableSceneSource",
-            StringComparison.Ordinal);
-        var fallbackBranchIndex = bridgeSource.IndexOf(
-            "TypeNameEndsWith(viewportVisual, \"Viewport3DVisual\")",
-            StringComparison.Ordinal);
-
-        Assert.True(portableBranchIndex >= 0);
-        Assert.True(fallbackBranchIndex > portableBranchIndex);
+        Assert.Contains("viewportVisual is not IPortableViewport3DSceneSource portableSceneSource", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("TryCreateReplayDataFromPortableScene", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("visual is not IPortableViewport3DSceneSource", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(viewportVisual, \"Viewport3DVisual\")", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("&& !TypeNameEndsWith(visual, \"Viewport3DVisual\")", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("TryCreateReplayDataRejectsWpfShapedViewport3DVisual", bridgeTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeRoutesPortableViewportSceneSourceWithoutTypeName", bridgeTests, StringComparison.Ordinal);
         Assert.Contains("public interface IPortableViewport3DSceneSource", interopSource, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableViewport3DScene", interopSource, StringComparison.Ordinal);

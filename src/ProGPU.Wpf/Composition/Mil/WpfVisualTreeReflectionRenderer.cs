@@ -872,8 +872,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         IWpfCompositionCommandSink sink,
         ReplayStats stats)
     {
-        if (visual is not IPortableViewport3DSceneSource
-            && !TypeNameEndsWith(visual, "Viewport3DVisual"))
+        if (visual is not IPortableViewport3DSceneSource)
         {
             return false;
         }

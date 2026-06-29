@@ -5514,6 +5514,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return visualState.HasTransform && transform != null;", rendererSource, StringComparison.Ordinal);
         Assert.Contains("return visualState.HasOpacityMask && opacityMask != null;", rendererSource, StringComparison.Ordinal);
         Assert.Contains("if (visualState.HasScrollableAreaClip)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetScrollableAreaClipBounds(visual, out var scrollableClipBounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("bounds = ToReplayRect(visualState.ScrollableAreaClip);", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private static WpfReplayRect ToReplayRect(PortableRect bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("if (hasPortableVisualState && visualState.HasClip)", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadVectorLikeProperty(visual, \"Offset\"", rendererSource, StringComparison.Ordinal);
@@ -5528,6 +5531,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"ScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("scrollableAreaClip = new ReflectedRectangleClip", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadRect(scrollableAreaClip", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"VisualClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"ScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDependency(visual, \"VisualScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);

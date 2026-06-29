@@ -359,9 +359,9 @@ public sealed class WpfVisualTreeReflectionRenderer
             clipBounds = implicitClipBounds;
         }
 
-        if (TryGetScrollableAreaClip(visual, out var scrollableAreaClip) && scrollableAreaClip != null)
+        if (TryGetScrollableAreaClipBounds(visual, out var scrollableClipBounds))
         {
-            if (!TryReadRect(scrollableAreaClip, out var scrollableClipBounds) || !IsUsableBounds(scrollableClipBounds))
+            if (!IsUsableBounds(scrollableClipBounds))
             {
                 return false;
             }
@@ -901,9 +901,9 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
         }
 
-        if (TryGetScrollableAreaClip(visual, out var scrollableAreaClip) && scrollableAreaClip != null)
+        if (TryGetScrollableAreaClipBounds(visual, out var scrollableClipBounds))
         {
-            if (TryReadRect(scrollableAreaClip, out var scrollableClipBounds) && IsUsableBounds(scrollableClipBounds))
+            if (IsUsableBounds(scrollableClipBounds))
             {
                 if (!localVisualTransform.IsIdentity
                     && canProjectScrollableClipToOuterSpace
@@ -1403,9 +1403,9 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         parentBounds = TransformBounds(clippedBounds, transform);
-        if (TryGetScrollableAreaClip(child, out var scrollableAreaClip) && scrollableAreaClip != null)
+        if (TryGetScrollableAreaClipBounds(child, out var scrollableClipBounds))
         {
-            if (!TryReadRect(scrollableAreaClip, out var scrollableClipBounds) || !IsUsableBounds(scrollableClipBounds))
+            if (!IsUsableBounds(scrollableClipBounds))
             {
                 return false;
             }
@@ -1459,22 +1459,25 @@ public sealed class WpfVisualTreeReflectionRenderer
         return false;
     }
 
-    private static bool TryGetScrollableAreaClip(object visual, out object? scrollableAreaClip)
+    private static WpfReplayRect ToReplayRect(PortableRect bounds)
+    {
+        return bounds.IsEmpty
+            ? default
+            : new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+    }
+
+    private static bool TryGetScrollableAreaClipBounds(object visual, out WpfReplayRect bounds)
     {
         if (TryGetPortableVisualState(visual, out var visualState))
         {
             if (visualState.HasScrollableAreaClip)
             {
-                var bounds = visualState.ScrollableAreaClip;
-                scrollableAreaClip = new ReflectedRectangleClip(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+                bounds = ToReplayRect(visualState.ScrollableAreaClip);
                 return true;
             }
-
-            scrollableAreaClip = null;
-            return false;
         }
 
-        scrollableAreaClip = null;
+        bounds = default;
         return false;
     }
 

@@ -1700,11 +1700,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             return clip != null;
         }
 
-        if (!hasPortableVisualState && TryGetPropertyValue(visual, "VisualClip", out clip) && clip != null)
-        {
-            return true;
-        }
-
         object? explicitClip = null;
         var hasExplicitClip = !hasPortableVisualState
             && TryGetPropertyValue(visual, "Clip", out explicitClip)

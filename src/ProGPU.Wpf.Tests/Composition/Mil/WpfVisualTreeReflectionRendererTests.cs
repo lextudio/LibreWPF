@@ -191,13 +191,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void ReplaySubtreeLowersInternalVisualClipIntoRetainedOwnerScopes()
+    public void ReplaySubtreeLowersPortableVisualClipIntoRetainedOwnerScopes()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
-            Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 500, 500)),
-            VisualClip = new FakeRectangleGeometry(new FakeRect(5, 6, 70, 80))
-        };
+            HasClip = true,
+            Clip = new FakeRectangleGeometry(new FakeRect(5, 6, 70, 80))
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
@@ -2325,6 +2325,22 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
 
         public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
+        {
+            state = _state;
+            return true;
+        }
+    }
+
+    private sealed class FakePortableVisualStateVisual : FakeVisual, PortableVisualStateSource
+    {
+        private readonly PortableVisualState _state;
+
+        public FakePortableVisualStateVisual(PortableVisualState state)
+        {
+            _state = state;
+        }
+
+        public bool TryGetPortableVisualState(out PortableVisualState state)
         {
             state = _state;
             return true;

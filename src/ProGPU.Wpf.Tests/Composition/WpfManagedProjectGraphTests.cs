@@ -5421,7 +5421,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return visualState.HasOpacityMask && opacityMask != null;", rendererSource, StringComparison.Ordinal);
         Assert.Contains("if (visualState.HasScrollableAreaClip)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("!hasPortableVisualState && TryGetPropertyValue(visual, \"VisualClip\"", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("if (hasPortableVisualState && visualState.HasClip)", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualClip\"", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.Transform, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.Clip, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.OpacityMask, sink)", rendererSource, StringComparison.Ordinal);

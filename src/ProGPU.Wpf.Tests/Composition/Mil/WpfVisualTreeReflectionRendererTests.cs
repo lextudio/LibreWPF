@@ -260,10 +260,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeLowersLayoutClipIntoRetainedOwnerScopes()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualLayoutVisual(new PortableVisualLayoutState
         {
+            HasLayoutClip = true,
             LayoutClip = new FakeRectangleGeometry(new FakeRect(4, 5, 60, 70))
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
@@ -1368,10 +1369,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesLayoutClipAsRectangleClip()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualLayoutVisual(new PortableVisualLayoutState
         {
+            HasLayoutClip = true,
             LayoutClip = new FakeRectangleGeometry(new FakeRect(2, 3, 40, 50))
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
@@ -2301,8 +2303,6 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public object? VisualClip { get; init; }
 
-        public object? LayoutClip { get; init; }
-
         public object? Bounds { get; init; }
 
         public object? OpacityMask { get; init; }
@@ -2311,10 +2311,6 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public object? VisualScrollableAreaClip { get; init; }
 
-        public object? GetLayoutClipInternal()
-        {
-            return LayoutClip;
-        }
     }
 
     private sealed class FakeDrawingVisual : FakeVisual, PortableDrawingContentSource

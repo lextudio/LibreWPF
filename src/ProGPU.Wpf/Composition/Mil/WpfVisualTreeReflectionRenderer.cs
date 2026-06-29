@@ -1568,17 +1568,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             return true;
         }
 
-        if (!hasPortableLayoutState && TryGetLayoutClip(visual, out var layoutClip) && layoutClip != null)
-        {
-            if (hasCurrentClip)
-            {
-                return TryCreateIntersectedClip(layoutClip, currentClip!, out clip);
-            }
-
-            clip = layoutClip;
-            return true;
-        }
-
         if (TryCreateClipToBoundsClip(visual, out var clipToBoundsClip))
         {
             if (hasCurrentClip)
@@ -1614,27 +1603,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         return false;
-    }
-
-    private static bool TryGetLayoutClip(object visual, out object? clip)
-    {
-        clip = null;
-        var method = FindParameterlessMethod(visual.GetType(), "GetLayoutClipInternal");
-        if (method == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            clip = method.Invoke(visual, null);
-            return true;
-        }
-        catch (TargetInvocationException)
-        {
-            clip = null;
-            return false;
-        }
     }
 
     private static bool TryCreateIntersectedClip(object first, object second, out object? clip)

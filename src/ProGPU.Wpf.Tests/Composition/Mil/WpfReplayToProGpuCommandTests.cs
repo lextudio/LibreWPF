@@ -2797,7 +2797,59 @@ public sealed class WpfReplayToProGpuCommandTests
         public object this[int index] => _items[index];
     }
 
-    private sealed class FakeRectangleGeometry
+    private static PortableGeometryPath CreatePortableRectangleGeometry(FakeRect rect)
+    {
+        return new PortableGeometryPath
+        {
+            Kind = PortableGeometryPathKind.Path,
+            FillRule = PortableFillRule.Nonzero,
+            Figures =
+            [
+                new PortablePathFigure
+                {
+                    StartPoint = new PortablePoint(rect.X, rect.Y),
+                    IsClosed = true,
+                    IsFilled = true,
+                    Segments =
+                    [
+                        PortablePathSegment.Line(new PortablePoint(rect.X + rect.Width, rect.Y), isSmoothJoin: false, isStroked: true),
+                        PortablePathSegment.Line(new PortablePoint(rect.X + rect.Width, rect.Y + rect.Height), isSmoothJoin: false, isStroked: true),
+                        PortablePathSegment.Line(new PortablePoint(rect.X, rect.Y + rect.Height), isSmoothJoin: false, isStroked: true)
+                    ]
+                }
+            ]
+        };
+    }
+
+    private static bool TryGetPortableGeometryPath(object? value, out PortableGeometryPath path)
+    {
+        if (value == null)
+        {
+            path = new PortableGeometryPath { Kind = PortableGeometryPathKind.Path };
+            return true;
+        }
+
+        if (value is IPortableGeometryPathSource source)
+        {
+            return source.TryGetPortableGeometryPath(out path);
+        }
+
+        path = null!;
+        return false;
+    }
+
+    private static int ToPortableCombineOperation(string geometryCombineMode)
+    {
+        return geometryCombineMode switch
+        {
+            "Exclude" => 0,
+            "Intersect" => 1,
+            "Xor" => 3,
+            _ => 2
+        };
+    }
+
+    private sealed class FakeRectangleGeometry : IPortableGeometryPathSource
     {
         public FakeRectangleGeometry(FakeRect rect)
         {
@@ -2805,9 +2857,15 @@ public sealed class WpfReplayToProGpuCommandTests
         }
 
         public FakeRect Rect { get; }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = CreatePortableRectangleGeometry(Rect);
+            return true;
+        }
     }
 
-    private sealed class FakeCombinedGeometry
+    private sealed class FakeCombinedGeometry : IPortableGeometryPathSource
     {
         public FakeCombinedGeometry(string geometryCombineMode, object? geometry1, object? geometry2)
         {
@@ -2823,6 +2881,31 @@ public sealed class WpfReplayToProGpuCommandTests
         public object? Geometry2 { get; }
 
         public object? Transform { get; init; }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = null!;
+            if (!WpfReplayToProGpuCommandTests.TryGetPortableGeometryPath(Geometry1, out var pathA)
+                || !WpfReplayToProGpuCommandTests.TryGetPortableGeometryPath(Geometry2, out var pathB))
+            {
+                return false;
+            }
+
+            path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Combined,
+                PathA = pathA,
+                PathB = pathB,
+                CombineOperation = ToPortableCombineOperation(GeometryCombineMode)
+            };
+
+            if (TryMapOptionalTransform(Transform, out var hasTransform, out var transform) && hasTransform)
+            {
+                path.Transform = transform;
+            }
+
+            return true;
+        }
     }
 
     private sealed class FakeMatrixTransform : IPortableTransformMatrixSource

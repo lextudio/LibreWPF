@@ -681,7 +681,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeGeometryAdaptsWpfShapedRectangleGeometry()
+    public void DecodeGeometryAdaptsPortableRectangleGeometry()
     {
         var brush = new FakeSolidColorBrush(new FakeColor(255, 40, 50, 60));
         var geometry = new FakeRectangleGeometry(new FakeRect(5, 6, 70, 80));
@@ -703,7 +703,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeDrawDrawingReplaysWpfShapedGeometryDrawing()
+    public void DecodeDrawDrawingReplaysPortableGeometryDrawing()
     {
         var drawing = new FakeGeometryDrawing(
             new FakeSolidColorBrush(new FakeColor(255, 100, 110, 120)),
@@ -2911,7 +2911,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeGeometryAdaptsWpfShapedLineGeometry()
+    public void DecodeGeometryAdaptsPortableLineGeometry()
     {
         var geometry = new FakeLineGeometry(new FakePoint(1, 2), new FakePoint(31, 42));
         var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { null, geometry });
@@ -2933,7 +2933,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void AdaptGeometryAdaptsWpfShapedEllipseGeometry()
+    public void AdaptGeometryAdaptsPortableEllipseGeometry()
     {
         var geometry = new FakeEllipseGeometry(new FakePoint(10, 20), 3, 4);
 
@@ -2946,7 +2946,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void AdaptGeometryAdaptsWpfShapedGeometryGroup()
+    public void AdaptGeometryAdaptsPortableGeometryGroup()
     {
         var group = new FakeGeometryGroup(
             new FakeRectangleGeometry(new FakeRect(0, 0, 10, 10)),
@@ -3029,7 +3029,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeGeometryPreservesCombinedGeometryInsideWpfShapedGeometryGroup()
+    public void DecodeGeometryPreservesCombinedGeometryInsidePortableGeometryGroup()
     {
         var group = new FakeGeometryGroup(
             new FakeCombinedGeometry(
@@ -3066,7 +3066,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void AdaptGeometryAppliesChildTransformsInsideWpfShapedGeometryGroup()
+    public void AdaptGeometryAppliesChildTransformsInsidePortableGeometryGroup()
     {
         var group = new FakeGeometryGroup(
             new FakeRectangleGeometry(new FakeRect(0, 0, 10, 10))
@@ -3088,7 +3088,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void AdaptGeometryPreservesTransformedArcsInsideWpfShapedGeometryGroup()
+    public void AdaptGeometryPreservesTransformedArcsInsidePortableGeometryGroup()
     {
         var childTransform = new FakeMatrixTransform(new FakeMatrix(1, 0.35, 0.2, 1, 5, 7));
         var transformMatrix = new Matrix4x4(
@@ -3130,7 +3130,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void AdaptGeometryAdaptsWpfShapedPathGeometryFiguresAndSegments()
+    public void AdaptGeometryAdaptsPortablePathGeometryFiguresAndSegments()
     {
         var geometry = new FakePathGeometry(
             new FakePathFigure(
@@ -4195,7 +4195,402 @@ public sealed class WpfReflectionResourceResolverTests
 
     private readonly record struct FakeMatrix(double M11, double M12, double M21, double M22, double OffsetX, double OffsetY);
 
-    private sealed class FakeRectangleGeometry
+    private static PortableSize ToPortableSize(FakeSize size)
+    {
+        return new PortableSize(size.Width, size.Height);
+    }
+
+    private static PortableGeometryPath CreatePortablePath(
+        FakeFillRule fillRule,
+        object? transform,
+        params PortablePathFigure[] figures)
+    {
+        var path = new PortableGeometryPath
+        {
+            Kind = PortableGeometryPathKind.Path,
+            FillRule = ToPortableFillRule(fillRule),
+            Figures = figures
+        };
+
+        if (TryMapOptionalTransform(transform, out var hasTransform, out var portableTransform) && hasTransform)
+        {
+            path.Transform = portableTransform;
+        }
+
+        return path;
+    }
+
+    private static PortablePathFigure CreatePortableFigure(
+        FakePoint startPoint,
+        bool isClosed,
+        bool isFilled,
+        params PortablePathSegment[] segments)
+    {
+        return new PortablePathFigure
+        {
+            StartPoint = ToPortablePoint(startPoint),
+            IsClosed = isClosed,
+            IsFilled = isFilled,
+            Segments = segments
+        };
+    }
+
+    private static PortableGeometryPath CreatePortableRectangleGeometry(FakeRect rect, object? transform)
+    {
+        return CreatePortablePath(
+            FakeFillRule.Nonzero,
+            transform,
+            CreatePortableFigure(
+                new FakePoint(rect.X, rect.Y),
+                isClosed: true,
+                isFilled: true,
+                PortablePathSegment.Line(new PortablePoint(rect.X + rect.Width, rect.Y), isSmoothJoin: false, isStroked: true),
+                PortablePathSegment.Line(new PortablePoint(rect.X + rect.Width, rect.Y + rect.Height), isSmoothJoin: false, isStroked: true),
+                PortablePathSegment.Line(new PortablePoint(rect.X, rect.Y + rect.Height), isSmoothJoin: false, isStroked: true)));
+    }
+
+    private static PortableGeometryPath CreatePortableLineGeometry(FakePoint startPoint, FakePoint endPoint, object? transform)
+    {
+        return CreatePortablePath(
+            FakeFillRule.Nonzero,
+            transform,
+            CreatePortableFigure(
+                startPoint,
+                isClosed: false,
+                isFilled: false,
+                PortablePathSegment.Line(ToPortablePoint(endPoint), isSmoothJoin: false, isStroked: true)));
+    }
+
+    private static PortableGeometryPath CreatePortableEllipseGeometry(FakePoint center, double radiusX, double radiusY)
+    {
+        if (radiusX <= 0 || radiusY <= 0)
+        {
+            return CreatePortablePath(FakeFillRule.Nonzero, transform: null);
+        }
+
+        const double kappa = 0.5522847498307936;
+        var cx = center.X;
+        var cy = center.Y;
+        var rx = radiusX;
+        var ry = radiusY;
+        var ox = rx * kappa;
+        var oy = ry * kappa;
+
+        return CreatePortablePath(
+            FakeFillRule.Nonzero,
+            transform: null,
+            CreatePortableFigure(
+                new FakePoint(cx + rx, cy),
+                isClosed: true,
+                isFilled: true,
+                PortablePathSegment.CubicBezier(
+                    new PortablePoint(cx + rx, cy + oy),
+                    new PortablePoint(cx + ox, cy + ry),
+                    new PortablePoint(cx, cy + ry),
+                    isSmoothJoin: false,
+                    isStroked: true),
+                PortablePathSegment.CubicBezier(
+                    new PortablePoint(cx - ox, cy + ry),
+                    new PortablePoint(cx - rx, cy + oy),
+                    new PortablePoint(cx - rx, cy),
+                    isSmoothJoin: false,
+                    isStroked: true),
+                PortablePathSegment.CubicBezier(
+                    new PortablePoint(cx - rx, cy - oy),
+                    new PortablePoint(cx - ox, cy - ry),
+                    new PortablePoint(cx, cy - ry),
+                    isSmoothJoin: false,
+                    isStroked: true),
+                PortablePathSegment.CubicBezier(
+                    new PortablePoint(cx + ox, cy - ry),
+                    new PortablePoint(cx + rx, cy - oy),
+                    new PortablePoint(cx + rx, cy),
+                    isSmoothJoin: false,
+                    isStroked: true)));
+    }
+
+    private static bool TryGetPortableGeometryPath(object? value, out PortableGeometryPath path)
+    {
+        if (value == null)
+        {
+            path = CreatePortablePath(FakeFillRule.Nonzero, transform: null);
+            return true;
+        }
+
+        if (value is IPortableGeometryPathSource source)
+        {
+            return source.TryGetPortableGeometryPath(out path);
+        }
+
+        path = null!;
+        return false;
+    }
+
+    private static PortableGeometryPath FoldPortableGeometryChildren(IReadOnlyList<PortableGeometryPath> children)
+    {
+        var combined = children[0];
+        for (var i = 1; i < children.Count; i++)
+        {
+            combined = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Combined,
+                PathA = combined,
+                PathB = children[i],
+                CombineOperation = 2
+            };
+        }
+
+        return combined;
+    }
+
+    private static bool TryFlattenPortablePath(PortableGeometryPath path, List<PortablePathFigure> figures)
+    {
+        if (path.Kind != PortableGeometryPathKind.Path)
+        {
+            return false;
+        }
+
+        foreach (var figure in path.Figures)
+        {
+            figures.Add(TransformPortableFigure(figure, path.Transform));
+        }
+
+        return true;
+    }
+
+    private static PortablePathFigure TransformPortableFigure(PortablePathFigure figure, PortableMatrix3x2 transform)
+    {
+        if (transform.IsIdentity)
+        {
+            return figure;
+        }
+
+        var matrix = ToMatrix4x4(transform);
+        var sourceCurrentPoint = ToVector2(figure.StartPoint);
+        var segments = new List<PortablePathSegment>(figure.Segments.Length);
+        foreach (var segment in figure.Segments)
+        {
+            switch (segment.Kind)
+            {
+                case PortablePathSegmentKind.Line:
+                    segments.Add(PortablePathSegment.Line(
+                        TransformPoint(segment.Point1, matrix),
+                        segment.IsSmoothJoin,
+                        segment.IsStroked));
+                    sourceCurrentPoint = ToVector2(segment.Point1);
+                    break;
+                case PortablePathSegmentKind.QuadraticBezier:
+                    segments.Add(PortablePathSegment.QuadraticBezier(
+                        TransformPoint(segment.Point1, matrix),
+                        TransformPoint(segment.Point2, matrix),
+                        segment.IsSmoothJoin,
+                        segment.IsStroked));
+                    sourceCurrentPoint = ToVector2(segment.Point2);
+                    break;
+                case PortablePathSegmentKind.CubicBezier:
+                    segments.Add(PortablePathSegment.CubicBezier(
+                        TransformPoint(segment.Point1, matrix),
+                        TransformPoint(segment.Point2, matrix),
+                        TransformPoint(segment.Point3, matrix),
+                        segment.IsSmoothJoin,
+                        segment.IsStroked));
+                    sourceCurrentPoint = ToVector2(segment.Point3);
+                    break;
+                case PortablePathSegmentKind.Arc:
+                    if (TryTransformPortableArcSegment(sourceCurrentPoint, segment, matrix, out var transformedArc))
+                    {
+                        segments.Add(transformedArc);
+                    }
+                    else
+                    {
+                        segments.Add(PortablePathSegment.Line(
+                            TransformPoint(segment.Point1, matrix),
+                            segment.IsSmoothJoin,
+                            segment.IsStroked));
+                    }
+
+                    sourceCurrentPoint = ToVector2(segment.Point1);
+                    break;
+            }
+        }
+
+        return new PortablePathFigure
+        {
+            StartPoint = TransformPoint(figure.StartPoint, matrix),
+            IsClosed = figure.IsClosed,
+            IsFilled = figure.IsFilled,
+            Segments = segments.ToArray()
+        };
+    }
+
+    private static bool TryTransformPortableArcSegment(
+        Vector2 startPoint,
+        PortablePathSegment segment,
+        Matrix4x4 transform,
+        out PortablePathSegment transformedSegment)
+    {
+        transformedSegment = default;
+        if (!global::ProGPU.Vector.ArcSegmentGeometry.TryTransformArcSegment(
+                startPoint,
+                new global::ProGPU.Vector.ArcSegment(
+                    ToVector2(segment.Point1),
+                    ToVector2(segment.Size),
+                    (float)segment.RotationAngle,
+                    segment.IsLargeArc,
+                    (global::ProGPU.Vector.SweepDirection)(int)segment.SweepDirection,
+                    segment.IsSmoothJoin),
+                transform,
+                out _,
+                out var vectorArc))
+        {
+            return false;
+        }
+
+        transformedSegment = PortablePathSegment.Arc(
+            new PortablePoint(vectorArc.Point.X, vectorArc.Point.Y),
+            new PortableSize(vectorArc.Size.X, vectorArc.Size.Y),
+            vectorArc.RotationAngle,
+            vectorArc.IsLargeArc,
+            (PortableSweepDirection)(int)vectorArc.SweepDirection,
+            vectorArc.IsSmoothJoin,
+            segment.IsStroked);
+        return true;
+    }
+
+    private static Matrix4x4 ToMatrix4x4(PortableMatrix3x2 matrix)
+    {
+        return new Matrix4x4(
+            (float)matrix.M11,
+            (float)matrix.M12,
+            0,
+            0,
+            (float)matrix.M21,
+            (float)matrix.M22,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            (float)matrix.OffsetX,
+            (float)matrix.OffsetY,
+            0,
+            1);
+    }
+
+    private static PortablePoint TransformPoint(PortablePoint point, Matrix4x4 matrix)
+    {
+        var transformed = Vector2.Transform(ToVector2(point), matrix);
+        return new PortablePoint(transformed.X, transformed.Y);
+    }
+
+    private static Vector2 ToVector2(PortablePoint point)
+    {
+        return new Vector2((float)point.X, (float)point.Y);
+    }
+
+    private static Vector2 ToVector2(PortableSize size)
+    {
+        return new Vector2((float)size.Width, (float)size.Height);
+    }
+
+    private static PortableFillRule ToPortableFillRule(FakeFillRule fillRule)
+    {
+        return fillRule == FakeFillRule.EvenOdd
+            ? PortableFillRule.EvenOdd
+            : PortableFillRule.Nonzero;
+    }
+
+    private static PortableSweepDirection ToPortableSweepDirection(FakeSweepDirection sweepDirection)
+    {
+        return sweepDirection == FakeSweepDirection.Clockwise
+            ? PortableSweepDirection.Clockwise
+            : PortableSweepDirection.Counterclockwise;
+    }
+
+    private static int ToPortableCombineOperation(string geometryCombineMode)
+    {
+        return geometryCombineMode switch
+        {
+            "Exclude" => 0,
+            "Intersect" => 1,
+            "Xor" => 3,
+            _ => 2
+        };
+    }
+
+    private static IEnumerable<PortablePathSegment> ToPortableSegments(object segment)
+    {
+        switch (segment)
+        {
+            case FakeLineSegment line:
+                yield return PortablePathSegment.Line(
+                    ToPortablePoint(line.Point),
+                    line.IsSmoothJoin,
+                    isStroked: true);
+                break;
+            case FakePolyLineSegment polyLine:
+                for (var i = 0; i < polyLine.Points.Count; i++)
+                {
+                    yield return PortablePathSegment.Line(
+                        ToPortablePoint(polyLine.Points[i]),
+                        polyLine.IsSmoothJoin,
+                        isStroked: true);
+                }
+
+                break;
+            case FakeQuadraticBezierSegment quadratic:
+                yield return PortablePathSegment.QuadraticBezier(
+                    ToPortablePoint(quadratic.Point1),
+                    ToPortablePoint(quadratic.Point2),
+                    quadratic.IsSmoothJoin,
+                    isStroked: true);
+                break;
+            case FakePolyQuadraticBezierSegment polyQuadratic:
+                for (var i = 0; i + 1 < polyQuadratic.Points.Count; i += 2)
+                {
+                    yield return PortablePathSegment.QuadraticBezier(
+                        ToPortablePoint(polyQuadratic.Points[i]),
+                        ToPortablePoint(polyQuadratic.Points[i + 1]),
+                        polyQuadratic.IsSmoothJoin,
+                        isStroked: true);
+                }
+
+                break;
+            case FakeBezierSegment cubic:
+                yield return PortablePathSegment.CubicBezier(
+                    ToPortablePoint(cubic.Point1),
+                    ToPortablePoint(cubic.Point2),
+                    ToPortablePoint(cubic.Point3),
+                    cubic.IsSmoothJoin,
+                    isStroked: true);
+                break;
+            case FakePolyBezierSegment polyCubic:
+                for (var i = 0; i + 2 < polyCubic.Points.Count; i += 3)
+                {
+                    yield return PortablePathSegment.CubicBezier(
+                        ToPortablePoint(polyCubic.Points[i]),
+                        ToPortablePoint(polyCubic.Points[i + 1]),
+                        ToPortablePoint(polyCubic.Points[i + 2]),
+                        polyCubic.IsSmoothJoin,
+                        isStroked: true);
+                }
+
+                break;
+            case FakeArcSegment arc:
+                yield return PortablePathSegment.Arc(
+                    ToPortablePoint(arc.Point),
+                    ToPortableSize(arc.Size),
+                    arc.RotationAngle,
+                    arc.IsLargeArc,
+                    ToPortableSweepDirection(arc.SweepDirection),
+                    arc.IsSmoothJoin,
+                    isStroked: true);
+                break;
+        }
+    }
+
+    private sealed class FakeRectangleGeometry : IPortableGeometryPathSource
     {
         public FakeRectangleGeometry(FakeRect rect)
         {
@@ -4205,11 +4600,17 @@ public sealed class WpfReflectionResourceResolverTests
         public FakeRect Rect { get; }
 
         public object? Transform { get; init; }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = CreatePortableRectangleGeometry(Rect, Transform);
+            return true;
+        }
     }
 
     private readonly record struct FakeRect(double X, double Y, double Width, double Height);
 
-    private sealed class FakeLineGeometry
+    private sealed class FakeLineGeometry : IPortableGeometryPathSource
     {
         public FakeLineGeometry(FakePoint startPoint, FakePoint endPoint)
         {
@@ -4222,6 +4623,12 @@ public sealed class WpfReflectionResourceResolverTests
         public FakePoint EndPoint { get; }
 
         public object? Transform { get; init; }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = CreatePortableLineGeometry(StartPoint, EndPoint, Transform);
+            return true;
+        }
     }
 
     private sealed class FakePortableGeometryPathSource : IPortableGeometryPathSource
@@ -4263,7 +4670,7 @@ public sealed class WpfReflectionResourceResolverTests
         }
     }
 
-    private sealed class FakeEllipseGeometry
+    private sealed class FakeEllipseGeometry : IPortableGeometryPathSource
     {
         public FakeEllipseGeometry(FakePoint center, double radiusX, double radiusY)
         {
@@ -4277,21 +4684,66 @@ public sealed class WpfReflectionResourceResolverTests
         public double RadiusX { get; }
 
         public double RadiusY { get; }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = CreatePortableEllipseGeometry(Center, RadiusX, RadiusY);
+            return true;
+        }
     }
 
-    private sealed class FakeGeometryGroup
+    private sealed class FakeGeometryGroup : IPortableGeometryPathSource
     {
+        private readonly object[] _children;
+
         public FakeGeometryGroup(params object[] children)
         {
+            _children = children;
             Children = new FakeGeometryCollection(children);
         }
 
         public FakeGeometryCollection Children { get; }
 
         public FakeFillRule FillRule { get; init; } = FakeFillRule.EvenOdd;
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = null!;
+            var childPaths = new List<PortableGeometryPath>(_children.Length);
+            var flattenedFigures = new List<PortablePathFigure>();
+            var canFlatten = true;
+            foreach (var child in _children)
+            {
+                if (!WpfReflectionResourceResolverTests.TryGetPortableGeometryPath(child, out var childPath))
+                {
+                    continue;
+                }
+
+                childPaths.Add(childPath);
+                if (canFlatten)
+                {
+                    canFlatten = TryFlattenPortablePath(childPath, flattenedFigures);
+                }
+            }
+
+            if (childPaths.Count == 0)
+            {
+                return false;
+            }
+
+            path = canFlatten
+                ? new PortableGeometryPath
+                {
+                    Kind = PortableGeometryPathKind.Path,
+                    FillRule = ToPortableFillRule(FillRule),
+                    Figures = flattenedFigures.ToArray()
+                }
+                : FoldPortableGeometryChildren(childPaths);
+            return true;
+        }
     }
 
-    private sealed class FakeCombinedGeometry
+    private sealed class FakeCombinedGeometry : IPortableGeometryPathSource
     {
         public FakeCombinedGeometry(string geometryCombineMode, object? geometry1, object? geometry2)
         {
@@ -4307,6 +4759,31 @@ public sealed class WpfReflectionResourceResolverTests
         public object? Geometry2 { get; }
 
         public object? Transform { get; init; }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = null!;
+            if (!WpfReflectionResourceResolverTests.TryGetPortableGeometryPath(Geometry1, out var pathA)
+                || !WpfReflectionResourceResolverTests.TryGetPortableGeometryPath(Geometry2, out var pathB))
+            {
+                return false;
+            }
+
+            path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Combined,
+                PathA = pathA,
+                PathB = pathB,
+                CombineOperation = ToPortableCombineOperation(GeometryCombineMode)
+            };
+
+            if (TryMapOptionalTransform(Transform, out var hasTransform, out var portableTransform) && hasTransform)
+            {
+                path.Transform = portableTransform;
+            }
+
+            return true;
+        }
     }
 
     private sealed class FakeGeometryCollection
@@ -4351,7 +4828,7 @@ public sealed class WpfReflectionResourceResolverTests
         Clockwise
     }
 
-    private sealed class FakePathGeometry
+    private sealed class FakePathGeometry : IPortableGeometryPathSource
     {
         public FakePathGeometry(params FakePathFigure[] figures)
         {
@@ -4363,6 +4840,18 @@ public sealed class WpfReflectionResourceResolverTests
         public FakeFillRule FillRule { get; init; } = FakeFillRule.EvenOdd;
 
         public object? Transform { get; init; }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            var figures = new PortablePathFigure[Figures.Count];
+            for (var i = 0; i < figures.Length; i++)
+            {
+                figures[i] = Figures[i].ToPortableFigure();
+            }
+
+            path = CreatePortablePath(FillRule, Transform, figures);
+            return true;
+        }
     }
 
     private sealed class FakePathFigureCollection
@@ -4396,6 +4885,20 @@ public sealed class WpfReflectionResourceResolverTests
         public bool IsFilled { get; }
 
         public FakePathSegmentCollection Segments { get; }
+
+        public PortablePathFigure ToPortableFigure()
+        {
+            var segments = new List<PortablePathSegment>();
+            for (var i = 0; i < Segments.Count; i++)
+            {
+                foreach (var segment in ToPortableSegments(Segments[i]))
+                {
+                    segments.Add(segment);
+                }
+            }
+
+            return CreatePortableFigure(StartPoint, IsClosed, IsFilled, segments.ToArray());
+        }
     }
 
     private sealed class FakePathSegmentCollection

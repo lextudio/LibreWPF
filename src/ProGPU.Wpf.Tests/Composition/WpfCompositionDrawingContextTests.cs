@@ -454,7 +454,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void DrawDrawingReplaysWpfShapedGeometryDrawing()
+    public void DrawDrawingReplaysPortableGeometryDrawing()
     {
         var sink = new RecordingSink();
         using var context = new WpfCompositionDrawingContext(sink);
@@ -802,7 +802,7 @@ public sealed class WpfCompositionDrawingContextTests
         }
     }
 
-    private sealed class FakeRectangleGeometry
+    private sealed class FakeRectangleGeometry : IPortableGeometryPathSource
     {
         public FakeRectangleGeometry(FakeRect rect)
         {
@@ -810,6 +810,31 @@ public sealed class WpfCompositionDrawingContextTests
         }
 
         public FakeRect Rect { get; }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                FillRule = PortableFillRule.Nonzero,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(Rect.X, Rect.Y),
+                        IsClosed = true,
+                        IsFilled = true,
+                        Segments =
+                        [
+                            PortablePathSegment.Line(new PortablePoint(Rect.X + Rect.Width, Rect.Y), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(Rect.X + Rect.Width, Rect.Y + Rect.Height), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(Rect.X, Rect.Y + Rect.Height), isSmoothJoin: false, isStroked: true)
+                        ]
+                    }
+                ]
+            };
+            return true;
+        }
     }
 
     private sealed class FakePortableGlyphRunSource : IPortableGlyphRunSource

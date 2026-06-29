@@ -295,7 +295,7 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
         public object this[int index] => _items[index];
     }
 
-    private sealed class FakeRectangleGeometry
+    private sealed class FakeRectangleGeometry : IPortableGeometryPathSource
     {
         public FakeRectangleGeometry(FakeRect rect)
         {
@@ -303,6 +303,31 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
         }
 
         public FakeRect Rect { get; }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                FillRule = PortableFillRule.Nonzero,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(Rect.X, Rect.Y),
+                        IsClosed = true,
+                        IsFilled = true,
+                        Segments =
+                        [
+                            PortablePathSegment.Line(new PortablePoint(Rect.X + Rect.Width, Rect.Y), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(Rect.X + Rect.Width, Rect.Y + Rect.Height), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(Rect.X, Rect.Y + Rect.Height), isSmoothJoin: false, isStroked: true)
+                        ]
+                    }
+                ]
+            };
+            return true;
+        }
     }
 
     private readonly record struct FakeRect(double X, double Y, double Width, double Height);

@@ -1365,11 +1365,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             return true;
         }
 
-        if (TryGetPropertyValue(visual, "Opacity", out var opacityValue))
-        {
-            return TryConvertToDouble(opacityValue, out opacity);
-        }
-
         opacity = 1.0;
         return false;
     }

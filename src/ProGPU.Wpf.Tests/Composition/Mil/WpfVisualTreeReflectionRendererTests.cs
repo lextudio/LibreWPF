@@ -487,11 +487,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualUsesCurrentOwnerBranch()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
-            Offset = new WpfVector(10, 20),
+            HasOffset = true,
+            Offset = new PortablePoint(10, 20),
+            HasOpacity = true,
             Opacity = 0.75
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
@@ -521,13 +523,22 @@ public sealed class WpfVisualTreeReflectionRendererTests
     public void ReplaySubtreeLowersNativeEffectCacheAndOpacityIntoRetainedOwnerScope()
     {
         var effect = new FakeBlurEffect(4);
-        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        var cacheMode = new object();
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasEffect = true,
+                Effect = effect,
+                HasCacheMode = true,
+                CacheMode = cacheMode,
+                HasOpacity = true,
+                Opacity = 0.6,
+                HasOffset = true,
+                Offset = new PortablePoint(2, 3)
+            })
         {
-            Bounds = new FakeRect(10, 20, 30, 40),
-            Effect = effect,
-            CacheMode = new object(),
-            Opacity = 0.6,
-            Offset = new WpfVector(2, 3)
+            Bounds = new FakeRect(10, 20, 30, 40)
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
@@ -992,11 +1003,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesOffsetAndOpacityAroundContentAndChildren()
     {
-        var root = new FakeVisual
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
-            Offset = new WpfVector(10, 20),
+            HasOffset = true,
+            Offset = new PortablePoint(10, 20),
+            HasOpacity = true,
             Opacity = 0.5
-        };
+        });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();

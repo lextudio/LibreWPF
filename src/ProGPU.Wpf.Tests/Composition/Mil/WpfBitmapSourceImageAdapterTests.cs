@@ -99,6 +99,13 @@ public sealed class WpfBitmapSourceImageAdapterTests
     }
 
     [Fact]
+    public void CanProvideGpuTextureRequiresTypedBackendContract()
+    {
+        Assert.True(WpfBitmapSourceImageAdapter.CanProvideGpuTexture(new TypedGpuTextureSource()));
+        Assert.False(WpfBitmapSourceImageAdapter.CanProvideGpuTexture(new DuckTypedGpuTextureSource()));
+    }
+
+    [Fact]
     public void CopyPixelsAsPbgra32PremultipliesBgra32()
     {
         var source = new FakeBitmapSource(
@@ -571,5 +578,19 @@ public sealed class WpfBitmapSourceImageAdapterTests
             pixels = _pixels;
             return true;
         }
+    }
+
+    private sealed class TypedGpuTextureSource : IProGpuTextureSource
+    {
+        public bool TryGetGpuTexture(out GpuTexture texture)
+        {
+            texture = null!;
+            return false;
+        }
+    }
+
+    private sealed class DuckTypedGpuTextureSource
+    {
+        public GpuTexture? GpuTexture => null;
     }
 }

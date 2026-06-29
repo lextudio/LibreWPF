@@ -10916,8 +10916,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeDashArray", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryGetGpuTexture(bitmapSource", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("bitmapSource.GpuTexture", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("HasGpuTextureProperty(imageSource)", wpfReflectionResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("&& HasGpuTextureProperty(mediaImageSource)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("CanProvideGpuTexture(imageSource)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("&& CanProvideGpuTexture(mediaImageSource)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("imageSource is IProGpuTextureSource", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("ResolveGpuTextureProperty", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"GpuTexture\",", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableBitmapSourcePixels", portableBitmapSourcePixels, StringComparison.Ordinal);
         Assert.Contains("public interface IPortableBitmapSourcePixelsSource", portableBitmapSourcePixels, StringComparison.Ordinal);
         Assert.Contains("public enum PortablePixelDataFormat", portableBitmapSourcePixels, StringComparison.Ordinal);

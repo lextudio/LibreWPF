@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -14,7 +13,6 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 {
     private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-    private static readonly ConcurrentDictionary<Type, PropertyInfo?> s_bitmapSourceTextureProperties = new();
     private static readonly ConditionalWeakTable<MediaImageSource, AdaptedTextureCache> s_adaptedTextures = new();
 
     public MediaImageSource? AdaptImageSource(object? imageSource)
@@ -25,7 +23,7 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         }
 
         if (imageSource is MediaImageSource mediaImageSource
-            && HasGpuTextureProperty(mediaImageSource))
+            && CanProvideGpuTexture(mediaImageSource))
         {
             return mediaImageSource;
         }
@@ -71,9 +69,9 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         return TryCreateShimWriteableBitmap(width, height, dpiX, dpiY, pixelBuffer);
     }
 
-    internal static bool HasGpuTextureProperty(object imageSource)
+    internal static bool CanProvideGpuTexture(object imageSource)
     {
-        return ResolveGpuTextureProperty(imageSource.GetType()) != null;
+        return imageSource is IProGpuTextureSource;
     }
 
     internal static bool TryGetGpuTexture(MediaImageSource imageSource, out GpuTexture texture)
@@ -81,22 +79,18 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         texture = null!;
         var currentContext = ResolveCurrentGpuContext();
 
-        var property = s_bitmapSourceTextureProperties.GetOrAdd(imageSource.GetType(), ResolveGpuTextureProperty);
-        if (property != null)
+        if (imageSource is IProGpuTextureSource textureSource)
         {
             try
             {
-                if (property.GetValue(imageSource) is GpuTexture resolvedTexture
+                if (textureSource.TryGetGpuTexture(out var resolvedTexture)
                     && IsUsableInContext(resolvedTexture, currentContext))
                 {
                     texture = resolvedTexture;
                     return true;
                 }
             }
-            catch (TargetInvocationException)
-            {
-            }
-            catch (MethodAccessException)
+            catch (InvalidOperationException)
             {
             }
         }
@@ -108,18 +102,6 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         }
 
         return false;
-    }
-
-    private static PropertyInfo? ResolveGpuTextureProperty(Type imageSourceType)
-    {
-        var property = imageSourceType.GetProperty(
-            "GpuTexture",
-            MemberFlags,
-            binder: null,
-            returnType: typeof(GpuTexture),
-            types: Type.EmptyTypes,
-            modifiers: null);
-        return property?.GetMethod == null ? null : property;
     }
 
     private static bool TryCreateGpuTexture(
@@ -247,7 +229,7 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             var bitmap = constructor.Invoke(new[] { width, height, dpiX, dpiY, pbgra32Property.GetValue(null), null });
             var rect = int32RectConstructor.Invoke(new object[] { 0, 0, width, height });
             writePixels.Invoke(bitmap, new object[] { rect, pixelBuffer });
-            return bitmap is MediaImageSource mediaImageSource && HasGpuTextureProperty(mediaImageSource)
+            return bitmap is MediaImageSource mediaImageSource && CanProvideGpuTexture(mediaImageSource)
                 ? mediaImageSource
                 : null;
         }

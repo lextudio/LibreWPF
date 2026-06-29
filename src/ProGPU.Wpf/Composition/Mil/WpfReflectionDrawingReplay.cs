@@ -134,11 +134,6 @@ internal static class WpfReflectionDrawingReplay
             return TryReplayGeometryDrawing(drawing, sink, imageSourceAdapter);
         }
 
-        if (TypeNameEndsWith(drawing, "DrawingGroup"))
-        {
-            return TryReplayDrawingGroup(drawing, sink, imageSourceAdapter);
-        }
-
         if (TypeNameEndsWith(drawing, "ImageDrawing"))
         {
             return TryReplayImageDrawing(drawing, sink, imageSourceAdapter);
@@ -2427,7 +2422,8 @@ internal static class WpfReflectionDrawingReplay
                 && IsUsableRect(bounds, out bounds);
         }
 
-        return TryReadFiniteRectProperty(drawingGroup, "Bounds", out bounds);
+        bounds = default;
+        return false;
     }
 
     private static bool TryGetDrawingGroupTransform(
@@ -2442,7 +2438,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasTransform && transform != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "Transform", out transform) && transform != null;
+        transform = null;
+        return false;
     }
 
     private static bool TryGetDrawingGroupClipGeometry(
@@ -2457,7 +2454,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasClipGeometry && clipGeometry != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "ClipGeometry", out clipGeometry) && clipGeometry != null;
+        clipGeometry = null;
+        return false;
     }
 
     private static bool TryGetDrawingGroupOpacity(
@@ -2470,12 +2468,6 @@ internal static class WpfReflectionDrawingReplay
         {
             opacity = drawingGroupState!.Opacity;
             return drawingGroupState.HasOpacity;
-        }
-
-        if (TryGetPropertyValue(drawingGroup, "Opacity", out var opacityValue)
-            && TryConvertToDouble(opacityValue, out opacity))
-        {
-            return true;
         }
 
         opacity = 1;
@@ -2506,7 +2498,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasOpacityMask && opacityMask != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "OpacityMask", out opacityMask) && opacityMask != null;
+        opacityMask = null;
+        return false;
     }
 
     private static bool TryGetDrawingGroupGuidelineSet(
@@ -2521,7 +2514,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasGuidelineSet && guidelineSet != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "GuidelineSet", out guidelineSet) && guidelineSet != null;
+        guidelineSet = null;
+        return false;
     }
 
     private static bool TryGetDrawingGroupEffect(
@@ -2536,7 +2530,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasEffect && effect != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "Effect", out effect) && effect != null;
+        effect = null;
+        return false;
     }
 
     private static bool TryGetDrawingGroupBitmapEffect(
@@ -2551,7 +2546,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasBitmapEffect && bitmapEffect != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "BitmapEffect", out bitmapEffect) && bitmapEffect != null;
+        bitmapEffect = null;
+        return false;
     }
 
     private static bool HasDrawingGroupBitmapEffectInput(
@@ -2578,8 +2574,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasBitmapEffectInput && bitmapEffectInput != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "BitmapEffectInput", out bitmapEffectInput)
-            && bitmapEffectInput != null;
+        bitmapEffectInput = null;
+        return false;
     }
 
     private static bool HasDrawingGroupCacheMode(
@@ -2593,7 +2589,7 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasCacheMode && cacheMode != null;
         }
 
-        return HasNonNullProperty(drawingGroup, "CacheMode");
+        return false;
     }
 
     private static bool TryGetDrawingGroupBitmapScalingMode(
@@ -2608,7 +2604,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasBitmapScalingMode && bitmapScalingMode != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "BitmapScalingMode", out bitmapScalingMode);
+        bitmapScalingMode = null;
+        return false;
     }
 
     private static bool TryGetDrawingGroupEdgeMode(
@@ -2623,7 +2620,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasEdgeMode && edgeMode != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "EdgeMode", out edgeMode);
+        edgeMode = null;
+        return false;
     }
 
     private static bool TryGetDrawingGroupClearTypeHint(
@@ -2638,7 +2636,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasClearTypeHint && clearTypeHint != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "ClearTypeHint", out clearTypeHint);
+        clearTypeHint = null;
+        return false;
     }
 
     private static bool TryGetDrawingGroupTextRenderingMode(
@@ -2653,7 +2652,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasTextRenderingMode && textRenderingMode != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "TextRenderingMode", out textRenderingMode);
+        textRenderingMode = null;
+        return false;
     }
 
     private static bool TryGetDrawingGroupTextHintingMode(
@@ -2668,7 +2668,8 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState.HasTextHintingMode && textHintingMode != null;
         }
 
-        return TryGetPropertyValue(drawingGroup, "TextHintingMode", out textHintingMode);
+        textHintingMode = null;
+        return false;
     }
 
     private static bool TryResolveOpacityMask(
@@ -2707,7 +2708,7 @@ internal static class WpfReflectionDrawingReplay
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out Rect bounds)
     {
-        if (drawing is PortableDrawingGroupStateSource || TypeNameEndsWith(drawing, "DrawingGroup"))
+        if (drawing is PortableDrawingGroupStateSource)
         {
             var hasPortableDrawingGroupState = TryGetPortableDrawingGroupState(
                 drawing,
@@ -3113,33 +3114,7 @@ internal static class WpfReflectionDrawingReplay
             return drawingGroupState!.Children ?? Array.Empty<object>();
         }
 
-        if (!TryGetPropertyValue(drawingGroup, "Children", out var children) || children == null)
-        {
-            return Array.Empty<object>();
-        }
-
-        if (!TryReadIntProperty(children, "Count", out var count) || count <= 0)
-        {
-            return Array.Empty<object>();
-        }
-
-        var getChild = FindIndexer(children.GetType());
-        if (getChild == null)
-        {
-            return Array.Empty<object>();
-        }
-
-        var result = new List<object>(count);
-        for (var i = 0; i < count; i++)
-        {
-            var child = getChild(children, i);
-            if (child != null)
-            {
-                result.Add(child);
-            }
-        }
-
-        return result;
+        return Array.Empty<object>();
     }
 
     private static bool TryReadPortableRect(PortableRect portableRect, out Rect rectangle)

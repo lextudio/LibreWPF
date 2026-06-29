@@ -4136,10 +4136,13 @@ public sealed class WpfReflectionResourceResolverTests
         public object? Geometry { get; }
     }
 
-    private sealed class FakeDrawingGroup
+    private sealed class FakeDrawingGroup : IPortableDrawingGroupStateSource
     {
+        private readonly object[] _children;
+
         public FakeDrawingGroup(params object[] children)
         {
+            _children = children;
             Children = new FakeDrawingCollection(children);
         }
 
@@ -4174,6 +4177,50 @@ public sealed class WpfReflectionResourceResolverTests
         public object? Effect { get; init; }
 
         public object? CacheMode { get; init; }
+
+        public bool TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)
+        {
+            state = new PortableDrawingGroupState
+            {
+                HasTransform = Transform != null,
+                Transform = Transform,
+                HasClipGeometry = ClipGeometry != null,
+                ClipGeometry = ClipGeometry,
+                HasOpacity = true,
+                Opacity = Opacity,
+                HasOpacityMask = OpacityMask != null,
+                OpacityMask = OpacityMask,
+                HasGuidelineSet = GuidelineSet != null,
+                GuidelineSet = GuidelineSet,
+                HasEdgeMode = EdgeMode != null,
+                EdgeMode = EdgeMode,
+                HasBitmapScalingMode = BitmapScalingMode != null,
+                BitmapScalingMode = BitmapScalingMode,
+                HasClearTypeHint = ClearTypeHint != null,
+                ClearTypeHint = ClearTypeHint,
+                HasTextRenderingMode = TextRenderingMode != null,
+                TextRenderingMode = TextRenderingMode,
+                HasTextHintingMode = TextHintingMode != null,
+                TextHintingMode = TextHintingMode,
+                HasBitmapEffect = BitmapEffect != null,
+                BitmapEffect = BitmapEffect,
+                HasBitmapEffectInput = BitmapEffectInput != null,
+                BitmapEffectInput = BitmapEffectInput,
+                HasEffect = Effect != null,
+                Effect = Effect,
+                HasCacheMode = CacheMode != null,
+                CacheMode = CacheMode,
+                Children = _children
+            };
+
+            if (Bounds is FakeRect bounds)
+            {
+                state.HasBounds = true;
+                state.Bounds = new PortableRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            }
+
+            return true;
+        }
     }
 
     private sealed class FakeBlurEffect : IPortableEffectSource

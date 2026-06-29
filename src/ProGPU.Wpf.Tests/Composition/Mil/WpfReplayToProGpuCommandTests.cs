@@ -2542,10 +2542,13 @@ public sealed class WpfReplayToProGpuCommandTests
         public object? Geometry { get; }
     }
 
-    private sealed class FakeDrawingGroup
+    private sealed class FakeDrawingGroup : IPortableDrawingGroupStateSource
     {
+        private readonly object[] _children;
+
         public FakeDrawingGroup(params object[] children)
         {
+            _children = children;
             Children = new FakeDrawingCollection(children);
         }
 
@@ -2558,6 +2561,28 @@ public sealed class WpfReplayToProGpuCommandTests
         public object? Bounds { get; init; }
 
         public object? OpacityMask { get; init; }
+
+        public bool TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)
+        {
+            state = new PortableDrawingGroupState
+            {
+                HasTransform = Transform != null,
+                Transform = Transform,
+                HasOpacity = true,
+                Opacity = Opacity,
+                HasOpacityMask = OpacityMask != null,
+                OpacityMask = OpacityMask,
+                Children = _children
+            };
+
+            if (Bounds is FakeRect bounds)
+            {
+                state.HasBounds = true;
+                state.Bounds = new PortableRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            }
+
+            return true;
+        }
     }
 
     private sealed class FakeDrawingCollection

@@ -838,14 +838,26 @@ public sealed class WpfCompositionDrawingContextTests
         public FakeRect Rect { get; }
     }
 
-    private sealed class FakeDrawingGroup
+    private sealed class FakeDrawingGroup : IPortableDrawingGroupStateSource
     {
+        private readonly object[] _children;
+
         public FakeDrawingGroup(params object[] children)
         {
+            _children = children;
             Children = new FakeDrawingCollection(children);
         }
 
         public FakeDrawingCollection Children { get; }
+
+        public bool TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)
+        {
+            state = new PortableDrawingGroupState
+            {
+                Children = _children
+            };
+            return true;
+        }
     }
 
     private sealed class FakeDrawingCollection

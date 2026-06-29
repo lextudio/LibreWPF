@@ -5675,7 +5675,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetPortableDrawingGroupState(out var portableState)", replaySource, StringComparison.Ordinal);
         Assert.Contains("var hasPortableDrawingGroupState = TryGetPortableDrawingGroupState(", replaySource, StringComparison.Ordinal);
         Assert.Contains("ExtractChildren(drawingGroup, hasPortableDrawingGroupState, drawingGroupState)", replaySource, StringComparison.Ordinal);
-        Assert.Contains("return TryGetPropertyValue(drawingGroup, \"Transform\", out transform)", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(drawing, \"DrawingGroup\")", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(drawingGroup,", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("HasNonNullProperty(drawingGroup,", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadFiniteRectProperty(drawingGroup", replaySource, StringComparison.Ordinal);
         Assert.Contains("DrawingGroup : Drawing, IPortableDrawingGroupStateSource", drawingGroupSource, StringComparison.Ordinal);
         Assert.Contains("IPortableDrawingGroupStateSource.TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)", drawingGroupSource, StringComparison.Ordinal);
         Assert.Contains("CopyPortableDrawingGroupChildren(Children)", drawingGroupSource, StringComparison.Ordinal);

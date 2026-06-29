@@ -219,7 +219,7 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
         }
     }
 
-    private sealed class FakeDrawing
+    private sealed class FakeDrawing : IPortableDrawingGroupStateSource
     {
         public FakeDrawing(Rect bounds)
         {
@@ -227,6 +227,16 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
         }
 
         public Rect Bounds { get; }
+
+        public bool TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)
+        {
+            state = new PortableDrawingGroupState
+            {
+                HasBounds = true,
+                Bounds = ToPortableRect(Bounds)
+            };
+            return true;
+        }
     }
 
     private sealed class FakeGeometryDrawing
@@ -239,14 +249,26 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
         public object? Geometry { get; }
     }
 
-    private sealed class FakeDrawingGroup
+    private sealed class FakeDrawingGroup : IPortableDrawingGroupStateSource
     {
+        private readonly object[] _children;
+
         public FakeDrawingGroup(params object[] children)
         {
+            _children = children;
             Children = new FakeDrawingCollection(children);
         }
 
         public FakeDrawingCollection Children { get; }
+
+        public bool TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)
+        {
+            state = new PortableDrawingGroupState
+            {
+                Children = _children
+            };
+            return true;
+        }
     }
 
     private sealed class FakeDrawingCollection

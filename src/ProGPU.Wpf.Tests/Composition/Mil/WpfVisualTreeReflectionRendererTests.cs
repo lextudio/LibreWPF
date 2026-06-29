@@ -44,8 +44,10 @@ using PortableShaderEffect = ProGPU.Wpf.Interop.PortableShaderEffect;
 using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;
 using PortableShaderSampler = ProGPU.Wpf.Interop.PortableShaderSampler;
 using PortableShaderSamplingMode = ProGPU.Wpf.Interop.PortableShaderSamplingMode;
+using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
+using PortableTransformMatrixSource = ProGPU.Wpf.Interop.IPortableTransformMatrixSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
@@ -3473,7 +3475,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public object? Pen { get; }
     }
 
-    private sealed class FakeMatrixTransform
+    private sealed class FakeMatrixTransform : PortableTransformMatrixSource
     {
         public FakeMatrixTransform(FakeMatrix value)
         {
@@ -3481,6 +3483,18 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
 
         public FakeMatrix Value { get; }
+
+        public bool TryGetPortableTransformMatrix(out PortableMatrix3x2 matrix)
+        {
+            matrix = new PortableMatrix3x2(
+                Value.M11,
+                Value.M12,
+                Value.M21,
+                Value.M22,
+                Value.OffsetX,
+                Value.OffsetY);
+            return true;
+        }
     }
 
     private readonly record struct FakeMatrix(double M11, double M12, double M21, double M22, double OffsetX, double OffsetY);

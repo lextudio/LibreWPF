@@ -2602,7 +2602,7 @@ public sealed class WpfReplayToProGpuCommandTests
         public object? Transform { get; init; }
     }
 
-    private sealed class FakeMatrixTransform
+    private sealed class FakeMatrixTransform : IPortableTransformMatrixSource
     {
         public FakeMatrixTransform(FakeMatrix value)
         {
@@ -2610,6 +2610,18 @@ public sealed class WpfReplayToProGpuCommandTests
         }
 
         public FakeMatrix Value { get; }
+
+        public bool TryGetPortableTransformMatrix(out PortableMatrix3x2 matrix)
+        {
+            matrix = new PortableMatrix3x2(
+                Value.M11,
+                Value.M12,
+                Value.M21,
+                Value.M22,
+                Value.OffsetX,
+                Value.OffsetY);
+            return true;
+        }
     }
 
     private readonly record struct FakeColor(byte A, byte R, byte G, byte B);

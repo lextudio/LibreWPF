@@ -369,7 +369,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void ObjectRenderDataDrawingContextPushesReflectedTransformsThroughNativeSink()
+    public void ObjectRenderDataDrawingContextPushesPortableTransformsThroughNativeSink()
     {
         var sink = new RecordingSink();
         var transform = new FakeTranslateTransform(6, 7);
@@ -916,7 +916,7 @@ public sealed class WpfCompositionDrawingContextTests
         }
     }
 
-    private sealed class FakeTranslateTransform
+    private sealed class FakeTranslateTransform : IPortableTransformMatrixSource
     {
         public FakeTranslateTransform(double x, double y)
         {
@@ -927,6 +927,12 @@ public sealed class WpfCompositionDrawingContextTests
         public double X { get; }
 
         public double Y { get; }
+
+        public bool TryGetPortableTransformMatrix(out PortableMatrix3x2 matrix)
+        {
+            matrix = new PortableMatrix3x2(1, 0, 0, 1, X, Y);
+            return true;
+        }
     }
 
     private sealed class FakeBlurBitmapEffect : IPortableEffectSource

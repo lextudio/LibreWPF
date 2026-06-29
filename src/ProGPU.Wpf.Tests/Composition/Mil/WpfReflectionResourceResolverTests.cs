@@ -2,8 +2,6 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
-using System.Reflection;
-using System.Reflection.Emit;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition;
@@ -496,7 +494,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodePushTransformAdaptsWpfShapedMatrixTransform()
+    public void DecodePushTransformAdaptsPortableMatrixTransformContract()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 2, 3, 4, 10, 20));
         var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
@@ -561,9 +559,9 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodePushTransformFallsBackToLocalMatrixTransformWhenForeignAssemblyShadowsType()
+    public void DecodePushTransformRejectsReflectedMatrixShapeWithoutPortableContract()
     {
-        var transform = CreateForeignTransformWithShadowMatrixTransform(new FakeMatrix(1, 0, 0, 1, 6, 7));
+        var transform = new FakeReflectedMatrixTransform(new FakeMatrix(1, 0, 0, 1, 6, 7));
         var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
         var sink = new TestSink();
 
@@ -575,91 +573,10 @@ public sealed class WpfReflectionResourceResolverTests
 
         var result = new WpfMilRenderDataDecoder().Decode(renderData, sink, resolver);
 
-        Assert.Equal(new WpfMilDecodeResult(2, 2, 0, 0), result);
-        var adaptedTransform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
-        Assert.Equal(6, adaptedTransform.Matrix.OffsetX);
-        Assert.Equal(7, adaptedTransform.Matrix.OffsetY);
-        Assert.Equal(1, sink.PopCount);
-    }
-
-    [Fact]
-    public void DecodePushTransformAdaptsWpfShapedTransformGroupWithoutValue()
-    {
-        var transform = new FakeTransformGroup(
-            new FakeTranslateTransform(5, 7),
-            new FakeScaleTransform(2, 3, 10, 20));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
-        var sink = new TestSink();
-
-        var pushPayload = new byte[8];
-        WriteUInt32(pushPayload, 0, 1);
-        var renderData = CreateRecord(WpfMilCommandId.PushTransform, pushPayload)
-            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
-            .ToArray();
-
-        var result = new WpfMilRenderDataDecoder().Decode(renderData, sink, resolver);
-
-        Assert.Equal(new WpfMilDecodeResult(2, 2, 0, 0), result);
-        var adaptedTransform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
-        Assert.Equal(2, adaptedTransform.Matrix.M11);
-        Assert.Equal(0, adaptedTransform.Matrix.M12);
-        Assert.Equal(0, adaptedTransform.Matrix.M21);
-        Assert.Equal(3, adaptedTransform.Matrix.M22);
-        Assert.Equal(0, adaptedTransform.Matrix.OffsetX);
-        Assert.Equal(-19, adaptedTransform.Matrix.OffsetY);
-        Assert.Equal(1, sink.PopCount);
-    }
-
-    [Fact]
-    public void DecodePushTransformAdaptsWpfShapedRotateTransformWithoutValue()
-    {
-        var transform = new FakeRotateTransform(90, 10, 20);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
-        var sink = new TestSink();
-
-        var pushPayload = new byte[8];
-        WriteUInt32(pushPayload, 0, 1);
-        var renderData = CreateRecord(WpfMilCommandId.PushTransform, pushPayload)
-            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
-            .ToArray();
-
-        var result = new WpfMilRenderDataDecoder().Decode(renderData, sink, resolver);
-
-        Assert.Equal(new WpfMilDecodeResult(2, 2, 0, 0), result);
-        var adaptedTransform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
-        Assert.Equal(0, adaptedTransform.Matrix.M11, 12);
-        Assert.Equal(1, adaptedTransform.Matrix.M12, 12);
-        Assert.Equal(-1, adaptedTransform.Matrix.M21, 12);
-        Assert.Equal(0, adaptedTransform.Matrix.M22, 12);
-        Assert.Equal(30, adaptedTransform.Matrix.OffsetX, 12);
-        Assert.Equal(10, adaptedTransform.Matrix.OffsetY, 12);
-        Assert.Equal(1, sink.PopCount);
-    }
-
-    [Fact]
-    public void DecodePushTransformAdaptsWpfShapedSkewTransformWithoutValue()
-    {
-        var transform = new FakeSkewTransform(45, 0, 10, 20);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
-        var sink = new TestSink();
-
-        var pushPayload = new byte[8];
-        WriteUInt32(pushPayload, 0, 1);
-        var renderData = CreateRecord(WpfMilCommandId.PushTransform, pushPayload)
-            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
-            .ToArray();
-
-        var result = new WpfMilRenderDataDecoder().Decode(renderData, sink, resolver);
-
-        Assert.Equal(new WpfMilDecodeResult(2, 2, 0, 0), result);
-        var adaptedTransform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
-        Assert.Equal(1, adaptedTransform.Matrix.M11);
-        Assert.Equal(0, adaptedTransform.Matrix.M12);
-        Assert.Equal(1, adaptedTransform.Matrix.M21, 12);
-        Assert.Equal(1, adaptedTransform.Matrix.M22);
-        Assert.Equal(-20, adaptedTransform.Matrix.OffsetX, 12);
-        Assert.Equal(0, adaptedTransform.Matrix.OffsetY, 12);
-        Assert.Equal(1, sink.PopCount);
+        Assert.Equal(new WpfMilDecodeResult(2, 0, 2, 0), result);
+        Assert.Empty(sink.Transforms);
+        Assert.Equal(0, sink.PopCount);
+        Assert.Equal(0, transform.ReflectedPropertyProbeCount);
     }
 
     [Fact]
@@ -3169,49 +3086,6 @@ public sealed class WpfReflectionResourceResolverTests
         return new FakeRenderData(record, record.Length, new FakeDependentResources(brush));
     }
 
-    private static object CreateForeignTransformWithShadowMatrixTransform(FakeMatrix matrix)
-    {
-        var assembly = AssemblyBuilder.DefineDynamicAssembly(
-            new AssemblyName($"ForeignWpfTransformAssembly{Guid.NewGuid():N}"),
-            AssemblyBuilderAccess.Run);
-        var module = assembly.DefineDynamicModule("Main");
-        module.DefineType(
-                "System.Windows.Media.MatrixTransform",
-                TypeAttributes.Public | TypeAttributes.Class)
-            .CreateType();
-
-        var typeBuilder = module.DefineType(
-            "ForeignTransformResource",
-            TypeAttributes.Public | TypeAttributes.Class);
-        var valueField = typeBuilder.DefineField("_value", typeof(object), FieldAttributes.Private | FieldAttributes.InitOnly);
-        var constructor = typeBuilder.DefineConstructor(
-            MethodAttributes.Public,
-            CallingConventions.Standard,
-            new[] { typeof(object) });
-        var constructorIl = constructor.GetILGenerator();
-        constructorIl.Emit(OpCodes.Ldarg_0);
-        constructorIl.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes)!);
-        constructorIl.Emit(OpCodes.Ldarg_0);
-        constructorIl.Emit(OpCodes.Ldarg_1);
-        constructorIl.Emit(OpCodes.Stfld, valueField);
-        constructorIl.Emit(OpCodes.Ret);
-
-        var valueProperty = typeBuilder.DefineProperty("Value", PropertyAttributes.None, typeof(object), Type.EmptyTypes);
-        var valueGetter = typeBuilder.DefineMethod(
-            "get_Value",
-            MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-            typeof(object),
-            Type.EmptyTypes);
-        var getterIl = valueGetter.GetILGenerator();
-        getterIl.Emit(OpCodes.Ldarg_0);
-        getterIl.Emit(OpCodes.Ldfld, valueField);
-        getterIl.Emit(OpCodes.Ret);
-        valueProperty.SetGetMethod(valueGetter);
-
-        return Activator.CreateInstance(typeBuilder.CreateType(), matrix)
-            ?? throw new InvalidOperationException("Could not create foreign transform resource.");
-    }
-
     private static void WriteRect(byte[] target, int offset, double x, double y, double width, double height)
     {
         WriteDouble(target, offset, x);
@@ -3690,7 +3564,7 @@ public sealed class WpfReflectionResourceResolverTests
         public double Offset { get; }
     }
 
-    private sealed class FakeMatrixTransform
+    private sealed class FakeMatrixTransform : IPortableTransformMatrixSource
     {
         public FakeMatrixTransform(FakeMatrix value)
         {
@@ -3698,6 +3572,39 @@ public sealed class WpfReflectionResourceResolverTests
         }
 
         public FakeMatrix Value { get; }
+
+        public bool TryGetPortableTransformMatrix(out PortableMatrix3x2 matrix)
+        {
+            matrix = new PortableMatrix3x2(
+                Value.M11,
+                Value.M12,
+                Value.M21,
+                Value.M22,
+                Value.OffsetX,
+                Value.OffsetY);
+            return true;
+        }
+    }
+
+    private sealed class FakeReflectedMatrixTransform
+    {
+        private readonly FakeMatrix _value;
+
+        public FakeReflectedMatrixTransform(FakeMatrix value)
+        {
+            _value = value;
+        }
+
+        public int ReflectedPropertyProbeCount { get; private set; }
+
+        public FakeMatrix Value
+        {
+            get
+            {
+                ReflectedPropertyProbeCount++;
+                return _value;
+            }
+        }
     }
 
     private sealed class FakePortableTransform : IPortableTransformMatrixSource
@@ -3741,97 +3648,6 @@ public sealed class WpfReflectionResourceResolverTests
             matrix = default;
             return false;
         }
-    }
-
-    private sealed class FakeTransformGroup
-    {
-        public FakeTransformGroup(params object[] children)
-        {
-            Children = new FakeTransformCollection(children);
-        }
-
-        public FakeTransformCollection Children { get; }
-    }
-
-    private sealed class FakeTransformCollection
-    {
-        private readonly object[] _items;
-
-        public FakeTransformCollection(object[] items)
-        {
-            _items = items;
-        }
-
-        public int Count => _items.Length;
-
-        public object this[int index] => _items[index];
-    }
-
-    private sealed class FakeTranslateTransform
-    {
-        public FakeTranslateTransform(double x, double y)
-        {
-            X = x;
-            Y = y;
-        }
-
-        public double X { get; }
-
-        public double Y { get; }
-    }
-
-    private sealed class FakeScaleTransform
-    {
-        public FakeScaleTransform(double scaleX, double scaleY, double centerX, double centerY)
-        {
-            ScaleX = scaleX;
-            ScaleY = scaleY;
-            CenterX = centerX;
-            CenterY = centerY;
-        }
-
-        public double ScaleX { get; }
-
-        public double ScaleY { get; }
-
-        public double CenterX { get; }
-
-        public double CenterY { get; }
-    }
-
-    private sealed class FakeRotateTransform
-    {
-        public FakeRotateTransform(double angle, double centerX, double centerY)
-        {
-            Angle = angle;
-            CenterX = centerX;
-            CenterY = centerY;
-        }
-
-        public double Angle { get; }
-
-        public double CenterX { get; }
-
-        public double CenterY { get; }
-    }
-
-    private sealed class FakeSkewTransform
-    {
-        public FakeSkewTransform(double angleX, double angleY, double centerX, double centerY)
-        {
-            AngleX = angleX;
-            AngleY = angleY;
-            CenterX = centerX;
-            CenterY = centerY;
-        }
-
-        public double AngleX { get; }
-
-        public double AngleY { get; }
-
-        public double CenterX { get; }
-
-        public double CenterY { get; }
     }
 
     private readonly record struct FakeMatrix(double M11, double M12, double M21, double M22, double OffsetX, double OffsetY);

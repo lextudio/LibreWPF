@@ -163,7 +163,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeRectangleThroughProGpuSinkDefaultsUnrecognizedGradientColorInterpolationMode()
+    public void DecodeRectangleThroughProGpuSinkDefaultsUnrecognizedPortableGradientColorInterpolationMode()
     {
         var brush = new FakeLinearGradientBrush(
             new FakePoint(0, 0),
@@ -186,8 +186,8 @@ public sealed class WpfReplayToProGpuCommandTests
             sink,
             resolver);
 
-        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
-        Assert.Equal(1, sink.UnsupportedStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(0, sink.UnsupportedStateCount);
         var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(Assert.Single(nativeContext.Commands).Brush);
         Assert.Equal(ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation, nativeBrush.ColorInterpolationMode);
     }
@@ -2340,7 +2340,101 @@ public sealed class WpfReplayToProGpuCommandTests
         return stops;
     }
 
-    private sealed class FakePen
+    private static PortablePoint ToPortablePoint(FakePoint point)
+    {
+        return new PortablePoint(point.X, point.Y);
+    }
+
+    private static PortableColor ToPortableColor(FakeColor color)
+    {
+        return new PortableColor(color.A, color.R, color.G, color.B);
+    }
+
+    private static PortableGradientStop[] ToPortableGradientStops(FakeGradientStop[] stops)
+    {
+        var portableStops = new PortableGradientStop[stops.Length];
+        for (var i = 0; i < stops.Length; i++)
+        {
+            portableStops[i] = new PortableGradientStop(ToPortableColor(stops[i].Color), stops[i].Offset);
+        }
+
+        return portableStops;
+    }
+
+    private static PortablePenLineCap ToPortablePenLineCap(object? value)
+    {
+        switch (value?.ToString())
+        {
+            case "Square":
+                return PortablePenLineCap.Square;
+            case "Round":
+                return PortablePenLineCap.Round;
+            case "Triangle":
+                return PortablePenLineCap.Triangle;
+            default:
+                return PortablePenLineCap.Flat;
+        }
+    }
+
+    private static PortablePenLineJoin ToPortablePenLineJoin(object? value)
+    {
+        switch (value?.ToString())
+        {
+            case "Bevel":
+                return PortablePenLineJoin.Bevel;
+            case "Round":
+                return PortablePenLineJoin.Round;
+            default:
+                return PortablePenLineJoin.Miter;
+        }
+    }
+
+    private static bool TryMapOptionalTransform(
+        object? transformValue,
+        out bool hasTransform,
+        out PortableMatrix3x2 transform)
+    {
+        hasTransform = false;
+        transform = PortableMatrix3x2.Identity;
+        if (transformValue == null)
+        {
+            return true;
+        }
+
+        if (transformValue is IPortableTransformMatrixSource transformSource
+            && transformSource.TryGetPortableTransformMatrix(out transform))
+        {
+            hasTransform = true;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryMapBrushMappingMode(string value, out PortableBrushMappingMode mappingMode)
+    {
+        switch (value)
+        {
+            case "RelativeToBoundingBox":
+                mappingMode = PortableBrushMappingMode.RelativeToBoundingBox;
+                return true;
+            case "Absolute":
+                mappingMode = PortableBrushMappingMode.Absolute;
+                return true;
+            default:
+                mappingMode = PortableBrushMappingMode.RelativeToBoundingBox;
+                return false;
+        }
+    }
+
+    private static PortableGradientColorInterpolationMode ToPortableGradientColorInterpolationMode(string value)
+    {
+        return value == "ScRgbLinearInterpolation"
+            ? PortableGradientColorInterpolationMode.ScRgbLinearInterpolation
+            : PortableGradientColorInterpolationMode.SRgbLinearInterpolation;
+    }
+
+    private sealed class FakePen : IPortablePenSource
     {
         public FakePen(object brush, double thickness)
         {
@@ -2363,6 +2457,36 @@ public sealed class WpfReplayToProGpuCommandTests
         public object? LineJoin { get; init; }
 
         public double MiterLimit { get; init; } = 10.0;
+
+        public bool TryGetPortablePen(out PortablePen pen)
+        {
+            pen = null!;
+            if (Brush is not IPortableBrushSource brushSource
+                || !brushSource.TryGetPortableBrush(out var portableBrush))
+            {
+                return false;
+            }
+
+            var dashArray = Array.Empty<double>();
+            var dashOffset = 0.0;
+            if (DashStyle is FakeDashStyle dashStyle)
+            {
+                dashArray = dashStyle.Dashes;
+                dashOffset = dashStyle.Offset;
+            }
+
+            pen = new PortablePen(
+                portableBrush,
+                Thickness,
+                ToPortablePenLineCap(StartLineCap),
+                ToPortablePenLineCap(EndLineCap),
+                ToPortablePenLineCap(DashCap),
+                ToPortablePenLineJoin(LineJoin),
+                MiterLimit,
+                dashArray,
+                dashOffset);
+            return true;
+        }
     }
 
     private sealed class FakeDashStyle
@@ -2424,12 +2548,15 @@ public sealed class WpfReplayToProGpuCommandTests
         BinaryPrimitives.WriteInt64LittleEndian(target.AsSpan(offset, 8), BitConverter.DoubleToInt64Bits(value));
     }
 
-    private sealed class FakeLinearGradientBrush
+    private sealed class FakeLinearGradientBrush : IPortableBrushSource
     {
+        private readonly FakeGradientStop[] _stops;
+
         public FakeLinearGradientBrush(FakePoint startPoint, FakePoint endPoint, params FakeGradientStop[] stops)
         {
             StartPoint = startPoint;
             EndPoint = endPoint;
+            _stops = stops;
             GradientStops = new FakeGradientStopCollection(stops);
         }
 
@@ -2446,16 +2573,42 @@ public sealed class WpfReplayToProGpuCommandTests
         public object? Transform { get; init; }
 
         public object? RelativeTransform { get; init; }
+
+        public bool TryGetPortableBrush(out PortableBrush brush)
+        {
+            brush = null!;
+            if (!TryMapBrushMappingMode(MappingMode, out var mappingMode)
+                || !TryMapOptionalTransform(Transform, out var hasTransform, out var transform)
+                || !TryMapOptionalTransform(RelativeTransform, out var hasRelativeTransform, out var relativeTransform))
+            {
+                return false;
+            }
+
+            brush = PortableBrush.LinearGradient(
+                ToPortablePoint(StartPoint),
+                ToPortablePoint(EndPoint),
+                ToPortableGradientStops(_stops),
+                mappingMode: mappingMode,
+                colorInterpolationMode: ToPortableGradientColorInterpolationMode(ColorInterpolationMode),
+                hasTransform: hasTransform,
+                transform: transform,
+                hasRelativeTransform: hasRelativeTransform,
+                relativeTransform: relativeTransform);
+            return true;
+        }
     }
 
-    private sealed class FakeRadialGradientBrush
+    private sealed class FakeRadialGradientBrush : IPortableBrushSource
     {
+        private readonly FakeGradientStop[] _stops;
+
         public FakeRadialGradientBrush(FakePoint center, FakePoint gradientOrigin, double radiusX, double radiusY, params FakeGradientStop[] stops)
         {
             Center = center;
             GradientOrigin = gradientOrigin;
             RadiusX = radiusX;
             RadiusY = radiusY;
+            _stops = stops;
             GradientStops = new FakeGradientStopCollection(stops);
         }
 
@@ -2476,6 +2629,31 @@ public sealed class WpfReplayToProGpuCommandTests
         public object? Transform { get; init; }
 
         public object? RelativeTransform { get; init; }
+
+        public bool TryGetPortableBrush(out PortableBrush brush)
+        {
+            brush = null!;
+            if (!TryMapBrushMappingMode(MappingMode, out var mappingMode)
+                || !TryMapOptionalTransform(Transform, out var hasTransform, out var transform)
+                || !TryMapOptionalTransform(RelativeTransform, out var hasRelativeTransform, out var relativeTransform))
+            {
+                return false;
+            }
+
+            brush = PortableBrush.RadialGradient(
+                ToPortablePoint(Center),
+                ToPortablePoint(GradientOrigin),
+                RadiusX,
+                RadiusY,
+                ToPortableGradientStops(_stops),
+                mappingMode: mappingMode,
+                colorInterpolationMode: ToPortableGradientColorInterpolationMode(ColorInterpolationMode),
+                hasTransform: hasTransform,
+                transform: transform,
+                hasRelativeTransform: hasRelativeTransform,
+                relativeTransform: relativeTransform);
+            return true;
+        }
     }
 
     private sealed class FakeGradientStopCollection
@@ -2505,7 +2683,7 @@ public sealed class WpfReplayToProGpuCommandTests
         public double Offset { get; }
     }
 
-    private sealed class FakeSolidColorBrush
+    private sealed class FakeSolidColorBrush : IPortableBrushSource
     {
         public FakeSolidColorBrush(FakeColor color)
         {
@@ -2513,6 +2691,12 @@ public sealed class WpfReplayToProGpuCommandTests
         }
 
         public FakeColor Color { get; }
+
+        public bool TryGetPortableBrush(out PortableBrush brush)
+        {
+            brush = PortableBrush.SolidColor(ToPortableColor(Color));
+            return true;
+        }
     }
 
     private sealed class FakeBitmapSource : System.Windows.Media.Imaging.BitmapSource

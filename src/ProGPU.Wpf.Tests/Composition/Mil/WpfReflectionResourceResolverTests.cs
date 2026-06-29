@@ -27,7 +27,7 @@ namespace ProGPU.Wpf.Tests.Composition.Mil;
 public sealed class WpfReflectionResourceResolverTests
 {
     [Fact]
-    public void DecodeRectangleAdaptsWpfShapedBrushAndPen()
+    public void DecodeRectangleAdaptsPortableBrushAndPenFixtures()
     {
         var brush = new FakeSolidColorBrush(new FakeColor(128, 10, 20, 30), opacity: 0.5);
         var pen = new FakePen(new FakeSolidColorBrush(new FakeColor(255, 1, 2, 3)), 4);
@@ -232,7 +232,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void AdaptNativeBrushAppliesPortableMatrixBrushTransform()
+    public void AdaptNativeBrushAppliesPortableFixtureBrushTransform()
     {
         var brush = new FakeLinearGradientBrush(
             new FakePoint(0, 0),
@@ -256,7 +256,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void AdaptNativeBrushCountsNonInvertiblePortableMatrixBrushTransform()
+    public void AdaptNativeBrushCountsNonInvertiblePortableFixtureBrushTransform()
     {
         var brush = new FakeLinearGradientBrush(
             new FakePoint(0, 0),
@@ -276,30 +276,6 @@ public sealed class WpfReflectionResourceResolverTests
         Assert.Equal(1, unsupportedStateCount);
         var linearBrush = Assert.IsType<ProGpuLinearGradientBrush>(nativeBrush);
         Assert.Equal(Matrix4x4.Identity, linearBrush.CoordinateTransform);
-    }
-
-    [Fact]
-    public void AdaptNativeBrushDoesNotStringProbeUnadaptableBrushTransform()
-    {
-        var transform = new ThrowingStringTransform();
-        var brush = new FakeLinearGradientBrush(
-            new FakePoint(0, 0),
-            new FakePoint(10, 0),
-            new FakeGradientStop(new FakeColor(255, 255, 0, 0), 0),
-            new FakeGradientStop(new FakeColor(255, 0, 0, 255), 1))
-        {
-            MappingMode = "Absolute",
-            Transform = transform
-        };
-
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
-            brush,
-            new WpfReplayRect(0, 0, 100, 100),
-            out var unsupportedStateCount);
-
-        Assert.Equal(1, unsupportedStateCount);
-        Assert.NotNull(nativeBrush);
-        Assert.Equal(0, transform.StringProbeCount);
     }
 
     [Fact]
@@ -423,7 +399,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeRectanglePreservesPositiveWpfShapedPenDashStyleMetadata()
+    public void DecodeRectanglePreservesPositivePortablePenDashStyleMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 1, 2, 3)),
@@ -452,7 +428,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeRectanglePreservesZeroLengthWpfShapedPenDotDashMetadata()
+    public void DecodeRectanglePreservesZeroLengthPortablePenDotDashMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 1, 2, 3)),
@@ -480,7 +456,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeRectanglePreservesWpfShapedPenLineCapMetadata()
+    public void DecodeRectanglePreservesPortablePenLineCapMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 1, 2, 3)),
@@ -511,7 +487,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeRectanglePreservesWpfShapedPenLineJoinAndMiterMetadata()
+    public void DecodeRectanglePreservesPortablePenLineJoinAndMiterMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 1, 2, 3)),
@@ -540,7 +516,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeRectangleAdaptsWpfShapedLinearGradientBrush()
+    public void DecodeRectangleAdaptsPortableLinearGradientBrushFixture()
     {
         var brush = new FakeLinearGradientBrush(
             new FakePoint(0, 0),
@@ -581,7 +557,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeRectangleAdaptsWpfShapedRadialGradientBrush()
+    public void DecodeRectangleAdaptsPortableRadialGradientBrushFixture()
     {
         var brush = new FakeRadialGradientBrush(
             new FakePoint(0.5, 0.5),
@@ -3303,7 +3279,7 @@ public sealed class WpfReflectionResourceResolverTests
         }
     }
 
-    private sealed class FakeSolidColorBrush
+    private sealed class FakeSolidColorBrush : IPortableBrushSource
     {
         public FakeSolidColorBrush(FakeColor color, double opacity = 1)
         {
@@ -3314,6 +3290,12 @@ public sealed class WpfReflectionResourceResolverTests
         public FakeColor Color { get; }
 
         public double Opacity { get; }
+
+        public bool TryGetPortableBrush(out PortableBrush brush)
+        {
+            brush = PortableBrush.SolidColor(ToPortableColor(Color), Opacity);
+            return true;
+        }
     }
 
     private readonly record struct FakeColor(byte A, byte R, byte G, byte B);
@@ -3490,7 +3472,7 @@ public sealed class WpfReflectionResourceResolverTests
         }
     }
 
-    private sealed class FakePen
+    private sealed class FakePen : IPortablePenSource
     {
         public FakePen(object brush, double thickness)
         {
@@ -3513,6 +3495,36 @@ public sealed class WpfReflectionResourceResolverTests
         public object? LineJoin { get; init; }
 
         public double MiterLimit { get; init; } = 10.0;
+
+        public bool TryGetPortablePen(out PortablePen pen)
+        {
+            pen = null!;
+            if (Brush is not IPortableBrushSource brushSource
+                || !brushSource.TryGetPortableBrush(out var portableBrush))
+            {
+                return false;
+            }
+
+            var dashArray = Array.Empty<double>();
+            var dashOffset = 0.0;
+            if (DashStyle is FakeDashStyle dashStyle)
+            {
+                dashArray = dashStyle.Dashes;
+                dashOffset = dashStyle.Offset;
+            }
+
+            pen = new PortablePen(
+                portableBrush,
+                Thickness,
+                ToPortablePenLineCap(StartLineCap),
+                ToPortablePenLineCap(EndLineCap),
+                ToPortablePenLineCap(DashCap),
+                ToPortablePenLineJoin(LineJoin),
+                MiterLimit,
+                dashArray,
+                dashOffset);
+            return true;
+        }
     }
 
     private sealed class FakeDashStyle
@@ -3528,12 +3540,15 @@ public sealed class WpfReflectionResourceResolverTests
         public double Offset { get; }
     }
 
-    private sealed class FakeLinearGradientBrush
+    private sealed class FakeLinearGradientBrush : IPortableBrushSource
     {
+        private readonly FakeGradientStop[] _stops;
+
         public FakeLinearGradientBrush(FakePoint startPoint, FakePoint endPoint, params FakeGradientStop[] stops)
         {
             StartPoint = startPoint;
             EndPoint = endPoint;
+            _stops = stops;
             GradientStops = new FakeGradientStopCollection(stops);
         }
 
@@ -3554,16 +3569,46 @@ public sealed class WpfReflectionResourceResolverTests
         public object? Transform { get; init; }
 
         public object? RelativeTransform { get; init; }
+
+        public bool TryGetPortableBrush(out PortableBrush brush)
+        {
+            brush = null!;
+            if (!TryMapBrushMappingMode(MappingMode, out var mappingMode)
+                || !TryMapGradientSpreadMethod(SpreadMethod, out var spreadMethod)
+                || !TryMapGradientColorInterpolationMode(ColorInterpolationMode, out var colorInterpolationMode)
+                || !TryMapOptionalTransform(Transform, out var hasTransform, out var transform)
+                || !TryMapOptionalTransform(RelativeTransform, out var hasRelativeTransform, out var relativeTransform))
+            {
+                return false;
+            }
+
+            brush = PortableBrush.LinearGradient(
+                ToPortablePoint(StartPoint),
+                ToPortablePoint(EndPoint),
+                ToPortableGradientStops(_stops),
+                Opacity,
+                mappingMode,
+                spreadMethod,
+                colorInterpolationMode,
+                hasTransform,
+                transform,
+                hasRelativeTransform,
+                relativeTransform);
+            return true;
+        }
     }
 
-    private sealed class FakeRadialGradientBrush
+    private sealed class FakeRadialGradientBrush : IPortableBrushSource
     {
+        private readonly FakeGradientStop[] _stops;
+
         public FakeRadialGradientBrush(FakePoint center, FakePoint gradientOrigin, double radiusX, double radiusY, params FakeGradientStop[] stops)
         {
             Center = center;
             GradientOrigin = gradientOrigin;
             RadiusX = radiusX;
             RadiusY = radiusY;
+            _stops = stops;
             GradientStops = new FakeGradientStopCollection(stops);
         }
 
@@ -3577,6 +3622,8 @@ public sealed class WpfReflectionResourceResolverTests
 
         public FakeGradientStopCollection GradientStops { get; }
 
+        public double Opacity { get; init; } = 1;
+
         public string SpreadMethod { get; init; } = "Pad";
 
         public string ColorInterpolationMode { get; init; } = "SRgbLinearInterpolation";
@@ -3586,16 +3633,34 @@ public sealed class WpfReflectionResourceResolverTests
         public object? Transform { get; init; }
 
         public object? RelativeTransform { get; init; }
-    }
 
-    private sealed class ThrowingStringTransform
-    {
-        public int StringProbeCount { get; private set; }
-
-        public override string ToString()
+        public bool TryGetPortableBrush(out PortableBrush brush)
         {
-            StringProbeCount++;
-            throw new InvalidOperationException("Brush transform should not be string-probed.");
+            brush = null!;
+            if (!TryMapBrushMappingMode(MappingMode, out var mappingMode)
+                || !TryMapGradientSpreadMethod(SpreadMethod, out var spreadMethod)
+                || !TryMapGradientColorInterpolationMode(ColorInterpolationMode, out var colorInterpolationMode)
+                || !TryMapOptionalTransform(Transform, out var hasTransform, out var transform)
+                || !TryMapOptionalTransform(RelativeTransform, out var hasRelativeTransform, out var relativeTransform))
+            {
+                return false;
+            }
+
+            brush = PortableBrush.RadialGradient(
+                ToPortablePoint(Center),
+                ToPortablePoint(GradientOrigin),
+                RadiusX,
+                RadiusY,
+                ToPortableGradientStops(_stops),
+                Opacity,
+                mappingMode,
+                spreadMethod,
+                colorInterpolationMode,
+                hasTransform,
+                transform,
+                hasRelativeTransform,
+                relativeTransform);
+            return true;
         }
     }
 
@@ -3653,6 +3718,55 @@ public sealed class WpfReflectionResourceResolverTests
         return new PortableRect(rect.X, rect.Y, rect.Width, rect.Height);
     }
 
+    private static PortablePoint ToPortablePoint(FakePoint point)
+    {
+        return new PortablePoint(point.X, point.Y);
+    }
+
+    private static PortableColor ToPortableColor(FakeColor color)
+    {
+        return new PortableColor(color.A, color.R, color.G, color.B);
+    }
+
+    private static PortableGradientStop[] ToPortableGradientStops(FakeGradientStop[] stops)
+    {
+        var portableStops = new PortableGradientStop[stops.Length];
+        for (var i = 0; i < stops.Length; i++)
+        {
+            portableStops[i] = new PortableGradientStop(ToPortableColor(stops[i].Color), stops[i].Offset);
+        }
+
+        return portableStops;
+    }
+
+    private static PortablePenLineCap ToPortablePenLineCap(object? value)
+    {
+        switch (value?.ToString())
+        {
+            case "Square":
+                return PortablePenLineCap.Square;
+            case "Round":
+                return PortablePenLineCap.Round;
+            case "Triangle":
+                return PortablePenLineCap.Triangle;
+            default:
+                return PortablePenLineCap.Flat;
+        }
+    }
+
+    private static PortablePenLineJoin ToPortablePenLineJoin(object? value)
+    {
+        switch (value?.ToString())
+        {
+            case "Bevel":
+                return PortablePenLineJoin.Bevel;
+            case "Round":
+                return PortablePenLineJoin.Round;
+            default:
+                return PortablePenLineJoin.Miter;
+        }
+    }
+
     private static bool TryMapOptionalTransform(
         object? transformValue,
         out bool hasTransform,
@@ -3687,6 +3801,43 @@ public sealed class WpfReflectionResourceResolverTests
                 return true;
             default:
                 mode = PortableBrushMappingMode.RelativeToBoundingBox;
+                return false;
+        }
+    }
+
+    private static bool TryMapGradientSpreadMethod(string value, out PortableGradientSpreadMethod spreadMethod)
+    {
+        switch (value)
+        {
+            case "Pad":
+                spreadMethod = PortableGradientSpreadMethod.Pad;
+                return true;
+            case "Reflect":
+                spreadMethod = PortableGradientSpreadMethod.Reflect;
+                return true;
+            case "Repeat":
+                spreadMethod = PortableGradientSpreadMethod.Repeat;
+                return true;
+            default:
+                spreadMethod = PortableGradientSpreadMethod.Pad;
+                return false;
+        }
+    }
+
+    private static bool TryMapGradientColorInterpolationMode(
+        string value,
+        out PortableGradientColorInterpolationMode colorInterpolationMode)
+    {
+        switch (value)
+        {
+            case "SRgbLinearInterpolation":
+                colorInterpolationMode = PortableGradientColorInterpolationMode.SRgbLinearInterpolation;
+                return true;
+            case "ScRgbLinearInterpolation":
+                colorInterpolationMode = PortableGradientColorInterpolationMode.ScRgbLinearInterpolation;
+                return true;
+            default:
+                colorInterpolationMode = PortableGradientColorInterpolationMode.SRgbLinearInterpolation;
                 return false;
         }
     }

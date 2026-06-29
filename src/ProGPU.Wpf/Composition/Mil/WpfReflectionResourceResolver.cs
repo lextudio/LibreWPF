@@ -286,100 +286,7 @@ public sealed class WpfReflectionResourceResolver :
                 : null;
         }
 
-        if (TypeNameEndsWith(resource, "LinearGradientBrush")
-            && TryGetPropertyValue(resource, "StartPoint", out var startPointValue)
-            && TryGetPropertyValue(resource, "EndPoint", out var endPointValue)
-            && startPointValue != null
-            && endPointValue != null
-            && TryReadReplayPoint(startPointValue, out var startPoint)
-            && TryReadReplayPoint(endPointValue, out var endPoint)
-            && TryReadGradientStops(resource, out var linearStops, out var linearStopsTruncated))
-        {
-            return CreateLinearGradientBrush(resource, startPoint, endPoint, linearStops, linearStopsTruncated);
-        }
-
-        if (TypeNameEndsWith(resource, "RadialGradientBrush")
-            && TryGetPropertyValue(resource, "Center", out var centerValue)
-            && centerValue != null
-            && TryReadReplayPoint(centerValue, out var center)
-            && TryGetOptionalReplayPointProperty(resource, "GradientOrigin", center, out var gradientOrigin)
-            && TryReadDoubleProperty(resource, "RadiusX", out var radiusX)
-            && TryReadDoubleProperty(resource, "RadiusY", out var radiusY)
-            && TryReadGradientStops(resource, out var radialStops, out var radialStopsTruncated))
-        {
-            return CreateRadialGradientBrush(resource, center, gradientOrigin, radiusX, radiusY, radialStops, radialStopsTruncated);
-        }
-
-        if (!TypeNameEndsWith(resource, "SolidColorBrush")
-            || !TryGetPropertyValue(resource, "Color", out var colorValue)
-            || colorValue == null
-            || !TryReadColor(colorValue, out var color))
-        {
-            return null;
-        }
-
-        if (TryReadDoubleProperty(resource, "Opacity", out var opacity))
-        {
-            color.A = ClampToByte(color.A * opacity);
-        }
-
-        return new SolidColorBrush(color);
-    }
-
-    private static MediaBrush CreateLinearGradientBrush(
-        object resource,
-        WpfReplayPoint startPoint,
-        WpfReplayPoint endPoint,
-        global::ProGPU.Vector.GradientStop[] stops,
-        bool stopsTruncated)
-    {
-        var nativeBrush = new global::ProGPU.Vector.LinearGradientBrush(
-            new Vector2((float)startPoint.X, (float)startPoint.Y),
-            new Vector2((float)endPoint.X, (float)endPoint.Y),
-            stops);
-        nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
-        nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
-        ApplyBrushOpacity(resource, nativeBrush);
-        var transform = ReadBrushTransform(resource, "Transform", out var unsupportedTransformCount);
-        var relativeTransform = ReadBrushTransform(resource, "RelativeTransform", out var unsupportedRelativeTransformCount);
-        return new ProGpuNativeBrush(
-            nativeBrush,
-            ReadBrushMappingMode(resource),
-            transform,
-            relativeTransform,
-            CountUnsupportedGradientState(stopsTruncated, unsupportedColorInterpolationMode)
-                + unsupportedTransformCount
-                + unsupportedRelativeTransformCount);
-    }
-
-    private static MediaBrush CreateRadialGradientBrush(
-        object resource,
-        WpfReplayPoint center,
-        WpfReplayPoint gradientOrigin,
-        double radiusX,
-        double radiusY,
-        global::ProGPU.Vector.GradientStop[] stops,
-        bool stopsTruncated)
-    {
-        var nativeBrush = new global::ProGPU.Vector.RadialGradientBrush(
-            new Vector2((float)center.X, (float)center.Y),
-            new Vector2((float)gradientOrigin.X, (float)gradientOrigin.Y),
-            (float)radiusX,
-            (float)radiusY,
-            stops);
-        nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
-        nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
-        ApplyBrushOpacity(resource, nativeBrush);
-        var transform = ReadBrushTransform(resource, "Transform", out var unsupportedTransformCount);
-        var relativeTransform = ReadBrushTransform(resource, "RelativeTransform", out var unsupportedRelativeTransformCount);
-        return new ProGpuNativeBrush(
-            nativeBrush,
-            ReadBrushMappingMode(resource),
-            transform,
-            relativeTransform,
-            CountUnsupportedGradientState(stopsTruncated, unsupportedColorInterpolationMode)
-                + unsupportedTransformCount
-                + unsupportedRelativeTransformCount);
+        return null;
     }
 
     internal static global::ProGPU.Vector.Brush? AdaptNativeBrush(
@@ -412,84 +319,6 @@ public sealed class WpfReflectionResourceResolver :
             return mediaBrush.ToNative(mediaBounds);
         }
 
-        if (TypeNameEndsWith(resource, "LinearGradientBrush")
-            && TryGetPropertyValue(resource, "StartPoint", out var startPointValue)
-            && TryGetPropertyValue(resource, "EndPoint", out var endPointValue)
-            && startPointValue != null
-            && endPointValue != null
-            && TryReadReplayPoint(startPointValue, out var startPoint)
-            && TryReadReplayPoint(endPointValue, out var endPoint)
-            && TryReadGradientStops(resource, out var linearStops, out var linearStopsTruncated))
-        {
-            var mappingMode = ReadBrushMappingMode(resource);
-            var nativeBrush = new global::ProGPU.Vector.LinearGradientBrush(
-                new Vector2((float)startPoint.X, (float)startPoint.Y),
-                new Vector2((float)endPoint.X, (float)endPoint.Y),
-                linearStops);
-            nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
-            nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
-            ApplyBrushOpacity(resource, nativeBrush);
-            var transform = ReadBrushTransform(resource, "Transform", out var unsupportedTransformCount);
-            var relativeTransform = ReadBrushTransform(resource, "RelativeTransform", out var unsupportedRelativeTransformCount);
-            var wrappedBrush = new ProGpuNativeBrush(
-                nativeBrush,
-                mappingMode,
-                transform,
-                relativeTransform,
-                CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode)
-                    + unsupportedTransformCount
-                    + unsupportedRelativeTransformCount);
-            unsupportedStateCount += wrappedBrush.CountUnsupportedStateForBounds(bounds);
-            return wrappedBrush.ToNative(bounds);
-        }
-
-        if (TypeNameEndsWith(resource, "RadialGradientBrush")
-            && TryGetPropertyValue(resource, "Center", out var centerValue)
-            && centerValue != null
-            && TryReadReplayPoint(centerValue, out var center)
-            && TryGetOptionalReplayPointProperty(resource, "GradientOrigin", center, out var gradientOrigin)
-            && TryReadDoubleProperty(resource, "RadiusX", out var radiusX)
-            && TryReadDoubleProperty(resource, "RadiusY", out var radiusY)
-            && TryReadGradientStops(resource, out var radialStops, out var radialStopsTruncated))
-        {
-            var mappingMode = ReadBrushMappingMode(resource);
-            var nativeBrush = new global::ProGPU.Vector.RadialGradientBrush(
-                new Vector2((float)center.X, (float)center.Y),
-                new Vector2((float)gradientOrigin.X, (float)gradientOrigin.Y),
-                (float)radiusX,
-                (float)radiusY,
-                radialStops);
-            nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
-            nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
-            ApplyBrushOpacity(resource, nativeBrush);
-            var transform = ReadBrushTransform(resource, "Transform", out var unsupportedTransformCount);
-            var relativeTransform = ReadBrushTransform(resource, "RelativeTransform", out var unsupportedRelativeTransformCount);
-            var wrappedBrush = new ProGpuNativeBrush(
-                nativeBrush,
-                mappingMode,
-                transform,
-                relativeTransform,
-                CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode)
-                    + unsupportedTransformCount
-                    + unsupportedRelativeTransformCount);
-            unsupportedStateCount += wrappedBrush.CountUnsupportedStateForBounds(bounds);
-            return wrappedBrush.ToNative(bounds);
-        }
-
-        if (TypeNameEndsWith(resource, "SolidColorBrush")
-            && TryGetPropertyValue(resource, "Color", out var colorValue)
-            && colorValue != null
-            && TryReadColor(colorValue, out var color))
-        {
-            if (TryReadDoubleProperty(resource, "Opacity", out var opacity))
-            {
-                color.A = ClampToByte(color.A * opacity);
-            }
-
-            return new global::ProGPU.Vector.SolidColorBrush(
-                new Vector4(color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f));
-        }
-
         return null;
     }
 
@@ -517,69 +346,7 @@ public sealed class WpfReflectionResourceResolver :
             return mediaPen.ToNative(mediaBounds);
         }
 
-        if (!TryGetPropertyValue(resource, "Brush", out var brushValue)
-            || brushValue == null
-            || !TryReadDoubleProperty(resource, "Thickness", out var thickness))
-        {
-            return null;
-        }
-
-        var nativeBrush = AdaptNativeBrush(brushValue, bounds, out var brushUnsupportedStateCount);
-        unsupportedStateCount += brushUnsupportedStateCount;
-        if (nativeBrush == null)
-        {
-            return null;
-        }
-
-        var dashArray = Array.Empty<double>();
-        var dashOffset = 0.0;
-        if (TryReadSupportedDashStyle(resource, thickness, out var reflectedDashArray, out var reflectedDashOffset))
-        {
-            dashArray = reflectedDashArray;
-            dashOffset = reflectedDashOffset;
-        }
-
-        return new global::ProGPU.Vector.Pen(
-            nativeBrush,
-            (float)Math.Max(0, thickness),
-            ReadVectorLineJoin(resource),
-            (float)ReadMiterLimit(resource),
-            ReadVectorLineCap(resource, "StartLineCap"),
-            ReadVectorLineCap(resource, "EndLineCap"),
-            ReadVectorLineCap(resource, "DashCap"),
-            dashArray,
-            dashOffset);
-    }
-
-    private static global::ProGPU.Vector.PenLineJoin ReadVectorLineJoin(object pen)
-    {
-        if (!TryGetPropertyValue(pen, "LineJoin", out var joinValue) || joinValue == null)
-        {
-            return global::ProGPU.Vector.PenLineJoin.Miter;
-        }
-
-        return joinValue.ToString() switch
-        {
-            "Bevel" => global::ProGPU.Vector.PenLineJoin.Bevel,
-            "Round" => global::ProGPU.Vector.PenLineJoin.Round,
-            _ => global::ProGPU.Vector.PenLineJoin.Miter
-        };
-    }
-
-    private static global::ProGPU.Vector.PenLineCap ReadVectorLineCap(object pen, string propertyName)
-    {
-        if (!TryGetPropertyValue(pen, propertyName, out var capValue) || capValue == null)
-        {
-            return global::ProGPU.Vector.PenLineCap.Flat;
-        }
-
-        return capValue.ToString() switch
-        {
-            "Square" => global::ProGPU.Vector.PenLineCap.Square,
-            "Round" => global::ProGPU.Vector.PenLineCap.Round,
-            "Triangle" => global::ProGPU.Vector.PenLineCap.Triangle,
-            _ => global::ProGPU.Vector.PenLineCap.Flat
-        };
+        return null;
     }
 
     private static bool IsUsable(WpfReplayRect bounds)
@@ -597,112 +364,6 @@ public sealed class WpfReflectionResourceResolver :
         return new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
-    private static void ApplyBrushOpacity(object resource, global::ProGPU.Vector.Brush nativeBrush)
-    {
-        if (TryReadDoubleProperty(resource, "Opacity", out var opacity))
-        {
-            nativeBrush.Opacity = (float)Math.Clamp(opacity, 0, 1);
-        }
-    }
-
-    private static bool TryReadGradientStops(
-        object brush,
-        out global::ProGPU.Vector.GradientStop[] stops,
-        out bool truncated)
-    {
-        stops = Array.Empty<global::ProGPU.Vector.GradientStop>();
-        truncated = false;
-
-        if (!TryGetPropertyValue(brush, "GradientStops", out var stopsValue) || stopsValue == null)
-        {
-            return false;
-        }
-
-        if (!TryReadIntProperty(stopsValue, "Count", out var count) || count <= 0)
-        {
-            return false;
-        }
-
-        var getStop = FindIndexer(stopsValue.GetType());
-        if (getStop == null)
-        {
-            return false;
-        }
-
-        var result = new List<global::ProGPU.Vector.GradientStop>(count);
-        for (var i = 0; i < count; i++)
-        {
-            var stop = getStop(stopsValue, i);
-            if (stop == null
-                || !TryGetPropertyValue(stop, "Color", out var colorValue)
-                || colorValue == null
-                || !TryReadColor(colorValue, out var color)
-                || !TryReadDoubleProperty(stop, "Offset", out var offset))
-            {
-                continue;
-            }
-
-            result.Add(new global::ProGPU.Vector.GradientStop(
-                new Vector4(color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f),
-                (float)offset));
-        }
-
-        if (result.Count == 0)
-        {
-            return false;
-        }
-
-        truncated = result.Count > MaxSupportedGradientStops;
-        stops = truncated
-            ? result.Take(MaxSupportedGradientStops).ToArray()
-            : result.ToArray();
-        return true;
-    }
-
-    private static bool TryGetOptionalReplayPointProperty(
-        object resource,
-        string propertyName,
-        WpfReplayPoint fallback,
-        out WpfReplayPoint point)
-    {
-        point = fallback;
-        if (!TryGetPropertyValue(resource, propertyName, out var value) || value == null)
-        {
-            return true;
-        }
-
-        return TryReadReplayPoint(value, out point);
-    }
-
-    private static global::ProGPU.Vector.GradientSpreadMethod ReadGradientSpreadMethod(object resource)
-    {
-        if (!TryGetPropertyValue(resource, "SpreadMethod", out var spreadMethodValue)
-            || spreadMethodValue == null)
-        {
-            return global::ProGPU.Vector.GradientSpreadMethod.Pad;
-        }
-
-        return spreadMethodValue.ToString() switch
-        {
-            "Reflect" => global::ProGPU.Vector.GradientSpreadMethod.Reflect,
-            "Repeat" => global::ProGPU.Vector.GradientSpreadMethod.Repeat,
-            _ => global::ProGPU.Vector.GradientSpreadMethod.Pad
-        };
-    }
-
-    private static ProGpuBrushMappingMode ReadBrushMappingMode(object resource)
-    {
-        if (!TryGetPropertyValue(resource, "MappingMode", out var mappingModeValue)
-            || mappingModeValue == null)
-        {
-            return ProGpuBrushMappingMode.RelativeToBoundingBox;
-        }
-
-        return string.Equals(mappingModeValue.ToString(), "Absolute", StringComparison.Ordinal)
-            ? ProGpuBrushMappingMode.Absolute
-            : ProGpuBrushMappingMode.RelativeToBoundingBox;
-    }
-
     private static int CountUnsupportedGradientState(bool stopsTruncated, bool unsupportedColorInterpolationMode)
     {
         var count = stopsTruncated ? 1 : 0;
@@ -712,54 +373,6 @@ public sealed class WpfReflectionResourceResolver :
         }
 
         return count;
-    }
-
-    private static global::ProGPU.Vector.GradientColorInterpolationMode ReadGradientColorInterpolationMode(
-        object resource,
-        out bool unsupported)
-    {
-        unsupported = false;
-        if (!TryGetPropertyValue(resource, "ColorInterpolationMode", out var modeValue)
-            || modeValue == null)
-        {
-            return global::ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation;
-        }
-
-        return modeValue.ToString() switch
-        {
-            "ScRgbLinearInterpolation" => global::ProGPU.Vector.GradientColorInterpolationMode.ScRgbLinearInterpolation,
-            "SRgbLinearInterpolation" => global::ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation,
-            _ => ReadUnsupportedGradientColorInterpolationMode(out unsupported)
-        };
-    }
-
-    private static global::ProGPU.Vector.GradientColorInterpolationMode ReadUnsupportedGradientColorInterpolationMode(out bool unsupported)
-    {
-        unsupported = true;
-        return global::ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation;
-    }
-
-    private static Matrix4x4? ReadBrushTransform(object resource, string propertyName, out int unsupportedStateCount)
-    {
-        unsupportedStateCount = 0;
-        if (!TryGetPropertyValue(resource, propertyName, out var transformValue)
-            || transformValue == null)
-        {
-            return null;
-        }
-
-        if (!TryAdaptTransformMatrix(transformValue, out var transform))
-        {
-            unsupportedStateCount = 1;
-            return null;
-        }
-
-        if (IsIdentityMatrix(transform))
-        {
-            return null;
-        }
-
-        return transform;
     }
 
     public static MediaPen? AdaptPen(object? resource)
@@ -781,42 +394,7 @@ public sealed class WpfReflectionResourceResolver :
                 : null;
         }
 
-        if (!TypeNameEndsWith(resource, "Pen")
-            || !TryGetPropertyValue(resource, "Brush", out var brushValue)
-            || brushValue == null
-            || !TryReadDoubleProperty(resource, "Thickness", out var thickness))
-        {
-            return null;
-        }
-
-        var brush = AdaptBrush(brushValue);
-        if (brush == null)
-        {
-            return null;
-        }
-
-        var startLineCap = ReadLineCap(resource, "StartLineCap");
-        var endLineCap = ReadLineCap(resource, "EndLineCap");
-        var dashCap = ReadLineCap(resource, "DashCap");
-        var lineJoin = ReadLineJoin(resource);
-        var miterLimit = ReadMiterLimit(resource);
-        var hasSupportedDash = TryReadSupportedDashStyle(resource, thickness, out var dashArray, out var dashOffset);
-
-        var adaptedPen = new MediaPen(brush, thickness)
-        {
-            StartLineCap = startLineCap,
-            EndLineCap = endLineCap,
-            DashCap = dashCap,
-            LineJoin = lineJoin,
-            MiterLimit = miterLimit
-        };
-
-        if (hasSupportedDash)
-        {
-            adaptedPen.DashStyle = new DashStyle(dashArray, dashOffset);
-        }
-
-        return adaptedPen;
+        return null;
     }
 
     private static MediaBrush? AdaptPortableBrush(PortableBrush brush)
@@ -1159,47 +737,6 @@ public sealed class WpfReflectionResourceResolver :
         };
     }
 
-    private static MediaPenLineCap ReadLineCap(object pen, string propertyName)
-    {
-        if (!TryGetPropertyValue(pen, propertyName, out var capValue) || capValue == null)
-        {
-            return MediaPenLineCap.Flat;
-        }
-
-        return capValue.ToString() switch
-        {
-            "Square" => MediaPenLineCap.Square,
-            "Round" => MediaPenLineCap.Round,
-            "Triangle" => MediaPenLineCap.Triangle,
-            _ => MediaPenLineCap.Flat
-        };
-    }
-
-    private static PenLineJoin ReadLineJoin(object pen)
-    {
-        if (!TryGetPropertyValue(pen, "LineJoin", out var joinValue) || joinValue == null)
-        {
-            return PenLineJoin.Miter;
-        }
-
-        return joinValue.ToString() switch
-        {
-            "Bevel" => PenLineJoin.Bevel,
-            "Round" => PenLineJoin.Round,
-            _ => PenLineJoin.Miter
-        };
-    }
-
-    private static double ReadMiterLimit(object pen)
-    {
-        if (!TryReadDoubleProperty(pen, "MiterLimit", out var miterLimit))
-        {
-            return 10.0;
-        }
-
-        return ReadMiterLimit(miterLimit);
-    }
-
     private static double ReadMiterLimit(double miterLimit)
     {
         if (!double.IsFinite(miterLimit))
@@ -1213,34 +750,6 @@ public sealed class WpfReflectionResourceResolver :
     private static bool AreClose(double left, double right)
     {
         return Math.Abs(left - right) <= 0.0001;
-    }
-
-    private static bool TryReadSupportedDashStyle(
-        object pen,
-        double thickness,
-        out double[] dashArray,
-        out double dashOffset)
-    {
-        dashArray = Array.Empty<double>();
-        dashOffset = 0;
-
-        if (thickness <= 0
-            || !TryGetPropertyValue(pen, "DashStyle", out var dashStyle)
-            || dashStyle == null
-            || !TryGetPropertyValue(dashStyle, "Dashes", out var dashes)
-            || !TryReadDoubleList(dashes, out var values)
-            || values.Length == 0)
-        {
-            return false;
-        }
-
-        var offset = 0.0;
-        if (TryReadDoubleProperty(dashStyle, "Offset", out var reflectedOffset) && double.IsFinite(reflectedOffset))
-        {
-            offset = reflectedOffset;
-        }
-
-        return TryUseSupportedDashArray(values, thickness, offset, out dashArray, out dashOffset);
     }
 
     private static bool TryUseSupportedDashArray(

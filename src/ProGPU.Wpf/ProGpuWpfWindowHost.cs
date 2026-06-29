@@ -456,17 +456,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     }
 
     public bool TryCreatePortablePresentationSource(
-        System.Reflection.Assembly presentationCoreAssembly,
         object? rootVisual = null,
         double dpiScaleX = 1.0,
         double dpiScaleY = 1.0)
     {
         ThrowIfDisposed();
-        ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
 
         if (!WpfPortablePresentationSourceBridge.TryCreate(
                 this,
-                presentationCoreAssembly,
                 dpiScaleX,
                 dpiScaleY,
                 out WpfPortablePresentationSourceBridge? bridge))

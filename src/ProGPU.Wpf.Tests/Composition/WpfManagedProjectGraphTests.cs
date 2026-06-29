@@ -14119,6 +14119,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("CursorRequestedEventName", portableSourceBridge, StringComparison.Ordinal);
         Assert.DoesNotContain("RequestedCursorPropertyName", portableSourceBridge, StringComparison.Ordinal);
         Assert.DoesNotContain("TrySubscribeToCursorRequested", portableSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection.Assembly", portableSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("presentationCoreAssembly", portableSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("WpfPortablePresentationSourceBridge.TryCreate(\n                this,\n                presentationCoreAssembly", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_source.CursorRequested += OnSourceCursorRequested;", portableSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private void OnSourceCursorRequested(object? sender, EventArgs e)", portableSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.ApplyPortableCursor(ToWpfCursor(_source.RequestedCursorName ?? _source.RequestedCursor?.ToString()));", portableSourceBridge, StringComparison.Ordinal);

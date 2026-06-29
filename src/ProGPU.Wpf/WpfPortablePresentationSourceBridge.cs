@@ -46,22 +46,18 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
     public static bool TryCreate(
         ProGpuWpfWindowHost host,
-        System.Reflection.Assembly presentationCoreAssembly,
         out WpfPortablePresentationSourceBridge? bridge)
     {
-        return TryCreate(host, presentationCoreAssembly, 1.0, 1.0, out bridge);
+        return TryCreate(host, 1.0, 1.0, out bridge);
     }
 
     public static bool TryCreate(
         ProGpuWpfWindowHost host,
-        System.Reflection.Assembly presentationCoreAssembly,
         double dpiScaleX,
         double dpiScaleY,
         out WpfPortablePresentationSourceBridge? bridge)
     {
         ArgumentNullException.ThrowIfNull(host);
-        ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
-        _ = presentationCoreAssembly;
 
         IPortablePresentationSourceHost source;
         try

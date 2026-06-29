@@ -314,7 +314,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
         activation = null;
         var rootVisual = ResolveRootVisual(window);
         if (!host.TryCreatePortablePresentationSource(
-                presentationCoreAssembly,
                 rootVisual,
                 dpiScaleX,
                 dpiScaleY) ||

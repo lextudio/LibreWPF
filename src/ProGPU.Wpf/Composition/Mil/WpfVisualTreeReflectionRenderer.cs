@@ -14,8 +14,11 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
+using PortableVisualBounds = ProGPU.Wpf.Interop.PortableVisualBounds;
+using PortableVisualBoundsSource = ProGPU.Wpf.Interop.IPortableVisualBoundsSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
+using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
 using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
@@ -1222,15 +1225,10 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryReadOpacityMaskBounds(object visual, out WpfReplayRect bounds)
     {
-        foreach (var propertyName in new[] { "Bounds", "DescendantBounds", "VisualContentBounds", "ContentBounds" })
+        if (TryGetPortableVisualBounds(visual, out var visualBounds)
+            && TryReadPortableVisualBounds(visualBounds, out bounds))
         {
-            if (TryGetPropertyValue(visual, propertyName, out var boundsValue)
-                && boundsValue != null
-                && TryReadRect(boundsValue, out bounds)
-                && IsUsableBounds(bounds))
-            {
-                return true;
-            }
+            return true;
         }
 
         if (TryReadRenderSizeBounds(visual, out bounds))
@@ -1241,6 +1239,48 @@ public sealed class WpfVisualTreeReflectionRenderer
         if (TryInferVisualContentBounds(visual, out bounds))
         {
             return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static bool TryGetPortableVisualBounds(object visual, out PortableVisualBounds bounds)
+    {
+        if (visual is PortableVisualBoundsSource visualBoundsSource
+            && visualBoundsSource.TryGetPortableVisualBounds(out bounds))
+        {
+            return true;
+        }
+
+        bounds = null!;
+        return false;
+    }
+
+    private static bool TryReadPortableVisualBounds(PortableVisualBounds visualBounds, out WpfReplayRect bounds)
+    {
+        if (visualBounds.HasDescendantBounds
+            && TryReadPortableRect(visualBounds.DescendantBounds, out bounds))
+        {
+            return true;
+        }
+
+        if (visualBounds.HasContentBounds
+            && TryReadPortableRect(visualBounds.ContentBounds, out bounds))
+        {
+            return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static bool TryReadPortableRect(PortableRect rect, out WpfReplayRect bounds)
+    {
+        if (!rect.IsEmpty)
+        {
+            bounds = new WpfReplayRect(rect.X, rect.Y, rect.Width, rect.Height);
+            return IsUsableBounds(bounds);
         }
 
         bounds = default;

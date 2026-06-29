@@ -75,7 +75,7 @@ namespace System.Windows.Media
     /// Derived Visuals render their content first and then render the children, or in other
     /// words, the content of a Visual is always behind the content of its children.
     /// </summary>
-    public abstract partial class Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource
+    public abstract partial class Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource, IPortableVisualBoundsSource
     {
         // --------------------------------------------------------------------
         //
@@ -409,6 +409,38 @@ namespace System.Windows.Media
                 }
                 return bboxSubgraph;
             }
+        }
+
+        bool IPortableVisualBoundsSource.TryGetPortableVisualBounds(out PortableVisualBounds bounds)
+        {
+            Rect contentBounds = VisualContentBounds;
+            Rect descendantBounds = VisualDescendantBounds;
+            bounds = new PortableVisualBounds
+            {
+                HasContentBounds = HasPortableVisualBounds(contentBounds),
+                ContentBounds = ToPortableRect(contentBounds),
+                HasDescendantBounds = HasPortableVisualBounds(descendantBounds),
+                DescendantBounds = ToPortableRect(descendantBounds)
+            };
+            return true;
+        }
+
+        private static bool HasPortableVisualBounds(Rect bounds)
+        {
+            return !bounds.IsEmpty
+                && bounds.Width > 0
+                && bounds.Height > 0
+                && Double.IsFinite(bounds.X)
+                && Double.IsFinite(bounds.Y)
+                && Double.IsFinite(bounds.Width)
+                && Double.IsFinite(bounds.Height);
+        }
+
+        private static PortableRect ToPortableRect(Rect bounds)
+        {
+            return bounds.IsEmpty
+                ? PortableRect.Empty
+                : new PortableRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
         }
 
 

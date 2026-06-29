@@ -7819,8 +7819,9 @@ namespace System.Windows.Media
         public new System.Windows.Media.VideoDrawing CloneCurrentValue() { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
-    public abstract partial class Visual : System.Windows.DependencyObject, ProGPU.Wpf.Interop.IPortableVisualChildrenSource, ProGPU.Wpf.Interop.IPortableVisualStateSource
+    public abstract partial class Visual : System.Windows.DependencyObject, ProGPU.Wpf.Interop.IPortableVisualChildrenSource, ProGPU.Wpf.Interop.IPortableVisualStateSource, ProGPU.Wpf.Interop.IPortableVisualBoundsSource
     {
+        bool ProGPU.Wpf.Interop.IPortableVisualBoundsSource.TryGetPortableVisualBounds(out ProGPU.Wpf.Interop.PortableVisualBounds bounds) { throw null; }
         bool ProGPU.Wpf.Interop.IPortableVisualChildrenSource.TryGetPortableVisualChild(int index, out object child) { throw null; }
         bool ProGPU.Wpf.Interop.IPortableVisualChildrenSource.TryGetPortableVisualChildCount(out int count) { throw null; }
         bool ProGPU.Wpf.Interop.IPortableVisualStateSource.TryGetPortableVisualState(out ProGPU.Wpf.Interop.PortableVisualState state) { throw null; }

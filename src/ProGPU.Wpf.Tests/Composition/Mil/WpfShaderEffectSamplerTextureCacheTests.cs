@@ -114,7 +114,7 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
     }
 
     [Fact]
-    public void TryGetBrushSourceBoundsUsesVisualDescendantBoundsBeforeRenderSizeFallback()
+    public void TryGetBrushSourceBoundsUsesPortableVisualDescendantBoundsBeforeRenderSizeFallback()
     {
         var visual = new FakeVisualWithDescendantBounds(
             new Rect(3, 4, 30, 40),
@@ -275,7 +275,7 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
 
     private readonly record struct FakeRect(double X, double Y, double Width, double Height);
 
-    private sealed class FakeVisual
+    private sealed class FakeVisual : IPortableVisualBoundsSource
     {
         public FakeVisual(Rect contentBounds)
         {
@@ -283,9 +283,19 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
         }
 
         public Rect ContentBounds { get; }
+
+        public bool TryGetPortableVisualBounds(out PortableVisualBounds bounds)
+        {
+            bounds = new PortableVisualBounds
+            {
+                HasContentBounds = true,
+                ContentBounds = ToPortableRect(ContentBounds)
+            };
+            return true;
+        }
     }
 
-    private sealed class FakeVisualWithDescendantBounds
+    private sealed class FakeVisualWithDescendantBounds : IPortableVisualBoundsSource, IPortableVisualLayoutStateSource
     {
         public FakeVisualWithDescendantBounds(Rect descendantBounds, FakeSize renderSize)
         {
@@ -296,6 +306,26 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
         public Rect DescendantBounds { get; }
 
         public FakeSize RenderSize { get; }
+
+        public bool TryGetPortableVisualBounds(out PortableVisualBounds bounds)
+        {
+            bounds = new PortableVisualBounds
+            {
+                HasDescendantBounds = true,
+                DescendantBounds = ToPortableRect(DescendantBounds)
+            };
+            return true;
+        }
+
+        public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
+        {
+            state = new PortableVisualLayoutState
+            {
+                HasRenderSize = true,
+                RenderSize = new PortableSize(RenderSize.Width, RenderSize.Height)
+            };
+            return true;
+        }
     }
 
     private sealed class FakeDesiredSizeVisual
@@ -309,4 +339,11 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
     }
 
     private readonly record struct FakeSize(double Width, double Height);
+
+    private static PortableRect ToPortableRect(Rect rect)
+    {
+        return rect.IsEmpty
+            ? PortableRect.Empty
+            : new PortableRect(rect.X, rect.Y, rect.Width, rect.Height);
+    }
 }

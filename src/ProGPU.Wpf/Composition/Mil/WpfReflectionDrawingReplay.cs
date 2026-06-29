@@ -29,6 +29,10 @@ using PortableTileBrush = ProGPU.Wpf.Interop.PortableTileBrush;
 using PortableTileBrushKind = ProGPU.Wpf.Interop.PortableTileBrushKind;
 using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;
 using PortableTileMode = ProGPU.Wpf.Interop.PortableTileMode;
+using PortableVisualBounds = ProGPU.Wpf.Interop.PortableVisualBounds;
+using PortableVisualBoundsSource = ProGPU.Wpf.Interop.IPortableVisualBoundsSource;
+using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
+using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -2824,26 +2828,48 @@ internal static class WpfReflectionDrawingReplay
 
     internal static bool TryGetVisualBounds(object visual, out Rect bounds)
     {
-        foreach (var propertyName in new[] { "Bounds", "DescendantBounds", "VisualContentBounds", "ContentBounds" })
-        {
-            if (TryReadFiniteRectProperty(visual, propertyName, out bounds))
-            {
-                return true;
-            }
-        }
-
-        if (TryGetPropertyValue(visual, "RenderSize", out var renderSize)
-            && renderSize != null
-            && TryReadDoubleProperty(renderSize, "Width", out var width)
-            && TryReadDoubleProperty(renderSize, "Height", out var height)
-            && IsUsableRect(new Rect(0, 0, width, height), out bounds))
+        if (visual is PortableVisualBoundsSource boundsSource
+            && boundsSource.TryGetPortableVisualBounds(out var portableBounds)
+            && TryReadPortableVisualBounds(portableBounds, out bounds))
         {
             return true;
         }
 
-        if (TryReadDoubleProperty(visual, "ActualWidth", out width)
-            && TryReadDoubleProperty(visual, "ActualHeight", out height)
-            && IsUsableRect(new Rect(0, 0, width, height), out bounds))
+        if (visual is PortableVisualLayoutStateSource layoutStateSource
+            && layoutStateSource.TryGetPortableVisualLayoutState(out var layoutState)
+            && TryReadPortableRenderSizeBounds(layoutState, out bounds))
+        {
+            return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static bool TryReadPortableVisualBounds(PortableVisualBounds portableBounds, out Rect bounds)
+    {
+        if (portableBounds.HasDescendantBounds
+            && TryReadPortableRect(portableBounds.DescendantBounds, out bounds)
+            && IsUsableRect(bounds, out bounds))
+        {
+            return true;
+        }
+
+        if (portableBounds.HasContentBounds
+            && TryReadPortableRect(portableBounds.ContentBounds, out bounds)
+            && IsUsableRect(bounds, out bounds))
+        {
+            return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static bool TryReadPortableRenderSizeBounds(PortableVisualLayoutState state, out Rect bounds)
+    {
+        if (state.HasRenderSize
+            && IsUsableRect(new Rect(0, 0, state.RenderSize.Width, state.RenderSize.Height), out bounds))
         {
             return true;
         }

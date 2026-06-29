@@ -4269,7 +4269,7 @@ public sealed class WpfReflectionResourceResolverTests
         public FakeRect Rect { get; }
     }
 
-    private sealed class FakeDrawingVisual : IPortableDrawingContentSource, IPortableVisualChildrenSource
+    private sealed class FakeDrawingVisual : IPortableDrawingContentSource, IPortableVisualChildrenSource, IPortableVisualBoundsSource
     {
         private readonly object? _content;
 
@@ -4303,6 +4303,22 @@ public sealed class WpfReflectionResourceResolverTests
             }
 
             child = Children[index];
+            return true;
+        }
+
+        public bool TryGetPortableVisualBounds(out PortableVisualBounds bounds)
+        {
+            bounds = new PortableVisualBounds();
+            if (Bounds is not FakeRect rect)
+            {
+                return true;
+            }
+
+            var portableBounds = new PortableRect(rect.X, rect.Y, rect.Width, rect.Height);
+            bounds.HasContentBounds = true;
+            bounds.ContentBounds = portableBounds;
+            bounds.HasDescendantBounds = true;
+            bounds.DescendantBounds = portableBounds;
             return true;
         }
     }

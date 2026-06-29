@@ -5830,8 +5830,26 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.Interop",
             "PortableVisualLayoutState.cs"));
+        var visualSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Visual.cs"));
+        var visualBoundsInteropSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableVisualBounds.cs"));
 
         Assert.Contains("using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("using PortableVisualBoundsSource = ProGPU.Wpf.Interop.IPortableVisualBoundsSource;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("visual is PortableVisualBoundsSource visualBoundsSource", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryReadPortableVisualBounds(visualBounds, out bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("visual is PortableVisualLayoutStateSource visualLayoutSource", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableVisualLayoutState(out state)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableRenderSizeBounds(layoutState, out bounds)", rendererSource, StringComparison.Ordinal);
@@ -5845,9 +5863,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryReadDoubleProperty(visual, \"ActualHeight\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadBoolProperty(visual, \"ClipToBounds\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static bool TryReadSize", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"Bounds\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"DescendantBounds\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualContentBounds\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"ContentBounds\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("!hasPortableLayoutState && TryGetLayoutClip(visual, out var layoutClip)", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static bool TryGetLayoutClip", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetLayoutClipInternal", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource, IPortableVisualBoundsSource", visualSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableVisualBoundsSource.TryGetPortableVisualBounds(out PortableVisualBounds bounds)", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualContentBounds", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualDescendantBounds", visualSource, StringComparison.Ordinal);
         Assert.Contains("UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource, IPortableVisualLayoutStateSource", uiElementSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualLayoutStateSource.TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)", uiElementSource, StringComparison.Ordinal);
         Assert.Contains("RenderSize = new PortableSize(renderSize.Width, renderSize.Height)", uiElementSource, StringComparison.Ordinal);
@@ -5858,6 +5884,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("LayoutClip = layoutClip", frameworkElementSource, StringComparison.Ordinal);
         Assert.Contains("interface IPortableVisualLayoutStateSource", interopSource, StringComparison.Ordinal);
         Assert.Contains("object? LayoutClip", interopSource, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableVisualBoundsSource", visualBoundsInteropSource, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableVisualBounds", visualBoundsInteropSource, StringComparison.Ordinal);
+        Assert.Contains("PortableRect DescendantBounds", visualBoundsInteropSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -6198,6 +6227,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DecodeDrawDrawingReplaysPortableImageTileBrushWithoutReflectedTypeName", resolverTests, StringComparison.Ordinal);
         Assert.Contains("TryGetBrushSourceBoundsResolvesPortableDrawingBrushRelativeViewbox", samplerTests, StringComparison.Ordinal);
         Assert.Contains("TryGetBrushSourceBoundsResolvesPortableVisualBrushRelativeViewbox", samplerTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetBrushSourceBoundsUsesPortableVisualDescendantBoundsBeforeRenderSizeFallback", samplerTests, StringComparison.Ordinal);
         Assert.Contains("TryGetBrushSourceBoundsRejectsNonPortableDrawingBrushShape", samplerTests, StringComparison.Ordinal);
         Assert.Contains("TryGetBrushSourceBoundsRejectsNonPortableVisualBrushShape", samplerTests, StringComparison.Ordinal);
     }
@@ -11251,6 +11281,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TypeNameEndsWith(brush, \"DrawingBrush\")", wpfReflectionDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("TypeNameEndsWith(brush, \"VisualBrush\")", wpfReflectionDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushFill(brushValue!", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("using PortableVisualBoundsSource = ProGPU.Wpf.Interop.IPortableVisualBoundsSource;", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("visual is PortableVisualBoundsSource boundsSource", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadFiniteRectProperty(visual", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"RenderSize\"", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty(visual, \"ActualWidth\"", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty(visual, \"ActualHeight\"", wpfReflectionDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform)", wpfReflectionDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(_sink, transform)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.PushNativeTransform(nativeTransform)", wpfPortableCommandSinkBridge, StringComparison.Ordinal);

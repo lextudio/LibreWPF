@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
+using ProGPU.Wpf.Interop;
 using Xunit;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
@@ -29,6 +30,58 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
             Viewbox = new Rect(0.5, 0.25, 0.25, 0.5),
             ViewboxUnits = "RelativeToBoundingBox"
         };
+
+        var resolved = WpfShaderEffectSamplerTextureCache.TryGetBrushSourceBounds(brush, out var bounds);
+
+        Assert.True(resolved);
+        Assert.Equal(new Rect(44, 18, 20, 20), bounds);
+    }
+
+    [Fact]
+    public void TryGetBrushSourceBoundsResolvesPortableDrawingBrushRelativeViewbox()
+    {
+        var brush = new FakePortableTileBrushSource(new PortableTileBrush(
+            PortableTileBrushKind.Drawing,
+            new FakeDrawing(new Rect(10, 20, 200, 100)),
+            opacity: 1,
+            viewport: new PortableRect(0, 0, 1, 1),
+            viewbox: new PortableRect(0.25, 0.2, 0.5, 0.4),
+            viewportUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+            viewboxUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+            tileMode: PortableTileMode.None,
+            stretch: PortableStretch.Fill,
+            alignmentX: PortableAlignmentX.Center,
+            alignmentY: PortableAlignmentY.Center,
+            hasTransform: false,
+            transform: PortableMatrix3x2.Identity,
+            hasRelativeTransform: false,
+            relativeTransform: PortableMatrix3x2.Identity));
+
+        var resolved = WpfShaderEffectSamplerTextureCache.TryGetBrushSourceBounds(brush, out var bounds);
+
+        Assert.True(resolved);
+        Assert.Equal(new Rect(60, 40, 100, 40), bounds);
+    }
+
+    [Fact]
+    public void TryGetBrushSourceBoundsResolvesPortableVisualBrushRelativeViewbox()
+    {
+        var brush = new FakePortableTileBrushSource(new PortableTileBrush(
+            PortableTileBrushKind.Visual,
+            new FakeVisual(new Rect(4, 8, 80, 40)),
+            opacity: 1,
+            viewport: new PortableRect(0, 0, 1, 1),
+            viewbox: new PortableRect(0.5, 0.25, 0.25, 0.5),
+            viewportUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+            viewboxUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+            tileMode: PortableTileMode.None,
+            stretch: PortableStretch.Fill,
+            alignmentX: PortableAlignmentX.Center,
+            alignmentY: PortableAlignmentY.Center,
+            hasTransform: false,
+            transform: PortableMatrix3x2.Identity,
+            hasRelativeTransform: false,
+            relativeTransform: PortableMatrix3x2.Identity));
 
         var resolved = WpfShaderEffectSamplerTextureCache.TryGetBrushSourceBounds(brush, out var bounds);
 
@@ -131,6 +184,22 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
         public Rect Viewbox { get; init; }
 
         public string ViewboxUnits { get; init; } = "RelativeToBoundingBox";
+    }
+
+    private sealed class FakePortableTileBrushSource : IPortableTileBrushSource
+    {
+        private readonly PortableTileBrush _brush;
+
+        public FakePortableTileBrushSource(PortableTileBrush brush)
+        {
+            _brush = brush;
+        }
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            brush = _brush;
+            return true;
+        }
     }
 
     private sealed class FakeDrawing

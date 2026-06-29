@@ -5640,6 +5640,18 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfReflectionResourceResolverTests.cs"));
+        var samplerCache = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfShaderEffectSamplerTextureCache.cs"));
+        var samplerTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfShaderEffectSamplerTextureCacheTests.cs"));
 
         Assert.Contains("interface IPortableTileBrushSource", portableTileBrush, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableTileBrush", portableTileBrush, StringComparison.Ordinal);
@@ -5662,7 +5674,17 @@ public sealed class WpfManagedProjectGraphTests
             drawingReplay.IndexOf("TryReplayPortableTileBrushFill(brush, geometry, sink, imageSourceAdapter, out status)", StringComparison.Ordinal)
                 < drawingReplay.IndexOf("TryReplayImageBrushFill(brush, geometry, sink, imageSourceAdapter)", StringComparison.Ordinal),
             "Typed portable tile brushes must be tried before reflected ImageBrush/DrawingBrush/VisualBrush shape probing.");
+        Assert.Contains("using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;", samplerCache, StringComparison.Ordinal);
+        Assert.Contains("brush is PortableTileBrushSource portableSource", samplerCache, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableBrushSourceBounds(portableBrush, imageSourceAdapter, out bounds)", samplerCache, StringComparison.Ordinal);
+        Assert.Contains("IsSupportedShaderSamplerBrush(brush)", samplerCache, StringComparison.Ordinal);
+        Assert.True(
+            samplerCache.IndexOf("brush is PortableTileBrushSource portableSource", StringComparison.Ordinal)
+                < samplerCache.IndexOf("TryGetAbsoluteViewbox(brush, out bounds)", StringComparison.Ordinal),
+            "Typed portable tile brush sampler bounds must be tried before reflected DrawingBrush/VisualBrush shape probing.");
         Assert.Contains("DecodeDrawDrawingReplaysPortableImageTileBrushWithoutReflectedTypeName", resolverTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetBrushSourceBoundsResolvesPortableDrawingBrushRelativeViewbox", samplerTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetBrushSourceBoundsResolvesPortableVisualBrushRelativeViewbox", samplerTests, StringComparison.Ordinal);
     }
 
     [Fact]

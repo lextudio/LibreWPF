@@ -13,6 +13,11 @@ using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using ProGpuCompositor = ProGPU.Scene.Compositor;
 using ProGpuDrawingVisual = ProGPU.Scene.DrawingVisual;
 using ProGpuRect = ProGPU.Scene.Rect;
+using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
+using PortableRect = ProGPU.Wpf.Interop.PortableRect;
+using PortableTileBrush = ProGPU.Wpf.Interop.PortableTileBrush;
+using PortableTileBrushKind = ProGPU.Wpf.Interop.PortableTileBrushKind;
+using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -53,7 +58,7 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         }
 
         if (brush == null
-            || (!TypeNameEndsWith(brush, "DrawingBrush") && !TypeNameEndsWith(brush, "VisualBrush"))
+            || !IsSupportedShaderSamplerBrush(brush)
             || !TryGetBrushSourceBounds(brush, AdaptImageSource, out var sourceBounds)
             || !TryCreateTextureBounds(sourceBounds, out var textureBounds, out var pixelWidth, out var pixelHeight))
         {
@@ -168,6 +173,13 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out Rect bounds)
     {
+        if (brush is PortableTileBrushSource portableSource
+            && portableSource.TryGetPortableTileBrush(out var portableBrush)
+            && TryGetPortableBrushSourceBounds(portableBrush, imageSourceAdapter, out bounds))
+        {
+            return true;
+        }
+
         if (TryGetAbsoluteViewbox(brush, out bounds))
         {
             return true;
@@ -203,6 +215,93 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
 
         bounds = default;
         return false;
+    }
+
+    private static bool TryGetPortableBrushSourceBounds(
+        PortableTileBrush brush,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out Rect bounds)
+    {
+        if (TryGetAbsoluteViewbox(brush, out bounds))
+        {
+            return true;
+        }
+
+        switch (brush.Kind)
+        {
+            case PortableTileBrushKind.Drawing:
+                if (WpfReflectionDrawingReplay.TryGetDrawingBounds(brush.Content, imageSourceAdapter, out var drawingBounds))
+                {
+                    if (TryGetRelativeViewbox(brush, drawingBounds, out bounds))
+                    {
+                        return true;
+                    }
+
+                    bounds = drawingBounds;
+                    return true;
+                }
+
+                break;
+
+            case PortableTileBrushKind.Visual:
+                if (TryGetSamplerVisualBounds(brush.Content, out var visualBounds))
+                {
+                    if (TryGetRelativeViewbox(brush, visualBounds, out bounds))
+                    {
+                        return true;
+                    }
+
+                    bounds = visualBounds;
+                    return true;
+                }
+
+                break;
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static bool TryGetAbsoluteViewbox(PortableTileBrush brush, out Rect viewbox)
+    {
+        viewbox = default;
+        if (brush.ViewboxUnits != PortableBrushMappingMode.Absolute)
+        {
+            return false;
+        }
+
+        viewbox = ToRect(brush.Viewbox);
+        return IsUsableBounds(viewbox);
+    }
+
+    private static bool TryGetRelativeViewbox(PortableTileBrush brush, Rect sourceBounds, out Rect viewbox)
+    {
+        viewbox = default;
+        if (brush.ViewboxUnits != PortableBrushMappingMode.RelativeToBoundingBox
+            || !IsUsableBounds(sourceBounds))
+        {
+            return false;
+        }
+
+        var relativeViewbox = ToRect(brush.Viewbox);
+        if (!IsUsableBounds(relativeViewbox))
+        {
+            return false;
+        }
+
+        viewbox = new Rect(
+            sourceBounds.X + relativeViewbox.X * sourceBounds.Width,
+            sourceBounds.Y + relativeViewbox.Y * sourceBounds.Height,
+            relativeViewbox.Width * sourceBounds.Width,
+            relativeViewbox.Height * sourceBounds.Height);
+        return IsUsableBounds(viewbox);
+    }
+
+    private static Rect ToRect(PortableRect rect)
+    {
+        return rect.IsEmpty
+            ? Rect.Empty
+            : new Rect(rect.X, rect.Y, rect.Width, rect.Height);
     }
 
     private static bool TryGetAbsoluteViewbox(object brush, out Rect viewbox)
@@ -396,6 +495,19 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         var type = instance.GetType();
         return type.Name.EndsWith(suffix, StringComparison.Ordinal)
             || (type.FullName?.EndsWith(suffix, StringComparison.Ordinal) ?? false);
+    }
+
+    private static bool IsSupportedShaderSamplerBrush(object brush)
+    {
+        if (brush is PortableTileBrushSource portableSource
+            && portableSource.TryGetPortableTileBrush(out var portableBrush))
+        {
+            return portableBrush.Kind == PortableTileBrushKind.Drawing
+                || portableBrush.Kind == PortableTileBrushKind.Visual;
+        }
+
+        return TypeNameEndsWith(brush, "DrawingBrush")
+            || TypeNameEndsWith(brush, "VisualBrush");
     }
 
     private void ThrowIfDisposed()

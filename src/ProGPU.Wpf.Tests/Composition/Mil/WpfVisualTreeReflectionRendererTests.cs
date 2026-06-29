@@ -220,7 +220,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             HasOpacity = true,
             Opacity = 0.5,
             HasClip = true,
-            Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50))
+            Clip = new PortableRectangleClipGeometry(0, 0, 100, 50)
         });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -255,7 +255,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
             HasClip = true,
-            Clip = new FakeRectangleGeometry(new FakeRect(5, 6, 70, 80))
+            Clip = new PortableRectangleClipGeometry(5, 6, 70, 80)
         });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -293,7 +293,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakePortableVisualLayoutVisual(new PortableVisualLayoutState
         {
             HasLayoutClip = true,
-            LayoutClip = new FakeRectangleGeometry(new FakeRect(4, 5, 60, 70))
+            LayoutClip = new PortableRectangleClipGeometry(4, 5, 60, 70)
         });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -311,7 +311,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakePortableVisualLayoutVisual(new PortableVisualLayoutState
         {
             HasLayoutClip = true,
-            LayoutClip = new FakeRectangleGeometry(new FakeRect(7, 8, 90, 20)),
+            LayoutClip = new PortableRectangleClipGeometry(7, 8, 90, 20),
             HasClipToBounds = true,
             ClipToBounds = false
         });
@@ -346,11 +346,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
     public void ReplaySubtreeRegistersPortableVisualStateResourcesAsRetainedDependencies()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4));
-        var clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50));
+        var clip = new PortableRectangleClipGeometry(0, 0, 100, 50);
         var opacityMask = Brushes.White;
         var effect = new FakeBlurEffect(3);
         var cacheMode = new object();
-        var layoutClip = new FakeRectangleGeometry(new FakeRect(1, 2, 30, 40));
+        var layoutClip = new PortableRectangleClipGeometry(1, 2, 30, 40);
         var root = new FakePortableVisualStateAndLayoutDrawingVisual(
             CreateRenderData(Brushes.Green),
             new PortableVisualState
@@ -482,12 +482,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
             new PortableVisualState
             {
                 HasClip = true,
-                Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 50, 50))
+                Clip = new PortableRectangleClipGeometry(0, 0, 50, 50)
             },
             new PortableVisualLayoutState
             {
                 HasLayoutClip = true,
-                LayoutClip = new FakeRectangleGeometry(new FakeRect(10, 12, 60, 70))
+                LayoutClip = new PortableRectangleClipGeometry(10, 12, 60, 70)
             });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -529,7 +529,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             HasOffset = true,
             Offset = new PortablePoint(10, 20),
             HasClip = true,
-            Clip = new FakeRectangleGeometry(new FakeRect(1, 2, 30, 40)),
+            Clip = new PortableRectangleClipGeometry(1, 2, 30, 40),
             HasScrollableAreaClip = true,
             ScrollableAreaClip = new PortableRect(10, 20, 80, 90)
         });
@@ -670,7 +670,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
                 HasOpacity = true,
                 Opacity = 0.35,
                 HasClip = true,
-                Clip = new FakeRectangleGeometry(new FakeRect(10, 11, 20, 30)),
+                Clip = new PortableRectangleClipGeometry(10, 11, 20, 30),
                 HasCacheMode = true,
                 CacheMode = cacheMode
             })
@@ -764,7 +764,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
                 HasOffset = true,
                 Offset = new PortablePoint(11, 13),
                 HasClip = true,
-                Clip = new FakeRectangleGeometry(new FakeRect(10, 12, 20, 25)),
+                Clip = new PortableRectangleClipGeometry(10, 12, 20, 25),
                 HasEffect = true,
                 Effect = new FakeBlurEffect(4)
             })
@@ -1044,16 +1044,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void ReplaySubtreeKeepsRoundedClipInCommandScopeForNativeOwnerSink()
+    public void ReplaySubtreeKeepsNonRectangleClipInCommandScopeForNativeOwnerSink()
     {
         var root = new FakePortableVisualStateVisual(new PortableVisualState
         {
             HasClip = true,
-            Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50))
-            {
-                RadiusX = 4,
-                RadiusY = 4
-            }
+            Clip = new PortableNonRectangleClipGeometry(0, 0, 100, 50)
         });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -1181,7 +1177,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             HasTransform = true,
             Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
             HasClip = true,
-            Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50))
+            Clip = new PortableRectangleClipGeometry(0, 0, 100, 50)
         });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -1288,7 +1284,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
                 HasOffset = true,
                 Offset = new PortablePoint(10, 20),
                 HasClip = true,
-                Clip = new FakeRectangleGeometry(new FakeRect(5, 6, 10, 12))
+                Clip = new PortableRectangleClipGeometry(5, 6, 10, 12)
             }));
 
         var sink = new TestSink();
@@ -1409,7 +1405,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakePortableVisualLayoutVisual(new PortableVisualLayoutState
         {
             HasLayoutClip = true,
-            LayoutClip = new FakeRectangleGeometry(new FakeRect(2, 3, 40, 50))
+            LayoutClip = new PortableRectangleClipGeometry(2, 3, 40, 50)
         });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -3611,20 +3607,6 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
     private readonly record struct FakeMatrix(double M11, double M12, double M21, double M22, double OffsetX, double OffsetY);
 
-    private sealed class FakeRectangleGeometry
-    {
-        public FakeRectangleGeometry(FakeRect rect)
-        {
-            Rect = rect;
-        }
-
-        public FakeRect Rect { get; }
-
-        public double RadiusX { get; init; }
-
-        public double RadiusY { get; init; }
-    }
-
     private sealed class PortableRectangleClipGeometry : PortableGeometryPathSource
     {
         private readonly PortableGeometryPath _path;
@@ -3692,6 +3674,41 @@ public sealed class WpfVisualTreeReflectionRendererTests
                 ReflectedGeometryProbeCount++;
                 return null;
             }
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableNonRectangleClipGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableNonRectangleClipGeometry(double x, double y, double width, double height)
+        {
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = new PortableRect(x, y, width, height),
+                Transform = PortableMatrix3x2.Identity,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(x, y),
+                        IsClosed = true,
+                        IsFilled = true,
+                        Segments =
+                        [
+                            PortablePathSegment.Line(new PortablePoint(x + width, y), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(x + (width * 0.5), y + height), isSmoothJoin: false, isStroked: true)
+                        ]
+                    }
+                ]
+            };
         }
 
         public bool TryGetPortableGeometryPath(out PortableGeometryPath path)

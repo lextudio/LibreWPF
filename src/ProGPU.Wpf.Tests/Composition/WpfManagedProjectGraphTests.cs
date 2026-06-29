@@ -5524,7 +5524,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static bool TryGetVisualClipBounds(object visual, out WpfReplayRect bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryCreateClipToBoundsClipBounds(object visual, out WpfReplayRect bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("else if (HasExplicitRetainedVisualClipState(visual))", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("ReplaySubtreeKeepsRoundedClipInCommandScopeForNativeOwnerSink", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeKeepsNonRectangleClipInCommandScopeForNativeOwnerSink", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeSynthesizesCellClipFromPortableClipToBoundsState", rendererTests, StringComparison.Ordinal);
         Assert.Contains("FakeVisual : PortableVisualChildrenSource, PortableVisualBoundsSource", rendererTests, StringComparison.Ordinal);
         Assert.Contains("clip is IPortableGeometryPathSource portableGeometry", rendererSource, StringComparison.Ordinal);
@@ -5553,6 +5553,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"ScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualScrollableAreaClip\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(clip, \"Rect\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty(clip, \"RadiusX\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty(clip, \"RadiusY\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(clip, \"Transform\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static bool TryReadDoubleProperty", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static bool TryGetPropertyValue", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static PropertyInfo", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection;", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("scrollableAreaClip = new ReflectedRectangleClip", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadRect(scrollableAreaClip", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ReflectedRectangleClip", rendererSource, StringComparison.Ordinal);

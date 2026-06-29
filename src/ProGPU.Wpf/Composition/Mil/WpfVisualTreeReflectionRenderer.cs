@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
 using ProGPU.Wpf.Interop;
@@ -27,7 +26,6 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 public sealed class WpfVisualTreeReflectionRenderer
 {
-    private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
     private const double RectangleClipPointTolerance = 0.000001;
 
     private readonly WpfRenderDataReflectionBridge _renderDataBridge;
@@ -725,6 +723,17 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryReadRectangleClipBounds(object clip, out WpfReplayRect bounds)
     {
+        if (clip is WpfReplayRect replayRect)
+        {
+            bounds = replayRect;
+            return IsUsableBounds(bounds);
+        }
+
+        if (clip is PortableRect portableRect)
+        {
+            return TryReadPortableRect(portableRect, out bounds);
+        }
+
         if (clip is IPortableGeometryPathSource portableGeometry)
         {
             if (portableGeometry.TryGetPortableGeometryPath(out var portablePath)
@@ -737,38 +746,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
-        if (TryReadRect(clip, out bounds) && IsUsableBounds(bounds))
-        {
-            return true;
-        }
-
-        if (!TryGetPropertyValue(clip, "Rect", out var rectValue)
-            || rectValue == null
-            || !TryReadRect(rectValue, out bounds)
-            || !IsUsableBounds(bounds))
-        {
-            bounds = default;
-            return false;
-        }
-
-        if ((TryReadDoubleProperty(clip, "RadiusX", out var radiusX) && radiusX != 0)
-            || (TryReadDoubleProperty(clip, "RadiusY", out var radiusY) && radiusY != 0))
-        {
-            bounds = default;
-            return false;
-        }
-
-        if (TryGetPropertyValue(clip, "Transform", out var transformValue) && transformValue != null)
-        {
-            if (!WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out var transform)
-                || !WpfReflectionResourceResolver.IsIdentityMatrix(transform))
-            {
-                bounds = default;
-                return false;
-            }
-        }
-
-        return true;
+        bounds = default;
+        return false;
     }
 
     private static bool TryReadPortableRectangleClipBounds(PortableGeometryPath path, out WpfReplayRect bounds)
@@ -1432,15 +1411,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             return;
         }
 
-        if (!TryGetPropertyValue(visual, "Name", out var nameValue) ||
-            nameValue == null ||
-            string.IsNullOrWhiteSpace(nameValue.ToString()))
-        {
-            return;
-        }
-
         Console.Error.WriteLine(
-            $"ProGPU WPF retained visual {state}: {visual.GetType().Name}#{nameValue}");
+            $"ProGPU WPF retained visual {state}: {visual.GetType().Name}");
     }
 
     private static bool IsRetainedVisualTraceEnabled()
@@ -1555,21 +1527,6 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         clippedBounds = IntersectBounds(clippedBounds, clipBounds.Value);
         return IsUsableBounds(clippedBounds);
-    }
-
-    private static bool TryReadRect(object rectValue, out WpfReplayRect bounds)
-    {
-        if (TryReadDoubleProperty(rectValue, "X", out var x)
-            && TryReadDoubleProperty(rectValue, "Y", out var y)
-            && TryReadDoubleProperty(rectValue, "Width", out var width)
-            && TryReadDoubleProperty(rectValue, "Height", out var height))
-        {
-            bounds = new WpfReplayRect(x, y, width, height);
-            return true;
-        }
-
-        bounds = default;
-        return false;
     }
 
     private static WpfReplayRect ToReplayRect(PortableRect bounds)
@@ -1740,9 +1697,9 @@ public sealed class WpfVisualTreeReflectionRenderer
         return true;
     }
 
-    private static System.Windows.Media.RectangleGeometry CreateRectangleClipGeometry(WpfReplayRect bounds)
+    private static PortableRectangleClipGeometry CreateRectangleClipGeometry(WpfReplayRect bounds)
     {
-        return new System.Windows.Media.RectangleGeometry(new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height));
+        return new PortableRectangleClipGeometry(bounds);
     }
 
     private static bool IsUsableBounds(WpfReplayRect bounds)
@@ -1813,92 +1770,47 @@ public sealed class WpfVisualTreeReflectionRenderer
         return IsUsableBounds(clipped) ? clipped : null;
     }
 
-    private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)
-    {
-        value = 0;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
-        {
-            return false;
-        }
-
-        return TryConvertToDouble(propertyValue, out value);
-    }
-
-    private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
-    {
-        if (instance == null)
-        {
-            value = null;
-            return false;
-        }
-
-        var property = FindProperty(instance.GetType(), propertyName);
-        if (property == null || property.GetIndexParameters().Length != 0)
-        {
-            value = null;
-            return false;
-        }
-
-        try
-        {
-            value = property.GetValue(instance);
-            return true;
-        }
-        catch (TargetInvocationException)
-        {
-        }
-        catch (ArgumentException)
-        {
-        }
-        catch (MethodAccessException)
-        {
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-
-        value = null;
-        return false;
-    }
-
-    private static PropertyInfo? FindProperty(Type type, string name)
-    {
-        for (var current = type; current != null; current = current.BaseType)
-        {
-            var property = current.GetProperty(name, MemberFlags);
-            if (property != null)
-            {
-                return property;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool TryConvertToDouble(object? value, out double result)
-    {
-        switch (value)
-        {
-            case double doubleValue:
-                result = doubleValue;
-                return true;
-            case float floatValue:
-                result = floatValue;
-                return true;
-            case int intValue:
-                result = intValue;
-                return true;
-            default:
-                result = 0;
-                return false;
-        }
-    }
-
     private static bool TypeNameEndsWith(object instance, string suffix)
     {
         var type = instance.GetType();
         return type.Name.EndsWith(suffix, StringComparison.Ordinal)
             || (type.FullName?.EndsWith("." + suffix, StringComparison.Ordinal) ?? false);
+    }
+
+    private sealed class PortableRectangleClipGeometry : IPortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableRectangleClipGeometry(WpfReplayRect bounds)
+        {
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = new PortableRect(bounds.X, bounds.Y, bounds.Width, bounds.Height),
+                Transform = PortableMatrix3x2.Identity,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(bounds.X, bounds.Y),
+                        IsClosed = true,
+                        IsFilled = true,
+                        Segments =
+                        [
+                            PortablePathSegment.Line(new PortablePoint(bounds.X + bounds.Width, bounds.Y), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(bounds.X + bounds.Width, bounds.Y + bounds.Height), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(bounds.X, bounds.Y + bounds.Height), isSmoothJoin: false, isStroked: true)
+                        ]
+                    }
+                ]
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
     }
 
     private sealed class BoundsAccumulatingSink : IWpfCompositionCommandSink

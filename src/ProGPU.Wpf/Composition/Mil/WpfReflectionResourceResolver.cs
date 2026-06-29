@@ -1533,38 +1533,12 @@ public sealed class WpfReflectionResourceResolver :
 
     private static bool TryParseGeometryText(string pathText, out MediaGeometry geometry)
     {
-        if (TryParseGeometryText(typeof(MediaGeometry), pathText, out geometry))
-        {
-            return true;
-        }
-
-        return TryParseGeometryText(typeof(PathGeometry), pathText, out geometry);
-    }
-
-    private static bool TryParseGeometryText(Type geometryType, string pathText, out MediaGeometry geometry)
-    {
         geometry = null!;
-        var parse = geometryType.GetMethod(
-            "Parse",
-            BindingFlags.Public | BindingFlags.Static,
-            binder: null,
-            [typeof(string)],
-            modifiers: null);
-        if (parse == null)
-        {
-            return false;
-        }
 
         try
         {
-            if (parse.Invoke(null, [pathText]) is MediaGeometry parsedGeometry)
-            {
-                geometry = parsedGeometry;
-                return true;
-            }
-        }
-        catch (TargetInvocationException ex) when (ex.InnerException is FormatException or InvalidOperationException or ArgumentException)
-        {
+            geometry = MediaGeometry.Parse(pathText);
+            return true;
         }
         catch (FormatException)
         {

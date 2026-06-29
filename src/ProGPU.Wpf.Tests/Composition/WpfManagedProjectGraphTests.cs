@@ -11267,7 +11267,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryReadReplayPoint(startPointValue", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("TryReadReplayPoint(centerValue", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("TryReadReplayRect(rectValue", wpfReflectionResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("MediaGeometry.Parse(pathText)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("resource.ToString()", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("MediaGeometry.Parse(pathText)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryParseGeometryText", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("TryParseGeometryText(typeof(MediaGeometry)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("TryParseGeometryText(typeof(PathGeometry)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("GetMethod(\n            \"Parse\"", wpfReflectionResourceResolver, StringComparison.Ordinal);

@@ -1143,14 +1143,6 @@ public sealed class WpfReflectionResourceResolver :
             return ApplyGeometryTransform(resource, reflectedPathGeometry);
         }
 
-        var pathText = resource.ToString();
-        if (!string.IsNullOrWhiteSpace(pathText)
-            && !string.Equals(pathText, resource.GetType().FullName, StringComparison.Ordinal)
-            && TryParseGeometryText(pathText, out var parsedGeometry))
-        {
-            return ApplyGeometryTransform(resource, parsedGeometry);
-        }
-
         return null;
     }
 
@@ -1270,28 +1262,6 @@ public sealed class WpfReflectionResourceResolver :
         return sweepDirection == PortableSweepDirection.Clockwise
             ? SweepDirection.Clockwise
             : SweepDirection.Counterclockwise;
-    }
-
-    private static bool TryParseGeometryText(string pathText, out MediaGeometry geometry)
-    {
-        geometry = null!;
-
-        try
-        {
-            geometry = MediaGeometry.Parse(pathText);
-            return true;
-        }
-        catch (FormatException)
-        {
-        }
-        catch (InvalidOperationException)
-        {
-        }
-        catch (ArgumentException)
-        {
-        }
-
-        return false;
     }
 
     private static T ApplyGeometryTransform<T>(object resource, T geometry)

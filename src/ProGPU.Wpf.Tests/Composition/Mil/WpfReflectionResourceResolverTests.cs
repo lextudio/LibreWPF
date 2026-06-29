@@ -2871,6 +2871,72 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void AdaptGeometryAdaptsPortableGeometryPathWithoutTypeNameShape()
+    {
+        var source = new FakePortableGeometryPathSource(new PortableGeometryPath
+        {
+            Kind = PortableGeometryPathKind.Path,
+            FillRule = PortableFillRule.EvenOdd,
+            Transform = new PortableMatrix3x2(1, 0, 0, 1, 3, 4),
+            Figures =
+            [
+                new PortablePathFigure
+                {
+                    StartPoint = new PortablePoint(0, 0),
+                    IsClosed = true,
+                    IsFilled = false,
+                    Segments =
+                    [
+                        PortablePathSegment.Line(new PortablePoint(10, 0), isSmoothJoin: true, isStroked: false),
+                        PortablePathSegment.Arc(
+                            new PortablePoint(20, 10),
+                            new PortableSize(5, 6),
+                            rotationAngle: 30,
+                            isLargeArc: true,
+                            PortableSweepDirection.Clockwise,
+                            isSmoothJoin: true,
+                            isStroked: true)
+                    ]
+                }
+            ]
+        });
+
+        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfReflectionResourceResolver.AdaptGeometry(source));
+
+        Assert.Equal(FillRule.EvenOdd, adaptedGeometry.FillRule);
+        var transform = Assert.IsType<MatrixTransform>(adaptedGeometry.Transform);
+        Assert.Equal(3, transform.Matrix.OffsetX);
+        Assert.Equal(4, transform.Matrix.OffsetY);
+
+        var figure = Assert.Single(adaptedGeometry.Figures);
+        Assert.True(figure.IsClosed);
+        Assert.False(figure.IsFilled);
+        Assert.Equal(new Point(0, 0), figure.StartPoint);
+
+        var line = Assert.IsType<LineSegment>(figure.Segments[0]);
+        Assert.True(line.IsSmoothJoin);
+        Assert.False(line.IsStroked);
+        Assert.Equal(new Point(10, 0), line.Point);
+
+        var arc = Assert.IsType<ArcSegment>(figure.Segments[1]);
+        Assert.True(arc.IsSmoothJoin);
+        Assert.True(arc.IsStroked);
+        Assert.True(arc.IsLargeArc);
+        Assert.Equal(SweepDirection.Clockwise, arc.SweepDirection);
+        Assert.Equal(30, arc.RotationAngle);
+        Assert.Equal(new Size(5, 6), arc.Size);
+    }
+
+    [Fact]
+    public void AdaptGeometrySkipsUnavailablePortableGeometryPathWithoutReflectionFallback()
+    {
+        var geometry = new UnavailablePortableLineGeometry();
+
+        Assert.Null(WpfReflectionResourceResolver.AdaptGeometry(geometry));
+        Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
+    }
+
+    [Fact]
     public void DecodeGeometryPreservesCombinedGeometryInsideWpfShapedGeometryGroup()
     {
         var group = new FakeGeometryGroup(
@@ -3733,6 +3799,45 @@ public sealed class WpfReflectionResourceResolverTests
         public FakePoint EndPoint { get; }
 
         public object? Transform { get; init; }
+    }
+
+    private sealed class FakePortableGeometryPathSource : IPortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public FakePortableGeometryPathSource(PortableGeometryPath path)
+        {
+            _path = path;
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class UnavailablePortableLineGeometry : IPortableGeometryPathSource
+    {
+        public int ReflectedGeometryProbeCount { get; private set; }
+
+        public object? StartPoint => ThrowReflectedGeometryProbe();
+
+        public object? EndPoint => ThrowReflectedGeometryProbe();
+
+        public object? Transform => ThrowReflectedGeometryProbe();
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = null!;
+            return false;
+        }
+
+        private object? ThrowReflectedGeometryProbe([System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+        {
+            ReflectedGeometryProbeCount++;
+            throw new InvalidOperationException($"Reflected geometry property '{propertyName}' should not be read.");
+        }
     }
 
     private sealed class FakeEllipseGeometry

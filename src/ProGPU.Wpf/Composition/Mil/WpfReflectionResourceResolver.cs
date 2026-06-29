@@ -25,7 +25,15 @@ using PortableColor = ProGPU.Wpf.Interop.PortableColor;
 using PortableGradientColorInterpolationMode = ProGPU.Wpf.Interop.PortableGradientColorInterpolationMode;
 using PortableGradientSpreadMethod = ProGPU.Wpf.Interop.PortableGradientSpreadMethod;
 using PortableGradientStop = ProGPU.Wpf.Interop.PortableGradientStop;
+using PortableFillRule = ProGPU.Wpf.Interop.PortableFillRule;
+using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
+using PortableGeometryPathKind = ProGPU.Wpf.Interop.PortableGeometryPathKind;
+using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
+using PortablePathSegment = ProGPU.Wpf.Interop.PortablePathSegment;
+using PortablePathSegmentKind = ProGPU.Wpf.Interop.PortablePathSegmentKind;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
+using PortableSize = ProGPU.Wpf.Interop.PortableSize;
+using PortableSweepDirection = ProGPU.Wpf.Interop.PortableSweepDirection;
 using PortableBrushSource = ProGPU.Wpf.Interop.IPortableBrushSource;
 using PortablePen = ProGPU.Wpf.Interop.PortablePen;
 using PortablePenLineCap = ProGPU.Wpf.Interop.PortablePenLineCap;
@@ -1460,6 +1468,13 @@ public sealed class WpfReflectionResourceResolver :
             return null;
         }
 
+        if (resource is PortableGeometryPathSource portableGeometry)
+        {
+            return portableGeometry.TryGetPortableGeometryPath(out var portablePath)
+                ? AdaptPortableGeometryPath(portablePath)
+                : null;
+        }
+
         if (resource is MediaGeometry geometry)
         {
             return geometry;
@@ -1533,6 +1548,124 @@ public sealed class WpfReflectionResourceResolver :
         }
 
         return null;
+    }
+
+    private static MediaGeometry? AdaptPortableGeometryPath(PortableGeometryPath portablePath)
+    {
+        MediaGeometry geometry;
+        if (portablePath.Kind == PortableGeometryPathKind.Combined)
+        {
+            var geometryA = portablePath.PathA == null
+                ? new PathGeometry()
+                : AdaptPortableGeometryPath(portablePath.PathA);
+            var geometryB = portablePath.PathB == null
+                ? new PathGeometry()
+                : AdaptPortableGeometryPath(portablePath.PathB);
+            if (geometryA == null || geometryB == null)
+            {
+                return null;
+            }
+
+            geometry = CreateCombinedGeometry(geometryA, geometryB, portablePath.CombineOperation);
+        }
+        else
+        {
+            var pathGeometry = new PathGeometry
+            {
+                FillRule = ToMediaFillRule(portablePath.FillRule)
+            };
+
+            foreach (var portableFigure in portablePath.Figures)
+            {
+                var figure = new PathFigure
+                {
+                    StartPoint = ToPoint(portableFigure.StartPoint),
+                    IsClosed = portableFigure.IsClosed,
+                    IsFilled = portableFigure.IsFilled
+                };
+
+                foreach (var segment in portableFigure.Segments)
+                {
+                    AppendPortablePathSegment(figure, segment);
+                }
+
+                pathGeometry.Figures.Add(figure);
+            }
+
+            geometry = pathGeometry;
+        }
+
+        return ApplyPortableGeometryTransform(portablePath, geometry);
+    }
+
+    private static MediaGeometry? ApplyPortableGeometryTransform(PortableGeometryPath portablePath, MediaGeometry geometry)
+    {
+        if (portablePath.Transform.IsIdentity)
+        {
+            return geometry;
+        }
+
+        var matrix = ToWpfMatrix2D(portablePath.Transform);
+        if (!TryUseFiniteMatrix(matrix, out matrix)
+            || !TryCreateMatrixTransform(matrix, out var transform)
+            || transform == null)
+        {
+            return null;
+        }
+
+        geometry.Transform = transform;
+        return geometry;
+    }
+
+    private static void AppendPortablePathSegment(PathFigure figure, PortablePathSegment segment)
+    {
+        switch (segment.Kind)
+        {
+            case PortablePathSegmentKind.Line:
+                figure.Segments.Add(new LineSegment(ToVector2(segment.Point1), segment.IsSmoothJoin, segment.IsStroked));
+                break;
+            case PortablePathSegmentKind.QuadraticBezier:
+                figure.Segments.Add(new QuadraticBezierSegment(
+                    ToVector2(segment.Point1),
+                    ToVector2(segment.Point2),
+                    segment.IsSmoothJoin,
+                    segment.IsStroked));
+                break;
+            case PortablePathSegmentKind.CubicBezier:
+                figure.Segments.Add(new BezierSegment(
+                    ToVector2(segment.Point1),
+                    ToVector2(segment.Point2),
+                    ToVector2(segment.Point3),
+                    segment.IsSmoothJoin,
+                    segment.IsStroked));
+                break;
+            case PortablePathSegmentKind.Arc:
+                figure.Segments.Add(new ArcSegment
+                {
+                    Point = ToPoint(segment.Point1),
+                    Size = ToSize(segment.Size),
+                    RotationAngle = segment.RotationAngle,
+                    IsLargeArc = segment.IsLargeArc,
+                    SweepDirection = ToMediaSweepDirection(segment.SweepDirection),
+                    IsSmoothJoin = segment.IsSmoothJoin,
+                    IsStroked = segment.IsStroked
+                });
+                break;
+        }
+    }
+
+    private static FillRule ToMediaFillRule(PortableFillRule fillRule)
+    {
+        return fillRule == PortableFillRule.EvenOdd
+            ? FillRule.EvenOdd
+            : FillRule.Nonzero;
+    }
+
+    private static SweepDirection ToMediaSweepDirection(PortableSweepDirection sweepDirection)
+    {
+        return sweepDirection == PortableSweepDirection.Clockwise
+            ? SweepDirection.Clockwise
+            : SweepDirection.Counterclockwise;
     }
 
     private static bool TryParseGeometryText(string pathText, out MediaGeometry geometry)
@@ -2061,6 +2194,11 @@ public sealed class WpfReflectionResourceResolver :
         return new Vector2((float)point.X, (float)point.Y);
     }
 
+    private static Vector2 ToVector2(PortablePoint point)
+    {
+        return new Vector2((float)point.X, (float)point.Y);
+    }
+
     private static Vector2 ToVector2(Size size)
     {
         return new Vector2((float)size.Width, (float)size.Height);
@@ -2071,9 +2209,19 @@ public sealed class WpfReflectionResourceResolver :
         return new Point(point.X, point.Y);
     }
 
+    private static Point ToPoint(PortablePoint point)
+    {
+        return new Point(point.X, point.Y);
+    }
+
     private static Size ToSize(Vector2 size)
     {
         return new Size(Math.Abs(size.X), Math.Abs(size.Y));
+    }
+
+    private static Size ToSize(PortableSize size)
+    {
+        return new Size(Math.Abs(size.Width), Math.Abs(size.Height));
     }
 
     private static PathFigure CloneFigure(PathFigure source)

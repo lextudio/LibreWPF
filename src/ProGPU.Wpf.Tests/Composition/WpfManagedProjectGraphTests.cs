@@ -11193,6 +11193,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortablePenSourceAbsenceDoesNotFallBackToReflectedPenShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("PortableTransformSourceAbsenceDoesNotFallBackToReflectedTransformShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeBrushDoesNotStringProbeUnadaptableBrushTransform", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativeBrushAppliesPortableLinearGradientTransform", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativeBrushCountsNonInvertiblePortableLinearGradientTransform", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodePushTransformRejectsReflectedMatrixShapeWithoutPortableContract", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptGlyphRunSkipsUnavailablePortableGlyphRunWithoutReflectionFallback", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("return portableBrushSource.TryGetPortableBrush(out var portableBrush)", wpfReflectionResourceResolver, StringComparison.Ordinal);
@@ -11201,6 +11203,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("matrix = default;\n            return false;", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("PortableBrushKind.LinearGradient", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("PortableBrushKind.RadialGradient", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("wrappedLinearBrush.CountUnsupportedStateForBounds(bounds)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("wrappedRadialBrush.CountUnsupportedStateForBounds(bounds)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("adaptedPen.DashStyle = new DashStyle(dashArray, dashOffset)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("resource is MediaBrush mediaBrush", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("resource is MediaPen mediaPen", wpfReflectionResourceResolver, StringComparison.Ordinal);
@@ -11212,6 +11216,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain(".ToNative(ToMediaRect", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("HasNonIdentityBrushTransform", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("transformValue.ToString()", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("CountUnsupportedPortableBrushTransforms", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("geometry is PortableGeometryPathSource portableGeometry", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("portableGeometry.TryGetPortableGeometryPath(out var portablePath)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryConvertPortableGeometryPath(portablePath", proGpuWpfCommandSink, StringComparison.Ordinal);

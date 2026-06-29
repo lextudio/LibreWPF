@@ -871,24 +871,34 @@ public sealed class WpfReflectionResourceResolver :
                     new Vector4(color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f));
 
             case PortableBrushKind.LinearGradient:
-                if (!TryCreatePortableLinearGradientBrush(brush, mapRelativeToBounds: true, bounds, out var linearBrush, out var linearStopsTruncated))
+                if (!TryCreatePortableLinearGradientBrush(brush, mapRelativeToBounds: false, default, out var linearBrush, out var linearStopsTruncated))
                 {
                     return null;
                 }
 
-                unsupportedStateCount += CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode: false);
-                unsupportedStateCount += CountUnsupportedPortableBrushTransforms(brush);
-                return linearBrush;
+                var wrappedLinearBrush = new ProGpuNativeBrush(
+                    linearBrush,
+                    ToProGpuBrushMappingMode(brush.MappingMode),
+                    ToOptionalMatrix4x4(brush.HasTransform, brush.Transform),
+                    ToOptionalMatrix4x4(brush.HasRelativeTransform, brush.RelativeTransform),
+                    CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode: false));
+                unsupportedStateCount += wrappedLinearBrush.CountUnsupportedStateForBounds(bounds);
+                return wrappedLinearBrush.ToNative(bounds);
 
             case PortableBrushKind.RadialGradient:
-                if (!TryCreatePortableRadialGradientBrush(brush, mapRelativeToBounds: true, bounds, out var radialBrush, out var radialStopsTruncated))
+                if (!TryCreatePortableRadialGradientBrush(brush, mapRelativeToBounds: false, default, out var radialBrush, out var radialStopsTruncated))
                 {
                     return null;
                 }
 
-                unsupportedStateCount += CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode: false);
-                unsupportedStateCount += CountUnsupportedPortableBrushTransforms(brush);
-                return radialBrush;
+                var wrappedRadialBrush = new ProGpuNativeBrush(
+                    radialBrush,
+                    ToProGpuBrushMappingMode(brush.MappingMode),
+                    ToOptionalMatrix4x4(brush.HasTransform, brush.Transform),
+                    ToOptionalMatrix4x4(brush.HasRelativeTransform, brush.RelativeTransform),
+                    CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode: false));
+                unsupportedStateCount += wrappedRadialBrush.CountUnsupportedStateForBounds(bounds);
+                return wrappedRadialBrush.ToNative(bounds);
 
             default:
                 unsupportedStateCount = 1;
@@ -1020,12 +1030,6 @@ public sealed class WpfReflectionResourceResolver :
         return colorInterpolationMode == PortableGradientColorInterpolationMode.ScRgbLinearInterpolation
             ? global::ProGPU.Vector.GradientColorInterpolationMode.ScRgbLinearInterpolation
             : global::ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation;
-    }
-
-    private static int CountUnsupportedPortableBrushTransforms(PortableBrush brush)
-    {
-        return (brush.HasTransform ? 1 : 0)
-            + (brush.HasRelativeTransform ? 1 : 0);
     }
 
     private static Matrix4x4? ToOptionalMatrix4x4(bool hasMatrix, PortableMatrix3x2 matrix)

@@ -178,6 +178,59 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void AdaptNativeBrushAppliesPortableLinearGradientTransform()
+    {
+        var brush = new FakePortableBrush(
+            PortableBrush.LinearGradient(
+                new PortablePoint(0, 0),
+                new PortablePoint(10, 0),
+                new[]
+                {
+                    new PortableGradientStop(new PortableColor(255, 255, 0, 0), 0),
+                    new PortableGradientStop(new PortableColor(255, 0, 0, 255), 1)
+                },
+                mappingMode: PortableBrushMappingMode.Absolute,
+                hasTransform: true,
+                transform: new PortableMatrix3x2(1, 0, 0, 1, 5, 7)));
+
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 100, 100),
+            out var unsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        var linearBrush = Assert.IsType<ProGpuLinearGradientBrush>(nativeBrush);
+        Assert.Equal(-5, linearBrush.CoordinateTransform.M41);
+        Assert.Equal(-7, linearBrush.CoordinateTransform.M42);
+    }
+
+    [Fact]
+    public void AdaptNativeBrushCountsNonInvertiblePortableLinearGradientTransform()
+    {
+        var brush = new FakePortableBrush(
+            PortableBrush.LinearGradient(
+                new PortablePoint(0, 0),
+                new PortablePoint(10, 0),
+                new[]
+                {
+                    new PortableGradientStop(new PortableColor(255, 255, 0, 0), 0),
+                    new PortableGradientStop(new PortableColor(255, 0, 0, 255), 1)
+                },
+                mappingMode: PortableBrushMappingMode.Absolute,
+                hasTransform: true,
+                transform: new PortableMatrix3x2(0, 0, 0, 1, 0, 0)));
+
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 100, 100),
+            out var unsupportedStateCount);
+
+        Assert.Equal(1, unsupportedStateCount);
+        var linearBrush = Assert.IsType<ProGpuLinearGradientBrush>(nativeBrush);
+        Assert.Equal(Matrix4x4.Identity, linearBrush.CoordinateTransform);
+    }
+
+    [Fact]
     public void AdaptNativeBrushAppliesPortableMatrixBrushTransform()
     {
         var brush = new FakeLinearGradientBrush(

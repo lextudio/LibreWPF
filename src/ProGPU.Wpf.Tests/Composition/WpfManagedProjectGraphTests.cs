@@ -5723,6 +5723,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("layoutState.HasLayoutClip", rendererSource, StringComparison.Ordinal);
         Assert.Contains("layoutState.LayoutClip", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(layoutState.LayoutClip, sink)", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"RenderSize\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty(visual, \"ActualWidth\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty(visual, \"ActualHeight\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadBoolProperty(visual, \"ClipToBounds\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static bool TryReadSize", rendererSource, StringComparison.Ordinal);
         Assert.Contains("!hasPortableLayoutState && TryGetLayoutClip(visual, out var layoutClip)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource, IPortableVisualLayoutStateSource", uiElementSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualLayoutStateSource.TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)", uiElementSource, StringComparison.Ordinal);

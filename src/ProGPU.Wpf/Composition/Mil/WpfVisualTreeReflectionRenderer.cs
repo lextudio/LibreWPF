@@ -1345,25 +1345,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             return true;
         }
 
-        if (TryGetPropertyValue(visual, "RenderSize", out var renderSize)
-            && renderSize != null
-            && TryReadSize(renderSize, out var width, out var height)
-            && width > 0
-            && height > 0)
-        {
-            bounds = new WpfReplayRect(0, 0, width, height);
-            return true;
-        }
-
-        if (TryReadDoubleProperty(visual, "ActualWidth", out width)
-            && TryReadDoubleProperty(visual, "ActualHeight", out height)
-            && width > 0
-            && height > 0)
-        {
-            bounds = new WpfReplayRect(0, 0, width, height);
-            return true;
-        }
-
         bounds = default;
         return false;
     }
@@ -1632,30 +1613,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
-        if (!TryReadBoolProperty(visual, "ClipToBounds", out var clipToBounds) || !clipToBounds)
-        {
-            return false;
-        }
-
-        if (TryGetPropertyValue(visual, "RenderSize", out var renderSize)
-            && renderSize != null
-            && TryReadSize(renderSize, out var width, out var height)
-            && width > 0
-            && height > 0)
-        {
-            clip = new ReflectedRectangleClip(0, 0, width, height);
-            return true;
-        }
-
-        if (TryReadDoubleProperty(visual, "ActualWidth", out width)
-            && TryReadDoubleProperty(visual, "ActualHeight", out height)
-            && width > 0
-            && height > 0)
-        {
-            clip = new ReflectedRectangleClip(0, 0, width, height);
-            return true;
-        }
-
         return false;
     }
 
@@ -1703,16 +1660,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             firstGeometry,
             secondGeometry);
         return true;
-    }
-
-    private static bool TryReadSize(object sizeValue, out double width, out double height)
-    {
-        width = 0;
-        height = 0;
-
-        var hasWidth = TryReadDoubleProperty(sizeValue, "Width", out width);
-        var hasHeight = TryReadDoubleProperty(sizeValue, "Height", out height);
-        return hasWidth && hasHeight;
     }
 
     private static bool IsUsableBounds(WpfReplayRect bounds)

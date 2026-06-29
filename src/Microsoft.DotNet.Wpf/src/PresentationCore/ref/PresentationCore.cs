@@ -7589,7 +7589,7 @@ namespace System.Windows.Media
         Grayscale = 2,
         ClearType = 3,
     }
-    public abstract partial class TileBrush : System.Windows.Media.Brush
+    public abstract partial class TileBrush : System.Windows.Media.Brush, ProGPU.Wpf.Interop.IPortableTileBrushSource
     {
         public static readonly System.Windows.DependencyProperty AlignmentXProperty;
         public static readonly System.Windows.DependencyProperty AlignmentYProperty;
@@ -7608,6 +7608,7 @@ namespace System.Windows.Media
         public System.Windows.Media.BrushMappingMode ViewboxUnits { get { throw null; } set { } }
         public System.Windows.Rect Viewport { get { throw null; } set { } }
         public System.Windows.Media.BrushMappingMode ViewportUnits { get { throw null; } set { } }
+        bool ProGPU.Wpf.Interop.IPortableTileBrushSource.TryGetPortableTileBrush(out ProGPU.Wpf.Interop.PortableTileBrush brush) { throw null; }
         public new System.Windows.Media.TileBrush Clone() { throw null; }
         public new System.Windows.Media.TileBrush CloneCurrentValue() { throw null; }
         protected abstract void GetContentBounds(out System.Windows.Rect contentBounds);

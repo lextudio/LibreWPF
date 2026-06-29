@@ -11,6 +11,16 @@ using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaMatrix = System.Windows.Media.Matrix;
 using MediaMatrixTransform = System.Windows.Media.MatrixTransform;
 using MediaTransform = System.Windows.Media.Transform;
+using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
+using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
+using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
+using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
+using PortableRect = ProGPU.Wpf.Interop.PortableRect;
+using PortableStretch = ProGPU.Wpf.Interop.PortableStretch;
+using PortableTileBrush = ProGPU.Wpf.Interop.PortableTileBrush;
+using PortableTileBrushKind = ProGPU.Wpf.Interop.PortableTileBrushKind;
+using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;
+using PortableTileMode = ProGPU.Wpf.Interop.PortableTileMode;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -180,6 +190,11 @@ internal static class WpfReflectionDrawingReplay
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out WpfDrawingReplayStatus status)
     {
+        if (TryReplayPortableTileBrushFill(brush, geometry, sink, imageSourceAdapter, out status))
+        {
+            return true;
+        }
+
         if (TryReplayImageBrushFill(brush, geometry, sink, imageSourceAdapter))
         {
             status = WpfDrawingReplayStatus.Applied;
@@ -198,6 +213,325 @@ internal static class WpfReflectionDrawingReplay
 
         status = WpfDrawingReplayStatus.Skipped;
         return false;
+    }
+
+    private static bool TryReplayPortableTileBrushFill(
+        object brush,
+        MediaGeometry geometry,
+        IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        if (brush is not PortableTileBrushSource portableSource
+            || !portableSource.TryGetPortableTileBrush(out var portableBrush))
+        {
+            return false;
+        }
+
+        switch (portableBrush.Kind)
+        {
+            case PortableTileBrushKind.Image:
+                if (TryReplayPortableImageBrushFill(portableBrush, geometry, sink, imageSourceAdapter))
+                {
+                    status = WpfDrawingReplayStatus.Applied;
+                    return true;
+                }
+
+                return false;
+
+            case PortableTileBrushKind.Drawing:
+                return TryReplayPortableDrawingBrushFill(portableBrush, geometry, sink, imageSourceAdapter, out status);
+
+            case PortableTileBrushKind.Visual:
+                return TryReplayPortableVisualBrushFill(portableBrush, geometry, sink, imageSourceAdapter, out status);
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryReplayPortableImageBrushFill(
+        PortableTileBrush brush,
+        MediaGeometry geometry,
+        IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter)
+    {
+        if (!TryGetOptionalBrushTransform(brush, out var brushTransform)
+            || !TryGetSupportedTileMode(brush, out var tileMode)
+            || !TryGetSupportedStretch(brush, out var stretch)
+            || !TryGetTileBrushAlignment(brush, out var alignmentX, out var alignmentY)
+            || !IsUsableRect(geometry.Bounds, out var geometryBounds)
+            || !TryGetOptionalRelativeBrushTransform(brush, geometryBounds, out var relativeTransform)
+            || ResolveImageSource(brush.Content, imageSourceAdapter) is not { } imageSource
+            || !TryGetTileBrushDestinationBounds(brush, geometryBounds, out var imageBounds)
+            || !TryGetImageBrushSourceRect(brush, imageSource, out var sourceRect)
+            || !TryGetImageStretchSourceBounds(stretch, sourceRect, imageSource, out var imageStretchSourceBounds)
+            || !TryGetTileBounds(imageBounds, geometryBounds, tileMode, out var tileBounds))
+        {
+            return false;
+        }
+
+        var popCount = 0;
+        sink.PushClip(geometry);
+        popCount++;
+
+        if (brush.Opacity != 1)
+        {
+            sink.PushOpacity(Math.Clamp(brush.Opacity, 0, 1));
+            popCount++;
+        }
+
+        if (relativeTransform != null)
+        {
+            WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform);
+            popCount++;
+        }
+
+        if (brushTransform != null)
+        {
+            WpfPortableCommandSinkBridge.PushTransform(sink, brushTransform);
+            popCount++;
+        }
+
+        foreach (var tile in tileBounds)
+        {
+            if (!TryGetStretchedTile(tile, imageStretchSourceBounds, stretch, alignmentX, alignmentY, out var stretchedTile, out var needsTileClip))
+            {
+                continue;
+            }
+
+            var tilePopCount = 0;
+            if (needsTileClip)
+            {
+                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(tile.Bounds));
+                tilePopCount++;
+            }
+
+            if (TryCreateTileFlipTransform(stretchedTile, tileMode, out var tileTransform))
+            {
+                WpfPortableCommandSinkBridge.PushTransform(sink, tileTransform);
+                tilePopCount++;
+            }
+
+            if (sourceRect.HasValue)
+            {
+                sink.DrawImage(imageSource, stretchedTile.Bounds, sourceRect.Value);
+            }
+            else
+            {
+                sink.DrawImage(imageSource, stretchedTile.Bounds);
+            }
+
+            for (var i = 0; i < tilePopCount; i++)
+            {
+                sink.Pop();
+            }
+        }
+
+        for (var i = 0; i < popCount; i++)
+        {
+            sink.Pop();
+        }
+
+        return true;
+    }
+
+    private static bool TryReplayPortableDrawingBrushFill(
+        PortableTileBrush brush,
+        MediaGeometry geometry,
+        IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        var drawingValue = brush.Content;
+        if (!TryGetOptionalBrushTransform(brush, out var brushTransform)
+            || !TryGetSupportedTileMode(brush, out var tileMode)
+            || !TryGetSupportedStretch(brush, out var stretch)
+            || !TryGetTileBrushAlignment(brush, out var alignmentX, out var alignmentY)
+            || !IsUsableRect(geometry.Bounds, out var geometryBounds)
+            || !TryGetOptionalRelativeBrushTransform(brush, geometryBounds, out var relativeTransform)
+            || !TryGetDrawingBounds(drawingValue, imageSourceAdapter, out var drawingBounds)
+            || !TryGetTileBrushDestinationBounds(brush, geometryBounds, out var destinationBounds)
+            || !TryGetTileBrushSourceBounds(brush, drawingBounds, out var sourceBounds, out var hasSourceClip)
+            || !TryGetTileBounds(destinationBounds, geometryBounds, tileMode, out var tileBounds))
+        {
+            return false;
+        }
+
+        var popCount = 0;
+        sink.PushClip(geometry);
+        popCount++;
+
+        if (brush.Opacity != 1)
+        {
+            sink.PushOpacity(Math.Clamp(brush.Opacity, 0, 1));
+            popCount++;
+        }
+
+        if (relativeTransform != null)
+        {
+            WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform);
+            popCount++;
+        }
+
+        if (brushTransform != null)
+        {
+            WpfPortableCommandSinkBridge.PushTransform(sink, brushTransform);
+            popCount++;
+        }
+
+        var appliedAny = false;
+        var unsupportedAny = false;
+        foreach (var tile in tileBounds)
+        {
+            if (!TryGetStretchedTile(tile, sourceBounds, stretch, alignmentX, alignmentY, out var stretchedTile, out var needsTileClip)
+                || !TryCreateBoundsMappingTransform(sourceBounds, stretchedTile, tileMode, out var transform))
+            {
+                continue;
+            }
+
+            var tilePopCount = 0;
+            if (needsTileClip)
+            {
+                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(tile.Bounds));
+                tilePopCount++;
+            }
+
+            WpfPortableCommandSinkBridge.PushTransform(sink, transform);
+            tilePopCount++;
+
+            if (hasSourceClip)
+            {
+                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(sourceBounds));
+                tilePopCount++;
+            }
+
+            var tileStatus = Replay(drawingValue, sink, imageSourceAdapter);
+            appliedAny |= tileStatus == WpfDrawingReplayStatus.Applied
+                || tileStatus == WpfDrawingReplayStatus.PartiallyApplied;
+            unsupportedAny |= tileStatus == WpfDrawingReplayStatus.Unsupported
+                || tileStatus == WpfDrawingReplayStatus.PartiallyApplied;
+
+            for (var i = 0; i < tilePopCount; i++)
+            {
+                sink.Pop();
+            }
+        }
+
+        status = appliedAny
+            ? unsupportedAny ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
+            : unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
+
+        for (var i = 0; i < popCount; i++)
+        {
+            sink.Pop();
+        }
+
+        return status == WpfDrawingReplayStatus.Applied
+            || status == WpfDrawingReplayStatus.PartiallyApplied;
+    }
+
+    private static bool TryReplayPortableVisualBrushFill(
+        PortableTileBrush brush,
+        MediaGeometry geometry,
+        IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        var visualValue = brush.Content;
+        if (!TryGetOptionalBrushTransform(brush, out var brushTransform)
+            || !TryGetSupportedTileMode(brush, out var tileMode)
+            || !TryGetSupportedStretch(brush, out var stretch)
+            || !TryGetTileBrushAlignment(brush, out var alignmentX, out var alignmentY)
+            || !IsUsableRect(geometry.Bounds, out var geometryBounds)
+            || !TryGetOptionalRelativeBrushTransform(brush, geometryBounds, out var relativeTransform)
+            || !TryGetVisualBounds(visualValue, out var visualBounds)
+            || !TryGetTileBrushDestinationBounds(brush, geometryBounds, out var destinationBounds)
+            || !TryGetTileBrushSourceBounds(brush, visualBounds, out var sourceBounds, out var hasSourceClip)
+            || !TryGetTileBounds(destinationBounds, geometryBounds, tileMode, out var tileBounds))
+        {
+            return false;
+        }
+
+        var popCount = 0;
+        sink.PushClip(geometry);
+        popCount++;
+
+        if (brush.Opacity != 1)
+        {
+            sink.PushOpacity(Math.Clamp(brush.Opacity, 0, 1));
+            popCount++;
+        }
+
+        if (relativeTransform != null)
+        {
+            WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform);
+            popCount++;
+        }
+
+        if (brushTransform != null)
+        {
+            WpfPortableCommandSinkBridge.PushTransform(sink, brushTransform);
+            popCount++;
+        }
+
+        var appliedAny = false;
+        var unsupportedAny = false;
+        foreach (var tile in tileBounds)
+        {
+            if (!TryGetStretchedTile(tile, sourceBounds, stretch, alignmentX, alignmentY, out var stretchedTile, out var needsTileClip)
+                || !TryCreateBoundsMappingTransform(sourceBounds, stretchedTile, tileMode, out var transform))
+            {
+                continue;
+            }
+
+            var tilePopCount = 0;
+            if (needsTileClip)
+            {
+                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(tile.Bounds));
+                tilePopCount++;
+            }
+
+            WpfPortableCommandSinkBridge.PushTransform(sink, transform);
+            tilePopCount++;
+
+            if (hasSourceClip)
+            {
+                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(sourceBounds));
+                tilePopCount++;
+            }
+
+            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(
+                visualValue,
+                sink,
+                resources: null,
+                imageSourceAdapter: CreateImageSourceAdapter(imageSourceAdapter));
+            var tileStatus = ToDrawingReplayStatus(result);
+            appliedAny |= tileStatus == WpfDrawingReplayStatus.Applied
+                || tileStatus == WpfDrawingReplayStatus.PartiallyApplied;
+            unsupportedAny |= tileStatus == WpfDrawingReplayStatus.Unsupported
+                || tileStatus == WpfDrawingReplayStatus.PartiallyApplied;
+
+            for (var i = 0; i < tilePopCount; i++)
+            {
+                sink.Pop();
+            }
+        }
+
+        status = appliedAny
+            ? unsupportedAny ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
+            : unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
+
+        for (var i = 0; i < popCount; i++)
+        {
+            sink.Pop();
+        }
+
+        return status == WpfDrawingReplayStatus.Applied
+            || status == WpfDrawingReplayStatus.PartiallyApplied;
     }
 
     internal static bool TryReplayImageBrushFill(
@@ -789,6 +1123,54 @@ internal static class WpfReflectionDrawingReplay
         return TryCreateRelativeBoundsTransform(relativeTransform.Value, fillBounds, out transform);
     }
 
+    private static bool TryGetOptionalBrushTransform(
+        PortableTileBrush brush,
+        out MediaTransform? transform)
+    {
+        transform = null;
+        if (!brush.HasTransform || brush.Transform.IsIdentity)
+        {
+            return true;
+        }
+
+        return TryCreateMatrixTransform(ToMatrix4x4(brush.Transform), out transform);
+    }
+
+    private static bool TryGetOptionalRelativeBrushTransform(
+        PortableTileBrush brush,
+        Rect fillBounds,
+        out MediaTransform? transform)
+    {
+        transform = null;
+        if (!brush.HasRelativeTransform || brush.RelativeTransform.IsIdentity)
+        {
+            return true;
+        }
+
+        return TryCreateRelativeBoundsTransform(ToMatrix4x4(brush.RelativeTransform), fillBounds, out transform);
+    }
+
+    private static System.Numerics.Matrix4x4 ToMatrix4x4(PortableMatrix3x2 matrix)
+    {
+        return new System.Numerics.Matrix4x4(
+            (float)matrix.M11,
+            (float)matrix.M12,
+            0f,
+            0f,
+            (float)matrix.M21,
+            (float)matrix.M22,
+            0f,
+            0f,
+            0f,
+            0f,
+            1f,
+            0f,
+            (float)matrix.OffsetX,
+            (float)matrix.OffsetY,
+            0f,
+            1f);
+    }
+
     private static bool TryCreateRelativeBoundsTransform(
         System.Numerics.Matrix4x4 relativeMatrix,
         Rect fillBounds,
@@ -881,6 +1263,31 @@ internal static class WpfReflectionDrawingReplay
         return false;
     }
 
+    private static bool TryGetSupportedTileMode(PortableTileBrush brush, out SupportedTileMode tileMode)
+    {
+        switch (brush.TileMode)
+        {
+            case PortableTileMode.None:
+                tileMode = SupportedTileMode.None;
+                return true;
+            case PortableTileMode.Tile:
+                tileMode = SupportedTileMode.Tile;
+                return true;
+            case PortableTileMode.FlipX:
+                tileMode = SupportedTileMode.FlipX;
+                return true;
+            case PortableTileMode.FlipY:
+                tileMode = SupportedTileMode.FlipY;
+                return true;
+            case PortableTileMode.FlipXY:
+                tileMode = SupportedTileMode.FlipXY;
+                return true;
+            default:
+                tileMode = SupportedTileMode.None;
+                return false;
+        }
+    }
+
     private static bool TryGetSupportedStretch(object brush, out SupportedStretch stretch)
     {
         stretch = SupportedStretch.Fill;
@@ -914,6 +1321,28 @@ internal static class WpfReflectionDrawingReplay
         }
 
         return false;
+    }
+
+    private static bool TryGetSupportedStretch(PortableTileBrush brush, out SupportedStretch stretch)
+    {
+        switch (brush.Stretch)
+        {
+            case PortableStretch.None:
+                stretch = SupportedStretch.None;
+                return true;
+            case PortableStretch.Fill:
+                stretch = SupportedStretch.Fill;
+                return true;
+            case PortableStretch.Uniform:
+                stretch = SupportedStretch.Uniform;
+                return true;
+            case PortableStretch.UniformToFill:
+                stretch = SupportedStretch.UniformToFill;
+                return true;
+            default:
+                stretch = SupportedStretch.Fill;
+                return false;
+        }
     }
 
     private static bool EnumPropertyIsAbsentOrNamed(object instance, string propertyName, string supportedName)
@@ -979,6 +1408,28 @@ internal static class WpfReflectionDrawingReplay
         return true;
     }
 
+    private static bool TryGetTileBrushAlignment(
+        PortableTileBrush brush,
+        out SupportedAlignmentX alignmentX,
+        out SupportedAlignmentY alignmentY)
+    {
+        alignmentX = brush.AlignmentX switch
+        {
+            PortableAlignmentX.Left => SupportedAlignmentX.Left,
+            PortableAlignmentX.Right => SupportedAlignmentX.Right,
+            _ => SupportedAlignmentX.Center
+        };
+
+        alignmentY = brush.AlignmentY switch
+        {
+            PortableAlignmentY.Top => SupportedAlignmentY.Top,
+            PortableAlignmentY.Bottom => SupportedAlignmentY.Bottom,
+            _ => SupportedAlignmentY.Center
+        };
+
+        return true;
+    }
+
     private static bool TryGetTileBrushDestinationBounds(object brush, Rect fillBounds, out Rect destinationBounds)
     {
         destinationBounds = default;
@@ -990,6 +1441,17 @@ internal static class WpfReflectionDrawingReplay
 
         return TryReadRect(viewportValue, out viewport)
             && IsUsableRect(viewport, out viewport)
+            && TryGetViewportDestinationBounds(brush, fillBounds, viewport, out destinationBounds);
+    }
+
+    private static bool TryGetTileBrushDestinationBounds(
+        PortableTileBrush brush,
+        Rect fillBounds,
+        out Rect destinationBounds)
+    {
+        destinationBounds = default;
+        var viewport = ToRect(brush.Viewport);
+        return IsUsableRect(viewport, out viewport)
             && TryGetViewportDestinationBounds(brush, fillBounds, viewport, out destinationBounds);
     }
 
@@ -1015,6 +1477,33 @@ internal static class WpfReflectionDrawingReplay
         }
 
         if (string.Equals(viewportUnitsValue.ToString(), "Absolute", StringComparison.Ordinal))
+        {
+            return IsUsableRect(viewport, out destinationBounds);
+        }
+
+        return false;
+    }
+
+    private static bool TryGetViewportDestinationBounds(
+        PortableTileBrush brush,
+        Rect fillBounds,
+        Rect viewport,
+        out Rect destinationBounds)
+    {
+        destinationBounds = default;
+
+        if (brush.ViewportUnits == PortableBrushMappingMode.RelativeToBoundingBox)
+        {
+            return IsUsableRect(
+                new Rect(
+                    fillBounds.X + fillBounds.Width * viewport.X,
+                    fillBounds.Y + fillBounds.Height * viewport.Y,
+                    fillBounds.Width * viewport.Width,
+                    fillBounds.Height * viewport.Height),
+                out destinationBounds);
+        }
+
+        if (brush.ViewportUnits == PortableBrushMappingMode.Absolute)
         {
             return IsUsableRect(viewport, out destinationBounds);
         }
@@ -1216,6 +1705,44 @@ internal static class WpfReflectionDrawingReplay
             && AssignSourceRect(viewbox, out sourceRect);
     }
 
+    private static bool TryGetImageBrushSourceRect(
+        PortableTileBrush brush,
+        MediaImageSource imageSource,
+        out Rect? sourceRect)
+    {
+        sourceRect = null;
+        var viewbox = ToRect(brush.Viewbox);
+        if (!IsUsableRect(viewbox, out viewbox))
+        {
+            return false;
+        }
+
+        if (brush.ViewboxUnits == PortableBrushMappingMode.RelativeToBoundingBox)
+        {
+            if (IsFullRelativeRect(viewbox))
+            {
+                return true;
+            }
+
+            if (!TryGetImagePixelBounds(imageSource, out var imageBounds))
+            {
+                return false;
+            }
+
+            return IsUsableRect(
+                    new Rect(
+                        imageBounds.X + imageBounds.Width * viewbox.X,
+                        imageBounds.Y + imageBounds.Height * viewbox.Y,
+                        imageBounds.Width * viewbox.Width,
+                        imageBounds.Height * viewbox.Height),
+                    out var relativeSourceRect)
+                && AssignSourceRect(relativeSourceRect, out sourceRect);
+        }
+
+        return brush.ViewboxUnits == PortableBrushMappingMode.Absolute
+            && AssignSourceRect(viewbox, out sourceRect);
+    }
+
     private static bool TryGetImagePixelBounds(MediaImageSource imageSource, out Rect bounds)
     {
         if (imageSource is MediaBitmapSource bitmapSource
@@ -1297,10 +1824,60 @@ internal static class WpfReflectionDrawingReplay
         return false;
     }
 
+    private static bool TryGetTileBrushSourceBounds(
+        PortableTileBrush brush,
+        Rect contentBounds,
+        out Rect sourceBounds,
+        out bool hasSourceClip)
+    {
+        sourceBounds = contentBounds;
+        hasSourceClip = false;
+
+        var viewbox = ToRect(brush.Viewbox);
+        if (!IsUsableRect(viewbox, out viewbox))
+        {
+            return false;
+        }
+
+        if (brush.ViewboxUnits == PortableBrushMappingMode.RelativeToBoundingBox)
+        {
+            if (IsFullRelativeRect(viewbox))
+            {
+                return true;
+            }
+
+            sourceBounds = new Rect(
+                contentBounds.X + contentBounds.Width * viewbox.X,
+                contentBounds.Y + contentBounds.Height * viewbox.Y,
+                contentBounds.Width * viewbox.Width,
+                contentBounds.Height * viewbox.Height);
+            hasSourceClip = true;
+            return IsUsableRect(sourceBounds, out sourceBounds);
+        }
+
+        if (brush.ViewboxUnits == PortableBrushMappingMode.Absolute)
+        {
+            sourceBounds = viewbox;
+            hasSourceClip = !RectNearlyEqual(sourceBounds, contentBounds);
+            return IsUsableRect(sourceBounds, out sourceBounds);
+        }
+
+        sourceBounds = default;
+        hasSourceClip = false;
+        return false;
+    }
+
     private static bool AssignSourceRect(Rect value, out Rect? sourceRect)
     {
         sourceRect = value;
         return true;
+    }
+
+    private static Rect ToRect(PortableRect rect)
+    {
+        return rect.IsEmpty
+            ? Rect.Empty
+            : new Rect(rect.X, rect.Y, rect.Width, rect.Height);
     }
 
     private static bool RelativeRectPropertyIsAbsentOrFull(object instance, string propertyName)
@@ -1920,7 +2497,8 @@ internal static class WpfReflectionDrawingReplay
     internal static bool IsTileBrush(object? brush)
     {
         return brush != null
-            && (TypeNameEndsWith(brush, "ImageBrush")
+            && (brush is PortableTileBrushSource
+                || TypeNameEndsWith(brush, "ImageBrush")
                 || TypeNameEndsWith(brush, "DrawingBrush")
                 || TypeNameEndsWith(brush, "VisualBrush"));
     }

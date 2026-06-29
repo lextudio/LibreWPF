@@ -5604,6 +5604,68 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void DrawingReplayPrefersPortableTileBrushSource()
+    {
+        var drawingReplay = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfReflectionDrawingReplay.cs"));
+        var portableTileBrush = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableTileBrush.cs"));
+        var tileBrush = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "TileBrush.cs"));
+        var presentationCoreRef = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ref",
+            "PresentationCore.cs"));
+        var resolverTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfReflectionResourceResolverTests.cs"));
+
+        Assert.Contains("interface IPortableTileBrushSource", portableTileBrush, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableTileBrush", portableTileBrush, StringComparison.Ordinal);
+        Assert.Contains("public enum PortableTileBrushKind", portableTileBrush, StringComparison.Ordinal);
+        Assert.Contains("TileBrush : Brush, IPortableTileBrushSource", tileBrush, StringComparison.Ordinal);
+        Assert.Contains("new PortableTileBrush(", tileBrush, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableTileBrushContent", tileBrush, StringComparison.Ordinal);
+        Assert.Contains("case ImageBrush imageBrush:", tileBrush, StringComparison.Ordinal);
+        Assert.Contains("PortableTileBrushKind.Image", tileBrush, StringComparison.Ordinal);
+        Assert.Contains("case DrawingBrush drawingBrush:", tileBrush, StringComparison.Ordinal);
+        Assert.Contains("PortableTileBrushKind.Drawing", tileBrush, StringComparison.Ordinal);
+        Assert.Contains("case VisualBrush visualBrush:", tileBrush, StringComparison.Ordinal);
+        Assert.Contains("PortableTileBrushKind.Visual", tileBrush, StringComparison.Ordinal);
+        Assert.Contains("TileBrush : System.Windows.Media.Brush, ProGPU.Wpf.Interop.IPortableTileBrushSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("bool ProGPU.Wpf.Interop.IPortableTileBrushSource.TryGetPortableTileBrush", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("brush is PortableTileBrushSource", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TryReplayPortableTileBrushFill(brush, geometry, sink, imageSourceAdapter, out status)", drawingReplay, StringComparison.Ordinal);
+        Assert.True(
+            drawingReplay.IndexOf("TryReplayPortableTileBrushFill(brush, geometry, sink, imageSourceAdapter, out status)", StringComparison.Ordinal)
+                < drawingReplay.IndexOf("TryReplayImageBrushFill(brush, geometry, sink, imageSourceAdapter)", StringComparison.Ordinal),
+            "Typed portable tile brushes must be tried before reflected ImageBrush/DrawingBrush/VisualBrush shape probing.");
+        Assert.Contains("DecodeDrawDrawingReplaysPortableImageTileBrushWithoutReflectedTypeName", resolverTests, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints()
     {
         var compositionExports = File.ReadAllText(FindRepoPath(

@@ -646,6 +646,52 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void DecodeDrawDrawingReplaysPortableImageTileBrushWithoutReflectedTypeName()
+    {
+        var imageSource = new FakeBitmapSource();
+        var imageAdapter = new FakeImageSourceAdapter();
+        var tileBrush = new PortableTileBrush(
+            PortableTileBrushKind.Image,
+            imageSource,
+            opacity: 0.5,
+            viewport: new PortableRect(0.25, 0.125, 0.5, 0.5),
+            viewbox: new PortableRect(0, 0, 1, 1),
+            viewportUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+            viewboxUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+            tileMode: PortableTileMode.None,
+            stretch: PortableStretch.Fill,
+            alignmentX: PortableAlignmentX.Center,
+            alignmentY: PortableAlignmentY.Center,
+            hasTransform: false,
+            transform: PortableMatrix3x2.Identity,
+            hasRelativeTransform: false,
+            relativeTransform: PortableMatrix3x2.Identity);
+        var drawing = new FakeGeometryDrawing(
+            new FakePortableTileBrushSource(tileBrush),
+            null,
+            new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var sink = new TestSink();
+
+        var payload = new byte[8];
+        WriteUInt32(payload, 0, 1);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawDrawing, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Same(imageSource, imageAdapter.LastImageSource);
+        Assert.Equal(new[] { "PushClip", "PushOpacity", "Pop", "Pop" }, sink.Operations);
+        Assert.Single(sink.Clips);
+        Assert.Equal(0.5, Assert.Single(sink.Opacities));
+        var replayed = Assert.Single(sink.Images);
+        Assert.Same(imageAdapter.AdaptedImageSource, replayed.ImageSource);
+        Assert.Equal(new Rect(35, 30, 50, 40), replayed.Rectangle);
+    }
+
+    [Fact]
     public void DecodeDrawDrawingReplaysWpfShapedImageBrushWithAbsoluteViewport()
     {
         var imageSource = new FakeBitmapSource();
@@ -3004,6 +3050,22 @@ public sealed class WpfReflectionResourceResolverTests
         public bool TryGetPortablePen(out PortablePen pen)
         {
             pen = _pen;
+            return true;
+        }
+    }
+
+    private sealed class FakePortableTileBrushSource : IPortableTileBrushSource
+    {
+        private readonly PortableTileBrush _brush;
+
+        public FakePortableTileBrushSource(PortableTileBrush brush)
+        {
+            _brush = brush;
+        }
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            brush = _brush;
             return true;
         }
     }

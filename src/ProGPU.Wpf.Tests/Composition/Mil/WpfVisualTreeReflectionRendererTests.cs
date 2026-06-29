@@ -32,9 +32,12 @@ using PortableShaderEffect = ProGPU.Wpf.Interop.PortableShaderEffect;
 using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;
 using PortableShaderSampler = ProGPU.Wpf.Interop.PortableShaderSampler;
 using PortableShaderSamplingMode = ProGPU.Wpf.Interop.PortableShaderSamplingMode;
+using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
+using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
+using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
@@ -224,6 +227,23 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         AssertReplayRect(7, 8, 90, 20, sink.RetainedVisualStates[0].ClipBounds);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void CanReplaySubtreeTreatsAbsentPortableVisualStateValuesAsAuthoritative()
+    {
+        var root = new ThrowingPortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(0, 0),
+                HasOpacity = true,
+                Opacity = 1
+            });
+
+        Assert.True(new WpfVisualTreeReflectionRenderer().CanReplaySubtreeIntoCurrentRetainedVisual(root));
+        Assert.Equal(0, root.ReflectedStateProbeCount);
     }
 
     [Fact]
@@ -1996,6 +2016,46 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
 
         private object? VisualTransform { get; }
+    }
+
+    private sealed class ThrowingPortableVisualStateDrawingVisual : PortableVisualStateSource
+    {
+        private readonly object? _content;
+        private readonly PortableVisualState _state;
+
+        public ThrowingPortableVisualStateDrawingVisual(object? content, PortableVisualState state)
+        {
+            _content = content;
+            _state = state;
+        }
+
+        public int ReflectedStateProbeCount { get; private set; }
+
+        public object? Transform => ThrowReflectedStateProbe();
+
+        public object? VisualTransform => ThrowReflectedStateProbe();
+
+        public object? Clip => ThrowReflectedStateProbe();
+
+        public object? VisualClip => ThrowReflectedStateProbe();
+
+        public object? OpacityMask => ThrowReflectedStateProbe();
+
+        public object? ScrollableAreaClip => ThrowReflectedStateProbe();
+
+        public object? VisualScrollableAreaClip => ThrowReflectedStateProbe();
+
+        public bool TryGetPortableVisualState(out PortableVisualState state)
+        {
+            state = _state;
+            return true;
+        }
+
+        private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedStateProbeCount++;
+            throw new InvalidOperationException($"Reflected state property '{propertyName}' should not be read.");
+        }
     }
 
     private sealed class FakeVisualCollection

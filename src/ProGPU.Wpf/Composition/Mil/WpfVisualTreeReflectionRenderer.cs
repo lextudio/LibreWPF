@@ -1161,10 +1161,10 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryReadVisualTransform(object visual, out object? transform)
     {
-        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasTransform)
+        if (TryGetPortableVisualState(visual, out var visualState))
         {
             transform = visualState.Transform;
-            return transform != null;
+            return visualState.HasTransform && transform != null;
         }
 
         if (TryGetPropertyValue(visual, "Transform", out transform) && transform != null)
@@ -1199,10 +1199,10 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryGetOpacityMask(object visual, out object? opacityMask)
     {
-        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasOpacityMask)
+        if (TryGetPortableVisualState(visual, out var visualState))
         {
             opacityMask = visualState.OpacityMask;
-            return opacityMask != null;
+            return visualState.HasOpacityMask && opacityMask != null;
         }
 
         return TryGetPropertyValue(visual, "OpacityMask", out opacityMask) && opacityMask != null;
@@ -1488,11 +1488,17 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryGetScrollableAreaClip(object visual, out object? scrollableAreaClip)
     {
-        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasScrollableAreaClip)
+        if (TryGetPortableVisualState(visual, out var visualState))
         {
-            var bounds = visualState.ScrollableAreaClip;
-            scrollableAreaClip = new ReflectedRectangleClip(bounds.X, bounds.Y, bounds.Width, bounds.Height);
-            return true;
+            if (visualState.HasScrollableAreaClip)
+            {
+                var bounds = visualState.ScrollableAreaClip;
+                scrollableAreaClip = new ReflectedRectangleClip(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+                return true;
+            }
+
+            scrollableAreaClip = null;
+            return false;
         }
 
         if (TryGetPropertyValue(visual, "ScrollableAreaClip", out scrollableAreaClip) && scrollableAreaClip != null)
@@ -1505,18 +1511,22 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryGetVisualClip(object visual, out object? clip)
     {
-        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasClip)
+        var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);
+        if (hasPortableVisualState && visualState.HasClip)
         {
             clip = visualState.Clip;
             return clip != null;
         }
 
-        if (TryGetPropertyValue(visual, "VisualClip", out clip) && clip != null)
+        if (!hasPortableVisualState && TryGetPropertyValue(visual, "VisualClip", out clip) && clip != null)
         {
             return true;
         }
 
-        var hasExplicitClip = TryGetPropertyValue(visual, "Clip", out var explicitClip) && explicitClip != null;
+        object? explicitClip = null;
+        var hasExplicitClip = !hasPortableVisualState
+            && TryGetPropertyValue(visual, "Clip", out explicitClip)
+            && explicitClip != null;
         var hasPortableLayoutState = TryGetPortableVisualLayoutState(visual, out var layoutState);
         if (hasPortableLayoutState && layoutState.HasLayoutClip && layoutState.LayoutClip != null)
         {

@@ -5393,12 +5393,23 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.Interop",
             "PortableVisualState.cs"));
+        var rendererTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeReflectionRendererTests.cs"));
 
         Assert.Contains("using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;", rendererSource, StringComparison.Ordinal);
         Assert.Contains("visual is PortableVisualStateSource visualStateSource", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableVisualState(out state)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadOpacity(visual, out", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryGetOpacityMask(visual, out", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("return visualState.HasTransform && transform != null;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("return visualState.HasOpacityMask && opacityMask != null;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("if (visualState.HasScrollableAreaClip)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("!hasPortableVisualState && TryGetPropertyValue(visual, \"VisualClip\"", rendererSource, StringComparison.Ordinal);
         Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualStateSource.TryGetPortableVisualState(out PortableVisualState state)", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualOffset", visualSource, StringComparison.Ordinal);
@@ -5406,6 +5417,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("VisualClip", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualScrollableAreaClip", visualSource, StringComparison.Ordinal);
         Assert.Contains("interface IPortableVisualStateSource", interopSource, StringComparison.Ordinal);
+        Assert.Contains("CanReplaySubtreeTreatsAbsentPortableVisualStateValuesAsAuthoritative", rendererTests, StringComparison.Ordinal);
     }
 
     [Fact]

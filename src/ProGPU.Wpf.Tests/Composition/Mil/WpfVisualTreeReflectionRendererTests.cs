@@ -18,7 +18,6 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
-using WpfVector = System.Windows.Vector;
 using ProGpuTexture = ProGPU.Backend.GpuTexture;
 using ProGpuBlurEffect = ProGPU.Scene.BlurEffect;
 using ProGpuDropShadowEffect = ProGPU.Scene.DropShadowEffect;
@@ -1028,9 +1027,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeAppliesWpfVisualOffsetAroundContent()
     {
-        var root = new FakeVisualOffsetDrawingVisual(
+        var root = new FakePortableVisualStateDrawingVisual(
             CreateRenderData(Brushes.Green),
-            new WpfVector(16, 24));
+            new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(16, 24)
+            });
         var sink = new TestSink();
 
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
@@ -1047,9 +1050,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
     [Fact]
     public void ReplaySubtreeLowersWpfVisualOffsetIntoRetainedOwnerState()
     {
-        var root = new FakeVisualOffsetDrawingVisual(
+        var root = new FakePortableVisualStateDrawingVisual(
             CreateRenderData(Brushes.Green),
-            new WpfVector(16, 24));
+            new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(16, 24)
+            });
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
@@ -2302,8 +2309,6 @@ public sealed class WpfVisualTreeReflectionRendererTests
     {
         public FakeVisualCollection Children { get; } = new();
 
-        public WpfVector Offset { get; init; }
-
         public double Opacity { get; init; } = 1;
 
         public object? Transform { get; init; }
@@ -2462,25 +2467,6 @@ public sealed class WpfVisualTreeReflectionRendererTests
             state = _state;
             return true;
         }
-
-        public bool TryGetPortableDrawingContent(out object? content)
-        {
-            content = _content;
-            return true;
-        }
-    }
-
-    private sealed class FakeVisualOffsetDrawingVisual : PortableDrawingContentSource
-    {
-        private readonly object? _content;
-
-        public FakeVisualOffsetDrawingVisual(object? content, WpfVector visualOffset)
-        {
-            _content = content;
-            VisualOffset = visualOffset;
-        }
-
-        private WpfVector VisualOffset { get; }
 
         public bool TryGetPortableDrawingContent(out object? content)
         {

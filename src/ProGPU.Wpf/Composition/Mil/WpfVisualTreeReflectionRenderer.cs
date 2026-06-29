@@ -1317,22 +1317,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             return true;
         }
 
-        if (TryReadVectorLikeProperty(visual, "Offset", out x, out y) && (x != 0 || y != 0))
-        {
-            return true;
-        }
-
-        if (TryReadVectorLikeProperty(visual, "VisualOffset", out x, out y))
-        {
-            return true;
-        }
-
-        if (TryReadVectorLikeField(visual, "_offset", out x, out y))
-        {
-            return true;
-        }
-
-        return TryReadVectorLikeProperty(visual, "Offset", out x, out y);
+        return false;
     }
 
     private static bool TryReadVisualTransform(object visual, out object? transform)
@@ -1369,28 +1354,6 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         opacityMask = null;
         return false;
-    }
-
-    private static bool TryReadVectorLikeProperty(object instance, string propertyName, out double x, out double y)
-    {
-        x = 0;
-        y = 0;
-
-        return TryGetPropertyValue(instance, propertyName, out var value)
-            && value != null
-            && TryReadDoubleProperty(value, "X", out x)
-            && TryReadDoubleProperty(value, "Y", out y);
-    }
-
-    private static bool TryReadVectorLikeField(object instance, string fieldName, out double x, out double y)
-    {
-        x = 0;
-        y = 0;
-
-        return TryGetFieldValue(instance, fieldName, out var value)
-            && value != null
-            && TryReadDoubleProperty(value, "X", out x)
-            && TryReadDoubleProperty(value, "Y", out y);
     }
 
     private static bool TryReadOpacityMaskBounds(object visual, out WpfReplayRect bounds)

@@ -5422,6 +5422,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("if (visualState.HasScrollableAreaClip)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("if (hasPortableVisualState && visualState.HasClip)", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadVectorLikeProperty(visual, \"Offset\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadVectorLikeProperty(visual, \"VisualOffset\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadVectorLikeField(visual, \"_offset\"", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static bool TryReadVectorLikeProperty", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static bool TryReadVectorLikeField", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"Transform\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"VisualTransform\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetFieldValue(visual, \"_transform\"", rendererSource, StringComparison.Ordinal);

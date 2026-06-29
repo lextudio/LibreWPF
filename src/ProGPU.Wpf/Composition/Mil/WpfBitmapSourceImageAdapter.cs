@@ -30,8 +30,6 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 
         int width;
         int height;
-        double dpiX;
-        double dpiY;
         Pbgra32PixelBuffer pixelBuffer;
         if (TryCopyPortableBitmapSourceAsPbgra32Buffer(
                 imageSource,
@@ -40,8 +38,6 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         {
             width = portablePixels.Width;
             height = portablePixels.Height;
-            dpiX = portablePixels.DpiX;
-            dpiY = portablePixels.DpiY;
         }
         else if (!TryReadIntProperty(imageSource, "PixelWidth", out width)
             || !TryReadIntProperty(imageSource, "PixelHeight", out height)
@@ -50,11 +46,6 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             || !TryCopyPixelsAsPbgra32Buffer(imageSource, width, height, out pixelBuffer))
         {
             return null;
-        }
-        else
-        {
-            dpiX = TryReadDoubleProperty(imageSource, "DpiX", out var readDpiX) ? readDpiX : 96;
-            dpiY = TryReadDoubleProperty(imageSource, "DpiY", out var readDpiY) ? readDpiY : 96;
         }
 
         var context = ResolveGpuContext();
@@ -66,7 +57,7 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             return mediaSource;
         }
 
-        return TryCreateShimWriteableBitmap(width, height, dpiX, dpiY, pixelBuffer);
+        return null;
     }
 
     internal static bool CanProvideGpuTexture(object imageSource)
@@ -176,74 +167,6 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         var context = new WgpuContext();
         context.Initialize(null);
         return context;
-    }
-
-    private static MediaImageSource? TryCreateShimWriteableBitmap(
-        int width,
-        int height,
-        double dpiX,
-        double dpiY,
-        Pbgra32PixelBuffer pixelBuffer)
-    {
-        var presentationCore = typeof(MediaImageSource).Assembly;
-        var writeableBitmapType = presentationCore.GetType("System.Windows.Media.Imaging.WriteableBitmap");
-        var pixelFormatsType = presentationCore.GetType("System.Windows.Media.Imaging.PixelFormats");
-        var int32RectType = typeof(MediaImageSource).Assembly.GetType("System.Windows.Int32Rect")
-            ?? Type.GetType("System.Windows.Int32Rect, WindowsBase");
-        var writePixels = writeableBitmapType?.GetMethod(
-            "WritePbgra32Pixels",
-            MemberFlags,
-            binder: null,
-            types: int32RectType == null ? Type.EmptyTypes : new[] { int32RectType, typeof(Pbgra32PixelBuffer) },
-            modifiers: null);
-        var pbgra32Property = pixelFormatsType?.GetProperty("Pbgra32", BindingFlags.Static | BindingFlags.Public);
-        var constructor = writeableBitmapType?.GetConstructor(
-            BindingFlags.Instance | BindingFlags.Public,
-            binder: null,
-            types: pbgra32Property == null
-                ? Type.EmptyTypes
-                : new[]
-                {
-                    typeof(int),
-                    typeof(int),
-                    typeof(double),
-                    typeof(double),
-                    pbgra32Property.PropertyType,
-                    presentationCore.GetType("System.Windows.Media.Imaging.BitmapPalette")
-                        ?? typeof(object)
-                },
-            modifiers: null);
-        var int32RectConstructor = int32RectType?.GetConstructor(new[] { typeof(int), typeof(int), typeof(int), typeof(int) });
-
-        if (writeableBitmapType == null
-            || pbgra32Property == null
-            || constructor == null
-            || writePixels == null
-            || int32RectConstructor == null)
-        {
-            return null;
-        }
-
-        try
-        {
-            var bitmap = constructor.Invoke(new[] { width, height, dpiX, dpiY, pbgra32Property.GetValue(null), null });
-            var rect = int32RectConstructor.Invoke(new object[] { 0, 0, width, height });
-            writePixels.Invoke(bitmap, new object[] { rect, pixelBuffer });
-            return bitmap is MediaImageSource mediaImageSource && CanProvideGpuTexture(mediaImageSource)
-                ? mediaImageSource
-                : null;
-        }
-        catch (TargetInvocationException)
-        {
-        }
-        catch (ArgumentException)
-        {
-        }
-        catch (MethodAccessException)
-        {
-        }
-
-        return null;
     }
 
     private static bool IsUsableInContext(GpuTexture texture, WgpuContext? context)
@@ -908,30 +831,6 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
                 return true;
             case uint uintValue when uintValue <= byte.MaxValue:
                 value = (byte)uintValue;
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)
-    {
-        value = 0;
-        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
-        {
-            return false;
-        }
-
-        switch (propertyValue)
-        {
-            case double doubleValue:
-                value = doubleValue;
-                return true;
-            case float floatValue:
-                value = floatValue;
-                return true;
-            case int intValue:
-                value = intValue;
                 return true;
             default:
                 return false;

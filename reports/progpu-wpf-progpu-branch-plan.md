@@ -24,6 +24,8 @@ Render-data extraction itself should also remain typed-only. `WpfRenderDataRefle
 
 Retained invalidation dependency traversal should use those same typed seams. `WpfVisualInvalidationTracker` should traverse retained visual content through `IPortableDrawingContentSource` and render-data dependent resources through `IPortableRenderDataSource`, not through `_content` or `_drawingContent` private-field scans.
 
+Bitmap adaptation should keep the normal source-built path on typed pixel/texture contracts. `WpfBitmapSourceImageAdapter` should cache GPU textures for real `MediaImageSource` values through `IPortableBitmapSourcePixelsSource`/`IProGpuTextureSource`, and should not create shim `WriteableBitmap` instances by resolving `WriteableBitmap`, `PixelFormats.Pbgra32`, `Int32Rect`, constructors, or `WritePbgra32Pixels` through reflection.
+
 ## Current Branch State
 
 The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and-leaks`. The branch has been fast-forwarded to the latest origin commits and now includes:

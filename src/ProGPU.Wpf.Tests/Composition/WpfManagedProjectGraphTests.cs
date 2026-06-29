@@ -10943,6 +10943,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("imageSource is IPortableBitmapSourcePixelsSource portableSource", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("TryCopyPortableBitmapSourceAsPbgra32Buffer(", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("TryMapPixelDataFormat(portablePixels.Format", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryCreateShimWriteableBitmap", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetType(\"System.Windows.Media.Imaging.WriteableBitmap\")", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("WritePbgra32Pixels", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetConstructor(", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.False(
             File.Exists(Path.Combine(Path.GetDirectoryName(proGpuWpfCommandSinkPath)!, "ProGpuWpfPen.cs")),
             "The transition ProGpuWpfPen wrapper should stay removed; WPF pen dash metadata belongs on native ProGPU.Vector.Pen.");

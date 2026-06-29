@@ -21,7 +21,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private static readonly string[] s_eventNames = { "Changed", "Invalidated" };
     private static readonly string[] s_versionPropertyNames = { "ChangeVersion", "InternalVersion", "Version" };
-    private static readonly string[] s_versionFieldNames = { "_changeVersion", "_internalVersion", "_version" };
     private static readonly string[] s_referencePropertyNames =
     {
         "Children",
@@ -69,15 +68,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         "Normals",
         "TextureCoordinates"
     };
-    private static readonly string[] s_fieldNames =
-    {
-        "_floatRegisters",
-        "_samplerData",
-        "_brush",
-        "_samplingMode",
-        "_shaderBytecode"
-    };
-
     private readonly List<Action> _unsubscribeActions = new();
     private readonly Dictionary<object, object> _versionSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<object, VisualStateSnapshot> _visualStateSnapshots = new(ReferenceEqualityComparer.Instance);
@@ -306,13 +296,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
-        foreach (var fieldName in s_fieldNames)
-        {
-            if (TryGetFieldValue(source, fieldName, out var value))
-            {
-                SubscribeObject(value, visited);
-            }
-        }
     }
 
     private void CaptureVersionSnapshot(object source)
@@ -396,13 +379,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
-        foreach (var fieldName in s_fieldNames)
-        {
-            if (TryGetFieldValue(source, fieldName, out var value))
-            {
-                CaptureObjectVersions(value, snapshots, visited);
-            }
-        }
     }
 
     private static void CaptureObjectVisualStates(
@@ -438,13 +414,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
-        foreach (var fieldName in s_fieldNames)
-        {
-            if (TryGetFieldValue(source, fieldName, out var value))
-            {
-                CaptureObjectVisualStates(value, snapshots, visited);
-            }
-        }
     }
 
     private static void CaptureObjectVisualChildren(
@@ -480,13 +449,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
-        foreach (var fieldName in s_fieldNames)
-        {
-            if (TryGetFieldValue(source, fieldName, out var value))
-            {
-                CaptureObjectVisualChildren(value, snapshots, visited);
-            }
-        }
     }
 
     private static void CollectTrackedDependencies(
@@ -519,13 +481,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
-        foreach (var fieldName in s_fieldNames)
-        {
-            if (TryGetFieldValue(source, fieldName, out var value))
-            {
-                CollectTrackedDependencies(value, dependencies, visited);
-            }
-        }
     }
 
     private static IReadOnlyList<object> CollectVersionChanges(
@@ -616,14 +571,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
-        foreach (var fieldName in s_versionFieldNames)
-        {
-            if (TryGetVersionFieldValue(source, fieldName, out version))
-            {
-                return true;
-            }
-        }
-
         version = 0;
         return false;
     }
@@ -654,25 +601,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         return false;
-    }
-
-    private static bool TryGetVersionFieldValue(object instance, string fieldName, out object version)
-    {
-        version = 0;
-        var field = instance.GetType().GetField(fieldName, MemberFlags);
-        if (field == null)
-        {
-            return false;
-        }
-
-        var value = field.GetValue(instance);
-        if (!TryNormalizeVersionValue(value, out var normalizedVersion))
-        {
-            return false;
-        }
-
-        version = normalizedVersion;
-        return true;
     }
 
     private static bool TryNormalizeVersionValue(object? value, out object version)
@@ -1193,40 +1121,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return false;
     }
 
-    private static bool TryGetFieldValue(object instance, string fieldName, out object? value)
-    {
-        if (instance == null)
-        {
-            value = null;
-            return false;
-        }
-
-        var field = FindField(instance.GetType(), fieldName);
-        if (field == null)
-        {
-            value = null;
-            return false;
-        }
-
-        try
-        {
-            value = field.GetValue(instance);
-            return true;
-        }
-        catch (ArgumentException)
-        {
-        }
-        catch (FieldAccessException)
-        {
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-
-        value = null;
-        return false;
-    }
-
     private static PropertyInfo? FindProperty(Type type, string name)
     {
         for (var current = type; current != null; current = current.BaseType)
@@ -1235,20 +1129,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             if (property != null)
             {
                 return property;
-            }
-        }
-
-        return null;
-    }
-
-    private static FieldInfo? FindField(Type type, string name)
-    {
-        for (var current = type; current != null; current = current.BaseType)
-        {
-            var field = current.GetField(name, MemberFlags);
-            if (field != null)
-            {
-                return field;
             }
         }
 

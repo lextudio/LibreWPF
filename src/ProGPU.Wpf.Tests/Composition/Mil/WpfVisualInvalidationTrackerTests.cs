@@ -284,7 +284,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
-    public void PrivateVersionFieldChangeMarksTrackerDirtyWithoutEvent()
+    public void PrivateVersionFieldChangeDoesNotMarkTrackerDirty()
     {
         var brush = new FakePrivateVersionResource();
         var root = new FakeVisual
@@ -297,9 +297,10 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         brush.IncrementVersion();
 
-        Assert.True(tracker.DetectVersionChanges());
-        Assert.True(tracker.IsDirty);
-        Assert.Same(brush, tracker.LastDirtySource);
+        Assert.False(tracker.DetectVersionChanges());
+        Assert.False(tracker.IsDirty);
+        Assert.Null(tracker.LastDirtySource);
+        Assert.DoesNotContain(brush, tracker.DirtySources);
     }
 
     [Fact]

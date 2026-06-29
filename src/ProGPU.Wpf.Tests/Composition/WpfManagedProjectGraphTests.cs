@@ -772,8 +772,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableDrawingRenderDataDependencyChangeMarksTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("EnumerateTrackedDependenciesIgnoresNonPortablePrivateDrawingContentGraph", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("NonPortablePrivateDrawingContentChangeDoesNotMarkTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.Contains("PrivateVersionFieldChangeDoesNotMarkTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_content\"", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_drawingContent\"", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("s_versionFieldNames", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("s_fieldNames", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetVersionFieldValue", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetFieldValue", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("FindField", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetField(", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_floatRegisters\"", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_samplerData\"", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_shaderBytecode\"", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableVisualState(source, out var visualState)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableVisualStateSource visualStateSource", proGpuInvalidationTracker, StringComparison.Ordinal);

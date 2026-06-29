@@ -918,7 +918,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostDragDropForwardsPayloadToPortableWindowDropHandler()
+    public void HostDragDropDoesNotUseReflectedPortableWindowDropHandler()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakePortableDropWindow();
@@ -936,9 +936,9 @@ public sealed class WpfPortableWindowActivationTests
             WpfDragDropEffects.None);
         RaiseHostDragDropEvent(host, args);
 
-        Assert.Equal(1, window.DropCount);
-        Assert.Same(args, window.LastDropArgs);
-        Assert.Equal(WpfDragDropEffects.Move, args.AcceptedEffect);
+        Assert.Equal(0, window.DropCount);
+        Assert.Null(window.LastDropArgs);
+        Assert.Equal(WpfDragDropEffects.None, args.AcceptedEffect);
     }
 
     [Fact]
@@ -963,13 +963,13 @@ public sealed class WpfPortableWindowActivationTests
             y: 24);
         RaiseHostDragDropEvent(host, args);
 
-        Assert.Equal(1, window.DropCount);
+        Assert.Equal(0, window.DropCount);
         Assert.Equal(0, System.Windows.PortableWindowActivationService.DropCount);
-        Assert.Equal(WpfDragDropEffects.Move, args.AcceptedEffect);
+        Assert.Equal(WpfDragDropEffects.Copy, args.AcceptedEffect);
     }
 
     [Fact]
-    public void HostDragDropUsesTypedActivationServiceBeforeDirectDropHandler()
+    public void HostDragDropUsesTypedActivationService()
     {
         System.Windows.PortableWindowActivationService.Reset();
         var service = new TestWindowActivationServiceRegistrar();
@@ -1069,7 +1069,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostDragDropForwardsFilesToPortableFileDropFallback()
+    public void HostDragDropDoesNotUseReflectedPortableFileDropFallback()
     {
         using var host = new ProGpuWpfWindowHost();
         var window = new FakePortableFileDropWindow();
@@ -1086,8 +1086,8 @@ public sealed class WpfPortableWindowActivationTests
                 WpfDragDropEventKind.Drop,
                 new WpfDragDropData(new[] { "/tmp/document.txt" })));
 
-        Assert.Equal(1, window.DropCount);
-        Assert.Equal(new[] { "/tmp/document.txt" }, window.LastFiles);
+        Assert.Equal(0, window.DropCount);
+        Assert.Empty(window.LastFiles);
     }
 
     [Fact]

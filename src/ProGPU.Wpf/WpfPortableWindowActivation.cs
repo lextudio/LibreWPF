@@ -695,43 +695,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryForwardDropToWindow(object window, WpfDragDropEventArgs e)
     {
-        if (TryProcessPortableDragDrop(window, e))
-        {
-            return true;
-        }
-
-        if (e.Kind != WpfDragDropEventKind.Drop)
-        {
-            return false;
-        }
-
-        var windowType = window.GetType();
-        var dropMethod = FindInstanceMethod(windowType, "OnPortableDrop", typeof(WpfDragDropEventArgs));
-        if (dropMethod != null)
-        {
-            dropMethod.Invoke(window, new object[] { e });
-            return true;
-        }
-
-        var filesMethod =
-            FindInstanceMethod(windowType, "OnPortableFileDrop", typeof(IReadOnlyList<string>)) ??
-            FindInstanceMethod(windowType, "DropFiles", typeof(IReadOnlyList<string>));
-        if (filesMethod != null)
-        {
-            filesMethod.Invoke(window, new object[] { e.Data.Files });
-            return true;
-        }
-
-        filesMethod =
-            FindInstanceMethod(windowType, "OnPortableFileDrop", typeof(string[])) ??
-            FindInstanceMethod(windowType, "DropFiles", typeof(string[]));
-        if (filesMethod != null)
-        {
-            filesMethod.Invoke(window, new object[] { e.Data.Files.ToArray() });
-            return true;
-        }
-
-        return false;
+        return TryProcessPortableDragDrop(window, e);
     }
 
     private static bool TryProcessPortableDragDrop(object window, WpfDragDropEventArgs e)
@@ -753,25 +717,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return false;
-    }
-
-    private static MethodInfo? FindInstanceMethod(Type type, string methodName, Type parameterType)
-    {
-        for (Type? currentType = type; currentType != null; currentType = currentType.BaseType)
-        {
-            var method = currentType.GetMethod(
-                methodName,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[] { parameterType },
-                modifiers: null);
-            if (method != null)
-            {
-                return method;
-            }
-        }
-
-        return null;
     }
 
     private static WpfWindowCloseResult TryInvokeWindowClose(object window)

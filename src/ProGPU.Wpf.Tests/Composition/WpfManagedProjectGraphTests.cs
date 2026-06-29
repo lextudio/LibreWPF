@@ -507,6 +507,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("CopyHandledState", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("\"OnPortableInput\"", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("\"HandlePortableInput\"", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("FindInstanceMethod", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"OnPortableDrop\"", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"OnPortableFileDrop\"", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"DropFiles\"", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("System.Windows.Application", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("presentationFrameworkAssembly.GetType(", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateWindowActivationReflectionParameters", proGpuActivation, StringComparison.Ordinal);
@@ -1031,6 +1035,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("HostInputDoesNotUseReflectedDispatcherQueueFallback", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("HostInputDoesNotUseCompatiblePresentationFrameworkInputArgsFallback", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("RenderWakeupDoesNotUseReflectedDispatcherFlushForFallbackQueue", proGpuActivationTests, StringComparison.Ordinal);
+        Assert.Contains("HostDragDropDoesNotUseReflectedPortableWindowDropHandler", proGpuActivationTests, StringComparison.Ordinal);
+        Assert.Contains("HostDragDropDoesNotUseReflectedPortableFileDropFallback", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("HostDragDropDoesNotUseReflectedPortableWindowActivationService", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            renderTargetViewport,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);

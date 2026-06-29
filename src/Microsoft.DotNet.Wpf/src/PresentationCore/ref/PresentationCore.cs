@@ -11539,13 +11539,14 @@ namespace System.Windows.Media.Effects
         [System.ObsoleteAttribute("BitmapEffects are deprecated and no longer function.  Consider using Effects where appropriate instead.")]
         protected override void UpdateUnmanagedPropertyState(System.Runtime.InteropServices.SafeHandle unmanagedEffect) { }
     }
-    public sealed partial class PixelShader : System.Windows.Media.Animation.Animatable
+    public sealed partial class PixelShader : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortablePixelShaderSource
     {
         public static readonly System.Windows.DependencyProperty ShaderRenderModeProperty;
         public static readonly System.Windows.DependencyProperty UriSourceProperty;
         public PixelShader() { }
         public System.Windows.Media.Effects.ShaderRenderMode ShaderRenderMode { get { throw null; } set { } }
         public System.Uri UriSource { get { throw null; } set { } }
+        bool ProGPU.Wpf.Interop.IPortablePixelShaderSource.TryGetPortablePixelShader(out ProGPU.Wpf.Interop.PortablePixelShader pixelShader) { throw null; }
         public static event System.EventHandler InvalidPixelShaderEncountered { add { } remove { } }
         public new System.Windows.Media.Effects.PixelShader Clone() { throw null; }
         protected override void CloneCore(System.Windows.Freezable sourceFreezable) { }
@@ -11567,7 +11568,7 @@ namespace System.Windows.Media.Effects
         Bilinear = 1,
         Auto = 2,
     }
-    public abstract partial class ShaderEffect : System.Windows.Media.Effects.Effect
+    public abstract partial class ShaderEffect : System.Windows.Media.Effects.Effect, ProGPU.Wpf.Interop.IPortableShaderEffectSource
     {
         protected static readonly System.Windows.DependencyProperty PixelShaderProperty;
         protected ShaderEffect() { }
@@ -11577,6 +11578,7 @@ namespace System.Windows.Media.Effects
         protected double PaddingRight { get { throw null; } set { } }
         protected double PaddingTop { get { throw null; } set { } }
         protected System.Windows.Media.Effects.PixelShader PixelShader { get { throw null; } set { } }
+        bool ProGPU.Wpf.Interop.IPortableShaderEffectSource.TryGetPortableShaderEffect(out ProGPU.Wpf.Interop.PortableShaderEffect effect) { throw null; }
         public new System.Windows.Media.Effects.ShaderEffect Clone() { throw null; }
         protected override void CloneCore(System.Windows.Freezable sourceFreezable) { }
         public new System.Windows.Media.Effects.ShaderEffect CloneCurrentValue() { throw null; }

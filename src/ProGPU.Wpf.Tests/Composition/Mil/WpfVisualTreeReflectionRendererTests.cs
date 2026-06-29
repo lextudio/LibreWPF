@@ -27,6 +27,11 @@ using ProGpuWpfShaderEffectSampler = ProGPU.Scene.WpfShaderEffectSampler;
 using ProGpuTextureSamplingMode = ProGPU.Scene.TextureSamplingMode;
 using PortableEffect = ProGPU.Wpf.Interop.PortableEffect;
 using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;
+using PortablePixelShader = ProGPU.Wpf.Interop.PortablePixelShader;
+using PortableShaderEffect = ProGPU.Wpf.Interop.PortableShaderEffect;
+using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;
+using PortableShaderSampler = ProGPU.Wpf.Interop.PortableShaderSampler;
+using PortableShaderSamplingMode = ProGPU.Wpf.Interop.PortableShaderSamplingMode;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
@@ -1349,6 +1354,75 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreePushesPortableShaderEffectWithoutReflectedPixelShaderShape()
+    {
+        var bytecode = new byte[] { 0, 3, 0, 0, 21, 34, 55, 89 };
+        var shaderSource = "fn wpf_effect_main(uv: vec2<f32>, inputColor: vec4<f32>) -> vec4<f32> { return inputColor; }";
+        var replacementKey = WpfShaderEffectRegistry.RegisterPixelShaderBytecode(
+            bytecode,
+            shaderSource,
+            shaderKey: "registered_portable_shader");
+
+        var constants = new float[12];
+        constants[8] = 0.125f;
+        constants[9] = 0.25f;
+        constants[10] = 0.5f;
+        constants[11] = 1f;
+
+        try
+        {
+            var shaderEffect = new FakePortableShaderEffectSource(new PortableShaderEffect(
+                effectTypeFullName: null,
+                effectTypeName: null,
+                pixelShader: new PortablePixelShader(
+                    uriSource: null,
+                    absoluteUri: null,
+                    bytecode,
+                    majorVersion: 3,
+                    minorVersion: 0),
+                floatConstants: constants,
+                samplers: new[]
+                {
+                    new PortableShaderSampler(
+                        1,
+                        new FakeImplicitInputBrush(),
+                        PortableShaderSamplingMode.NearestNeighbor)
+                },
+                intConstantCount: 0,
+                boolConstantCount: 0,
+                paddingTop: 1,
+                paddingBottom: 2,
+                paddingLeft: 3,
+                paddingRight: 4,
+                ddxUvDdyUvRegisterIndex: -1));
+
+            var root = new FakeVisual { Effect = shaderEffect };
+            root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+            var sink = new TestSink { AcceptVisualEffects = true };
+            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+            Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
+            var effect = Assert.IsType<ProGpuWpfShaderEffect>(Assert.Single(sink.VisualEffects));
+            Assert.Equal(shaderSource, effect.Parameters.ShaderSource);
+            Assert.Equal("registered_portable_shader", effect.Parameters.ShaderKey);
+            Assert.Equal(1, effect.Parameters.SourceTextureRegisterIndex);
+            Assert.Equal(ProGpuTextureSamplingMode.Nearest, effect.Parameters.SamplingMode);
+            Assert.Equal(4f, effect.Padding);
+            Assert.Equal(0.125f, effect.Parameters.Constants[8]);
+            Assert.Equal(0.25f, effect.Parameters.Constants[9]);
+            Assert.Equal(0.5f, effect.Parameters.Constants[10]);
+            Assert.Equal(1f, effect.Parameters.Constants[11]);
+            Assert.Equal(0, result.UnsupportedVisualStateCount);
+            Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        }
+        finally
+        {
+            WpfShaderEffectRegistry.Unregister(replacementKey);
+        }
+    }
+
+    [Fact]
     public void ReplaySubtreePushesNativeShaderEffectWhenReplacementIsRegistered()
     {
         var bytecode = new byte[] { 0, 3, 0, 0, 1, 2, 3, 4 };
@@ -2040,6 +2114,22 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
 
         public bool TryGetPortableEffect(out PortableEffect effect)
+        {
+            effect = _effect;
+            return true;
+        }
+    }
+
+    private sealed class FakePortableShaderEffectSource : PortableShaderEffectSource
+    {
+        private readonly PortableShaderEffect _effect;
+
+        public FakePortableShaderEffectSource(PortableShaderEffect effect)
+        {
+            _effect = effect;
+        }
+
+        public bool TryGetPortableShaderEffect(out PortableShaderEffect effect)
         {
             effect = _effect;
             return true;

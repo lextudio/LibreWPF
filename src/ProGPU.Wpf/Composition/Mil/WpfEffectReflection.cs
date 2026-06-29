@@ -8,6 +8,11 @@ using PortableColor = ProGPU.Wpf.Interop.PortableColor;
 using PortableEffect = ProGPU.Wpf.Interop.PortableEffect;
 using PortableEffectKind = ProGPU.Wpf.Interop.PortableEffectKind;
 using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;
+using PortablePixelShader = ProGPU.Wpf.Interop.PortablePixelShader;
+using PortableShaderEffect = ProGPU.Wpf.Interop.PortableShaderEffect;
+using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;
+using PortableShaderSampler = ProGPU.Wpf.Interop.PortableShaderSampler;
+using PortableShaderSamplingMode = ProGPU.Wpf.Interop.PortableShaderSamplingMode;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaImageSource = System.Windows.Media.ImageSource;
 
@@ -27,6 +32,13 @@ internal static class WpfEffectReflection
             if (effect is PortableEffectSource effectSource
                 && effectSource.TryGetPortableEffect(out var portableEffect)
                 && TryCreatePortableEffect(portableEffect, out proGpuEffect))
+            {
+                return true;
+            }
+
+            if (effect is PortableShaderEffectSource shaderEffectSource
+                && shaderEffectSource.TryGetPortableShaderEffect(out var portableShaderEffect)
+                && TryCreatePortableShaderEffect(portableShaderEffect, imageSourceAdapter, out proGpuEffect))
             {
                 return true;
             }
@@ -97,6 +109,52 @@ internal static class WpfEffectReflection
                 proGpuEffect = null!;
                 return false;
         }
+    }
+
+    private static bool TryCreatePortableShaderEffect(
+        PortableShaderEffect effect,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        out global::ProGPU.Scene.EffectBase proGpuEffect)
+    {
+        proGpuEffect = null!;
+
+        if (!TryResolveShaderReplacement(effect, out var replacement))
+        {
+            return false;
+        }
+
+        if (effect.IntConstantCount > 0 || effect.BoolConstantCount > 0)
+        {
+            return false;
+        }
+
+        if (!TryReadPortableShaderSamplerState(
+                effect,
+                imageSourceAdapter,
+                out var sourceTextureRegisterIndex,
+                out var samplingMode,
+                out var samplers))
+        {
+            return false;
+        }
+
+        var parameters = new WpfShaderEffectParams
+        {
+            ShaderSource = replacement.ShaderSource,
+            ShaderKey = replacement.ShaderKey,
+            Constants = CopyPortableFloatConstants(effect),
+            Samplers = samplers,
+            SamplingMode = samplingMode,
+            SourceTextureRegisterIndex = sourceTextureRegisterIndex
+        };
+
+        var nativeEffect = new WpfShaderEffect(parameters)
+        {
+            Padding = (float)Math.Min(float.MaxValue, Math.Max(0d, effect.MaxPadding))
+        };
+
+        proGpuEffect = nativeEffect;
+        return true;
     }
 
     private static bool TryCreateBlurEffect(object effect, out global::ProGPU.Scene.EffectBase proGpuEffect)
@@ -247,6 +305,23 @@ internal static class WpfEffectReflection
         return false;
     }
 
+    private static bool TryResolveShaderReplacement(
+        PortableShaderEffect effect,
+        out WpfShaderEffectReplacement replacement)
+    {
+        replacement = null!;
+
+        foreach (var key in EnumerateShaderReplacementKeys(effect))
+        {
+            if (WpfShaderEffectRegistry.TryGet(key, out replacement))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static IEnumerable<string> EnumerateShaderReplacementKeys(object effect, object pixelShader)
     {
         var effectType = effect.GetType();
@@ -272,6 +347,53 @@ internal static class WpfEffectReflection
         {
             yield return WpfShaderEffectRegistry.CreatePixelShaderBytecodeKey(bytecode);
         }
+    }
+
+    private static IEnumerable<string> EnumerateShaderReplacementKeys(PortableShaderEffect effect)
+    {
+        if (!string.IsNullOrWhiteSpace(effect.EffectTypeFullName))
+        {
+            yield return effect.EffectTypeFullName!;
+        }
+
+        if (!string.IsNullOrWhiteSpace(effect.EffectTypeName))
+        {
+            yield return effect.EffectTypeName!;
+        }
+
+        PortablePixelShader? pixelShader = effect.PixelShader;
+        if (pixelShader == null)
+        {
+            yield break;
+        }
+
+        if (!string.IsNullOrWhiteSpace(pixelShader.UriSource))
+        {
+            yield return pixelShader.UriSource!;
+        }
+
+        if (!string.IsNullOrWhiteSpace(pixelShader.AbsoluteUri))
+        {
+            yield return pixelShader.AbsoluteUri!;
+        }
+
+        if (pixelShader.Bytecode.Length > 0)
+        {
+            yield return WpfShaderEffectRegistry.CreatePixelShaderBytecodeKey(pixelShader.Bytecode);
+        }
+    }
+
+    private static float[] CopyPortableFloatConstants(PortableShaderEffect effect)
+    {
+        if (effect.FloatConstants.Length == 0)
+        {
+            return Array.Empty<float>();
+        }
+
+        var length = Math.Min(effect.FloatConstants.Length, WpfShaderEffectParams.ConstantFloatCount);
+        var constants = new float[length];
+        Array.Copy(effect.FloatConstants, constants, length);
+        return constants;
     }
 
     private static float[] ReadFloatConstants(object effect)
@@ -387,6 +509,72 @@ internal static class WpfEffectReflection
             }
 
             registerIndex++;
+        }
+
+        if (samplerList != null)
+        {
+            foreach (var shaderSampler in samplerList)
+            {
+                if (shaderSampler.RegisterIndex == sourceTextureRegisterIndex)
+                {
+                    return false;
+                }
+            }
+
+            samplers = samplerList.ToArray();
+        }
+
+        return true;
+    }
+
+    private static bool TryReadPortableShaderSamplerState(
+        PortableShaderEffect effect,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        out int sourceTextureRegisterIndex,
+        out TextureSamplingMode samplingMode,
+        out WpfShaderEffectSampler[] samplers)
+    {
+        sourceTextureRegisterIndex = 0;
+        samplingMode = TextureSamplingMode.Linear;
+        samplers = Array.Empty<WpfShaderEffectSampler>();
+
+        var hasImplicitInput = false;
+        List<WpfShaderEffectSampler>? samplerList = null;
+
+        foreach (PortableShaderSampler portableSampler in effect.Samplers)
+        {
+            var registerIndex = portableSampler.RegisterIndex;
+            if ((uint)registerIndex >= WpfShaderEffectParams.MaxSamplerRegisterCount)
+            {
+                return false;
+            }
+
+            var samplerSamplingMode = ConvertSamplingMode(portableSampler.SamplingMode);
+            if (IsImplicitInputBrush(portableSampler.Brush))
+            {
+                if (hasImplicitInput)
+                {
+                    return false;
+                }
+
+                sourceTextureRegisterIndex = registerIndex;
+                samplingMode = samplerSamplingMode;
+                hasImplicitInput = true;
+            }
+            else if (TryCreateShaderSampler(
+                         portableSampler.Brush,
+                         imageSourceAdapter,
+                         registerIndex,
+                         samplerSamplingMode,
+                         out var shaderSampler))
+            {
+                samplerList ??= new List<WpfShaderEffectSampler>();
+                samplerList.Add(shaderSampler);
+            }
+            else
+            {
+                return false;
+            }
         }
 
         if (samplerList != null)
@@ -836,6 +1024,13 @@ internal static class WpfEffectReflection
         }
 
         return string.Equals(samplingMode?.ToString(), "NearestNeighbor", StringComparison.Ordinal)
+            ? TextureSamplingMode.Nearest
+            : TextureSamplingMode.Linear;
+    }
+
+    private static TextureSamplingMode ConvertSamplingMode(PortableShaderSamplingMode samplingMode)
+    {
+        return samplingMode == PortableShaderSamplingMode.NearestNeighbor
             ? TextureSamplingMode.Nearest
             : TextureSamplingMode.Linear;
     }

@@ -5530,6 +5530,80 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ShaderEffectReflectionPrefersPortableShaderEffectSource()
+    {
+        var effectReflection = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfEffectReflection.cs"));
+        var portableShaderEffect = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableShaderEffect.cs"));
+        var shaderEffect = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Effects",
+            "ShaderEffect.cs"));
+        var pixelShader = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Effects",
+            "PixelShader.cs"));
+        var presentationCoreRef = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ref",
+            "PresentationCore.cs"));
+        var rendererTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeReflectionRendererTests.cs"));
+
+        Assert.Contains("interface IPortablePixelShaderSource", portableShaderEffect, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableShaderEffectSource", portableShaderEffect, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortablePixelShader", portableShaderEffect, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableShaderEffect", portableShaderEffect, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableShaderSampler", portableShaderEffect, StringComparison.Ordinal);
+        Assert.Contains("PixelShader : Animatable, DUCE.IResource, IPortablePixelShaderSource", pixelShader, StringComparison.Ordinal);
+        Assert.Contains("new PortablePixelShader(", pixelShader, StringComparison.Ordinal);
+        Assert.Contains("ShaderEffect : Effect, IPortableShaderEffectSource", shaderEffect, StringComparison.Ordinal);
+        Assert.Contains("new PortableShaderEffect(", shaderEffect, StringComparison.Ordinal);
+        Assert.Contains("CreatePortableShaderFloatConstants()", shaderEffect, StringComparison.Ordinal);
+        Assert.Contains("CreatePortableShaderSamplers()", shaderEffect, StringComparison.Ordinal);
+        Assert.Contains("PixelShader : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortablePixelShaderSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("bool ProGPU.Wpf.Interop.IPortablePixelShaderSource.TryGetPortablePixelShader", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("ShaderEffect : System.Windows.Media.Effects.Effect, ProGPU.Wpf.Interop.IPortableShaderEffectSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("bool ProGPU.Wpf.Interop.IPortableShaderEffectSource.TryGetPortableShaderEffect", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;", effectReflection, StringComparison.Ordinal);
+        Assert.Contains("effect is PortableShaderEffectSource shaderEffectSource", effectReflection, StringComparison.Ordinal);
+        Assert.Contains("TryCreatePortableShaderEffect(portableShaderEffect, imageSourceAdapter, out proGpuEffect)", effectReflection, StringComparison.Ordinal);
+        Assert.True(
+            effectReflection.IndexOf("effect is PortableShaderEffectSource shaderEffectSource", StringComparison.Ordinal)
+                < effectReflection.IndexOf("IsShaderEffectLike(effect)", StringComparison.Ordinal),
+            "Typed portable shader effects must be tried before reflected ShaderEffect shape probing.");
+        Assert.Contains("ReplaySubtreePushesPortableShaderEffectWithoutReflectedPixelShaderShape", rendererTests, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints()
     {
         var compositionExports = File.ReadAllText(FindRepoPath(

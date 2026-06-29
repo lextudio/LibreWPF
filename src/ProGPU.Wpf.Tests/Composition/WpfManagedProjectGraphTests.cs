@@ -1195,7 +1195,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryTransformBounds(reference, _rootVisual, bounds, out Rect rootBounds, out bool preservesAxisAlignedBounds)", portableSource, StringComparison.Ordinal);
         Assert.Contains("preservesAxisAlignedBounds = IsAxisAlignedRectangle(topLeft, topRight, bottomRight, bottomLeft);", portableSource, StringComparison.Ordinal);
         Assert.Contains("TryGetGeometryHitCandidate(hitTestResults[i], out Visual visualHit, out IntersectionDetail intersectionDetail)", portableSource, StringComparison.Ordinal);
-        Assert.Contains("ToIntersectionDetail(reflectedDetail)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("candidate is PortableGeometryHitTestCandidate portableCandidate", portableSource, StringComparison.Ordinal);
+        Assert.Contains("ToIntersectionDetail(portableCandidate.IntersectionDetail)", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(\"VisualHit\"", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(\"IntersectionDetail\"", portableSource, StringComparison.Ordinal);
         Assert.Contains("IsPointHitVisibleByFilter(", portableSource, StringComparison.Ordinal);
         Assert.Contains("private readonly PortableHitTestGeometryKind _portableHitTestGeometryKind;", geometryHitTestParameters, StringComparison.Ordinal);
         Assert.Contains("internal PortableHitTestGeometryKind PortableHitTestGeometryKind", geometryHitTestParameters, StringComparison.Ordinal);
@@ -5733,10 +5736,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("drawing is PortableGeometryDrawingStateSource geometryDrawingStateSource", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableGeometryDrawingState(out var portableState)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetGeometryDrawingGeometry(drawing, hasPortableGeometryDrawingState, geometryDrawingState", replaySource, StringComparison.Ordinal);
-        Assert.Contains(
-            "if (drawing is PortableGeometryDrawingStateSource || TypeNameEndsWith(drawing, \"GeometryDrawing\"))",
-            replaySource,
-            StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(drawing, \"GeometryDrawing\")", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(drawing, \"Geometry\", out geometry)", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(drawing, \"Brush\", out brush)", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(drawing, \"Pen\", out pen)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadFiniteRectProperty(drawing, \"Bounds\", out bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("GeometryDrawing : Drawing, IPortableGeometryDrawingStateSource", geometryDrawingSource, StringComparison.Ordinal);
         Assert.Contains("IPortableGeometryDrawingStateSource.TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)", geometryDrawingSource, StringComparison.Ordinal);
@@ -5813,6 +5816,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetGlyphRunDrawingGlyphRun(", replaySource, StringComparison.Ordinal);
         Assert.Contains("sink is IWpfNativePrimitiveCommandSink nativeSink", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeGlyphRun(foregroundBrush, glyphRunValue!)", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(drawing, \"ImageDrawing\")", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(drawing, \"GlyphRunDrawing\")", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(drawing, \"ImageSource\", out imageSource)", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(drawing, \"Rect\", out var rectValue)", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(drawing, \"GlyphRun\", out glyphRun)", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(drawing, \"ForegroundBrush\", out foregroundBrush)", replaySource, StringComparison.Ordinal);
         Assert.Contains("ImageDrawing : Drawing, IPortableImageDrawingStateSource", imageDrawingSource, StringComparison.Ordinal);
         Assert.Contains("GlyphRunDrawing : Drawing, IPortableGlyphRunDrawingStateSource", glyphRunDrawingSource, StringComparison.Ordinal);
         Assert.Contains("IPortableImageDrawingStateSource.TryGetPortableImageDrawingState(out PortableImageDrawingState state)", imageDrawingSource, StringComparison.Ordinal);

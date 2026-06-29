@@ -1355,7 +1355,7 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
-    public void ObjectRenderDataSinkContextMapsGradientStopGraphToRetainedOwnerBranch()
+    public void ObjectRenderDataSinkContextKeepsGradientStopGraphBehindBrushDependency()
     {
         var branchMap = new WpfRetainedVisualBranchMap();
         var retainedRoot = new ProGpuContainerVisual();
@@ -1389,9 +1389,9 @@ public sealed class ProGpuWpfDrawingFrameTests
         var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
         var ownerBranch = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedFrameRoot.Children));
         AssertGradientDependencyTargetsOwner(branchMap, brush, ownerVisual, ownerBranch);
-        AssertGradientDependencyTargetsOwner(branchMap, brush.GradientStops, ownerVisual, ownerBranch);
-        AssertGradientDependencyTargetsOwner(branchMap, firstStop, ownerVisual, ownerBranch);
-        AssertGradientDependencyTargetsOwner(branchMap, secondStop, ownerVisual, ownerBranch);
+        Assert.Empty(branchMap.GetReplayTargetsForSources(new object[] { brush.GradientStops }));
+        Assert.Empty(branchMap.GetReplayTargetsForSources(new object[] { firstStop }));
+        Assert.Empty(branchMap.GetReplayTargetsForSources(new object[] { secondStop }));
     }
 
     [Fact]

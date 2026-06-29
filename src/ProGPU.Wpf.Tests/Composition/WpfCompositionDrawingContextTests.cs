@@ -386,7 +386,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void ObjectRenderDataDrawingContextRegistersGradientStopGraphAsRetainedDependencies()
+    public void ObjectRenderDataDrawingContextKeepsGradientStopGraphBehindPortableBrushDependency()
     {
         var sink = new RecordingSink();
         using var context = new WpfObjectRenderDataDrawingContext(sink);
@@ -406,9 +406,9 @@ public sealed class WpfCompositionDrawingContextTests
         context.DrawRectangle(brush, null, new Rect(1, 2, 30, 40));
 
         Assert.Contains(brush, sink.VisualDependencies);
-        Assert.Contains(brush.GradientStops, sink.VisualDependencies);
-        Assert.Contains(firstStop, sink.VisualDependencies);
-        Assert.Contains(secondStop, sink.VisualDependencies);
+        Assert.DoesNotContain(brush.GradientStops, sink.VisualDependencies);
+        Assert.DoesNotContain(firstStop, sink.VisualDependencies);
+        Assert.DoesNotContain(secondStop, sink.VisualDependencies);
     }
 
     [Fact]
@@ -768,7 +768,7 @@ public sealed class WpfCompositionDrawingContextTests
     {
     }
 
-    private sealed class FakeGeometryDrawing
+    private sealed class FakeGeometryDrawing : IPortableGeometryDrawingStateSource
     {
         public FakeGeometryDrawing(object? brush, object? pen, object? geometry)
         {
@@ -782,6 +782,20 @@ public sealed class WpfCompositionDrawingContextTests
         public object? Pen { get; }
 
         public object? Geometry { get; }
+
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = new PortableGeometryDrawingState
+            {
+                HasBrush = Brush != null,
+                Brush = Brush,
+                HasPen = Pen != null,
+                Pen = Pen,
+                HasGeometry = Geometry != null,
+                Geometry = Geometry
+            };
+            return true;
+        }
     }
 
     private sealed class FakeRectangleGeometry
@@ -825,7 +839,7 @@ public sealed class WpfCompositionDrawingContextTests
         public string[] FamilyNames { get; } = ["Arial"];
     }
 
-    private sealed class FakeImageDrawing
+    private sealed class FakeImageDrawing : IPortableImageDrawingStateSource
     {
         public FakeImageDrawing(object? imageSource, FakeRect rect)
         {
@@ -836,6 +850,18 @@ public sealed class WpfCompositionDrawingContextTests
         public object? ImageSource { get; }
 
         public FakeRect Rect { get; }
+
+        public bool TryGetPortableImageDrawingState(out PortableImageDrawingState state)
+        {
+            state = new PortableImageDrawingState
+            {
+                HasImageSource = ImageSource != null,
+                ImageSource = ImageSource,
+                HasRect = true,
+                Rect = new PortableRect(Rect.X, Rect.Y, Rect.Width, Rect.Height)
+            };
+            return true;
+        }
     }
 
     private sealed class FakeDrawingGroup : IPortableDrawingGroupStateSource

@@ -239,7 +239,7 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
         }
     }
 
-    private sealed class FakeGeometryDrawing
+    private sealed class FakeGeometryDrawing : IPortableGeometryDrawingStateSource
     {
         public FakeGeometryDrawing(object? geometry)
         {
@@ -247,6 +247,16 @@ public sealed class WpfShaderEffectSamplerTextureCacheTests
         }
 
         public object? Geometry { get; }
+
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = new PortableGeometryDrawingState
+            {
+                HasGeometry = Geometry != null,
+                Geometry = Geometry
+            };
+            return true;
+        }
     }
 
     private sealed class FakeDrawingGroup : IPortableDrawingGroupStateSource

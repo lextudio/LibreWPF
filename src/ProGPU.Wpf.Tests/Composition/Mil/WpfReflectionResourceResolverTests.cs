@@ -4120,7 +4120,7 @@ public sealed class WpfReflectionResourceResolverTests
 
     private readonly record struct FakeSize(double Width, double Height);
 
-    private sealed class FakeGeometryDrawing
+    private sealed class FakeGeometryDrawing : IPortableGeometryDrawingStateSource
     {
         public FakeGeometryDrawing(object? brush, object? pen, object? geometry)
         {
@@ -4134,6 +4134,20 @@ public sealed class WpfReflectionResourceResolverTests
         public object? Pen { get; }
 
         public object? Geometry { get; }
+
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = new PortableGeometryDrawingState
+            {
+                HasBrush = Brush != null,
+                Brush = Brush,
+                HasPen = Pen != null,
+                Pen = Pen,
+                HasGeometry = Geometry != null,
+                Geometry = Geometry
+            };
+            return true;
+        }
     }
 
     private sealed class FakeDrawingGroup : IPortableDrawingGroupStateSource
@@ -4266,7 +4280,7 @@ public sealed class WpfReflectionResourceResolverTests
         }
     }
 
-    private sealed class FakeImageDrawing
+    private sealed class FakeImageDrawing : IPortableImageDrawingStateSource
     {
         public FakeImageDrawing(object? imageSource, FakeRect rect)
         {
@@ -4277,6 +4291,18 @@ public sealed class WpfReflectionResourceResolverTests
         public object? ImageSource { get; }
 
         public FakeRect Rect { get; }
+
+        public bool TryGetPortableImageDrawingState(out PortableImageDrawingState state)
+        {
+            state = new PortableImageDrawingState
+            {
+                HasImageSource = ImageSource != null,
+                ImageSource = ImageSource,
+                HasRect = true,
+                Rect = new PortableRect(Rect.X, Rect.Y, Rect.Width, Rect.Height)
+            };
+            return true;
+        }
     }
 
     private sealed class FakeDrawingVisual : IPortableDrawingContentSource, IPortableVisualChildrenSource, IPortableVisualBoundsSource
@@ -4409,7 +4435,7 @@ public sealed class WpfReflectionResourceResolverTests
         }
     }
 
-    private sealed class FakeGlyphRunDrawing
+    private sealed class FakeGlyphRunDrawing : IPortableGlyphRunDrawingStateSource
     {
         public FakeGlyphRunDrawing(object? foregroundBrush, object? glyphRun)
         {
@@ -4420,6 +4446,18 @@ public sealed class WpfReflectionResourceResolverTests
         public object? ForegroundBrush { get; }
 
         public object? GlyphRun { get; }
+
+        public bool TryGetPortableGlyphRunDrawingState(out PortableGlyphRunDrawingState state)
+        {
+            state = new PortableGlyphRunDrawingState
+            {
+                HasForegroundBrush = ForegroundBrush != null,
+                ForegroundBrush = ForegroundBrush,
+                HasGlyphRun = GlyphRun != null,
+                GlyphRun = GlyphRun
+            };
+            return true;
+        }
     }
 
     private static bool TryFindLoadableFontPathDifferentFromFallback(out string fontPath, out TtfFont expectedFont)

@@ -3589,7 +3589,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public object? this[int index] => _items[index];
     }
 
-    private sealed class FakeGeometryDrawing
+    private sealed class FakeGeometryDrawing : PortableGeometryDrawingStateSource
     {
         public FakeGeometryDrawing(object geometry, object? brush, object? pen = null)
         {
@@ -3603,6 +3603,20 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public object? Brush { get; }
 
         public object? Pen { get; }
+
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = new PortableGeometryDrawingState
+            {
+                HasBrush = Brush != null,
+                Brush = Brush,
+                HasPen = Pen != null,
+                Pen = Pen,
+                HasGeometry = true,
+                Geometry = Geometry
+            };
+            return true;
+        }
     }
 
     private sealed class FakeMatrixTransform : PortableTransformMatrixSource

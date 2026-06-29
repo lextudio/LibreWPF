@@ -2526,7 +2526,7 @@ public sealed class WpfReplayToProGpuCommandTests
         public override GpuTexture GpuTexture => s_texture;
     }
 
-    private sealed class FakeGeometryDrawing
+    private sealed class FakeGeometryDrawing : IPortableGeometryDrawingStateSource
     {
         public FakeGeometryDrawing(object? brush, object? pen, object? geometry)
         {
@@ -2540,6 +2540,20 @@ public sealed class WpfReplayToProGpuCommandTests
         public object? Pen { get; }
 
         public object? Geometry { get; }
+
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = new PortableGeometryDrawingState
+            {
+                HasBrush = Brush != null,
+                Brush = Brush,
+                HasPen = Pen != null,
+                Pen = Pen,
+                HasGeometry = Geometry != null,
+                Geometry = Geometry
+            };
+            return true;
+        }
     }
 
     private sealed class FakeDrawingGroup : IPortableDrawingGroupStateSource

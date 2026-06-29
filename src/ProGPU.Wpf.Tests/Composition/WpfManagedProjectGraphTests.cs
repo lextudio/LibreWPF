@@ -5850,6 +5850,70 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void Viewport3DBridgePrefersPortableSceneSnapshot()
+    {
+        var bridgeSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfViewport3DReflectionBridge.cs"));
+        var viewportSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media3D",
+            "Viewport3DVisual.cs"));
+        var exporterSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media3D",
+            "PortableViewport3DSceneExporter.cs"));
+        var interopSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableViewport3DScene.cs"));
+        var presentationCoreProject = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "PresentationCore.csproj"));
+
+        var portableBranchIndex = bridgeSource.IndexOf(
+            "viewportVisual is IPortableViewport3DSceneSource portableSceneSource",
+            StringComparison.Ordinal);
+        var fallbackBranchIndex = bridgeSource.IndexOf(
+            "TypeNameEndsWith(viewportVisual, \"Viewport3DVisual\")",
+            StringComparison.Ordinal);
+
+        Assert.True(portableBranchIndex >= 0);
+        Assert.True(fallbackBranchIndex > portableBranchIndex);
+        Assert.Contains("TryCreateReplayDataFromPortableScene", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableViewport3DSceneSource", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableViewport3DScene", interopSource, StringComparison.Ordinal);
+        Assert.Contains("PortableViewport3DMesh", interopSource, StringComparison.Ordinal);
+        Assert.Contains("Viewport3DVisual : Visual, DUCE.IResource, IVisual3DContainer, IPortableViewport3DSceneSource", viewportSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableViewport3DScene(out PortableViewport3DScene scene)", exporterSource, StringComparison.Ordinal);
+        Assert.Contains("CompileModel3D", exporterSource, StringComparison.Ordinal);
+        Assert.Contains("TryCreateMeshData", exporterSource, StringComparison.Ordinal);
+        Assert.Contains("ReadMaterial", exporterSource, StringComparison.Ordinal);
+        Assert.Contains("System\\Windows\\Media3D\\PortableViewport3DSceneExporter.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection", exporterSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty", exporterSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", exporterSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EffectReflectionPrefersPortableEffectSource()
     {
         var effectReflection = File.ReadAllText(FindRepoPath(

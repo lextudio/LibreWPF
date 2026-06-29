@@ -13255,7 +13255,7 @@ namespace System.Windows.Media.Media3D
         public static void SetIsVisualHostMaterial(System.Windows.Media.Media3D.Material element, bool value) { }
     }
     [System.Windows.Markup.ContentPropertyAttribute("Children")]
-    public sealed partial class Viewport3DVisual : System.Windows.Media.Visual
+    public sealed partial class Viewport3DVisual : System.Windows.Media.Visual, ProGPU.Wpf.Interop.IPortableViewport3DSceneSource
     {
         public static readonly System.Windows.DependencyProperty CameraProperty;
         public static readonly System.Windows.DependencyProperty ViewportProperty;
@@ -13276,6 +13276,7 @@ namespace System.Windows.Media.Media3D
         public System.Windows.DependencyObject Parent { get { throw null; } }
         public System.Windows.Media.Transform Transform { get { throw null; } set { } }
         public System.Windows.Rect Viewport { get { throw null; } set { } }
+        bool ProGPU.Wpf.Interop.IPortableViewport3DSceneSource.TryGetPortableViewport3DScene(out ProGPU.Wpf.Interop.PortableViewport3DScene scene) { throw null; }
         public void HitTest(System.Windows.Media.HitTestFilterCallback filterCallback, System.Windows.Media.HitTestResultCallback resultCallback, System.Windows.Media.HitTestParameters hitTestParameters) { }
         public System.Windows.Media.HitTestResult HitTest(System.Windows.Point point) { throw null; }
         protected override System.Windows.Media.GeometryHitTestResult HitTestCore(System.Windows.Media.GeometryHitTestParameters hitTestParameters) { throw null; }

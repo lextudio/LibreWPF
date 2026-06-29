@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
+using ProGPU.Wpf.Interop;
 using Xunit;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
@@ -39,6 +40,24 @@ public sealed class WpfViewport3DReflectionBridgeTests
         Assert.True(mesh.Color.Y < 0.1f);
         Assert.True(mesh.Color.Z < 0.1f);
         Assert.Equal(1, mesh.Opacity);
+    }
+
+    [Fact]
+    public void TryCreateReplayDataPrefersPortableViewport3DSceneWithoutPropertyProbe()
+    {
+        var viewport = new PortableViewport3DVisual();
+
+        var replayed = WpfViewport3DReflectionBridge.TryCreateReplayData(viewport, out var replayData);
+
+        Assert.True(replayed);
+        Assert.Equal(new Vector2(320, 180), replayData.Payload.ViewportSize);
+        Assert.Equal(new global::ProGPU.Scene.Rect(4, 8, 320, 180), replayData.Viewport);
+        var mesh = Assert.Single(replayData.Payload.Meshes);
+        Assert.Same(viewport.GeometryKey, mesh.Geometry);
+        Assert.Equal(13, mesh.GeometryVersion);
+        Assert.Equal(new[] { 0, 1, 2 }, mesh.Indices);
+        Assert.Equal(10, mesh.ModelTransform.M41);
+        Assert.Equal(0.25f, replayData.Payload.AmbientIntensity);
     }
 
     [Fact]
@@ -229,6 +248,64 @@ public sealed class WpfViewport3DReflectionBridgeTests
         public void Add(object item)
         {
             _items.Add(item);
+        }
+    }
+
+    private sealed class PortableViewport3DVisual : IPortableViewport3DSceneSource
+    {
+        public object GeometryKey { get; } = new();
+
+        public object Viewport => throw new InvalidOperationException("Portable scene should not probe Viewport.");
+
+        public object Camera => throw new InvalidOperationException("Portable scene should not probe Camera.");
+
+        public object Children => throw new InvalidOperationException("Portable scene should not probe Children.");
+
+        public bool TryGetPortableViewport3DScene(out PortableViewport3DScene scene)
+        {
+            scene = new PortableViewport3DScene
+            {
+                Viewport = new PortableRect(4, 8, 320, 180),
+                Camera = new PortableViewport3DCamera
+                {
+                    Kind = PortableViewport3DCameraKind.Perspective,
+                    Position = new PortableVector3(0, 0, 4),
+                    LookDirection = new PortableVector3(0, 0, -4),
+                    UpDirection = new PortableVector3(0, 1, 0),
+                    NearPlaneDistance = 0.1,
+                    FarPlaneDistance = 100,
+                    FieldOfView = 60
+                },
+                AmbientIntensity = 0.25,
+                Meshes = new[]
+                {
+                    new PortableViewport3DMesh
+                    {
+                        Geometry = GeometryKey,
+                        GeometryVersion = 13,
+                        Positions = new[]
+                        {
+                            new PortableVector3(0, 0, 0),
+                            new PortableVector3(1, 0, 0),
+                            new PortableVector3(0, 1, 0)
+                        },
+                        Normals = new[]
+                        {
+                            new PortableVector3(0, 0, 1),
+                            new PortableVector3(0, 0, 1),
+                            new PortableVector3(0, 0, 1)
+                        },
+                        Indices = new[] { 0, 1, 2 },
+                        ModelTransform = new PortableMatrix4x4(
+                            1, 0, 0, 0,
+                            0, 1, 0, 0,
+                            0, 0, 1, 0,
+                            10, 0, 0, 1),
+                        DiffuseColor = new PortableColor4(1, 0, 0, 1)
+                    }
+                }
+            };
+            return true;
         }
     }
 

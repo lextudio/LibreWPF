@@ -3,6 +3,7 @@
 
 using System.Windows.Markup;
 using System.Windows.Media.Animation;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Media
 {
@@ -12,7 +13,7 @@ namespace System.Windows.Media
     /// collections.
     /// </summary>
     [ContentProperty("Children")]
-    public sealed partial class DrawingGroup : Drawing
+    public sealed partial class DrawingGroup : Drawing, IPortableDrawingGroupStateSource
     {
         #region Constructors
 
@@ -58,6 +59,79 @@ namespace System.Windows.Media
             _openedForAppend = true;
 
             return new DrawingGroupDrawingContext(this);
+        }
+
+        bool IPortableDrawingGroupStateSource.TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)
+        {
+            Rect bounds = Bounds;
+            Transform transform = Transform;
+            Geometry clipGeometry = ClipGeometry;
+            Brush opacityMask = OpacityMask;
+            GuidelineSet guidelineSet = GuidelineSet;
+            #pragma warning disable 0618
+            var bitmapEffect = BitmapEffect;
+            var bitmapEffectInput = BitmapEffectInput;
+            #pragma warning restore 0618
+            BitmapScalingMode bitmapScalingMode = RenderOptions.GetBitmapScalingMode(this);
+            EdgeMode edgeMode = RenderOptions.GetEdgeMode(this);
+            ClearTypeHint clearTypeHint = RenderOptions.GetClearTypeHint(this);
+
+            state = new PortableDrawingGroupState
+            {
+                HasBounds = IsPortableUsableRect(bounds),
+                Bounds = IsPortableUsableRect(bounds)
+                    ? new PortableRect(bounds.X, bounds.Y, bounds.Width, bounds.Height)
+                    : PortableRect.Empty,
+                HasTransform = transform != null,
+                Transform = transform,
+                HasClipGeometry = clipGeometry != null,
+                ClipGeometry = clipGeometry,
+                HasOpacity = true,
+                Opacity = Opacity,
+                HasOpacityMask = opacityMask != null,
+                OpacityMask = opacityMask,
+                HasGuidelineSet = guidelineSet != null,
+                GuidelineSet = guidelineSet,
+                HasBitmapEffect = bitmapEffect != null,
+                BitmapEffect = bitmapEffect,
+                HasBitmapEffectInput = bitmapEffectInput != null,
+                BitmapEffectInput = bitmapEffectInput,
+                HasBitmapScalingMode = bitmapScalingMode != BitmapScalingMode.Unspecified,
+                BitmapScalingMode = bitmapScalingMode,
+                HasEdgeMode = edgeMode != EdgeMode.Unspecified,
+                EdgeMode = edgeMode,
+                HasClearTypeHint = clearTypeHint != ClearTypeHint.Auto,
+                ClearTypeHint = clearTypeHint,
+                Children = CopyPortableDrawingGroupChildren(Children)
+            };
+            return true;
+        }
+
+        private static object[] CopyPortableDrawingGroupChildren(DrawingCollection children)
+        {
+            if (children == null || children.Count == 0)
+            {
+                return global::System.Array.Empty<object>();
+            }
+
+            object[] values = new object[children.Count];
+            for (int i = 0; i < values.Length; i++)
+            {
+                values[i] = children.Internal_GetItem(i);
+            }
+
+            return values;
+        }
+
+        private static bool IsPortableUsableRect(Rect rect)
+        {
+            return !rect.IsEmpty
+                && double.IsFinite(rect.X)
+                && double.IsFinite(rect.Y)
+                && double.IsFinite(rect.Width)
+                && double.IsFinite(rect.Height)
+                && rect.Width > 0
+                && rect.Height > 0;
         }
 
         #endregion Public methods        
@@ -299,4 +373,3 @@ namespace System.Windows.Media
         #endregion Private fields        
     }
 }
-

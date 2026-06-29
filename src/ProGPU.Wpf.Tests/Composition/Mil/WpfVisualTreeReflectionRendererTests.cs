@@ -27,12 +27,15 @@ using ProGpuWpfShaderEffectSampler = ProGPU.Scene.WpfShaderEffectSampler;
 using ProGpuTextureSamplingMode = ProGPU.Scene.TextureSamplingMode;
 using PortableEffect = ProGPU.Wpf.Interop.PortableEffect;
 using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;
+using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
+using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
 using PortablePixelShader = ProGPU.Wpf.Interop.PortablePixelShader;
 using PortableShaderEffect = ProGPU.Wpf.Interop.PortableShaderEffect;
 using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;
 using PortableShaderSampler = ProGPU.Wpf.Interop.PortableShaderSampler;
 using PortableShaderSamplingMode = ProGPU.Wpf.Interop.PortableShaderSamplingMode;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
+using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
@@ -1378,6 +1381,95 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeAppliesPortableDrawingGroupStateWithoutReflection()
+    {
+        var group = new ThrowingPortableDrawingGroup(new PortableDrawingGroupState
+        {
+            HasBounds = true,
+            Bounds = new PortableRect(0, 0, 40, 30),
+            HasTransform = true,
+            Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
+            HasClipGeometry = true,
+            ClipGeometry = new RectangleGeometry(new Rect(0, 0, 20, 20)),
+            HasOpacity = true,
+            Opacity = 0.5,
+            HasGuidelineSet = true,
+            GuidelineSet = new object(),
+            HasBitmapScalingMode = true,
+            BitmapScalingMode = new FakeRenderingHint("LowQuality"),
+            HasEdgeMode = true,
+            EdgeMode = new FakeRenderingHint("Aliased"),
+            HasTextRenderingMode = true,
+            TextRenderingMode = new FakeRenderingHint("ClearType"),
+            HasTextHintingMode = true,
+            TextHintingMode = new FakeRenderingHint("Fixed"),
+            Children =
+            [
+                new FakeGeometryDrawing(
+                    new RectangleGeometry(new Rect(1, 2, 10, 12)),
+                    Brushes.Green)
+            ]
+        });
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(group, sink);
+
+        Assert.Equal(
+            new[]
+            {
+                "PushTransform",
+                "PushClip",
+                "PushOpacity",
+                "PushGuidelineSetObject",
+                "PushBitmapScalingMode",
+                "PushEdgeMode",
+                "PushTextRenderingMode",
+                "PushTextHintingMode",
+                "DrawGeometry",
+                "Pop",
+                "Pop",
+                "Pop",
+                "Pop",
+                "Pop",
+                "Pop",
+                "Pop",
+                "Pop"
+            },
+            sink.Operations);
+        Assert.Equal(0, group.ReflectedStateProbeCount);
+        Assert.Equal(new Vector2(3, 4), new Vector2(sink.NativeTransforms[0].M41, sink.NativeTransforms[0].M42));
+        Assert.Equal(new[] { 0.5 }, sink.Opacities);
+        Assert.Equal(new[] { "LowQuality" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(new[] { "Aliased" }, sink.EdgeModes.Select(mode => mode?.ToString()));
+        Assert.Equal(new[] { "ClearType" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(new[] { "Fixed" }, sink.TextHintingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplaySubtreeDoesNotReflectAbsentPortableDrawingGroupState()
+    {
+        var group = new ThrowingPortableDrawingGroup(new PortableDrawingGroupState
+        {
+            HasOpacity = true,
+            Opacity = 1,
+            Children =
+            [
+                new FakeGeometryDrawing(
+                    new RectangleGeometry(new Rect(1, 2, 10, 12)),
+                    Brushes.Green)
+            ]
+        });
+        var sink = new TestSink();
+
+        var status = WpfReflectionDrawingReplay.Replay(group, sink);
+
+        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Equal(0, group.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
     public void ReplaySubtreePushesNativeBlurEffectWhenSinkSupportsVisualEffects()
     {
         var root = new FakeVisual
@@ -2214,6 +2306,62 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
+    private sealed class ThrowingPortableDrawingGroup : PortableDrawingGroupStateSource
+    {
+        private readonly PortableDrawingGroupState _state;
+
+        public ThrowingPortableDrawingGroup(PortableDrawingGroupState state)
+        {
+            _state = state;
+        }
+
+        public int ReflectedStateProbeCount { get; private set; }
+
+        public object? Bounds => ThrowReflectedStateProbe();
+
+        public object? Transform => ThrowReflectedStateProbe();
+
+        public object? ClipGeometry => ThrowReflectedStateProbe();
+
+        public object? Opacity => ThrowReflectedStateProbe();
+
+        public object? OpacityMask => ThrowReflectedStateProbe();
+
+        public object? GuidelineSet => ThrowReflectedStateProbe();
+
+        public object? Effect => ThrowReflectedStateProbe();
+
+        public object? BitmapEffect => ThrowReflectedStateProbe();
+
+        public object? BitmapEffectInput => ThrowReflectedStateProbe();
+
+        public object? CacheMode => ThrowReflectedStateProbe();
+
+        public object? BitmapScalingMode => ThrowReflectedStateProbe();
+
+        public object? EdgeMode => ThrowReflectedStateProbe();
+
+        public object? ClearTypeHint => ThrowReflectedStateProbe();
+
+        public object? TextRenderingMode => ThrowReflectedStateProbe();
+
+        public object? TextHintingMode => ThrowReflectedStateProbe();
+
+        public object? Children => ThrowReflectedStateProbe();
+
+        public bool TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)
+        {
+            state = _state;
+            return true;
+        }
+
+        private object? ThrowReflectedStateProbe([CallerMemberName] string? propertyName = null)
+        {
+            ReflectedStateProbeCount++;
+            throw new InvalidOperationException($"Reflected drawing group property '{propertyName}' should not be read.");
+        }
+    }
+
     private sealed class FakePortableVisualStateAndLayoutDrawingVisual :
         PortableVisualStateSource,
         PortableVisualLayoutStateSource
@@ -2530,6 +2678,22 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public object? this[int index] => _items[index];
     }
 
+    private sealed class FakeGeometryDrawing
+    {
+        public FakeGeometryDrawing(object geometry, object? brush, object? pen = null)
+        {
+            Geometry = geometry;
+            Brush = brush;
+            Pen = pen;
+        }
+
+        public object Geometry { get; }
+
+        public object? Brush { get; }
+
+        public object? Pen { get; }
+    }
+
     private sealed class FakeMatrixTransform
     {
         public FakeMatrixTransform(FakeMatrix value)
@@ -2639,6 +2803,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle)> DrawRectangles { get; } = new();
 
+        public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> DrawGeometries { get; } = new();
+
         public List<(MediaImageSource ImageSource, Rect Rectangle)> Images { get; } = new();
 
         public List<MediaTransform> Transforms { get; } = new();
@@ -2726,6 +2892,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
         {
+            Operations.Add("DrawGeometry");
+            DrawGeometries.Add((brush, pen, geometry));
         }
 
         public void DrawImage(MediaImageSource imageSource, Rect rectangle)

@@ -14,6 +14,8 @@ using MediaTransform = System.Windows.Media.Transform;
 using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
 using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
 using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
+using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
+using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableStretch = ProGPU.Wpf.Interop.PortableStretch;
@@ -832,8 +834,14 @@ internal static class WpfReflectionDrawingReplay
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter)
     {
+        var hasPortableDrawingGroupState = TryGetPortableDrawingGroupState(
+            drawingGroup,
+            out var drawingGroupState);
+
         if (!TryResolveDrawingGroupEffect(
                 drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
                 imageSourceAdapter,
                 out var effect,
                 out var effectBounds,
@@ -844,24 +852,34 @@ internal static class WpfReflectionDrawingReplay
 
         var hasOpacityMask = TryResolveOpacityMask(
             drawingGroup,
+            hasPortableDrawingGroupState,
+            drawingGroupState,
             imageSourceAdapter,
             out var opacityMask,
             out var opacityMaskBounds);
-        if (!hasOpacityMask && HasNonNullProperty(drawingGroup, "OpacityMask"))
+        if (!hasOpacityMask && HasDrawingGroupOpacityMask(drawingGroup, hasPortableDrawingGroupState, drawingGroupState))
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
 
         var popCount = 0;
 
-        var hasTransform = TryGetPropertyValue(drawingGroup, "Transform", out var transformValue) && transformValue != null;
+        var hasTransform = TryGetDrawingGroupTransform(
+            drawingGroup,
+            hasPortableDrawingGroupState,
+            drawingGroupState,
+            out var transformValue);
         var transform = hasTransform ? WpfReflectionResourceResolver.AdaptTransform(transformValue) : null;
         if (hasTransform && transform == null)
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
 
-        var hasClip = TryGetPropertyValue(drawingGroup, "ClipGeometry", out var clipValue) && clipValue != null;
+        var hasClip = TryGetDrawingGroupClipGeometry(
+            drawingGroup,
+            hasPortableDrawingGroupState,
+            drawingGroupState,
+            out var clipValue);
         var clip = hasClip ? WpfReflectionResourceResolver.AdaptGeometry(clipValue) : null;
         if (hasClip && clip == null)
         {
@@ -880,8 +898,7 @@ internal static class WpfReflectionDrawingReplay
             popCount++;
         }
 
-        if (TryGetPropertyValue(drawingGroup, "Opacity", out var opacityValue)
-            && TryConvertToDouble(opacityValue, out var opacity)
+        if (TryGetDrawingGroupOpacity(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var opacity)
             && opacity != 1)
         {
             sink.PushOpacity(opacity);
@@ -895,9 +912,14 @@ internal static class WpfReflectionDrawingReplay
         }
 
         var unsupportedGroupState = false;
-        if (HasNonNullProperty(drawingGroup, "CacheMode"))
+        if (HasDrawingGroupCacheMode(drawingGroup, hasPortableDrawingGroupState, drawingGroupState))
         {
-            if (TryGetDrawingGroupCacheBounds(drawingGroup, imageSourceAdapter, out var cacheBounds)
+            if (TryGetDrawingGroupCacheBounds(
+                    drawingGroup,
+                    hasPortableDrawingGroupState,
+                    drawingGroupState,
+                    imageSourceAdapter,
+                    out var cacheBounds)
                 && WpfPortableCommandSinkBridge.TryPushDrawingCache(sink, ToReplayRect(cacheBounds)))
             {
                 popCount++;
@@ -923,14 +945,21 @@ internal static class WpfReflectionDrawingReplay
             popCount++;
         }
 
-        if (TryGetPropertyValue(drawingGroup, "GuidelineSet", out var guidelineSet) && guidelineSet != null)
+        if (TryGetDrawingGroupGuidelineSet(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var guidelineSet))
         {
             sink.PushGuidelineSet(guidelineSet);
             popCount++;
         }
 
-        var unsupportedRenderOptions = HasUnsupportedRenderOptionState(drawingGroup);
-        if (TryGetPropertyValue(drawingGroup, "BitmapScalingMode", out var bitmapScalingMode)
+        var unsupportedRenderOptions = HasUnsupportedRenderOptionState(
+            drawingGroup,
+            hasPortableDrawingGroupState,
+            drawingGroupState);
+        if (TryGetDrawingGroupBitmapScalingMode(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var bitmapScalingMode)
             && WpfBitmapScalingModeReflection.HasExplicitValue(bitmapScalingMode))
         {
             if (WpfBitmapScalingModeReflection.IsSupported(bitmapScalingMode))
@@ -944,7 +973,11 @@ internal static class WpfReflectionDrawingReplay
             }
         }
 
-        if (TryGetPropertyValue(drawingGroup, "EdgeMode", out var edgeMode)
+        if (TryGetDrawingGroupEdgeMode(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var edgeMode)
             && WpfEdgeModeReflection.HasExplicitValue(edgeMode))
         {
             if (WpfEdgeModeReflection.IsSupported(edgeMode))
@@ -959,7 +992,11 @@ internal static class WpfReflectionDrawingReplay
         }
 
         var pushedTextRenderingMode = false;
-        if (TryGetPropertyValue(drawingGroup, "TextRenderingMode", out var textRenderingMode)
+        if (TryGetDrawingGroupTextRenderingMode(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var textRenderingMode)
             && WpfTextRenderingModeReflection.HasExplicitValue(textRenderingMode))
         {
             if (WpfTextRenderingModeReflection.IsSupported(textRenderingMode))
@@ -975,7 +1012,11 @@ internal static class WpfReflectionDrawingReplay
         }
 
         if (!pushedTextRenderingMode
-            && TryGetPropertyValue(drawingGroup, "ClearTypeHint", out var clearTypeHint)
+            && TryGetDrawingGroupClearTypeHint(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var clearTypeHint)
             && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
             && WpfTextRenderingModeReflection.TryMapClearTypeHintToTextRenderingMode(clearTypeHint, out var clearTypeMode))
         {
@@ -983,7 +1024,11 @@ internal static class WpfReflectionDrawingReplay
             popCount++;
         }
 
-        if (TryGetPropertyValue(drawingGroup, "TextHintingMode", out var textHintingMode)
+        if (TryGetDrawingGroupTextHintingMode(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var textHintingMode)
             && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode))
         {
             if (WpfTextRenderingModeReflection.IsSupportedTextHintingMode(textHintingMode))
@@ -999,7 +1044,7 @@ internal static class WpfReflectionDrawingReplay
 
         var appliedAny = false;
         var unsupportedAny = unsupportedGroupState || unsupportedRenderOptions;
-        foreach (var child in ExtractChildren(drawingGroup))
+        foreach (var child in ExtractChildren(drawingGroup, hasPortableDrawingGroupState, drawingGroupState))
         {
             var childStatus = Replay(child, sink, imageSourceAdapter);
             appliedAny |= childStatus == WpfDrawingReplayStatus.Applied
@@ -1977,22 +2022,35 @@ internal static class WpfReflectionDrawingReplay
         return true;
     }
 
-    private static bool HasUnsupportedRenderOptionState(object drawingGroup)
+    private static bool HasUnsupportedRenderOptionState(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState)
     {
-        if (TryGetPropertyValue(drawingGroup, "ClearTypeHint", out var clearTypeHint)
+        if (TryGetDrawingGroupClearTypeHint(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var clearTypeHint)
             && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
             && !WpfTextRenderingModeReflection.IsSupportedClearTypeHint(clearTypeHint))
         {
             return true;
         }
 
-        return TryGetPropertyValue(drawingGroup, "TextHintingMode", out var textHintingMode)
+        return TryGetDrawingGroupTextHintingMode(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var textHintingMode)
             && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode)
             && !WpfTextRenderingModeReflection.IsSupportedTextHintingMode(textHintingMode);
     }
 
     private static bool TryResolveDrawingGroupEffect(
         object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out global::ProGPU.Scene.EffectBase? effect,
         out Rect? bounds,
@@ -2002,14 +2060,19 @@ internal static class WpfReflectionDrawingReplay
         bounds = null;
         hasEffect = false;
 
-        if (TryGetPropertyValue(drawingGroup, "Effect", out var effectValue) && effectValue != null)
+        if (TryGetDrawingGroupEffect(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var effectValue))
         {
             hasEffect = true;
             if (!WpfEffectReflection.TryCreateProGpuEffect(
                     effectValue,
                     out var proGpuEffect,
                     CreateImageSourceAdapter(imageSourceAdapter))
-                || !TryGetDrawingGroupEffectBounds(drawingGroup, imageSourceAdapter, out bounds))
+                || !TryGetDrawingGroupEffectBounds(
+                    drawingGroup,
+                    hasPortableDrawingGroupState,
+                    drawingGroupState,
+                    imageSourceAdapter,
+                    out bounds))
             {
                 return false;
             }
@@ -2018,16 +2081,25 @@ internal static class WpfReflectionDrawingReplay
             return true;
         }
 
-        if (TryGetPropertyValue(drawingGroup, "BitmapEffect", out var bitmapEffect) && bitmapEffect != null)
+        if (TryGetDrawingGroupBitmapEffect(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var bitmapEffect))
         {
             hasEffect = true;
-            TryGetPropertyValue(drawingGroup, "BitmapEffectInput", out var bitmapEffectInput);
+            TryGetDrawingGroupBitmapEffectInput(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var bitmapEffectInput);
             if (!WpfEffectReflection.TryCreateProGpuPushEffect(
                     bitmapEffect,
                     bitmapEffectInput,
                     out var proGpuEffect,
                     CreateImageSourceAdapter(imageSourceAdapter))
-                || !TryGetDrawingGroupEffectBounds(drawingGroup, imageSourceAdapter, out bounds))
+                || !TryGetDrawingGroupEffectBounds(
+                    drawingGroup,
+                    hasPortableDrawingGroupState,
+                    drawingGroupState,
+                    imageSourceAdapter,
+                    out bounds))
             {
                 return false;
             }
@@ -2036,17 +2108,24 @@ internal static class WpfReflectionDrawingReplay
             return true;
         }
 
-        return !HasNonNullProperty(drawingGroup, "BitmapEffectInput");
+        return !HasDrawingGroupBitmapEffectInput(drawingGroup, hasPortableDrawingGroupState, drawingGroupState);
     }
 
     private static bool TryGetDrawingGroupEffectBounds(
         object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out Rect? bounds)
     {
         bounds = null;
-        if (TryReadFiniteRectProperty(drawingGroup, "Bounds", out var explicitBounds)
-            || TryInferDrawingGroupContentBounds(drawingGroup, imageSourceAdapter, out explicitBounds))
+        if (TryGetDrawingGroupBounds(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var explicitBounds)
+            || TryInferDrawingGroupContentBounds(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                imageSourceAdapter,
+                out explicitBounds))
         {
             bounds = explicitBounds;
             return true;
@@ -2057,10 +2136,17 @@ internal static class WpfReflectionDrawingReplay
 
     private static bool TryGetDrawingGroupCacheBounds(
         object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out Rect? bounds)
     {
-        return TryGetDrawingGroupEffectBounds(drawingGroup, imageSourceAdapter, out bounds);
+        return TryGetDrawingGroupEffectBounds(
+            drawingGroup,
+            hasPortableDrawingGroupState,
+            drawingGroupState,
+            imageSourceAdapter,
+            out bounds);
     }
 
     private static bool HasExplicitRenderingHint(object source, string propertyName)
@@ -2077,8 +2163,282 @@ internal static class WpfReflectionDrawingReplay
             && !string.Equals(text, "Auto", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool TryGetPortableDrawingGroupState(
+        object drawingGroup,
+        out PortableDrawingGroupState? state)
+    {
+        if (drawingGroup is PortableDrawingGroupStateSource drawingGroupStateSource
+            && drawingGroupStateSource.TryGetPortableDrawingGroupState(out var portableState))
+        {
+            state = portableState;
+            return true;
+        }
+
+        state = null;
+        return false;
+    }
+
+    private static bool TryGetDrawingGroupBounds(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out Rect bounds)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            return TryReadPortableRect(drawingGroupState!.Bounds, out bounds)
+                && drawingGroupState.HasBounds
+                && IsUsableRect(bounds, out bounds);
+        }
+
+        return TryReadFiniteRectProperty(drawingGroup, "Bounds", out bounds);
+    }
+
+    private static bool TryGetDrawingGroupTransform(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? transform)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            transform = drawingGroupState!.Transform;
+            return drawingGroupState.HasTransform && transform != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "Transform", out transform) && transform != null;
+    }
+
+    private static bool TryGetDrawingGroupClipGeometry(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? clipGeometry)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            clipGeometry = drawingGroupState!.ClipGeometry;
+            return drawingGroupState.HasClipGeometry && clipGeometry != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "ClipGeometry", out clipGeometry) && clipGeometry != null;
+    }
+
+    private static bool TryGetDrawingGroupOpacity(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out double opacity)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            opacity = drawingGroupState!.Opacity;
+            return drawingGroupState.HasOpacity;
+        }
+
+        if (TryGetPropertyValue(drawingGroup, "Opacity", out var opacityValue)
+            && TryConvertToDouble(opacityValue, out opacity))
+        {
+            return true;
+        }
+
+        opacity = 1;
+        return false;
+    }
+
+    private static bool HasDrawingGroupOpacityMask(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState)
+    {
+        return TryGetDrawingGroupOpacityMask(
+            drawingGroup,
+            hasPortableDrawingGroupState,
+            drawingGroupState,
+            out _);
+    }
+
+    private static bool TryGetDrawingGroupOpacityMask(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? opacityMask)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            opacityMask = drawingGroupState!.OpacityMask;
+            return drawingGroupState.HasOpacityMask && opacityMask != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "OpacityMask", out opacityMask) && opacityMask != null;
+    }
+
+    private static bool TryGetDrawingGroupGuidelineSet(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? guidelineSet)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            guidelineSet = drawingGroupState!.GuidelineSet;
+            return drawingGroupState.HasGuidelineSet && guidelineSet != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "GuidelineSet", out guidelineSet) && guidelineSet != null;
+    }
+
+    private static bool TryGetDrawingGroupEffect(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? effect)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            effect = drawingGroupState!.Effect;
+            return drawingGroupState.HasEffect && effect != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "Effect", out effect) && effect != null;
+    }
+
+    private static bool TryGetDrawingGroupBitmapEffect(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? bitmapEffect)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            bitmapEffect = drawingGroupState!.BitmapEffect;
+            return drawingGroupState.HasBitmapEffect && bitmapEffect != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "BitmapEffect", out bitmapEffect) && bitmapEffect != null;
+    }
+
+    private static bool HasDrawingGroupBitmapEffectInput(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState)
+    {
+        return TryGetDrawingGroupBitmapEffectInput(
+            drawingGroup,
+            hasPortableDrawingGroupState,
+            drawingGroupState,
+            out _);
+    }
+
+    private static bool TryGetDrawingGroupBitmapEffectInput(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? bitmapEffectInput)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            bitmapEffectInput = drawingGroupState!.BitmapEffectInput;
+            return drawingGroupState.HasBitmapEffectInput && bitmapEffectInput != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "BitmapEffectInput", out bitmapEffectInput)
+            && bitmapEffectInput != null;
+    }
+
+    private static bool HasDrawingGroupCacheMode(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            var cacheMode = drawingGroupState!.CacheMode;
+            return drawingGroupState.HasCacheMode && cacheMode != null;
+        }
+
+        return HasNonNullProperty(drawingGroup, "CacheMode");
+    }
+
+    private static bool TryGetDrawingGroupBitmapScalingMode(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? bitmapScalingMode)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            bitmapScalingMode = drawingGroupState!.BitmapScalingMode;
+            return drawingGroupState.HasBitmapScalingMode && bitmapScalingMode != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "BitmapScalingMode", out bitmapScalingMode);
+    }
+
+    private static bool TryGetDrawingGroupEdgeMode(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? edgeMode)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            edgeMode = drawingGroupState!.EdgeMode;
+            return drawingGroupState.HasEdgeMode && edgeMode != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "EdgeMode", out edgeMode);
+    }
+
+    private static bool TryGetDrawingGroupClearTypeHint(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? clearTypeHint)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            clearTypeHint = drawingGroupState!.ClearTypeHint;
+            return drawingGroupState.HasClearTypeHint && clearTypeHint != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "ClearTypeHint", out clearTypeHint);
+    }
+
+    private static bool TryGetDrawingGroupTextRenderingMode(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? textRenderingMode)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            textRenderingMode = drawingGroupState!.TextRenderingMode;
+            return drawingGroupState.HasTextRenderingMode && textRenderingMode != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "TextRenderingMode", out textRenderingMode);
+    }
+
+    private static bool TryGetDrawingGroupTextHintingMode(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
+        out object? textHintingMode)
+    {
+        if (hasPortableDrawingGroupState)
+        {
+            textHintingMode = drawingGroupState!.TextHintingMode;
+            return drawingGroupState.HasTextHintingMode && textHintingMode != null;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "TextHintingMode", out textHintingMode);
+    }
+
     private static bool TryResolveOpacityMask(
         object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out MediaBrush? opacityMask,
         out Rect bounds)
@@ -2086,7 +2446,7 @@ internal static class WpfReflectionDrawingReplay
         opacityMask = null;
         bounds = default;
 
-        if (!TryGetPropertyValue(drawingGroup, "OpacityMask", out var maskValue) || maskValue == null)
+        if (!TryGetDrawingGroupOpacityMask(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var maskValue))
         {
             return false;
         }
@@ -2097,8 +2457,13 @@ internal static class WpfReflectionDrawingReplay
             return false;
         }
 
-        return TryReadFiniteRectProperty(drawingGroup, "Bounds", out bounds)
-            || TryInferDrawingGroupContentBounds(drawingGroup, imageSourceAdapter, out bounds);
+        return TryGetDrawingGroupBounds(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out bounds)
+            || TryInferDrawingGroupContentBounds(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                imageSourceAdapter,
+                out bounds);
     }
 
     internal static bool TryGetDrawingBounds(
@@ -2106,6 +2471,41 @@ internal static class WpfReflectionDrawingReplay
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out Rect bounds)
     {
+        if (TypeNameEndsWith(drawing, "DrawingGroup"))
+        {
+            var hasPortableDrawingGroupState = TryGetPortableDrawingGroupState(
+                drawing,
+                out var drawingGroupState);
+            if (TryGetDrawingGroupBounds(drawing, hasPortableDrawingGroupState, drawingGroupState, out bounds)
+                || TryInferDrawingGroupContentBounds(
+                    drawing,
+                    hasPortableDrawingGroupState,
+                    drawingGroupState,
+                    imageSourceAdapter,
+                    out bounds))
+            {
+                if (TryGetDrawingGroupTransform(
+                    drawing,
+                    hasPortableDrawingGroupState,
+                    drawingGroupState,
+                    out var transformValue))
+                {
+                    if (WpfReflectionResourceResolver.AdaptTransform(transformValue) is not { } transform)
+                    {
+                        bounds = default;
+                        return false;
+                    }
+
+                    bounds = TransformBounds(bounds, transform.Value);
+                }
+
+                return IsUsableRect(bounds, out bounds);
+            }
+
+            bounds = default;
+            return false;
+        }
+
         if (TryReadFiniteRectProperty(drawing, "Bounds", out bounds))
         {
             return true;
@@ -2131,23 +2531,6 @@ internal static class WpfReflectionDrawingReplay
             return TryGetPropertyValue(drawing, "GlyphRun", out var glyphRunValue)
                 && WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is { } glyphRun
                 && TryGetGlyphRunBounds(glyphRun, out bounds);
-        }
-
-        if (TypeNameEndsWith(drawing, "DrawingGroup")
-            && TryInferDrawingGroupContentBounds(drawing, imageSourceAdapter, out bounds))
-        {
-            if (TryGetPropertyValue(drawing, "Transform", out var transformValue) && transformValue != null)
-            {
-                if (WpfReflectionResourceResolver.AdaptTransform(transformValue) is not { } transform)
-                {
-                    bounds = default;
-                    return false;
-                }
-
-                bounds = TransformBounds(bounds, transform.Value);
-            }
-
-            return IsUsableRect(bounds, out bounds);
         }
 
         bounds = default;
@@ -2212,13 +2595,15 @@ internal static class WpfReflectionDrawingReplay
 
     private static bool TryInferDrawingGroupContentBounds(
         object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState,
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out Rect bounds)
     {
         var hasBounds = false;
         bounds = default;
 
-        foreach (var child in ExtractChildren(drawingGroup))
+        foreach (var child in ExtractChildren(drawingGroup, hasPortableDrawingGroupState, drawingGroupState))
         {
             if (!TryGetDrawingBounds(child, imageSourceAdapter, out var childBounds))
             {
@@ -2235,8 +2620,11 @@ internal static class WpfReflectionDrawingReplay
             return false;
         }
 
-        if (TryGetPropertyValue(drawingGroup, "ClipGeometry", out var clipValue)
-            && clipValue != null
+        if (TryGetDrawingGroupClipGeometry(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var clipValue)
             && WpfReflectionResourceResolver.AdaptGeometry(clipValue) is { } clipGeometry
             && IsUsableRect(clipGeometry.Bounds, out var clipBounds))
         {
@@ -2359,8 +2747,16 @@ internal static class WpfReflectionDrawingReplay
         return TryGetPropertyValue(instance, propertyName, out var value) && value != null;
     }
 
-    private static IReadOnlyList<object> ExtractChildren(object drawingGroup)
+    private static IReadOnlyList<object> ExtractChildren(
+        object drawingGroup,
+        bool hasPortableDrawingGroupState,
+        PortableDrawingGroupState? drawingGroupState)
     {
+        if (hasPortableDrawingGroupState)
+        {
+            return drawingGroupState!.Children ?? Array.Empty<object>();
+        }
+
         if (!TryGetPropertyValue(drawingGroup, "Children", out var children) || children == null)
         {
             return Array.Empty<object>();
@@ -2388,6 +2784,18 @@ internal static class WpfReflectionDrawingReplay
         }
 
         return result;
+    }
+
+    private static bool TryReadPortableRect(PortableRect portableRect, out Rect rectangle)
+    {
+        if (portableRect.IsEmpty)
+        {
+            rectangle = default;
+            return false;
+        }
+
+        rectangle = new Rect(portableRect.X, portableRect.Y, portableRect.Width, portableRect.Height);
+        return true;
     }
 
     private static bool TryReadRect(object rectValue, out Rect rectangle)

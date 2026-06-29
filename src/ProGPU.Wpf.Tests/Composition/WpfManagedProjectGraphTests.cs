@@ -5450,6 +5450,62 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void DrawingReplayPrefersPortableDrawingGroupState()
+    {
+        var replaySource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfReflectionDrawingReplay.cs"));
+        var drawingGroupSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "DrawingGroup.cs"));
+        var presentationCoreRef = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ref",
+            "PresentationCore.cs"));
+        var interopSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableDrawingGroupState.cs"));
+        var rendererTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeReflectionRendererTests.cs"));
+
+        Assert.Contains("using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;", replaySource, StringComparison.Ordinal);
+        Assert.Contains("drawingGroup is PortableDrawingGroupStateSource drawingGroupStateSource", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableDrawingGroupState(out var portableState)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("var hasPortableDrawingGroupState = TryGetPortableDrawingGroupState(", replaySource, StringComparison.Ordinal);
+        Assert.Contains("ExtractChildren(drawingGroup, hasPortableDrawingGroupState, drawingGroupState)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("return TryGetPropertyValue(drawingGroup, \"Transform\", out transform)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("DrawingGroup : Drawing, IPortableDrawingGroupStateSource", drawingGroupSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableDrawingGroupStateSource.TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)", drawingGroupSource, StringComparison.Ordinal);
+        Assert.Contains("CopyPortableDrawingGroupChildren(Children)", drawingGroupSource, StringComparison.Ordinal);
+        Assert.Contains("DrawingGroup : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableDrawingGroupStateSource", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasClipGeometry", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasBitmapScalingMode", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public object[] Children", interopSource, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeAppliesPortableDrawingGroupStateWithoutReflection", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeDoesNotReflectAbsentPortableDrawingGroupState", rendererTests, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void VisualTreeRendererPrefersPortableVisualLayoutState()
     {
         var rendererSource = File.ReadAllText(FindRepoPath(

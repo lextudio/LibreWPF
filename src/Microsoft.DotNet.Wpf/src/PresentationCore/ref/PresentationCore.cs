@@ -5807,7 +5807,7 @@ namespace System.Windows.Media
         public static System.IDisposable PushObjectSinkFactory(System.Func<object, System.Windows.Media.IPortableRenderDataDrawingContextSink> sinkFactory) { throw null; }
     }
     [System.Windows.Markup.ContentPropertyAttribute("Children")]
-    public sealed partial class DrawingGroup : System.Windows.Media.Drawing
+    public sealed partial class DrawingGroup : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource
     {
         public static readonly System.Windows.DependencyProperty BitmapEffectInputProperty;
         public static readonly System.Windows.DependencyProperty BitmapEffectProperty;
@@ -5826,6 +5826,7 @@ namespace System.Windows.Media
         public double Opacity { get { throw null; } set { } }
         public System.Windows.Media.Brush OpacityMask { get { throw null; } set { } }
         public System.Windows.Media.Transform Transform { get { throw null; } set { } }
+        bool ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource.TryGetPortableDrawingGroupState(out ProGPU.Wpf.Interop.PortableDrawingGroupState state) { throw null; }
         public System.Windows.Media.DrawingContext Append() { throw null; }
         public new System.Windows.Media.DrawingGroup Clone() { throw null; }
         public new System.Windows.Media.DrawingGroup CloneCurrentValue() { throw null; }

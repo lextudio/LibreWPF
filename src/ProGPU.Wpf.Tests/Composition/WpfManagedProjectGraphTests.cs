@@ -11192,6 +11192,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableBrushSourceAbsenceDoesNotFallBackToReflectedBrushShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("PortablePenSourceAbsenceDoesNotFallBackToReflectedPenShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("PortableTransformSourceAbsenceDoesNotFallBackToReflectedTransformShape", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativeBrushDoesNotStringProbeUnadaptableBrushTransform", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodePushTransformRejectsReflectedMatrixShapeWithoutPortableContract", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptGlyphRunSkipsUnavailablePortableGlyphRunWithoutReflectionFallback", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("return portableBrushSource.TryGetPortableBrush(out var portableBrush)", wpfReflectionResourceResolver, StringComparison.Ordinal);
@@ -11209,6 +11210,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryAssignDashStyle", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("GetType(\"System.Windows.Media.DashStyle\"", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain(".ToNative(ToMediaRect", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("HasNonIdentityBrushTransform", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("transformValue.ToString()", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("geometry is PortableGeometryPathSource portableGeometry", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("portableGeometry.TryGetPortableGeometryPath(out var portablePath)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryConvertPortableGeometryPath(portablePath", proGpuWpfCommandSink, StringComparison.Ordinal);

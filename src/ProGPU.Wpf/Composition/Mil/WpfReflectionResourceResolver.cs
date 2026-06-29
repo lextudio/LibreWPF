@@ -340,12 +340,16 @@ public sealed class WpfReflectionResourceResolver :
         nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
         nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
         ApplyBrushOpacity(resource, nativeBrush);
+        var transform = ReadBrushTransform(resource, "Transform", out var unsupportedTransformCount);
+        var relativeTransform = ReadBrushTransform(resource, "RelativeTransform", out var unsupportedRelativeTransformCount);
         return new ProGpuNativeBrush(
             nativeBrush,
             ReadBrushMappingMode(resource),
-            ReadBrushTransform(resource, "Transform"),
-            ReadBrushTransform(resource, "RelativeTransform"),
-            CountUnsupportedGradientState(stopsTruncated, unsupportedColorInterpolationMode));
+            transform,
+            relativeTransform,
+            CountUnsupportedGradientState(stopsTruncated, unsupportedColorInterpolationMode)
+                + unsupportedTransformCount
+                + unsupportedRelativeTransformCount);
     }
 
     private static MediaBrush CreateRadialGradientBrush(
@@ -366,12 +370,16 @@ public sealed class WpfReflectionResourceResolver :
         nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
         nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
         ApplyBrushOpacity(resource, nativeBrush);
+        var transform = ReadBrushTransform(resource, "Transform", out var unsupportedTransformCount);
+        var relativeTransform = ReadBrushTransform(resource, "RelativeTransform", out var unsupportedRelativeTransformCount);
         return new ProGpuNativeBrush(
             nativeBrush,
             ReadBrushMappingMode(resource),
-            ReadBrushTransform(resource, "Transform"),
-            ReadBrushTransform(resource, "RelativeTransform"),
-            CountUnsupportedGradientState(stopsTruncated, unsupportedColorInterpolationMode));
+            transform,
+            relativeTransform,
+            CountUnsupportedGradientState(stopsTruncated, unsupportedColorInterpolationMode)
+                + unsupportedTransformCount
+                + unsupportedRelativeTransformCount);
     }
 
     internal static global::ProGPU.Vector.Brush? AdaptNativeBrush(
@@ -415,15 +423,24 @@ public sealed class WpfReflectionResourceResolver :
         {
             var mappingMode = ReadBrushMappingMode(resource);
             var nativeBrush = new global::ProGPU.Vector.LinearGradientBrush(
-                MapBrushPoint(startPoint, mappingMode, bounds),
-                MapBrushPoint(endPoint, mappingMode, bounds),
+                new Vector2((float)startPoint.X, (float)startPoint.Y),
+                new Vector2((float)endPoint.X, (float)endPoint.Y),
                 linearStops);
             nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
             nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
             ApplyBrushOpacity(resource, nativeBrush);
-            unsupportedStateCount += CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode);
-            unsupportedStateCount += CountUnsupportedBrushTransforms(resource);
-            return nativeBrush;
+            var transform = ReadBrushTransform(resource, "Transform", out var unsupportedTransformCount);
+            var relativeTransform = ReadBrushTransform(resource, "RelativeTransform", out var unsupportedRelativeTransformCount);
+            var wrappedBrush = new ProGpuNativeBrush(
+                nativeBrush,
+                mappingMode,
+                transform,
+                relativeTransform,
+                CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode)
+                    + unsupportedTransformCount
+                    + unsupportedRelativeTransformCount);
+            unsupportedStateCount += wrappedBrush.CountUnsupportedStateForBounds(bounds);
+            return wrappedBrush.ToNative(bounds);
         }
 
         if (TypeNameEndsWith(resource, "RadialGradientBrush")
@@ -436,19 +453,27 @@ public sealed class WpfReflectionResourceResolver :
             && TryReadGradientStops(resource, out var radialStops, out var radialStopsTruncated))
         {
             var mappingMode = ReadBrushMappingMode(resource);
-            var hasUsableBounds = mappingMode == ProGpuBrushMappingMode.RelativeToBoundingBox && IsUsable(bounds);
             var nativeBrush = new global::ProGPU.Vector.RadialGradientBrush(
-                MapBrushPoint(center, mappingMode, bounds),
-                MapBrushPoint(gradientOrigin, mappingMode, bounds),
-                hasUsableBounds ? (float)(radiusX * bounds.Width) : (float)radiusX,
-                hasUsableBounds ? (float)(radiusY * bounds.Height) : (float)radiusY,
+                new Vector2((float)center.X, (float)center.Y),
+                new Vector2((float)gradientOrigin.X, (float)gradientOrigin.Y),
+                (float)radiusX,
+                (float)radiusY,
                 radialStops);
             nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
             nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
             ApplyBrushOpacity(resource, nativeBrush);
-            unsupportedStateCount += CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode);
-            unsupportedStateCount += CountUnsupportedBrushTransforms(resource);
-            return nativeBrush;
+            var transform = ReadBrushTransform(resource, "Transform", out var unsupportedTransformCount);
+            var relativeTransform = ReadBrushTransform(resource, "RelativeTransform", out var unsupportedRelativeTransformCount);
+            var wrappedBrush = new ProGpuNativeBrush(
+                nativeBrush,
+                mappingMode,
+                transform,
+                relativeTransform,
+                CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode)
+                    + unsupportedTransformCount
+                    + unsupportedRelativeTransformCount);
+            unsupportedStateCount += wrappedBrush.CountUnsupportedStateForBounds(bounds);
+            return wrappedBrush.ToNative(bounds);
         }
 
         if (TypeNameEndsWith(resource, "SolidColorBrush")
@@ -524,50 +549,6 @@ public sealed class WpfReflectionResourceResolver :
             ReadVectorLineCap(resource, "DashCap"),
             dashArray,
             dashOffset);
-    }
-
-    private static Vector2 MapBrushPoint(
-        WpfReplayPoint point,
-        ProGpuBrushMappingMode mappingMode,
-        WpfReplayRect bounds)
-    {
-        if (mappingMode != ProGpuBrushMappingMode.RelativeToBoundingBox || !IsUsable(bounds))
-        {
-            return new Vector2((float)point.X, (float)point.Y);
-        }
-
-        return new Vector2(
-            (float)(bounds.X + point.X * bounds.Width),
-            (float)(bounds.Y + point.Y * bounds.Height));
-    }
-
-    private static int CountUnsupportedBrushTransforms(object resource)
-    {
-        var count = 0;
-        if (HasNonIdentityBrushTransform(resource, "Transform"))
-        {
-            count++;
-        }
-
-        if (HasNonIdentityBrushTransform(resource, "RelativeTransform"))
-        {
-            count++;
-        }
-
-        return count;
-    }
-
-    private static bool HasNonIdentityBrushTransform(object resource, string propertyName)
-    {
-        if (!TryGetPropertyValue(resource, propertyName, out var transformValue) || transformValue == null)
-        {
-            return false;
-        }
-
-        var text = transformValue.ToString();
-        return !string.IsNullOrWhiteSpace(text)
-            && !string.Equals(text, "Identity", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(text, transformValue.GetType().FullName, StringComparison.Ordinal);
     }
 
     private static global::ProGPU.Vector.PenLineJoin ReadVectorLineJoin(object pen)
@@ -758,15 +739,22 @@ public sealed class WpfReflectionResourceResolver :
         return global::ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation;
     }
 
-    private static Matrix4x4? ReadBrushTransform(object resource, string propertyName)
+    private static Matrix4x4? ReadBrushTransform(object resource, string propertyName, out int unsupportedStateCount)
     {
+        unsupportedStateCount = 0;
         if (!TryGetPropertyValue(resource, propertyName, out var transformValue)
             || transformValue == null)
         {
             return null;
         }
 
-        if (!TryAdaptTransformMatrix(transformValue, out var transform) || IsIdentityMatrix(transform))
+        if (!TryAdaptTransformMatrix(transformValue, out var transform))
+        {
+            unsupportedStateCount = 1;
+            return null;
+        }
+
+        if (IsIdentityMatrix(transform))
         {
             return null;
         }

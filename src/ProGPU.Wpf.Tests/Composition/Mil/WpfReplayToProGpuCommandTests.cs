@@ -186,8 +186,8 @@ public sealed class WpfReplayToProGpuCommandTests
             sink,
             resolver);
 
-        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.Equal(0, sink.UnsupportedStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
+        Assert.Equal(1, sink.UnsupportedStateCount);
         var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(Assert.Single(nativeContext.Commands).Brush);
         Assert.Equal(ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation, nativeBrush.ColorInterpolationMode);
     }
@@ -418,8 +418,8 @@ public sealed class WpfReplayToProGpuCommandTests
             sink,
             resolver);
 
-        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.Equal(0, sink.UnsupportedStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
+        Assert.Equal(1, sink.UnsupportedStateCount);
         var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(Assert.Single(nativeContext.Commands).Brush);
         Assert.Equal(Matrix4x4.Identity, nativeBrush.CoordinateTransform);
     }

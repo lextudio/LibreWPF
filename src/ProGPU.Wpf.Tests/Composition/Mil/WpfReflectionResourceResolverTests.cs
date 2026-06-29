@@ -178,6 +178,77 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void AdaptNativeBrushAppliesPortableMatrixBrushTransform()
+    {
+        var brush = new FakeLinearGradientBrush(
+            new FakePoint(0, 0),
+            new FakePoint(10, 0),
+            new FakeGradientStop(new FakeColor(255, 255, 0, 0), 0),
+            new FakeGradientStop(new FakeColor(255, 0, 0, 255), 1))
+        {
+            MappingMode = "Absolute",
+            Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 5, 7))
+        };
+
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 100, 100),
+            out var unsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        var linearBrush = Assert.IsType<ProGpuLinearGradientBrush>(nativeBrush);
+        Assert.Equal(-5, linearBrush.CoordinateTransform.M41);
+        Assert.Equal(-7, linearBrush.CoordinateTransform.M42);
+    }
+
+    [Fact]
+    public void AdaptNativeBrushCountsNonInvertiblePortableMatrixBrushTransform()
+    {
+        var brush = new FakeLinearGradientBrush(
+            new FakePoint(0, 0),
+            new FakePoint(10, 0),
+            new FakeGradientStop(new FakeColor(255, 255, 0, 0), 0),
+            new FakeGradientStop(new FakeColor(255, 0, 0, 255), 1))
+        {
+            MappingMode = "Absolute",
+            Transform = new FakeMatrixTransform(new FakeMatrix(0, 0, 0, 1, 0, 0))
+        };
+
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 100, 100),
+            out var unsupportedStateCount);
+
+        Assert.Equal(1, unsupportedStateCount);
+        var linearBrush = Assert.IsType<ProGpuLinearGradientBrush>(nativeBrush);
+        Assert.Equal(Matrix4x4.Identity, linearBrush.CoordinateTransform);
+    }
+
+    [Fact]
+    public void AdaptNativeBrushDoesNotStringProbeUnadaptableBrushTransform()
+    {
+        var transform = new ThrowingStringTransform();
+        var brush = new FakeLinearGradientBrush(
+            new FakePoint(0, 0),
+            new FakePoint(10, 0),
+            new FakeGradientStop(new FakeColor(255, 255, 0, 0), 0),
+            new FakeGradientStop(new FakeColor(255, 0, 0, 255), 1))
+        {
+            MappingMode = "Absolute",
+            Transform = transform
+        };
+
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 100, 100),
+            out var unsupportedStateCount);
+
+        Assert.Equal(1, unsupportedStateCount);
+        Assert.NotNull(nativeBrush);
+        Assert.Equal(0, transform.StringProbeCount);
+    }
+
+    [Fact]
     public void AdaptNativePenUsesPortableSolidBrushAndPen()
     {
         var pen = new FakePortablePen(
@@ -3413,6 +3484,12 @@ public sealed class WpfReflectionResourceResolverTests
         public string SpreadMethod { get; init; } = "Pad";
 
         public string ColorInterpolationMode { get; init; } = "SRgbLinearInterpolation";
+
+        public string MappingMode { get; init; } = "RelativeToBoundingBox";
+
+        public object? Transform { get; init; }
+
+        public object? RelativeTransform { get; init; }
     }
 
     private sealed class FakeRadialGradientBrush
@@ -3439,6 +3516,23 @@ public sealed class WpfReflectionResourceResolverTests
         public string SpreadMethod { get; init; } = "Pad";
 
         public string ColorInterpolationMode { get; init; } = "SRgbLinearInterpolation";
+
+        public string MappingMode { get; init; } = "RelativeToBoundingBox";
+
+        public object? Transform { get; init; }
+
+        public object? RelativeTransform { get; init; }
+    }
+
+    private sealed class ThrowingStringTransform
+    {
+        public int StringProbeCount { get; private set; }
+
+        public override string ToString()
+        {
+            StringProbeCount++;
+            throw new InvalidOperationException("Brush transform should not be string-probed.");
+        }
     }
 
     private sealed class FakeImageBrush

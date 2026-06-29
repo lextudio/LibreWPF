@@ -70,8 +70,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     };
     private static readonly string[] s_fieldNames =
     {
-        "_content",
-        "_drawingContent",
         "_floatRegisters",
         "_samplerData",
         "_brush",

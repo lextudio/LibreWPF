@@ -770,10 +770,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("renderDataSnapshot.DependentResources", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("EnumerateTrackedDependenciesUsesPortableDrawingAndRenderDataSources", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("PortableDrawingRenderDataDependencyChangeMarksTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
-        Assert.True(
-            proGpuInvalidationTracker.IndexOf("foreach (var dependency in EnumeratePortableDependencies(source))", StringComparison.Ordinal)
-                < proGpuInvalidationTracker.IndexOf("foreach (var fieldName in s_fieldNames)", StringComparison.Ordinal),
-            "The invalidation tracker must traverse typed retained-content dependencies before reflected private fields.");
+        Assert.Contains("EnumerateTrackedDependenciesIgnoresNonPortablePrivateDrawingContentGraph", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.Contains("NonPortablePrivateDrawingContentChangeDoesNotMarkTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_content\"", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"_drawingContent\"", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableVisualState(source, out var visualState)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableVisualStateSource visualStateSource", proGpuInvalidationTracker, StringComparison.Ordinal);

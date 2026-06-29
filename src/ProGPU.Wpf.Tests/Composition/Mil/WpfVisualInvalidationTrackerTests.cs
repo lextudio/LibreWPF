@@ -482,7 +482,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
-    public void EnumerateTrackedDependenciesIncludesPrivateDrawingContentGraph()
+    public void EnumerateTrackedDependenciesIgnoresNonPortablePrivateDrawingContentGraph()
     {
         var brush = new FakeResource();
         var content = new FakeRenderContent
@@ -494,8 +494,8 @@ public sealed class WpfVisualInvalidationTrackerTests
         var dependencies = WpfVisualInvalidationTracker.EnumerateTrackedDependencies(root);
 
         Assert.Contains(root, dependencies);
-        Assert.Contains(content, dependencies);
-        Assert.Contains(brush, dependencies);
+        Assert.DoesNotContain(content, dependencies);
+        Assert.DoesNotContain(brush, dependencies);
     }
 
     [Fact]
@@ -543,7 +543,7 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
-    public void PrivateDrawingContentChangeMarksTrackerDirty()
+    public void NonPortablePrivateDrawingContentChangeDoesNotMarkTrackerDirty()
     {
         var brush = new FakeResource();
         var root = new FakeUiElementVisual(new FakeRenderContent
@@ -556,9 +556,9 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         brush.RaiseChanged();
 
-        Assert.True(tracker.IsDirty);
-        Assert.Same(brush, tracker.LastDirtySource);
-        Assert.Contains(brush, tracker.DirtySources);
+        Assert.False(tracker.IsDirty);
+        Assert.Null(tracker.LastDirtySource);
+        Assert.DoesNotContain(brush, tracker.DirtySources);
     }
 
     [Fact]

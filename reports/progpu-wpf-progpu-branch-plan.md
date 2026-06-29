@@ -22,6 +22,8 @@ Retained visual content extraction should remain typed-only. `WpfVisualContentRe
 
 Render-data extraction itself should also remain typed-only. `WpfRenderDataReflectionBridge` now consumes `IPortableRenderDataSource` snapshots directly and should not regain `RenderData` private-field or dependent-resource collection reflection; source-built WPF must publish active bytes and dependent resources through the portable snapshot contract.
 
+Retained invalidation dependency traversal should use those same typed seams. `WpfVisualInvalidationTracker` should traverse retained visual content through `IPortableDrawingContentSource` and render-data dependent resources through `IPortableRenderDataSource`, not through `_content` or `_drawingContent` private-field scans.
+
 ## Current Branch State
 
 The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and-leaks`. The branch has been fast-forwarded to the latest origin commits and now includes:

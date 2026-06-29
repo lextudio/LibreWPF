@@ -1344,6 +1344,40 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeAppliesPortableVisualRenderingHintsWithoutReflection()
+    {
+        var root = new ThrowingPortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(0, 0),
+                HasOpacity = true,
+                Opacity = 1,
+                HasBitmapScalingMode = true,
+                BitmapScalingMode = new FakeRenderingHint("NearestNeighbor"),
+                HasEdgeMode = true,
+                EdgeMode = new FakeRenderingHint("Aliased"),
+                HasTextRenderingMode = true,
+                TextRenderingMode = new FakeRenderingHint("ClearType"),
+                HasTextHintingMode = true,
+                TextHintingMode = new FakeRenderingHint("Fixed")
+            });
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushBitmapScalingMode", "PushEdgeMode", "PushTextRenderingMode", "PushTextHintingMode", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "NearestNeighbor" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(new[] { "Aliased" }, sink.EdgeModes.Select(mode => mode?.ToString()));
+        Assert.Equal(new[] { "ClearType" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(new[] { "Fixed" }, sink.TextHintingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(0, root.ReflectedStateProbeCount);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreePushesNativeBlurEffectWhenSinkSupportsVisualEffects()
     {
         var root = new FakeVisual
@@ -2148,6 +2182,16 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public object? BitmapEffectInput => ThrowReflectedStateProbe();
 
         public object? CacheMode => ThrowReflectedStateProbe();
+
+        public object? BitmapScalingMode => ThrowReflectedStateProbe();
+
+        public object? EdgeMode => ThrowReflectedStateProbe();
+
+        public object? ClearTypeHint => ThrowReflectedStateProbe();
+
+        public object? TextRenderingMode => ThrowReflectedStateProbe();
+
+        public object? TextHintingMode => ThrowReflectedStateProbe();
 
         public object? XSnappingGuidelines => ThrowReflectedStateProbe();
 

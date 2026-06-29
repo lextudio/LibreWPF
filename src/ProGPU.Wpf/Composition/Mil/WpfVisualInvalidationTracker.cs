@@ -703,6 +703,31 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 builder.SetCacheMode(visualState.CacheMode);
             }
 
+            if (visualState.HasBitmapScalingMode)
+            {
+                builder.SetBitmapScalingMode(visualState.BitmapScalingMode);
+            }
+
+            if (visualState.HasEdgeMode)
+            {
+                builder.SetEdgeMode(visualState.EdgeMode);
+            }
+
+            if (visualState.HasClearTypeHint)
+            {
+                builder.SetClearTypeHint(visualState.ClearTypeHint);
+            }
+
+            if (visualState.HasTextRenderingMode)
+            {
+                builder.SetTextRenderingMode(visualState.TextRenderingMode);
+            }
+
+            if (visualState.HasTextHintingMode)
+            {
+                builder.SetTextHintingMode(visualState.TextHintingMode);
+            }
+
             if (visualState.HasSnappingGuidelinesX)
             {
                 builder.SetSnappingGuidelinesX(visualState.SnappingGuidelinesX);
@@ -1306,6 +1331,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             object? bitmapEffectInputReference,
             bool hasCacheModeProperty,
             object? cacheModeReference,
+            bool hasBitmapScalingMode,
+            object? bitmapScalingMode,
+            bool hasEdgeMode,
+            object? edgeMode,
+            bool hasClearTypeHint,
+            object? clearTypeHint,
+            bool hasTextRenderingMode,
+            object? textRenderingMode,
+            bool hasTextHintingMode,
+            object? textHintingMode,
             bool hasSnappingGuidelinesX,
             double[]? snappingGuidelinesX,
             bool hasSnappingGuidelinesY,
@@ -1349,6 +1384,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             BitmapEffectInputReference = bitmapEffectInputReference;
             HasCacheModeProperty = hasCacheModeProperty;
             CacheModeReference = cacheModeReference;
+            HasBitmapScalingMode = hasBitmapScalingMode;
+            BitmapScalingMode = bitmapScalingMode;
+            HasEdgeMode = hasEdgeMode;
+            EdgeMode = edgeMode;
+            HasClearTypeHint = hasClearTypeHint;
+            ClearTypeHint = clearTypeHint;
+            HasTextRenderingMode = hasTextRenderingMode;
+            TextRenderingMode = textRenderingMode;
+            HasTextHintingMode = hasTextHintingMode;
+            TextHintingMode = textHintingMode;
             HasSnappingGuidelinesX = hasSnappingGuidelinesX;
             SnappingGuidelinesX = snappingGuidelinesX ?? Array.Empty<double>();
             HasSnappingGuidelinesY = hasSnappingGuidelinesY;
@@ -1428,6 +1473,26 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         private object? CacheModeReference { get; }
 
+        private bool HasBitmapScalingMode { get; }
+
+        private object? BitmapScalingMode { get; }
+
+        private bool HasEdgeMode { get; }
+
+        private object? EdgeMode { get; }
+
+        private bool HasClearTypeHint { get; }
+
+        private object? ClearTypeHint { get; }
+
+        private bool HasTextRenderingMode { get; }
+
+        private object? TextRenderingMode { get; }
+
+        private bool HasTextHintingMode { get; }
+
+        private object? TextHintingMode { get; }
+
         private bool HasSnappingGuidelinesX { get; }
 
         private double[] SnappingGuidelinesX { get; }
@@ -1479,6 +1544,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 ReferenceEquals(BitmapEffectInputReference, other.BitmapEffectInputReference) &&
                 HasCacheModeProperty == other.HasCacheModeProperty &&
                 ReferenceEquals(CacheModeReference, other.CacheModeReference) &&
+                HasBitmapScalingMode == other.HasBitmapScalingMode &&
+                Equals(BitmapScalingMode, other.BitmapScalingMode) &&
+                HasEdgeMode == other.HasEdgeMode &&
+                Equals(EdgeMode, other.EdgeMode) &&
+                HasClearTypeHint == other.HasClearTypeHint &&
+                Equals(ClearTypeHint, other.ClearTypeHint) &&
+                HasTextRenderingMode == other.HasTextRenderingMode &&
+                Equals(TextRenderingMode, other.TextRenderingMode) &&
+                HasTextHintingMode == other.HasTextHintingMode &&
+                Equals(TextHintingMode, other.TextHintingMode) &&
                 HasSnappingGuidelinesX == other.HasSnappingGuidelinesX &&
                 DoubleArraysEqual(SnappingGuidelinesX, other.SnappingGuidelinesX) &&
                 HasSnappingGuidelinesY == other.HasSnappingGuidelinesY &&
@@ -1531,6 +1606,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             hash.Add(GetReferenceHashCode(BitmapEffectInputReference));
             hash.Add(HasCacheModeProperty);
             hash.Add(GetReferenceHashCode(CacheModeReference));
+            hash.Add(HasBitmapScalingMode);
+            hash.Add(BitmapScalingMode);
+            hash.Add(HasEdgeMode);
+            hash.Add(EdgeMode);
+            hash.Add(HasClearTypeHint);
+            hash.Add(ClearTypeHint);
+            hash.Add(HasTextRenderingMode);
+            hash.Add(TextRenderingMode);
+            hash.Add(HasTextHintingMode);
+            hash.Add(TextHintingMode);
             hash.Add(HasSnappingGuidelinesX);
             AddDoubleArrayHash(ref hash, SnappingGuidelinesX);
             hash.Add(HasSnappingGuidelinesY);
@@ -1616,6 +1701,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private object? _bitmapEffectInputReference;
         private bool _hasCacheModeProperty;
         private object? _cacheModeReference;
+        private bool _hasBitmapScalingMode;
+        private object? _bitmapScalingMode;
+        private bool _hasEdgeMode;
+        private object? _edgeMode;
+        private bool _hasClearTypeHint;
+        private object? _clearTypeHint;
+        private bool _hasTextRenderingMode;
+        private object? _textRenderingMode;
+        private bool _hasTextHintingMode;
+        private object? _textHintingMode;
         private bool _hasSnappingGuidelinesX;
         private double[]? _snappingGuidelinesX;
         private bool _hasSnappingGuidelinesY;
@@ -1739,6 +1834,41 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             _cacheModeReference = cacheMode;
         }
 
+        public void SetBitmapScalingMode(object? bitmapScalingMode)
+        {
+            HasState = true;
+            _hasBitmapScalingMode = true;
+            _bitmapScalingMode = bitmapScalingMode;
+        }
+
+        public void SetEdgeMode(object? edgeMode)
+        {
+            HasState = true;
+            _hasEdgeMode = true;
+            _edgeMode = edgeMode;
+        }
+
+        public void SetClearTypeHint(object? clearTypeHint)
+        {
+            HasState = true;
+            _hasClearTypeHint = true;
+            _clearTypeHint = clearTypeHint;
+        }
+
+        public void SetTextRenderingMode(object? textRenderingMode)
+        {
+            HasState = true;
+            _hasTextRenderingMode = true;
+            _textRenderingMode = textRenderingMode;
+        }
+
+        public void SetTextHintingMode(object? textHintingMode)
+        {
+            HasState = true;
+            _hasTextHintingMode = true;
+            _textHintingMode = textHintingMode;
+        }
+
         public void SetSnappingGuidelinesX(double[]? guidelines)
         {
             HasState = true;
@@ -1799,6 +1929,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 _bitmapEffectInputReference,
                 _hasCacheModeProperty,
                 _cacheModeReference,
+                _hasBitmapScalingMode,
+                _bitmapScalingMode,
+                _hasEdgeMode,
+                _edgeMode,
+                _hasClearTypeHint,
+                _clearTypeHint,
+                _hasTextRenderingMode,
+                _textRenderingMode,
+                _hasTextHintingMode,
+                _textHintingMode,
                 _hasSnappingGuidelinesX,
                 _snappingGuidelinesX,
                 _hasSnappingGuidelinesY,

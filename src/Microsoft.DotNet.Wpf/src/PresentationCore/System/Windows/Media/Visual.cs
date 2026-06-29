@@ -2560,6 +2560,11 @@ namespace System.Windows.Media
             BitmapEffect bitmapEffect = VisualBitmapEffectInternal;
             BitmapEffectInput bitmapEffectInput = VisualBitmapEffectInputInternal;
             CacheMode cacheMode = VisualCacheMode;
+            BitmapScalingMode bitmapScalingMode = VisualBitmapScalingMode;
+            EdgeMode edgeMode = VisualEdgeMode;
+            ClearTypeHint clearTypeHint = VisualClearTypeHint;
+            TextRenderingMode textRenderingMode = VisualTextRenderingMode;
+            TextHintingMode textHintingMode = VisualTextHintingMode;
             DoubleCollection guidelinesX = VisualXSnappingGuidelines;
             DoubleCollection guidelinesY = VisualYSnappingGuidelines;
 
@@ -2591,6 +2596,16 @@ namespace System.Windows.Media
                 BitmapEffectInput = bitmapEffectInput,
                 HasCacheMode = cacheMode != null,
                 CacheMode = cacheMode,
+                HasBitmapScalingMode = bitmapScalingMode != BitmapScalingMode.Unspecified,
+                BitmapScalingMode = bitmapScalingMode,
+                HasEdgeMode = edgeMode != EdgeMode.Unspecified,
+                EdgeMode = edgeMode,
+                HasClearTypeHint = clearTypeHint != ClearTypeHint.Auto,
+                ClearTypeHint = clearTypeHint,
+                HasTextRenderingMode = textRenderingMode != TextRenderingMode.Auto,
+                TextRenderingMode = textRenderingMode,
+                HasTextHintingMode = textHintingMode != TextHintingMode.Auto,
+                TextHintingMode = textHintingMode,
                 HasSnappingGuidelinesX = guidelinesX != null,
                 SnappingGuidelinesX = CopyPortableVisualGuidelines(guidelinesX),
                 HasSnappingGuidelinesY = guidelinesY != null,

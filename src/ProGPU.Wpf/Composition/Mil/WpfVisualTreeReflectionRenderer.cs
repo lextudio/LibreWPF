@@ -570,6 +570,66 @@ public sealed class WpfVisualTreeReflectionRenderer
         return TryGetPropertyValue(visual, "CacheMode", out cacheMode) && cacheMode != null;
     }
 
+    private static bool TryGetVisualBitmapScalingMode(object visual, out object? bitmapScalingMode)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            bitmapScalingMode = visualState.BitmapScalingMode;
+            return visualState.HasBitmapScalingMode && bitmapScalingMode != null;
+        }
+
+        return TryGetPropertyValue(visual, "BitmapScalingMode", out bitmapScalingMode)
+            && WpfBitmapScalingModeReflection.HasExplicitValue(bitmapScalingMode);
+    }
+
+    private static bool TryGetVisualEdgeMode(object visual, out object? edgeMode)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            edgeMode = visualState.EdgeMode;
+            return visualState.HasEdgeMode && edgeMode != null;
+        }
+
+        return TryGetPropertyValue(visual, "EdgeMode", out edgeMode)
+            && WpfEdgeModeReflection.HasExplicitValue(edgeMode);
+    }
+
+    private static bool TryGetVisualClearTypeHint(object visual, out object? clearTypeHint)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            clearTypeHint = visualState.ClearTypeHint;
+            return visualState.HasClearTypeHint && clearTypeHint != null;
+        }
+
+        return TryGetPropertyValue(visual, "ClearTypeHint", out clearTypeHint)
+            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint);
+    }
+
+    private static bool TryGetVisualTextRenderingMode(object visual, out object? textRenderingMode)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            textRenderingMode = visualState.TextRenderingMode;
+            return visualState.HasTextRenderingMode && textRenderingMode != null;
+        }
+
+        return TryGetPropertyValue(visual, "TextRenderingMode", out textRenderingMode)
+            && WpfTextRenderingModeReflection.HasExplicitValue(textRenderingMode);
+    }
+
+    private static bool TryGetVisualTextHintingMode(object visual, out object? textHintingMode)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState))
+        {
+            textHintingMode = visualState.TextHintingMode;
+            return visualState.HasTextHintingMode && textHintingMode != null;
+        }
+
+        return TryGetPropertyValue(visual, "TextHintingMode", out textHintingMode)
+            && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode);
+    }
+
     private static bool TryCreateSingleNativeRetainedVisualScopeState(
         object visual,
         Vector2 offset,
@@ -988,8 +1048,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             popCount++;
         }
 
-        if (TryGetPropertyValue(visual, "BitmapScalingMode", out var bitmapScalingMode)
-            && WpfBitmapScalingModeReflection.HasExplicitValue(bitmapScalingMode))
+        if (TryGetVisualBitmapScalingMode(visual, out var bitmapScalingMode))
         {
             if (WpfBitmapScalingModeReflection.IsSupported(bitmapScalingMode))
             {
@@ -1002,8 +1061,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
         }
 
-        if (TryGetPropertyValue(visual, "EdgeMode", out var edgeMode)
-            && WpfEdgeModeReflection.HasExplicitValue(edgeMode))
+        if (TryGetVisualEdgeMode(visual, out var edgeMode))
         {
             if (WpfEdgeModeReflection.IsSupported(edgeMode))
             {
@@ -1017,8 +1075,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         var pushedTextRenderingMode = false;
-        if (TryGetPropertyValue(visual, "TextRenderingMode", out var textRenderingMode)
-            && WpfTextRenderingModeReflection.HasExplicitValue(textRenderingMode))
+        if (TryGetVisualTextRenderingMode(visual, out var textRenderingMode))
         {
             if (WpfTextRenderingModeReflection.IsSupported(textRenderingMode))
             {
@@ -1033,16 +1090,14 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         if (!pushedTextRenderingMode
-            && TryGetPropertyValue(visual, "ClearTypeHint", out var clearTypeHint)
-            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
+            && TryGetVisualClearTypeHint(visual, out var clearTypeHint)
             && WpfTextRenderingModeReflection.TryMapClearTypeHintToTextRenderingMode(clearTypeHint, out var clearTypeMode))
         {
             sink.PushTextRenderingMode(clearTypeMode);
             popCount++;
         }
 
-        if (TryGetPropertyValue(visual, "TextHintingMode", out var textHintingMode)
-            && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode))
+        if (TryGetVisualTextHintingMode(visual, out var textHintingMode))
         {
             if (WpfTextRenderingModeReflection.IsSupportedTextHintingMode(textHintingMode))
             {
@@ -1075,8 +1130,7 @@ public sealed class WpfVisualTreeReflectionRenderer
     {
         var count = 0;
 
-        if (TryGetPropertyValue(visual, "ClearTypeHint", out var clearTypeHint)
-            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
+        if (TryGetVisualClearTypeHint(visual, out var clearTypeHint)
             && !WpfTextRenderingModeReflection.IsSupportedClearTypeHint(clearTypeHint))
         {
             count++;

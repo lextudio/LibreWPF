@@ -327,6 +327,22 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.Same(root, tracker.LastDirtySource);
 
         tracker.ConsumeDirty();
+        state.HasBitmapScalingMode = true;
+        state.BitmapScalingMode = "NearestNeighbor";
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+
+        tracker.ConsumeDirty();
+        state.HasTextRenderingMode = true;
+        state.TextRenderingMode = "ClearType";
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+
+        tracker.ConsumeDirty();
         state.HasSnappingGuidelinesX = true;
         state.SnappingGuidelinesX = new[] { 10d, 20d };
 

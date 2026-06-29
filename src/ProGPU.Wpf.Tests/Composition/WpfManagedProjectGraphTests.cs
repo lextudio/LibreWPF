@@ -785,6 +785,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SetOpacityMask(object? opacityMask)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("visualState.HasEffect", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("visualState.HasCacheMode", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("visualState.HasBitmapScalingMode", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("visualState.HasTextRenderingMode", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("visualState.HasSnappingGuidelinesX", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("PortableVisualStateChangeMarksTrackerDirtyWithoutEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.True(
@@ -5419,6 +5421,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RegisterRetainedVisualDependency(visualState.Effect, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualDependency(visualState.CacheMode, sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryGetVisualEffect(visual, out var effect)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetVisualBitmapScalingMode(visual, out var bitmapScalingMode)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetVisualTextRenderingMode(visual, out var textRenderingMode)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("visualState.HasSnappingGuidelinesX || visualState.HasSnappingGuidelinesY", rendererSource, StringComparison.Ordinal);
         Assert.Contains("RegisterRetainedVisualPropertyDependency(visual, \"Transform\", sink)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource", visualSource, StringComparison.Ordinal);
@@ -5430,14 +5434,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("VisualEffectInternal", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualBitmapEffectInternal", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualCacheMode", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualBitmapScalingMode", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualTextRenderingMode", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualXSnappingGuidelines", visualSource, StringComparison.Ordinal);
         Assert.Contains("interface IPortableVisualStateSource", interopSource, StringComparison.Ordinal);
         Assert.Contains("public bool HasEffect", interopSource, StringComparison.Ordinal);
         Assert.Contains("public bool HasCacheMode", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasBitmapScalingMode", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public bool HasTextRenderingMode", interopSource, StringComparison.Ordinal);
         Assert.Contains("public bool HasSnappingGuidelinesX", interopSource, StringComparison.Ordinal);
         Assert.Contains("CanReplaySubtreeTreatsAbsentPortableVisualStateValuesAsAuthoritative", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeDoesNotReflectAbsentPortableVisualStateDependencies", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeAppliesPortableVisualGuidelinesWithoutReflection", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeAppliesPortableVisualRenderingHintsWithoutReflection", rendererTests, StringComparison.Ordinal);
     }
 
     [Fact]

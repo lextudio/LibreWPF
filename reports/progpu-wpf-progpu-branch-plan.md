@@ -16,6 +16,8 @@ This requirement does not reduce managed WPF reuse. The port should keep upstrea
 
 Typed bridge contracts must not expose shim-owned WPF structs or classes when package-mode apps load the real WPF transport assemblies. Use primitive values or neutral DTOs for cross-assembly bridge callbacks, and add source-integrated WPF interfaces/factories for hot paths instead of `Assembly.GetType`, `Activator`, reflected properties, reflected events, or expression-built delegate shims. Existing typed seams such as `IPortableGeometryPathSource`, `IPortableBrushSource`, `IPortablePenSource`, `IPortableDrawingContentSource`, `IPortableGeometryDrawingStateSource`, `IPortableImageDrawingStateSource`, `IPortableGlyphRunDrawingStateSource`, `IPortableDrawingGroupStateSource`, `IPortableRenderDataSource`, visual state/layout contracts, service registrars, `IPortableBitmapSourcePixelsSource`, and backend-owned `IProGpuTextureSource` are the implementation pattern for the remaining cleanup.
 
+Shader-effect sampler texture caches should remain on typed portable tile-brush metadata. Source bounds for drawing and visual brush samplers must flow through `IPortableTileBrushSource`/`PortableTileBrush` plus typed drawing/visual state, not sampler-local `DrawingBrush`/`VisualBrush` type-name checks or reflected `Viewbox`, `Drawing`, `Visual`, `DesiredSize`, `Width`, or `Height` property probes.
+
 ## Current Branch State
 
 The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and-leaks`. The branch has been fast-forwarded to the latest origin commits and now includes:

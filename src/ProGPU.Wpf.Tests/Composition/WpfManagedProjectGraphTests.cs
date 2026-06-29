@@ -5905,13 +5905,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("brush is PortableTileBrushSource portableSource", samplerCache, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableBrushSourceBounds(portableBrush, imageSourceAdapter, out bounds)", samplerCache, StringComparison.Ordinal);
         Assert.Contains("IsSupportedShaderSamplerBrush(brush)", samplerCache, StringComparison.Ordinal);
-        Assert.True(
-            samplerCache.IndexOf("brush is PortableTileBrushSource portableSource", StringComparison.Ordinal)
-                < samplerCache.IndexOf("TryGetAbsoluteViewbox(brush, out bounds)", StringComparison.Ordinal),
-            "Typed portable tile brush sampler bounds must be tried before reflected DrawingBrush/VisualBrush shape probing.");
+        Assert.DoesNotContain("using System.Reflection;", samplerCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", samplerCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith", samplerCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue", samplerCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty", samplerCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", samplerCache, StringComparison.Ordinal);
         Assert.Contains("DecodeDrawDrawingReplaysPortableImageTileBrushWithoutReflectedTypeName", resolverTests, StringComparison.Ordinal);
         Assert.Contains("TryGetBrushSourceBoundsResolvesPortableDrawingBrushRelativeViewbox", samplerTests, StringComparison.Ordinal);
         Assert.Contains("TryGetBrushSourceBoundsResolvesPortableVisualBrushRelativeViewbox", samplerTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetBrushSourceBoundsRejectsNonPortableDrawingBrushShape", samplerTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetBrushSourceBoundsRejectsNonPortableVisualBrushShape", samplerTests, StringComparison.Ordinal);
     }
 
     [Fact]

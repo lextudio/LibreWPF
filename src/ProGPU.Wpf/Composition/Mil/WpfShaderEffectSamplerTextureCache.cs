@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Reflection;
 using System.Windows;
 using ProGPU.Backend;
 using ProGPU.Scene;
@@ -23,7 +22,6 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
 {
-    private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
     private const int MaxSamplerTextureDimension = 4096;
 
     private readonly WgpuContext _context;
@@ -180,39 +178,6 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
             return true;
         }
 
-        if (TryGetAbsoluteViewbox(brush, out bounds))
-        {
-            return true;
-        }
-
-        if (TypeNameEndsWith(brush, "DrawingBrush")
-            && TryGetPropertyValue(brush, "Drawing", out var drawing)
-            && drawing != null
-            && WpfReflectionDrawingReplay.TryGetDrawingBounds(drawing, imageSourceAdapter, out var drawingBounds))
-        {
-            if (TryGetRelativeViewbox(brush, drawingBounds, out bounds))
-            {
-                return true;
-            }
-
-            bounds = drawingBounds;
-            return true;
-        }
-
-        if (TypeNameEndsWith(brush, "VisualBrush")
-            && TryGetPropertyValue(brush, "Visual", out var visual)
-            && visual != null
-            && TryGetSamplerVisualBounds(visual, out var visualBounds))
-        {
-            if (TryGetRelativeViewbox(brush, visualBounds, out bounds))
-            {
-                return true;
-            }
-
-            bounds = visualBounds;
-            return true;
-        }
-
         bounds = default;
         return false;
     }
@@ -304,69 +269,9 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
             : new Rect(rect.X, rect.Y, rect.Width, rect.Height);
     }
 
-    private static bool TryGetAbsoluteViewbox(object brush, out Rect viewbox)
-    {
-        viewbox = default;
-        if (!TryGetPropertyValue(brush, "Viewbox", out var viewboxValue)
-            || viewboxValue == null
-            || !TryReadRect(viewboxValue, out viewbox)
-            || !IsUsableBounds(viewbox)
-            || !TryGetPropertyValue(brush, "ViewboxUnits", out var units)
-            || units?.ToString()?.Contains("Absolute", StringComparison.OrdinalIgnoreCase) != true)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    private static bool TryGetRelativeViewbox(object brush, Rect sourceBounds, out Rect viewbox)
-    {
-        viewbox = default;
-        if (!TryGetPropertyValue(brush, "Viewbox", out var viewboxValue)
-            || viewboxValue == null
-            || !TryReadRect(viewboxValue, out var relativeViewbox)
-            || !IsUsableBounds(relativeViewbox)
-            || !TryGetPropertyValue(brush, "ViewboxUnits", out var units)
-            || units?.ToString()?.Contains("RelativeToBoundingBox", StringComparison.OrdinalIgnoreCase) != true
-            || !IsUsableBounds(sourceBounds))
-        {
-            return false;
-        }
-
-        viewbox = new Rect(
-            sourceBounds.X + relativeViewbox.X * sourceBounds.Width,
-            sourceBounds.Y + relativeViewbox.Y * sourceBounds.Height,
-            relativeViewbox.Width * sourceBounds.Width,
-            relativeViewbox.Height * sourceBounds.Height);
-        return IsUsableBounds(viewbox);
-    }
-
     private static bool TryGetSamplerVisualBounds(object visual, out Rect bounds)
     {
-        if (WpfReflectionDrawingReplay.TryGetVisualBounds(visual, out bounds))
-        {
-            return true;
-        }
-
-        if (TryReadSizeProperty(visual, "DesiredSize", out bounds))
-        {
-            return true;
-        }
-
-        if (TryReadDoubleProperty(visual, "Width", out var width)
-            && TryReadDoubleProperty(visual, "Height", out var height)
-            && width > 0
-            && height > 0
-            && double.IsFinite(width)
-            && double.IsFinite(height))
-        {
-            bounds = new Rect(0, 0, width, height);
-            return true;
-        }
-
-        bounds = default;
-        return false;
+        return WpfReflectionDrawingReplay.TryGetVisualBounds(visual, out bounds);
     }
 
     private static bool TryCreateTextureBounds(
@@ -395,46 +300,6 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         return (uint)Math.Clamp((int)Math.Ceiling(value), 1, MaxSamplerTextureDimension);
     }
 
-    private static bool TryReadSizeProperty(object source, string propertyName, out Rect rect)
-    {
-        rect = default;
-        if (TryGetPropertyValue(source, propertyName, out var sizeValue)
-            && sizeValue != null
-            && TryReadDoubleProperty(sizeValue, "Width", out var width)
-            && TryReadDoubleProperty(sizeValue, "Height", out var height)
-            && width > 0
-            && height > 0
-            && double.IsFinite(width)
-            && double.IsFinite(height))
-        {
-            rect = new Rect(0, 0, width, height);
-            return true;
-        }
-
-        return false;
-    }
-
-    private static bool TryReadRect(object rectValue, out Rect rect)
-    {
-        if (rectValue is Rect mediaRect)
-        {
-            rect = mediaRect;
-            return true;
-        }
-
-        if (TryReadDoubleProperty(rectValue, "X", out var x)
-            && TryReadDoubleProperty(rectValue, "Y", out var y)
-            && TryReadDoubleProperty(rectValue, "Width", out var width)
-            && TryReadDoubleProperty(rectValue, "Height", out var height))
-        {
-            rect = new Rect(x, y, width, height);
-            return true;
-        }
-
-        rect = default;
-        return false;
-    }
-
     private static bool IsUsableBounds(Rect bounds)
     {
         return !bounds.IsEmpty
@@ -446,68 +311,12 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
             && double.IsFinite(bounds.Height);
     }
 
-    private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
-    {
-        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
-        if (property == null || property.GetIndexParameters().Length != 0)
-        {
-            value = null;
-            return false;
-        }
-
-        try
-        {
-            value = property.GetValue(instance);
-            return true;
-        }
-        catch (TargetInvocationException)
-        {
-            value = null;
-            return false;
-        }
-    }
-
-    private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)
-    {
-        value = default;
-        if (!TryGetPropertyValue(instance, propertyName, out var rawValue) || rawValue == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            value = Convert.ToDouble(rawValue, System.Globalization.CultureInfo.InvariantCulture);
-            return true;
-        }
-        catch (InvalidCastException)
-        {
-            return false;
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
-    }
-
-    private static bool TypeNameEndsWith(object instance, string suffix)
-    {
-        var type = instance.GetType();
-        return type.Name.EndsWith(suffix, StringComparison.Ordinal)
-            || (type.FullName?.EndsWith(suffix, StringComparison.Ordinal) ?? false);
-    }
-
     private static bool IsSupportedShaderSamplerBrush(object brush)
     {
-        if (brush is PortableTileBrushSource portableSource
-            && portableSource.TryGetPortableTileBrush(out var portableBrush))
-        {
-            return portableBrush.Kind == PortableTileBrushKind.Drawing
-                || portableBrush.Kind == PortableTileBrushKind.Visual;
-        }
-
-        return TypeNameEndsWith(brush, "DrawingBrush")
-            || TypeNameEndsWith(brush, "VisualBrush");
+        return brush is PortableTileBrushSource portableSource
+            && portableSource.TryGetPortableTileBrush(out var portableBrush)
+            && (portableBrush.Kind == PortableTileBrushKind.Drawing
+                || portableBrush.Kind == PortableTileBrushKind.Visual);
     }
 
     private void ThrowIfDisposed()

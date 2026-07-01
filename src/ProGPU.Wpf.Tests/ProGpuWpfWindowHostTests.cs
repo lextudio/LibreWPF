@@ -15,6 +15,7 @@ using ProGpuRenderCommandType = ProGPU.Scene.RenderCommandType;
 
 namespace ProGPU.Wpf.Tests;
 
+[Collection(PortableRenderDataSinkProviderCollection.Name)]
 public sealed class ProGpuWpfWindowHostTests
 {
     [Fact]

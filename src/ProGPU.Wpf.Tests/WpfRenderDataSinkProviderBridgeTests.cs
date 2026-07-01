@@ -10,6 +10,13 @@ using ProGpuRetainedDrawingVisual = System.Windows.Media.ProGPU.Composition.ProG
 
 namespace ProGPU.Wpf.Tests;
 
+[CollectionDefinition(PortableRenderDataSinkProviderCollection.Name)]
+public sealed class PortableRenderDataSinkProviderCollection
+{
+    public const string Name = "Portable render-data sink provider";
+}
+
+[Collection(PortableRenderDataSinkProviderCollection.Name)]
 public sealed class WpfRenderDataSinkProviderBridgeTests
 {
     [Fact]

@@ -18,6 +18,7 @@ using WgpuTextureUsage = Silk.NET.WebGPU.TextureUsage;
 
 namespace ProGPU.Wpf.Tests;
 
+[Collection(PortableRenderDataSinkProviderCollection.Name)]
 public sealed class ProGpuWpfDrawingFrameTests
 {
     [Fact]

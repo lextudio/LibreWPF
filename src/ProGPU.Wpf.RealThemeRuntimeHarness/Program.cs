@@ -6,6 +6,7 @@ internal static class Program
 {
     private const string CompilerHarnessAssemblyName = "ProGPU.Wpf.RealXamlCompilerHarness";
     private const string ProGpuWpfAssemblyName = "ProGPU.Wpf";
+    private const string ProGpuWpfInteropAssemblyName = "ProGPU.Wpf.Interop";
     private const string FluentThemeAssemblyName = "PresentationFramework.Fluent";
     private const string AppTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow";
@@ -23,8 +24,16 @@ internal static class Program
             string compilerHarnessPath = FindArtifactAssembly(repoRoot, CompilerHarnessAssemblyName);
             string fluentThemePath = FindArtifactAssembly(repoRoot, FluentThemeAssemblyName);
             string proGpuWpfPath = FindOutputAssembly(ProGpuWpfAssemblyName);
+            string proGpuWpfInteropPath = FindOutputAssembly(ProGpuWpfInteropAssemblyName);
 
-            RunHarness(repoRoot, presentationFrameworkPath, presentationCorePath, compilerHarnessPath, fluentThemePath, proGpuWpfPath);
+            RunHarness(
+                repoRoot,
+                presentationFrameworkPath,
+                presentationCorePath,
+                compilerHarnessPath,
+                fluentThemePath,
+                proGpuWpfPath,
+                proGpuWpfInteropPath);
             Console.WriteLine("Real WPF Fluent theme runtime smoke succeeded.");
             return 0;
         }
@@ -41,7 +50,8 @@ internal static class Program
         string presentationCorePath,
         string compilerHarnessPath,
         string fluentThemePath,
-        string proGpuWpfPath)
+        string proGpuWpfPath,
+        string proGpuWpfInteropPath)
     {
         var loadContext = new WpfAssemblyLoadContext(
             repoRoot,
@@ -49,7 +59,9 @@ internal static class Program
             presentationCorePath,
             compilerHarnessPath,
             fluentThemePath,
-            proGpuWpfPath);
+            proGpuWpfPath,
+            proGpuWpfInteropPath);
+        loadContext.LoadFromAssemblyPath(proGpuWpfInteropPath);
         Assembly presentationFramework = loadContext.LoadFromAssemblyPath(presentationFrameworkPath);
         Assembly proGpuWpf = loadContext.LoadFromAssemblyPath(proGpuWpfPath);
         Assembly windowsBase = loadContext.LoadFromAssemblyName(new AssemblyName("WindowsBase"));
@@ -1675,6 +1687,7 @@ internal static class Program
         private readonly string _compilerHarnessPath;
         private readonly string _fluentThemePath;
         private readonly string _proGpuWpfPath;
+        private readonly string _proGpuWpfInteropPath;
         private readonly AssemblyDependencyResolver _resolver;
 
         public WpfAssemblyLoadContext(
@@ -1683,7 +1696,8 @@ internal static class Program
             string presentationCorePath,
             string compilerHarnessPath,
             string fluentThemePath,
-            string proGpuWpfPath)
+            string proGpuWpfPath,
+            string proGpuWpfInteropPath)
             : base(isCollectible: true)
         {
             _repoRoot = repoRoot;
@@ -1692,6 +1706,7 @@ internal static class Program
             _compilerHarnessPath = compilerHarnessPath;
             _fluentThemePath = fluentThemePath;
             _proGpuWpfPath = proGpuWpfPath;
+            _proGpuWpfInteropPath = proGpuWpfInteropPath;
             _resolver = new AssemblyDependencyResolver(fluentThemePath);
         }
 
@@ -1710,6 +1725,11 @@ internal static class Program
             if (string.Equals(assemblyName.Name, ProGpuWpfAssemblyName, StringComparison.Ordinal))
             {
                 return LoadFromAssemblyPath(_proGpuWpfPath);
+            }
+
+            if (string.Equals(assemblyName.Name, ProGpuWpfInteropAssemblyName, StringComparison.Ordinal))
+            {
+                return LoadFromAssemblyPath(_proGpuWpfInteropPath);
             }
 
             if (string.Equals(assemblyName.Name, "PresentationFramework", StringComparison.Ordinal))

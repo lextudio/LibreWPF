@@ -4,6 +4,7 @@
 using System;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Media
 {
@@ -18,27 +19,27 @@ namespace System.Windows.Media
 
         void IRenderDataDrawingContextSink.DrawLine(Pen pen, Point point0, Point point1)
         {
-            _sink.DrawLine(pen, point0, point1);
+            _sink.DrawLine(pen, ToPortablePoint(point0), ToPortablePoint(point1));
         }
 
         void IRenderDataDrawingContextSink.DrawLine(Pen pen, Point point0, AnimationClock point0Animations, Point point1, AnimationClock point1Animations)
         {
-            _sink.DrawLine(pen, point0, point0Animations, point1, point1Animations);
+            _sink.DrawLine(pen, ToPortablePoint(point0), point0Animations, ToPortablePoint(point1), point1Animations);
         }
 
         void IRenderDataDrawingContextSink.DrawRectangle(Brush brush, Pen pen, Rect rectangle)
         {
-            _sink.DrawRectangle(brush, pen, rectangle);
+            _sink.DrawRectangle(brush, pen, ToPortableRect(rectangle));
         }
 
         void IRenderDataDrawingContextSink.DrawRectangle(Brush brush, Pen pen, Rect rectangle, AnimationClock rectangleAnimations)
         {
-            _sink.DrawRectangle(brush, pen, rectangle, rectangleAnimations);
+            _sink.DrawRectangle(brush, pen, ToPortableRect(rectangle), rectangleAnimations);
         }
 
         void IRenderDataDrawingContextSink.DrawRoundedRectangle(Brush brush, Pen pen, Rect rectangle, double radiusX, double radiusY)
         {
-            _sink.DrawRoundedRectangle(brush, pen, rectangle, radiusX, radiusY);
+            _sink.DrawRoundedRectangle(brush, pen, ToPortableRect(rectangle), radiusX, radiusY);
         }
 
         void IRenderDataDrawingContextSink.DrawRoundedRectangle(
@@ -51,12 +52,12 @@ namespace System.Windows.Media
             double radiusY,
             AnimationClock radiusYAnimations)
         {
-            _sink.DrawRoundedRectangle(brush, pen, rectangle, rectangleAnimations, radiusX, radiusXAnimations, radiusY, radiusYAnimations);
+            _sink.DrawRoundedRectangle(brush, pen, ToPortableRect(rectangle), rectangleAnimations, radiusX, radiusXAnimations, radiusY, radiusYAnimations);
         }
 
         void IRenderDataDrawingContextSink.DrawEllipse(Brush brush, Pen pen, Point center, double radiusX, double radiusY)
         {
-            _sink.DrawEllipse(brush, pen, center, radiusX, radiusY);
+            _sink.DrawEllipse(brush, pen, ToPortablePoint(center), radiusX, radiusY);
         }
 
         void IRenderDataDrawingContextSink.DrawEllipse(
@@ -69,7 +70,7 @@ namespace System.Windows.Media
             double radiusY,
             AnimationClock radiusYAnimations)
         {
-            _sink.DrawEllipse(brush, pen, center, centerAnimations, radiusX, radiusXAnimations, radiusY, radiusYAnimations);
+            _sink.DrawEllipse(brush, pen, ToPortablePoint(center), centerAnimations, radiusX, radiusXAnimations, radiusY, radiusYAnimations);
         }
 
         void IRenderDataDrawingContextSink.DrawGeometry(Brush brush, Pen pen, Geometry geometry)
@@ -79,12 +80,12 @@ namespace System.Windows.Media
 
         void IRenderDataDrawingContextSink.DrawImage(ImageSource imageSource, Rect rectangle)
         {
-            _sink.DrawImage(imageSource, rectangle);
+            _sink.DrawImage(imageSource, ToPortableRect(rectangle));
         }
 
         void IRenderDataDrawingContextSink.DrawImage(ImageSource imageSource, Rect rectangle, AnimationClock rectangleAnimations)
         {
-            _sink.DrawImage(imageSource, rectangle, rectangleAnimations);
+            _sink.DrawImage(imageSource, ToPortableRect(rectangle), rectangleAnimations);
         }
 
         void IRenderDataDrawingContextSink.DrawGlyphRun(Brush foregroundBrush, GlyphRun glyphRun)
@@ -99,12 +100,12 @@ namespace System.Windows.Media
 
         void IRenderDataDrawingContextSink.DrawVideo(MediaPlayer player, Rect rectangle)
         {
-            _sink.DrawVideo(player, rectangle);
+            _sink.DrawVideo(player, ToPortableRect(rectangle));
         }
 
         void IRenderDataDrawingContextSink.DrawVideo(MediaPlayer player, Rect rectangle, AnimationClock rectangleAnimations)
         {
-            _sink.DrawVideo(player, rectangle, rectangleAnimations);
+            _sink.DrawVideo(player, ToPortableRect(rectangle), rectangleAnimations);
         }
 
         void IRenderDataDrawingContextSink.PushClip(Geometry clipGeometry)
@@ -161,6 +162,18 @@ namespace System.Windows.Media
         void IRenderDataDrawingContextSink.Close()
         {
             _sink.Close();
+        }
+
+        private static PortablePoint ToPortablePoint(Point point)
+        {
+            return new PortablePoint(point.X, point.Y);
+        }
+
+        private static PortableRect ToPortableRect(Rect rect)
+        {
+            return rect.IsEmpty
+                ? PortableRect.Empty
+                : new PortableRect(rect.X, rect.Y, rect.Width, rect.Height);
         }
     }
 }

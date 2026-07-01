@@ -2452,8 +2452,7 @@ namespace System.Windows.Media
         bool IPortableGlyphRunSource.TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)
         {
             glyphRun = new PortableGlyphRun();
-            if ((_flags & GlyphRunFlags.IsInitialized) == 0
-                || _glyphIndices == null
+            if (_glyphIndices == null
                 || _glyphIndices.Count == 0
                 || _renderingEmSize <= 0)
             {

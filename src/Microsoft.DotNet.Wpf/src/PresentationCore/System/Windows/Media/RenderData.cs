@@ -531,11 +531,23 @@ namespace System.Windows.Media
             object[] dependentResources = new object[_dependentResources.Count];
             for (int i = 0; i < dependentResources.Length; i++)
             {
-                dependentResources[i] = _dependentResources[i];
+                dependentResources[i] = ExportPortableDependentResource(_dependentResources[i]);
             }
 
             snapshot = new PortableRenderDataSnapshot(renderData, dependentResources);
             return true;
+        }
+
+        private static object ExportPortableDependentResource(object resource)
+        {
+            if (resource is IPortableGlyphRunSource glyphRunSource)
+            {
+                return glyphRunSource.TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)
+                    ? glyphRun
+                    : null;
+            }
+
+            return resource;
         }
 
         #region Private Fields

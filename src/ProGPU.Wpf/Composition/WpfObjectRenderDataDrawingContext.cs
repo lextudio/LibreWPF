@@ -9,11 +9,17 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPortableRenderDataSink = System.Windows.Media.IPortableRenderDataDrawingContextSink;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
+using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
+using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
 public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataSink, IDisposable
 {
+    private static readonly bool s_canUseShimPointAndRect =
+        Type.GetType("System.Windows.Rect, PresentationCore", throwOnError: false) != null
+        && Type.GetType("System.Windows.Point, PresentationCore", throwOnError: false) != null;
+
     private readonly IWpfCompositionCommandSink _sink;
     private readonly WpfReflectionResourceResolver _resources;
     private readonly IWpfImageSourceAdapter? _imageSourceAdapter;
@@ -847,9 +853,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
 
     private static bool TryReadPoint(object? pointValue, out Point point)
     {
-        if (pointValue is Point mediaPoint)
+        if (s_canUseShimPointAndRect && TryReadShimPoint(pointValue, out point))
         {
-            point = mediaPoint;
             return true;
         }
 
@@ -865,9 +870,14 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return true;
         }
 
-        if (pointValue is Point mediaPoint)
+        if (pointValue is PortablePoint portablePoint)
         {
-            point = new WpfReplayPoint(mediaPoint.X, mediaPoint.Y);
+            point = new WpfReplayPoint(portablePoint.X, portablePoint.Y);
+            return true;
+        }
+
+        if (s_canUseShimPointAndRect && TryReadShimReplayPoint(pointValue, out point))
+        {
             return true;
         }
 
@@ -877,9 +887,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
 
     private static bool TryReadRect(object? rectValue, out Rect rectangle)
     {
-        if (rectValue is Rect mediaRect)
+        if (s_canUseShimPointAndRect && TryReadShimRect(rectValue, out rectangle))
         {
-            rectangle = mediaRect;
             return true;
         }
 
@@ -895,6 +904,63 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return true;
         }
 
+        if (rectValue is PortableRect portableRect && !portableRect.IsEmpty)
+        {
+            rectangle = new WpfReplayRect(portableRect.X, portableRect.Y, portableRect.Width, portableRect.Height);
+            return true;
+        }
+
+        if (s_canUseShimPointAndRect && TryReadShimReplayRect(rectValue, out rectangle))
+        {
+            return true;
+        }
+
+        rectangle = default;
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TryReadShimPoint(object? pointValue, out Point point)
+    {
+        if (pointValue is Point mediaPoint)
+        {
+            point = mediaPoint;
+            return true;
+        }
+
+        point = default;
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TryReadShimReplayPoint(object? pointValue, out WpfReplayPoint point)
+    {
+        if (pointValue is Point mediaPoint)
+        {
+            point = new WpfReplayPoint(mediaPoint.X, mediaPoint.Y);
+            return true;
+        }
+
+        point = default;
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TryReadShimRect(object? rectValue, out Rect rectangle)
+    {
+        if (rectValue is Rect mediaRect)
+        {
+            rectangle = mediaRect;
+            return true;
+        }
+
+        rectangle = default;
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TryReadShimReplayRect(object? rectValue, out WpfReplayRect rectangle)
+    {
         if (rectValue is Rect mediaRect)
         {
             rectangle = new WpfReplayRect(mediaRect.X, mediaRect.Y, mediaRect.Width, mediaRect.Height);

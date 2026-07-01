@@ -15,6 +15,8 @@ internal static class ProGpuWpfSdkPortableBootstrap
             return;
         }
 
+        RuntimeHelpers.RunModuleConstructor(typeof(Application).Module.ModuleHandle);
+        RuntimeHelpers.RunModuleConstructor(typeof(Clipboard).Module.ModuleHandle);
         WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation();
         WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService();
     }

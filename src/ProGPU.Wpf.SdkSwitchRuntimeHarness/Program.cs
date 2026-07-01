@@ -526,6 +526,7 @@ internal static class Program
     {
         using var loadContext = CreateLoadContext(inputs);
         Assembly proGpuWpf = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Wpf"));
+        Assembly proGpuWpfInterop = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Wpf.Interop"));
         Assembly proGpuScene = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Scene"));
         Assembly proGpuBackend = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Backend"));
         Assembly proGpuVector = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Vector"));
@@ -759,6 +760,7 @@ internal static class Program
         AssertPackagedObjectRenderDataRectangleFillsPhysicalTarget(
             inputs.AppOutputRoot,
             proGpuWpf,
+            proGpuWpfInterop,
             proGpuBackend,
             presentationCore,
             windowsBase,
@@ -1034,6 +1036,7 @@ internal static class Program
     private static void AssertPackagedObjectRenderDataRectangleFillsPhysicalTarget(
         string nativeAssetRoot,
         Assembly proGpuWpf,
+        Assembly proGpuWpfInterop,
         Assembly proGpuBackend,
         Assembly presentationCore,
         Assembly windowsBase,
@@ -1048,10 +1051,10 @@ internal static class Program
         Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
         Type solidColorBrushType = GetRequiredType(presentationCore, "System.Windows.Media.SolidColorBrush");
         Type colorType = GetRequiredType(presentationCore, "System.Windows.Media.Color");
-        Type rectType = GetRequiredType(windowsBase, "System.Windows.Rect");
+        Type portableRectType = GetRequiredType(proGpuWpfInterop, "ProGPU.Wpf.Interop.PortableRect");
         object red = InvokeStatic(colorType, "FromRgb", (byte)0xFF, (byte)0x00, (byte)0x00);
         object redBrush = Create(solidColorBrushType, red);
-        object rectangle = Create(rectType, 0.0, 0.0, 420.0, 840.0);
+        object rectangle = Create(portableRectType, 0.0, 0.0, 420.0, 840.0, false);
 
         PreloadNativeAsset(nativeAssetRoot, "wgpu", $"{descriptionPrefix} WebGPU native runtime");
         using IDisposable currentDirectory = PushCurrentDirectory(nativeAssetRoot);

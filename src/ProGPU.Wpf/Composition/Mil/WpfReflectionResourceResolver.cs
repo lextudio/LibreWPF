@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Windows.Media.ProGPU.Composition;
 using ProGPU.Text;
 using MediaBrush = System.Windows.Media.Brush;
@@ -124,6 +125,8 @@ public sealed class WpfReflectionResourceResolver :
 
     private const int MaxSupportedGradientStops = 65536;
     private static readonly ConcurrentDictionary<string, TtfFont> s_fontFileCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly bool s_canUseShimMediaBrushAndPenConversion =
+        Type.GetType("System.Windows.Rect, PresentationCore", throwOnError: false) != null;
 
     private readonly Dictionary<uint, object> _resources = new();
     private readonly Dictionary<uint, MediaBrush?> _brushes = new();
@@ -303,16 +306,17 @@ public sealed class WpfReflectionResourceResolver :
                 : null;
         }
 
-        if (resource is ProGpuNativeBrush nativeProGpuBrush)
+        if (IsProGpuNativeBrushResource(resource)
+            && TryAdaptNativeShimBrush(resource, bounds, out var nativeProGpuBrush, out unsupportedStateCount))
         {
-            unsupportedStateCount += nativeProGpuBrush.CountUnsupportedStateForBounds(bounds);
-            return nativeProGpuBrush.ToNative(bounds);
+            return nativeProGpuBrush;
         }
 
-        if (resource is MediaBrush mediaBrush)
+        if (s_canUseShimMediaBrushAndPenConversion && resource is MediaBrush mediaBrush)
         {
-            var mediaBounds = ToMediaRect(bounds);
-            return mediaBrush.ToNative(mediaBounds);
+            return TryAdaptNativeMediaBrush(mediaBrush, bounds, out var nativeBrush)
+                ? nativeBrush
+                : null;
         }
 
         return null;
@@ -336,10 +340,11 @@ public sealed class WpfReflectionResourceResolver :
                 : null;
         }
 
-        if (resource is MediaPen mediaPen)
+        if (s_canUseShimMediaBrushAndPenConversion && resource is MediaPen mediaPen)
         {
-            var mediaBounds = ToMediaRect(bounds);
-            return mediaPen.ToNative(mediaBounds);
+            return TryAdaptNativeMediaPen(mediaPen, bounds, out var nativePen)
+                ? nativePen
+                : null;
         }
 
         return null;
@@ -358,6 +363,88 @@ public sealed class WpfReflectionResourceResolver :
     private static Rect ToMediaRect(WpfReplayRect bounds)
     {
         return new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+    }
+
+    private static bool IsProGpuNativeBrushResource(object resource)
+    {
+        return string.Equals(
+            resource.GetType().FullName,
+            "System.Windows.Media.ProGPU.Composition.Mil.ProGpuNativeBrush",
+            StringComparison.Ordinal);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TryAdaptNativeShimBrush(
+        object resource,
+        WpfReplayRect bounds,
+        out global::ProGPU.Vector.Brush? nativeBrush,
+        out int unsupportedStateCount)
+    {
+        nativeBrush = null;
+        unsupportedStateCount = 0;
+        try
+        {
+            if (resource is not ProGpuNativeBrush proGpuNativeBrush)
+            {
+                return false;
+            }
+
+            unsupportedStateCount = proGpuNativeBrush.CountUnsupportedStateForBounds(bounds);
+            nativeBrush = proGpuNativeBrush.ToNative(bounds);
+            return nativeBrush != null;
+        }
+        catch (MissingMethodException)
+        {
+            return false;
+        }
+        catch (TypeLoadException)
+        {
+            return false;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TryAdaptNativeMediaBrush(
+        MediaBrush mediaBrush,
+        WpfReplayRect bounds,
+        out global::ProGPU.Vector.Brush? nativeBrush)
+    {
+        nativeBrush = null;
+        try
+        {
+            nativeBrush = mediaBrush.ToNative(ToMediaRect(bounds));
+            return nativeBrush != null;
+        }
+        catch (MissingMethodException)
+        {
+            return false;
+        }
+        catch (TypeLoadException)
+        {
+            return false;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TryAdaptNativeMediaPen(
+        MediaPen mediaPen,
+        WpfReplayRect bounds,
+        out global::ProGPU.Vector.Pen? nativePen)
+    {
+        nativePen = null;
+        try
+        {
+            nativePen = mediaPen.ToNative(ToMediaRect(bounds));
+            return nativePen != null;
+        }
+        catch (MissingMethodException)
+        {
+            return false;
+        }
+        catch (TypeLoadException)
+        {
+            return false;
+        }
     }
 
     private static int CountUnsupportedGradientState(bool stopsTruncated, bool unsupportedColorInterpolationMode)
@@ -450,14 +537,14 @@ public sealed class WpfReflectionResourceResolver :
                     return null;
                 }
 
-                var wrappedLinearBrush = new ProGpuNativeBrush(
+                return AdaptMappedNativeBrush(
                     linearBrush,
                     ToProGpuBrushMappingMode(brush.MappingMode),
                     ToOptionalMatrix4x4(brush.HasTransform, brush.Transform),
                     ToOptionalMatrix4x4(brush.HasRelativeTransform, brush.RelativeTransform),
-                    CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode: false));
-                unsupportedStateCount += wrappedLinearBrush.CountUnsupportedStateForBounds(bounds);
-                return wrappedLinearBrush.ToNative(bounds);
+                    CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode: false),
+                    bounds,
+                    out unsupportedStateCount);
 
             case PortableBrushKind.RadialGradient:
                 if (!TryCreatePortableRadialGradientBrush(brush, mapRelativeToBounds: false, default, out var radialBrush, out var radialStopsTruncated))
@@ -465,19 +552,245 @@ public sealed class WpfReflectionResourceResolver :
                     return null;
                 }
 
-                var wrappedRadialBrush = new ProGpuNativeBrush(
+                return AdaptMappedNativeBrush(
                     radialBrush,
                     ToProGpuBrushMappingMode(brush.MappingMode),
                     ToOptionalMatrix4x4(brush.HasTransform, brush.Transform),
                     ToOptionalMatrix4x4(brush.HasRelativeTransform, brush.RelativeTransform),
-                    CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode: false));
-                unsupportedStateCount += wrappedRadialBrush.CountUnsupportedStateForBounds(bounds);
-                return wrappedRadialBrush.ToNative(bounds);
+                    CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode: false),
+                    bounds,
+                    out unsupportedStateCount);
 
             default:
                 unsupportedStateCount = 1;
                 return null;
         }
+    }
+
+    private static global::ProGPU.Vector.Brush AdaptMappedNativeBrush(
+        global::ProGPU.Vector.Brush brush,
+        ProGpuBrushMappingMode mappingMode,
+        Matrix4x4? transform,
+        Matrix4x4? relativeTransform,
+        int unsupportedGradientStateCount,
+        WpfReplayRect bounds,
+        out int unsupportedStateCount)
+    {
+        unsupportedStateCount = unsupportedGradientStateCount;
+        if (HasUnsupportedBrushTransformForBounds(brush, transform, relativeTransform, bounds))
+        {
+            unsupportedStateCount++;
+        }
+
+        return ToMappedNativeBrush(brush, mappingMode, transform, relativeTransform, bounds);
+    }
+
+    private static global::ProGPU.Vector.Brush ToMappedNativeBrush(
+        global::ProGPU.Vector.Brush brush,
+        ProGpuBrushMappingMode mappingMode,
+        Matrix4x4? transform,
+        Matrix4x4? relativeTransform,
+        WpfReplayRect bounds)
+    {
+        bool hasUsableBounds = IsUsable(bounds);
+        double x = bounds.X;
+        double y = bounds.Y;
+        double width = bounds.Width;
+        double height = bounds.Height;
+
+        if (mappingMode == ProGpuBrushMappingMode.RelativeToBoundingBox && !hasUsableBounds)
+        {
+            return brush;
+        }
+
+        bool hasTransform = TryGetEffectiveBrushTransform(
+            transform,
+            relativeTransform,
+            x,
+            y,
+            width,
+            height,
+            hasUsableBounds,
+            out Matrix4x4 effectiveTransform);
+        bool hasCoordinateTransform = TryGetCoordinateBrushTransform(
+            effectiveTransform,
+            hasTransform,
+            out Matrix4x4 coordinateTransform);
+
+        return brush switch
+        {
+            global::ProGPU.Vector.LinearGradientBrush linear => new global::ProGPU.Vector.LinearGradientBrush(
+                MapBrushPoint(linear.StartPoint, mappingMode, x, y, width, height, hasUsableBounds),
+                MapBrushPoint(linear.EndPoint, mappingMode, x, y, width, height, hasUsableBounds),
+                linear.Stops ?? Array.Empty<global::ProGPU.Vector.GradientStop>())
+            {
+                Opacity = linear.Opacity,
+                SpreadMethod = linear.SpreadMethod,
+                ColorInterpolationMode = linear.ColorInterpolationMode,
+                CoordinateTransform = hasCoordinateTransform ? coordinateTransform : Matrix4x4.Identity
+            },
+            global::ProGPU.Vector.RadialGradientBrush radial => CreateMappedRadialGradientBrush(
+                radial,
+                mappingMode,
+                x,
+                y,
+                width,
+                height,
+                hasUsableBounds,
+                coordinateTransform,
+                hasCoordinateTransform),
+            _ => brush
+        };
+    }
+
+    private static bool HasUnsupportedBrushTransformForBounds(
+        global::ProGPU.Vector.Brush brush,
+        Matrix4x4? transform,
+        Matrix4x4? relativeTransform,
+        WpfReplayRect bounds)
+    {
+        return (brush is global::ProGPU.Vector.LinearGradientBrush || brush is global::ProGPU.Vector.RadialGradientBrush)
+            && TryGetEffectiveBrushTransform(
+                transform,
+                relativeTransform,
+                bounds.X,
+                bounds.Y,
+                bounds.Width,
+                bounds.Height,
+                IsUsable(bounds),
+                out Matrix4x4 effectiveTransform)
+            && !TryCreateCoordinateBrushTransform(effectiveTransform, out _);
+    }
+
+    private static global::ProGPU.Vector.RadialGradientBrush CreateMappedRadialGradientBrush(
+        global::ProGPU.Vector.RadialGradientBrush radial,
+        ProGpuBrushMappingMode mappingMode,
+        double x,
+        double y,
+        double width,
+        double height,
+        bool hasUsableBounds,
+        Matrix4x4 coordinateTransform,
+        bool hasCoordinateTransform)
+    {
+        var center = MapBrushPoint(radial.Center, mappingMode, x, y, width, height, hasUsableBounds);
+        var gradientOrigin = MapBrushPoint(radial.GradientOrigin, mappingMode, x, y, width, height, hasUsableBounds);
+        var radiusX = mappingMode == ProGpuBrushMappingMode.RelativeToBoundingBox && hasUsableBounds
+            ? (float)(radial.RadiusX * width)
+            : radial.RadiusX;
+        var radiusY = mappingMode == ProGpuBrushMappingMode.RelativeToBoundingBox && hasUsableBounds
+            ? (float)(radial.RadiusY * height)
+            : radial.RadiusY;
+
+        return new global::ProGPU.Vector.RadialGradientBrush(
+            center,
+            gradientOrigin,
+            radiusX,
+            radiusY,
+            radial.Stops ?? Array.Empty<global::ProGPU.Vector.GradientStop>())
+        {
+            Opacity = radial.Opacity,
+            SpreadMethod = radial.SpreadMethod,
+            ColorInterpolationMode = radial.ColorInterpolationMode,
+            CoordinateTransform = hasCoordinateTransform ? coordinateTransform : Matrix4x4.Identity
+        };
+    }
+
+    private static Vector2 MapBrushPoint(
+        Vector2 point,
+        ProGpuBrushMappingMode mappingMode,
+        double x,
+        double y,
+        double width,
+        double height,
+        bool hasUsableBounds)
+    {
+        if (mappingMode != ProGpuBrushMappingMode.RelativeToBoundingBox || !hasUsableBounds)
+        {
+            return point;
+        }
+
+        return new Vector2(
+            (float)(x + point.X * width),
+            (float)(y + point.Y * height));
+    }
+
+    private static bool TryGetEffectiveBrushTransform(
+        Matrix4x4? transform,
+        Matrix4x4? relativeTransform,
+        double x,
+        double y,
+        double width,
+        double height,
+        bool hasUsableBounds,
+        out Matrix4x4 effectiveTransform)
+    {
+        effectiveTransform = Matrix4x4.Identity;
+        bool hasTransform = false;
+
+        if (relativeTransform.HasValue && hasUsableBounds)
+        {
+            effectiveTransform *= CreateRelativeBoundsBrushTransform(relativeTransform.Value, x, y, width, height);
+            hasTransform = true;
+        }
+
+        if (transform.HasValue)
+        {
+            effectiveTransform *= transform.Value;
+            hasTransform = true;
+        }
+
+        return hasTransform;
+    }
+
+    private static bool TryGetCoordinateBrushTransform(
+        Matrix4x4 transform,
+        bool hasTransform,
+        out Matrix4x4 coordinateTransform)
+    {
+        coordinateTransform = Matrix4x4.Identity;
+        return !hasTransform || TryCreateCoordinateBrushTransform(transform, out coordinateTransform);
+    }
+
+    private static bool TryCreateCoordinateBrushTransform(Matrix4x4 transform, out Matrix4x4 coordinateTransform)
+    {
+        coordinateTransform = Matrix4x4.Identity;
+        return Is2DAffineBrushTransform(transform)
+            && Matrix4x4.Invert(transform, out coordinateTransform)
+            && Is2DAffineBrushTransform(coordinateTransform);
+    }
+
+    private static Matrix4x4 CreateRelativeBoundsBrushTransform(
+        Matrix4x4 relativeTransform,
+        double x,
+        double y,
+        double width,
+        double height)
+    {
+        return Matrix4x4.CreateTranslation((float)-x, (float)-y, 0)
+            * Matrix4x4.CreateScale((float)(1 / width), (float)(1 / height), 1)
+            * relativeTransform
+            * Matrix4x4.CreateScale((float)width, (float)height, 1)
+            * Matrix4x4.CreateTranslation((float)x, (float)y, 0);
+    }
+
+    private static bool Is2DAffineBrushTransform(Matrix4x4 transform)
+    {
+        return NearlyZero(transform.M13)
+            && NearlyZero(transform.M14)
+            && NearlyZero(transform.M23)
+            && NearlyZero(transform.M24)
+            && NearlyZero(transform.M31)
+            && NearlyZero(transform.M32)
+            && NearlyEqual(transform.M33, 1)
+            && NearlyZero(transform.M34)
+            && NearlyZero(transform.M43)
+            && NearlyEqual(transform.M44, 1);
+    }
+
+    private static bool NearlyZero(float value)
+    {
+        return MathF.Abs(value) <= 0.0001f;
     }
 
     private static bool TryCreatePortableLinearGradientBrush(
@@ -880,23 +1193,42 @@ public sealed class WpfReflectionResourceResolver :
                 && TryAdaptPortableNativeGlyphRun(portableGlyphRun, out glyphRun);
         }
 
+        if (resource is PortableGlyphRun portableGlyphRunDto)
+        {
+            return TryAdaptPortableNativeGlyphRun(portableGlyphRunDto, out glyphRun);
+        }
+
         if (resource is MediaGlyphRun mediaGlyphRun)
         {
-            glyphRun = new WpfNativeGlyphRun(
-                mediaGlyphRun.GlyphIndices,
-                mediaGlyphRun.GlyphPositions,
-                mediaGlyphRun.Font,
-                mediaGlyphRun.FontSize,
-                mediaGlyphRun.Position,
-                mediaGlyphRun.Transform,
-                mediaGlyphRun.IsBold,
-                mediaGlyphRun.IsItalic);
-            return mediaGlyphRun.GlyphIndices.Length > 0
-                && mediaGlyphRun.FontSize > 0
-                && mediaGlyphRun.Font != null;
+            try
+            {
+                return TryAdaptNativeShimGlyphRun(mediaGlyphRun, out glyphRun);
+            }
+            catch (MissingMethodException)
+            {
+                glyphRun = default;
+                return false;
+            }
         }
 
         return false;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TryAdaptNativeShimGlyphRun(MediaGlyphRun mediaGlyphRun, out WpfNativeGlyphRun glyphRun)
+    {
+        glyphRun = new WpfNativeGlyphRun(
+            mediaGlyphRun.GlyphIndices,
+            mediaGlyphRun.GlyphPositions,
+            mediaGlyphRun.Font,
+            mediaGlyphRun.FontSize,
+            mediaGlyphRun.Position,
+            mediaGlyphRun.Transform,
+            mediaGlyphRun.IsBold,
+            mediaGlyphRun.IsItalic);
+        return mediaGlyphRun.GlyphIndices.Length > 0
+            && mediaGlyphRun.FontSize > 0
+            && mediaGlyphRun.Font != null;
     }
 
     public static MediaGlyphRun? AdaptGlyphRun(object? resource)
@@ -911,6 +1243,11 @@ public sealed class WpfReflectionResourceResolver :
             return portableGlyphRunSource.TryGetPortableGlyphRun(out var portableGlyphRun)
                 ? AdaptPortableGlyphRun(portableGlyphRun)
                 : null;
+        }
+
+        if (resource is PortableGlyphRun portableGlyphRunDto)
+        {
+            return AdaptPortableGlyphRun(portableGlyphRunDto);
         }
 
         if (resource is MediaGlyphRun glyphRun)
@@ -1071,7 +1408,8 @@ public sealed class WpfReflectionResourceResolver :
         if (resource is PortableGeometryPathSource portableGeometry)
         {
             return portableGeometry.TryGetPortableGeometryPath(out var portablePath)
-                ? AdaptPortableGeometryPath(portablePath)
+                && TryAdaptPortableGeometryPath(portablePath, out var portableGeometryPath)
+                    ? portableGeometryPath
                 : null;
         }
 
@@ -1081,6 +1419,25 @@ public sealed class WpfReflectionResourceResolver :
         }
 
         return null;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TryAdaptPortableGeometryPath(PortableGeometryPath portablePath, out MediaGeometry? geometry)
+    {
+        geometry = null;
+        try
+        {
+            geometry = AdaptPortableGeometryPath(portablePath);
+            return geometry != null;
+        }
+        catch (MissingMethodException)
+        {
+            return false;
+        }
+        catch (TypeLoadException)
+        {
+            return false;
+        }
     }
 
     private static MediaGeometry? AdaptPortableGeometryPath(PortableGeometryPath portablePath)

@@ -1239,26 +1239,23 @@ public sealed class ProGpuCompositionCommandSink :
         Rect bounds,
         Action<int>? reportUnsupportedState = null)
     {
-        return brush switch
+        if (brush == null)
         {
-            null => null,
-            ProGpuNativeBrush nativeBrush => AdaptNativeBrush(nativeBrush, bounds, reportUnsupportedState),
-            _ => brush.ToNative()
-        };
+            return null;
+        }
+
+        var replayBounds = new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            brush,
+            replayBounds,
+            out int unsupportedStateCount);
+        reportUnsupportedState?.Invoke(unsupportedStateCount);
+        return nativeBrush;
     }
 
     private VectorBrush? ToNativeBrush(MediaBrush? brush, Rect bounds)
     {
         return AdaptNativeBrush(brush, bounds, count => UnsupportedStateCount += count);
-    }
-
-    private static VectorBrush AdaptNativeBrush(
-        ProGpuNativeBrush brush,
-        Rect bounds,
-        Action<int>? reportUnsupportedState)
-    {
-        reportUnsupportedState?.Invoke(brush.CountUnsupportedStateForBounds(bounds));
-        return brush.ToNative(bounds);
     }
 
     private readonly struct GuidelineState

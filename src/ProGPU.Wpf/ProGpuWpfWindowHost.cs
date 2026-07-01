@@ -2377,12 +2377,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private static bool IsRecoverableDispatcherRenderException(Exception exception)
     {
-        while (exception is System.Reflection.TargetInvocationException { InnerException: { } innerException })
-        {
-            exception = innerException;
-        }
-
-        return exception is InvalidOperationException invalidOperation &&
+        var baseException = exception.GetBaseException();
+        return baseException is InvalidOperationException invalidOperation &&
             invalidOperation.Message.IndexOf(
                 "dispatcher processing is suspended",
                 StringComparison.OrdinalIgnoreCase) >= 0;

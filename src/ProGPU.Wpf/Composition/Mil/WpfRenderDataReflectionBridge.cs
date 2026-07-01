@@ -31,7 +31,7 @@ public sealed class WpfRenderDataReflectionBridge
         }
 
         throw new InvalidOperationException(
-            $"Type '{renderData.GetType().FullName}' does not implement the portable WPF RenderData source contract.");
+            "The supplied object does not implement the portable WPF RenderData source contract.");
     }
 
     public WpfMilDecodeResult Replay(

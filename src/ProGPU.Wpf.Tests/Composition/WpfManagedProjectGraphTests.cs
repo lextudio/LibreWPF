@@ -495,7 +495,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWpfServiceRegistry.TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceKey.PresentationFramework", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("System.Reflection.Assembly", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection.TargetInvocationException", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("currentType.Assembly", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("exception.GetBaseException()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CreateWindowActivationCallbacks(hostFactory)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryIsCurrentApplicationMainWindow(window, out bool isMainWindow)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryCloseWindow(window, out var typedCloseResult)", proGpuActivation, StringComparison.Ordinal);
@@ -633,7 +635,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_wpfRootVisual is not PortableVisualLayoutStateSource layoutStateSource", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("layoutState.RenderSize.Width", proGpuHost, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection;", proGpuHost, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection.TargetInvocationException", proGpuHost, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("exception.GetBaseException()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("UpdateClientSizeFromNativeResize(size, framebufferSize, monitorDpiScale);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var clientSize = _window.Size;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var framebufferSize = _window.FramebufferSize;", proGpuHost, StringComparison.Ordinal);
@@ -5387,6 +5391,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("BindingFlags", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("FindField", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetField(", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetType().FullName", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_content\"", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_drawingContent\"", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_buffer\"", bridgeSource, StringComparison.Ordinal);
@@ -5437,6 +5442,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("GetField(", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetMethod(", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetType().FullName", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_buffer\"", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_curOffset\"", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_dependentResources\"", bridgeSource, StringComparison.Ordinal);

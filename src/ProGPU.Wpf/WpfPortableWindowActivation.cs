@@ -546,30 +546,23 @@ public sealed class WpfPortableWindowActivation : IDisposable
         {
             TrySetWindowActivationState(Window, isActive);
         }
-        catch (System.Reflection.TargetInvocationException ex) when (!isActive && IsRecoverablePortableDeactivationException(ex.InnerException ?? ex))
+        catch (Exception ex) when (!isActive && IsRecoverablePortableDeactivationException(ex))
         {
             // A native focus-loss callback can arrive while a third-party control still owns mouse capture.
             // Keep the portable host alive if that capture-cancel path rejects an intermediate layout state.
-        }
-        catch (Exception ex) when (!isActive && IsRecoverablePortableDeactivationException(ex))
-        {
-            // See the System.Reflection.TargetInvocationException path above.
         }
     }
 
     private static bool IsRecoverablePortableDeactivationException(Exception exception)
     {
-        return exception is ArgumentException or InvalidOperationException;
+        var baseException = exception.GetBaseException();
+        return baseException is ArgumentException or InvalidOperationException;
     }
 
     private static bool IsRecoverableDispatcherFlushException(Exception exception)
     {
-        while (exception is System.Reflection.TargetInvocationException { InnerException: { } innerException })
-        {
-            exception = innerException;
-        }
-
-        return exception is InvalidOperationException invalidOperation &&
+        var baseException = exception.GetBaseException();
+        return baseException is InvalidOperationException invalidOperation &&
             invalidOperation.Message.IndexOf(
                 "dispatcher processing is suspended",
                 StringComparison.OrdinalIgnoreCase) >= 0;

@@ -29,7 +29,7 @@ public sealed class WpfVisualContentReflectionBridge
         }
 
         throw new InvalidOperationException(
-            $"Type '{drawingVisual.GetType().FullName}' does not implement the portable WPF visual content source contract.");
+            "The supplied object does not implement the portable WPF visual content source contract.");
     }
 
     public static bool TryExtractContent(object drawingVisual, out object? content)
@@ -63,7 +63,7 @@ public sealed class WpfVisualContentReflectionBridge
         if (content is not PortableRenderDataSource)
         {
             throw new NotSupportedException(
-                $"WPF visual content type '{content.GetType().FullName}' is not supported by the ProGPU RenderData replay bridge.");
+                "The supplied WPF visual content is not supported by the ProGPU RenderData replay bridge.");
         }
 
         return _renderDataBridge.Replay(content, sink, resources, imageSourceAdapter);

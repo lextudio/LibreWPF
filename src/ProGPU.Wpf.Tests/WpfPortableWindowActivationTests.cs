@@ -17,8 +17,7 @@ public sealed class WpfPortableWindowActivationTests
         var service = new TestWindowActivationServiceRegistrar();
         using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
 
-        var registered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation(
-            service.SourceAssembly);
+        var registered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation();
 
         Assert.True(registered);
         Assert.Equal(1, service.RegisterCount);
@@ -45,7 +44,7 @@ public sealed class WpfPortableWindowActivationTests
         var service = new TestClipboardServiceRegistrar();
         using var registration = PortableWpfServiceRegistry.RegisterClipboardService(service);
 
-        var registered = WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService(service.SourceAssembly);
+        var registered = WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService();
 
         Assert.True(registered);
         Assert.Equal(1, service.RegisterCount);
@@ -63,12 +62,9 @@ public sealed class WpfPortableWindowActivationTests
         using var messageBoxRegistration = PortableWpfServiceRegistry.RegisterMessageBoxService(messageBoxService);
         using var fileDialogRegistration = PortableWpfServiceRegistry.RegisterFileDialogService(fileDialogService);
 
-        var launcherRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkLauncherService(
-            launcherService.SourceAssembly);
-        var messageBoxRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkMessageBoxService(
-            messageBoxService.SourceAssembly);
-        var fileDialogRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkFileDialogService(
-            fileDialogService.SourceAssembly);
+        var launcherRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkLauncherService();
+        var messageBoxRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkMessageBoxService();
+        var fileDialogRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkFileDialogService();
 
         Assert.True(launcherRegistered);
         Assert.True(messageBoxRegistered);
@@ -1605,11 +1601,11 @@ public sealed class WpfPortableWindowActivationTests
 
         public Action<string?>? SetText { get; private set; }
 
-        public Assembly SourceAssembly
+        public PortableWpfServiceKey ServiceKey
         {
             get
             {
-                return typeof(TestClipboardServiceRegistrar).Assembly;
+                return PortableWpfServiceKey.PresentationCore;
             }
         }
 
@@ -1641,11 +1637,11 @@ public sealed class WpfPortableWindowActivationTests
 
         public Func<PortableLaunchRequest, bool>? Launch { get; private set; }
 
-        public Assembly SourceAssembly
+        public PortableWpfServiceKey ServiceKey
         {
             get
             {
-                return typeof(TestLauncherServiceRegistrar).Assembly;
+                return PortableWpfServiceKey.PresentationFramework;
             }
         }
 
@@ -1668,11 +1664,11 @@ public sealed class WpfPortableWindowActivationTests
 
         public Func<PortableMessageBoxRequest, string?>? Show { get; private set; }
 
-        public Assembly SourceAssembly
+        public PortableWpfServiceKey ServiceKey
         {
             get
             {
-                return typeof(TestMessageBoxServiceRegistrar).Assembly;
+                return PortableWpfServiceKey.PresentationFramework;
             }
         }
 
@@ -1695,11 +1691,11 @@ public sealed class WpfPortableWindowActivationTests
 
         public Func<PortableFileDialogRequest, string?>? ShowDialog { get; private set; }
 
-        public Assembly SourceAssembly
+        public PortableWpfServiceKey ServiceKey
         {
             get
             {
-                return typeof(TestFileDialogServiceRegistrar).Assembly;
+                return PortableWpfServiceKey.PresentationFramework;
             }
         }
 
@@ -1778,11 +1774,11 @@ public sealed class WpfPortableWindowActivationTests
 
         public int LastDragDropAcceptedEffect { get; private set; }
 
-        public Assembly SourceAssembly
+        public PortableWpfServiceKey ServiceKey
         {
             get
             {
-                return typeof(TestWindowActivationServiceRegistrar).Assembly;
+                return PortableWpfServiceKey.PresentationFramework;
             }
         }
 

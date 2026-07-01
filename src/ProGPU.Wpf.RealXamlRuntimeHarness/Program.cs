@@ -5839,9 +5839,9 @@ internal static class Program
         MethodInfo registerMethod = portableActivationType.GetMethods(BindingFlags.Static | BindingFlags.Public)
             .SingleOrDefault(static method =>
                 method.Name == "TryRegisterPresentationFrameworkActivation" &&
-                method.GetParameters().Length == 2)
+                method.GetParameters().Length == 1)
             ?? throw new MissingMethodException(portableActivationType.FullName, "TryRegisterPresentationFrameworkActivation");
-        object registered = registerMethod.Invoke(null, new object?[] { presentationFramework, null })
+        object registered = registerMethod.Invoke(null, new object?[] { null })
             ?? throw new InvalidOperationException("ProGPU portable activation registration returned null.");
         if (!Convert.ToBoolean(registered))
         {

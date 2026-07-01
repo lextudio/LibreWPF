@@ -5,7 +5,6 @@
 
 using System.Collections.Specialized;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -279,11 +278,11 @@ internal static class PortableClipboardService
 
     private sealed class ClipboardServiceRegistrar : IPortableClipboardServiceRegistrar
     {
-        public Assembly SourceAssembly
+        public PortableWpfServiceKey ServiceKey
         {
             get
             {
-                return typeof(PortableClipboardService).Assembly;
+                return PortableWpfServiceKey.PresentationCore;
             }
         }
 

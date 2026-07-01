@@ -23,7 +23,6 @@ internal static class ModuleInitializer
     public static void Initialize()
     {
         PortableClipboardService.RegisterPortableInteropService();
-        PortableMediaContextRenderService.RegisterPortableInteropService();
 
         if (!OperatingSystem.IsWindows())
         {

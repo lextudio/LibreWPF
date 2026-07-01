@@ -413,19 +413,23 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
-        Assert.Contains("using ProGPU.Wpf.Interop;", renderService, StringComparison.Ordinal);
         Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", renderService, StringComparison.Ordinal);
-        Assert.Contains("internal static void RegisterPortableInteropService()", renderService, StringComparison.Ordinal);
-        Assert.Contains("PortableWpfServiceRegistry.RegisterMediaContextRenderService(s_registrar)", renderService, StringComparison.Ordinal);
-        Assert.Contains("private sealed class MediaContextRenderServiceRegistrar : IPortableMediaContextRenderServiceRegistrar", renderService, StringComparison.Ordinal);
-        Assert.Contains("PortableMediaContextRenderService.RegisterPortableInteropService();", moduleInitializer, StringComparison.Ordinal);
-        Assert.Contains("public interface IPortableMediaContextRenderServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
-        Assert.Contains("public static bool TryGetMediaContextRenderService(", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.DoesNotContain("using ProGPU.Wpf.Interop;", renderService, StringComparison.Ordinal);
+        Assert.DoesNotContain("internal static void RegisterPortableInteropService()", renderService, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortableWpfServiceRegistry.RegisterMediaContextRenderService", renderService, StringComparison.Ordinal);
+        Assert.DoesNotContain("MediaContextRenderServiceRegistrar", renderService, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortableMediaContextRenderService.RegisterPortableInteropService();", moduleInitializer, StringComparison.Ordinal);
+        Assert.DoesNotContain("public interface IPortableMediaContextRenderServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.DoesNotContain("public static bool TryGetMediaContextRenderService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableWindowActivationCallbacks", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableWindowInputEvent", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public enum PortableWindowCloseResult", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public readonly record struct PortableWpfServiceKey", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceKey ServiceKey", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public interface IPortableWindowActivationServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetWindowActivationService(", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.DoesNotContain("SourceAssembly", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.DoesNotContain("Dictionary<Assembly", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryIsCurrentApplicationMainWindow(object window, out bool isMainWindow);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryCloseWindow(object window, out PortableWindowCloseResult result);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TrySetActivationState(object window, bool isActive);", portableWpfServiceRegistry, StringComparison.Ordinal);
@@ -489,6 +493,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public interface IWpfDelayedRenderScheduler : IWpfRenderScheduler", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("void RequestRender(TimeSpan delay)", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceKey.PresentationFramework", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection.Assembly", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("currentType.Assembly", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CreateWindowActivationCallbacks(hostFactory)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryIsCurrentApplicationMainWindow(window, out bool isMainWindow)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryCloseWindow(window, out var typedCloseResult)", proGpuActivation, StringComparison.Ordinal);
@@ -1621,7 +1628,7 @@ public sealed class WpfManagedProjectGraphTests
                 < messageBox.IndexOf("UnsafeNativeMethods.MessageBox", StringComparison.Ordinal),
             "MessageBox.ShowCore must try the portable service before the Win32 MessageBox call.");
 
-        Assert.Contains("TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationFrameworkMessageBoxService()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetMessageBoxService(", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("PortableMessageBoxServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("TryRegisterPresentationFrameworkMessageBoxServiceByReflection", proGpuActivation, StringComparison.Ordinal);
@@ -1737,7 +1744,7 @@ public sealed class WpfManagedProjectGraphTests
                 < appSecurityManager.IndexOf("UnsafeNativeMethods.ShellExecuteInfo", StringComparison.Ordinal),
             "Default browser launch must avoid ShellExecuteEx on non-Windows.");
 
-        Assert.Contains("TryRegisterPresentationFrameworkLauncherService(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationFrameworkLauncherService()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetLauncherService(", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("PortableLauncherServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("TryRegisterPresentationFrameworkLauncherServiceByReflection", proGpuActivation, StringComparison.Ordinal);
@@ -1938,7 +1945,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SetPortableClipboardText", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CrossPlatformWpfPlatformServices.Instance.Clipboard", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("return string.IsNullOrEmpty(text) ? null : text", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService(typeof(Clipboard).Assembly)", portableBootstrap, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService()", portableBootstrap, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(Clipboard).Assembly", portableBootstrap, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -2062,7 +2070,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private protected override bool TryHandlePortableItemOk(out object restoreState)", fileDialog, StringComparison.Ordinal);
         Assert.Contains("return ProcessFileNames();", fileDialog, StringComparison.Ordinal);
 
-        Assert.Contains("TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly)", activation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationFrameworkFileDialogService()", activation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetFileDialogService(", activation, StringComparison.Ordinal);
         Assert.DoesNotContain("PortableFileDialogServiceTypeName", activation, StringComparison.Ordinal);
         Assert.DoesNotContain("TryRegisterPresentationFrameworkFileDialogServiceByReflection", activation, StringComparison.Ordinal);
@@ -3806,7 +3814,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ShowPortableActivation(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("proGpuWpf,", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.WpfPortableWindowActivation\")", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("registerMethod.Invoke(null, new object?[] { presentationFramework, null })", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("registerMethod.Invoke(null, new object?[] { null })", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetPortableHost(activation, \"portable window show\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableInputBindingActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("object host = GetPortableHost(activation, \"input routing\")", harnessProgram, StringComparison.Ordinal);
@@ -4110,7 +4118,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled GroupStyle header generated binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.WpfPortableWindowActivation\")", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("registerMethod.Invoke(null, new object?[] { presentationFramework, null })", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("registerMethod.Invoke(null, new object?[] { null })", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"Show\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"UpdateLayout\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetProperty(window, \"PortableWindowActivation\")", harnessProgram, StringComparison.Ordinal);
@@ -5341,7 +5349,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetProperty(retainedRootChildren, \"Count\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("CountRetainedCommands(retainedRoot)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.WpfPortableWindowActivation\")", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("registerMethod.Invoke(null, new object?[] { presentationFramework, null })", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("registerMethod.Invoke(null, new object?[] { null })", harnessProgram, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -10508,8 +10516,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static class ProGpuWpfSdkPortableBootstrap", portableBootstrap, StringComparison.Ordinal);
         Assert.Contains("[ModuleInitializer]", portableBootstrap, StringComparison.Ordinal);
         Assert.Contains("if (OperatingSystem.IsWindows())", portableBootstrap, StringComparison.Ordinal);
-        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation(typeof(Application).Assembly)", portableBootstrap, StringComparison.Ordinal);
-        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService(typeof(Clipboard).Assembly)", portableBootstrap, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation()", portableBootstrap, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService()", portableBootstrap, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(Application).Assembly", portableBootstrap, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(Clipboard).Assembly", portableBootstrap, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<OutputType>WinExe</OutputType>", smokeProject, StringComparison.Ordinal);

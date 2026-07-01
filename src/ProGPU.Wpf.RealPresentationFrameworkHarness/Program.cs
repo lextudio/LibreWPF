@@ -151,7 +151,6 @@ public static class Program
         out object activation)
     {
         if (!WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation(
-                presentationFramework,
                 hostFactory: w => new ProGpuWpfWindowHost(WpfPortableWindowActivation.CreateHostOptions(w))))
         {
             throw new InvalidOperationException("Failed to register ProGPU portable activation with real PresentationFramework.");

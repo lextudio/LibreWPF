@@ -3,7 +3,6 @@
 
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Reflection;
 using ProGPU.Wpf.Interop;
 
 namespace System.Windows
@@ -134,11 +133,11 @@ namespace System.Windows
 
         private sealed class LauncherServiceRegistrar : IPortableLauncherServiceRegistrar
         {
-            public Assembly SourceAssembly
+            public PortableWpfServiceKey ServiceKey
             {
                 get
                 {
-                    return typeof(PortableLauncherService).Assembly;
+                    return PortableWpfServiceKey.PresentationFramework;
                 }
             }
 

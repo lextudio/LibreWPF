@@ -3,7 +3,6 @@
 
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Reflection;
 using ProGPU.Wpf.Interop;
 
 namespace Microsoft.Win32
@@ -193,11 +192,11 @@ namespace Microsoft.Win32
 
         private sealed class FileDialogServiceRegistrar : IPortableFileDialogServiceRegistrar
         {
-            public Assembly SourceAssembly
+            public PortableWpfServiceKey ServiceKey
             {
                 get
                 {
-                    return typeof(PortableFileDialogService).Assembly;
+                    return PortableWpfServiceKey.PresentationFramework;
                 }
             }
 

@@ -3,9 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Media
 {
@@ -14,8 +12,6 @@ namespace System.Windows.Media
         private static readonly object s_lock = new object();
         private static readonly List<Action<object, TimeSpan>> s_renderRequests = new List<Action<object, TimeSpan>>();
         private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-        private static readonly MediaContextRenderServiceRegistrar s_registrar = new MediaContextRenderServiceRegistrar();
-        private static IDisposable s_registrarRegistration;
 
         internal static bool IsEnabled
         {
@@ -31,11 +27,6 @@ namespace System.Windows.Media
                     return s_renderRequests.Count != 0;
                 }
             }
-        }
-
-        internal static void RegisterPortableInteropService()
-        {
-            s_registrarRegistration ??= PortableWpfServiceRegistry.RegisterMediaContextRenderService(s_registrar);
         }
 
         internal static IDisposable Register(Action requestRender)
@@ -142,30 +133,6 @@ namespace System.Windows.Media
 
             public void Dispose()
             {
-            }
-        }
-
-        private sealed class MediaContextRenderServiceRegistrar : IPortableMediaContextRenderServiceRegistrar
-        {
-            public Assembly SourceAssembly
-            {
-                get
-                {
-                    return typeof(PortableMediaContextRenderService).Assembly;
-                }
-            }
-
-            public IDisposable Register(Action<object, TimeSpan> requestRender)
-            {
-                return PortableMediaContextRenderService.Register(requestRender);
-            }
-
-            public void Clear()
-            {
-                lock (s_lock)
-                {
-                    s_renderRequests.Clear();
-                }
             }
         }
     }

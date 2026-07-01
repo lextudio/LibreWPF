@@ -44,19 +44,16 @@ public sealed class WpfPortableWindowActivation : IDisposable
     public object PortablePresentationSource { get; }
 
     public static bool TryRegisterPresentationFrameworkActivation(
-        System.Reflection.Assembly presentationFrameworkAssembly,
         Func<object, ProGpuWpfWindowHost>? hostFactory = null)
     {
-        ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
-
         if (PortableWpfServiceRegistry.TryGetWindowActivationService(
-                presentationFrameworkAssembly,
+                PortableWpfServiceKey.PresentationFramework,
                 out var activationService))
         {
             activationService.Register(CreateWindowActivationCallbacks(hostFactory));
-            TryRegisterPresentationFrameworkLauncherService(presentationFrameworkAssembly);
-            TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly);
-            TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly);
+            TryRegisterPresentationFrameworkLauncherService();
+            TryRegisterPresentationFrameworkMessageBoxService();
+            TryRegisterPresentationFrameworkFileDialogService();
             return true;
         }
 
@@ -95,12 +92,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 ((WpfPortableWindowActivation)activation).Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero);
     }
 
-    public static bool TryRegisterPresentationCoreClipboardService(System.Reflection.Assembly presentationCoreAssembly)
+    public static bool TryRegisterPresentationCoreClipboardService()
     {
-        ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
-
         if (PortableWpfServiceRegistry.TryGetClipboardService(
-                presentationCoreAssembly,
+                PortableWpfServiceKey.PresentationCore,
                 out var clipboardService))
         {
             clipboardService.Register(GetPortableClipboardText, SetPortableClipboardText);
@@ -110,12 +105,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    public static bool TryRegisterPresentationFrameworkLauncherService(System.Reflection.Assembly presentationFrameworkAssembly)
+    public static bool TryRegisterPresentationFrameworkLauncherService()
     {
-        ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
-
         if (PortableWpfServiceRegistry.TryGetLauncherService(
-                presentationFrameworkAssembly,
+                PortableWpfServiceKey.PresentationFramework,
                 out var launcherService))
         {
             launcherService.Register(LaunchPortableUri);
@@ -125,12 +118,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    public static bool TryRegisterPresentationFrameworkMessageBoxService(System.Reflection.Assembly presentationFrameworkAssembly)
+    public static bool TryRegisterPresentationFrameworkMessageBoxService()
     {
-        ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
-
         if (PortableWpfServiceRegistry.TryGetMessageBoxService(
-                presentationFrameworkAssembly,
+                PortableWpfServiceKey.PresentationFramework,
                 out var messageBoxService))
         {
             messageBoxService.Register(ShowPortableMessageBox);
@@ -140,12 +131,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    public static bool TryRegisterPresentationFrameworkFileDialogService(System.Reflection.Assembly presentationFrameworkAssembly)
+    public static bool TryRegisterPresentationFrameworkFileDialogService()
     {
-        ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
-
         if (PortableWpfServiceRegistry.TryGetFileDialogService(
-                presentationFrameworkAssembly,
+                PortableWpfServiceKey.PresentationFramework,
                 out var fileDialogService))
         {
             fileDialogService.Register(ShowPortableFileDialog);
@@ -297,21 +286,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
         _mediaContextRenderRegistration = null;
         Host.Dispose();
         _isDisposed = true;
-    }
-
-    public static bool TryAttach(
-        ProGpuWpfWindowHost host,
-        object window,
-        System.Reflection.Assembly presentationCoreAssembly,
-        out WpfPortableWindowActivation? activation,
-        double dpiScaleX = 1.0,
-        double dpiScaleY = 1.0)
-    {
-        ArgumentNullException.ThrowIfNull(host);
-        ArgumentNullException.ThrowIfNull(window);
-        ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
-
-        return TryAttach(host, window, out activation, dpiScaleX, dpiScaleY);
     }
 
     public static bool TryAttach(
@@ -685,7 +659,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private bool TryDispatchHostInputToWindowDispatcher(WpfInputEventArgs e)
     {
         var callback = new Action(() => ProcessHostInputAndRequestRender(e));
-        if (TryGetWindowActivationService(Window, out var activationService) &&
+        if (TryGetWindowActivationService(out var activationService) &&
             activationService.TryBeginInvokeInput(Window, callback))
         {
             Host.TryRequestNativeLoopWakeup();
@@ -697,7 +671,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryForwardInputToWindow(object window, WpfInputEventArgs e)
     {
-        if (TryGetWindowActivationService(window, out var activationService))
+        if (TryGetWindowActivationService(out var activationService))
         {
             var input = CreatePortableWindowInputEvent(e);
             if (activationService.TryProcessInputEvent(window, input))
@@ -742,7 +716,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryProcessPortableDragDrop(object window, WpfDragDropEventArgs e)
     {
-        if (TryGetWindowActivationService(window, out var activationService) &&
+        if (TryGetWindowActivationService(out var activationService) &&
             activationService.TryProcessDragDropEvent(
                 window,
                 (int)e.Kind,
@@ -763,7 +737,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static WpfWindowCloseResult TryInvokeWindowClose(object window)
     {
-        if (TryGetWindowActivationService(window, out var activationService) &&
+        if (TryGetWindowActivationService(out var activationService) &&
             activationService.TryCloseWindow(window, out var typedCloseResult))
         {
             return MapCloseResult(typedCloseResult);
@@ -791,7 +765,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TrySetWindowActivationState(object window, bool isActive)
     {
-        if (TryGetWindowActivationService(window, out var activationService) &&
+        if (TryGetWindowActivationService(out var activationService) &&
             activationService.TrySetActivationState(window, isActive))
         {
             return true;
@@ -802,7 +776,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private bool TryRegisterMediaContextRenderService()
     {
-        if (TryGetWindowActivationService(Window, out var activationService) &&
+        if (TryGetWindowActivationService(out var activationService) &&
             activationService.TryRegisterMediaContextRenderService(
                 Window,
                 RequestRenderFromMediaContext,
@@ -857,7 +831,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout = null)
     {
-        if (TryGetWindowActivationService(window, out var activationService))
+        if (TryGetWindowActivationService(out var activationService))
         {
             try
             {
@@ -876,17 +850,13 @@ public sealed class WpfPortableWindowActivation : IDisposable
     }
 
     private static bool TryGetWindowActivationService(
-        object window,
         out IPortableWindowActivationServiceRegistrar activationService)
     {
-        for (Type? currentType = window.GetType(); currentType != null; currentType = currentType.BaseType)
+        if (PortableWpfServiceRegistry.TryGetWindowActivationService(
+                PortableWpfServiceKey.PresentationFramework,
+                out activationService))
         {
-            if (PortableWpfServiceRegistry.TryGetWindowActivationService(
-                    currentType.Assembly,
-                    out activationService))
-            {
-                return true;
-            }
+            return true;
         }
 
         activationService = null!;
@@ -895,7 +865,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool IsCurrentApplicationMainWindow(object window)
     {
-        if (TryGetWindowActivationService(window, out var activationService) &&
+        if (TryGetWindowActivationService(out var activationService) &&
             activationService.TryIsCurrentApplicationMainWindow(window, out bool isMainWindow))
         {
             return isMainWindow;

@@ -4,7 +4,6 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Reflection;
 using ProGPU.Wpf.Interop;
 
 namespace System.Windows
@@ -202,11 +201,11 @@ namespace System.Windows
 
         private sealed class MessageBoxServiceRegistrar : IPortableMessageBoxServiceRegistrar
         {
-            public Assembly SourceAssembly
+            public PortableWpfServiceKey ServiceKey
             {
                 get
                 {
-                    return typeof(PortableMessageBoxService).Assembly;
+                    return PortableWpfServiceKey.PresentationFramework;
                 }
             }
 

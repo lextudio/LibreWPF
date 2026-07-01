@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Specialized;
-using System.Reflection;
 using System.Threading;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -780,11 +779,11 @@ namespace System.Windows
 
         private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
         {
-            public Assembly SourceAssembly
+            public PortableWpfServiceKey ServiceKey
             {
                 get
                 {
-                    return typeof(PortableWindowActivationService).Assembly;
+                    return PortableWpfServiceKey.PresentationFramework;
                 }
             }
 

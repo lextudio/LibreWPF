@@ -809,6 +809,22 @@ namespace System.Windows
                     callbacks.GetHandle);
             }
 
+            public bool TryRegisterMediaContextRenderService(
+                object window,
+                Action<object, TimeSpan> requestRender,
+                out IDisposable registration)
+            {
+                registration = null;
+                if (window is not Window)
+                {
+                    return false;
+                }
+
+                registration = Media.PortableMediaContextRenderService.Register(
+                    (invalidatedSource, delay) => requestRender(invalidatedSource, delay));
+                return true;
+            }
+
             public bool TryIsCurrentApplicationMainWindow(object window, out bool isMainWindow)
             {
                 isMainWindow = false;

@@ -311,6 +311,19 @@ public sealed class WpfPortableWindowActivation : IDisposable
         ArgumentNullException.ThrowIfNull(window);
         ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
 
+        return TryAttach(host, window, out activation, dpiScaleX, dpiScaleY);
+    }
+
+    public static bool TryAttach(
+        ProGpuWpfWindowHost host,
+        object window,
+        out WpfPortableWindowActivation? activation,
+        double dpiScaleX = 1.0,
+        double dpiScaleY = 1.0)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(window);
+
         activation = null;
         var rootVisual = ResolveRootVisual(window);
         if (!host.TryCreatePortablePresentationSource(
@@ -323,7 +336,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         activation = new WpfPortableWindowActivation(host, window, rootVisual, portablePresentationSource);
-        activation.TryRegisterMediaContextRenderService(presentationCoreAssembly);
+        activation.TryRegisterMediaContextRenderService();
         return true;
     }
 
@@ -347,7 +360,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         var rootVisual = ResolveRootVisual(window);
         bridge.RootVisual = rootVisual;
         activation = new WpfPortableWindowActivation(host, window, rootVisual, portablePresentationSource);
-        activation.TryRegisterMediaContextRenderService(portablePresentationSource.GetType().Assembly);
+        activation.TryRegisterMediaContextRenderService();
         return true;
     }
 
@@ -787,14 +800,17 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
-    private bool TryRegisterMediaContextRenderService(System.Reflection.Assembly presentationCoreAssembly)
+    private bool TryRegisterMediaContextRenderService()
     {
-        if (PortableWpfServiceRegistry.TryGetMediaContextRenderService(
-                presentationCoreAssembly,
-                out var renderService))
+        if (TryGetWindowActivationService(Window, out var activationService) &&
+            activationService.TryRegisterMediaContextRenderService(
+                Window,
+                RequestRenderFromMediaContext,
+                out var registration) &&
+            registration != null)
         {
             _mediaContextRenderRegistration?.Dispose();
-            _mediaContextRenderRegistration = renderService.Register(RequestRenderFromMediaContext);
+            _mediaContextRenderRegistration = registration;
             return _mediaContextRenderRegistration != null;
         }
 
@@ -1249,34 +1265,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
         out WpfPortableWindowActivation? activation)
     {
         activation = null;
-        System.Reflection.Assembly? presentationCoreAssembly = ResolvePresentationCoreAssembly(window);
-        if (presentationCoreAssembly == null)
-        {
-            return false;
-        }
-
         ProGpuWpfWindowHost host = hostFactory?.Invoke(window) ??
             new ProGpuWpfWindowHost(CreateHostOptions(window));
-        if (TryAttach(host, window, presentationCoreAssembly, out activation))
+        if (TryAttach(host, window, out activation))
         {
             return true;
         }
 
         host.Dispose();
         return false;
-    }
-
-    private static System.Reflection.Assembly? ResolvePresentationCoreAssembly(object window)
-    {
-        for (Type? type = window.GetType(); type != null; type = type.BaseType)
-        {
-            if (string.Equals(type.FullName, "System.Windows.Media.Visual", StringComparison.Ordinal))
-            {
-                return type.Assembly;
-            }
-        }
-
-        return null;
     }
 
     private static bool TryMapPositiveDimension(object? value, out double mappedValue)

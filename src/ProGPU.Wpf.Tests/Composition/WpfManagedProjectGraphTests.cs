@@ -432,6 +432,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("bool TryBeginInvokeInput(object window, Action callback);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryProcessInputEvent(object window, PortableWindowInputEvent input);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout);", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("bool TryRegisterMediaContextRenderService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryProcessDragDropEvent(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("List<Action<object, TimeSpan>>", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Action requestRender)", renderService, StringComparison.Ordinal);
@@ -471,6 +472,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.ProcessInput(typedWindow, mappedInput);", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout)", activationService, StringComparison.Ordinal);
         Assert.Contains("Enum.TryParse(markerPriorityName, ignoreCase: false, out DispatcherPriority markerPriority)", activationService, StringComparison.Ordinal);
+        Assert.Contains("public bool TryRegisterMediaContextRenderService(", activationService, StringComparison.Ordinal);
+        Assert.Contains("Media.PortableMediaContextRenderService.Register(", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryProcessDragDropEvent(", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.ProcessDragDropEvent(", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.RegisterPortableInteropService();", presentationFrameworkModuleInitializer, StringComparison.Ordinal);
@@ -515,8 +518,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("presentationFrameworkAssembly.GetType(", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateWindowActivationReflectionParameters", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("PortableMediaContextRenderServiceTypeName", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("TryRegisterMediaContextRenderService(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("PortableWpfServiceRegistry.TryGetMediaContextRenderService(", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("activationService.TryRegisterMediaContextRenderService(", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortableWpfServiceRegistry.TryGetMediaContextRenderService(", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("ResolvePresentationCoreAssembly", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("TryRegisterMediaContextRenderServiceByReflection", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(Action<object, TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(Action<TimeSpan>)", proGpuActivation, StringComparison.Ordinal);

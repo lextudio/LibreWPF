@@ -87,20 +87,21 @@ public sealed class WpfPortableWindowActivationTests
         using var host = new ProGpuWpfWindowHost();
         var window = new FakeWindow();
         var source = new FakePortablePresentationSource();
-        var service = new TestMediaContextRenderServiceRegistrar();
-        using var registration = PortableWpfServiceRegistry.RegisterMediaContextRenderService(service);
+        var service = new TestWindowActivationServiceRegistrar();
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
 
         var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
 
         Assert.True(attached);
         Assert.NotNull(activation);
-        Assert.Equal(1, service.RegisterCount);
+        Assert.Equal(1, service.MediaContextRenderRegisterCount);
+        Assert.Same(window, service.LastMediaContextRenderWindow);
         Assert.NotNull(service.RequestRender);
-        Assert.False(service.LastRegistration?.IsDisposed);
+        Assert.False(service.LastMediaContextRenderRegistration?.IsDisposed);
 
         activation.Dispose();
 
-        Assert.True(service.LastRegistration?.IsDisposed);
+        Assert.True(service.LastMediaContextRenderRegistration?.IsDisposed);
     }
 
     [Fact]
@@ -1721,6 +1722,14 @@ public sealed class WpfPortableWindowActivationTests
 
         public PortableWindowActivationCallbacks? Callbacks { get; private set; }
 
+        public int MediaContextRenderRegisterCount { get; private set; }
+
+        public object? LastMediaContextRenderWindow { get; private set; }
+
+        public Action<object?, TimeSpan>? RequestRender { get; private set; }
+
+        public TestPortableServiceRegistration? LastMediaContextRenderRegistration { get; private set; }
+
         public int SetActivationStateCount { get; private set; }
 
         public object? LastActivationStateWindow { get; private set; }
@@ -1781,6 +1790,19 @@ public sealed class WpfPortableWindowActivationTests
         {
             RegisterCount++;
             Callbacks = callbacks;
+        }
+
+        public bool TryRegisterMediaContextRenderService(
+            object window,
+            Action<object?, TimeSpan> requestRender,
+            out IDisposable? registration)
+        {
+            MediaContextRenderRegisterCount++;
+            LastMediaContextRenderWindow = window;
+            RequestRender = requestRender;
+            LastMediaContextRenderRegistration = new TestPortableServiceRegistration();
+            registration = LastMediaContextRenderRegistration;
+            return true;
         }
 
         public bool HandleMainWindowQuery { get; set; }
@@ -1904,6 +1926,9 @@ public sealed class WpfPortableWindowActivationTests
             Callbacks = null;
             LastMainWindowQueryWindow = null;
             LastCloseWindow = null;
+            LastMediaContextRenderWindow = null;
+            RequestRender = null;
+            LastMediaContextRenderRegistration = null;
             LastActivationStateWindow = null;
             LastBeginInvokeInputWindow = null;
             LastBeginInvokeInputCallback = null;
@@ -1915,36 +1940,6 @@ public sealed class WpfPortableWindowActivationTests
             LastDragDropText = null;
             FlushedPriorities.Clear();
             FlushTimeouts.Clear();
-        }
-    }
-
-    private sealed class TestMediaContextRenderServiceRegistrar : IPortableMediaContextRenderServiceRegistrar
-    {
-        public int RegisterCount { get; private set; }
-
-        public Action<object?, TimeSpan>? RequestRender { get; private set; }
-
-        public TestPortableServiceRegistration? LastRegistration { get; private set; }
-
-        public Assembly SourceAssembly
-        {
-            get
-            {
-                return typeof(TestMediaContextRenderServiceRegistrar).Assembly;
-            }
-        }
-
-        public IDisposable Register(Action<object?, TimeSpan> requestRender)
-        {
-            RegisterCount++;
-            RequestRender = requestRender;
-            LastRegistration = new TestPortableServiceRegistration();
-            return LastRegistration;
-        }
-
-        public void Clear()
-        {
-            RequestRender = null;
         }
     }
 

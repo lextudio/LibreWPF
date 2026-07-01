@@ -125,8 +125,6 @@ public sealed class WpfReflectionResourceResolver :
 
     private const int MaxSupportedGradientStops = 65536;
     private static readonly ConcurrentDictionary<string, TtfFont> s_fontFileCache = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly bool s_canUseShimMediaBrushAndPenConversion =
-        Type.GetType("System.Windows.Rect, PresentationCore", throwOnError: false) != null;
 
     private readonly Dictionary<uint, object> _resources = new();
     private readonly Dictionary<uint, MediaBrush?> _brushes = new();
@@ -306,17 +304,14 @@ public sealed class WpfReflectionResourceResolver :
                 : null;
         }
 
-        if (IsProGpuNativeBrushResource(resource)
-            && TryAdaptNativeShimBrush(resource, bounds, out var nativeProGpuBrush, out unsupportedStateCount))
+        if (TryAdaptNativeShimBrush(resource, bounds, out var nativeProGpuBrush, out unsupportedStateCount))
         {
             return nativeProGpuBrush;
         }
 
-        if (s_canUseShimMediaBrushAndPenConversion && resource is MediaBrush mediaBrush)
+        if (TryAdaptNativeMediaBrush(resource, bounds, out var nativeBrush))
         {
-            return TryAdaptNativeMediaBrush(mediaBrush, bounds, out var nativeBrush)
-                ? nativeBrush
-                : null;
+            return nativeBrush;
         }
 
         return null;
@@ -340,11 +335,9 @@ public sealed class WpfReflectionResourceResolver :
                 : null;
         }
 
-        if (s_canUseShimMediaBrushAndPenConversion && resource is MediaPen mediaPen)
+        if (TryAdaptNativeMediaPen(resource, bounds, out var nativePen))
         {
-            return TryAdaptNativeMediaPen(mediaPen, bounds, out var nativePen)
-                ? nativePen
-                : null;
+            return nativePen;
         }
 
         return null;
@@ -363,14 +356,6 @@ public sealed class WpfReflectionResourceResolver :
     private static Rect ToMediaRect(WpfReplayRect bounds)
     {
         return new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
-    }
-
-    private static bool IsProGpuNativeBrushResource(object resource)
-    {
-        return string.Equals(
-            resource.GetType().FullName,
-            "System.Windows.Media.ProGPU.Composition.Mil.ProGpuNativeBrush",
-            StringComparison.Ordinal);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -405,13 +390,18 @@ public sealed class WpfReflectionResourceResolver :
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static bool TryAdaptNativeMediaBrush(
-        MediaBrush mediaBrush,
+        object resource,
         WpfReplayRect bounds,
         out global::ProGPU.Vector.Brush? nativeBrush)
     {
         nativeBrush = null;
         try
         {
+            if (resource is not MediaBrush mediaBrush)
+            {
+                return false;
+            }
+
             nativeBrush = mediaBrush.ToNative(ToMediaRect(bounds));
             return nativeBrush != null;
         }
@@ -427,13 +417,18 @@ public sealed class WpfReflectionResourceResolver :
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static bool TryAdaptNativeMediaPen(
-        MediaPen mediaPen,
+        object resource,
         WpfReplayRect bounds,
         out global::ProGPU.Vector.Pen? nativePen)
     {
         nativePen = null;
         try
         {
+            if (resource is not MediaPen mediaPen)
+            {
+                return false;
+            }
+
             nativePen = mediaPen.ToNative(ToMediaRect(bounds));
             return nativePen != null;
         }

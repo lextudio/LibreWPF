@@ -98,6 +98,9 @@ pack_project "external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj" "ProGPU.WinU
 pack_project "external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj" "ProGPU.Avalonia"
 pack_project "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "ProGPU.Wpf.Interop"
 
+echo "Running ProGPU Avalonia package consumer smoke..."
+"${repo_root}/eng/progpu-avalonia-package-smoke.sh"
+
 echo "Building managed WPF transport payload..."
 build_project "src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/System.Xaml/System.Xaml.csproj"

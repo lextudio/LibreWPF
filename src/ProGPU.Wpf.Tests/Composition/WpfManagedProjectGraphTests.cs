@@ -9332,6 +9332,9 @@ public sealed class WpfManagedProjectGraphTests
         var sdkCiScriptPath = FindRepoPath(
             "eng",
             "progpu-wpf-sdk-ci.sh");
+        var avaloniaPackageSmokeScriptPath = FindRepoPath(
+            "eng",
+            "progpu-avalonia-package-smoke.sh");
         var sdkCiWorkflowPath = FindRepoPath(
             ".github",
             "workflows",
@@ -9613,6 +9616,7 @@ public sealed class WpfManagedProjectGraphTests
         var spellerInteropBase = File.ReadAllText(spellerInteropBasePath);
         var textEditorCopyPaste = File.ReadAllText(textEditorCopyPastePath);
         var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
+        var avaloniaPackageSmokeScript = File.ReadAllText(avaloniaPackageSmokeScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
         var mvpProject = File.ReadAllText(mvpProjectPath);
         var mvpAppConfig = File.ReadAllText(mvpAppConfigPath);
@@ -9797,8 +9801,21 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj\" \"ProGPU.WinUI\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj\" \"ProGPU.Avalonia\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj\" \"ProGPU.Wpf.Interop\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Running ProGPU Avalonia package consumer smoke", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"${repo_root}/eng/progpu-avalonia-package-smoke.sh\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"src/ProGPU.Wpf/ProGPU.Wpf.csproj\" \"ProGPU.Wpf\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj\" \"ProGPU.Wpf.Sdk\"", sdkCiScript, StringComparison.Ordinal);
+
+        Assert.Contains("NUGET_PACKAGES=\"${smoke_root}/packages\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("cat >\"${project_dir}/Directory.Build.props\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("cat >\"${project_dir}/Directory.Build.targets\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.Avalonia\" Version=\"${dev_package_version}\" />", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("xmlns:progpu=\"clr-namespace:ProGPU.Avalonia;assembly=ProGPU.Avalonia\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("<progpu:ProGpuHostControl x:Name=\"Host\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("Host.WinuiRoot = new WinuiGrid", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("\\\"ProGPU.Avalonia/${dev_package_version}\\\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("\\\"ProGPU.WinUI/${dev_package_version}\\\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ProjectReference", avaloniaPackageSmokeScript, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", mvpProject, StringComparison.Ordinal);

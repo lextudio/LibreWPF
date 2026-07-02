@@ -6475,9 +6475,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TypeNameEndsWith", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("return brush is PortableTileBrushSource;", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;", samplerCache, StringComparison.Ordinal);
+        Assert.Contains("using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;", samplerCache, StringComparison.Ordinal);
         Assert.Contains("brush is PortableTileBrushSource portableSource", samplerCache, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableBrushSourceBounds(portableBrush, imageSourceAdapter, out bounds)", samplerCache, StringComparison.Ordinal);
         Assert.Contains("IsSupportedShaderSamplerBrush(brush)", samplerCache, StringComparison.Ordinal);
+        Assert.Contains("new ShaderSamplerGeometryDrawing(textureBounds, brush)", samplerCache, StringComparison.Ordinal);
+        Assert.Contains("ShaderSamplerGeometryDrawing : PortableGeometryDrawingStateSource", samplerCache, StringComparison.Ordinal);
+        Assert.Contains("Geometry = GeometryBounds", samplerCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("MediaRectangleGeometry", samplerCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("new RectangleGeometry", samplerCache, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection;", samplerCache, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", samplerCache, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith", samplerCache, StringComparison.Ordinal);

@@ -6,13 +6,13 @@ using ProGPU.Backend;
 using ProGPU.Scene;
 using Silk.NET.WebGPU;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
-using MediaGeometry = System.Windows.Media.Geometry;
 using MediaImageSource = System.Windows.Media.ImageSource;
-using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using ProGpuCompositor = ProGPU.Scene.Compositor;
 using ProGpuDrawingVisual = ProGPU.Scene.DrawingVisual;
 using ProGpuRect = ProGPU.Scene.Rect;
 using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
+using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
+using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableTileBrush = ProGPU.Wpf.Interop.PortableTileBrush;
 using PortableTileBrushKind = ProGPU.Wpf.Interop.PortableTileBrushKind;
@@ -131,8 +131,7 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
             _context,
             _viewport3DTextureCache);
 
-        var geometry = new MediaRectangleGeometry(textureBounds);
-        var drawing = new ShaderSamplerGeometryDrawing(geometry, brush);
+        var drawing = new ShaderSamplerGeometryDrawing(textureBounds, brush);
         MediaImageSource? AdaptImageSource(object? imageSource)
         {
             return imageSourceAdapter?.AdaptImageSource(imageSource);
@@ -364,19 +363,29 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         }
     }
 
-    private sealed class ShaderSamplerGeometryDrawing
+    private sealed class ShaderSamplerGeometryDrawing : PortableGeometryDrawingStateSource
     {
-        public ShaderSamplerGeometryDrawing(MediaGeometry geometry, object brush)
+        public ShaderSamplerGeometryDrawing(Rect geometryBounds, object brush)
         {
-            Geometry = geometry;
+            GeometryBounds = geometryBounds;
             Brush = brush;
         }
 
-        public MediaGeometry Geometry { get; }
+        public Rect GeometryBounds { get; }
 
         public object Brush { get; }
 
-        public object? Pen => null;
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = new PortableGeometryDrawingState
+            {
+                HasGeometry = true,
+                Geometry = GeometryBounds,
+                HasBrush = true,
+                Brush = Brush
+            };
+            return true;
+        }
     }
 }
 

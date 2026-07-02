@@ -77,6 +77,33 @@ public sealed class WpfMilRenderDataDecoderTests
     }
 
     [Fact]
+    public void DecodeTypedDrawGeometryUsesPortableRawGeometryWithoutManagedResolution()
+    {
+        var brush = Brushes.Blue;
+        var portableGeometry = CreatePortableRectangleGeometry(11, 12, 130, 140);
+        var resolver = new TestResolver { Brush = brush };
+        resolver.RawResources[2] = new FakePortableGeometry(portableGeometry);
+        var sink = new TypedNativeGeometryTestSink();
+
+        var payload = new byte[16];
+        WriteUInt32(payload, 0, 1);
+        WriteUInt32(payload, 4, 0);
+        WriteUInt32(payload, 8, 2);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawGeometry, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(0, resolver.ResolveGeometryCallCount);
+        var draw = Assert.Single(sink.NativeDrawGeometries);
+        Assert.Same(brush, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Same(portableGeometry, draw.Geometry);
+    }
+
+    [Fact]
     public void DecodePortableRectangleClipUsesNativeClipWithoutManagedResolution()
     {
         var portableGeometry = CreatePortableRectangleGeometry(5, 6, 70, 80);
@@ -488,6 +515,27 @@ public sealed class WpfMilRenderDataDecoderTests
 
         public void Dispose()
         {
+        }
+    }
+
+    private sealed class TypedNativeGeometryTestSink :
+        TestSink,
+        IWpfNativeGeometryCommandSink
+    {
+        public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
+
+        public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
+
+        public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
+        {
+            NativeDrawGeometries.Add((brush, pen, geometry));
+            return true;
+        }
+
+        public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
+        {
+            NativeGeometryClips.Add(clipGeometry);
+            return true;
         }
     }
 

@@ -137,12 +137,16 @@ public sealed class WpfMilRenderDataDecoder
                     break;
 
                 case WpfMilCommandId.DrawGeometry:
-                    if (TryResolveGeometry(resources, ReadUInt32(payload, 8), out var geometry))
+                    var brush = ResolveOptionalBrush(resources, ReadUInt32(payload, 0));
+                    var pen = ResolveOptionalPen(resources, ReadUInt32(payload, 4));
+                    var geometryToken = ReadUInt32(payload, 8);
+                    if (TryDrawNativeGeometry(resources, sink, brush, pen, geometryToken))
                     {
-                        sink.DrawGeometry(
-                            ResolveOptionalBrush(resources, ReadUInt32(payload, 0)),
-                            ResolveOptionalPen(resources, ReadUInt32(payload, 4)),
-                            geometry);
+                        appliedCount++;
+                    }
+                    else if (TryResolveGeometry(resources, geometryToken, out var geometry))
+                    {
+                        sink.DrawGeometry(brush, pen, geometry);
                         appliedCount++;
                     }
                     else

@@ -11667,6 +11667,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryResolvePortableGeometryPath(resources, clipToken, out var portableClip)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portableClip)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("DecodeNativeDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
+        Assert.Contains("DecodeTypedDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodePortableRectangleClipUsesNativeClipWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("guidelines is not IPortableGuidelineSetSource guidelineSource", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.Contains("collection is not IList<double> typedValues", wpfGuidelineSetReader, StringComparison.Ordinal);

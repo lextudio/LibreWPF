@@ -5872,10 +5872,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeGeometrySink.DrawNativeGeometry(nativeBrush, pen, portableGeometry)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryReplayRectangleGeometryDrawing(", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryReplayEllipseGeometryDrawing(", replaySource, StringComparison.Ordinal);
-        Assert.Contains("TryGetDirectRectangleGeometryBounds(geometryValue, out var rectangle)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectRectangleGeometry(geometryValue, out var rectangle, out var rectangleRadiusX, out var rectangleRadiusY)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectRectangleGeometry(geometryValue, out var rectangle, out var radiusX, out var radiusY)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetDirectEllipseGeometry(geometryValue, out var center, out var radiusX, out var radiusY)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("nativePrimitiveSink.DrawNativeRoundedRectangle(brush, pen, ToReplayRect(rectangle), radiusX, radiusY)", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativePrimitiveSink.DrawNativeRectangle(brush, pen, ToReplayRect(rectangle))", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativePrimitiveSink.DrawNativeEllipse(brush, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("geometry is MediaRectangleGeometry rectangleGeometry", replaySource, StringComparison.Ordinal);
         Assert.Contains("geometry is MediaEllipseGeometry ellipseGeometry", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
@@ -5900,6 +5903,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool HasPen", interopSource, StringComparison.Ordinal);
         Assert.Contains("ReplayAppliesPortableGeometryDrawingStateWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayUsesNativePortableGeometryDrawingWhenAvailable", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayDrawsLocalRectangleGeometryStateAsNativeRectangleWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayDrawsLocalRoundedRectangleGeometryStateAsNativeRoundedRectangle", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayDrawsLocalRoundedRectangleGeometryStateAsRoundedRectangle", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayKeepsTransformedLocalRectangleGeometryStateOnGenericGeometryPath", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDrawsLocalEllipseGeometryStateAsNativeEllipseWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDrawsLocalEllipseGeometryStateAsEllipseWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayKeepsTransformedLocalEllipseGeometryStateOnGenericGeometryPath", rendererTests, StringComparison.Ordinal);
@@ -11890,7 +11897,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeSink.DrawNativeRectangle(mediaBrush, mediaPen, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeRoundedRectangle(mediaBrush, mediaPen, replayRectangle, mediaRadiusX, mediaRadiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeEllipse(mediaBrush, mediaPen, replayCenter, mediaRadiusX, mediaRadiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("geometry is MediaRectangleGeometry rectangleGeometry", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("geometry is MediaEllipseGeometry ellipseGeometry", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("DrawNativePrimitiveRectangle(nativeSink, mediaBrush, mediaPen, rectangle, radiusX, radiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeEllipse(mediaBrush, mediaPen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeImage(mediaImageSource, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeGlyphRun(mediaBrush, glyphRun)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
@@ -11936,6 +11945,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GeneratedDrawingContextDrawsEllipseGeometryAsNativeEllipseWithoutGenericGeometryFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextDrawsEllipseGeometryAsEllipseWithoutGenericGeometryFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextKeepsTransformedEllipseGeometryOnGenericGeometryPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalRectangleGeometryAsNativeRectangleWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalRoundedRectangleGeometryAsNativeRoundedRectangle", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalRoundedRectangleGeometryAsRoundedRectangle", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextKeepsTransformedRectangleGeometryOnGenericGeometryPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalEllipseGeometryAsNativeEllipseWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalEllipseGeometryAsEllipseWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextKeepsTransformedEllipseGeometryOnGenericGeometryPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);

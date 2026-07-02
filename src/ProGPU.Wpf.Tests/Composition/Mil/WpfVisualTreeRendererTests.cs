@@ -1700,9 +1700,11 @@ public sealed class WpfVisualTreeRendererTests
 
         var status = WpfDrawingReplay.Replay(drawing, sink);
 
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
-        var draw = Assert.Single(sink.DrawGeometries);
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        var draw = Assert.Single(sink.DrawRectangles);
         Assert.Same(Brushes.Green, draw.Brush);
+        Assert.Equal(new Rect(1, 2, 10, 12), draw.Rectangle);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
     }
@@ -1780,6 +1782,127 @@ public sealed class WpfVisualTreeRendererTests
         Assert.Same(Brushes.Blue, draw.Brush);
         Assert.Null(draw.Pen);
         Assert.Equal(new Rect(8, 9, 24, 34), draw.Rectangle);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayDrawsLocalRectangleGeometryStateAsNativeRectangleWithoutMediaGeometryFallback()
+    {
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = new RectangleGeometry(new Rect(4, 5, 20, 30));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Green,
+            HasPen = true,
+            Pen = pen
+        });
+        var sink = new NativePrimitiveTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        Assert.Empty(sink.DrawRectangles);
+        var draw = Assert.Single(sink.NativeDrawRectangles);
+        Assert.Same(Brushes.Green, draw.Brush);
+        Assert.Same(pen, draw.Pen);
+        Assert.Equal(new WpfReplayRect(4, 5, 20, 30), draw.Rectangle);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayDrawsLocalRoundedRectangleGeometryStateAsNativeRoundedRectangle()
+    {
+        var geometry = new RectangleGeometry(new Rect(8, 9, 24, 34))
+        {
+            RadiusX = 6,
+            RadiusY = 7
+        };
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Blue
+        });
+        var sink = new NativePrimitiveTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawNativeRoundedRectangle" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        Assert.Empty(sink.DrawRoundedRectangles);
+        var draw = Assert.Single(sink.NativeDrawRoundedRectangles);
+        Assert.Same(Brushes.Blue, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Equal(new WpfReplayRect(8, 9, 24, 34), draw.Rectangle);
+        Assert.Equal(6, draw.RadiusX);
+        Assert.Equal(7, draw.RadiusY);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayDrawsLocalRoundedRectangleGeometryStateAsRoundedRectangle()
+    {
+        var geometry = new RectangleGeometry(new Rect(8, 9, 24, 34))
+        {
+            RadiusX = 10,
+            RadiusY = 11
+        };
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Blue
+        });
+        var sink = new TestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawRoundedRectangle" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        var draw = Assert.Single(sink.DrawRoundedRectangles);
+        Assert.Same(Brushes.Blue, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Equal(new Rect(8, 9, 24, 34), draw.Rectangle);
+        Assert.Equal(10, draw.RadiusX);
+        Assert.Equal(11, draw.RadiusY);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayKeepsTransformedLocalRectangleGeometryStateOnGenericGeometryPath()
+    {
+        var geometry = new RectangleGeometry(new Rect(8, 9, 24, 34))
+        {
+            Transform = new MatrixTransform(1, 0, 0, 1, 2, 3)
+        };
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Blue
+        });
+        var sink = new NativePrimitiveTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Empty(sink.NativeDrawRectangles);
+        Assert.Empty(sink.NativeDrawRoundedRectangles);
+        var draw = Assert.Single(sink.DrawGeometries);
+        Assert.Same(Brushes.Blue, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Same(geometry, draw.Geometry);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
     }
@@ -2003,8 +2126,9 @@ public sealed class WpfVisualTreeRendererTests
 
         var status = WpfDrawingReplay.Replay(drawing, sink);
 
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
-        Assert.Same(Brushes.Green, Assert.Single(sink.DrawGeometries).Brush);
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        Assert.Same(Brushes.Green, Assert.Single(sink.DrawRectangles).Brush);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
     }
 
@@ -2337,7 +2461,7 @@ public sealed class WpfVisualTreeRendererTests
                 "PushEdgeMode",
                 "PushTextRenderingMode",
                 "PushTextHintingMode",
-                "DrawGeometry",
+                "DrawRectangle",
                 "Pop",
                 "Pop",
                 "Pop",
@@ -2467,7 +2591,8 @@ public sealed class WpfVisualTreeRendererTests
 
         var status = WpfDrawingReplay.Replay(group, sink);
 
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
         Assert.Equal(0, group.ReflectedStateProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
     }
@@ -4519,6 +4644,8 @@ public sealed class WpfVisualTreeRendererTests
 
         public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle)> DrawRectangles { get; } = new();
 
+        public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle, double RadiusX, double RadiusY)> DrawRoundedRectangles { get; } = new();
+
         public List<(MediaBrush? Brush, MediaPen? Pen, Point Center, double RadiusX, double RadiusY)> DrawEllipses { get; } = new();
 
         public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> DrawGeometries { get; } = new();
@@ -4602,6 +4729,8 @@ public sealed class WpfVisualTreeRendererTests
 
         public void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY)
         {
+            Operations.Add("DrawRoundedRectangle");
+            DrawRoundedRectangles.Add((brush, pen, rectangle, radiusX, radiusY));
         }
 
         public void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY)
@@ -4764,6 +4893,8 @@ public sealed class WpfVisualTreeRendererTests
     {
         public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayRect Rectangle)> NativeDrawRectangles { get; } = new();
 
+        public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayRect Rectangle, double RadiusX, double RadiusY)> NativeDrawRoundedRectangles { get; } = new();
+
         public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayPoint Center, double RadiusX, double RadiusY)> NativeDrawEllipses { get; } = new();
 
         public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
@@ -4778,6 +4909,8 @@ public sealed class WpfVisualTreeRendererTests
 
         public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)
         {
+            Operations.Add("DrawNativeRoundedRectangle");
+            NativeDrawRoundedRectangles.Add((brush, pen, rectangle, radiusX, radiusY));
         }
 
         public void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY)

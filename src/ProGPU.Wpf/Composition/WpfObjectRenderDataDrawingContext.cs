@@ -9,6 +9,7 @@ using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPortableRenderDataSink = System.Windows.Media.IPortableRenderDataDrawingContextSink;
 using MediaPen = System.Windows.Media.Pen;
+using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
@@ -494,20 +495,21 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
 
     private bool TryDrawPrimitiveRectangleGeometryPen(object? geometry, MediaPen pen)
     {
-        if (_sink is IWpfNativePrimitiveCommandSink nativeSink
-            && TryReadReplayRect(geometry, out var replayRectangle))
+        if (!TryReadRectangleGeometry(geometry, out var rectangle, out var radiusX, out var radiusY))
         {
-            nativeSink.DrawNativeRectangle(null, pen, replayRectangle);
-            return true;
+            return false;
         }
 
-        if (TryReadRect(geometry, out var mediaRectangle))
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
         {
-            _sink.DrawRectangle(null, pen, mediaRectangle);
-            return true;
+            DrawNativePrimitiveRectangle(nativeSink, null, pen, ToReplayRect(rectangle), radiusX, radiusY);
+        }
+        else
+        {
+            DrawPrimitiveRectangle(null, pen, rectangle, radiusX, radiusY);
         }
 
-        return false;
+        return true;
     }
 
     private bool TryDrawPrimitiveEllipseGeometryPen(object? geometry, MediaPen pen)
@@ -536,18 +538,17 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         MediaBrush? mediaBrush,
         MediaPen? mediaPen)
     {
-        if (_sink is IWpfNativePrimitiveCommandSink nativeSink
-            && TryReadReplayRect(geometry, out var replayRectangle))
+        if (!TryReadRectangleGeometry(geometry, out var rectangle, out var radiusX, out var radiusY))
         {
-            return TryDrawNativeRectangleGeometry(brush, pen, geometry, mediaBrush, mediaPen, replayRectangle, nativeSink);
+            return false;
         }
 
-        if (TryReadRect(geometry, out var mediaRectangle))
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
         {
-            return TryDrawRectangleGeometryFallback(brush, pen, geometry, mediaBrush, mediaPen, mediaRectangle);
+            return TryDrawNativeRectangleGeometry(brush, pen, geometry, mediaBrush, mediaPen, ToReplayRect(rectangle), radiusX, radiusY, nativeSink);
         }
 
-        return false;
+        return TryDrawRectangleGeometryFallback(brush, pen, geometry, mediaBrush, mediaPen, rectangle, radiusX, radiusY);
     }
 
     private bool TryDrawNativeRectangleGeometry(
@@ -557,12 +558,14 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         MediaBrush? mediaBrush,
         MediaPen? mediaPen,
         WpfReplayRect rectangle,
+        double radiusX,
+        double radiusY,
         IWpfNativePrimitiveCommandSink nativeSink)
     {
         if (mediaBrush != null)
         {
             RegisterRetainedDependencies(brush, pen, geometry);
-            nativeSink.DrawNativeRectangle(mediaBrush, mediaPen, rectangle);
+            DrawNativePrimitiveRectangle(nativeSink, mediaBrush, mediaPen, rectangle, radiusX, radiusY);
             CountApplied();
             return true;
         }
@@ -570,7 +573,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         if (mediaPen != null)
         {
             RegisterRetainedDependencies(brush, pen, geometry);
-            nativeSink.DrawNativeRectangle(null, mediaPen, rectangle);
+            DrawNativePrimitiveRectangle(nativeSink, null, mediaPen, rectangle, radiusX, radiusY);
             if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
             {
                 CountPartiallyApplied();
@@ -592,12 +595,14 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         object? geometry,
         MediaBrush? mediaBrush,
         MediaPen? mediaPen,
-        Rect rectangle)
+        Rect rectangle,
+        double radiusX,
+        double radiusY)
     {
         if (mediaBrush != null)
         {
             RegisterRetainedDependencies(brush, pen, geometry);
-            _sink.DrawRectangle(mediaBrush, mediaPen, rectangle);
+            DrawPrimitiveRectangle(mediaBrush, mediaPen, rectangle, radiusX, radiusY);
             CountApplied();
             return true;
         }
@@ -605,7 +610,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         if (mediaPen != null)
         {
             RegisterRetainedDependencies(brush, pen, geometry);
-            _sink.DrawRectangle(null, mediaPen, rectangle);
+            DrawPrimitiveRectangle(null, mediaPen, rectangle, radiusX, radiusY);
             if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
             {
                 CountPartiallyApplied();
@@ -619,6 +624,41 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         }
 
         return false;
+    }
+
+    private static void DrawNativePrimitiveRectangle(
+        IWpfNativePrimitiveCommandSink nativeSink,
+        MediaBrush? brush,
+        MediaPen? pen,
+        WpfReplayRect rectangle,
+        double radiusX,
+        double radiusY)
+    {
+        if (radiusX > 0 || radiusY > 0)
+        {
+            nativeSink.DrawNativeRoundedRectangle(brush, pen, rectangle, radiusX, radiusY);
+        }
+        else
+        {
+            nativeSink.DrawNativeRectangle(brush, pen, rectangle);
+        }
+    }
+
+    private void DrawPrimitiveRectangle(
+        MediaBrush? brush,
+        MediaPen? pen,
+        Rect rectangle,
+        double radiusX,
+        double radiusY)
+    {
+        if (radiusX > 0 || radiusY > 0)
+        {
+            _sink.DrawRoundedRectangle(brush, pen, rectangle, radiusX, radiusY);
+        }
+        else
+        {
+            _sink.DrawRectangle(brush, pen, rectangle);
+        }
     }
 
     private bool TryDrawPrimitiveEllipseGeometry(
@@ -1245,6 +1285,33 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             && portableGeometry != null;
     }
 
+    private static bool TryReadRectangleGeometry(
+        object? geometry,
+        out Rect rectangle,
+        out double radiusX,
+        out double radiusY)
+    {
+        if (geometry is MediaRectangleGeometry rectangleGeometry
+            && HasIdentityGeometryTransform(rectangleGeometry)
+            && IsUsableRect(rectangleGeometry.Rect, out rectangle)
+            && IsUsableRadius(rectangleGeometry.RadiusX, out radiusX)
+            && IsUsableRadius(rectangleGeometry.RadiusY, out radiusY))
+        {
+            return true;
+        }
+
+        if (TryReadRect(geometry, out rectangle))
+        {
+            radiusX = 0;
+            radiusY = 0;
+            return true;
+        }
+
+        radiusX = default;
+        radiusY = default;
+        return false;
+    }
+
     private static bool TryReadEllipseGeometry(
         object? geometry,
         out Point center,
@@ -1281,10 +1348,33 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             && double.IsFinite(point.Y);
     }
 
+    private static bool IsUsableRect(Rect rect, out Rect rectangle)
+    {
+        rectangle = rect;
+        return !rect.IsEmpty
+            && double.IsFinite(rect.X)
+            && double.IsFinite(rect.Y)
+            && double.IsFinite(rect.Width)
+            && double.IsFinite(rect.Height)
+            && rect.Width > 0
+            && rect.Height > 0;
+    }
+
+    private static bool IsUsableRadius(double radius, out double usableRadius)
+    {
+        usableRadius = radius;
+        return double.IsFinite(radius) && radius >= 0;
+    }
+
     private static bool IsPositiveRadius(double radius, out double usableRadius)
     {
         usableRadius = radius;
         return double.IsFinite(radius) && radius > 0;
+    }
+
+    private static WpfReplayRect ToReplayRect(Rect rectangle)
+    {
+        return new WpfReplayRect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
     }
 
     private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)

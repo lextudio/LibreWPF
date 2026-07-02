@@ -288,9 +288,9 @@ internal static class WpfDrawingReplay
 
     private static bool TryDrawGeometryPen(object? geometryValue, MediaPen pen, IWpfCompositionCommandSink sink)
     {
-        if (TryGetDirectRectangleGeometryBounds(geometryValue, out var rectangle))
+        if (TryGetDirectRectangleGeometry(geometryValue, out var rectangle, out var rectangleRadiusX, out var rectangleRadiusY))
         {
-            DrawRectangleGeometry(sink, null, pen, rectangle);
+            DrawRectangleGeometry(sink, null, pen, rectangle, rectangleRadiusX, rectangleRadiusY);
             return true;
         }
 
@@ -383,7 +383,7 @@ internal static class WpfDrawingReplay
         out WpfDrawingReplayStatus status)
     {
         status = WpfDrawingReplayStatus.Skipped;
-        if (!TryGetDirectRectangleGeometryBounds(geometryValue, out var rectangle))
+        if (!TryGetDirectRectangleGeometry(geometryValue, out var rectangle, out var radiusX, out var radiusY))
         {
             return false;
         }
@@ -394,7 +394,7 @@ internal static class WpfDrawingReplay
         {
             if (pen != null)
             {
-                DrawRectangleGeometry(sink, null, pen, rectangle);
+                DrawRectangleGeometry(sink, null, pen, rectangle, radiusX, radiusY);
                 applied = true;
             }
         }
@@ -403,13 +403,13 @@ internal static class WpfDrawingReplay
             unsupported = true;
             if (pen != null)
             {
-                DrawRectangleGeometry(sink, null, pen, rectangle);
+                DrawRectangleGeometry(sink, null, pen, rectangle, radiusX, radiusY);
                 applied = true;
             }
         }
         else if (brush != null)
         {
-            DrawRectangleGeometry(sink, brush, pen, rectangle);
+            DrawRectangleGeometry(sink, brush, pen, rectangle, radiusX, radiusY);
             applied = true;
         }
         else
@@ -417,7 +417,7 @@ internal static class WpfDrawingReplay
             unsupported = true;
             if (pen != null)
             {
-                DrawRectangleGeometry(sink, null, pen, rectangle);
+                DrawRectangleGeometry(sink, null, pen, rectangle, radiusX, radiusY);
                 applied = true;
             }
         }
@@ -432,15 +432,32 @@ internal static class WpfDrawingReplay
         IWpfCompositionCommandSink sink,
         MediaBrush? brush,
         MediaPen? pen,
-        Rect rectangle)
+        Rect rectangle,
+        double radiusX,
+        double radiusY)
     {
         if (sink is IWpfNativePrimitiveCommandSink nativePrimitiveSink)
         {
-            nativePrimitiveSink.DrawNativeRectangle(brush, pen, ToReplayRect(rectangle));
+            if (radiusX > 0 || radiusY > 0)
+            {
+                nativePrimitiveSink.DrawNativeRoundedRectangle(brush, pen, ToReplayRect(rectangle), radiusX, radiusY);
+            }
+            else
+            {
+                nativePrimitiveSink.DrawNativeRectangle(brush, pen, ToReplayRect(rectangle));
+            }
+
             return;
         }
 
-        sink.DrawRectangle(brush, pen, rectangle);
+        if (radiusX > 0 || radiusY > 0)
+        {
+            sink.DrawRoundedRectangle(brush, pen, rectangle, radiusX, radiusY);
+        }
+        else
+        {
+            sink.DrawRectangle(brush, pen, rectangle);
+        }
     }
 
     private static void DrawEllipseGeometry(
@@ -2325,6 +2342,33 @@ internal static class WpfDrawingReplay
         return false;
     }
 
+    private static bool TryGetDirectRectangleGeometry(
+        object? geometry,
+        out Rect rectangle,
+        out double radiusX,
+        out double radiusY)
+    {
+        if (geometry is MediaRectangleGeometry rectangleGeometry
+            && HasIdentityGeometryTransform(rectangleGeometry)
+            && IsUsableRect(rectangleGeometry.Rect, out rectangle)
+            && IsUsableRadius(rectangleGeometry.RadiusX, out radiusX)
+            && IsUsableRadius(rectangleGeometry.RadiusY, out radiusY))
+        {
+            return true;
+        }
+
+        if (TryGetDirectRectangleGeometryBounds(geometry, out rectangle))
+        {
+            radiusX = 0;
+            radiusY = 0;
+            return true;
+        }
+
+        radiusX = default;
+        radiusY = default;
+        return false;
+    }
+
     private static bool TryGetDirectEllipseGeometry(
         object? geometry,
         out Point center,
@@ -3119,6 +3163,12 @@ internal static class WpfDrawingReplay
     {
         usableRadius = radius;
         return double.IsFinite(radius) && radius > 0;
+    }
+
+    private static bool IsUsableRadius(double radius, out double usableRadius)
+    {
+        usableRadius = radius;
+        return double.IsFinite(radius) && radius >= 0;
     }
 
     private static WpfReplayRect? ToReplayRect(Rect? bounds)

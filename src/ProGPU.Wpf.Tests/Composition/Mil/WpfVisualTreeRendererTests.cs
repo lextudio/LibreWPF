@@ -2268,6 +2268,39 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplayUsesPortablePathBoundsForTileBrushFillBeforeStaleGeometryMetadata()
+    {
+        var geometry = new PortableQuadraticCurveGeometry(new PortableRect(0, 0, 1, 1));
+        var nestedDrawing = new FakeGeometryDrawing(
+            new RectangleGeometry(new Rect(0, 0, 10, 12)),
+            Brushes.Red);
+        var tileBrush = new FakeDrawingTileBrush(nestedDrawing);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = tileBrush
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Contains("PushNativeGeometryClip", sink.Operations);
+        Assert.DoesNotContain("PushClip", sink.Operations);
+        Assert.Empty(sink.NativeClips);
+        Assert.Single(sink.NativeGeometryClips);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(10, transform.M11, 4);
+        Assert.Equal(50.0 / 12.0, transform.M22, 4);
+        Assert.Equal(3, transform.M41, 4);
+        Assert.Equal(4, transform.M42, 4);
+        Assert.Same(Brushes.Red, Assert.Single(sink.DrawRectangles).Brush);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
     public void ReplayUsesNativeRectangleClipForMediaRectangleTileBrushFill()
     {
         var geometry = new RectangleGeometry(new Rect(1, 2, 10, 12));

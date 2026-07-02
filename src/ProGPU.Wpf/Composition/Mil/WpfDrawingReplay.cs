@@ -1364,7 +1364,7 @@ internal static class WpfDrawingReplay
         }
 
         if (TryGetPortableGeometryPath(geometry, out var portableGeometry)
-            && TryReadPortableRect(portableGeometry.Bounds, out var portableBounds)
+            && TryGetPortableGeometryBounds(geometry, out var portableBounds)
             && IsUsableRect(portableBounds, out portableBounds))
         {
             fillGeometry = new TileBrushFillGeometry(geometry, portableBounds, null, portableGeometry, false);

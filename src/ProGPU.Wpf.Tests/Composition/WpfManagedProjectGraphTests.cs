@@ -6473,6 +6473,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("object? geometry,", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryGetTileBrushFillGeometry(geometry, out var fillGeometry)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryGetDirectPrimitiveGeometryBounds(mediaGeometry, out var mediaBounds)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableGeometryBounds(geometry, out var portableBounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("geometry is Rect rect", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("geometry is WpfReplayRect replayRect", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("geometry is PortableRect portableRect", drawingReplay, StringComparison.Ordinal);
@@ -6494,6 +6495,12 @@ public sealed class WpfManagedProjectGraphTests
             "Mil",
             "WpfVisualTreeRendererTests.cs")), StringComparison.Ordinal);
         Assert.Contains("ReplayUsesNativePortableGeometryClipForNonRectangleTileBrushFill", File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeRendererTests.cs")), StringComparison.Ordinal);
+        Assert.Contains("ReplayUsesPortablePathBoundsForTileBrushFillBeforeStaleGeometryMetadata", File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf.Tests",
             "Composition",

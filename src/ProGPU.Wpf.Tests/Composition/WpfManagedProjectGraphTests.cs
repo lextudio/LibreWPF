@@ -5783,6 +5783,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetPortableDrawingGroupState(out var portableState)", replaySource, StringComparison.Ordinal);
         Assert.Contains("var hasPortableDrawingGroupState = TryGetPortableDrawingGroupState(", replaySource, StringComparison.Ordinal);
         Assert.Contains("ExtractChildren(drawingGroup, hasPortableDrawingGroupState, drawingGroupState)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetNativeDrawingGroupClip(sink, clipValue, out nativeClip)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(nativeClip)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(drawing, \"DrawingGroup\")", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(drawingGroup,", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("HasNonNullProperty(drawingGroup,", replaySource, StringComparison.Ordinal);
@@ -5796,6 +5798,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool HasBitmapScalingMode", interopSource, StringComparison.Ordinal);
         Assert.Contains("public object[] Children", interopSource, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeAppliesPortableDrawingGroupStateWithoutReflection", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeUsesNativePortableDrawingGroupClipWhenAvailable", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("\"PushNativeGeometryClip\"", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeDoesNotReflectAbsentPortableDrawingGroupState", rendererTests, StringComparison.Ordinal);
     }
 

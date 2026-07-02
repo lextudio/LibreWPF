@@ -669,8 +669,10 @@ internal static class WpfDrawingReplay
             hasPortableDrawingGroupState,
             drawingGroupState,
             out var clipValue);
-        var clip = hasClip ? WpfResourceResolver.AdaptGeometry(clipValue) : null;
-        if (hasClip && clip == null)
+        PortableGeometryPath nativeClip = null!;
+        var hasNativeClip = hasClip && TryGetNativeDrawingGroupClip(sink, clipValue, out nativeClip);
+        var clip = hasClip && !hasNativeClip ? WpfResourceResolver.AdaptGeometry(clipValue) : null;
+        if (hasClip && !hasNativeClip && clip == null)
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
@@ -681,10 +683,24 @@ internal static class WpfDrawingReplay
             popCount++;
         }
 
-        if (clip != null)
+        if (hasClip)
         {
-            sink.PushClip(clip);
-            popCount++;
+            if (hasNativeClip && TryPushNativeDrawingGroupClip(sink, nativeClip))
+            {
+                popCount++;
+            }
+            else
+            {
+                clip ??= WpfResourceResolver.AdaptGeometry(clipValue);
+                if (clip == null)
+                {
+                    PopPushedScopes(sink, popCount);
+                    return WpfDrawingReplayStatus.Unsupported;
+                }
+
+                sink.PushClip(clip);
+                popCount++;
+            }
         }
 
         if (TryGetDrawingGroupOpacity(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var opacity)
@@ -858,6 +874,32 @@ internal static class WpfDrawingReplay
         }
 
         return unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
+    }
+
+    private static bool TryGetNativeDrawingGroupClip(
+        IWpfCompositionCommandSink sink,
+        object? clipValue,
+        out PortableGeometryPath nativeClip)
+    {
+        nativeClip = null!;
+        return sink is IWpfNativeGeometryCommandSink
+            && TryGetPortableGeometryPath(clipValue, out nativeClip);
+    }
+
+    private static bool TryPushNativeDrawingGroupClip(
+        IWpfCompositionCommandSink sink,
+        PortableGeometryPath nativeClip)
+    {
+        return sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && nativeGeometrySink.PushNativeGeometryClip(nativeClip);
+    }
+
+    private static void PopPushedScopes(IWpfCompositionCommandSink sink, int popCount)
+    {
+        for (var i = 0; i < popCount; i++)
+        {
+            sink.Pop();
+        }
     }
 
     private static WpfDrawingReplayStatus TryReplayImageDrawing(

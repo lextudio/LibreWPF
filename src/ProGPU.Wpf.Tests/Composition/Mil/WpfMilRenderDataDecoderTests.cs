@@ -167,7 +167,7 @@ public sealed class WpfMilRenderDataDecoderTests
     }
 
     [Fact]
-    public void DecodeRoundedRectangleClipUsesManagedClipWithoutBroadNativeClip()
+    public void DecodeRoundedRectangleClipUsesNativeMediaGeometryClipWithoutBroadNativeClip()
     {
         var geometry = new RectangleGeometry(new Rect(5, 6, 70, 80))
         {
@@ -187,9 +187,10 @@ public sealed class WpfMilRenderDataDecoderTests
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
         Assert.Equal(1, resolver.ResolveGeometryCallCount);
-        Assert.Equal(1, sink.ClipCount);
+        Assert.Equal(0, sink.ClipCount);
         Assert.Empty(sink.NativeClipBounds);
         Assert.Empty(sink.NativeGeometryClips);
+        Assert.Same(geometry, Assert.Single(sink.NativeMediaGeometryClips));
         Assert.Equal(1, sink.PopCount);
     }
 
@@ -595,6 +596,8 @@ public sealed class WpfMilRenderDataDecoderTests
 
         public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
 
+        public List<MediaGeometry> NativeMediaGeometryClips { get; } = new();
+
         public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
         {
             NativeDrawGeometries.Add((brush, pen, geometry));
@@ -604,6 +607,12 @@ public sealed class WpfMilRenderDataDecoderTests
         public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
         {
             NativeGeometryClips.Add(clipGeometry);
+            return true;
+        }
+
+        public bool PushNativeGeometryClip(MediaGeometry clipGeometry)
+        {
+            NativeMediaGeometryClips.Add(clipGeometry);
             return true;
         }
     }
@@ -621,6 +630,8 @@ public sealed class WpfMilRenderDataDecoderTests
         public List<WpfReplayRect> NativeClipBounds { get; } = new();
 
         public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
+
+        public List<MediaGeometry> NativeMediaGeometryClips { get; } = new();
 
         public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
         {
@@ -669,6 +680,12 @@ public sealed class WpfMilRenderDataDecoderTests
         public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
         {
             NativeGeometryClips.Add(clipGeometry);
+            return true;
+        }
+
+        public bool PushNativeGeometryClip(MediaGeometry clipGeometry)
+        {
+            NativeMediaGeometryClips.Add(clipGeometry);
             return true;
         }
     }

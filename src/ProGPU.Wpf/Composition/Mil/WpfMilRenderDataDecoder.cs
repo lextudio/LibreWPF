@@ -850,6 +850,12 @@ public sealed class WpfMilRenderDataDecoder
             return true;
         }
 
+        if (sink is IWpfNativeGeometryCommandSink nativeMediaGeometrySink
+            && nativeMediaGeometrySink.PushNativeGeometryClip(clipGeometry))
+        {
+            return true;
+        }
+
         sink.PushClip(clipGeometry);
         return true;
     }

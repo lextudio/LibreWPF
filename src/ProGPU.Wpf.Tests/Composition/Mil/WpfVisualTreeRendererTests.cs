@@ -2359,7 +2359,7 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
-    public void ReplayKeepsMediaNonRectangleTileBrushFillOnManagedClip()
+    public void ReplayUsesNativeMediaGeometryClipForMediaNonRectangleTileBrushFill()
     {
         var figure = new PathFigure
         {
@@ -2386,10 +2386,12 @@ public sealed class WpfVisualTreeRendererTests
 
         var status = WpfDrawingReplay.Replay(drawing, sink);
 
-        Assert.Contains("PushClip", sink.Operations);
+        Assert.Contains("PushNativeMediaGeometryClip", sink.Operations);
+        Assert.DoesNotContain("PushClip", sink.Operations);
         Assert.Empty(sink.NativeClips);
         Assert.Empty(sink.NativeGeometryClips);
-        Assert.Single(sink.Clips);
+        Assert.Empty(sink.Clips);
+        Assert.Same(geometry, Assert.Single(sink.NativeMediaGeometryClips));
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
     }
@@ -2416,10 +2418,12 @@ public sealed class WpfVisualTreeRendererTests
 
         var status = WpfDrawingReplay.Replay(drawing, sink);
 
-        Assert.Contains("PushClip", sink.Operations);
+        Assert.Contains("PushNativeMediaGeometryClip", sink.Operations);
+        Assert.DoesNotContain("PushClip", sink.Operations);
         Assert.Empty(sink.NativeClips);
         Assert.Empty(sink.NativeGeometryClips);
-        Assert.Same(geometry, Assert.Single(sink.Clips));
+        Assert.Empty(sink.Clips);
+        Assert.Same(geometry, Assert.Single(sink.NativeMediaGeometryClips));
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
     }
@@ -5702,6 +5706,8 @@ public sealed class WpfVisualTreeRendererTests
 
         public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
 
+        public List<MediaGeometry> NativeMediaGeometryClips { get; } = new();
+
         public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
         {
             Operations.Add("DrawNativeGeometry");
@@ -5713,6 +5719,13 @@ public sealed class WpfVisualTreeRendererTests
         {
             Operations.Add("PushNativeGeometryClip");
             NativeGeometryClips.Add(clipGeometry);
+            return true;
+        }
+
+        public bool PushNativeGeometryClip(MediaGeometry clipGeometry)
+        {
+            Operations.Add("PushNativeMediaGeometryClip");
+            NativeMediaGeometryClips.Add(clipGeometry);
             return true;
         }
     }

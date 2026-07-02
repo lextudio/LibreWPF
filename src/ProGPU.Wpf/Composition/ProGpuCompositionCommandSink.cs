@@ -619,6 +619,19 @@ public sealed class ProGpuCompositionCommandSink :
         return true;
     }
 
+    public bool PushNativeGeometryClip(MediaGeometry clipGeometry)
+    {
+        ThrowIfClosed();
+        if (!TryConvertGeometryToNativePath(clipGeometry, _transformStack.Peek(), out var path, out _))
+        {
+            return false;
+        }
+
+        NativeContext.PushGeometryClip(path);
+        _pushStack.Push(PushKind.GeometryClip);
+        return true;
+    }
+
     void IWpfNativeClipCommandSink.PushNativeClip(WpfReplayRect bounds)
     {
         ThrowIfClosed();

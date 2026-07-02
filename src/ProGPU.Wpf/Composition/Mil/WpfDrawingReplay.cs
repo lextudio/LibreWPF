@@ -1422,6 +1422,13 @@ internal static class WpfDrawingReplay
             return true;
         }
 
+        if (geometry.MediaGeometry != null
+            && sink is IWpfNativeGeometryCommandSink mediaNativeGeometrySink
+            && mediaNativeGeometrySink.PushNativeGeometryClip(geometry.MediaGeometry))
+        {
+            return true;
+        }
+
         if (geometry.IsRectangle)
         {
             PushRectangleClip(sink, geometry.Bounds);

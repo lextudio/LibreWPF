@@ -6517,7 +6517,7 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfVisualTreeRendererTests.cs")), StringComparison.Ordinal);
-        Assert.Contains("ReplayKeepsMediaNonRectangleTileBrushFillOnManagedClip", File.ReadAllText(FindRepoPath(
+        Assert.Contains("ReplayUsesNativeMediaGeometryClipForMediaNonRectangleTileBrushFill", File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf.Tests",
             "Composition",
@@ -11872,6 +11872,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryConvertPortableGeometryPath(portablePath", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("PushNativeGeometryClip(PortableGeometryPath clipGeometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("PushNativeGeometryClip(MediaGeometry clipGeometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("TryConvertGeometryToNativePath(clipGeometry, _transformStack.Peek()", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathGeometryConverter.TryConvert(portablePath, transform, out path, out bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(portablePath, out var portableBounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("bounds = portableBounds;", proGpuWpfCommandSink, StringComparison.Ordinal);
@@ -11960,6 +11962,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryReplayTileBrushFill(brushValue, geometryValue", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushFill(brushValue!", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryGetTileBrushFillGeometry(geometry, out var fillGeometry)", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("mediaNativeGeometrySink.PushNativeGeometryClip(geometry.MediaGeometry)", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains(
+            "ReplayUsesNativeMediaGeometryClipForMediaNonRectangleTileBrushFill",
+            File.ReadAllText(FindRepoPath(
+                "src",
+                "ProGPU.Wpf.Tests",
+                "Composition",
+                "Mil",
+                "WpfVisualTreeRendererTests.cs")),
+            StringComparison.Ordinal);
         Assert.Contains("using PortableVisualBoundsSource = ProGPU.Wpf.Interop.IPortableVisualBoundsSource;", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("visual is PortableVisualBoundsSource boundsSource", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadFiniteRectProperty(visual", wpfDrawingReplay, StringComparison.Ordinal);

@@ -335,6 +335,18 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         return true;
     }
 
+    public bool PushNativeGeometryClip(MediaGeometry clipGeometry)
+    {
+        if (Current.Sink is not IWpfNativeGeometryCommandSink nativeSink
+            || !nativeSink.PushNativeGeometryClip(clipGeometry))
+        {
+            return false;
+        }
+
+        _scopeStack.Push(ScopeKind.Delegate);
+        return true;
+    }
+
     public void PushOpacity(double opacity)
     {
         Current.Sink.PushOpacity(opacity);

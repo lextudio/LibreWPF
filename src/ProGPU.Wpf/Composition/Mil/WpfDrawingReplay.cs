@@ -1389,7 +1389,8 @@ internal static class WpfDrawingReplay
                 return false;
             }
 
-            if (IsUsableRect(mediaGeometry.Bounds, out mediaBounds))
+            if (WpfMediaGeometryBoundsReader.TryGetGeometryBounds(mediaGeometry, out var mediaGeometryBounds)
+                && IsUsableRect(ToRect(mediaGeometryBounds), out mediaBounds))
             {
                 fillGeometry = new TileBrushFillGeometry(geometry, mediaBounds, mediaGeometry, null, false);
                 return true;
@@ -3009,7 +3010,14 @@ internal static class WpfDrawingReplay
                 return false;
             }
 
-            return IsUsableRect(geometry.Bounds, out bounds);
+            if (!WpfMediaGeometryBoundsReader.TryGetGeometryBounds(geometry, out var geometryBounds))
+            {
+                bounds = default;
+                return false;
+            }
+
+            bounds = ToRect(geometryBounds);
+            return true;
         }
 
         if (drawing is PortableImageDrawingStateSource)
@@ -3201,7 +3209,8 @@ internal static class WpfDrawingReplay
         }
 
         if (WpfResourceResolver.AdaptGeometry(clipValue) is { } clipGeometry
-            && IsUsableRect(clipGeometry.Bounds, out clipBounds))
+            && WpfMediaGeometryBoundsReader.TryGetGeometryBounds(clipGeometry, out var geometryClipBounds)
+            && IsUsableRect(ToRect(geometryClipBounds), out clipBounds))
         {
             return true;
         }

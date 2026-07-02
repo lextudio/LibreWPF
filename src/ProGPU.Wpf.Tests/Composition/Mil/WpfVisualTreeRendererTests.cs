@@ -800,6 +800,36 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeInfersRetainedBoundsFromNativeMediaGeometryWithoutGenericBoundsFallback()
+    {
+        var geometry = CreateThrowingBoundsCurvedPathGeometry(new Rect(5, 6, 40, 30));
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateGeometryRenderData(geometry),
+            visualState);
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawNativeMediaGeometry", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 40, 30, state.OpacityMaskBounds);
+        AssertReplayRect(5, 6, 40, 30, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-5, transform.M41);
+        Assert.Equal(-6, transform.M42);
+        Assert.Empty(sink.DrawGeometries);
+        Assert.Empty(sink.NativeDrawGeometries);
+        Assert.Same(geometry, Assert.Single(sink.NativeMediaDrawGeometries).Geometry);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeInfersRetainedBoundsFromPortableQuadraticGeometryPathPoints()
     {
         var geometry = new PortableQuadraticCurveGeometry(new PortableRect(0, 0, 1, 1));
@@ -2479,6 +2509,40 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplayUsesNativeMediaGeometryBoundsForCurvedTileBrushFillWithoutGenericBoundsFallback()
+    {
+        var geometry = CreateThrowingBoundsCurvedPathGeometry(new Rect(5, 6, 40, 30));
+        var nestedDrawing = new FakeGeometryDrawing(
+            new RectangleGeometry(new Rect(0, 0, 10, 12)),
+            Brushes.Red);
+        var tileBrush = new FakeDrawingTileBrush(nestedDrawing);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = tileBrush
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Contains("PushNativeMediaGeometryClip", sink.Operations);
+        Assert.DoesNotContain("PushClip", sink.Operations);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Empty(sink.Clips);
+        Assert.Same(geometry, Assert.Single(sink.NativeMediaGeometryClips));
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(4, transform.M11, 4);
+        Assert.Equal(2.5, transform.M22, 4);
+        Assert.Equal(5, transform.M41, 4);
+        Assert.Equal(6, transform.M42, 4);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
     public void ReplayAppliesPortableGeometryDrawingStateWithoutTypeNameShape()
     {
         var drawing = new PortableGeometryStateHost(new PortableGeometryDrawingState
@@ -2814,6 +2878,23 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsUsesNativeMediaGeometryPathWithoutGenericBoundsFallback()
+    {
+        var geometry = CreateThrowingBoundsCurvedPathGeometry(new Rect(5, 6, 40, 30));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(5, 6, 40, 30), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
     public void TryGetDrawingBoundsUsesPortableLineGeometryPathPointsBeforeStaleBoundsMetadata()
     {
         var geometry = new PortableNonRectangleClipGeometry(3, 4, 50, 20, new PortableRect(0, 0, 1, 1));
@@ -2989,6 +3070,32 @@ public sealed class WpfVisualTreeRendererTests
         Assert.Equal(0, child.ReflectedStateProbeCount);
         Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
         Assert.Equal(0, clip.ReflectedGeometryProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesNativeMediaDrawingGroupClipBoundsWithoutGenericBoundsFallback()
+    {
+        var geometry = new PortableRectangleClipGeometry(0, 0, 100, 100);
+        var clip = CreateThrowingBoundsCurvedPathGeometry(new Rect(10, 20, 30, 40));
+        var child = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+        var group = new ThrowingPortableDrawingGroup(new PortableDrawingGroupState
+        {
+            HasClipGeometry = true,
+            ClipGeometry = clip,
+            Children = [child]
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(group, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(10, 20, 30, 40), bounds);
+        Assert.Equal(0, group.ReflectedStateProbeCount);
+        Assert.Equal(0, child.ReflectedStateProbeCount);
+        Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
     }
 
     [Fact]
@@ -3934,6 +4041,26 @@ public sealed class WpfVisualTreeRendererTests
         {
             figure.Segments.Add(new LineSegment(points[i], isStroked: true));
         }
+
+        var geometry = new ThrowingBoundsPathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
+    }
+
+    private static PathGeometry CreateThrowingBoundsCurvedPathGeometry(Rect bounds)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(bounds.X, bounds.Y + bounds.Height),
+            IsClosed = true,
+            IsFilled = true
+        };
+        figure.Segments.Add(new BezierSegment(
+            new Point(bounds.X, bounds.Y),
+            new Point(bounds.X + bounds.Width, bounds.Y),
+            new Point(bounds.X + bounds.Width, bounds.Y + bounds.Height),
+            isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(bounds.X, bounds.Y + bounds.Height), isStroked: true));
 
         var geometry = new ThrowingBoundsPathGeometry();
         geometry.Figures.Add(figure);

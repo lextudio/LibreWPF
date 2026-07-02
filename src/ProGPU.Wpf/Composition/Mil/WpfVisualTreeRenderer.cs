@@ -1931,7 +1931,10 @@ public sealed class WpfVisualTreeRenderer
                 return;
             }
 
-            AddBounds(InflateForPen(FromMediaRect(geometry.Bounds), pen));
+            if (WpfMediaGeometryBoundsReader.TryGetGeometryBounds(geometry, out var geometryBounds))
+            {
+                AddBounds(InflateForPen(geometryBounds, pen));
+            }
         }
 
         public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
@@ -2006,7 +2009,10 @@ public sealed class WpfVisualTreeRenderer
                 return;
             }
 
-            PushClipCore(FromMediaRect(clipGeometry.Bounds));
+            if (WpfMediaGeometryBoundsReader.TryGetGeometryBounds(clipGeometry, out var geometryClipBounds))
+            {
+                PushClipCore(geometryClipBounds);
+            }
         }
 
         public void PushNativeClip(WpfReplayRect bounds)

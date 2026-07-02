@@ -162,6 +162,38 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextReplaysPortableGeometryTileBrushWithoutManagedGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var geometry = new FakeRectangleGeometry(new FakeRect(1, 2, 30, 40));
+        var nestedDrawing = new FakeGeometryDrawing(
+            Brushes.Red,
+            null,
+            new FakeRectangleGeometry(new FakeRect(0, 0, 10, 10)));
+        var drawingBrush = new FakeDrawingBrush(nestedDrawing);
+
+        context.DrawGeometry(drawingBrush, null, geometry);
+
+        Assert.Equal(
+            new[]
+            {
+                "PushNativeGeometryClip",
+                "PushNativeTransform",
+                "DrawNativeGeometry",
+                "Pop",
+                "Pop"
+            },
+            sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Single(sink.NativeGeometryClips);
+        Assert.Single(sink.NativeGeometries);
+        Assert.Contains(drawingBrush, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextUsesNativePortableClipWhenAvailable()
     {
         var sink = new NativeRecordingSink();
@@ -887,6 +919,7 @@ public sealed class WpfCompositionDrawingContextTests
             {
                 Kind = PortableGeometryPathKind.Path,
                 FillRule = PortableFillRule.Nonzero,
+                Bounds = new PortableRect(Rect.X, Rect.Y, Rect.Width, Rect.Height),
                 Figures =
                 [
                     new PortablePathFigure

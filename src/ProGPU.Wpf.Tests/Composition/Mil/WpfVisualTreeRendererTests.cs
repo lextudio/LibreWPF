@@ -52,6 +52,14 @@ using PortableShaderSamplingMode = ProGPU.Wpf.Interop.PortableShaderSamplingMode
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
+using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
+using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
+using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
+using PortableStretch = ProGPU.Wpf.Interop.PortableStretch;
+using PortableTileBrush = ProGPU.Wpf.Interop.PortableTileBrush;
+using PortableTileBrushKind = ProGPU.Wpf.Interop.PortableTileBrushKind;
+using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;
+using PortableTileMode = ProGPU.Wpf.Interop.PortableTileMode;
 using PortableTransformMatrixSource = ProGPU.Wpf.Interop.IPortableTransformMatrixSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
@@ -1584,6 +1592,33 @@ public sealed class WpfVisualTreeRendererTests
         Assert.Same(Brushes.Green, draw.Brush);
         Assert.Null(draw.Pen);
         Assert.Equal(PortableGeometryPathKind.Path, draw.Geometry.Kind);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayUsesNativePortableGeometryClipForTileBrushFill()
+    {
+        var geometry = new PortableRectangleClipGeometry(1, 2, 10, 12);
+        var nestedDrawing = new FakeGeometryDrawing(
+            new RectangleGeometry(new Rect(0, 0, 10, 12)),
+            Brushes.Red);
+        var tileBrush = new FakeDrawingTileBrush(nestedDrawing);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = tileBrush
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Contains("PushNativeGeometryClip", sink.Operations);
+        Assert.DoesNotContain("PushClip", sink.Operations);
+        Assert.Single(sink.NativeGeometryClips);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
         Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
@@ -3715,6 +3750,43 @@ public sealed class WpfVisualTreeRendererTests
                 HasGeometry = true,
                 Geometry = Geometry
             };
+            return true;
+        }
+    }
+
+    private sealed class FakeDrawingTileBrush : PortableTileBrushSource
+    {
+        private readonly object? _drawing;
+
+        public FakeDrawingTileBrush(object? drawing)
+        {
+            _drawing = drawing;
+        }
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            if (_drawing == null)
+            {
+                brush = null!;
+                return false;
+            }
+
+            brush = new PortableTileBrush(
+                PortableTileBrushKind.Drawing,
+                _drawing,
+                opacity: 1,
+                viewport: new PortableRect(0, 0, 1, 1),
+                viewbox: new PortableRect(0, 0, 1, 1),
+                viewportUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+                viewboxUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+                tileMode: PortableTileMode.None,
+                stretch: PortableStretch.Fill,
+                alignmentX: PortableAlignmentX.Center,
+                alignmentY: PortableAlignmentY.Center,
+                hasTransform: false,
+                transform: PortableMatrix3x2.Identity,
+                hasRelativeTransform: false,
+                relativeTransform: PortableMatrix3x2.Identity);
             return true;
         }
     }

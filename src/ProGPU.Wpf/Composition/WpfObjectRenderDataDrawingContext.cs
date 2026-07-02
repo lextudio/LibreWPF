@@ -391,6 +391,34 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return;
         }
 
+        if (brush != null
+            && WpfDrawingReplay.IsTileBrush(brush)
+            && WpfDrawingReplay.TryReplayTileBrushFill(
+                brush,
+                geometry,
+                _sink,
+                _resources.AdaptImageSource,
+                out var portableBrushReplayStatus))
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            var replayStatus = portableBrushReplayStatus;
+            if (mediaPen != null
+                && !TryDrawNativePortableGeometryPen(geometry, mediaPen))
+            {
+                if (WpfResourceResolver.AdaptGeometry(geometry) is { } penGeometry)
+                {
+                    _sink.DrawGeometry(null, mediaPen, penGeometry);
+                }
+                else
+                {
+                    replayStatus = WpfDrawingReplayStatus.PartiallyApplied;
+                }
+            }
+
+            CountDrawingReplayStatus(replayStatus);
+            return;
+        }
+
         MediaGeometry? mediaGeometry = WpfResourceResolver.AdaptGeometry(geometry);
         if (mediaGeometry == null)
         {
@@ -442,6 +470,13 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         }
 
         CountUnsupportedIfPresent(brush, pen, geometry);
+    }
+
+    private bool TryDrawNativePortableGeometryPen(object? geometry, MediaPen pen)
+    {
+        return _sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && TryGetPortableGeometryPath(geometry, out var portableGeometry)
+            && nativeGeometrySink.DrawNativeGeometry(null, pen, portableGeometry);
     }
 
     private bool TryDrawNativePortableGeometry(

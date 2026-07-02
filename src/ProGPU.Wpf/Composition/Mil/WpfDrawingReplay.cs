@@ -87,6 +87,12 @@ internal static class WpfDrawingReplay
         }
     }
 
+    private readonly record struct TileBrushFillGeometry(
+        object? Source,
+        Rect Bounds,
+        MediaGeometry? MediaGeometry,
+        PortableGeometryPath? PortableGeometry);
+
     public static bool TryReplay(
         object? drawing,
         IWpfCompositionCommandSink sink,
@@ -163,6 +169,32 @@ internal static class WpfDrawingReplay
 
         var brush = WpfResourceResolver.AdaptBrush(brushValue);
         var pen = WpfResourceResolver.AdaptPen(penValue);
+        var appliedAny = false;
+        var unsupportedAny = hasPen && pen == null;
+
+        if (hasBrush
+            && brushValue != null
+            && IsTileBrush(brushValue)
+            && TryReplayTileBrushFill(brushValue, geometryValue, sink, imageSourceAdapter, out var portableTileBrushStatus))
+        {
+            appliedAny = true;
+            unsupportedAny |= portableTileBrushStatus == WpfDrawingReplayStatus.PartiallyApplied;
+            if (pen != null)
+            {
+                if (TryDrawGeometryPen(geometryValue, pen, sink))
+                {
+                    appliedAny = true;
+                }
+                else
+                {
+                    unsupportedAny = true;
+                }
+            }
+
+            return appliedAny
+                ? unsupportedAny ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
+                : unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
+        }
 
         if (TryReplayNativePortableGeometryDrawing(
                 geometryValue,
@@ -181,9 +213,6 @@ internal static class WpfDrawingReplay
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
-
-        var appliedAny = false;
-        var unsupportedAny = hasPen && pen == null;
 
         if (!hasBrush)
         {
@@ -221,6 +250,24 @@ internal static class WpfDrawingReplay
         return appliedAny
             ? unsupportedAny ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
             : unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
+    }
+
+    private static bool TryDrawGeometryPen(object? geometryValue, MediaPen pen, IWpfCompositionCommandSink sink)
+    {
+        if (sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && TryGetPortableGeometryPath(geometryValue, out var portableGeometry)
+            && nativeGeometrySink.DrawNativeGeometry(null, pen, portableGeometry))
+        {
+            return true;
+        }
+
+        if (WpfResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
+        {
+            return false;
+        }
+
+        sink.DrawGeometry(null, pen, geometry);
+        return true;
     }
 
     private static bool TryReplayNativePortableGeometryDrawing(
@@ -287,6 +334,16 @@ internal static class WpfDrawingReplay
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out WpfDrawingReplayStatus status)
     {
+        return TryReplayTileBrushFill(brush, (object?)geometry, sink, imageSourceAdapter, out status);
+    }
+
+    internal static bool TryReplayTileBrushFill(
+        object brush,
+        object? geometry,
+        IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
         if (brush is PortableTileBrushSource portableSource)
         {
             return TryReplayPortableTileBrushFill(portableSource, geometry, sink, imageSourceAdapter, out status);
@@ -298,13 +355,14 @@ internal static class WpfDrawingReplay
 
     private static bool TryReplayPortableTileBrushFill(
         PortableTileBrushSource portableSource,
-        MediaGeometry geometry,
+        object? geometry,
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out WpfDrawingReplayStatus status)
     {
         status = WpfDrawingReplayStatus.Skipped;
-        if (!portableSource.TryGetPortableTileBrush(out var portableBrush))
+        if (!portableSource.TryGetPortableTileBrush(out var portableBrush)
+            || !TryGetTileBrushFillGeometry(geometry, out var fillGeometry))
         {
             return false;
         }
@@ -312,7 +370,7 @@ internal static class WpfDrawingReplay
         switch (portableBrush.Kind)
         {
             case PortableTileBrushKind.Image:
-                if (TryReplayPortableImageBrushFill(portableBrush, geometry, sink, imageSourceAdapter))
+                if (TryReplayPortableImageBrushFill(portableBrush, fillGeometry, sink, imageSourceAdapter))
                 {
                     status = WpfDrawingReplayStatus.Applied;
                     return true;
@@ -321,10 +379,10 @@ internal static class WpfDrawingReplay
                 return false;
 
             case PortableTileBrushKind.Drawing:
-                return TryReplayPortableDrawingBrushFill(portableBrush, geometry, sink, imageSourceAdapter, out status);
+                return TryReplayPortableDrawingBrushFill(portableBrush, fillGeometry, sink, imageSourceAdapter, out status);
 
             case PortableTileBrushKind.Visual:
-                return TryReplayPortableVisualBrushFill(portableBrush, geometry, sink, imageSourceAdapter, out status);
+                return TryReplayPortableVisualBrushFill(portableBrush, fillGeometry, sink, imageSourceAdapter, out status);
 
             default:
                 return false;
@@ -333,7 +391,7 @@ internal static class WpfDrawingReplay
 
     private static bool TryReplayPortableImageBrushFill(
         PortableTileBrush brush,
-        MediaGeometry geometry,
+        TileBrushFillGeometry geometry,
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter)
     {
@@ -353,7 +411,11 @@ internal static class WpfDrawingReplay
         }
 
         var popCount = 0;
-        sink.PushClip(geometry);
+        if (!PushTileBrushFillClip(sink, geometry))
+        {
+            return false;
+        }
+
         popCount++;
 
         if (brush.Opacity != 1)
@@ -419,7 +481,7 @@ internal static class WpfDrawingReplay
 
     private static bool TryReplayPortableDrawingBrushFill(
         PortableTileBrush brush,
-        MediaGeometry geometry,
+        TileBrushFillGeometry geometry,
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out WpfDrawingReplayStatus status)
@@ -441,7 +503,11 @@ internal static class WpfDrawingReplay
         }
 
         var popCount = 0;
-        sink.PushClip(geometry);
+        if (!PushTileBrushFillClip(sink, geometry))
+        {
+            return false;
+        }
+
         popCount++;
 
         if (brush.Opacity != 1)
@@ -515,7 +581,7 @@ internal static class WpfDrawingReplay
 
     private static bool TryReplayPortableVisualBrushFill(
         PortableTileBrush brush,
-        MediaGeometry geometry,
+        TileBrushFillGeometry geometry,
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out WpfDrawingReplayStatus status)
@@ -537,7 +603,11 @@ internal static class WpfDrawingReplay
         }
 
         var popCount = 0;
-        sink.PushClip(geometry);
+        if (!PushTileBrushFillClip(sink, geometry))
+        {
+            return false;
+        }
+
         popCount++;
 
         if (brush.Opacity != 1)
@@ -911,6 +981,46 @@ internal static class WpfDrawingReplay
         }
 
         sink.PushClip(WpfResourceResolver.CreateRectanglePath(bounds));
+    }
+
+    private static bool TryGetTileBrushFillGeometry(object? geometry, out TileBrushFillGeometry fillGeometry)
+    {
+        if (geometry is MediaGeometry mediaGeometry
+            && IsUsableRect(mediaGeometry.Bounds, out var mediaBounds))
+        {
+            fillGeometry = new TileBrushFillGeometry(geometry, mediaBounds, mediaGeometry, null);
+            return true;
+        }
+
+        if (TryGetPortableGeometryPath(geometry, out var portableGeometry)
+            && TryReadPortableRect(portableGeometry.Bounds, out var portableBounds)
+            && IsUsableRect(portableBounds, out portableBounds))
+        {
+            fillGeometry = new TileBrushFillGeometry(geometry, portableBounds, null, portableGeometry);
+            return true;
+        }
+
+        fillGeometry = default;
+        return false;
+    }
+
+    private static bool PushTileBrushFillClip(IWpfCompositionCommandSink sink, TileBrushFillGeometry geometry)
+    {
+        if (geometry.PortableGeometry != null
+            && sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && nativeGeometrySink.PushNativeGeometryClip(geometry.PortableGeometry))
+        {
+            return true;
+        }
+
+        var mediaGeometry = geometry.MediaGeometry ?? WpfResourceResolver.AdaptGeometry(geometry.Source);
+        if (mediaGeometry == null)
+        {
+            return false;
+        }
+
+        sink.PushClip(mediaGeometry);
+        return true;
     }
 
     private static WpfDrawingReplayStatus TryReplayImageDrawing(

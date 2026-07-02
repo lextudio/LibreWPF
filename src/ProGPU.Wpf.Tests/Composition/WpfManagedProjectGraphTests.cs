@@ -1235,9 +1235,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("HitTestBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight)", portableSource, StringComparison.Ordinal);
         Assert.Contains("TryTransformBounds(reference, _rootVisual, bounds, out Rect rootBounds, out bool preservesAxisAlignedBounds)", portableSource, StringComparison.Ordinal);
         Assert.Contains("preservesAxisAlignedBounds = IsAxisAlignedRectangle(topLeft, topRight, bottomRight, bottomLeft);", portableSource, StringComparison.Ordinal);
-        Assert.Contains("TryGetGeometryHitCandidate(hitTestResults[i], out Visual visualHit, out IntersectionDetail intersectionDetail)", portableSource, StringComparison.Ordinal);
-        Assert.Contains("candidate is PortableGeometryHitTestCandidate portableCandidate", portableSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableGeometryHitCandidate(hitTestResults[i], out Visual visualHit, out IntersectionDetail intersectionDetail)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("candidate is not PortableGeometryHitTestCandidate portableCandidate", portableSource, StringComparison.Ordinal);
         Assert.Contains("ToIntersectionDetail(portableCandidate.IntersectionDetail)", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("candidate is GeometryHitTestResult", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("candidate is Visual visual", portableSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(\"VisualHit\"", portableSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(\"IntersectionDetail\"", portableSource, StringComparison.Ordinal);
         Assert.Contains("IsPointHitVisibleByFilter(", portableSource, StringComparison.Ordinal);
@@ -14279,8 +14281,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("object IPortablePresentationSourceHost.CompositionTarget", portableSource, StringComparison.Ordinal);
         Assert.Contains("get { return _isDisposed ? null : _compositionTarget; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("Func<double, double, object> IPortablePresentationSourceHost.HitTestOverride", portableSource, StringComparison.Ordinal);
-        Assert.Contains("candidate is PortableGeometryHitTestCandidate portableCandidate", portableSource, StringComparison.Ordinal);
+        Assert.Contains("candidate is not PortableGeometryHitTestCandidate portableCandidate", portableSource, StringComparison.Ordinal);
         Assert.Contains("ToIntersectionDetail(portableCandidate.IntersectionDetail)", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("candidate is GeometryHitTestResult", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("candidate is Visual visual", portableSource, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection;", portableSource, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", portableSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(\"VisualHit\"", portableSource, StringComparison.Ordinal);

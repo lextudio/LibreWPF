@@ -609,7 +609,7 @@ namespace System.Windows
 
             for (int i = 0; i < hitTestResults.Length; i++)
             {
-                if (!TryGetGeometryHitCandidate(hitTestResults[i], out Visual visualHit, out IntersectionDetail intersectionDetail) ||
+                if (!TryGetPortableGeometryHitCandidate(hitTestResults[i], out Visual visualHit, out IntersectionDetail intersectionDetail) ||
                     !IsVisualDescendantOf(visualHit, reference))
                 {
                     continue;
@@ -641,36 +641,23 @@ namespace System.Windows
             return true;
         }
 
-        private static bool TryGetGeometryHitCandidate(object candidate, out Visual visualHit, out IntersectionDetail intersectionDetail)
+        private static bool TryGetPortableGeometryHitCandidate(object candidate, out Visual visualHit, out IntersectionDetail intersectionDetail)
         {
             visualHit = null;
             intersectionDetail = IntersectionDetail.Intersects;
-            if (candidate is GeometryHitTestResult geometryHitResult)
+            if (candidate is not PortableGeometryHitTestCandidate portableCandidate)
             {
-                visualHit = geometryHitResult.VisualHit;
-                intersectionDetail = geometryHitResult.IntersectionDetail;
-                return true;
+                return false;
             }
 
-            if (candidate is PortableGeometryHitTestCandidate portableCandidate)
+            if (portableCandidate.VisualHit is not Visual portableVisualHit)
             {
-                if (portableCandidate.VisualHit is not Visual portableVisualHit)
-                {
-                    return false;
-                }
-
-                visualHit = portableVisualHit;
-                intersectionDetail = ToIntersectionDetail(portableCandidate.IntersectionDetail);
-                return true;
+                return false;
             }
 
-            if (candidate is Visual visual)
-            {
-                visualHit = visual;
-                return true;
-            }
-
-            return false;
+            visualHit = portableVisualHit;
+            intersectionDetail = ToIntersectionDetail(portableCandidate.IntersectionDetail);
+            return true;
         }
 
         private static IntersectionDetail ToIntersectionDetail(uint detail)

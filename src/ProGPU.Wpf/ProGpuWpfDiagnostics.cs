@@ -38,6 +38,30 @@ public static class ProGpuWpfDiagnostics
         return true;
     }
 
+    public static bool TryWakeNativeLoop(object? window)
+    {
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        return host.TryRequestNativeLoopWakeup();
+    }
+
+    public static bool TryGetRenderSchedulerWakeupCount(object? window, out long wakeupCount)
+    {
+        wakeupCount = 0;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        wakeupCount = host.RenderSchedulerWakeupCount;
+        return true;
+    }
+
     public static bool TryGetRenderSurfaceGeometry(object? window, out RenderSurfaceGeometrySnapshot geometry)
     {
         geometry = default;

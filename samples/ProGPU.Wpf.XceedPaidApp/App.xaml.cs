@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -265,25 +264,10 @@ internal static class XceedPaidSelfTest
         AssertType<Xceed.Wpf.DataGrid.Views.CardflowView3D>("Xceed DataGrid Views3D CardflowView3D");
         AssertType<Xceed.Wpf.DataGrid.Views.ElementalBlackTheme>("Xceed DataGrid Views3D ElementalBlackTheme");
         AssertType<Xceed.Wpf.DataGrid.Workbooks.WorkbooksExporter>("Xceed DataGrid Workbooks exporter");
-        AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>("ExportToCsv", typeof(System.IO.Stream));
-        AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>("ExportToExcel", typeof(System.IO.Stream));
-        AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>("ExportToXps", typeof(System.IO.Stream), typeof(Size));
-        AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>(
-            "SaveUserSettings",
-            typeof(Xceed.Wpf.DataGrid.Settings.SettingsRepository),
-            typeof(Xceed.Wpf.DataGrid.Settings.UserSettings));
-        AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>(
-            "LoadUserSettings",
-            typeof(Xceed.Wpf.DataGrid.Settings.SettingsRepository),
-            typeof(Xceed.Wpf.DataGrid.Settings.UserSettings));
-        AssertPublicProperty<Xceed.Wpf.DataGrid.ColumnChooserControl>("Columns");
-        AssertPublicProperty<Xceed.Wpf.DataGrid.ColumnChooserControl>("VisibleColumnsSectionTitle");
-        AssertPublicProperty<Xceed.Wpf.DataGrid.ColumnChooserControl>("HiddenColumnsSectionTitle");
-        AssertAssembly("Xceed.Wpf.DataGrid.Views3D");
-        AssertAssembly("Xceed.Wpf.DataGrid.ThemePack.1");
-        AssertAssembly("Xceed.Wpf.DataGrid.Workbooks");
-        AssertAssembly("Xceed.Wpf.Themes.Windows10");
-        AssertAssembly("Xceed.Wpf.AvalonDock.Themes.Windows10");
+        AssertType<Xceed.Wpf.AvalonDock.Themes.Windows10Theme>("Xceed AvalonDock Windows10 theme");
+        AssertType<Xceed.Wpf.AvalonDock.Themes.Windows10.Windows10ResourceDictionary>("Xceed AvalonDock Windows10 resource dictionary");
+        AssertDataGridControlApiSurface();
+        AssertColumnChooserApiSurface();
 
         if (Environment.GetEnvironmentVariable("PROGPU_WPF_XCEED_PAID_REQUIRE_LICENSE") == "1" &&
             !licenseStatus.IsConfigured)
@@ -597,27 +581,38 @@ internal static class XceedPaidSelfTest
         }
     }
 
-    private static void AssertAssembly(string assemblyName)
+    private static void AssertDataGridControlApiSurface()
     {
-        Assembly.Load(new AssemblyName(assemblyName));
+        Action<Xceed.Wpf.DataGrid.DataGridControl, System.IO.Stream> exportToCsv =
+            static (grid, stream) => grid.ExportToCsv(stream);
+        Action<Xceed.Wpf.DataGrid.DataGridControl, System.IO.Stream> exportToExcel =
+            static (grid, stream) => grid.ExportToExcel(stream);
+        Action<Xceed.Wpf.DataGrid.DataGridControl, System.IO.Stream, Size> exportToXps =
+            static (grid, stream, pageSize) => grid.ExportToXps(stream, pageSize);
+        Action<Xceed.Wpf.DataGrid.DataGridControl, Xceed.Wpf.DataGrid.Settings.SettingsRepository, Xceed.Wpf.DataGrid.Settings.UserSettings> saveSettings =
+            static (grid, repository, settings) => grid.SaveUserSettings(repository, settings);
+        Action<Xceed.Wpf.DataGrid.DataGridControl, Xceed.Wpf.DataGrid.Settings.SettingsRepository, Xceed.Wpf.DataGrid.Settings.UserSettings> loadSettings =
+            static (grid, repository, settings) => grid.LoadUserSettings(repository, settings);
+
+        GC.KeepAlive(exportToCsv);
+        GC.KeepAlive(exportToExcel);
+        GC.KeepAlive(exportToXps);
+        GC.KeepAlive(saveSettings);
+        GC.KeepAlive(loadSettings);
     }
 
-    private static void AssertPublicMethod<T>(string methodName, params Type[] parameterTypes)
+    private static void AssertColumnChooserApiSurface()
     {
-        var method = typeof(T).GetMethod(methodName, parameterTypes);
-        if (method is null)
-        {
-            throw new InvalidOperationException($"Expected public {typeof(T).FullName}.{methodName} method.");
-        }
-    }
+        Func<Xceed.Wpf.DataGrid.ColumnChooserControl, object?> columns =
+            static control => control.Columns;
+        Func<Xceed.Wpf.DataGrid.ColumnChooserControl, object?> visibleColumnsSectionTitle =
+            static control => control.VisibleColumnsSectionTitle;
+        Func<Xceed.Wpf.DataGrid.ColumnChooserControl, object?> hiddenColumnsSectionTitle =
+            static control => control.HiddenColumnsSectionTitle;
 
-    private static void AssertPublicProperty<T>(string propertyName)
-    {
-        var property = typeof(T).GetProperty(propertyName);
-        if (property is null)
-        {
-            throw new InvalidOperationException($"Expected public {typeof(T).FullName}.{propertyName} property.");
-        }
+        GC.KeepAlive(columns);
+        GC.KeepAlive(visibleColumnsSectionTitle);
+        GC.KeepAlive(hiddenColumnsSectionTitle);
     }
 
     private static void AssertEqual<T>(T expected, T actual, string description)

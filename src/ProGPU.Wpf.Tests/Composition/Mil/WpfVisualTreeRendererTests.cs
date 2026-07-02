@@ -798,6 +798,33 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeInfersRetainedBoundsFromPortableQuadraticGeometryPathPoints()
+    {
+        var geometry = new PortableQuadraticCurveGeometry(new PortableRect(0, 0, 1, 1));
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateGeometryRenderData(geometry),
+            visualState);
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawNativeGeometry", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 100, 50, state.OpacityMaskBounds);
+        AssertReplayRect(3, 4, 100, 50, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-3, transform.M41);
+        Assert.Equal(-4, transform.M42);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeInfersRetainedBoundsFromPrimitiveRenderDataThroughNativeBoundsSink()
     {
         var visualState = CreatePortableOpacityMaskState(Brushes.White);
@@ -2620,6 +2647,40 @@ public sealed class WpfVisualTreeRendererTests
 
         Assert.True(hasBounds);
         Assert.Equal(new Rect(3, 4, 50, 0), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesPortableQuadraticGeometryPathPointsBeforeStaleBoundsMetadata()
+    {
+        var geometry = new PortableQuadraticCurveGeometry(new PortableRect(0, 0, 1, 1));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(3, 4, 100, 50), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesPortableCubicGeometryPathPointsBeforeStaleBoundsMetadata()
+    {
+        var geometry = new PortableCubicCurveGeometry(new PortableRect(0, 0, 1, 1));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(3, 4, 100, 75), bounds);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
     }
 
@@ -4915,6 +4976,83 @@ public sealed class WpfVisualTreeRendererTests
                         [
                             PortablePathSegment.Line(new PortablePoint(x + width, y), isSmoothJoin: false, isStroked: true),
                             PortablePathSegment.Line(new PortablePoint(x + (width * 0.5), y + height), isSmoothJoin: false, isStroked: true)
+                        ]
+                    }
+                ]
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableQuadraticCurveGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableQuadraticCurveGeometry(PortableRect bounds)
+        {
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = bounds,
+                Transform = PortableMatrix3x2.Identity,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(3, 4),
+                        IsClosed = false,
+                        IsFilled = false,
+                        Segments =
+                        [
+                            PortablePathSegment.QuadraticBezier(
+                                new PortablePoint(53, 104),
+                                new PortablePoint(103, 4),
+                                isSmoothJoin: false,
+                                isStroked: true)
+                        ]
+                    }
+                ]
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableCubicCurveGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableCubicCurveGeometry(PortableRect bounds)
+        {
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = bounds,
+                Transform = PortableMatrix3x2.Identity,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(3, 4),
+                        IsClosed = false,
+                        IsFilled = false,
+                        Segments =
+                        [
+                            PortablePathSegment.CubicBezier(
+                                new PortablePoint(3, 104),
+                                new PortablePoint(103, 104),
+                                new PortablePoint(103, 4),
+                                isSmoothJoin: false,
+                                isStroked: true)
                         ]
                     }
                 ]

@@ -2376,7 +2376,7 @@ public sealed class WpfVisualTreeRenderer
                 return true;
             }
 
-            if (WpfPortablePathBoundsReader.TryGetLineBounds(geometry, out bounds))
+            if (WpfPortablePathBoundsReader.TryGetPathBounds(geometry, out bounds))
             {
                 return true;
             }

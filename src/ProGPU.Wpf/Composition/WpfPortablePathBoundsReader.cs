@@ -5,7 +5,7 @@ namespace System.Windows.Media.ProGPU.Composition;
 
 internal static class WpfPortablePathBoundsReader
 {
-    public static bool TryGetLineBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
+    public static bool TryGetPathBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
     {
         bounds = default;
         if (!geometry.Transform.IsIdentity
@@ -33,13 +33,62 @@ internal static class WpfPortablePathBoundsReader
                 return false;
             }
 
+            var current = figure.StartPoint;
             foreach (var segment in figure.Segments)
             {
-                if (segment.Kind != PortablePathSegmentKind.Line
-                    || (!segment.IsStroked && !figure.IsFilled)
-                    || !TryIncludePoint(segment.Point1, ref hasPoint, ref left, ref top, ref right, ref bottom))
+                if (!segment.IsStroked && !figure.IsFilled)
                 {
                     return false;
+                }
+
+                switch (segment.Kind)
+                {
+                    case PortablePathSegmentKind.Line:
+                        if (!TryIncludePoint(segment.Point1, ref hasPoint, ref left, ref top, ref right, ref bottom))
+                        {
+                            return false;
+                        }
+
+                        current = segment.Point1;
+                        break;
+
+                    case PortablePathSegmentKind.QuadraticBezier:
+                        if (!TryIncludeQuadraticBezier(
+                                current,
+                                segment.Point1,
+                                segment.Point2,
+                                ref hasPoint,
+                                ref left,
+                                ref top,
+                                ref right,
+                                ref bottom))
+                        {
+                            return false;
+                        }
+
+                        current = segment.Point2;
+                        break;
+
+                    case PortablePathSegmentKind.CubicBezier:
+                        if (!TryIncludeCubicBezier(
+                                current,
+                                segment.Point1,
+                                segment.Point2,
+                                segment.Point3,
+                                ref hasPoint,
+                                ref left,
+                                ref top,
+                                ref right,
+                                ref bottom))
+                        {
+                            return false;
+                        }
+
+                        current = segment.Point3;
+                        break;
+
+                    default:
+                        return false;
                 }
             }
         }
@@ -56,6 +105,220 @@ internal static class WpfPortablePathBoundsReader
 
         bounds = new WpfReplayRect(left, top, width, height);
         return true;
+    }
+
+    private static bool TryIncludeQuadraticBezier(
+        PortablePoint start,
+        PortablePoint control,
+        PortablePoint end,
+        ref bool hasPoint,
+        ref double left,
+        ref double top,
+        ref double right,
+        ref double bottom)
+    {
+        if (!TryIncludePoint(end, ref hasPoint, ref left, ref top, ref right, ref bottom))
+        {
+            return false;
+        }
+
+        return TryIncludeQuadraticExtremum(
+                start.X,
+                control.X,
+                end.X,
+                start,
+                control,
+                end,
+                ref hasPoint,
+                ref left,
+                ref top,
+                ref right,
+                ref bottom)
+            && TryIncludeQuadraticExtremum(
+                start.Y,
+                control.Y,
+                end.Y,
+                start,
+                control,
+                end,
+                ref hasPoint,
+                ref left,
+                ref top,
+                ref right,
+                ref bottom);
+    }
+
+    private static bool TryIncludeCubicBezier(
+        PortablePoint start,
+        PortablePoint control1,
+        PortablePoint control2,
+        PortablePoint end,
+        ref bool hasPoint,
+        ref double left,
+        ref double top,
+        ref double right,
+        ref double bottom)
+    {
+        if (!TryIncludePoint(end, ref hasPoint, ref left, ref top, ref right, ref bottom))
+        {
+            return false;
+        }
+
+        return TryIncludeCubicExtrema(
+                start.X,
+                control1.X,
+                control2.X,
+                end.X,
+                start,
+                control1,
+                control2,
+                end,
+                ref hasPoint,
+                ref left,
+                ref top,
+                ref right,
+                ref bottom)
+            && TryIncludeCubicExtrema(
+                start.Y,
+                control1.Y,
+                control2.Y,
+                end.Y,
+                start,
+                control1,
+                control2,
+                end,
+                ref hasPoint,
+                ref left,
+                ref top,
+                ref right,
+                ref bottom);
+    }
+
+    private static bool TryIncludeQuadraticExtremum(
+        double start,
+        double control,
+        double end,
+        PortablePoint curveStart,
+        PortablePoint curveControl,
+        PortablePoint curveEnd,
+        ref bool hasPoint,
+        ref double left,
+        ref double top,
+        ref double right,
+        ref double bottom)
+    {
+        var denominator = start - (2 * control) + end;
+        if (denominator == 0.0)
+        {
+            return true;
+        }
+
+        var t = (start - control) / denominator;
+        if (t <= 0.0 || t >= 1.0)
+        {
+            return true;
+        }
+
+        return TryIncludePoint(
+            EvaluateQuadratic(curveStart, curveControl, curveEnd, t),
+            ref hasPoint,
+            ref left,
+            ref top,
+            ref right,
+            ref bottom);
+    }
+
+    private static bool TryIncludeCubicExtrema(
+        double start,
+        double control1,
+        double control2,
+        double end,
+        PortablePoint curveStart,
+        PortablePoint curveControl1,
+        PortablePoint curveControl2,
+        PortablePoint curveEnd,
+        ref bool hasPoint,
+        ref double left,
+        ref double top,
+        ref double right,
+        ref double bottom)
+    {
+        var a = -start + (3 * control1) - (3 * control2) + end;
+        var b = 2 * (start - (2 * control1) + control2);
+        var c = control1 - start;
+
+        if (a == 0.0)
+        {
+            if (b == 0.0)
+            {
+                return true;
+            }
+
+            return TryIncludeCubicExtremum(-c / b, curveStart, curveControl1, curveControl2, curveEnd, ref hasPoint, ref left, ref top, ref right, ref bottom);
+        }
+
+        var discriminant = (b * b) - (4 * a * c);
+        if (discriminant < 0.0)
+        {
+            return true;
+        }
+
+        var root = Math.Sqrt(discriminant);
+        return TryIncludeCubicExtremum((-b + root) / (2 * a), curveStart, curveControl1, curveControl2, curveEnd, ref hasPoint, ref left, ref top, ref right, ref bottom)
+            && TryIncludeCubicExtremum((-b - root) / (2 * a), curveStart, curveControl1, curveControl2, curveEnd, ref hasPoint, ref left, ref top, ref right, ref bottom);
+    }
+
+    private static bool TryIncludeCubicExtremum(
+        double t,
+        PortablePoint start,
+        PortablePoint control1,
+        PortablePoint control2,
+        PortablePoint end,
+        ref bool hasPoint,
+        ref double left,
+        ref double top,
+        ref double right,
+        ref double bottom)
+    {
+        if (t <= 0.0 || t >= 1.0)
+        {
+            return true;
+        }
+
+        return TryIncludePoint(
+            EvaluateCubic(start, control1, control2, end, t),
+            ref hasPoint,
+            ref left,
+            ref top,
+            ref right,
+            ref bottom);
+    }
+
+    private static PortablePoint EvaluateQuadratic(PortablePoint start, PortablePoint control, PortablePoint end, double t)
+    {
+        var u = 1.0 - t;
+        var x = (u * u * start.X) + (2 * u * t * control.X) + (t * t * end.X);
+        var y = (u * u * start.Y) + (2 * u * t * control.Y) + (t * t * end.Y);
+        return new PortablePoint(x, y);
+    }
+
+    private static PortablePoint EvaluateCubic(
+        PortablePoint start,
+        PortablePoint control1,
+        PortablePoint control2,
+        PortablePoint end,
+        double t)
+    {
+        var u = 1.0 - t;
+        var x = (u * u * u * start.X)
+            + (3 * u * u * t * control1.X)
+            + (3 * u * t * t * control2.X)
+            + (t * t * t * end.X);
+        var y = (u * u * u * start.Y)
+            + (3 * u * u * t * control1.Y)
+            + (3 * u * t * t * control2.Y)
+            + (t * t * t * end.Y);
+        return new PortablePoint(x, y);
     }
 
     private static bool TryIncludePoint(

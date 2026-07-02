@@ -467,6 +467,80 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextPushesLocalRectangleGeometryClipAsNativeClipWithoutGenericClipFallback()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var geometry = new RectangleGeometry(new Rect(1, 2, 30, 40));
+
+        context.PushClip(geometry);
+
+        Assert.Equal(new[] { "PushNativeClip" }, sink.Operations);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Equal(new WpfReplayRect(1, 2, 30, 40), Assert.Single(sink.NativeClips));
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextPushesPortableRectClipAsNativeClipWithoutManagedGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var rectangle = new PortableRect(2, 3, 40, 50);
+
+        context.PushClip(rectangle);
+
+        Assert.Equal(new[] { "PushNativeClip" }, sink.Operations);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Equal(new WpfReplayRect(2, 3, 40, 50), Assert.Single(sink.NativeClips));
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextKeepsRoundedRectangleGeometryClipOnGenericClipPath()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var geometry = new RectangleGeometry(new Rect(2, 3, 40, 50))
+        {
+            RadiusX = 4,
+            RadiusY = 6
+        };
+
+        context.PushClip(geometry);
+
+        Assert.Equal(new[] { "PushClip" }, sink.Operations);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextKeepsTransformedRectangleGeometryClipOnGenericClipPath()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var geometry = new RectangleGeometry(new Rect(2, 3, 40, 50))
+        {
+            Transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 10 })
+        };
+
+        context.PushClip(geometry);
+
+        Assert.Equal(new[] { "PushClip" }, sink.Operations);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextUsesImageSourceAdapter()
     {
         var sink = new RecordingSink();

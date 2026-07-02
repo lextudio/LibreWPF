@@ -922,7 +922,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             _sink.PushNoOpScope();
         }
-        else if (!TryPushNativePortableClip(clipGeometry))
+        else if (!TryPushPrimitiveRectangleClip(clipGeometry)
+            && !TryPushNativePortableClip(clipGeometry))
         {
             if (WpfResourceResolver.AdaptGeometry(clipGeometry) is { } mediaGeometry)
             {
@@ -950,6 +951,22 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         }
 
         RegisterRetainedDependencies(clipGeometry);
+        return true;
+    }
+
+    private bool TryPushPrimitiveRectangleClip(object? clipGeometry)
+    {
+        if (_sink is not IWpfNativeClipCommandSink nativeClipSink
+            || !TryReadRectangleGeometry(clipGeometry, out var rectangle, out var radiusX, out var radiusY)
+            || radiusX != 0
+            || radiusY != 0
+            || !IsUsableRect(rectangle, out rectangle))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(clipGeometry);
+        nativeClipSink.PushNativeClip(ToReplayRect(rectangle));
         return true;
     }
 

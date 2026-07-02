@@ -8573,6 +8573,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateRenderSurfaceGeometry(window);", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateGpuHitTestCache(window, \"paid Xceed DataGrid loaded render\")", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateGpuHitTestCache(window, \"paid Xceed virtual DataGrid loaded render\")", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("window.BringVirtualPaidDataGridItemIntoView(50_000);", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("TryFindGpuPointOwnersUnder(host, window, window.PaidDataGrid", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryHitTestOwners(host, point.X, point.Y, out owners)", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryGetGpuHitTestCacheSnapshot(", appCodeBehind, StringComparison.Ordinal);
@@ -8704,6 +8705,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateRequiredScrollableViewportClip(PaidDataGrid, \"paid Xceed DataGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateRequiredScrollableViewportClip(EditablePaidDataGrid, \"paid editable Xceed DataGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, \"paid virtual Xceed DataGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateScrollableExtent(paidScrollViewer, \"paid Xceed DataGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLargeScrollOffset(paidScrolledViewer, \"paid Xceed DataGrid after large scroll\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateScrollableExtent(virtualScrollViewer, \"paid virtual Xceed DataGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLargeScrollOffset(virtualScrolledViewer, \"paid virtual Xceed DataGrid after large scroll\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal void BringVirtualPaidDataGridItemIntoView(int position)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("VirtualPaidDataGrid.ItemsSource is not DataGridVirtualizingCollectionViewBase view", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("view.MoveCurrentToPosition(position)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("VirtualPaidDataGrid.CurrentItem = item", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("VisualTreeHelper.GetClip(visual)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EnumerateVisualDescendants<ScrollContentPresenter>(scrollViewer)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AddRowButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -8752,7 +8761,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SaveUserSettings", readme, StringComparison.Ordinal);
         Assert.Contains("drives the loaded window through the same command handlers", readme, StringComparison.Ordinal);
         Assert.Contains("WPF internal `VisualClip` viewport clips", readme, StringComparison.Ordinal);
-        Assert.Contains("large-scroll clip checks on the 100k-row DataGrid surfaces", readme, StringComparison.Ordinal);
+        Assert.Contains("large-scroll offset and clip checks on the 100k-row DataGrid surfaces", readme, StringComparison.Ordinal);
         Assert.Contains("ProGPU owns windowing, input, invalidation, clipping, image/layer texture trimming, shaders, and final WebGPU rendering", readme, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE", runScript, StringComparison.Ordinal);

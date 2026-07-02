@@ -241,11 +241,13 @@ public partial class MainWindow : Window
         PaidDataGridDocument.IsActive = true;
         DockManager.UpdateLayout();
         PaidDataGrid.UpdateLayout();
-        ValidateRequiredScrollableViewportClip(PaidDataGrid, "paid Xceed DataGrid");
+        var paidScrollViewer = ValidateRequiredScrollableViewportClip(PaidDataGrid, "paid Xceed DataGrid");
+        ValidateScrollableExtent(paidScrollViewer, "paid Xceed DataGrid");
 
         PaidDataGrid.BringItemIntoView(ViewModel.Rows[ViewModel.Rows.Count - 1]);
         PumpBackgroundLayout(PaidDataGrid);
-        ValidateRequiredScrollableViewportClip(PaidDataGrid, "paid Xceed DataGrid after large scroll");
+        var paidScrolledViewer = ValidateRequiredScrollableViewportClip(PaidDataGrid, "paid Xceed DataGrid after large scroll");
+        ValidateLargeScrollOffset(paidScrolledViewer, "paid Xceed DataGrid after large scroll");
 
         EditableDataGridDocument.IsSelected = true;
         EditableDataGridDocument.IsActive = true;
@@ -257,11 +259,13 @@ public partial class MainWindow : Window
         VirtualDataGridDocument.IsActive = true;
         DockManager.UpdateLayout();
         VirtualPaidDataGrid.UpdateLayout();
-        ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, "paid virtual Xceed DataGrid");
+        var virtualScrollViewer = ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, "paid virtual Xceed DataGrid");
+        ValidateScrollableExtent(virtualScrollViewer, "paid virtual Xceed DataGrid");
 
-        VirtualPaidDataGrid.BringItemIntoView(ViewModel.Rows[50_000]);
+        BringVirtualPaidDataGridItemIntoView(50_000);
         PumpBackgroundLayout(VirtualPaidDataGrid);
-        ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, "paid virtual Xceed DataGrid after large scroll");
+        var virtualScrolledViewer = ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, "paid virtual Xceed DataGrid after large scroll");
+        ValidateLargeScrollOffset(virtualScrolledViewer, "paid virtual Xceed DataGrid after large scroll");
 
         PaidDataGridDocument.IsSelected = true;
         PaidDataGridDocument.IsActive = true;
@@ -280,7 +284,29 @@ public partial class MainWindow : Window
         ValidateRequiredScrollContentPresenterClip(ToolkitPaneScrollViewer, "paid Toolkit pane ScrollViewer");
     }
 
-    private static void ValidateRequiredScrollableViewportClip(DependencyObject root, string description)
+    internal void BringVirtualPaidDataGridItemIntoView(int position)
+    {
+        if (VirtualPaidDataGrid.ItemsSource is not DataGridVirtualizingCollectionViewBase view)
+        {
+            throw new InvalidOperationException("Expected paid virtual Xceed DataGrid to be backed by a virtualizing collection view.");
+        }
+
+        if (!view.MoveCurrentToPosition(position))
+        {
+            throw new InvalidOperationException($"Expected paid virtual Xceed DataGrid to move current item to position {position}.");
+        }
+
+        var item = view.CurrentItem
+            ?? throw new InvalidOperationException($"Expected paid virtual Xceed DataGrid to expose a current item at position {position}.");
+        VirtualPaidDataGrid.CurrentItem = item;
+        VirtualPaidDataGrid.SelectedItem = item;
+        if (!VirtualPaidDataGrid.BringItemIntoView(item))
+        {
+            throw new InvalidOperationException($"Expected paid virtual Xceed DataGrid to bring position {position} into view.");
+        }
+    }
+
+    private static ScrollViewer ValidateRequiredScrollableViewportClip(DependencyObject root, string description)
     {
         if (root is FrameworkElement element)
         {
@@ -294,6 +320,33 @@ public partial class MainWindow : Window
             .FirstOrDefault()
             ?? throw new InvalidOperationException($"Expected {description} to expose a ScrollViewer with a finite viewport.");
         ValidateRequiredScrollContentPresenterClip(scrollViewer, $"{description} ScrollViewer");
+        return scrollViewer;
+    }
+
+    private static void ValidateScrollableExtent(ScrollViewer scrollViewer, string description)
+    {
+        if (!IsFinitePositive(scrollViewer.ScrollableHeight) &&
+            !IsFinitePositive(scrollViewer.ScrollableWidth))
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to expose a non-zero scrollable extent, got {scrollViewer.ScrollableWidth:0.###}x{scrollViewer.ScrollableHeight:0.###}.");
+        }
+    }
+
+    private static void ValidateLargeScrollOffset(ScrollViewer scrollViewer, string description)
+    {
+        ValidateScrollableExtent(scrollViewer, description);
+        if (!IsFinitePositive(scrollViewer.VerticalOffset) &&
+            !IsFinitePositive(scrollViewer.HorizontalOffset))
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to move to a non-zero scroll offset, got {scrollViewer.HorizontalOffset:0.###},{scrollViewer.VerticalOffset:0.###}.");
+        }
+    }
+
+    private static bool IsFinitePositive(double value)
+    {
+        return double.IsFinite(value) && value > 0;
     }
 
     private static void ValidateRequiredScrollContentPresenterClip(ScrollViewer scrollViewer, string description)

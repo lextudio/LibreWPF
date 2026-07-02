@@ -452,7 +452,7 @@ internal static class XceedPaidSelfTest
 
         window.VirtualDataGridDocument.IsSelected = true;
         window.VirtualDataGridDocument.IsActive = true;
-        window.VirtualPaidDataGrid.BringItemIntoView(window.ViewModel.Rows[50_000]);
+        window.BringVirtualPaidDataGridItemIntoView(50_000);
         window.VirtualPaidDataGrid.UpdateLayout();
         host.DoEvents();
         if (window.VirtualPaidDataGrid.ActualWidth <= 0 || window.VirtualPaidDataGrid.ActualHeight <= 0)

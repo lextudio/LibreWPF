@@ -240,7 +240,7 @@ public sealed class WpfReflectionResourceResolver :
             return WpfDrawingReplayStatus.Skipped;
         }
 
-        return WpfReflectionDrawingReplay.Replay(drawing, sink, AdaptImageSource);
+        return WpfDrawingReplay.Replay(drawing, sink, AdaptImageSource);
     }
 
     private T? Resolve<T>(uint resourceToken, Dictionary<uint, T?> cache, Func<object, T?> adapter)

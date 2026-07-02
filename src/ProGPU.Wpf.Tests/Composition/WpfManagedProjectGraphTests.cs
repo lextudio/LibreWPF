@@ -5677,7 +5677,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfReflectionDrawingReplay.cs"));
+            "WpfDrawingReplay.cs"));
         var drawingGroupSource = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5736,7 +5736,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfReflectionDrawingReplay.cs"));
+            "WpfDrawingReplay.cs"));
         var geometryDrawingSource = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5797,7 +5797,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfReflectionDrawingReplay.cs"));
+            "WpfDrawingReplay.cs"));
         var imageDrawingSource = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -6237,7 +6237,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfReflectionDrawingReplay.cs"));
+            "WpfDrawingReplay.cs"));
         var portableTileBrush = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -8727,12 +8727,12 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "WpfGuidelineSetReader.cs");
-        var wpfReflectionDrawingReplayPath = FindRepoPath(
+        var wpfDrawingReplayPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfReflectionDrawingReplay.cs");
+            "WpfDrawingReplay.cs");
         var wpfPortableCommandSinkBridgePath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -9110,7 +9110,7 @@ public sealed class WpfManagedProjectGraphTests
         var wpfCompositionDrawingContext = File.ReadAllText(wpfCompositionDrawingContextPath);
         var wpfObjectRenderDataDrawingContext = File.ReadAllText(wpfObjectRenderDataDrawingContextPath);
         var wpfGuidelineSetReader = File.ReadAllText(wpfGuidelineSetReaderPath);
-        var wpfReflectionDrawingReplay = File.ReadAllText(wpfReflectionDrawingReplayPath);
+        var wpfDrawingReplay = File.ReadAllText(wpfDrawingReplayPath);
         var wpfPortableCommandSinkBridge = File.ReadAllText(wpfPortableCommandSinkBridgePath);
         var proGpuWpfDrawingFrame = File.ReadAllText(proGpuWpfDrawingFramePath);
         var proGpuWpfWindowHost = File.ReadAllText(proGpuWpfWindowHostPath);
@@ -11525,28 +11525,28 @@ public sealed class WpfManagedProjectGraphTests
         Assert.False(
             File.Exists(Path.Combine(Path.GetDirectoryName(proGpuWpfCommandSinkPath)!, "ProGpuWpfPen.cs")),
             "The transition ProGpuWpfPen wrapper should stay removed; WPF pen dash metadata belongs on native ProGPU.Vector.Pen.");
-        Assert.Contains("internal static bool IsTileBrush(object? brush)", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.Contains("return brush is PortableTileBrushSource;", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TypeNameEndsWith(brush, \"ImageBrush\")", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TypeNameEndsWith(brush, \"DrawingBrush\")", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TypeNameEndsWith(brush, \"VisualBrush\")", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.Contains("TryReplayTileBrushFill(brushValue!", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.Contains("using PortableVisualBoundsSource = ProGPU.Wpf.Interop.IPortableVisualBoundsSource;", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.Contains("visual is PortableVisualBoundsSource boundsSource", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryReadFiniteRectProperty(visual", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryGetPropertyValue(visual, \"RenderSize\"", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryReadDoubleProperty(visual, \"ActualWidth\"", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryReadDoubleProperty(visual, \"ActualHeight\"", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("using System.Reflection;", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("BindingFlags", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryGetPropertyValue", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryReadFiniteRectProperty", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryReadRect", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryReadIntProperty", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryReadDoubleProperty", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("FindIndexer", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.DoesNotContain("TypeNameEndsWith", wpfReflectionDrawingReplay, StringComparison.Ordinal);
-        Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform)", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("internal static bool IsTileBrush(object? brush)", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("return brush is PortableTileBrushSource;", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(brush, \"ImageBrush\")", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(brush, \"DrawingBrush\")", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(brush, \"VisualBrush\")", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TryReplayTileBrushFill(brushValue!", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("using PortableVisualBoundsSource = ProGPU.Wpf.Interop.IPortableVisualBoundsSource;", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("visual is PortableVisualBoundsSource boundsSource", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadFiniteRectProperty(visual", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(visual, \"RenderSize\"", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty(visual, \"ActualWidth\"", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty(visual, \"ActualHeight\"", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection;", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadFiniteRectProperty", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadRect", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadIntProperty", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("FindIndexer", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(_sink, transform)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.PushNativeTransform(nativeTransform)", wpfPortableCommandSinkBridge, StringComparison.Ordinal);
         Assert.Contains("nativeSink.PushNativeTransform(transform)", wpfPortableCommandSinkBridge, StringComparison.Ordinal);
@@ -11573,7 +11573,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private readonly Func<object?, MediaImageSource?>? _imageSourceAdapter", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushRectangle(brush, pen, rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
-        Assert.Contains("WpfReflectionDrawingReplay.TryReplayTileBrushFill(", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("WpfDrawingReplay.TryReplayTileBrushFill(", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("_sink is IWpfNativePrimitiveCommandSink nativeSink", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeLine(mediaPen, replayPoint0, replayPoint1)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeRectangle(mediaBrush, mediaPen, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);

@@ -35,7 +35,7 @@ using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayout
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
-internal static class WpfReflectionDrawingReplay
+internal static class WpfDrawingReplay
 {
     private const int MaxTileBrushReplayTiles = 1024;
 

@@ -138,7 +138,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             RegisterRetainedDependencies(brush, pen);
             nativeSink.DrawNativeRectangle(null, mediaPen, replayRectangle);
-            if (brush != null && WpfReflectionDrawingReplay.IsTileBrush(brush))
+            if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
             {
                 CountPartiallyApplied();
             }
@@ -168,8 +168,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         }
 
         if (brush != null
-            && WpfReflectionDrawingReplay.IsTileBrush(brush)
-            && WpfReflectionDrawingReplay.TryReplayTileBrushFill(
+            && WpfDrawingReplay.IsTileBrush(brush)
+            && WpfDrawingReplay.TryReplayTileBrushFill(
                 brush,
                 WpfReflectionResourceResolver.CreateRectanglePath(mediaRectangle),
                 _sink,
@@ -198,7 +198,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             RegisterRetainedDependencies(brush, pen);
             _sink.DrawRectangle(null, mediaPen, mediaRectangle);
-            if (brush != null && WpfReflectionDrawingReplay.IsTileBrush(brush))
+            if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
             {
                 CountPartiallyApplied();
             }
@@ -392,8 +392,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         }
 
         if (brush != null
-            && WpfReflectionDrawingReplay.IsTileBrush(brush)
-            && WpfReflectionDrawingReplay.TryReplayTileBrushFill(
+            && WpfDrawingReplay.IsTileBrush(brush)
+            && WpfDrawingReplay.TryReplayTileBrushFill(
                 brush,
                 mediaGeometry,
                 _sink,
@@ -422,7 +422,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             RegisterRetainedDependencies(brush, pen, geometry);
             _sink.DrawGeometry(null, mediaPen, mediaGeometry);
-            if (brush != null && WpfReflectionDrawingReplay.IsTileBrush(brush))
+            if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
             {
                 CountPartiallyApplied();
             }
@@ -547,7 +547,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     public void DrawDrawing(object? drawing)
     {
         ThrowIfClosed();
-        var status = WpfReflectionDrawingReplay.Replay(drawing, _sink, _resources.AdaptImageSource);
+        var status = WpfDrawingReplay.Replay(drawing, _sink, _resources.AdaptImageSource);
         if (status is WpfDrawingReplayStatus.Applied or WpfDrawingReplayStatus.PartiallyApplied)
         {
             RegisterRetainedDependencies(drawing);

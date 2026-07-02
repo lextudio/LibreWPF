@@ -1554,7 +1554,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         });
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+        var status = WpfDrawingReplay.Replay(drawing, sink);
 
         Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
         var draw = Assert.Single(sink.DrawGeometries);
@@ -1575,7 +1575,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         });
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+        var status = WpfDrawingReplay.Replay(drawing, sink);
 
         Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
         Assert.Same(Brushes.Green, Assert.Single(sink.DrawGeometries).Brush);
@@ -1592,7 +1592,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         });
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+        var status = WpfDrawingReplay.Replay(drawing, sink);
 
         Assert.Empty(sink.Operations);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
@@ -1605,7 +1605,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var drawing = new UnavailablePortableGeometryDrawing();
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+        var status = WpfDrawingReplay.Replay(drawing, sink);
 
         Assert.Empty(sink.Operations);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
@@ -1626,7 +1626,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var sink = new TestSink();
         var adapter = new FakeImageSourceAdapter();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, sink, adapter.AdaptImageSource);
+        var status = WpfDrawingReplay.Replay(drawing, sink, adapter.AdaptImageSource);
 
         Assert.Equal(new[] { "DrawImage" }, sink.Operations);
         var image = Assert.Single(sink.Images);
@@ -1643,7 +1643,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var drawing = new ThrowingPortableImageDrawing(new PortableImageDrawingState());
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+        var status = WpfDrawingReplay.Replay(drawing, sink);
 
         Assert.Empty(sink.Operations);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
@@ -1656,7 +1656,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var drawing = new UnavailablePortableImageDrawing();
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+        var status = WpfDrawingReplay.Replay(drawing, sink);
 
         Assert.Empty(sink.Operations);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
@@ -1673,7 +1673,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         });
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+        var status = WpfDrawingReplay.Replay(drawing, sink);
 
         Assert.Empty(sink.Operations);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
@@ -1699,7 +1699,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         });
         var sink = new NativeGlyphRunTestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+        var status = WpfDrawingReplay.Replay(drawing, sink);
 
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
         var nativeGlyphRun = Assert.Single(sink.NativeGlyphRuns);
@@ -1716,7 +1716,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var drawing = new UnavailablePortableGlyphRunDrawing();
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, sink);
+        var status = WpfDrawingReplay.Replay(drawing, sink);
 
         Assert.Empty(sink.Operations);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
@@ -1732,7 +1732,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             Geometry = new RectangleGeometry(new Rect(1, 2, 10, 12))
         });
 
-        var hasBounds = WpfReflectionDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
 
         Assert.True(hasBounds);
         Assert.Equal(new Rect(1, 2, 10, 12), bounds);
@@ -1744,7 +1744,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     {
         var drawing = new ThrowingBoundsOnlyDrawing();
 
-        Assert.False(WpfReflectionDrawingReplay.TryGetDrawingBounds(drawing, null, out _));
+        Assert.False(WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out _));
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
     }
 
@@ -1755,9 +1755,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var imageDrawing = new UnavailablePortableImageDrawing();
         var glyphRunDrawing = new UnavailablePortableGlyphRunDrawing();
 
-        Assert.False(WpfReflectionDrawingReplay.TryGetDrawingBounds(geometryDrawing, null, out _));
-        Assert.False(WpfReflectionDrawingReplay.TryGetDrawingBounds(imageDrawing, null, out _));
-        Assert.False(WpfReflectionDrawingReplay.TryGetDrawingBounds(glyphRunDrawing, null, out _));
+        Assert.False(WpfDrawingReplay.TryGetDrawingBounds(geometryDrawing, null, out _));
+        Assert.False(WpfDrawingReplay.TryGetDrawingBounds(imageDrawing, null, out _));
+        Assert.False(WpfDrawingReplay.TryGetDrawingBounds(glyphRunDrawing, null, out _));
 
         Assert.Equal(0, geometryDrawing.ReflectedStateProbeCount);
         Assert.Equal(0, imageDrawing.ReflectedStateProbeCount);
@@ -1796,7 +1796,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         });
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(group, sink);
+        var status = WpfDrawingReplay.Replay(group, sink);
 
         Assert.Equal(
             new[]
@@ -1846,7 +1846,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         });
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(group, sink);
+        var status = WpfDrawingReplay.Replay(group, sink);
 
         Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
         Assert.Equal(0, group.ReflectedStateProbeCount);
@@ -1859,7 +1859,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var group = new UnavailablePortableDrawingGroup();
         var sink = new TestSink();
 
-        var status = WpfReflectionDrawingReplay.Replay(group, sink);
+        var status = WpfDrawingReplay.Replay(group, sink);
 
         Assert.Empty(sink.Operations);
         Assert.Equal(0, group.ReflectedStateProbeCount);

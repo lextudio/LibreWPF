@@ -138,7 +138,7 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
             return imageSourceAdapter?.AdaptImageSource(imageSource);
         }
 
-        var replayStatus = WpfReflectionDrawingReplay.Replay(
+        var replayStatus = WpfDrawingReplay.Replay(
             drawing,
             sink,
             AdaptImageSource);
@@ -195,7 +195,7 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         switch (brush.Kind)
         {
             case PortableTileBrushKind.Drawing:
-                if (WpfReflectionDrawingReplay.TryGetDrawingBounds(brush.Content, imageSourceAdapter, out var drawingBounds))
+                if (WpfDrawingReplay.TryGetDrawingBounds(brush.Content, imageSourceAdapter, out var drawingBounds))
                 {
                     if (TryGetRelativeViewbox(brush, drawingBounds, out bounds))
                     {
@@ -271,7 +271,7 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
 
     private static bool TryGetSamplerVisualBounds(object visual, out Rect bounds)
     {
-        return WpfReflectionDrawingReplay.TryGetVisualBounds(visual, out bounds);
+        return WpfDrawingReplay.TryGetVisualBounds(visual, out bounds);
     }
 
     private static bool TryCreateTextureBounds(

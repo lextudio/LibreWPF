@@ -255,7 +255,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
     {
         ThrowIfClosed();
 
-        var status = WpfReflectionDrawingReplay.Replay(drawing, _sink, imageSourceAdapter);
+        var status = WpfDrawingReplay.Replay(drawing, _sink, imageSourceAdapter);
         if (status is WpfDrawingReplayStatus.Applied or WpfDrawingReplayStatus.PartiallyApplied)
         {
             RegisterRetainedDependencies(drawing);
@@ -510,12 +510,12 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
 
     private bool TryReplayTileBrushRectangle(MediaBrush brush, MediaPen? pen, Rect rectangle)
     {
-        if (!WpfReflectionDrawingReplay.IsTileBrush(brush))
+        if (!WpfDrawingReplay.IsTileBrush(brush))
         {
             return false;
         }
 
-        if (WpfReflectionDrawingReplay.TryReplayTileBrushFill(
+        if (WpfDrawingReplay.TryReplayTileBrushFill(
                 brush,
                 WpfReflectionResourceResolver.CreateRectanglePath(rectangle),
                 _sink,
@@ -537,12 +537,12 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
 
     private bool TryReplayTileBrushGeometry(MediaBrush brush, MediaPen? pen, MediaGeometry geometry)
     {
-        if (!WpfReflectionDrawingReplay.IsTileBrush(brush))
+        if (!WpfDrawingReplay.IsTileBrush(brush))
         {
             return false;
         }
 
-        if (WpfReflectionDrawingReplay.TryReplayTileBrushFill(
+        if (WpfDrawingReplay.TryReplayTileBrushFill(
                 brush,
                 geometry,
                 _sink,

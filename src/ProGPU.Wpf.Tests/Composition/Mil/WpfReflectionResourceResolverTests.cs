@@ -828,7 +828,7 @@ public sealed class WpfReflectionResourceResolverTests
         var brush = new FakeUnavailablePortableImageBrush(new FakeBitmapSource());
         var sink = new TestSink();
 
-        var replayed = WpfReflectionDrawingReplay.TryReplayTileBrushFill(
+        var replayed = WpfDrawingReplay.TryReplayTileBrushFill(
             brush,
             new RectangleGeometry(new Rect(0, 0, 10, 10)),
             sink,

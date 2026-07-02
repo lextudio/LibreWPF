@@ -5664,6 +5664,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableArcGeometryPathPoints", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableCombinedGeometryOperands", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsPreservesPortableHorizontalLineGeometryBounds", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesTransformedPortablePathBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableQuadraticGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableCubicGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableArcGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
@@ -9025,6 +9026,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "WpfPortablePathBoundsReader.cs");
+        var wpfPortablePathGeometryConverterPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfPortablePathGeometryConverter.cs");
         var wpfMediaRectangleClipReaderPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -9429,6 +9435,7 @@ public sealed class WpfManagedProjectGraphTests
         var wpfMediaLineGeometryReader = File.ReadAllText(wpfMediaLineGeometryReaderPath);
         var wpfPortableRectangleClipReader = File.ReadAllText(wpfPortableRectangleClipReaderPath);
         var wpfPortablePathBoundsReader = File.ReadAllText(wpfPortablePathBoundsReaderPath);
+        var wpfPortablePathGeometryConverter = File.ReadAllText(wpfPortablePathGeometryConverterPath);
         var wpfMediaRectangleClipReader = File.ReadAllText(wpfMediaRectangleClipReaderPath);
         var wpfGuidelineSetReader = File.ReadAllText(wpfGuidelineSetReaderPath);
         var wpfDrawingReplay = File.ReadAllText(wpfDrawingReplayPath);
@@ -11855,14 +11862,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryConvertPortableGeometryPath(portablePath", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("PushNativeGeometryClip(PortableGeometryPath clipGeometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("ConvertPortableGeometryPath(PortableGeometryPath portablePath)", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("portablePath.Kind == PortableGeometryPathKind.Combined", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("PathA = portablePath.PathA != null", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("var localTransform = ToMatrix4x4(portablePath.Transform)", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("AddPortableSegment(figure, segment)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathGeometryConverter.TryConvert(portablePath, transform, out path, out bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathGeometryConverter.GetBoundsOrEmpty(path)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("private static VectorPathGeometry Convert(PortableGeometryPath portablePath)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
+        Assert.Contains("portablePath.Kind == PortableGeometryPathKind.Combined", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
+        Assert.Contains("PathA = portablePath.PathA != null", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
+        Assert.Contains("var localTransform = ToMatrix4x4(portablePath.Transform)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
+        Assert.Contains("AddPortableSegment(figure, segment)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry is ProGpuCombinedGeometry", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("bounds = GetNativePathBounds(path)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("geometry is ProGpuCombinedGeometry", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
         Assert.DoesNotContain("portablePath.Bounds", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("portablePath.Bounds", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
         Assert.DoesNotContain("var bounds = geometry.Bounds;", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("ReadGeometryTransform(geometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadTransformValue(transformValue", proGpuWpfCommandSink, StringComparison.Ordinal);
@@ -11871,8 +11881,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryGetPropertyValue(geometry, \"Figures\"", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var figure in EnumerateObjects(figuresValue))", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("TryAppendPathSegment(segment", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.DoesNotContain("TypeNameEndsWith(segment, \"LineSegment\")", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.DoesNotContain("foreach (var figure in geometry.Figures)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(segment, \"LineSegment\")", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var figure in geometry.Figures)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
         Assert.Contains("geometry is NativePathGeometrySource nativePathSource", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("nativePathSource.TryGetPathGeometry(out path, out var nativeTransform)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection", proGpuWpfCommandSink, StringComparison.Ordinal);
@@ -12089,6 +12099,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("sameX == sameY", wpfPortableRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfPortablePathBoundsReader", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetPathBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("!geometry.Transform.IsIdentity", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out bounds)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("internal static class WpfPortablePathGeometryConverter", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetNativePathBounds(PortableGeometryPath portablePath, out WpfReplayRect bounds)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
         Assert.Contains("geometry.Kind == PortableGeometryPathKind.Combined", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetCombinedBounds", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("private static bool TryIntersectBounds", wpfPortablePathBoundsReader, StringComparison.Ordinal);

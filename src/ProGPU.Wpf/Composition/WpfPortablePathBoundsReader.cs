@@ -14,7 +14,7 @@ internal static class WpfPortablePathBoundsReader
         bounds = default;
         if (!geometry.Transform.IsIdentity)
         {
-            return false;
+            return WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out bounds);
         }
 
         if (geometry.Kind == PortableGeometryPathKind.Combined)

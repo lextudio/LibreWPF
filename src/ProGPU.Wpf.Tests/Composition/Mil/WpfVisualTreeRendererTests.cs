@@ -2727,6 +2727,29 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsUsesTransformedPortablePathBeforeStaleBoundsMetadata()
+    {
+        var geometry = new PortableNonRectangleClipGeometry(
+            3,
+            4,
+            50,
+            20,
+            new PortableRect(0, 0, 1, 1),
+            new PortableMatrix3x2(1, 0, 0, 1, 10, 20));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(13, 24, 50, 20), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
     public void TryGetDrawingBoundsPreservesPortableHorizontalLineGeometryBounds()
     {
         var geometry = new PortableNonRectangleClipGeometry(3, 4, 50, 0, new PortableRect(0, 0, 1, 1));
@@ -5102,12 +5125,23 @@ public sealed class WpfVisualTreeRendererTests
         }
 
         public PortableNonRectangleClipGeometry(double x, double y, double width, double height, PortableRect bounds)
+            : this(x, y, width, height, bounds, PortableMatrix3x2.Identity)
+        {
+        }
+
+        public PortableNonRectangleClipGeometry(
+            double x,
+            double y,
+            double width,
+            double height,
+            PortableRect bounds,
+            PortableMatrix3x2 transform)
         {
             _path = new PortableGeometryPath
             {
                 Kind = PortableGeometryPathKind.Path,
                 Bounds = bounds,
-                Transform = PortableMatrix3x2.Identity,
+                Transform = transform,
                 Figures =
                 [
                     new PortablePathFigure

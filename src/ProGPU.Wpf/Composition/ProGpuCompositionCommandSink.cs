@@ -14,30 +14,16 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaPenLineCap = System.Windows.Media.PenLineCap;
 using MediaTransform = System.Windows.Media.Transform;
-using VectorArcSegment = ProGPU.Vector.ArcSegment;
-using VectorCubicBezierSegment = ProGPU.Vector.CubicBezierSegment;
 using VectorLineSegment = ProGPU.Vector.LineSegment;
 using VectorPen = ProGPU.Vector.Pen;
-using VectorPathFigure = ProGPU.Vector.PathFigure;
 using VectorPathGeometry = ProGPU.Vector.PathGeometry;
-using VectorQuadraticBezierSegment = ProGPU.Vector.QuadraticBezierSegment;
 using VectorBrush = ProGPU.Vector.Brush;
-using VectorFillRule = ProGPU.Vector.FillRule;
 using VectorPenLineCap = ProGPU.Vector.PenLineCap;
 using VectorPenLineJoin = ProGPU.Vector.PenLineJoin;
 using VectorSolidColorBrush = ProGPU.Vector.SolidColorBrush;
-using VectorSweepDirection = ProGPU.Vector.SweepDirection;
 using NativePathGeometrySource = ProGPU.Scene.INativePathGeometrySource;
-using PortableFillRule = ProGPU.Wpf.Interop.PortableFillRule;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
-using PortableGeometryPathKind = ProGPU.Wpf.Interop.PortableGeometryPathKind;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
-using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
-using PortablePathSegment = ProGPU.Wpf.Interop.PortablePathSegment;
-using PortablePathSegmentKind = ProGPU.Wpf.Interop.PortablePathSegmentKind;
-using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
-using PortableSize = ProGPU.Wpf.Interop.PortableSize;
-using PortableSweepDirection = ProGPU.Wpf.Interop.PortableSweepDirection;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
@@ -1550,7 +1536,7 @@ public sealed class ProGpuCompositionCommandSink :
                 path = path.CreateTransformed(combinedTransform);
             }
 
-            bounds = GetNativePathBounds(path);
+            bounds = WpfPortablePathGeometryConverter.GetBoundsOrEmpty(path);
             return allowEmpty || path.IsCombined || path.Figures.Count > 0;
         }
 
@@ -1565,160 +1551,7 @@ public sealed class ProGpuCompositionCommandSink :
         out VectorPathGeometry path,
         out WpfReplayRect bounds)
     {
-        path = ConvertPortableGeometryPath(portablePath);
-        if (!transform.IsIdentity)
-        {
-            path = path.CreateTransformed(transform);
-        }
-
-        bounds = GetNativePathBounds(path);
-        return true;
-    }
-
-    private static VectorPathGeometry ConvertPortableGeometryPath(PortableGeometryPath portablePath)
-    {
-        VectorPathGeometry path;
-        if (portablePath.Kind == PortableGeometryPathKind.Combined)
-        {
-            path = new VectorPathGeometry
-            {
-                IsCombined = true,
-                PathA = portablePath.PathA != null
-                    ? ConvertPortableGeometryPath(portablePath.PathA)
-                    : new VectorPathGeometry(),
-                PathB = portablePath.PathB != null
-                    ? ConvertPortableGeometryPath(portablePath.PathB)
-                    : new VectorPathGeometry(),
-                Op = portablePath.CombineOperation,
-                FillRule = ToNativeFillRule(portablePath.FillRule)
-            };
-        }
-        else
-        {
-            path = new VectorPathGeometry
-            {
-                FillRule = ToNativeFillRule(portablePath.FillRule)
-            };
-
-            foreach (var portableFigure in portablePath.Figures)
-            {
-                var figure = new VectorPathFigure
-                {
-                    StartPoint = ToVector2(portableFigure.StartPoint),
-                    IsClosed = portableFigure.IsClosed,
-                    IsFilled = portableFigure.IsFilled
-                };
-
-                foreach (var segment in portableFigure.Segments)
-                {
-                    AddPortableSegment(figure, segment);
-                }
-
-                path.Figures.Add(figure);
-            }
-        }
-
-        var localTransform = ToMatrix4x4(portablePath.Transform);
-        return localTransform.IsIdentity
-            ? path
-            : path.CreateTransformed(localTransform);
-    }
-
-    private static void AddPortableSegment(VectorPathFigure figure, PortablePathSegment segment)
-    {
-        switch (segment.Kind)
-        {
-            case PortablePathSegmentKind.Line:
-                figure.Segments.Add(new VectorLineSegment(
-                    ToVector2(segment.Point1),
-                    segment.IsSmoothJoin,
-                    segment.IsStroked));
-                break;
-            case PortablePathSegmentKind.QuadraticBezier:
-                figure.Segments.Add(new VectorQuadraticBezierSegment(
-                    ToVector2(segment.Point1),
-                    ToVector2(segment.Point2),
-                    segment.IsSmoothJoin,
-                    segment.IsStroked));
-                break;
-            case PortablePathSegmentKind.CubicBezier:
-                figure.Segments.Add(new VectorCubicBezierSegment(
-                    ToVector2(segment.Point1),
-                    ToVector2(segment.Point2),
-                    ToVector2(segment.Point3),
-                    segment.IsSmoothJoin,
-                    segment.IsStroked));
-                break;
-            case PortablePathSegmentKind.Arc:
-                figure.Segments.Add(new VectorArcSegment(
-                    ToVector2(segment.Point1),
-                    ToVector2(segment.Size),
-                    (float)segment.RotationAngle,
-                    segment.IsLargeArc,
-                    ToNativeSweepDirection(segment.SweepDirection),
-                    segment.IsSmoothJoin,
-                    segment.IsStroked));
-                break;
-        }
-    }
-
-    private static VectorFillRule ToNativeFillRule(PortableFillRule fillRule)
-    {
-        return fillRule == PortableFillRule.Nonzero
-            ? VectorFillRule.Nonzero
-            : VectorFillRule.EvenOdd;
-    }
-
-    private static VectorSweepDirection ToNativeSweepDirection(PortableSweepDirection sweepDirection)
-    {
-        return sweepDirection == PortableSweepDirection.Clockwise
-            ? VectorSweepDirection.Clockwise
-            : VectorSweepDirection.Counterclockwise;
-    }
-
-    private static Matrix4x4 ToMatrix4x4(PortableMatrix3x2 matrix)
-    {
-        return new Matrix4x4(
-            (float)matrix.M11,
-            (float)matrix.M12,
-            0.0f,
-            0.0f,
-            (float)matrix.M21,
-            (float)matrix.M22,
-            0.0f,
-            0.0f,
-            0.0f,
-            0.0f,
-            1.0f,
-            0.0f,
-            (float)matrix.OffsetX,
-            (float)matrix.OffsetY,
-            0.0f,
-            1.0f);
-    }
-
-    private static Vector2 ToVector2(PortablePoint point)
-    {
-        return new Vector2((float)point.X, (float)point.Y);
-    }
-
-    private static Vector2 ToVector2(PortableSize size)
-    {
-        return new Vector2((float)size.Width, (float)size.Height);
-    }
-
-    private static WpfReplayRect GetNativePathBounds(VectorPathGeometry path)
-    {
-        if (!path.TryGetBounds(out var min, out var max))
-        {
-            return WpfReplayRect.Empty;
-        }
-
-        return new WpfReplayRect(
-            min.X,
-            min.Y,
-            Math.Max(0.0, max.X - min.X),
-            Math.Max(0.0, max.Y - min.Y));
+        return WpfPortablePathGeometryConverter.TryConvert(portablePath, transform, out path, out bounds);
     }
 
 }

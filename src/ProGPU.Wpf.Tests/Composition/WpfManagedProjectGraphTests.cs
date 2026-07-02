@@ -613,7 +613,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryDragMove()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.TryBeginDragMove()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("internal static DragDropEffects ProcessPortableDrop", dragDrop, StringComparison.Ordinal);
-        Assert.Contains("internal static DragDropEffects ProcessPortableDragDrop", dragDrop, StringComparison.Ordinal);
+        Assert.Contains("public static DragDropEffects ProcessPortableDragDrop", dragDrop, StringComparison.Ordinal);
+        Assert.Contains("public static System.Windows.DragDropEffects ProcessPortableDragDrop(", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("ProcessPortableDragDrop(\n                target,\n                DropEvent", dragDrop, StringComparison.Ordinal);
         Assert.Contains("internal static int ProcessDragDrop(", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static int ProcessDragDropEvent(", activationService, StringComparison.Ordinal);
@@ -9839,6 +9840,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWpfServiceRegistry.TryGetFileDialogService(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("fileDialogService.Register(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("string kind = request.Kind;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DragDrop.ProcessPortableDragDrop(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("CreateDragEventArgs", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(DragEventArgs).GetConstructor", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(MessageBox).Assembly.GetType", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(OpenFileDialog).Assembly.GetType", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("Microsoft.Win32.PortableFileDialogService", mvpMainWindowCodeBehind, StringComparison.Ordinal);

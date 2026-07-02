@@ -553,7 +553,18 @@ namespace System.Windows
                 targetPoint);
         }
 
-        internal static DragDropEffects ProcessPortableDragDrop(
+        /// <summary>
+        /// Raises a portable drag/drop event on the specified drop target.
+        /// </summary>
+        /// <param name="target">The UIElement, ContentElement, or UIElement3D drop target.</param>
+        /// <param name="dragEvent">One of the DragEnter, DragOver, DragLeave, or Drop routed events.</param>
+        /// <param name="dataObject">The drag/drop payload.</param>
+        /// <param name="dragDropKeyStates">Current mouse button and modifier key state.</param>
+        /// <param name="allowedEffects">The effects allowed by the drag source.</param>
+        /// <param name="acceptedEffect">The preferred accepted effect when handlers leave the effect unchanged.</param>
+        /// <param name="targetPoint">The pointer position relative to the drop target.</param>
+        /// <returns>The accepted drag/drop effect.</returns>
+        public static DragDropEffects ProcessPortableDragDrop(
             DependencyObject target,
             RoutedEvent dragEvent,
             IDataObject dataObject,
@@ -562,8 +573,7 @@ namespace System.Windows
             DragDropEffects acceptedEffect,
             Point targetPoint)
         {
-            if (OperatingSystem.IsWindows() ||
-                target == null ||
+            if (target == null ||
                 dragEvent == null ||
                 dataObject == null ||
                 !OleDropTarget.IsPortableDropTarget(target) ||

@@ -640,6 +640,7 @@ namespace System.Windows
         public static void AddPreviewQueryContinueDragHandler(System.Windows.DependencyObject element, System.Windows.QueryContinueDragEventHandler handler) { }
         public static void AddQueryContinueDragHandler(System.Windows.DependencyObject element, System.Windows.QueryContinueDragEventHandler handler) { }
         public static System.Windows.DragDropEffects DoDragDrop(System.Windows.DependencyObject dragSource, object data, System.Windows.DragDropEffects allowedEffects) { throw null; }
+        public static System.Windows.DragDropEffects ProcessPortableDragDrop(System.Windows.DependencyObject target, System.Windows.RoutedEvent dragEvent, System.Windows.IDataObject dataObject, System.Windows.DragDropKeyStates dragDropKeyStates, System.Windows.DragDropEffects allowedEffects, System.Windows.DragDropEffects acceptedEffect, System.Windows.Point targetPoint) { throw null; }
         public static void RemoveDragEnterHandler(System.Windows.DependencyObject element, System.Windows.DragEventHandler handler) { }
         public static void RemoveDragLeaveHandler(System.Windows.DependencyObject element, System.Windows.DragEventHandler handler) { }
         public static void RemoveDragOverHandler(System.Windows.DependencyObject element, System.Windows.DragEventHandler handler) { }

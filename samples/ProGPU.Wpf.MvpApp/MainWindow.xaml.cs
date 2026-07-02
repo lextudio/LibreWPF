@@ -6,7 +6,6 @@ using System.Configuration;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -5341,12 +5340,9 @@ internal static class MvpSelfTest
         var allowedEffects = DragDropEffects.Copy | DragDropEffects.Move;
         var point = new Point(12.0, 18.0);
 
-        RaiseDragEvent(dropTarget, DragDrop.PreviewDragEnterEvent, dataObject, point, allowedEffects);
-        RaiseDragEvent(dropTarget, DragDrop.DragEnterEvent, dataObject, point, allowedEffects);
-        RaiseDragEvent(dropTarget, DragDrop.PreviewDragOverEvent, dataObject, point, allowedEffects);
-        RaiseDragEvent(dropTarget, DragDrop.DragOverEvent, dataObject, point, allowedEffects);
-        RaiseDragEvent(dropTarget, DragDrop.PreviewDropEvent, dataObject, point, allowedEffects);
-        RaiseDragEvent(dropTarget, DragDrop.DropEvent, dataObject, point, allowedEffects);
+        ProcessDragDropEvent(dropTarget, DragDrop.DragEnterEvent, dataObject, point, allowedEffects);
+        ProcessDragDropEvent(dropTarget, DragDrop.DragOverEvent, dataObject, point, allowedEffects);
+        ProcessDragDropEvent(dropTarget, DragDrop.DropEvent, dataObject, point, allowedEffects);
         DrainDispatcher(window);
 
         AssertEqual(1, window.MvpPreviewDragEnterCount, "MVP PreviewDragEnter count");
@@ -5371,45 +5367,21 @@ internal static class MvpSelfTest
         AssertEqual("mvp drag text (1)", dropTargetText.Text, "MVP drop target updated text");
     }
 
-    private static void RaiseDragEvent(
-        UIElement target,
-        RoutedEvent routedEvent,
-        DataObject dataObject,
-        Point point,
-        DragDropEffects allowedEffects)
-    {
-        var args = CreateDragEventArgs(dataObject, target, point, allowedEffects);
-        args.RoutedEvent = routedEvent;
-        target.RaiseEvent(args);
-    }
-
-    private static DragEventArgs CreateDragEventArgs(
-        DataObject dataObject,
+    private static DragDropEffects ProcessDragDropEvent(
         DependencyObject target,
+        RoutedEvent routedEvent,
+        IDataObject dataObject,
         Point point,
         DragDropEffects allowedEffects)
     {
-        var constructor = typeof(DragEventArgs).GetConstructor(
-            BindingFlags.Instance | BindingFlags.NonPublic,
-            binder: null,
-            [
-                typeof(System.Windows.IDataObject),
-                typeof(DragDropKeyStates),
-                typeof(DragDropEffects),
-                typeof(DependencyObject),
-                typeof(Point)
-            ],
-            modifiers: null)
-            ?? throw new InvalidOperationException("Expected WPF DragEventArgs internal constructor.");
-
-        return (DragEventArgs)constructor.Invoke(
-            [
-                dataObject,
-                DragDropKeyStates.LeftMouseButton,
-                allowedEffects,
-                target,
-                point
-            ]);
+        return DragDrop.ProcessPortableDragDrop(
+            target,
+            routedEvent,
+            dataObject,
+            DragDropKeyStates.LeftMouseButton,
+            allowedEffects,
+            DragDropEffects.Move,
+            point);
     }
 
     private static void ValidateKeyboardNavigation(

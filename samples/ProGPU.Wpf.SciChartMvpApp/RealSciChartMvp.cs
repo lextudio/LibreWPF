@@ -321,7 +321,7 @@ internal static class RealSciChartMvp
             var abiPlan = ProGpuDirectXNativeAbiPlanner.Create(report);
             var facadeSource = ProGpuDirectXNativeFacadeSourceEmitter.Emit(abiPlan);
             var resolverOptions = ProGpuDirectXNativeResolverOptions.FromEnvironment();
-            var registrations = ProGpuDirectXNativeResolver.RegisterAnchorAssemblies(
+            var registrations = ProGpuDirectXNativeResolver.RegisterAnchorTypes(
                 SciChartAssemblyAnchorTypes,
                 plan,
                 resolverOptions);

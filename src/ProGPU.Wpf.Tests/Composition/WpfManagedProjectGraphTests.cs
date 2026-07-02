@@ -10777,7 +10777,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("abiPlan.DescribeActionableExports(maxExportsPerModule: 8)", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("facadeSource.DescribeSupport()", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("ProGpuDirectXNativeResolverOptions.FromEnvironment()", scichartRealMvp, StringComparison.Ordinal);
-        Assert.Contains("ProGpuDirectXNativeResolver.RegisterAnchorAssemblies", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("ProGpuDirectXNativeResolver.RegisterAnchorTypes", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("plan.DescribeRequiredActions()", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("typeof(NativeDllLoader)", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("typeof(SciChart.Data.Model.DoubleRange)", scichartRealMvp, StringComparison.Ordinal);
@@ -10787,7 +10787,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SciChartAssemblyAnchorTypes", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("CreateNativeModuleHints()", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("ProGpuDirectXNativeDependencyInspector.CreateModuleHintsFromAssemblyImages", scichartRealMvp, StringComparison.Ordinal);
-        Assert.Contains("ProGpuDirectXNativeResolver.RegisterAnchorAssemblies", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("ProGpuDirectXNativeResolver.RegisterAnchorTypes", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("KnownSciChartNativeModules", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("NativeDllLoader.DependenciesPathRoot = path", scichartRealMvp, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection", scichartRealMvp, StringComparison.Ordinal);
@@ -10871,7 +10871,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGpuDirectXNativeFacadeSource", proGpuDirectXNativeFacadeSourceEmitter, StringComparison.Ordinal);
         Assert.Contains("public static class ProGpuDirectXNativeResolver", proGpuDirectXNativeResolver, StringComparison.Ordinal);
         Assert.Contains("SetDllImportResolver", proGpuDirectXNativeResolver, StringComparison.Ordinal);
-        Assert.Contains("RegisterAnchorAssemblies", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.Contains("CreateAnchorRegistration", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.Contains("RegisterAnchorTypes", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.Contains("ResolveForAnchorType", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("public static ProGpuDirectXNativeResolverRegistration CreateRegistration", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("public static bool TryRegister", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("public IntPtr Resolve(string libraryName, Assembly assembly", proGpuDirectXNativeResolver, StringComparison.Ordinal);
         Assert.Contains("PROGPU_DIRECTX_NATIVE_FACADE_PATH", proGpuDirectXNativeResolver, StringComparison.Ordinal);
         Assert.Contains("ProGpuDirectXNativeResolverModuleStatus.FacadeNotConfigured", proGpuDirectXNativeResolver, StringComparison.Ordinal);
         Assert.Contains("public sealed record ProGpuDirectXSciChartLine3DDraw", proGpuDirectXSciChart, StringComparison.Ordinal);

@@ -8832,6 +8832,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateLargeScrollOffset(paidScrolledViewer, \"paid Xceed DataGrid after large scroll\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateScrollableExtent(virtualScrollViewer, \"paid virtual Xceed DataGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLargeScrollOffset(virtualScrolledViewer, \"paid virtual Xceed DataGrid after large scroll\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidatePaidDataGridRealizedRowCount(PaidDataGrid, \"paid Xceed DataGrid\", \"initial\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidatePaidDataGridRealizedRowCount(PaidDataGrid, \"paid Xceed DataGrid\", \"after large scroll\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidatePaidDataGridRealizedRowCount(EditablePaidDataGrid, \"paid editable Xceed DataGrid\", \"initial\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidatePaidDataGridRealizedRowCount(VirtualPaidDataGrid, \"paid virtual Xceed DataGrid\", \"initial\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidatePaidDataGridRealizedRowCount(VirtualPaidDataGrid, \"paid virtual Xceed DataGrid\", \"after large scroll\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("EnumerateVisualDescendants<DataRow>(grid).Count()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("realizedRows >= 500", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal void BringVirtualPaidDataGridItemIntoView(int position)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("VirtualPaidDataGrid.ItemsSource is not DataGridVirtualizingCollectionViewBase view", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("view.MoveCurrentToPosition(position)", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -8884,6 +8891,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SaveUserSettings", readme, StringComparison.Ordinal);
         Assert.Contains("drives the loaded window through the same command handlers", readme, StringComparison.Ordinal);
         Assert.Contains("WPF internal `VisualClip` viewport clips", readme, StringComparison.Ordinal);
+        Assert.Contains("`DataRow` realization stays bounded", readme, StringComparison.Ordinal);
         Assert.Contains("large-scroll offset and clip checks on the 100k-row DataGrid surfaces", readme, StringComparison.Ordinal);
         Assert.Contains("ProGPU owns windowing, input, invalidation, clipping, image/layer texture trimming, shaders, and final WebGPU rendering", readme, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_VALIDATE", runScript, StringComparison.Ordinal);

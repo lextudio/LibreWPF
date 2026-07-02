@@ -243,17 +243,20 @@ public partial class MainWindow : Window
         PaidDataGrid.UpdateLayout();
         var paidScrollViewer = ValidateRequiredScrollableViewportClip(PaidDataGrid, "paid Xceed DataGrid");
         ValidateScrollableExtent(paidScrollViewer, "paid Xceed DataGrid");
+        ValidatePaidDataGridRealizedRowCount(PaidDataGrid, "paid Xceed DataGrid", "initial");
 
         PaidDataGrid.BringItemIntoView(ViewModel.Rows[ViewModel.Rows.Count - 1]);
         PumpBackgroundLayout(PaidDataGrid);
         var paidScrolledViewer = ValidateRequiredScrollableViewportClip(PaidDataGrid, "paid Xceed DataGrid after large scroll");
         ValidateLargeScrollOffset(paidScrolledViewer, "paid Xceed DataGrid after large scroll");
+        ValidatePaidDataGridRealizedRowCount(PaidDataGrid, "paid Xceed DataGrid", "after large scroll");
 
         EditableDataGridDocument.IsSelected = true;
         EditableDataGridDocument.IsActive = true;
         DockManager.UpdateLayout();
         EditablePaidDataGrid.UpdateLayout();
         ValidateRequiredScrollableViewportClip(EditablePaidDataGrid, "paid editable Xceed DataGrid");
+        ValidatePaidDataGridRealizedRowCount(EditablePaidDataGrid, "paid editable Xceed DataGrid", "initial");
 
         VirtualDataGridDocument.IsSelected = true;
         VirtualDataGridDocument.IsActive = true;
@@ -261,11 +264,13 @@ public partial class MainWindow : Window
         VirtualPaidDataGrid.UpdateLayout();
         var virtualScrollViewer = ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, "paid virtual Xceed DataGrid");
         ValidateScrollableExtent(virtualScrollViewer, "paid virtual Xceed DataGrid");
+        ValidatePaidDataGridRealizedRowCount(VirtualPaidDataGrid, "paid virtual Xceed DataGrid", "initial");
 
         BringVirtualPaidDataGridItemIntoView(50_000);
         PumpBackgroundLayout(VirtualPaidDataGrid);
         var virtualScrolledViewer = ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, "paid virtual Xceed DataGrid after large scroll");
         ValidateLargeScrollOffset(virtualScrolledViewer, "paid virtual Xceed DataGrid after large scroll");
+        ValidatePaidDataGridRealizedRowCount(VirtualPaidDataGrid, "paid virtual Xceed DataGrid", "after large scroll");
 
         PaidDataGridDocument.IsSelected = true;
         PaidDataGridDocument.IsActive = true;
@@ -341,6 +346,20 @@ public partial class MainWindow : Window
         {
             throw new InvalidOperationException(
                 $"Expected {description} to move to a non-zero scroll offset, got {scrollViewer.HorizontalOffset:0.###},{scrollViewer.VerticalOffset:0.###}.");
+        }
+    }
+
+    private static void ValidatePaidDataGridRealizedRowCount(DataGridControl grid, string description, string phase)
+    {
+        int realizedRows = EnumerateVisualDescendants<DataRow>(grid).Count();
+        if (realizedRows <= 0)
+        {
+            throw new InvalidOperationException($"Expected {description} to realize visible rows during {phase} validation.");
+        }
+
+        if (realizedRows >= 500)
+        {
+            throw new InvalidOperationException($"Expected {description} virtualization to keep realized rows bounded during {phase} validation, got {realizedRows}.");
         }
     }
 

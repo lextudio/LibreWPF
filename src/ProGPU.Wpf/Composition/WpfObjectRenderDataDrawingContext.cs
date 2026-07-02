@@ -943,8 +943,20 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
 
     private bool TryPushNativePortableClip(object? clipGeometry)
     {
+        if (!TryGetPortableGeometryPath(clipGeometry, out var portableGeometry))
+        {
+            return false;
+        }
+
+        if (_sink is IWpfNativeClipCommandSink nativeClipSink
+            && WpfPortableRectangleClipReader.TryGetRectangleClipBounds(portableGeometry, out var clipBounds))
+        {
+            RegisterRetainedDependencies(clipGeometry);
+            nativeClipSink.PushNativeClip(clipBounds);
+            return true;
+        }
+
         if (_sink is not IWpfNativeGeometryCommandSink nativeGeometrySink
-            || !TryGetPortableGeometryPath(clipGeometry, out var portableGeometry)
             || !nativeGeometrySink.PushNativeGeometryClip(portableGeometry))
         {
             return false;

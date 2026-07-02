@@ -15,9 +15,7 @@ using MediaPen = System.Windows.Media.Pen;
 using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
-using PortableGeometryPathKind = ProGPU.Wpf.Interop.PortableGeometryPathKind;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
-using PortablePathSegmentKind = ProGPU.Wpf.Interop.PortablePathSegmentKind;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -853,51 +851,7 @@ public sealed class WpfMilRenderDataDecoder
 
     private static bool TryGetRectangleClipBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
     {
-        bounds = default;
-        if (!geometry.Transform.IsIdentity
-            || geometry.Kind != PortableGeometryPathKind.Path
-            || geometry.Figures.Length != 1)
-        {
-            return false;
-        }
-
-        var figure = geometry.Figures[0];
-        if (!figure.IsClosed || !figure.IsFilled)
-        {
-            return false;
-        }
-
-        var segmentCount = figure.Segments.Length;
-        if (segmentCount is not (3 or 4))
-        {
-            return false;
-        }
-
-        var points = new Point[4];
-        points[0] = new Point(figure.StartPoint.X, figure.StartPoint.Y);
-        for (var i = 0; i < 3; i++)
-        {
-            var segment = figure.Segments[i];
-            if (segment.Kind != PortablePathSegmentKind.Line)
-            {
-                return false;
-            }
-
-            points[i + 1] = new Point(segment.Point1.X, segment.Point1.Y);
-        }
-
-        if (segmentCount == 4)
-        {
-            var segment = figure.Segments[3];
-            if (segment.Kind != PortablePathSegmentKind.Line
-                || !NearlyEqual(segment.Point1.X, points[0].X)
-                || !NearlyEqual(segment.Point1.Y, points[0].Y))
-            {
-                return false;
-            }
-        }
-
-        return TryCreateRectangleFromPolygon(points, out bounds);
+        return WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds);
     }
 
     private static bool TryGetRectangleClipBounds(MediaGeometry geometry, out WpfReplayRect bounds)

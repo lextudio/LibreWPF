@@ -450,7 +450,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void ObjectRenderDataDrawingContextUsesNativePortableClipWhenAvailable()
+    public void ObjectRenderDataDrawingContextPushesPortableRectangleClipAsNativeClip()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfObjectRenderDataDrawingContext(sink);
@@ -458,9 +458,27 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.PushClip(geometry);
 
+        Assert.Equal(new[] { "PushNativeClip" }, sink.Operations);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Equal(new WpfReplayRect(5, 6, 70, 80), Assert.Single(sink.NativeClips));
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextUsesNativePortableGeometryClipForNonRectangleClip()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var geometry = new FakeTriangleGeometry(new FakeRect(5, 6, 70, 80));
+
+        context.PushClip(geometry);
+
         Assert.Equal(new[] { "PushNativeGeometryClip" }, sink.Operations);
         var clip = Assert.Single(sink.NativeGeometryClips);
         Assert.Equal(PortableGeometryPathKind.Path, clip.Kind);
+        Assert.Empty(sink.NativeClips);
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(1, context.StackDepth);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
@@ -1464,6 +1482,41 @@ public sealed class WpfCompositionDrawingContextTests
                             PortablePathSegment.Line(new PortablePoint(Rect.X + Rect.Width, Rect.Y), isSmoothJoin: false, isStroked: true),
                             PortablePathSegment.Line(new PortablePoint(Rect.X + Rect.Width, Rect.Y + Rect.Height), isSmoothJoin: false, isStroked: true),
                             PortablePathSegment.Line(new PortablePoint(Rect.X, Rect.Y + Rect.Height), isSmoothJoin: false, isStroked: true)
+                        ]
+                    }
+                ]
+            };
+            return true;
+        }
+    }
+
+    private sealed class FakeTriangleGeometry : IPortableGeometryPathSource
+    {
+        public FakeTriangleGeometry(FakeRect rect)
+        {
+            Rect = rect;
+        }
+
+        public FakeRect Rect { get; }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                FillRule = PortableFillRule.Nonzero,
+                Bounds = new PortableRect(Rect.X, Rect.Y, Rect.Width, Rect.Height),
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(Rect.X, Rect.Y),
+                        IsClosed = true,
+                        IsFilled = true,
+                        Segments =
+                        [
+                            PortablePathSegment.Line(new PortablePoint(Rect.X + Rect.Width, Rect.Y), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(Rect.X + Rect.Width / 2, Rect.Y + Rect.Height), isSmoothJoin: false, isStroked: true)
                         ]
                     }
                 ]

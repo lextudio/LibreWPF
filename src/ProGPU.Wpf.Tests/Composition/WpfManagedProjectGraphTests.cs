@@ -6444,6 +6444,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("geometry is PortableRect portableRect", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PushTileBrushFillClip(sink, geometry)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryGetRectangleClipBounds(geometry.PortableGeometry, out var clipBounds)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeClipSink.PushNativeClip(clipBounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(geometry.PortableGeometry)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryGetRectangleClipBounds(geometry.MediaGeometry, out var mediaClipBounds)", drawingReplay, StringComparison.Ordinal);
@@ -8942,6 +8943,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "WpfObjectRenderDataDrawingContext.cs");
+        var wpfPortableRectangleClipReaderPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfPortableRectangleClipReader.cs");
         var wpfGuidelineSetReaderPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -9338,6 +9344,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
         var wpfCompositionDrawingContext = File.ReadAllText(wpfCompositionDrawingContextPath);
         var wpfObjectRenderDataDrawingContext = File.ReadAllText(wpfObjectRenderDataDrawingContextPath);
+        var wpfPortableRectangleClipReader = File.ReadAllText(wpfPortableRectangleClipReaderPath);
         var wpfGuidelineSetReader = File.ReadAllText(wpfGuidelineSetReaderPath);
         var wpfDrawingReplay = File.ReadAllText(wpfDrawingReplayPath);
         var wpfPortableCommandSinkBridge = File.ReadAllText(wpfPortableCommandSinkBridgePath);
@@ -11782,6 +11789,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("geometry.Draw(recordingContext", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryDrawNativeGeometry(resources, sink, nativeBrush, nativePen, nativeGeometryToken)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("TryResolvePortableGeometryPath(resources, clipToken, out var portableClip)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portableClip)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("DecodeNativeDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodeTypedDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
@@ -11909,7 +11917,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryPushPrimitiveRectangleClip(clipGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeClipSink.PushNativeClip(ToReplayRect(rectangle))", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryPushNativePortableClip(clipGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(portableGeometry, out var clipBounds)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeClipSink.PushNativeClip(clipBounds)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portableGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("internal static class WpfPortableRectangleClipReader", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("geometry.Kind != PortableGeometryPathKind.Path", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("segment.Kind != PortablePathSegmentKind.Line", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("sameX == sameY", wpfPortableRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayPoint(object? pointValue, out WpfReplayPoint point)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
@@ -11969,7 +11983,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObjectRenderDataDrawingContextDrawsPortableRectGeometryAsNativeRectangleWithoutManagedGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsReplayRectGeometryAsRectangleWithoutManagedGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsPortableRectTileBrushPenAsRectangleWithoutManagedGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
-        Assert.Contains("ObjectRenderDataDrawingContextUsesNativePortableClipWhenAvailable", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextPushesPortableRectangleClipAsNativeClip", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextUsesNativePortableGeometryClipForNonRectangleClip", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.DoesNotContain("DecodePushTransformFallsBackToLocalMatrixTransformWhenForeignAssemblyShadowsType", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.DoesNotContain("\"System.Windows.Media.MatrixTransform\"", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);

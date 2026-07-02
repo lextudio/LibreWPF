@@ -25,12 +25,10 @@ using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunD
 using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
 using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
-using PortableGeometryPathKind = ProGPU.Wpf.Interop.PortableGeometryPathKind;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
 using PortableImageDrawingState = ProGPU.Wpf.Interop.PortableImageDrawingState;
 using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
-using PortablePathSegmentKind = ProGPU.Wpf.Interop.PortablePathSegmentKind;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableStretch = ProGPU.Wpf.Interop.PortableStretch;
 using PortableTileBrush = ProGPU.Wpf.Interop.PortableTileBrush;
@@ -1181,51 +1179,7 @@ internal static class WpfDrawingReplay
 
     private static bool TryGetRectangleClipBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
     {
-        bounds = default;
-        if (!geometry.Transform.IsIdentity
-            || geometry.Kind != PortableGeometryPathKind.Path
-            || geometry.Figures.Length != 1)
-        {
-            return false;
-        }
-
-        var figure = geometry.Figures[0];
-        if (!figure.IsClosed || !figure.IsFilled)
-        {
-            return false;
-        }
-
-        var segmentCount = figure.Segments.Length;
-        if (segmentCount is not (3 or 4))
-        {
-            return false;
-        }
-
-        var points = new Point[4];
-        points[0] = new Point(figure.StartPoint.X, figure.StartPoint.Y);
-        for (var i = 0; i < 3; i++)
-        {
-            var segment = figure.Segments[i];
-            if (segment.Kind != PortablePathSegmentKind.Line)
-            {
-                return false;
-            }
-
-            points[i + 1] = new Point(segment.Point1.X, segment.Point1.Y);
-        }
-
-        if (segmentCount == 4)
-        {
-            var segment = figure.Segments[3];
-            if (segment.Kind != PortablePathSegmentKind.Line
-                || !NearlyEqual(segment.Point1.X, points[0].X)
-                || !NearlyEqual(segment.Point1.Y, points[0].Y))
-            {
-                return false;
-            }
-        }
-
-        return TryCreateRectangleClipFromPolygon(points, out bounds);
+        return WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds);
     }
 
     private static bool TryCreateRectangleClipFromPolygon(Point[] points, out WpfReplayRect bounds)

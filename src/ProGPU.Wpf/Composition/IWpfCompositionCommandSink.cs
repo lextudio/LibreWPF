@@ -125,6 +125,8 @@ internal interface IWpfNativeGeometryCommandSink
 {
     bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry);
 
+    bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry) => false;
+
     bool PushNativeGeometryClip(PortableGeometryPath clipGeometry);
 
     bool PushNativeGeometryClip(MediaGeometry clipGeometry) => false;

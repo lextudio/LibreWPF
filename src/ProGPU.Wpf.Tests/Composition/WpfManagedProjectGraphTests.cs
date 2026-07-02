@@ -5898,6 +5898,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetGeometryDrawingGeometry(drawing, hasPortableGeometryDrawingState, geometryDrawingState", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryReplayNativePortableGeometryDrawing(", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.DrawNativeGeometry(nativeBrush, pen, portableGeometry)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("DrawMediaGeometry(sink, brush, pen, geometry)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("nativeGeometrySink.DrawNativeGeometry(brush, pen, geometry)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryReplayRectangleGeometryDrawing(", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryReplayEllipseGeometryDrawing(", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetDirectRectangleGeometry(geometryValue, out var rectangle, out var rectangleRadiusX, out var rectangleRadiusY)", replaySource, StringComparison.Ordinal);
@@ -5941,6 +5943,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool HasPen", interopSource, StringComparison.Ordinal);
         Assert.Contains("ReplayAppliesPortableGeometryDrawingStateWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayUsesNativePortableGeometryDrawingWhenAvailable", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayUsesNativeMediaGeometryDrawingForLocalNonPrimitiveGeometry", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDrawsLocalRectangleGeometryStateAsNativeRectangleWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDrawsLocalRoundedRectangleGeometryStateAsNativeRoundedRectangle", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDrawsLocalRoundedRectangleGeometryStateAsRoundedRectangle", rendererTests, StringComparison.Ordinal);
@@ -11878,6 +11881,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portableGeometry.TryGetPortableGeometryPath(out var portablePath)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryConvertPortableGeometryPath(portablePath", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("PushNativeGeometryClip(PortableGeometryPath clipGeometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("PushNativeGeometryClip(MediaGeometry clipGeometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryConvertGeometryToNativePath(clipGeometry, _transformStack.Peek()", proGpuWpfCommandSink, StringComparison.Ordinal);

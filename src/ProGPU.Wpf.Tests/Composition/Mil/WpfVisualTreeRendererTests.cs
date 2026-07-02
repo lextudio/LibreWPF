@@ -1979,6 +1979,32 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplayUsesNativeMediaGeometryDrawingForLocalNonPrimitiveGeometry()
+    {
+        var geometry = CreateTrianglePathGeometry();
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Green
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawNativeMediaGeometry" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        Assert.Empty(sink.NativeDrawGeometries);
+        var draw = Assert.Single(sink.NativeMediaDrawGeometries);
+        Assert.Same(Brushes.Green, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Same(geometry, draw.Geometry);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
     public void ReplayDrawsTypedRectGeometryStateAsNativeRectangleWithoutMediaGeometryFallback()
     {
         var pen = new MediaPen(Brushes.Black, 2);
@@ -5780,6 +5806,8 @@ public sealed class WpfVisualTreeRendererTests
     {
         public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
 
+        public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> NativeMediaDrawGeometries { get; } = new();
+
         public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
 
         public List<MediaGeometry> NativeMediaGeometryClips { get; } = new();
@@ -5788,6 +5816,13 @@ public sealed class WpfVisualTreeRendererTests
         {
             Operations.Add("DrawNativeGeometry");
             NativeDrawGeometries.Add((brush, pen, geometry));
+            return true;
+        }
+
+        public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+        {
+            Operations.Add("DrawNativeMediaGeometry");
+            NativeMediaDrawGeometries.Add((brush, pen, geometry));
             return true;
         }
 

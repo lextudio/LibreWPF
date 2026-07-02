@@ -269,7 +269,7 @@ internal static class WpfDrawingReplay
         {
             if (pen != null)
             {
-                sink.DrawGeometry(null, pen, geometry);
+                DrawMediaGeometry(sink, null, pen, geometry);
                 appliedAny = true;
             }
         }
@@ -280,12 +280,12 @@ internal static class WpfDrawingReplay
             unsupportedAny |= tileBrushStatus == WpfDrawingReplayStatus.PartiallyApplied;
             if (pen != null)
             {
-                sink.DrawGeometry(null, pen, geometry);
+                DrawMediaGeometry(sink, null, pen, geometry);
             }
         }
         else if (brush != null)
         {
-            sink.DrawGeometry(brush, pen, geometry);
+            DrawMediaGeometry(sink, brush, pen, geometry);
             appliedAny = true;
         }
         else
@@ -293,7 +293,7 @@ internal static class WpfDrawingReplay
             unsupportedAny = true;
             if (pen != null)
             {
-                sink.DrawGeometry(null, pen, geometry);
+                DrawMediaGeometry(sink, null, pen, geometry);
                 appliedAny = true;
             }
         }
@@ -347,8 +347,23 @@ internal static class WpfDrawingReplay
             return false;
         }
 
-        sink.DrawGeometry(null, pen, geometry);
+        DrawMediaGeometry(sink, null, pen, geometry);
         return true;
+    }
+
+    private static void DrawMediaGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaBrush? brush,
+        MediaPen? pen,
+        MediaGeometry geometry)
+    {
+        if (sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && nativeGeometrySink.DrawNativeGeometry(brush, pen, geometry))
+        {
+            return;
+        }
+
+        sink.DrawGeometry(brush, pen, geometry);
     }
 
     private static bool TryReplayLineGeometryDrawing(

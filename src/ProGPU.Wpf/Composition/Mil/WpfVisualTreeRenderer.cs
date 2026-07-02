@@ -1945,6 +1945,12 @@ public sealed class WpfVisualTreeRenderer
             return true;
         }
 
+        public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+        {
+            DrawGeometry(brush, pen, geometry);
+            return true;
+        }
+
         public void DrawImage(MediaImageSource imageSource, Rect rectangle)
         {
             AddBounds(FromMediaRect(rectangle));

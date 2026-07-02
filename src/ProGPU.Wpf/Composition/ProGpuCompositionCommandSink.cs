@@ -420,13 +420,8 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if ((brush != null || pen != null)
-            && TryConvertGeometryToNativePath(geometry, Matrix4x4.Identity, out var path, out var bounds))
+        if (DrawNativeGeometry(brush, pen, geometry))
         {
-            var nativeBrush = ToNativeBrush(brush, bounds);
-            var nativePen = ToNativePen(pen, bounds);
-
-            AddNativePath(nativeBrush, nativePen, path);
             return;
         }
 
@@ -438,6 +433,26 @@ public sealed class ProGpuCompositionCommandSink :
         {
             UnsupportedStateCount++;
         }
+    }
+
+    public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+    {
+        ThrowIfClosed();
+        if (brush == null && pen == null)
+        {
+            return false;
+        }
+
+        if (TryConvertGeometryToNativePath(geometry, Matrix4x4.Identity, out var path, out var bounds))
+        {
+            var nativeBrush = ToNativeBrush(brush, bounds);
+            var nativePen = ToNativePen(pen, bounds);
+
+            AddNativePath(nativeBrush, nativePen, path);
+            return true;
+        }
+
+        return false;
     }
 
     public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)

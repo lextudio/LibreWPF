@@ -277,6 +277,12 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             && nativeSink.DrawNativeGeometry(brush, pen, geometry);
     }
 
+    public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+    {
+        return Current.Sink is IWpfNativeGeometryCommandSink nativeSink
+            && nativeSink.DrawNativeGeometry(brush, pen, geometry);
+    }
+
     public void DrawImage(MediaImageSource imageSource, Rect rectangle)
     {
         Current.Sink.DrawImage(imageSource, rectangle);

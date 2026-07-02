@@ -2326,13 +2326,29 @@ internal static class WpfDrawingReplay
                 hasPortableDrawingGroupState,
                 drawingGroupState,
                 out var clipValue)
-            && WpfResourceResolver.AdaptGeometry(clipValue) is { } clipGeometry
-            && IsUsableRect(clipGeometry.Bounds, out var clipBounds))
+            && TryGetDrawingGroupClipBounds(clipValue, out var clipBounds))
         {
             bounds = IntersectBounds(bounds, clipBounds);
         }
 
         return IsUsableRect(bounds, out bounds);
+    }
+
+    private static bool TryGetDrawingGroupClipBounds(object? clipValue, out Rect clipBounds)
+    {
+        if (TryGetPortableGeometryBounds(clipValue, out clipBounds))
+        {
+            return true;
+        }
+
+        if (WpfResourceResolver.AdaptGeometry(clipValue) is { } clipGeometry
+            && IsUsableRect(clipGeometry.Bounds, out clipBounds))
+        {
+            return true;
+        }
+
+        clipBounds = default;
+        return false;
     }
 
     private static bool TryGetGlyphRunBounds(MediaGlyphRun glyphRun, out Rect bounds)

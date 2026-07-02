@@ -1768,6 +1768,33 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsUsesPortableDrawingGroupClipBoundsWithoutGeometryFallback()
+    {
+        var geometry = new PortableRectangleClipGeometry(0, 0, 100, 100);
+        var clip = new PortableRectangleClipGeometry(10, 20, 30, 40);
+        var child = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+        var group = new ThrowingPortableDrawingGroup(new PortableDrawingGroupState
+        {
+            HasClipGeometry = true,
+            ClipGeometry = clip,
+            Children = [child]
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(group, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(10, 20, 30, 40), bounds);
+        Assert.Equal(0, group.ReflectedStateProbeCount);
+        Assert.Equal(0, child.ReflectedStateProbeCount);
+        Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
+        Assert.Equal(0, clip.ReflectedGeometryProbeCount);
+    }
+
+    [Fact]
     public void TryGetDrawingBoundsIgnoresNonPortableGenericBoundsShape()
     {
         var drawing = new ThrowingBoundsOnlyDrawing();

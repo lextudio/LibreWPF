@@ -13,17 +13,17 @@ internal enum ProGpuBrushMappingMode
     Absolute
 }
 
-internal sealed class ProGpuNativeBrush : MediaBrush, IPortableBrushSource
+internal sealed class ProGpuPortableBrush : MediaBrush, IPortableBrushSource
 {
     private readonly ProGpuBrush _brush;
     private readonly PortableBrush? _portableBrush;
 
-    public ProGpuNativeBrush(ProGpuBrush brush)
+    public ProGpuPortableBrush(ProGpuBrush brush)
         : this(brush, portableBrush: null)
     {
     }
 
-    internal ProGpuNativeBrush(ProGpuBrush brush, PortableBrush? portableBrush)
+    internal ProGpuPortableBrush(ProGpuBrush brush, PortableBrush? portableBrush)
     {
         _brush = brush;
         _portableBrush = portableBrush;
@@ -36,7 +36,7 @@ internal sealed class ProGpuNativeBrush : MediaBrush, IPortableBrushSource
 
     protected override Freezable CreateInstanceCore()
     {
-        return new ProGpuNativeBrush(
+        return new ProGpuPortableBrush(
             _brush,
             _portableBrush);
     }

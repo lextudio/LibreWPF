@@ -383,7 +383,7 @@ public sealed class WpfResourceResolver :
                     return null;
                 }
 
-                return new ProGpuNativeBrush(
+                return new ProGpuPortableBrush(
                     linearBrush,
                     brush);
 
@@ -393,7 +393,7 @@ public sealed class WpfResourceResolver :
                     return null;
                 }
 
-                return new ProGpuNativeBrush(
+                return new ProGpuPortableBrush(
                     radialBrush,
                     brush);
 

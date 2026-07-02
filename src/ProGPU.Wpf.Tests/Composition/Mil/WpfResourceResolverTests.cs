@@ -366,19 +366,19 @@ public sealed class WpfResourceResolverTests
     }
 
     [Fact]
-    public void ProGpuNativeBrushClonePreservesNativeBrushState()
+    public void ProGpuPortableBrushClonePreservesVectorBrushState()
     {
         var nativeBrush = new ProGPU.Vector.SolidColorBrush(Vector4.One);
-        var brush = new ProGpuNativeBrush(nativeBrush);
+        var brush = new ProGpuPortableBrush(nativeBrush);
 
-        var clone = Assert.IsType<ProGpuNativeBrush>(brush.Clone());
+        var clone = Assert.IsType<ProGpuPortableBrush>(brush.Clone());
 
         Assert.NotSame(brush, clone);
         Assert.Same(nativeBrush, clone.ToNative());
     }
 
     [Fact]
-    public void ProGpuNativeBrushClonePreservesPortableBrushContract()
+    public void ProGpuPortableBrushClonePreservesPortableBrushContract()
     {
         var portableBrush = PortableBrush.LinearGradient(
             new PortablePoint(0, 0),
@@ -388,14 +388,14 @@ public sealed class WpfResourceResolverTests
                 new PortableGradientStop(new PortableColor(255, 255, 0, 0), 0),
                 new PortableGradientStop(new PortableColor(255, 0, 0, 255), 1)
             });
-        var brush = new ProGpuNativeBrush(
+        var brush = new ProGpuPortableBrush(
             new ProGpuLinearGradientBrush(
                 new Vector2(0, 0),
                 new Vector2(1, 1),
                 Array.Empty<ProGPU.Vector.GradientStop>()),
             portableBrush);
 
-        var clone = Assert.IsType<ProGpuNativeBrush>(brush.Clone());
+        var clone = Assert.IsType<ProGpuPortableBrush>(brush.Clone());
         var portableSource = Assert.IsAssignableFrom<IPortableBrushSource>(clone);
 
         Assert.True(portableSource.TryGetPortableBrush(out var clonePortableBrush));
@@ -403,9 +403,9 @@ public sealed class WpfResourceResolverTests
     }
 
     [Fact]
-    public void AdaptNativeBrushDoesNotUnwrapProGpuNativeBrushWithoutPortableContract()
+    public void AdaptNativeBrushDoesNotUnwrapProGpuPortableBrushWithoutPortableContract()
     {
-        var brush = new ProGpuNativeBrush(new ProGPU.Vector.SolidColorBrush(Vector4.One));
+        var brush = new ProGpuPortableBrush(new ProGPU.Vector.SolidColorBrush(Vector4.One));
 
         var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
             brush,

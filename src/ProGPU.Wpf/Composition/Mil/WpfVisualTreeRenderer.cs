@@ -1908,6 +1908,8 @@ public sealed class WpfVisualTreeRenderer
 
     private sealed class BoundsAccumulatingSink :
         IWpfCompositionCommandSink,
+        IWpfNativePrimitiveCommandSink,
+        IWpfNativeTransformCommandSink,
         IWpfNativeGeometryCommandSink
     {
         private enum PushKind
@@ -1939,12 +1941,12 @@ public sealed class WpfVisualTreeRenderer
 
         public void DrawLine(MediaPen? pen, Point point0, Point point1)
         {
-            var thickness = Math.Max(1, pen?.Thickness ?? 1);
-            var minX = Math.Min(point0.X, point1.X) - thickness / 2;
-            var minY = Math.Min(point0.Y, point1.Y) - thickness / 2;
-            var maxX = Math.Max(point0.X, point1.X) + thickness / 2;
-            var maxY = Math.Max(point0.Y, point1.Y) + thickness / 2;
-            AddBounds(new WpfReplayRect(minX, minY, maxX - minX, maxY - minY));
+            AddLineBounds(pen, point0.X, point0.Y, point1.X, point1.Y);
+        }
+
+        public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
+        {
+            AddLineBounds(pen, point0.X, point0.Y, point1.X, point1.Y);
         }
 
         public void DrawRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle)
@@ -1952,12 +1954,27 @@ public sealed class WpfVisualTreeRenderer
             AddBounds(InflateForPen(FromMediaRect(rectangle), pen));
         }
 
+        public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)
+        {
+            AddBounds(InflateForPen(rectangle, pen));
+        }
+
         public void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY)
         {
             AddBounds(InflateForPen(FromMediaRect(rectangle), pen));
         }
 
+        public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)
+        {
+            AddBounds(InflateForPen(rectangle, pen));
+        }
+
         public void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY)
+        {
+            AddBounds(InflateForPen(new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2), pen));
+        }
+
+        public void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY)
         {
             AddBounds(InflateForPen(new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2), pen));
         }
@@ -1983,9 +2000,19 @@ public sealed class WpfVisualTreeRenderer
             AddBounds(FromMediaRect(rectangle));
         }
 
+        public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)
+        {
+            AddBounds(rectangle);
+        }
+
         public void DrawImage(MediaImageSource imageSource, Rect rectangle, Rect sourceRectangle)
         {
             AddBounds(FromMediaRect(rectangle));
+        }
+
+        public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle, WpfReplayRect sourceRectangle)
+        {
+            AddBounds(rectangle);
         }
 
         public void DrawText(MediaFormattedText formattedText, Point origin)
@@ -1995,6 +2022,15 @@ public sealed class WpfVisualTreeRenderer
         public void DrawGlyphRun(MediaBrush? foregroundBrush, MediaGlyphRun glyphRun)
         {
             if (TryGetGlyphRunBounds(glyphRun, out var bounds))
+            {
+                AddBounds(bounds);
+            }
+        }
+
+        public void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRun)
+        {
+            if (WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var nativeGlyphRun)
+                && TryGetGlyphRunBounds(nativeGlyphRun, out var bounds))
             {
                 AddBounds(bounds);
             }
@@ -2032,12 +2068,27 @@ public sealed class WpfVisualTreeRenderer
             _pushStack.Push(PushKind.NoOp);
         }
 
+        public void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds)
+        {
+            _pushStack.Push(PushKind.NoOp);
+        }
+
         public void PushTransform(MediaTransform transform)
         {
             var nativeTransform = WpfResourceResolver.TryAdaptTransformMatrix(transform, out var adaptedTransform)
                 ? adaptedTransform
                 : System.Numerics.Matrix4x4.Identity;
-            _transformStack.Push(nativeTransform * _transformStack.Peek());
+            PushTransformCore(nativeTransform);
+        }
+
+        public void PushNativeTransform(System.Numerics.Matrix4x4 transform)
+        {
+            PushTransformCore(transform);
+        }
+
+        private void PushTransformCore(System.Numerics.Matrix4x4 transform)
+        {
+            _transformStack.Push(transform * _transformStack.Peek());
             _pushStack.Push(PushKind.Transform);
         }
 
@@ -2100,6 +2151,16 @@ public sealed class WpfVisualTreeRenderer
             _hasBounds = true;
         }
 
+        private void AddLineBounds(MediaPen? pen, double x0, double y0, double x1, double y1)
+        {
+            var thickness = Math.Max(1, pen?.Thickness ?? 1);
+            var minX = Math.Min(x0, x1) - thickness / 2;
+            var minY = Math.Min(y0, y1) - thickness / 2;
+            var maxX = Math.Max(x0, x1) + thickness / 2;
+            var maxY = Math.Max(y0, y1) + thickness / 2;
+            AddBounds(new WpfReplayRect(minX, minY, maxX - minX, maxY - minY));
+        }
+
         private static WpfReplayRect InflateForPen(WpfReplayRect bounds, MediaPen? pen)
         {
             if (pen == null || !IsUsableBounds(bounds))
@@ -2116,6 +2177,41 @@ public sealed class WpfVisualTreeRenderer
         }
 
         private static bool TryGetGlyphRunBounds(MediaGlyphRun glyphRun, out WpfReplayRect bounds)
+        {
+            bounds = default;
+
+            if (glyphRun.FontSize <= 0)
+            {
+                return false;
+            }
+
+            var minX = glyphRun.Position.X;
+            var minY = glyphRun.Position.Y - glyphRun.FontSize;
+            var maxX = glyphRun.Position.X;
+            var maxY = glyphRun.Position.Y;
+
+            if (glyphRun.GlyphPositions.Length == 0)
+            {
+                maxX += glyphRun.FontSize;
+            }
+            else
+            {
+                foreach (var position in glyphRun.GlyphPositions)
+                {
+                    minX = Math.Min(minX, glyphRun.Position.X + position.X);
+                    minY = Math.Min(minY, glyphRun.Position.Y + position.Y - glyphRun.FontSize);
+                    maxX = Math.Max(maxX, glyphRun.Position.X + position.X + glyphRun.FontSize);
+                    maxY = Math.Max(maxY, glyphRun.Position.Y + position.Y);
+                }
+            }
+
+            bounds = TransformBounds(
+                new WpfReplayRect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY)),
+                glyphRun.Transform);
+            return IsUsableBounds(bounds);
+        }
+
+        private static bool TryGetGlyphRunBounds(WpfNativeGlyphRun glyphRun, out WpfReplayRect bounds)
         {
             bounds = default;
 

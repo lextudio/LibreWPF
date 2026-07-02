@@ -22,7 +22,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 {
     private const int HitTestStackResultLimit = 64;
 
-    private readonly WpfVisualTreeReflectionRenderer _visualTreeRenderer = new();
+    private readonly WpfVisualTreeRenderer _visualTreeRenderer = new();
     private readonly bool _ownsContext;
     private readonly bool _ownsCompositor;
     private readonly WpfShaderEffectSamplerTextureCache _shaderEffectSamplerTextureCache;

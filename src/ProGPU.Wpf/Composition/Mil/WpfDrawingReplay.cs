@@ -507,7 +507,7 @@ internal static class WpfDrawingReplay
                 tilePopCount++;
             }
 
-            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(
+            var result = new WpfVisualTreeRenderer().ReplaySubtree(
                 visualValue,
                 sink,
                 resources: null,

@@ -66,7 +66,7 @@ using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
-public sealed class WpfVisualTreeReflectionRendererTests
+public sealed class WpfVisualTreeRendererTests
 {
     private static PortableVisualState CreatePortableScrollableAreaClipState(
         double x,
@@ -126,7 +126,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         parent.Children.Add(new FakeDrawingVisual(CreateRenderData(childBrush)));
         var sink = new TestSink();
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(parent, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(parent, sink);
 
         Assert.Equal(2, result.VisualCount);
         Assert.Equal(2, result.ContentCount);
@@ -147,7 +147,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.AddChild(new FakeDrawingVisual(CreateRenderData(childBrush)));
         var sink = new TestSink();
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(1, result.VisualCount);
         Assert.Equal(0, result.ContentCount);
@@ -166,7 +166,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.AddChild(new FakeDrawingVisual(CreateRenderData(childBrush)));
         var sink = new TestSink();
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(2, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
@@ -185,7 +185,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var visual = new FakeUiElementVisual(CreateRenderData(brush));
         var sink = new TestSink();
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(visual, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(visual, sink);
 
         Assert.Equal(1, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
@@ -203,7 +203,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         parent.Children.Add(child);
         var sink = new TestSink();
 
-        _ = new WpfVisualTreeReflectionRenderer().ReplaySubtree(parent, sink);
+        _ = new WpfVisualTreeRenderer().ReplaySubtree(parent, sink);
 
         Assert.Equal(new object[] { parent, child }, sink.VisualOwners);
     }
@@ -225,7 +225,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner", "PopVisualOwner" }, sink.Operations);
         Assert.Equal(new object[] { root, root.Children[0] }, sink.VisualOwners);
@@ -260,7 +260,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         AssertReplayRect(5, 6, 70, 80, sink.RetainedVisualStates[0].ClipBounds);
@@ -279,7 +279,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         AssertReplayRect(5, 6, 70, 80, sink.RetainedVisualStates[0].ClipBounds);
@@ -298,7 +298,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         AssertReplayRect(4, 5, 60, 70, sink.RetainedVisualStates[0].ClipBounds);
@@ -318,7 +318,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         AssertReplayRect(7, 8, 90, 20, sink.RetainedVisualStates[0].ClipBounds);
@@ -338,7 +338,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
                 Opacity = 1
             });
 
-        Assert.True(new WpfVisualTreeReflectionRenderer().CanReplaySubtreeIntoCurrentRetainedVisual(root));
+        Assert.True(new WpfVisualTreeRenderer().CanReplaySubtreeIntoCurrentRetainedVisual(root));
         Assert.Equal(0, root.ReflectedStateProbeCount);
     }
 
@@ -379,7 +379,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             });
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Contains(transform, sink.VisualDependencies);
         Assert.Contains(clip, sink.VisualDependencies);
@@ -405,7 +405,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             });
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(0, root.ReflectedStateProbeCount);
         Assert.Equal(1, result.ContentCount);
@@ -425,7 +425,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         AssertReplayRect(0, 0, 80, 35, sink.RetainedVisualStates[0].ClipBounds);
@@ -447,7 +447,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         var state = sink.RetainedVisualStates[0];
@@ -468,7 +468,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         });
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         var state = Assert.Single(sink.RetainedVisualStates);
         AssertReplayRect(0, 0, 55, 18, state.ClipBounds);
@@ -492,7 +492,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         AssertReplayRect(10, 12, 40, 38, sink.RetainedVisualStates[0].ClipBounds);
@@ -506,7 +506,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner", "PopVisualOwner" }, sink.Operations);
         Assert.Equal(new object[] { root, root.Children[0] }, sink.VisualOwners);
@@ -536,7 +536,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         var rootState = sink.RetainedVisualStates[0];
@@ -559,7 +559,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var renderer = new WpfVisualTreeReflectionRenderer();
+        var renderer = new WpfVisualTreeRenderer();
 
         Assert.True(renderer.CanReplaySubtreeIntoCurrentRetainedVisual(root));
         Assert.True(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(
@@ -604,7 +604,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawRectangle", "Pop", "PopVisualOwner" }, sink.Operations);
         Assert.Equal(new object[] { root }, sink.VisualOwners);
@@ -638,7 +638,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(
             new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawRectangle", "Pop", "PopVisualOwner" },
@@ -678,7 +678,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             Bounds = new FakeRect(5, 6, 70, 80)
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var renderer = new WpfVisualTreeReflectionRenderer();
+        var renderer = new WpfVisualTreeRenderer();
 
         Assert.True(renderer.CanReplaySubtreeIntoCurrentRetainedVisual(root));
         Assert.True(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(
@@ -725,7 +725,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             Bounds = new FakeRect(5, 6, 70, 80)
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var renderer = new WpfVisualTreeReflectionRenderer();
+        var renderer = new WpfVisualTreeRenderer();
 
         Assert.True(renderer.CanReplaySubtreeIntoCurrentRetainedVisual(root));
         Assert.True(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(
@@ -772,7 +772,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             Bounds = new FakeRect(5, 6, 70, 80)
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var renderer = new WpfVisualTreeReflectionRenderer();
+        var renderer = new WpfVisualTreeRenderer();
 
         Assert.True(renderer.CanReplaySubtreeIntoCurrentRetainedVisual(root));
         Assert.True(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(
@@ -818,7 +818,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             Bounds = new FakeRect(5, 6, 70, 80)
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var renderer = new WpfVisualTreeReflectionRenderer();
+        var renderer = new WpfVisualTreeRenderer();
 
         Assert.False(renderer.CanReplaySubtreeIntoCurrentRetainedVisual(root));
         Assert.False(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(
@@ -842,7 +842,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         };
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var renderer = new WpfVisualTreeReflectionRenderer();
+        var renderer = new WpfVisualTreeRenderer();
 
         Assert.True(renderer.CanReplaySubtreeIntoCurrentRetainedVisual(root));
         Assert.True(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(
@@ -872,7 +872,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakeDrawingVisual(renderData);
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new object[] { root }, sink.VisualOwners);
         Assert.DoesNotContain(root.Children, sink.VisualDependencies);
@@ -890,7 +890,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             CreatePortableScrollableAreaClipState(2, 3, 40, 50));
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(0, root.ReflectedStateProbeCount);
         Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner" }, sink.Operations);
@@ -909,7 +909,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakeUiElementVisual(renderData);
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new object[] { root }, sink.VisualOwners);
         Assert.DoesNotContain(root.Children, sink.VisualDependencies);
@@ -932,7 +932,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakeDrawingVisual(renderData);
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Contains(renderData, sink.VisualDependencies);
         Assert.Contains(nestedDrawing, sink.VisualDependencies);
@@ -948,7 +948,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakePortableVisualStateVisual(CreatePortableEffectState(shaderEffect));
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Contains(shaderEffect, sink.VisualDependencies);
         Assert.Contains(sink.VisualDependencies, dependency => dependency is PortablePixelShader);
@@ -965,7 +965,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(child);
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new object[] { root, child }, sink.VisualOwners);
         Assert.DoesNotContain(root.Children, sink.VisualDependencies);
@@ -983,7 +983,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakeDrawingVisual(renderData);
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        Assert.True(new WpfVisualTreeReflectionRenderer().TryReplaySubtreeIntoCurrentRetainedVisual(
+        Assert.True(new WpfVisualTreeRenderer().TryReplaySubtreeIntoCurrentRetainedVisual(
             root,
             sink,
             resources: null,
@@ -1008,7 +1008,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(
             new[] { "PushVisualOwner", "ApplyVisualState", "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner", "PopVisualOwner" },
@@ -1033,7 +1033,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
         Assert.Equal(new object[] { root, root.Children[0] }, sink.VisualOwners);
@@ -1054,7 +1054,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushClip", "DrawRectangle", "Pop" }, sink.Operations);
         Assert.Empty(sink.RetainedVisualStates);
@@ -1075,7 +1075,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushTransform", "PushOpacity", "DrawRectangle", "Pop", "Pop" }, sink.Operations);
         var transform = Assert.Single(sink.NativeTransforms);
@@ -1099,7 +1099,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             });
         var sink = new TestSink();
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushTransform", "DrawRectangle", "Pop" }, sink.Operations);
         var transform = Assert.Single(sink.NativeTransforms);
@@ -1122,7 +1122,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             });
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner" }, sink.Operations);
         var state = Assert.Single(sink.RetainedVisualStates);
@@ -1144,7 +1144,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             });
         var sink = new TestSink();
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushTransform", "DrawRectangle", "Pop" }, sink.Operations);
         var transform = Assert.Single(sink.NativeTransforms);
@@ -1161,7 +1161,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakeDrawingVisual(new object());
         var sink = new TestSink();
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(1, result.VisualCount);
         Assert.Equal(0, result.ContentCount);
@@ -1182,7 +1182,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushTransform", "PushNativeClip", "DrawRectangle", "Pop", "Pop" }, sink.Operations);
         Assert.Empty(sink.Transforms);
@@ -1205,7 +1205,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushOpacityMask", "DrawRectangle", "Pop" }, sink.Operations);
         var mask = Assert.Single(sink.OpacityMasks);
@@ -1223,7 +1223,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             CreatePortableOpacityMaskState(Brushes.White));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushOpacityMask", "DrawRectangle", "Pop" }, sink.Operations);
         var mask = Assert.Single(sink.OpacityMasks);
@@ -1243,7 +1243,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             CreatePortableOpacityMaskState(Brushes.White));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushOpacityMask", "PushTransform", "DrawRectangle", "Pop", "Pop" }, sink.Operations);
         var mask = Assert.Single(sink.OpacityMasks);
@@ -1260,7 +1260,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushOpacityMask", "DrawRectangle", "Pop" }, sink.Operations);
         var mask = Assert.Single(sink.OpacityMasks);
@@ -1288,7 +1288,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             }));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(
             new[] { "PushOpacityMask", "PushTransform", "PushTransform", "PushNativeClip", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" },
@@ -1314,7 +1314,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             }));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
         Assert.Empty(sink.OpacityMasks);
@@ -1334,7 +1334,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushGuidelineSetObject", "DrawRectangle", "Pop" }, sink.Operations);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
@@ -1359,7 +1359,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             });
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushGuidelineSetObject", "DrawRectangle", "Pop" }, sink.Operations);
         Assert.Equal(0, root.ReflectedStateProbeCount);
@@ -1374,7 +1374,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushNativeClip", "DrawRectangle", "Pop" }, sink.Operations);
         var clip = Assert.Single(sink.NativeClips);
@@ -1390,7 +1390,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushNativeClip", "DrawRectangle", "Pop" }, sink.Operations);
         var clip = Assert.Single(sink.NativeClips);
@@ -1410,7 +1410,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushNativeClip", "DrawRectangle", "Pop" }, sink.Operations);
         var clip = Assert.Single(sink.NativeClips);
@@ -1432,7 +1432,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushNativeClip", "DrawRectangle", "Pop" }, sink.Operations);
         var clip = Assert.Single(sink.NativeClips);
@@ -1454,7 +1454,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(
             new[] { "PushTransform", "PushTransform", "PushNativeClip", "PushTransform", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" },
@@ -1497,7 +1497,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushBitmapScalingMode", "PushEdgeMode", "PushTextRenderingMode", "PushTextHintingMode", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" }, sink.Operations);
         Assert.Equal(new[] { "NearestNeighbor" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
@@ -1530,7 +1530,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             });
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushBitmapScalingMode", "PushEdgeMode", "PushTextRenderingMode", "PushTextHintingMode", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" }, sink.Operations);
         Assert.Equal(new[] { "NearestNeighbor" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
@@ -1873,7 +1873,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualEffects = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
         var effect = Assert.IsType<ProGpuBlurEffect>(Assert.Single(sink.VisualEffects));
@@ -1890,7 +1890,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualEffects = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
         var effect = Assert.IsType<ProGpuBlurEffect>(Assert.Single(sink.VisualEffects));
@@ -1909,7 +1909,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualCaches = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushVisualCache", "DrawRectangle", "Pop" }, sink.Operations);
         Assert.Equal(new Rect(10, 20, 30, 40), Assert.Single(sink.VisualCacheBounds));
@@ -1932,7 +1932,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualEffects = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
         var effect = Assert.IsType<ProGpuDropShadowEffect>(Assert.Single(sink.VisualEffects));
@@ -1955,7 +1955,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualEffects = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
         var effect = Assert.IsType<ProGpuBlurEffect>(Assert.Single(sink.VisualEffects));
@@ -1971,7 +1971,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
         Assert.Empty(sink.VisualEffects);
@@ -2025,7 +2025,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
-            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+            var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
             Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
             var effect = Assert.IsType<ProGpuWpfShaderEffect>(Assert.Single(sink.VisualEffects));
@@ -2067,7 +2067,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
-            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+            var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
             Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
             var effect = Assert.IsType<ProGpuWpfShaderEffect>(Assert.Single(sink.VisualEffects));
@@ -2111,7 +2111,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
-            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(
+            var result = new WpfVisualTreeRenderer().ReplaySubtree(
                 root,
                 sink,
                 imageSourceAdapter: imageAdapter);
@@ -2156,7 +2156,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
-            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(
+            var result = new WpfVisualTreeRenderer().ReplaySubtree(
                 root,
                 sink,
                 imageSourceAdapter: imageAdapter);
@@ -2197,7 +2197,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
-            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+            var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
             Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
             Assert.Empty(sink.VisualEffects);
@@ -2217,7 +2217,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink { AcceptVisualEffects = true };
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
         Assert.Empty(sink.VisualEffects);
@@ -2243,7 +2243,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
             root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
             var sink = new TestSink { AcceptVisualEffects = true };
-            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+            var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
             Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
             Assert.Empty(sink.VisualEffects);
@@ -2267,7 +2267,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushBitmapScalingMode", "DrawRectangle", "Pop" }, sink.Operations);
         Assert.Equal(new[] { "LowQuality" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
@@ -2286,7 +2286,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushBitmapScalingMode", "DrawRectangle", "Pop" }, sink.Operations);
         Assert.Equal(new[] { "HighQuality" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
@@ -2305,7 +2305,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushTextRenderingMode", "DrawRectangle", "Pop" }, sink.Operations);
         Assert.Equal(new[] { "ClearType" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
@@ -2324,7 +2324,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushTextRenderingMode", "DrawRectangle", "Pop" }, sink.Operations);
         Assert.Equal(new[] { "ClearType" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
@@ -2343,7 +2343,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
         var sink = new TestSink();
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushTextHintingMode", "DrawRectangle", "Pop" }, sink.Operations);
         Assert.Equal(new[] { "Animated" }, sink.TextHintingModes.Select(mode => mode?.ToString()));
@@ -2359,7 +2359,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakeDrawingVisual(CreateImageRenderData(source));
         var sink = new TestSink();
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(
             root,
             sink,
             imageSourceAdapter: adapter);

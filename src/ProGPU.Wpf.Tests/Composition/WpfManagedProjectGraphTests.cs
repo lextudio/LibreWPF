@@ -5471,7 +5471,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfVisualTreeReflectionRenderer.cs"));
+            "WpfVisualTreeRenderer.cs"));
         var visualSource = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5520,7 +5520,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfVisualTreeReflectionRenderer.cs"));
+            "WpfVisualTreeRenderer.cs"));
         var visualSource = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5541,7 +5541,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf.Tests",
             "Composition",
             "Mil",
-            "WpfVisualTreeReflectionRendererTests.cs"));
+            "WpfVisualTreeRendererTests.cs"));
 
         Assert.Contains("using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;", rendererSource, StringComparison.Ordinal);
         Assert.Contains("using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;", rendererSource, StringComparison.Ordinal);
@@ -5705,7 +5705,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf.Tests",
             "Composition",
             "Mil",
-            "WpfVisualTreeReflectionRendererTests.cs"));
+            "WpfVisualTreeRendererTests.cs"));
 
         Assert.Contains("using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;", replaySource, StringComparison.Ordinal);
         Assert.Contains("drawingGroup is PortableDrawingGroupStateSource drawingGroupStateSource", replaySource, StringComparison.Ordinal);
@@ -5764,7 +5764,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf.Tests",
             "Composition",
             "Mil",
-            "WpfVisualTreeReflectionRendererTests.cs"));
+            "WpfVisualTreeRendererTests.cs"));
 
         Assert.Contains("using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;", replaySource, StringComparison.Ordinal);
         Assert.Contains("drawing is PortableGeometryDrawingStateSource geometryDrawingStateSource", replaySource, StringComparison.Ordinal);
@@ -5840,7 +5840,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf.Tests",
             "Composition",
             "Mil",
-            "WpfVisualTreeReflectionRendererTests.cs"));
+            "WpfVisualTreeRendererTests.cs"));
 
         Assert.Contains("using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;", replaySource, StringComparison.Ordinal);
         Assert.Contains("using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource;", replaySource, StringComparison.Ordinal);
@@ -5882,7 +5882,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfVisualTreeReflectionRenderer.cs"));
+            "WpfVisualTreeRenderer.cs"));
         var uiElementSource = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5978,7 +5978,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfVisualTreeReflectionRenderer.cs"));
+            "WpfVisualTreeRenderer.cs"));
         var bridgeTests = File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf.Tests",
@@ -6107,7 +6107,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf.Tests",
             "Composition",
             "Mil",
-            "WpfVisualTreeReflectionRendererTests.cs"));
+            "WpfVisualTreeRendererTests.cs"));
 
         Assert.Contains("interface IPortableEffectSource", portableEffect, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableEffect", portableEffect, StringComparison.Ordinal);
@@ -6190,7 +6190,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf.Tests",
             "Composition",
             "Mil",
-            "WpfVisualTreeReflectionRendererTests.cs"));
+            "WpfVisualTreeRendererTests.cs"));
 
         Assert.Contains("interface IPortablePixelShaderSource", portableShaderEffect, StringComparison.Ordinal);
         Assert.Contains("interface IPortableShaderEffectSource", portableShaderEffect, StringComparison.Ordinal);

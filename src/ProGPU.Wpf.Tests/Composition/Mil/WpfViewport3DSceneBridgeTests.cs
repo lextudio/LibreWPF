@@ -52,7 +52,7 @@ public sealed class WpfViewport3DSceneBridgeTests
         var viewport = CreateTriangleViewport();
         var sink = new ViewportSink { DrawViewport3DResult = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(viewport, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(viewport, sink);
 
         Assert.Equal(0, sink.DrawViewport3DCount);
         Assert.Equal(1, result.VisualCount);
@@ -67,7 +67,7 @@ public sealed class WpfViewport3DSceneBridgeTests
         var viewport = new PortableSceneHost();
         var sink = new ViewportSink { DrawViewport3DResult = true };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(viewport, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(viewport, sink);
 
         Assert.Equal(1, sink.DrawViewport3DCount);
         Assert.Equal(1, result.VisualCount);
@@ -82,7 +82,7 @@ public sealed class WpfViewport3DSceneBridgeTests
         var viewport = new PortableSceneHost();
         var sink = new ViewportSink { DrawViewport3DResult = false };
 
-        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(viewport, sink);
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(viewport, sink);
 
         Assert.Equal(1, sink.DrawViewport3DCount);
         Assert.Equal(1, result.VisualCount);

@@ -24,7 +24,7 @@ using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
-public sealed class WpfVisualTreeReflectionRenderer
+public sealed class WpfVisualTreeRenderer
 {
     private const double RectangleClipPointTolerance = 0.000001;
 
@@ -37,12 +37,12 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private readonly WpfRenderDataBridge _renderDataBridge;
 
-    public WpfVisualTreeReflectionRenderer()
+    public WpfVisualTreeRenderer()
         : this(new WpfRenderDataBridge())
     {
     }
 
-    public WpfVisualTreeReflectionRenderer(WpfRenderDataBridge renderDataBridge)
+    public WpfVisualTreeRenderer(WpfRenderDataBridge renderDataBridge)
     {
         _renderDataBridge = renderDataBridge ?? throw new ArgumentNullException(nameof(renderDataBridge));
     }

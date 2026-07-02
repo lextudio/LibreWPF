@@ -128,7 +128,7 @@ This bridge is intentionally narrow. It does not yet walk `ContainerVisual.Child
 
 ## Visual Subtree Reflection Renderer
 
-`WpfVisualTreeReflectionRenderer` is the first whole-subtree transition renderer. It:
+`WpfVisualTreeRenderer` is the first whole-subtree transition renderer. It:
 
 - replays `DrawingVisual` content when `_content` is backed by `RenderData`;
 - recurses through source-built WPF `IPortableVisualChildrenSource` for normal `VisualChildrenCount`/`GetVisualChild(int)` traversal, with public `Children`/protected visual-member reflection kept only as transitional fallback;

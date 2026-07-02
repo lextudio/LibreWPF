@@ -18,6 +18,8 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.ProGPU;
+using System.Windows.Media.ProGPU.Platform;
 using System.Windows.Threading;
 using Xceed.Wpf.AvalonDock;
 using Xceed.Wpf.AvalonDock.Layout;
@@ -3744,13 +3746,12 @@ public partial class MainWindow : Window
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
             await Task.Delay(LiveValidationRetryDelay);
-            if (!TryGetPortableActivationHost(out var liveHost) || liveHost == null)
+            if (!ProGpuWpfDiagnostics.TryGetWindowHost(this, out var liveHost) || liveHost == null)
             {
                 continue;
             }
 
-            if (GetRequiredProperty(liveHost, "HasPresentedFrame") is not bool hasPresentedFrame ||
-                !hasPresentedFrame)
+            if (!liveHost.HasPresentedFrame)
             {
                 WakeLiveRenderHost(liveHost);
                 continue;
@@ -3772,7 +3773,7 @@ public partial class MainWindow : Window
         Environment.Exit(1);
     }
 
-    private async Task<string> ValidateLiveInputAsync(object liveHost)
+    private async Task<string> ValidateLiveInputAsync(ProGpuWpfWindowHost liveHost)
     {
         Console.WriteLine("ProGPU WPF Toolkit live input validation step: filter focus.");
         string lastTargetState = "not checked";
@@ -3823,9 +3824,9 @@ public partial class MainWindow : Window
                 foreach (char character in "Dock")
                 {
                     string key = char.ToUpperInvariant(character).ToString();
-                    RaiseHostInput(liveHost, "KeyDown", key: key);
-                    RaiseHostInput(liveHost, "TextInput", character: character);
-                    RaiseHostInput(liveHost, "KeyUp", key: key);
+                    RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: key);
+                    RaiseHostInput(liveHost, WpfInputEventKind.TextInput, character: character);
+                    RaiseHostInput(liveHost, WpfInputEventKind.KeyUp, key: key);
                 }
             },
             DispatcherPriority.Send);
@@ -4055,7 +4056,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLivePopupControlsAsync(object liveHost)
+    private async Task ValidateLivePopupControlsAsync(ProGpuWpfWindowHost liveHost)
     {
         await ClickLiveControlAsync(liveHost, ActionDropDownButton, "ActionDropDownButton");
         await WaitForLiveConditionAsync(
@@ -4145,7 +4146,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveAvalonDockDocumentContextMenuAsync(object liveHost)
+    private async Task ValidateLiveAvalonDockDocumentContextMenuAsync(ProGpuWpfWindowHost liveHost)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4185,7 +4186,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveAvalonDockAnchorableContextMenuAsync(object liveHost)
+    private async Task ValidateLiveAvalonDockAnchorableContextMenuAsync(ProGpuWpfWindowHost liveHost)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4222,7 +4223,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveAvalonDockKeyboardNavigationAsync(object liveHost)
+    private async Task ValidateLiveAvalonDockKeyboardNavigationAsync(ProGpuWpfWindowHost liveHost)
     {
         int navigationCountBefore = await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4239,8 +4240,8 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
-                RaiseHostInput(liveHost, "KeyDown", key: "F9");
-                RaiseHostInput(liveHost, "KeyUp", key: "F9");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: "F9");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyUp, key: "F9");
             },
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
@@ -4253,8 +4254,8 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
-                RaiseHostInput(liveHost, "KeyDown", key: "F9");
-                RaiseHostInput(liveHost, "KeyUp", key: "F9");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: "F9");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyUp, key: "F9");
             },
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
@@ -4264,7 +4265,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveAvalonDockAnchorableKeyboardNavigationAsync(object liveHost)
+    private async Task ValidateLiveAvalonDockAnchorableKeyboardNavigationAsync(ProGpuWpfWindowHost liveHost)
     {
         int navigationCountBefore = await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4285,8 +4286,8 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
-                RaiseHostInput(liveHost, "KeyDown", key: "F10");
-                RaiseHostInput(liveHost, "KeyUp", key: "F10");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: "F10");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyUp, key: "F10");
             },
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
@@ -4299,8 +4300,8 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
-                RaiseHostInput(liveHost, "KeyDown", key: "F10");
-                RaiseHostInput(liveHost, "KeyUp", key: "F10");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: "F10");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyUp, key: "F10");
             },
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
@@ -4310,7 +4311,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveAvalonDockAutoHideOverlayAsync(object liveHost)
+    private async Task ValidateLiveAvalonDockAutoHideOverlayAsync(ProGpuWpfWindowHost liveHost)
     {
         int overlayCountBefore = await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4329,8 +4330,8 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
-                RaiseHostInput(liveHost, "KeyDown", key: "F11");
-                RaiseHostInput(liveHost, "KeyUp", key: "F11");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: "F11");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyUp, key: "F11");
             },
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
@@ -4343,8 +4344,8 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
-                RaiseHostInput(liveHost, "KeyDown", key: "F11");
-                RaiseHostInput(liveHost, "KeyUp", key: "F11");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: "F11");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyUp, key: "F11");
             },
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
@@ -4358,7 +4359,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveInputEditorsAsync(object liveHost)
+    private async Task ValidateLiveInputEditorsAsync(ProGpuWpfWindowHost liveHost)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4438,7 +4439,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveWizardAsync(object liveHost)
+    private async Task ValidateLiveWizardAsync(ProGpuWpfWindowHost liveHost)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4446,7 +4447,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveToolkitResourceThemeAsync(object liveHost)
+    private async Task ValidateLiveToolkitResourceThemeAsync(ProGpuWpfWindowHost liveHost)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4454,7 +4455,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveToolkitChildWindowAsync(object liveHost)
+    private async Task ValidateLiveToolkitChildWindowAsync(ProGpuWpfWindowHost liveHost)
     {
         int showCountBefore = ViewModel.ChildWindowShowCount;
         int closingCountBefore = ViewModel.ChildWindowClosingCount;
@@ -4497,7 +4498,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveToolkitMessageBoxAsync(object liveHost)
+    private async Task ValidateLiveToolkitMessageBoxAsync(ProGpuWpfWindowHost liveHost)
     {
         int showCountBefore = ViewModel.ToolkitMessageBoxShowCount;
         int closedCountBefore = ViewModel.ToolkitMessageBoxClosedCount;
@@ -4534,7 +4535,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveToolkitWindowControlAsync(object liveHost)
+    private async Task ValidateLiveToolkitWindowControlAsync(ProGpuWpfWindowHost liveHost)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4561,9 +4562,9 @@ public partial class MainWindow : Window
                 foreach (char character in "Pane")
                 {
                     string key = char.ToUpperInvariant(character).ToString();
-                    RaiseHostInput(liveHost, "KeyDown", key: key);
-                    RaiseHostInput(liveHost, "TextInput", character: character);
-                    RaiseHostInput(liveHost, "KeyUp", key: key);
+                    RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: key);
+                    RaiseHostInput(liveHost, WpfInputEventKind.TextInput, character: character);
+                    RaiseHostInput(liveHost, WpfInputEventKind.KeyUp, key: key);
                 }
             },
             DispatcherPriority.Send);
@@ -4636,7 +4637,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveToolkitZoomboxAndMagnifierAsync(object liveHost)
+    private async Task ValidateLiveToolkitZoomboxAndMagnifierAsync(ProGpuWpfWindowHost liveHost)
     {
         int commandCountBefore = ViewModel.ZoomboxCommandCount;
         int viewChangedCountBefore = ViewModel.ZoomboxViewChangedCount;
@@ -4679,7 +4680,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveToolkitCollectionControlAsync(object liveHost)
+    private async Task ValidateLiveToolkitCollectionControlAsync(ProGpuWpfWindowHost liveHost)
     {
         int countBefore = ViewModel.CollectionEntries.Count;
 
@@ -4713,7 +4714,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveSourceBackedAvalonDockAsync(object liveHost)
+    private async Task ValidateLiveSourceBackedAvalonDockAsync(ProGpuWpfWindowHost liveHost)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4721,7 +4722,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task ValidateLiveAvalonDockThemeSwitchingAsync(object liveHost)
+    private async Task ValidateLiveAvalonDockThemeSwitchingAsync(ProGpuWpfWindowHost liveHost)
     {
         int themeSwitchCountBefore = ViewModel.DockThemeSwitchCount;
         string[] expectedThemes = ["Metro", "VS2010", "Aero"];
@@ -4747,7 +4748,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task ValidateLiveOverviewDocumentLifecycleAsync(object liveHost)
+    private async Task ValidateLiveOverviewDocumentLifecycleAsync(ProGpuWpfWindowHost liveHost)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -4786,7 +4787,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task WaitForLiveConditionAsync(object liveHost, Func<bool> condition, string description)
+    private async Task WaitForLiveConditionAsync(ProGpuWpfWindowHost liveHost, Func<bool> condition, string description)
     {
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
@@ -4801,7 +4802,7 @@ public partial class MainWindow : Window
         throw new InvalidOperationException($"Timed out waiting for {description}.");
     }
 
-    private async Task ClickLiveControlAsync(object liveHost, FrameworkElement target, string targetName)
+    private async Task ClickLiveControlAsync(ProGpuWpfWindowHost liveHost, FrameworkElement target, string targetName)
     {
         string lastTargetState = "not checked";
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
@@ -4823,7 +4824,7 @@ public partial class MainWindow : Window
             $"Expected Toolkit live target {targetName} to become visible and hit-testable, but last state was: {lastTargetState}.");
     }
 
-    private bool TryRaiseLiveMouseClick(object liveHost, FrameworkElement target, string targetName, out string targetState)
+    private bool TryRaiseLiveMouseClick(ProGpuWpfWindowHost liveHost, FrameworkElement target, string targetName, out string targetState)
     {
         target.BringIntoView();
         target.UpdateLayout();
@@ -4855,36 +4856,27 @@ public partial class MainWindow : Window
         }
 
         targetState += $", {gpuHitState}";
-        RaiseHostInput(liveHost, "MouseMove", x: center.X, y: center.Y);
-        RaiseHostInput(liveHost, "MouseDown", x: center.X, y: center.Y, button: "Left");
-        RaiseHostInput(liveHost, "MouseUp", x: center.X, y: center.Y, button: "Left");
+        RaiseHostInput(liveHost, WpfInputEventKind.MouseMove, x: center.X, y: center.Y);
+        RaiseHostInput(liveHost, WpfInputEventKind.MouseDown, x: center.X, y: center.Y, button: WpfMouseButton.Left);
+        RaiseHostInput(liveHost, WpfInputEventKind.MouseUp, x: center.X, y: center.Y, button: WpfMouseButton.Left);
         return true;
     }
 
     private static bool TryLiveHostGpuHitWithinTarget(
-        object liveHost,
+        ProGpuWpfWindowHost liveHost,
         double x,
         double y,
         FrameworkElement target,
         out string state)
     {
         state = "GpuHitTest=<unavailable>";
-        MethodInfo? method = liveHost.GetType().GetMethod(
-            "TryHitTestOwners",
-            BindingFlags.Instance | BindingFlags.NonPublic,
-            binder: null,
-            types: [typeof(double), typeof(double), typeof(object?[]).MakeByRefType()],
-            modifiers: null);
-        if (method == null)
+        if (!ProGpuWpfDiagnostics.TryHitTestOwners(liveHost, x, y, out object?[] owners))
         {
             return false;
         }
 
-        object?[] arguments = [x, y, null];
-        bool hit = (bool)(method.Invoke(liveHost, arguments) ?? false);
-        object?[] owners = arguments[2] as object?[] ?? Array.Empty<object?>();
         state = $"GpuHitTest=[{string.Join(", ", owners.Select(DescribeInputElement))}]";
-        if (!hit || owners.Length == 0)
+        if (owners.Length == 0)
         {
             return false;
         }
@@ -4924,7 +4916,7 @@ public partial class MainWindow : Window
     }
 
     private async Task<T> InvokeWithLiveHostWakeAsync<T>(
-        object liveHost,
+        ProGpuWpfWindowHost liveHost,
         Func<T> callback,
         DispatcherPriority priority)
     {
@@ -4939,7 +4931,7 @@ public partial class MainWindow : Window
     }
 
     private async Task InvokeWithLiveHostWakeAsync(
-        object liveHost,
+        ProGpuWpfWindowHost liveHost,
         Action callback,
         DispatcherPriority priority)
     {
@@ -4954,58 +4946,30 @@ public partial class MainWindow : Window
         await operation;
     }
 
-    private static void WakeLiveRenderHost(object liveHost)
+    private static void WakeLiveRenderHost(ProGpuWpfWindowHost liveHost)
     {
-        object scheduler = GetRequiredProperty(liveHost, "WpfRenderScheduler");
-        MethodInfo requestRender = scheduler.GetType().GetMethod(
-            "RequestRender",
-            BindingFlags.Instance | BindingFlags.Public,
-            binder: null,
-            types: Type.EmptyTypes,
-            modifiers: null)
-            ?? throw new MissingMethodException(scheduler.GetType().FullName, "RequestRender");
-        requestRender.Invoke(scheduler, null);
-
-        MethodInfo? requestNativeLoopWakeup = liveHost.GetType().GetMethod(
-            "TryRequestNativeLoopWakeup",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: Type.EmptyTypes,
-            modifiers: null);
-        requestNativeLoopWakeup?.Invoke(liveHost, null);
+        if (!ProGpuWpfDiagnostics.TryRequestRender(liveHost))
+        {
+            throw new InvalidOperationException("Expected ProGPU WPF diagnostics to request a live Toolkit render.");
+        }
     }
 
-    private bool TryGetPortableActivationHost(out object? host)
+    private static string ValidateLiveRenderSurfaceGeometryCore(ProGpuWpfWindowHost liveHost)
     {
-        host = null;
-        PropertyInfo? activationProperty = typeof(Window).GetProperty(
-            "PortableWindowActivation",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-        object? activation = activationProperty?.GetValue(this);
-        if (activation == null)
+        if (!ProGpuWpfDiagnostics.TryGetRenderSurfaceGeometry(liveHost, out var geometry))
         {
-            return false;
+            throw new InvalidOperationException("Expected ProGPU WPF diagnostics to resolve Toolkit render-surface geometry.");
         }
 
-        PropertyInfo? hostProperty = activation.GetType().GetProperty(
-            "Host",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        host = hostProperty?.GetValue(activation);
-        return host != null;
-    }
-
-    private static string ValidateLiveRenderSurfaceGeometryCore(object liveHost)
-    {
-        object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
-        var logicalWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalWidth"), CultureInfo.InvariantCulture);
-        var logicalHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalHeight"), CultureInfo.InvariantCulture);
-        var pixelWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelWidth"), CultureInfo.InvariantCulture);
-        var pixelHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelHeight"), CultureInfo.InvariantCulture);
-        var dpiScale = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScale"), CultureInfo.InvariantCulture);
-        var viewportX = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportX"), CultureInfo.InvariantCulture);
-        var viewportY = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportY"), CultureInfo.InvariantCulture);
-        var viewportWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportWidth"), CultureInfo.InvariantCulture);
-        var viewportHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportHeight"), CultureInfo.InvariantCulture);
+        uint logicalWidth = geometry.LogicalWidth;
+        uint logicalHeight = geometry.LogicalHeight;
+        uint pixelWidth = geometry.PixelWidth;
+        uint pixelHeight = geometry.PixelHeight;
+        double dpiScale = geometry.DpiScale;
+        uint viewportX = geometry.ViewportX;
+        uint viewportY = geometry.ViewportY;
+        uint viewportWidth = geometry.ViewportWidth;
+        uint viewportHeight = geometry.ViewportHeight;
 
         AssertEqual(980u, logicalWidth, "Toolkit live ProGPU WPF logical width");
         AssertEqual(640u, logicalHeight, "Toolkit live ProGPU WPF logical height");
@@ -5025,74 +4989,25 @@ public partial class MainWindow : Window
     }
 
     private static void RaiseHostInput(
-        object liveHost,
-        string kind,
+        ProGpuWpfWindowHost liveHost,
+        WpfInputEventKind kind,
         string? key = null,
         char? character = null,
         double x = 0.0,
         double y = 0.0,
-        string button = "None")
+        WpfMouseButton button = WpfMouseButton.None)
     {
-        object input = CreateWpfInputEventArgs(liveHost, kind, key, character, x, y, button);
-        MethodInfo method = liveHost.GetType().GetMethod(
-            "OnPlatformInputReceived",
-            BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new MissingMethodException(liveHost.GetType().FullName, "OnPlatformInputReceived");
-        method.Invoke(liveHost, new object?[] { null, input });
-    }
-
-    private static object CreateWpfInputEventArgs(
-        object liveHost,
-        string kind,
-        string? key,
-        char? character,
-        double x,
-        double y,
-        string button)
-    {
-        Assembly assembly = liveHost.GetType().Assembly;
-        Type inputType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs", throwOnError: true)
-            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs");
-        Type kindType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventKind", throwOnError: true)
-            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventKind");
-        Type buttonType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfMouseButton", throwOnError: true)
-            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfMouseButton");
-        Type modifiersType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputModifiers", throwOnError: true)
-            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputModifiers");
-
-        return Activator.CreateInstance(
-            inputType,
-            Enum.Parse(kindType, kind),
+        var input = new WpfInputEventArgs(
+            kind,
             key,
-            0,
-            character.HasValue ? character.Value : null,
-            x,
-            y,
-            0.0,
-            0.0,
-            Enum.Parse(buttonType, button),
-            Enum.Parse(modifiersType, "None"))
-            ?? throw new InvalidOperationException("Expected WpfInputEventArgs construction to succeed.");
-    }
-
-    private static object InvokeRequired(object target, string methodName)
-    {
-        MethodInfo method = target.GetType().GetMethod(
-            methodName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new MissingMethodException(target.GetType().FullName, methodName);
-        return method.Invoke(target, null)
-            ?? throw new InvalidOperationException($"Expected {methodName} to return a value.");
-    }
-
-    private static object GetRequiredProperty(object target, string propertyName)
-    {
-        PropertyInfo property = target.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new MissingMemberException(target.GetType().FullName, propertyName);
-        return property.GetValue(target)
-            ?? throw new InvalidOperationException($"Expected {propertyName} to have a value.");
+            character: character,
+            x: x,
+            y: y,
+            button: button);
+        if (!ProGpuWpfDiagnostics.TryRaiseInput(liveHost, input))
+        {
+            throw new InvalidOperationException("Expected ProGPU WPF diagnostics to inject Toolkit live input.");
+        }
     }
 
     private static string DescribeInputElement(object? element)

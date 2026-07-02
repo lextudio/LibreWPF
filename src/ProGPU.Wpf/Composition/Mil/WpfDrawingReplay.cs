@@ -8,6 +8,7 @@ using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
+using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaLineSegment = System.Windows.Media.LineSegment;
 using MediaMatrixTransform = System.Windows.Media.MatrixTransform;
 using MediaPathGeometry = System.Windows.Media.PathGeometry;
@@ -229,6 +230,19 @@ internal static class WpfDrawingReplay
             return rectangleStatus;
         }
 
+        if (TryReplayEllipseGeometryDrawing(
+                geometryValue,
+                brushValue,
+                hasBrush,
+                hasPen,
+                brush,
+                pen,
+                sink,
+                out var ellipseStatus))
+        {
+            return ellipseStatus;
+        }
+
         if (WpfResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
         {
             return WpfDrawingReplayStatus.Unsupported;
@@ -280,6 +294,12 @@ internal static class WpfDrawingReplay
             return true;
         }
 
+        if (TryGetDirectEllipseGeometry(geometryValue, out var center, out var radiusX, out var radiusY))
+        {
+            DrawEllipseGeometry(sink, null, pen, center, radiusX, radiusY);
+            return true;
+        }
+
         if (sink is IWpfNativeGeometryCommandSink nativeGeometrySink
             && TryGetPortableGeometryPath(geometryValue, out var portableGeometry)
             && nativeGeometrySink.DrawNativeGeometry(null, pen, portableGeometry))
@@ -293,6 +313,62 @@ internal static class WpfDrawingReplay
         }
 
         sink.DrawGeometry(null, pen, geometry);
+        return true;
+    }
+
+    private static bool TryReplayEllipseGeometryDrawing(
+        object? geometryValue,
+        object? brushValue,
+        bool hasBrush,
+        bool hasPen,
+        MediaBrush? brush,
+        MediaPen? pen,
+        IWpfCompositionCommandSink sink,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        if (!TryGetDirectEllipseGeometry(geometryValue, out var center, out var radiusX, out var radiusY))
+        {
+            return false;
+        }
+
+        var applied = false;
+        var unsupported = hasPen && pen == null;
+        if (!hasBrush)
+        {
+            if (pen != null)
+            {
+                DrawEllipseGeometry(sink, null, pen, center, radiusX, radiusY);
+                applied = true;
+            }
+        }
+        else if (IsTileBrush(brushValue))
+        {
+            unsupported = true;
+            if (pen != null)
+            {
+                DrawEllipseGeometry(sink, null, pen, center, radiusX, radiusY);
+                applied = true;
+            }
+        }
+        else if (brush != null)
+        {
+            DrawEllipseGeometry(sink, brush, pen, center, radiusX, radiusY);
+            applied = true;
+        }
+        else
+        {
+            unsupported = true;
+            if (pen != null)
+            {
+                DrawEllipseGeometry(sink, null, pen, center, radiusX, radiusY);
+                applied = true;
+            }
+        }
+
+        status = applied
+            ? unsupported ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
+            : unsupported ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
         return true;
     }
 
@@ -365,6 +441,23 @@ internal static class WpfDrawingReplay
         }
 
         sink.DrawRectangle(brush, pen, rectangle);
+    }
+
+    private static void DrawEllipseGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaBrush? brush,
+        MediaPen? pen,
+        Point center,
+        double radiusX,
+        double radiusY)
+    {
+        if (sink is IWpfNativePrimitiveCommandSink nativePrimitiveSink)
+        {
+            nativePrimitiveSink.DrawNativeEllipse(brush, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY);
+            return;
+        }
+
+        sink.DrawEllipse(brush, pen, center, radiusX, radiusY);
     }
 
     private static bool TryReplayNativePortableGeometryDrawing(
@@ -2232,6 +2325,27 @@ internal static class WpfDrawingReplay
         return false;
     }
 
+    private static bool TryGetDirectEllipseGeometry(
+        object? geometry,
+        out Point center,
+        out double radiusX,
+        out double radiusY)
+    {
+        if (geometry is MediaEllipseGeometry ellipseGeometry
+            && HasIdentityGeometryTransform(ellipseGeometry)
+            && IsUsablePoint(ellipseGeometry.Center, out center)
+            && IsPositiveRadius(ellipseGeometry.RadiusX, out radiusX)
+            && IsPositiveRadius(ellipseGeometry.RadiusY, out radiusY))
+        {
+            return true;
+        }
+
+        center = default;
+        radiusX = default;
+        radiusY = default;
+        return false;
+    }
+
     private static bool TryGetImageDrawingImageSource(
         object drawing,
         bool hasPortableImageDrawingState,
@@ -2992,6 +3106,19 @@ internal static class WpfDrawingReplay
             && double.IsFinite(rect.Height)
             && rect.Width > 0
             && rect.Height > 0;
+    }
+
+    private static bool IsUsablePoint(Point point, out Point usablePoint)
+    {
+        usablePoint = point;
+        return double.IsFinite(point.X)
+            && double.IsFinite(point.Y);
+    }
+
+    private static bool IsPositiveRadius(double radius, out double usableRadius)
+    {
+        usableRadius = radius;
+        return double.IsFinite(radius) && radius > 0;
     }
 
     private static WpfReplayRect? ToReplayRect(Rect? bounds)

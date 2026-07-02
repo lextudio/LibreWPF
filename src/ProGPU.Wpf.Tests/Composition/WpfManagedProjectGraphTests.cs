@@ -5871,8 +5871,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryReplayNativePortableGeometryDrawing(", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.DrawNativeGeometry(nativeBrush, pen, portableGeometry)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryReplayRectangleGeometryDrawing(", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryReplayEllipseGeometryDrawing(", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetDirectRectangleGeometryBounds(geometryValue, out var rectangle)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectEllipseGeometry(geometryValue, out var center, out var radiusX, out var radiusY)", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativePrimitiveSink.DrawNativeRectangle(brush, pen, ToReplayRect(rectangle))", replaySource, StringComparison.Ordinal);
+        Assert.Contains("nativePrimitiveSink.DrawNativeEllipse(brush, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("geometry is MediaEllipseGeometry ellipseGeometry", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableGeometryBounds(geometryValue, out bounds)", replaySource, StringComparison.Ordinal);
@@ -5896,6 +5900,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool HasPen", interopSource, StringComparison.Ordinal);
         Assert.Contains("ReplayAppliesPortableGeometryDrawingStateWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayUsesNativePortableGeometryDrawingWhenAvailable", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayDrawsLocalEllipseGeometryStateAsNativeEllipseWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayDrawsLocalEllipseGeometryStateAsEllipseWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayKeepsTransformedLocalEllipseGeometryStateOnGenericGeometryPath", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDoesNotReflectAbsentPortableGeometryDrawingState", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableDrawingStateWithoutGenericBoundsFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesTypedRectGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);

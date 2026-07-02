@@ -1785,6 +1785,92 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplayDrawsLocalEllipseGeometryStateAsNativeEllipseWithoutMediaGeometryFallback()
+    {
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = new EllipseGeometry(new Point(4, 5), 20, 30);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Green,
+            HasPen = true,
+            Pen = pen
+        });
+        var sink = new NativePrimitiveTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawNativeEllipse" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        Assert.Empty(sink.DrawEllipses);
+        var draw = Assert.Single(sink.NativeDrawEllipses);
+        Assert.Same(Brushes.Green, draw.Brush);
+        Assert.Same(pen, draw.Pen);
+        Assert.Equal(new WpfReplayPoint(4, 5), draw.Center);
+        Assert.Equal(20, draw.RadiusX);
+        Assert.Equal(30, draw.RadiusY);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayDrawsLocalEllipseGeometryStateAsEllipseWithoutMediaGeometryFallback()
+    {
+        var geometry = new EllipseGeometry(new Point(8, 9), 24, 34);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Blue
+        });
+        var sink = new TestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawEllipse" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        var draw = Assert.Single(sink.DrawEllipses);
+        Assert.Same(Brushes.Blue, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Equal(new Point(8, 9), draw.Center);
+        Assert.Equal(24, draw.RadiusX);
+        Assert.Equal(34, draw.RadiusY);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayKeepsTransformedLocalEllipseGeometryStateOnGenericGeometryPath()
+    {
+        var geometry = new EllipseGeometry(new Point(8, 9), 24, 34)
+        {
+            Transform = new MatrixTransform(1, 0, 0, 1, 2, 3)
+        };
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Blue
+        });
+        var sink = new NativePrimitiveTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Empty(sink.NativeDrawEllipses);
+        var draw = Assert.Single(sink.DrawGeometries);
+        Assert.Same(Brushes.Blue, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Same(geometry, draw.Geometry);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
     public void ReplayUsesNativeRectangleClipForPortableTileBrushFill()
     {
         var geometry = new PortableRectangleClipGeometry(1, 2, 10, 12);
@@ -4433,6 +4519,8 @@ public sealed class WpfVisualTreeRendererTests
 
         public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle)> DrawRectangles { get; } = new();
 
+        public List<(MediaBrush? Brush, MediaPen? Pen, Point Center, double RadiusX, double RadiusY)> DrawEllipses { get; } = new();
+
         public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> DrawGeometries { get; } = new();
 
         public List<(MediaImageSource ImageSource, Rect Rectangle)> Images { get; } = new();
@@ -4518,6 +4606,8 @@ public sealed class WpfVisualTreeRendererTests
 
         public void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY)
         {
+            Operations.Add("DrawEllipse");
+            DrawEllipses.Add((brush, pen, center, radiusX, radiusY));
         }
 
         public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
@@ -4674,6 +4764,8 @@ public sealed class WpfVisualTreeRendererTests
     {
         public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayRect Rectangle)> NativeDrawRectangles { get; } = new();
 
+        public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayPoint Center, double RadiusX, double RadiusY)> NativeDrawEllipses { get; } = new();
+
         public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
         {
         }
@@ -4690,6 +4782,8 @@ public sealed class WpfVisualTreeRendererTests
 
         public void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY)
         {
+            Operations.Add("DrawNativeEllipse");
+            NativeDrawEllipses.Add((brush, pen, center, radiusX, radiusY));
         }
 
         public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)

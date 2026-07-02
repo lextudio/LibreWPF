@@ -5824,8 +5824,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out nativeTransform)", replaySource, StringComparison.Ordinal);
         Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(sink, nativeTransform)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryPushNativeDrawingGroupClip(sink, clipValue)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryPushNativeMediaGeometryClip(sink, clip)", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeClipSink.PushNativeClip(clipBounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(nativeClip)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(clipGeometry)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(drawing, \"DrawingGroup\")", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(drawingGroup,", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("HasNonNullProperty(drawingGroup,", replaySource, StringComparison.Ordinal);
@@ -5841,6 +5843,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplaySubtreeAppliesPortableDrawingGroupStateWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativePortableDrawingGroupClipWhenAvailable", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativePortableDrawingGroupGeometryClipForNonRectangleClip", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeUsesNativeMediaDrawingGroupGeometryClipForLocalNonRectangleClip", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeDerivesPortableRectangleClipBoundsFromPathPoints", rendererTests, StringComparison.Ordinal);
         Assert.Contains("\"PushNativeClip\"", rendererTests, StringComparison.Ordinal);
         Assert.Contains("\"PushNativeGeometryClip\"", rendererTests, StringComparison.Ordinal);

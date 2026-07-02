@@ -3029,7 +3029,7 @@ public sealed class WpfVisualTreeRendererTests
             new[]
             {
                 "PushTransform",
-                "PushClip",
+                "PushNativeClip",
                 "PushOpacity",
                 "PushGuidelineSetObject",
                 "PushBitmapScalingMode",
@@ -3049,6 +3049,8 @@ public sealed class WpfVisualTreeRendererTests
             sink.Operations);
         Assert.Equal(0, group.ReflectedStateProbeCount);
         Assert.Equal(new Vector2(3, 4), new Vector2(sink.NativeTransforms[0].M41, sink.NativeTransforms[0].M42));
+        Assert.Empty(sink.Clips);
+        AssertReplayRect(0, 0, 20, 20, Assert.Single(sink.NativeClips));
         Assert.Equal(new[] { 0.5 }, sink.Opacities);
         Assert.Equal(new[] { "LowQuality" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
         Assert.Equal(new[] { "Aliased" }, sink.EdgeModes.Select(mode => mode?.ToString()));
@@ -3141,6 +3143,48 @@ public sealed class WpfVisualTreeRendererTests
         Assert.Empty(sink.NativeClips);
         Assert.Empty(sink.DrawGeometries);
         Assert.Single(sink.NativeGeometryClips);
+        Assert.Single(sink.NativeDrawGeometries);
+        Assert.Equal(0, group.ReflectedStateProbeCount);
+        Assert.Equal(0, child.ReflectedStateProbeCount);
+        Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplaySubtreeUsesNativeMediaDrawingGroupGeometryClipForLocalNonRectangleClip()
+    {
+        var clip = CreateTrianglePathGeometry();
+        var geometry = new PortableRectangleClipGeometry(1, 2, 10, 12);
+        var child = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Green
+        });
+        var group = new ThrowingPortableDrawingGroup(new PortableDrawingGroupState
+        {
+            HasClipGeometry = true,
+            ClipGeometry = clip,
+            Children = [child]
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(group, sink);
+
+        Assert.Equal(
+            new[]
+            {
+                "PushNativeMediaGeometryClip",
+                "DrawNativeGeometry",
+                "Pop"
+            },
+            sink.Operations);
+        Assert.Empty(sink.Clips);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.DrawGeometries);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Same(clip, Assert.Single(sink.NativeMediaGeometryClips));
         Assert.Single(sink.NativeDrawGeometries);
         Assert.Equal(0, group.ReflectedStateProbeCount);
         Assert.Equal(0, child.ReflectedStateProbeCount);
@@ -3798,6 +3842,14 @@ public sealed class WpfVisualTreeRendererTests
         var geometry = new PathGeometry();
         geometry.Figures.Add(figure);
         return geometry;
+    }
+
+    private static PathGeometry CreateTrianglePathGeometry()
+    {
+        return CreateClosedPolylinePathGeometry(
+            new Point(0, 0),
+            new Point(20, 0),
+            new Point(8, 16));
     }
 
     private static PathGeometry CreateClosedPolylinePathGeometry(params Point[] points)

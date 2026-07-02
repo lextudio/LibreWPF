@@ -1112,7 +1112,11 @@ internal static class WpfDrawingReplay
                     return WpfDrawingReplayStatus.Unsupported;
                 }
 
-                sink.PushClip(clip);
+                if (!TryPushNativeMediaGeometryClip(sink, clip))
+                {
+                    sink.PushClip(clip);
+                }
+
                 popCount++;
             }
         }
@@ -1318,6 +1322,21 @@ internal static class WpfDrawingReplay
     private static bool TryGetRectangleClipBounds(MediaGeometry geometry, out WpfReplayRect bounds)
     {
         return WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds);
+    }
+
+    private static bool TryPushNativeMediaGeometryClip(
+        IWpfCompositionCommandSink sink,
+        MediaGeometry clipGeometry)
+    {
+        if (sink is IWpfNativeClipCommandSink nativeClipSink
+            && TryGetRectangleClipBounds(clipGeometry, out var clipBounds))
+        {
+            nativeClipSink.PushNativeClip(clipBounds);
+            return true;
+        }
+
+        return sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && nativeGeometrySink.PushNativeGeometryClip(clipGeometry);
     }
 
     private static void PopPushedScopes(IWpfCompositionCommandSink sink, int popCount)

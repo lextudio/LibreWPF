@@ -16,7 +16,7 @@ using MediaTransform = System.Windows.Media.Transform;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
-public sealed class WpfRenderDataReflectionBridgeTests
+public sealed class WpfRenderDataBridgeTests
 {
     [Fact]
     public void ExtractCopiesActiveRenderDataBytesAndDependentResources()
@@ -26,7 +26,7 @@ public sealed class WpfRenderDataReflectionBridgeTests
         var pooledBuffer = record.Concat(new byte[] { 0xAA, 0xBB, 0xCC, 0xDD }).ToArray();
         var renderData = new FakeRenderData(pooledBuffer, record.Length, new FakeDependentResources(brush));
 
-        var snapshot = WpfRenderDataReflectionBridge.Extract(renderData);
+        var snapshot = WpfRenderDataBridge.Extract(renderData);
 
         Assert.Equal(record, snapshot.RenderData);
         Assert.NotSame(pooledBuffer, snapshot.RenderData);
@@ -41,7 +41,7 @@ public sealed class WpfRenderDataReflectionBridgeTests
         var portableBuffer = record.Concat(new byte[] { 0xAA, 0xBB, 0xCC, 0xDD }).ToArray();
         var renderData = new TypedPortableRenderDataSource(portableBuffer, new object?[] { brush });
 
-        var snapshot = WpfRenderDataReflectionBridge.Extract(renderData);
+        var snapshot = WpfRenderDataBridge.Extract(renderData);
 
         Assert.Equal(portableBuffer, snapshot.RenderData);
         Assert.NotSame(portableBuffer, snapshot.RenderData);
@@ -57,7 +57,7 @@ public sealed class WpfRenderDataReflectionBridgeTests
         var renderData = new LegacyRenderDataFieldShape(record, record.Length, new FakeDependentResources(brush));
 
         var exception = Assert.Throws<InvalidOperationException>(
-            () => WpfRenderDataReflectionBridge.Extract(renderData));
+            () => WpfRenderDataBridge.Extract(renderData));
 
         Assert.Contains("portable WPF RenderData source contract", exception.Message);
     }
@@ -71,7 +71,7 @@ public sealed class WpfRenderDataReflectionBridgeTests
         var renderData = new FakeRenderData(record, record.Length, new FakeDependentResources(brush, pen));
         var sink = new TestSink();
 
-        var result = new WpfRenderDataReflectionBridge().Replay(renderData, sink);
+        var result = new WpfRenderDataBridge().Replay(renderData, sink);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
         Assert.Single(sink.DrawRectangles);
@@ -89,7 +89,7 @@ public sealed class WpfRenderDataReflectionBridgeTests
         var renderData = new FakeRenderData(record, record.Length, new FakeDependentResources(source));
         var sink = new TestSink();
 
-        var result = new WpfRenderDataReflectionBridge().Replay(
+        var result = new WpfRenderDataBridge().Replay(
             renderData,
             sink,
             imageSourceAdapter: adapter);

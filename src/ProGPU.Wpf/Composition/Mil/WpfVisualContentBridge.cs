@@ -5,16 +5,16 @@ using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
-public sealed class WpfVisualContentReflectionBridge
+public sealed class WpfVisualContentBridge
 {
-    private readonly WpfRenderDataReflectionBridge _renderDataBridge;
+    private readonly WpfRenderDataBridge _renderDataBridge;
 
-    public WpfVisualContentReflectionBridge()
-        : this(new WpfRenderDataReflectionBridge())
+    public WpfVisualContentBridge()
+        : this(new WpfRenderDataBridge())
     {
     }
 
-    public WpfVisualContentReflectionBridge(WpfRenderDataReflectionBridge renderDataBridge)
+    public WpfVisualContentBridge(WpfRenderDataBridge renderDataBridge)
     {
         _renderDataBridge = renderDataBridge ?? throw new ArgumentNullException(nameof(renderDataBridge));
     }

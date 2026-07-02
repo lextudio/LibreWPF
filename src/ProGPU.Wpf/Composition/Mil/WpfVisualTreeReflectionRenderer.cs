@@ -35,14 +35,14 @@ public sealed class WpfVisualTreeReflectionRenderer
         Full
     }
 
-    private readonly WpfRenderDataReflectionBridge _renderDataBridge;
+    private readonly WpfRenderDataBridge _renderDataBridge;
 
     public WpfVisualTreeReflectionRenderer()
-        : this(new WpfRenderDataReflectionBridge())
+        : this(new WpfRenderDataBridge())
     {
     }
 
-    public WpfVisualTreeReflectionRenderer(WpfRenderDataReflectionBridge renderDataBridge)
+    public WpfVisualTreeReflectionRenderer(WpfRenderDataBridge renderDataBridge)
     {
         _renderDataBridge = renderDataBridge ?? throw new ArgumentNullException(nameof(renderDataBridge));
     }
@@ -935,7 +935,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         IWpfImageSourceAdapter? imageSourceAdapter,
         ReplayStats stats)
     {
-        if (!WpfVisualContentReflectionBridge.TryExtractContent(visual, out var content) || content == null)
+        if (!WpfVisualContentBridge.TryExtractContent(visual, out var content) || content == null)
         {
             return;
         }
@@ -947,7 +947,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         stats.ContentCount++;
-        var snapshot = WpfRenderDataReflectionBridge.Extract(content);
+        var snapshot = WpfRenderDataBridge.Extract(content);
         RegisterRetainedVisualDirectDependency(content, sink);
         RegisterRetainedVisualDependencies(snapshot.DependentResources, sink);
         stats.AddRenderData(_renderDataBridge.Replay(snapshot, sink, resources, imageSourceAdapter));
@@ -1464,11 +1464,11 @@ public sealed class WpfVisualTreeReflectionRenderer
         bounds = default;
         var hasBounds = false;
 
-        if (WpfVisualContentReflectionBridge.TryExtractContent(visual, out var content)
+        if (WpfVisualContentBridge.TryExtractContent(visual, out var content)
             && content != null
             && content is PortableRenderDataSource)
         {
-            var snapshot = WpfRenderDataReflectionBridge.Extract(content);
+            var snapshot = WpfRenderDataBridge.Extract(content);
             var resolver = WpfReflectionResourceResolver.FromDependentResources(snapshot.DependentResources);
             var sink = new BoundsAccumulatingSink();
             try

@@ -5379,7 +5379,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfVisualContentReflectionBridge.cs"));
+            "WpfVisualContentBridge.cs"));
         var drawingVisual = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5426,7 +5426,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfRenderDataReflectionBridge.cs"));
+            "WpfRenderDataBridge.cs"));
         var interopSource = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",

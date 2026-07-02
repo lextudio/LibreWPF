@@ -16,7 +16,7 @@ using MediaTransform = System.Windows.Media.Transform;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
-public sealed class WpfVisualContentReflectionBridgeTests
+public sealed class WpfVisualContentBridgeTests
 {
     [Fact]
     public void ExtractContentRejectsNonPortableDrawingVisualFieldShape()
@@ -25,7 +25,7 @@ public sealed class WpfVisualContentReflectionBridgeTests
         var visual = new FakeDrawingVisual(content);
 
         var exception = Assert.Throws<InvalidOperationException>(
-            () => WpfVisualContentReflectionBridge.ExtractContent(visual));
+            () => WpfVisualContentBridge.ExtractContent(visual));
 
         Assert.Contains("portable WPF visual content source contract", exception.Message);
     }
@@ -36,7 +36,7 @@ public sealed class WpfVisualContentReflectionBridgeTests
         var content = new object();
         var visual = new FakePortableDrawingVisual(content);
 
-        Assert.Same(content, WpfVisualContentReflectionBridge.ExtractContent(visual));
+        Assert.Same(content, WpfVisualContentBridge.ExtractContent(visual));
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class WpfVisualContentReflectionBridgeTests
     {
         var visual = new FakePortableDrawingVisual(null);
 
-        Assert.Null(WpfVisualContentReflectionBridge.ExtractContent(visual));
+        Assert.Null(WpfVisualContentBridge.ExtractContent(visual));
     }
 
     [Fact]
@@ -53,14 +53,14 @@ public sealed class WpfVisualContentReflectionBridgeTests
         var content = new object();
         var visual = new FakeUiElementVisual(content);
 
-        Assert.False(WpfVisualContentReflectionBridge.TryExtractContent(visual, out var extractedContent));
+        Assert.False(WpfVisualContentBridge.TryExtractContent(visual, out var extractedContent));
         Assert.Null(extractedContent);
     }
 
     [Fact]
     public void ReplayContentReturnsEmptyResultWhenContentIsNull()
     {
-        var result = new WpfVisualContentReflectionBridge().ReplayContent(new FakePortableDrawingVisual(null), new TestSink());
+        var result = new WpfVisualContentBridge().ReplayContent(new FakePortableDrawingVisual(null), new TestSink());
 
         Assert.Equal(default, result);
     }
@@ -75,7 +75,7 @@ public sealed class WpfVisualContentReflectionBridgeTests
         var visual = new FakePortableDrawingVisual(renderData);
         var sink = new TestSink();
 
-        var result = new WpfVisualContentReflectionBridge().ReplayContent(visual, sink);
+        var result = new WpfVisualContentBridge().ReplayContent(visual, sink);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
         Assert.Single(sink.DrawRectangles);
@@ -94,7 +94,7 @@ public sealed class WpfVisualContentReflectionBridgeTests
         var visual = new FakePortableDrawingVisual(renderData);
         var sink = new TestSink();
 
-        var result = new WpfVisualContentReflectionBridge().ReplayContent(visual, sink);
+        var result = new WpfVisualContentBridge().ReplayContent(visual, sink);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
         Assert.Single(sink.DrawRectangles);
@@ -110,7 +110,7 @@ public sealed class WpfVisualContentReflectionBridgeTests
         var visual = new FakePortableDrawingVisual(new object());
 
         var exception = Assert.Throws<NotSupportedException>(
-            () => new WpfVisualContentReflectionBridge().ReplayContent(visual, new TestSink()));
+            () => new WpfVisualContentBridge().ReplayContent(visual, new TestSink()));
 
         Assert.Contains("not supported", exception.Message);
     }

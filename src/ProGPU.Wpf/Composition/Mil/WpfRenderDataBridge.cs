@@ -6,16 +6,16 @@ using PortableRenderDataSnapshot = ProGPU.Wpf.Interop.PortableRenderDataSnapshot
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
-public sealed class WpfRenderDataReflectionBridge
+public sealed class WpfRenderDataBridge
 {
     private readonly WpfMilRenderDataDecoder _decoder;
 
-    public WpfRenderDataReflectionBridge()
+    public WpfRenderDataBridge()
         : this(new WpfMilRenderDataDecoder())
     {
     }
 
-    public WpfRenderDataReflectionBridge(WpfMilRenderDataDecoder decoder)
+    public WpfRenderDataBridge(WpfMilRenderDataDecoder decoder)
     {
         _decoder = decoder ?? throw new ArgumentNullException(nameof(decoder));
     }

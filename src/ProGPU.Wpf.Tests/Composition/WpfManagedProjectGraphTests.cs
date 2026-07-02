@@ -11349,6 +11349,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryResolveGlyphTypefaceFontFile", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("ReadGlyphTypefaceStyleSimulations", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("EnumerateGlyphTypefaceFamilyNames", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryAdaptNativeShimGlyphRun", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("mediaGlyphRun.GlyphIndices", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("mediaGlyphRun.GlyphPositions", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeBrush", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativePen", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("resource is PortableGeometryPathSource portableGeometry", wpfResourceResolver, StringComparison.Ordinal);

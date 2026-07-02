@@ -1124,37 +1124,7 @@ public sealed class WpfResourceResolver :
             return TryAdaptPortableNativeGlyphRun(portableGlyphRunDto, out glyphRun);
         }
 
-        if (resource is MediaGlyphRun mediaGlyphRun)
-        {
-            try
-            {
-                return TryAdaptNativeShimGlyphRun(mediaGlyphRun, out glyphRun);
-            }
-            catch (MissingMethodException)
-            {
-                glyphRun = default;
-                return false;
-            }
-        }
-
         return false;
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool TryAdaptNativeShimGlyphRun(MediaGlyphRun mediaGlyphRun, out WpfNativeGlyphRun glyphRun)
-    {
-        glyphRun = new WpfNativeGlyphRun(
-            mediaGlyphRun.GlyphIndices,
-            mediaGlyphRun.GlyphPositions,
-            mediaGlyphRun.Font,
-            mediaGlyphRun.FontSize,
-            mediaGlyphRun.Position,
-            mediaGlyphRun.Transform,
-            mediaGlyphRun.IsBold,
-            mediaGlyphRun.IsItalic);
-        return mediaGlyphRun.GlyphIndices.Length > 0
-            && mediaGlyphRun.FontSize > 0
-            && mediaGlyphRun.Font != null;
     }
 
     public static MediaGlyphRun? AdaptGlyphRun(object? resource)

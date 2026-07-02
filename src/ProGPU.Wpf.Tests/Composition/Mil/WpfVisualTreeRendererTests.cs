@@ -529,18 +529,18 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
-    public void ReplaySubtreePreservesIntersectedPortableVisualClipsAsNativeCombinedGeometry()
+    public void ReplaySubtreePreservesIntersectedPortableVisualClipsAsNativeCombinedGeometryBeforeStaleBoundsMetadata()
     {
         var root = new FakePortableVisualStateAndLayoutVisual(
             new PortableVisualState
             {
                 HasClip = true,
-                Clip = new PortableNonRectangleClipGeometry(0, 0, 100, 50)
+                Clip = new PortableNonRectangleClipGeometry(0, 0, 100, 50, new PortableRect(-100, -100, 1, 1))
             },
             new PortableVisualLayoutState
             {
                 HasLayoutClip = true,
-                LayoutClip = new PortableRectangleClipGeometry(10, 12, 60, 70)
+                LayoutClip = new PortableRectangleClipGeometry(10, 12, 60, 70, new PortableRect(-200, -200, 1, 1))
             });
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 

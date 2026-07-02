@@ -786,6 +786,22 @@ public sealed class WpfVisualTreeRenderer
         return false;
     }
 
+    private static bool TryReadPortableGeometryBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
+    {
+        if (WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds))
+        {
+            return true;
+        }
+
+        if (WpfPortablePathBoundsReader.TryGetPathBounds(geometry, out bounds))
+        {
+            return true;
+        }
+
+        bounds = ToReplayRect(geometry.Bounds);
+        return IsUsableBounds(bounds);
+    }
+
     private static WpfReplayRect CombineClipBounds(WpfReplayRect? current, WpfReplayRect next)
     {
         if (!current.HasValue)
@@ -1823,9 +1839,8 @@ public sealed class WpfVisualTreeRenderer
 
         public PortableIntersectedClipGeometry(PortableGeometryPath first, PortableGeometryPath second)
         {
-            var firstBounds = ToReplayRect(first.Bounds);
-            var secondBounds = ToReplayRect(second.Bounds);
-            var bounds = IsUsableBounds(firstBounds) && IsUsableBounds(secondBounds)
+            var bounds = TryReadPortableGeometryBounds(first, out var firstBounds)
+                && TryReadPortableGeometryBounds(second, out var secondBounds)
                 ? CombineClipBounds(firstBounds, secondBounds)
                 : default;
 
@@ -2376,21 +2391,6 @@ public sealed class WpfVisualTreeRenderer
             return new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
         }
 
-        private static bool TryReadPortableGeometryBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
-        {
-            if (WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds))
-            {
-                return true;
-            }
-
-            if (WpfPortablePathBoundsReader.TryGetPathBounds(geometry, out bounds))
-            {
-                return true;
-            }
-
-            bounds = ToReplayRect(geometry.Bounds);
-            return IsUsableBounds(bounds);
-        }
     }
 
     private sealed class VisualGuidelineSet : IPortableGuidelineSetSource

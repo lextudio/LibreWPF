@@ -11875,12 +11875,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfDrawingReplay.TryReplayTileBrushFill(", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveRectangleGeometry(brush, pen, geometry, mediaBrush, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveRectangleGeometryPen(geometry, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("TryDrawPrimitiveEllipseGeometry(brush, pen, geometry, mediaBrush, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("TryDrawPrimitiveEllipseGeometryPen(geometry, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.DoesNotContain("WpfResourceResolver.CreateRectanglePath(mediaRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("_sink is IWpfNativePrimitiveCommandSink nativeSink", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeLine(mediaPen, replayPoint0, replayPoint1)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeRectangle(mediaBrush, mediaPen, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeRoundedRectangle(mediaBrush, mediaPen, replayRectangle, mediaRadiusX, mediaRadiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeEllipse(mediaBrush, mediaPen, replayCenter, mediaRadiusX, mediaRadiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("geometry is MediaEllipseGeometry ellipseGeometry", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeEllipse(mediaBrush, mediaPen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeImage(mediaImageSource, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeGlyphRun(mediaBrush, glyphRun)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
@@ -11925,6 +11929,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GeneratedDrawingContextDrawsEllipseGeometryAsNativeEllipseWithoutGenericGeometryFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextDrawsEllipseGeometryAsEllipseWithoutGenericGeometryFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextKeepsTransformedEllipseGeometryOnGenericGeometryPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalEllipseGeometryAsNativeEllipseWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalEllipseGeometryAsEllipseWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextKeepsTransformedEllipseGeometryOnGenericGeometryPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextPushesRectangleGeometryClipAsNativeClipWithoutGenericClipFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextKeepsRoundedRectangleGeometryClipOnGenericClipPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);

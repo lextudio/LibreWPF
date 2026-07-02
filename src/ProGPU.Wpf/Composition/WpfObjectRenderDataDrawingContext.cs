@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaBrush = System.Windows.Media.Brush;
+using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
@@ -386,11 +387,6 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         ThrowIfClosed();
         MediaBrush? mediaBrush = WpfResourceResolver.AdaptBrush(brush);
         MediaPen? mediaPen = WpfResourceResolver.AdaptPen(pen);
-        if (TryDrawNativePortableGeometry(brush, pen, geometry, mediaBrush, mediaPen))
-        {
-            return;
-        }
-
         if (brush != null
             && WpfDrawingReplay.IsTileBrush(brush)
             && WpfDrawingReplay.TryReplayTileBrushFill(
@@ -404,7 +400,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             var replayStatus = portableBrushReplayStatus;
             if (mediaPen != null
                 && !TryDrawNativePortableGeometryPen(geometry, mediaPen)
-                && !TryDrawPrimitiveRectangleGeometryPen(geometry, mediaPen))
+                && !TryDrawPrimitiveRectangleGeometryPen(geometry, mediaPen)
+                && !TryDrawPrimitiveEllipseGeometryPen(geometry, mediaPen))
             {
                 if (WpfResourceResolver.AdaptGeometry(geometry) is { } penGeometry)
                 {
@@ -421,6 +418,16 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         }
 
         if (TryDrawPrimitiveRectangleGeometry(brush, pen, geometry, mediaBrush, mediaPen))
+        {
+            return;
+        }
+
+        if (TryDrawPrimitiveEllipseGeometry(brush, pen, geometry, mediaBrush, mediaPen))
+        {
+            return;
+        }
+
+        if (TryDrawNativePortableGeometry(brush, pen, geometry, mediaBrush, mediaPen))
         {
             return;
         }
@@ -503,6 +510,25 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         return false;
     }
 
+    private bool TryDrawPrimitiveEllipseGeometryPen(object? geometry, MediaPen pen)
+    {
+        if (!TryReadEllipseGeometry(geometry, out var center, out var radiusX, out var radiusY))
+        {
+            return false;
+        }
+
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeEllipse(null, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY);
+        }
+        else
+        {
+            _sink.DrawEllipse(null, pen, center, radiusX, radiusY);
+        }
+
+        return true;
+    }
+
     private bool TryDrawPrimitiveRectangleGeometry(
         object? brush,
         object? pen,
@@ -580,6 +606,101 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             RegisterRetainedDependencies(brush, pen, geometry);
             _sink.DrawRectangle(null, mediaPen, rectangle);
+            if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
+            {
+                CountPartiallyApplied();
+            }
+            else
+            {
+                CountApplied();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryDrawPrimitiveEllipseGeometry(
+        object? brush,
+        object? pen,
+        object? geometry,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen)
+    {
+        if (!TryReadEllipseGeometry(geometry, out var center, out var radiusX, out var radiusY))
+        {
+            return false;
+        }
+
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            return TryDrawNativeEllipseGeometry(brush, pen, geometry, mediaBrush, mediaPen, center, radiusX, radiusY, nativeSink);
+        }
+
+        return TryDrawEllipseGeometryFallback(brush, pen, geometry, mediaBrush, mediaPen, center, radiusX, radiusY);
+    }
+
+    private bool TryDrawNativeEllipseGeometry(
+        object? brush,
+        object? pen,
+        object? geometry,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen,
+        Point center,
+        double radiusX,
+        double radiusY,
+        IWpfNativePrimitiveCommandSink nativeSink)
+    {
+        if (mediaBrush != null)
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            nativeSink.DrawNativeEllipse(mediaBrush, mediaPen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY);
+            CountApplied();
+            return true;
+        }
+
+        if (mediaPen != null)
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            nativeSink.DrawNativeEllipse(null, mediaPen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY);
+            if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
+            {
+                CountPartiallyApplied();
+            }
+            else
+            {
+                CountApplied();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryDrawEllipseGeometryFallback(
+        object? brush,
+        object? pen,
+        object? geometry,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen,
+        Point center,
+        double radiusX,
+        double radiusY)
+    {
+        if (mediaBrush != null)
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            _sink.DrawEllipse(mediaBrush, mediaPen, center, radiusX, radiusY);
+            CountApplied();
+            return true;
+        }
+
+        if (mediaPen != null)
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            _sink.DrawEllipse(null, mediaPen, center, radiusX, radiusY);
             if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
             {
                 CountPartiallyApplied();
@@ -1122,6 +1243,48 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         return geometry is PortableGeometryPathSource portableGeometrySource
             && portableGeometrySource.TryGetPortableGeometryPath(out portableGeometry)
             && portableGeometry != null;
+    }
+
+    private static bool TryReadEllipseGeometry(
+        object? geometry,
+        out Point center,
+        out double radiusX,
+        out double radiusY)
+    {
+        if (geometry is MediaEllipseGeometry ellipseGeometry
+            && HasIdentityGeometryTransform(ellipseGeometry)
+            && IsUsablePoint(ellipseGeometry.Center, out center)
+            && IsPositiveRadius(ellipseGeometry.RadiusX, out radiusX)
+            && IsPositiveRadius(ellipseGeometry.RadiusY, out radiusY))
+        {
+            return true;
+        }
+
+        center = default;
+        radiusX = default;
+        radiusY = default;
+        return false;
+    }
+
+    private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
+    {
+        var transform = geometry.Transform;
+        return transform == null
+            || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
+                && WpfResourceResolver.IsIdentityMatrix(matrix));
+    }
+
+    private static bool IsUsablePoint(Point point, out Point usablePoint)
+    {
+        usablePoint = point;
+        return double.IsFinite(point.X)
+            && double.IsFinite(point.Y);
+    }
+
+    private static bool IsPositiveRadius(double radius, out double usableRadius)
+    {
+        usableRadius = radius;
+        return double.IsFinite(radius) && radius > 0;
     }
 
     private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)

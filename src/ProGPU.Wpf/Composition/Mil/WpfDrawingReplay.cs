@@ -91,7 +91,8 @@ internal static class WpfDrawingReplay
         object? Source,
         Rect Bounds,
         MediaGeometry? MediaGeometry,
-        PortableGeometryPath? PortableGeometry);
+        PortableGeometryPath? PortableGeometry,
+        bool IsRectangle);
 
     public static bool TryReplay(
         object? drawing,
@@ -988,7 +989,7 @@ internal static class WpfDrawingReplay
         if (geometry is MediaGeometry mediaGeometry
             && IsUsableRect(mediaGeometry.Bounds, out var mediaBounds))
         {
-            fillGeometry = new TileBrushFillGeometry(geometry, mediaBounds, mediaGeometry, null);
+            fillGeometry = new TileBrushFillGeometry(geometry, mediaBounds, mediaGeometry, null, false);
             return true;
         }
 
@@ -996,7 +997,29 @@ internal static class WpfDrawingReplay
             && TryReadPortableRect(portableGeometry.Bounds, out var portableBounds)
             && IsUsableRect(portableBounds, out portableBounds))
         {
-            fillGeometry = new TileBrushFillGeometry(geometry, portableBounds, null, portableGeometry);
+            fillGeometry = new TileBrushFillGeometry(geometry, portableBounds, null, portableGeometry, false);
+            return true;
+        }
+
+        if (geometry is Rect rect
+            && IsUsableRect(rect, out rect))
+        {
+            fillGeometry = new TileBrushFillGeometry(geometry, rect, null, null, true);
+            return true;
+        }
+
+        if (geometry is WpfReplayRect replayRect
+            && IsUsableRect(new Rect(replayRect.X, replayRect.Y, replayRect.Width, replayRect.Height), out rect))
+        {
+            fillGeometry = new TileBrushFillGeometry(geometry, rect, null, null, true);
+            return true;
+        }
+
+        if (geometry is PortableRect portableRect
+            && TryReadPortableRect(portableRect, out rect)
+            && IsUsableRect(rect, out rect))
+        {
+            fillGeometry = new TileBrushFillGeometry(geometry, rect, null, null, true);
             return true;
         }
 
@@ -1010,6 +1033,12 @@ internal static class WpfDrawingReplay
             && sink is IWpfNativeGeometryCommandSink nativeGeometrySink
             && nativeGeometrySink.PushNativeGeometryClip(geometry.PortableGeometry))
         {
+            return true;
+        }
+
+        if (geometry.IsRectangle)
+        {
+            PushRectangleClip(sink, geometry.Bounds);
             return true;
         }
 

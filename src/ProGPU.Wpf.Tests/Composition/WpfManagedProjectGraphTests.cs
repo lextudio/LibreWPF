@@ -6388,8 +6388,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return TryReplayPortableTileBrushFill(portableSource, geometry, sink, imageSourceAdapter, out status)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("object? geometry,", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryGetTileBrushFillGeometry(geometry, out var fillGeometry)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("geometry is Rect rect", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("geometry is WpfReplayRect replayRect", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("geometry is PortableRect portableRect", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PushTileBrushFillClip(sink, geometry)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(geometry.PortableGeometry)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("if (geometry.IsRectangle)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PushRectangleClip(sink, tile.Bounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeClipSink.PushNativeClip(ToReplayRect(bounds))", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PortableTileBrushSourceAbsenceDoesNotFallBackToReflectedImageBrushShape", resolverTests, StringComparison.Ordinal);
@@ -11792,8 +11796,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("GetConstructors(MemberFlags)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("private readonly Func<object?, MediaImageSource?>? _imageSourceAdapter", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushRectangle(brush, pen, rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("WpfResourceResolver.CreateRectanglePath(rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfDrawingReplay.TryReplayTileBrushFill(", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("WpfResourceResolver.CreateRectanglePath(mediaRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("_sink is IWpfNativePrimitiveCommandSink nativeSink", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeLine(mediaPen, replayPoint0, replayPoint1)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeRectangle(mediaBrush, mediaPen, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);

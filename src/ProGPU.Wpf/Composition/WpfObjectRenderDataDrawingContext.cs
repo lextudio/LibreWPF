@@ -173,7 +173,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             && WpfDrawingReplay.IsTileBrush(brush)
             && WpfDrawingReplay.TryReplayTileBrushFill(
                 brush,
-                WpfResourceResolver.CreateRectanglePath(mediaRectangle),
+                mediaRectangle,
                 _sink,
                 _resources.AdaptImageSource,
                 out var brushReplayStatus))

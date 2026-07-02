@@ -285,7 +285,7 @@ public sealed class WpfCompositionDrawingContextTests
         Assert.Equal(
             new[]
             {
-                "PushClip",
+                "PushNativeClip",
                 "PushNativeClip",
                 "PushNativeTransform",
                 "DrawGeometry",
@@ -294,11 +294,13 @@ public sealed class WpfCompositionDrawingContextTests
                 "Pop"
             },
             sink.Operations);
-        var nativeClip = Assert.Single(sink.NativeClips);
+        Assert.Equal(2, sink.NativeClips.Count);
+        var nativeClip = sink.NativeClips[0];
         Assert.Equal(1, nativeClip.X);
         Assert.Equal(2, nativeClip.Y);
         Assert.Equal(30, nativeClip.Width);
         Assert.Equal(40, nativeClip.Height);
+        Assert.Equal(nativeClip, sink.NativeClips[1]);
         Assert.Contains(drawingBrush, sink.VisualDependencies);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }

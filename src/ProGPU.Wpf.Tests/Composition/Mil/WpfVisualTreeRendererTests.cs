@@ -1426,6 +1426,30 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeUsesNativeMediaGeometryClipForLocalNonRectangleVisualClip()
+    {
+        var clip = CreateTrianglePathGeometry();
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
+        {
+            HasClip = true,
+            Clip = clip
+        });
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushNativeMediaGeometryClip", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Empty(sink.RetainedVisualStates);
+        Assert.Empty(sink.Clips);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Same(clip, Assert.Single(sink.NativeMediaGeometryClips));
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreeAppliesOffsetAndOpacityAroundContentAndChildren()
     {
         var root = new FakePortableVisualStateVisual(new PortableVisualState

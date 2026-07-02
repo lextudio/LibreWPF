@@ -923,7 +923,11 @@ public sealed class WpfVisualTreeRenderer
             }
             else if (WpfResourceResolver.AdaptGeometry(clip) is { } clipGeometry)
             {
-                sink.PushClip(clipGeometry);
+                if (!TryPushNativeMediaVisualClip(sink, clipGeometry))
+                {
+                    sink.PushClip(clipGeometry);
+                }
+
                 popCount++;
             }
             else
@@ -1111,6 +1115,21 @@ public sealed class WpfVisualTreeRenderer
             && clip is IPortableGeometryPathSource portableGeometry
             && portableGeometry.TryGetPortableGeometryPath(out var portablePath)
             && nativeGeometrySink.PushNativeGeometryClip(portablePath);
+    }
+
+    private static bool TryPushNativeMediaVisualClip(
+        IWpfCompositionCommandSink sink,
+        MediaGeometry clipGeometry)
+    {
+        if (sink is IWpfNativeClipCommandSink nativeClipSink
+            && WpfMediaRectangleClipReader.TryGetRectangleClipBounds(clipGeometry, out var clipBounds))
+        {
+            nativeClipSink.PushNativeClip(clipBounds);
+            return true;
+        }
+
+        return sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && nativeGeometrySink.PushNativeGeometryClip(clipGeometry);
     }
 
     private static void PushRectangleClip(IWpfCompositionCommandSink sink, WpfReplayRect bounds)
@@ -1997,6 +2016,12 @@ public sealed class WpfVisualTreeRenderer
             }
 
             PushClipCore(bounds);
+            return true;
+        }
+
+        public bool PushNativeGeometryClip(MediaGeometry clipGeometry)
+        {
+            PushClip(clipGeometry);
             return true;
         }
 

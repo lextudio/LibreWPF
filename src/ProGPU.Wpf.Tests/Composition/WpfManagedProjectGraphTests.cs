@@ -86,6 +86,48 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ProGpuWpfProductSourceStaysFreeOfReflectionMarkers()
+    {
+        var projectPath = FindRepoPath("src", "ProGPU.Wpf", "ProGPU.Wpf.csproj");
+        var sourceRoot = Path.GetDirectoryName(projectPath)!;
+        string[] forbiddenMarkers =
+        [
+            "using System.Reflection",
+            "System.Reflection.Assembly",
+            "TargetInvocationException",
+            "Type.GetType",
+            "GetType().FullName",
+            "BindingFlags",
+            "GetProperty(",
+            "GetMethod(",
+            "GetField(",
+            "GetConstructor(",
+            "Activator.CreateInstance",
+            "Assembly.Load",
+            "ReflectionReplay",
+        ];
+
+        foreach (var sourcePath in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories))
+        {
+            var relativePath = Path.GetRelativePath(sourceRoot, sourcePath);
+            if (relativePath.StartsWith($"bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                || relativePath.StartsWith($"obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var source = File.ReadAllText(sourcePath);
+
+            foreach (var marker in forbiddenMarkers)
+            {
+                Assert.False(
+                    source.Contains(marker, StringComparison.Ordinal),
+                    $"{relativePath} must not contain reflection marker '{marker}'.");
+            }
+        }
+    }
+
+    [Fact]
     public void SystemXamlNameScopeDictionaryImplementsDictionaryContract()
     {
         var sourcePath = FindRepoPath(

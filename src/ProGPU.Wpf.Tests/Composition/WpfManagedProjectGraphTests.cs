@@ -5666,6 +5666,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static bool TryGetPrimitiveMediaGeometryBounds", rendererSource, StringComparison.Ordinal);
         Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(geometry, out bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out var nativeBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("WpfMediaEllipseGeometryReader.TryGetEllipseBounds(geometry, out bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfMediaGeometryBoundsReader", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
         Assert.Contains("geometry is PortableGeometryPathSource portableGeometrySource", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
@@ -5675,6 +5676,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplaySubtreeUsesNativePortableGeometryClipForNonRectangleVisualClip", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativeMediaGeometryClipForLocalNonRectangleVisualClip", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreePreservesIntersectedPortableVisualClipsAsNativeCombinedGeometryBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeUsesNativePortableClipBoundsBeforeStaleMetadataFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableGeometryRenderDataWithoutManagedGeometry", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableRectangleGeometryPathPoints", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableLineGeometryPathPoints", rendererTests, StringComparison.Ordinal);

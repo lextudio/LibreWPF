@@ -560,6 +560,37 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeUsesNativePortableClipBoundsBeforeStaleMetadataFallback()
+    {
+        var root = new FakePortableVisualStateAndLayoutVisual(
+            new PortableVisualState
+            {
+                HasClip = true,
+                Clip = new PortableUnfilledUnstrokedTriangleGeometry(0, 0, 100, 50, new PortableRect(-100, -100, 1, 1))
+            },
+            new PortableVisualLayoutState
+            {
+                HasLayoutClip = true,
+                LayoutClip = new PortableRectangleClipGeometry(10, 12, 60, 70, new PortableRect(-200, -200, 1, 1))
+            });
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushNativeGeometryClip", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Empty(sink.RetainedVisualStates);
+        Assert.Empty(sink.Clips);
+        var clip = Assert.Single(sink.NativeGeometryClips);
+        Assert.Equal(PortableGeometryPathKind.Combined, clip.Kind);
+        Assert.NotNull(clip.PathA);
+        Assert.NotNull(clip.PathB);
+        Assert.Equal(1, clip.CombineOperation);
+        Assert.Equal(new PortableRect(10, 12, 60, 38), clip.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeLowersVisualScrollableAreaClipIntoRetainedOwnerScopes()
     {
         var root = new FakePortableVisualStateVisual(CreatePortableScrollableAreaClipState(2, 3, 40, 50));
@@ -5515,6 +5546,41 @@ public sealed class WpfVisualTreeRendererTests
                                 new PortablePoint(103, 4),
                                 isSmoothJoin: false,
                                 isStroked: true)
+                        ]
+                    }
+                ]
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableUnfilledUnstrokedTriangleGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableUnfilledUnstrokedTriangleGeometry(double x, double y, double width, double height, PortableRect bounds)
+        {
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = bounds,
+                Transform = PortableMatrix3x2.Identity,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(x, y),
+                        IsClosed = true,
+                        IsFilled = false,
+                        Segments =
+                        [
+                            PortablePathSegment.Line(new PortablePoint(x + width, y), isSmoothJoin: false, isStroked: false),
+                            PortablePathSegment.Line(new PortablePoint(x + (width * 0.5), y + height), isSmoothJoin: false, isStroked: false)
                         ]
                     }
                 ]

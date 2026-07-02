@@ -798,6 +798,12 @@ public sealed class WpfVisualTreeRenderer
             return true;
         }
 
+        if (WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out var nativeBounds))
+        {
+            bounds = nativeBounds;
+            return true;
+        }
+
         bounds = ToReplayRect(geometry.Bounds);
         return IsUsableBounds(bounds);
     }

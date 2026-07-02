@@ -107,6 +107,11 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         ThrowIfClosed();
         MediaBrush? mediaBrush = WpfResourceResolver.AdaptBrush(brush);
         MediaPen? mediaPen = WpfResourceResolver.AdaptPen(pen);
+        if (TryReplayTileBrushRectangle(brush, pen, rectangle, mediaPen))
+        {
+            return;
+        }
+
         if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
         {
             DrawNativeRectangle(brush, pen, rectangle, mediaBrush, mediaPen, nativeSink);
@@ -157,6 +162,46 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         CountUnsupportedIfPresent(brush, pen);
     }
 
+    private bool TryReplayTileBrushRectangle(
+        object? brush,
+        object? pen,
+        object? rectangle,
+        MediaPen? mediaPen)
+    {
+        if (brush == null
+            || !WpfDrawingReplay.IsTileBrush(brush)
+            || !TryReadRect(rectangle, out var mediaRectangle)
+            || !WpfDrawingReplay.TryReplayTileBrushFill(
+                brush,
+                mediaRectangle,
+                _sink,
+                _resources.AdaptImageSource,
+                out var brushReplayStatus))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(brush, pen);
+        if (mediaPen != null)
+        {
+            DrawRectanglePenAfterTileBrush(mediaPen, mediaRectangle);
+        }
+
+        CountDrawingReplayStatus(brushReplayStatus);
+        return true;
+    }
+
+    private void DrawRectanglePenAfterTileBrush(MediaPen pen, Rect rectangle)
+    {
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeRectangle(null, pen, ToReplayRect(rectangle));
+            return;
+        }
+
+        _sink.DrawRectangle(null, pen, rectangle);
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     private void DrawRectangleTypedFallback(
         object? brush,
@@ -183,7 +228,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             RegisterRetainedDependencies(brush, pen);
             if (mediaPen != null)
             {
-                _sink.DrawRectangle(null, mediaPen, mediaRectangle);
+                DrawRectanglePenAfterTileBrush(mediaPen, mediaRectangle);
             }
 
             CountDrawingReplayStatus(brushReplayStatus);

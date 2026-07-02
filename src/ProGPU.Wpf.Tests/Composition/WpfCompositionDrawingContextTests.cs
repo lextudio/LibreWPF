@@ -817,6 +817,30 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextDrawsTileBrushRectanglePenAsNativeRectangle()
+    {
+        var sink = new NativeRecordingSink();
+        var imageSource = new FakeBitmapSource();
+        var imageBrush = new FakeImageBrush(imageSource);
+        var adapter = new FakeImageSourceAdapter();
+        var pen = new MediaPen(Brushes.Black, 2);
+        using var context = new WpfObjectRenderDataDrawingContext(sink, adapter);
+
+        context.DrawRectangle(imageBrush, pen, new PortableRect(1, 2, 30, 40));
+
+        Assert.Equal(new[] { "PushNativeClip", "DrawImage", "Pop", "DrawNativeRectangle" }, sink.Operations);
+        Assert.Same(imageSource, adapter.LastImageSource);
+        var replayed = Assert.Single(sink.NativeRectangles);
+        Assert.Null(replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayRect(1, 2, 30, 40), replayed.Rectangle);
+        Assert.Empty(sink.Rectangles);
+        Assert.Contains(imageBrush, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextReplaysDrawingBrushRectangleThroughSharedTileBrushReplay()
     {
         var sink = new RecordingSink();

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Numerics;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaGeometry = System.Windows.Media.Geometry;
@@ -15,7 +16,7 @@ internal static class WpfMediaLineGeometryReader
         out Point startPoint,
         out Point endPoint)
     {
-        if (!HasIdentityGeometryTransform(geometry))
+        if (!TryGetGeometryTransform(geometry, out var transform))
         {
             startPoint = default;
             endPoint = default;
@@ -24,14 +25,16 @@ internal static class WpfMediaLineGeometryReader
 
         if (geometry is MediaLineGeometry lineGeometry
             && IsUsablePoint(lineGeometry.StartPoint, out startPoint)
-            && IsUsablePoint(lineGeometry.EndPoint, out endPoint))
+            && IsUsablePoint(lineGeometry.EndPoint, out endPoint)
+            && TryTransformPoint(startPoint, transform, out startPoint)
+            && TryTransformPoint(endPoint, transform, out endPoint))
         {
             return true;
         }
 
         if (geometry is MediaPathGeometry pathGeometry)
         {
-            return TryGetPathLinePoints(pathGeometry, out startPoint, out endPoint);
+            return TryGetPathLinePoints(pathGeometry, transform, out startPoint, out endPoint);
         }
 
         startPoint = default;
@@ -43,18 +46,19 @@ internal static class WpfMediaLineGeometryReader
         MediaGeometry geometry,
         out IReadOnlyList<WpfReplayLineSegment> segments)
     {
-        if (!HasIdentityGeometryTransform(geometry)
+        if (!TryGetGeometryTransform(geometry, out var transform)
             || geometry is not MediaPathGeometry pathGeometry)
         {
             segments = Array.Empty<WpfReplayLineSegment>();
             return false;
         }
 
-        return TryGetPathPolylineSegments(pathGeometry, out segments);
+        return TryGetPathPolylineSegments(pathGeometry, transform, out segments);
     }
 
     private static bool TryGetPathLinePoints(
         MediaPathGeometry pathGeometry,
+        Matrix4x4 transform,
         out Point startPoint,
         out Point endPoint)
     {
@@ -76,7 +80,9 @@ internal static class WpfMediaLineGeometryReader
         if (figure.Segments[0] is MediaLineSegment lineSegment
             && lineSegment.IsStroked
             && IsUsablePoint(figure.StartPoint, out startPoint)
-            && IsUsablePoint(lineSegment.Point, out endPoint))
+            && IsUsablePoint(lineSegment.Point, out endPoint)
+            && TryTransformPoint(startPoint, transform, out startPoint)
+            && TryTransformPoint(endPoint, transform, out endPoint))
         {
             return true;
         }
@@ -88,6 +94,7 @@ internal static class WpfMediaLineGeometryReader
 
     private static bool TryGetPathPolylineSegments(
         MediaPathGeometry pathGeometry,
+        Matrix4x4 transform,
         out IReadOnlyList<WpfReplayLineSegment> segments)
     {
         if (pathGeometry.Figures.Count != 1)
@@ -111,7 +118,8 @@ internal static class WpfMediaLineGeometryReader
             return false;
         }
 
-        if (!IsUsablePoint(figure.StartPoint, out var startPoint))
+        if (!IsUsablePoint(figure.StartPoint, out var startPoint)
+            || !TryTransformPoint(startPoint, transform, out startPoint))
         {
             segments = Array.Empty<WpfReplayLineSegment>();
             return false;
@@ -124,7 +132,8 @@ internal static class WpfMediaLineGeometryReader
         {
             if (figure.Segments[i] is not MediaLineSegment lineSegment
                 || !lineSegment.IsStroked
-                || !IsUsablePoint(lineSegment.Point, out var nextPoint))
+                || !IsUsablePoint(lineSegment.Point, out var nextPoint)
+                || !TryTransformPoint(nextPoint, transform, out nextPoint))
             {
                 segments = Array.Empty<WpfReplayLineSegment>();
                 return false;
@@ -152,12 +161,16 @@ internal static class WpfMediaLineGeometryReader
         return true;
     }
 
-    private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
+    private static bool TryGetGeometryTransform(MediaGeometry geometry, out Matrix4x4 transform)
     {
-        var transform = geometry.Transform;
-        return transform == null
-            || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
-                && WpfResourceResolver.IsIdentityMatrix(matrix));
+        var transformValue = geometry.Transform;
+        if (transformValue == null)
+        {
+            transform = Matrix4x4.Identity;
+            return true;
+        }
+
+        return WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out transform);
     }
 
     private static bool IsUsablePoint(Point point, out Point usablePoint)
@@ -165,6 +178,15 @@ internal static class WpfMediaLineGeometryReader
         usablePoint = point;
         return double.IsFinite(point.X)
             && double.IsFinite(point.Y);
+    }
+
+    private static bool TryTransformPoint(Point point, Matrix4x4 transform, out Point transformedPoint)
+    {
+        var x = (point.X * transform.M11) + (point.Y * transform.M21) + transform.M41;
+        var y = (point.X * transform.M12) + (point.Y * transform.M22) + transform.M42;
+        transformedPoint = new Point(x, y);
+        return double.IsFinite(x)
+            && double.IsFinite(y);
     }
 
     private static bool SamePoint(Point left, Point right)

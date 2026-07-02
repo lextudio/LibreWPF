@@ -307,7 +307,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void ObjectRenderDataDrawingContextKeepsTransformedLineGeometryOnGenericGeometryPath()
+    public void ObjectRenderDataDrawingContextDrawsTransformedLineGeometryAsNativeLine()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfObjectRenderDataDrawingContext(sink);
@@ -319,12 +319,12 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.DrawGeometry(null, pen, geometry);
 
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
-        Assert.Empty(sink.NativeLines);
-        var replayed = Assert.Single(sink.Geometries);
-        Assert.Null(replayed.Brush);
+        Assert.Equal(new[] { "DrawNativeLine" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        var replayed = Assert.Single(sink.NativeLines);
         Assert.Same(pen, replayed.Pen);
-        Assert.Same(geometry, replayed.Geometry);
+        Assert.Equal(new WpfReplayPoint(11, 2), replayed.Point0);
+        Assert.Equal(new WpfReplayPoint(40, 40), replayed.Point1);
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
@@ -1102,6 +1102,34 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextDrawsTransformedPolylinePathGeometryAsNativeLines()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreatePolylinePathGeometry(
+            new Point(1, 2),
+            new Point(30, 40),
+            new Point(50, 60));
+        geometry.Transform = new MatrixTransform(new Matrix { M11 = 2, M22 = 3, OffsetX = 5, OffsetY = -1 });
+
+        context.DrawGeometry(null, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeLine", "DrawNativeLine" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        Assert.Equal(2, sink.NativeLines.Count);
+        Assert.Same(pen, sink.NativeLines[0].Pen);
+        Assert.Equal(new WpfReplayPoint(7, 5), sink.NativeLines[0].Point0);
+        Assert.Equal(new WpfReplayPoint(65, 119), sink.NativeLines[0].Point1);
+        Assert.Equal(new WpfReplayPoint(65, 119), sink.NativeLines[1].Point0);
+        Assert.Equal(new WpfReplayPoint(105, 179), sink.NativeLines[1].Point1);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextDrawsClosedPolylinePathGeometryAsNativeLinesWithoutGenericGeometryFallback()
     {
         var sink = new NativeRecordingSink();
@@ -1131,7 +1159,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void GeneratedDrawingContextKeepsTransformedLineGeometryOnGenericGeometryPath()
+    public void GeneratedDrawingContextDrawsTransformedLineGeometryAsNativeLine()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfCompositionDrawingContext(sink);
@@ -1143,12 +1171,12 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.DrawGeometry(null, pen, geometry);
 
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
-        Assert.Empty(sink.NativeLines);
-        var replayed = Assert.Single(sink.Geometries);
-        Assert.Null(replayed.Brush);
+        Assert.Equal(new[] { "DrawNativeLine" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        var replayed = Assert.Single(sink.NativeLines);
         Assert.Same(pen, replayed.Pen);
-        Assert.Same(geometry, replayed.Geometry);
+        Assert.Equal(new WpfReplayPoint(11, 2), replayed.Point0);
+        Assert.Equal(new WpfReplayPoint(40, 40), replayed.Point1);
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
@@ -1556,6 +1584,31 @@ public sealed class WpfCompositionDrawingContextTests
         Assert.Same(pen, replayed.Pen);
         Assert.Equal(new WpfReplayPoint(1, 2), replayed.Point0);
         Assert.Equal(new WpfReplayPoint(30, 40), replayed.Point1);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void DrawDrawingReplaysTransformedLocalLineGeometryAsNativeLineWithoutManagedGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = new LineGeometry(new Point(1, 2), new Point(30, 40))
+        {
+            Transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 10 })
+        };
+        var drawing = new FakeGeometryDrawing(Brushes.Red, pen, geometry);
+
+        var status = context.DrawDrawing(drawing);
+
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+        Assert.Equal(new[] { "DrawNativeLine" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeLines);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayPoint(11, 2), replayed.Point0);
+        Assert.Equal(new WpfReplayPoint(40, 40), replayed.Point1);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
 

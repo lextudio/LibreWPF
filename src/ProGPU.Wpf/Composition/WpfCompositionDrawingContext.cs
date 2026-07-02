@@ -8,7 +8,6 @@ using MediaFormattedText = System.Windows.Media.FormattedText;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
-using MediaLineGeometry = System.Windows.Media.LineGeometry;
 using MediaPen = System.Windows.Media.Pen;
 using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
@@ -680,17 +679,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         out Point startPoint,
         out Point endPoint)
     {
-        if (geometry is MediaLineGeometry lineGeometry
-            && HasIdentityGeometryTransform(lineGeometry)
-            && IsUsablePoint(lineGeometry.StartPoint, out startPoint)
-            && IsUsablePoint(lineGeometry.EndPoint, out endPoint))
-        {
-            return true;
-        }
-
-        startPoint = default;
-        endPoint = default;
-        return false;
+        return WpfMediaLineGeometryReader.TryGetLinePoints(geometry, out startPoint, out endPoint);
     }
 
     private static bool TryGetPrimitiveRectangleGeometry(

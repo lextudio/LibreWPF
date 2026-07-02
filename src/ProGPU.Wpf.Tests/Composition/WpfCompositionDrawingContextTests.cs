@@ -228,6 +228,29 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextDrawsLocalLinePathGeometryAsNativeLineWithoutGenericGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreateLinePathGeometry(new Point(1, 2), new Point(30, 40));
+
+        context.DrawGeometry(Brushes.Red, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeLine" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeLines);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayPoint(1, 2), replayed.Point0);
+        Assert.Equal(new WpfReplayPoint(30, 40), replayed.Point1);
+        Assert.Contains(Brushes.Red, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextKeepsTransformedLineGeometryOnGenericGeometryPath()
     {
         var sink = new NativeRecordingSink();
@@ -927,6 +950,29 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextDrawsLinePathGeometryAsNativeLineWithoutGenericGeometryFallback()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreateLinePathGeometry(new Point(1, 2), new Point(30, 40));
+
+        context.DrawGeometry(Brushes.Green, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeLine" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeLines);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayPoint(1, 2), replayed.Point0);
+        Assert.Equal(new WpfReplayPoint(30, 40), replayed.Point1);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextKeepsTransformedLineGeometryOnGenericGeometryPath()
     {
         var sink = new NativeRecordingSink();
@@ -1356,6 +1402,28 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void DrawDrawingReplaysLocalLinePathGeometryAsNativeLineWithoutManagedGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreateLinePathGeometry(new Point(1, 2), new Point(30, 40));
+        var drawing = new FakeGeometryDrawing(Brushes.Red, pen, geometry);
+
+        var status = context.DrawDrawing(drawing);
+
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+        Assert.Equal(new[] { "DrawNativeLine" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeLines);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayPoint(1, 2), replayed.Point0);
+        Assert.Equal(new WpfReplayPoint(30, 40), replayed.Point1);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void DrawDrawingReplaysLocalRectanglePathGeometryAsNativeRectangleWithoutManagedGeometry()
     {
         var sink = new NativeRecordingSink();
@@ -1706,6 +1774,21 @@ public sealed class WpfCompositionDrawingContextTests
         figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width, bounds.Y), isStroked: true));
         figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width, bounds.Y + bounds.Height), isStroked: true));
         figure.Segments.Add(new LineSegment(new Point(bounds.X, bounds.Y + bounds.Height), isStroked: true));
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
+    }
+
+    private static PathGeometry CreateLinePathGeometry(Point startPoint, Point endPoint)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = startPoint,
+            IsClosed = false,
+            IsFilled = false
+        };
+        figure.Segments.Add(new LineSegment(endPoint, isStroked: true));
 
         var geometry = new PathGeometry();
         geometry.Figures.Add(figure);

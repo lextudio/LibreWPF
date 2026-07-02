@@ -7,7 +7,6 @@ using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
-using MediaLineGeometry = System.Windows.Media.LineGeometry;
 using MediaPortableRenderDataSink = System.Windows.Media.IPortableRenderDataDrawingContextSink;
 using MediaPen = System.Windows.Media.Pen;
 using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
@@ -1385,12 +1384,9 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         out Point startPoint,
         out Point endPoint)
     {
-        if (geometry is MediaLineGeometry lineGeometry
-            && HasIdentityGeometryTransform(lineGeometry)
-            && IsUsablePoint(lineGeometry.StartPoint, out startPoint)
-            && IsUsablePoint(lineGeometry.EndPoint, out endPoint))
+        if (geometry is MediaGeometry mediaGeometry)
         {
-            return true;
+            return WpfMediaLineGeometryReader.TryGetLinePoints(mediaGeometry, out startPoint, out endPoint);
         }
 
         startPoint = default;

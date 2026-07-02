@@ -1128,7 +1128,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetVisualBitmapScalingMode(visual, out var bitmapScalingMode))
         {
-            if (WpfBitmapScalingModeReflection.IsSupported(bitmapScalingMode))
+            if (WpfBitmapScalingModeMapper.IsSupported(bitmapScalingMode))
             {
                 sink.PushBitmapScalingMode(bitmapScalingMode);
                 popCount++;
@@ -1141,7 +1141,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetVisualEdgeMode(visual, out var edgeMode))
         {
-            if (WpfEdgeModeReflection.IsSupported(edgeMode))
+            if (WpfEdgeModeMapper.IsSupported(edgeMode))
             {
                 sink.PushEdgeMode(edgeMode);
                 popCount++;
@@ -1155,7 +1155,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         var pushedTextRenderingMode = false;
         if (TryGetVisualTextRenderingMode(visual, out var textRenderingMode))
         {
-            if (WpfTextRenderingModeReflection.IsSupported(textRenderingMode))
+            if (WpfTextRenderingModeMapper.IsSupported(textRenderingMode))
             {
                 sink.PushTextRenderingMode(textRenderingMode);
                 popCount++;
@@ -1169,7 +1169,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (!pushedTextRenderingMode
             && TryGetVisualClearTypeHint(visual, out var clearTypeHint)
-            && WpfTextRenderingModeReflection.TryMapClearTypeHintToTextRenderingMode(clearTypeHint, out var clearTypeMode))
+            && WpfTextRenderingModeMapper.TryMapClearTypeHintToTextRenderingMode(clearTypeHint, out var clearTypeMode))
         {
             sink.PushTextRenderingMode(clearTypeMode);
             popCount++;
@@ -1177,7 +1177,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetVisualTextHintingMode(visual, out var textHintingMode))
         {
-            if (WpfTextRenderingModeReflection.IsSupportedTextHintingMode(textHintingMode))
+            if (WpfTextRenderingModeMapper.IsSupportedTextHintingMode(textHintingMode))
             {
                 sink.PushTextHintingMode(textHintingMode);
                 popCount++;
@@ -1209,7 +1209,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         var count = 0;
 
         if (TryGetVisualClearTypeHint(visual, out var clearTypeHint)
-            && !WpfTextRenderingModeReflection.IsSupportedClearTypeHint(clearTypeHint))
+            && !WpfTextRenderingModeMapper.IsSupportedClearTypeHint(clearTypeHint))
         {
             count++;
         }

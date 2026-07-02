@@ -2,7 +2,7 @@ using System;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
-internal static class WpfBitmapScalingModeReflection
+internal static class WpfBitmapScalingModeMapper
 {
     public static bool HasExplicitValue(object? value)
     {

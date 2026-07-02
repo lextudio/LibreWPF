@@ -2,7 +2,7 @@ using System;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
-internal static class WpfEdgeModeReflection
+internal static class WpfEdgeModeMapper
 {
     public static bool HasExplicitValue(object? value)
     {

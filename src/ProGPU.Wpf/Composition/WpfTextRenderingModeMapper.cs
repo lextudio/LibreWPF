@@ -2,7 +2,7 @@ using System;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
-internal static class WpfTextRenderingModeReflection
+internal static class WpfTextRenderingModeMapper
 {
     public static bool HasExplicitValue(object? value)
     {

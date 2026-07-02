@@ -672,9 +672,9 @@ internal static class WpfReflectionDrawingReplay
                 hasPortableDrawingGroupState,
                 drawingGroupState,
                 out var bitmapScalingMode)
-            && WpfBitmapScalingModeReflection.HasExplicitValue(bitmapScalingMode))
+            && WpfBitmapScalingModeMapper.HasExplicitValue(bitmapScalingMode))
         {
-            if (WpfBitmapScalingModeReflection.IsSupported(bitmapScalingMode))
+            if (WpfBitmapScalingModeMapper.IsSupported(bitmapScalingMode))
             {
                 sink.PushBitmapScalingMode(bitmapScalingMode);
                 popCount++;
@@ -690,9 +690,9 @@ internal static class WpfReflectionDrawingReplay
                 hasPortableDrawingGroupState,
                 drawingGroupState,
                 out var edgeMode)
-            && WpfEdgeModeReflection.HasExplicitValue(edgeMode))
+            && WpfEdgeModeMapper.HasExplicitValue(edgeMode))
         {
-            if (WpfEdgeModeReflection.IsSupported(edgeMode))
+            if (WpfEdgeModeMapper.IsSupported(edgeMode))
             {
                 sink.PushEdgeMode(edgeMode);
                 popCount++;
@@ -709,9 +709,9 @@ internal static class WpfReflectionDrawingReplay
                 hasPortableDrawingGroupState,
                 drawingGroupState,
                 out var textRenderingMode)
-            && WpfTextRenderingModeReflection.HasExplicitValue(textRenderingMode))
+            && WpfTextRenderingModeMapper.HasExplicitValue(textRenderingMode))
         {
-            if (WpfTextRenderingModeReflection.IsSupported(textRenderingMode))
+            if (WpfTextRenderingModeMapper.IsSupported(textRenderingMode))
             {
                 sink.PushTextRenderingMode(textRenderingMode);
                 popCount++;
@@ -729,8 +729,8 @@ internal static class WpfReflectionDrawingReplay
                 hasPortableDrawingGroupState,
                 drawingGroupState,
                 out var clearTypeHint)
-            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
-            && WpfTextRenderingModeReflection.TryMapClearTypeHintToTextRenderingMode(clearTypeHint, out var clearTypeMode))
+            && WpfTextRenderingModeMapper.HasExplicitClearTypeHint(clearTypeHint)
+            && WpfTextRenderingModeMapper.TryMapClearTypeHintToTextRenderingMode(clearTypeHint, out var clearTypeMode))
         {
             sink.PushTextRenderingMode(clearTypeMode);
             popCount++;
@@ -741,9 +741,9 @@ internal static class WpfReflectionDrawingReplay
                 hasPortableDrawingGroupState,
                 drawingGroupState,
                 out var textHintingMode)
-            && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode))
+            && WpfTextRenderingModeMapper.HasExplicitTextHintingMode(textHintingMode))
         {
-            if (WpfTextRenderingModeReflection.IsSupportedTextHintingMode(textHintingMode))
+            if (WpfTextRenderingModeMapper.IsSupportedTextHintingMode(textHintingMode))
             {
                 sink.PushTextHintingMode(textHintingMode);
                 popCount++;
@@ -1392,8 +1392,8 @@ internal static class WpfReflectionDrawingReplay
                 hasPortableDrawingGroupState,
                 drawingGroupState,
                 out var clearTypeHint)
-            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
-            && !WpfTextRenderingModeReflection.IsSupportedClearTypeHint(clearTypeHint))
+            && WpfTextRenderingModeMapper.HasExplicitClearTypeHint(clearTypeHint)
+            && !WpfTextRenderingModeMapper.IsSupportedClearTypeHint(clearTypeHint))
         {
             return true;
         }
@@ -1403,8 +1403,8 @@ internal static class WpfReflectionDrawingReplay
                 hasPortableDrawingGroupState,
                 drawingGroupState,
                 out var textHintingMode)
-            && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode)
-            && !WpfTextRenderingModeReflection.IsSupportedTextHintingMode(textHintingMode);
+            && WpfTextRenderingModeMapper.HasExplicitTextHintingMode(textHintingMode)
+            && !WpfTextRenderingModeMapper.IsSupportedTextHintingMode(textHintingMode);
     }
 
     private static bool TryResolveDrawingGroupEffect(

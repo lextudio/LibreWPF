@@ -871,7 +871,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (WpfBitmapScalingModeReflection.TryMapToTextureSamplingMode(bitmapScalingMode, out var samplingMode))
+        if (WpfBitmapScalingModeMapper.TryMapToTextureSamplingMode(bitmapScalingMode, out var samplingMode))
         {
             _bitmapScalingModeStack.Push(samplingMode);
             _pushStack.Push(PushKind.BitmapScalingMode);
@@ -890,7 +890,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (WpfEdgeModeReflection.TryMapToAliased(edgeMode, out var isAliased))
+        if (WpfEdgeModeMapper.TryMapToAliased(edgeMode, out var isAliased))
         {
             _edgeModeStack.Push(isAliased);
             _pushStack.Push(PushKind.EdgeMode);
@@ -909,7 +909,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (WpfTextRenderingModeReflection.TryMapToTextRenderingMode(textRenderingMode, out var mode))
+        if (WpfTextRenderingModeMapper.TryMapToTextRenderingMode(textRenderingMode, out var mode))
         {
             _textRenderingModeStack.Push(mode);
             _pushStack.Push(PushKind.TextRenderingMode);
@@ -928,7 +928,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (WpfTextRenderingModeReflection.TryMapToTextHintingMode(textHintingMode, out var mode))
+        if (WpfTextRenderingModeMapper.TryMapToTextHintingMode(textHintingMode, out var mode))
         {
             _textHintingModeStack.Push(mode);
             _pushStack.Push(PushKind.TextHintingMode);

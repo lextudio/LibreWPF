@@ -3036,6 +3036,40 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsPreservesMetadataOnlyPortableBoundsFallback()
+    {
+        var geometry = new PortableMetadataOnlyGeometry(new PortableRect(12, 14, 32, 24));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(12, 14, 32, 24), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsRejectsStalePortableMetadataWhenPathDataCannotBeBound()
+    {
+        var geometry = new PortableInvalidPathGeometry(new PortableRect(12, 14, 32, 24));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.False(hasBounds);
+        Assert.Equal(default, bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
     public void TryGetDrawingBoundsUsesPortableCubicGeometryPathPointsBeforeStaleBoundsMetadata()
     {
         var geometry = new PortableCubicCurveGeometry(new PortableRect(0, 0, 1, 1));
@@ -5616,6 +5650,65 @@ public sealed class WpfVisualTreeRendererTests
                         [
                             PortablePathSegment.Line(
                                 new PortablePoint(47, 9),
+                                isSmoothJoin: false,
+                                isStroked: false)
+                        ]
+                    }
+                ]
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableMetadataOnlyGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableMetadataOnlyGeometry(PortableRect bounds)
+        {
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = bounds,
+                Transform = PortableMatrix3x2.Identity,
+                Figures = []
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableInvalidPathGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableInvalidPathGeometry(PortableRect bounds)
+        {
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = bounds,
+                Transform = PortableMatrix3x2.Identity,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(double.NaN, 9),
+                        IsClosed = false,
+                        IsFilled = false,
+                        Segments =
+                        [
+                            PortablePathSegment.Line(
+                                new PortablePoint(double.NaN, 9),
                                 isSmoothJoin: false,
                                 isStroked: false)
                         ]

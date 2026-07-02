@@ -22,6 +22,7 @@ using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunD
 using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
 using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
+using PortableGeometryPathKind = ProGPU.Wpf.Interop.PortableGeometryPathKind;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
 using PortableImageDrawingState = ProGPU.Wpf.Interop.PortableImageDrawingState;
 using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;
@@ -2347,7 +2348,8 @@ internal static class WpfDrawingReplay
                 return true;
             }
 
-            if (TryReadPortableRect(portableGeometry.Bounds, out bounds)
+            if (!HasPortableGeometryPathData(portableGeometry)
+                && TryReadPortableRect(portableGeometry.Bounds, out bounds)
                 && IsUsableRect(bounds, out bounds))
             {
                 return true;
@@ -2355,6 +2357,22 @@ internal static class WpfDrawingReplay
         }
 
         return TryGetDirectPrimitiveGeometryBounds(geometry, out bounds);
+    }
+
+    private static bool HasPortableGeometryPathData(PortableGeometryPath geometry)
+    {
+        if (geometry.Kind == PortableGeometryPathKind.Path)
+        {
+            return geometry.Figures.Length > 0;
+        }
+
+        if (geometry.Kind == PortableGeometryPathKind.Combined)
+        {
+            return (geometry.PathA != null && HasPortableGeometryPathData(geometry.PathA))
+                || (geometry.PathB != null && HasPortableGeometryPathData(geometry.PathB));
+        }
+
+        return false;
     }
 
     private static bool TryGetDirectPrimitiveGeometryBounds(object? geometry, out Rect bounds)

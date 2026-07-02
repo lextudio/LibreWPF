@@ -1551,7 +1551,18 @@ public sealed class ProGpuCompositionCommandSink :
         out VectorPathGeometry path,
         out WpfReplayRect bounds)
     {
-        return WpfPortablePathGeometryConverter.TryConvert(portablePath, transform, out path, out bounds);
+        if (!WpfPortablePathGeometryConverter.TryConvert(portablePath, transform, out path, out bounds))
+        {
+            return false;
+        }
+
+        if (transform.IsIdentity
+            && WpfPortablePathBoundsReader.TryGetPathBounds(portablePath, out var portableBounds))
+        {
+            bounds = portableBounds;
+        }
+
+        return true;
     }
 
 }

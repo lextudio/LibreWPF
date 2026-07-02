@@ -11864,6 +11864,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("PushNativeGeometryClip(PortableGeometryPath clipGeometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathGeometryConverter.TryConvert(portablePath, transform, out path, out bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(portablePath, out var portableBounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("bounds = portableBounds;", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathGeometryConverter.GetBoundsOrEmpty(path)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("private static VectorPathGeometry Convert(PortableGeometryPath portablePath)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
         Assert.Contains("portablePath.Kind == PortableGeometryPathKind.Combined", wpfPortablePathGeometryConverter, StringComparison.Ordinal);

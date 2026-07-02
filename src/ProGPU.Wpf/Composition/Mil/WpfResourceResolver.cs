@@ -40,8 +40,22 @@ using PortablePenLineJoin = ProGPU.Wpf.Interop.PortablePenLineJoin;
 using PortablePenSource = ProGPU.Wpf.Interop.IPortablePenSource;
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortableTransformMatrixSource = ProGPU.Wpf.Interop.IPortableTransformMatrixSource;
+using MediaBrushMappingMode = System.Windows.Media.BrushMappingMode;
+using MediaColorInterpolationMode = System.Windows.Media.ColorInterpolationMode;
+using MediaGradientSpreadMethod = System.Windows.Media.GradientSpreadMethod;
+using MediaGradientStop = System.Windows.Media.GradientStop;
+using MediaGradientStopCollection = System.Windows.Media.GradientStopCollection;
+using MediaLinearGradientBrush = System.Windows.Media.LinearGradientBrush;
+using MediaRadialGradientBrush = System.Windows.Media.RadialGradientBrush;
+using WpfPoint = System.Windows.Point;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
+
+internal enum ProGpuBrushMappingMode
+{
+    RelativeToBoundingBox,
+    Absolute
+}
 
 internal readonly struct WpfNativeGlyphRun
 {
@@ -377,27 +391,111 @@ public sealed class WpfResourceResolver :
                 return new SolidColorBrush(ToMediaColor(brush));
 
             case PortableBrushKind.LinearGradient:
-                if (!TryCreatePortableLinearGradientBrush(brush, mapRelativeToBounds: false, default, out var linearBrush, out _))
+                if (!TryCreatePortableLinearGradientMediaBrush(brush, out var linearBrush))
                 {
                     return null;
                 }
 
-                return new ProGpuPortableBrush(
-                    linearBrush,
-                    brush);
+                return linearBrush;
 
             case PortableBrushKind.RadialGradient:
-                if (!TryCreatePortableRadialGradientBrush(brush, mapRelativeToBounds: false, default, out var radialBrush, out _))
+                if (!TryCreatePortableRadialGradientMediaBrush(brush, out var radialBrush))
                 {
                     return null;
                 }
 
-                return new ProGpuPortableBrush(
-                    radialBrush,
-                    brush);
+                return radialBrush;
 
             default:
                 return null;
+        }
+    }
+
+    private static bool TryCreatePortableLinearGradientMediaBrush(
+        PortableBrush brush,
+        out MediaLinearGradientBrush mediaBrush)
+    {
+        mediaBrush = null!;
+        if (!TryCreateMediaGradientStops(brush.GradientStops, out var stops))
+        {
+            return false;
+        }
+
+        mediaBrush = new MediaLinearGradientBrush(
+            stops,
+            new WpfPoint(brush.StartPoint.X, brush.StartPoint.Y),
+            new WpfPoint(brush.EndPoint.X, brush.EndPoint.Y))
+        {
+            Opacity = ClampOpacity(brush.Opacity),
+            MappingMode = ToMediaBrushMappingMode(brush.MappingMode),
+            SpreadMethod = ToMediaGradientSpreadMethod(brush.SpreadMethod),
+            ColorInterpolationMode = ToMediaColorInterpolationMode(brush.ColorInterpolationMode)
+        };
+        ApplyPortableBrushTransforms(brush, mediaBrush);
+        return true;
+    }
+
+    private static bool TryCreatePortableRadialGradientMediaBrush(
+        PortableBrush brush,
+        out MediaRadialGradientBrush mediaBrush)
+    {
+        mediaBrush = null!;
+        if (!TryCreateMediaGradientStops(brush.GradientStops, out var stops))
+        {
+            return false;
+        }
+
+        mediaBrush = new MediaRadialGradientBrush(stops)
+        {
+            Center = new WpfPoint(brush.Center.X, brush.Center.Y),
+            GradientOrigin = new WpfPoint(brush.GradientOrigin.X, brush.GradientOrigin.Y),
+            RadiusX = brush.RadiusX,
+            RadiusY = brush.RadiusY,
+            Opacity = ClampOpacity(brush.Opacity),
+            MappingMode = ToMediaBrushMappingMode(brush.MappingMode),
+            SpreadMethod = ToMediaGradientSpreadMethod(brush.SpreadMethod),
+            ColorInterpolationMode = ToMediaColorInterpolationMode(brush.ColorInterpolationMode)
+        };
+        ApplyPortableBrushTransforms(brush, mediaBrush);
+        return true;
+    }
+
+    private static bool TryCreateMediaGradientStops(
+        PortableGradientStop[] portableStops,
+        out MediaGradientStopCollection stops)
+    {
+        stops = null!;
+        if (portableStops.Length == 0)
+        {
+            return false;
+        }
+
+        stops = new MediaGradientStopCollection(portableStops.Length);
+        for (var i = 0; i < portableStops.Length; i++)
+        {
+            var stop = portableStops[i];
+            stops.Add(new MediaGradientStop(
+                ToMediaColor(stop.Color),
+                stop.Offset));
+        }
+
+        return true;
+    }
+
+    private static void ApplyPortableBrushTransforms(PortableBrush source, MediaBrush target)
+    {
+        if (source.HasTransform
+            && TryCreateMatrixTransform(ToWpfMatrix2D(source.Transform), out var transform)
+            && transform != null)
+        {
+            target.Transform = transform;
+        }
+
+        if (source.HasRelativeTransform
+            && TryCreateMatrixTransform(ToWpfMatrix2D(source.RelativeTransform), out var relativeTransform)
+            && relativeTransform != null)
+        {
+            target.RelativeTransform = relativeTransform;
         }
     }
 
@@ -880,6 +978,40 @@ public sealed class WpfResourceResolver :
             color.R,
             color.G,
             color.B);
+    }
+
+    private static Color ToMediaColor(PortableColor color)
+    {
+        return Color.FromArgb(
+            color.A,
+            color.R,
+            color.G,
+            color.B);
+    }
+
+    private static MediaBrushMappingMode ToMediaBrushMappingMode(PortableBrushMappingMode mappingMode)
+    {
+        return mappingMode == PortableBrushMappingMode.Absolute
+            ? MediaBrushMappingMode.Absolute
+            : MediaBrushMappingMode.RelativeToBoundingBox;
+    }
+
+    private static MediaGradientSpreadMethod ToMediaGradientSpreadMethod(PortableGradientSpreadMethod spreadMethod)
+    {
+        return spreadMethod switch
+        {
+            PortableGradientSpreadMethod.Reflect => MediaGradientSpreadMethod.Reflect,
+            PortableGradientSpreadMethod.Repeat => MediaGradientSpreadMethod.Repeat,
+            _ => MediaGradientSpreadMethod.Pad
+        };
+    }
+
+    private static MediaColorInterpolationMode ToMediaColorInterpolationMode(
+        PortableGradientColorInterpolationMode colorInterpolationMode)
+    {
+        return colorInterpolationMode == PortableGradientColorInterpolationMode.ScRgbLinearInterpolation
+            ? MediaColorInterpolationMode.ScRgbLinearInterpolation
+            : MediaColorInterpolationMode.SRgbLinearInterpolation;
     }
 
     private static double ClampOpacity(double opacity)

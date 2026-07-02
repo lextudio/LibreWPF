@@ -366,19 +366,7 @@ public sealed class WpfResourceResolverTests
     }
 
     [Fact]
-    public void ProGpuPortableBrushClonePreservesVectorBrushState()
-    {
-        var nativeBrush = new ProGPU.Vector.SolidColorBrush(Vector4.One);
-        var brush = new ProGpuPortableBrush(nativeBrush);
-
-        var clone = Assert.IsType<ProGpuPortableBrush>(brush.Clone());
-
-        Assert.NotSame(brush, clone);
-        Assert.Same(nativeBrush, clone.ToNative());
-    }
-
-    [Fact]
-    public void ProGpuPortableBrushClonePreservesPortableBrushContract()
+    public void AdaptBrushReturnsTypedLinearGradientShimWithPortableTransformContract()
     {
         var portableBrush = PortableBrush.LinearGradient(
             new PortablePoint(0, 0),
@@ -387,33 +375,32 @@ public sealed class WpfResourceResolverTests
             {
                 new PortableGradientStop(new PortableColor(255, 255, 0, 0), 0),
                 new PortableGradientStop(new PortableColor(255, 0, 0, 255), 1)
-            });
-        var brush = new ProGpuPortableBrush(
-            new ProGpuLinearGradientBrush(
-                new Vector2(0, 0),
-                new Vector2(1, 1),
-                Array.Empty<ProGPU.Vector.GradientStop>()),
-            portableBrush);
+            },
+            opacity: 0.5,
+            mappingMode: PortableBrushMappingMode.Absolute,
+            spreadMethod: PortableGradientSpreadMethod.Repeat,
+            colorInterpolationMode: PortableGradientColorInterpolationMode.ScRgbLinearInterpolation,
+            hasTransform: true,
+            transform: new PortableMatrix3x2(1, 0, 0, 1, 5, 7),
+            hasRelativeTransform: true,
+            relativeTransform: new PortableMatrix3x2(2, 0, 0, 3, 0, 0));
+        var mediaBrush = Assert.IsType<LinearGradientBrush>(
+            WpfResourceResolver.AdaptBrush(new FakePortableBrush(portableBrush)));
+        var portableSource = Assert.IsAssignableFrom<IPortableBrushSource>(mediaBrush);
 
-        var clone = Assert.IsType<ProGpuPortableBrush>(brush.Clone());
-        var portableSource = Assert.IsAssignableFrom<IPortableBrushSource>(clone);
-
-        Assert.True(portableSource.TryGetPortableBrush(out var clonePortableBrush));
-        Assert.Same(portableBrush, clonePortableBrush);
-    }
-
-    [Fact]
-    public void AdaptNativeBrushDoesNotUnwrapProGpuPortableBrushWithoutPortableContract()
-    {
-        var brush = new ProGpuPortableBrush(new ProGPU.Vector.SolidColorBrush(Vector4.One));
-
-        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
-            brush,
-            new WpfReplayRect(1, 2, 30, 40),
-            out var unsupportedStateCount);
-
-        Assert.Equal(0, unsupportedStateCount);
-        Assert.Null(nativeBrush);
+        Assert.True(portableSource.TryGetPortableBrush(out var roundTrip));
+        Assert.Equal(PortableBrushKind.LinearGradient, roundTrip.Kind);
+        Assert.Equal(PortableBrushMappingMode.Absolute, roundTrip.MappingMode);
+        Assert.Equal(PortableGradientSpreadMethod.Repeat, roundTrip.SpreadMethod);
+        Assert.Equal(PortableGradientColorInterpolationMode.ScRgbLinearInterpolation, roundTrip.ColorInterpolationMode);
+        Assert.Equal(0.5, roundTrip.Opacity);
+        Assert.True(roundTrip.HasTransform);
+        Assert.Equal(5, roundTrip.Transform.OffsetX);
+        Assert.Equal(7, roundTrip.Transform.OffsetY);
+        Assert.True(roundTrip.HasRelativeTransform);
+        Assert.Equal(2, roundTrip.RelativeTransform.M11);
+        Assert.Equal(3, roundTrip.RelativeTransform.M22);
+        Assert.Equal(2, roundTrip.GradientStops.Length);
     }
 
     [Fact]

@@ -8887,6 +8887,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "Brush.cs");
+        var proGpuPresentationCoreGradientBrushesPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "GradientBrushes.cs");
         var proGpuPresentationCoreProjectPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -8901,12 +8910,6 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "Freezable.cs");
-        var proGpuPortableBrushPath = FindRepoPath(
-            "src",
-            "ProGPU.Wpf",
-            "Composition",
-            "Mil",
-            "ProGpuPortableBrush.cs");
         var wpfBitmapSourceImageAdapterPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -9223,9 +9226,9 @@ public sealed class WpfManagedProjectGraphTests
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
         var wpfResourceResolver = File.ReadAllText(wpfResourceResolverPath);
         var proGpuPresentationCoreBrush = File.ReadAllText(proGpuPresentationCoreBrushPath);
+        var proGpuPresentationCoreGradientBrushes = File.ReadAllText(proGpuPresentationCoreGradientBrushesPath);
         var proGpuPresentationCoreProject = File.ReadAllText(proGpuPresentationCoreProjectPath);
         var proGpuPresentationCoreFreezable = File.ReadAllText(proGpuPresentationCoreFreezablePath);
-        var proGpuPortableBrush = File.ReadAllText(proGpuPortableBrushPath);
         var wpfBitmapSourceImageAdapter = File.ReadAllText(wpfBitmapSourceImageAdapterPath);
         var portableBitmapSourcePixels = File.ReadAllText(portableBitmapSourcePixelsPath);
         var sourceBitmapSource = File.ReadAllText(sourceBitmapSourcePath);
@@ -11565,22 +11568,24 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AdaptNativeBrushAppliesPortableLinearGradientTransform", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeBrushCountsNonInvertiblePortableLinearGradientTransform", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("public abstract class Brush : Freezable", proGpuPresentationCoreBrush, StringComparison.Ordinal);
+        Assert.Contains("public Transform? RelativeTransform", proGpuPresentationCoreBrush, StringComparison.Ordinal);
+        Assert.Contains("public Transform? Transform", proGpuPresentationCoreBrush, StringComparison.Ordinal);
+        Assert.Contains("bool hasTransform = TryGetPortableBrushTransform(Transform", proGpuPresentationCoreGradientBrushes, StringComparison.Ordinal);
+        Assert.Contains("bool hasRelativeTransform = TryGetPortableBrushTransform(RelativeTransform", proGpuPresentationCoreGradientBrushes, StringComparison.Ordinal);
+        Assert.Contains("ApplyBrushTransform(brush, targetBounds)", proGpuPresentationCoreGradientBrushes, StringComparison.Ordinal);
         Assert.Contains(@"<ProjectReference Include=""..\WindowsBase\WindowsBase.csproj"" />", proGpuPresentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("public abstract class Freezable", proGpuPresentationCoreFreezable, StringComparison.Ordinal);
         Assert.Contains("public Freezable Clone()", proGpuPresentationCoreFreezable, StringComparison.Ordinal);
         Assert.Contains("protected virtual Freezable CreateInstanceCore()", proGpuPresentationCoreFreezable, StringComparison.Ordinal);
-        Assert.Contains("internal sealed class ProGpuPortableBrush : MediaBrush, IPortableBrushSource", proGpuPortableBrush, StringComparison.Ordinal);
-        Assert.Contains("bool IPortableBrushSource.TryGetPortableBrush(out PortableBrush brush)", proGpuPortableBrush, StringComparison.Ordinal);
-        Assert.Contains("protected override Freezable CreateInstanceCore()", proGpuPortableBrush, StringComparison.Ordinal);
-        Assert.Contains("return new ProGpuPortableBrush(", proGpuPortableBrush, StringComparison.Ordinal);
-        Assert.DoesNotContain("ProGpuNativeBrush", proGpuPortableBrush, StringComparison.Ordinal);
+        Assert.False(
+            File.Exists(Path.Combine(Path.GetDirectoryName(wpfResourceResolverPath)!, "ProGpuPortableBrush.cs")),
+            "The bridge-local ProGpuPortableBrush carrier should stay removed; replay gradients should use the typed ProGPU PresentationCore brush shims and PortableBrush DTOs.");
+        Assert.Contains("TryCreatePortableLinearGradientMediaBrush(brush, out var linearBrush)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("TryCreatePortableRadialGradientMediaBrush(brush, out var radialBrush)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("ApplyPortableBrushTransforms(brush, mediaBrush)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuNativeBrush", wpfResourceResolver, StringComparison.Ordinal);
-        Assert.DoesNotContain("ToNative(WpfReplayRect", proGpuPortableBrush, StringComparison.Ordinal);
-        Assert.DoesNotContain("CountUnsupportedStateForBounds", proGpuPortableBrush, StringComparison.Ordinal);
-        Assert.DoesNotContain("CreateRadialGradientBrush", proGpuPortableBrush, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryGetEffectiveTransform", proGpuPortableBrush, StringComparison.Ordinal);
-        Assert.Contains("ProGpuPortableBrushClonePreservesVectorBrushState", wpfResourceResolverTests, StringComparison.Ordinal);
-        Assert.Contains("AdaptNativeBrushDoesNotUnwrapProGpuPortableBrushWithoutPortableContract", wpfResourceResolverTests, StringComparison.Ordinal);
+        Assert.DoesNotContain("new ProGpuPortableBrush", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("AdaptBrushReturnsTypedLinearGradientShimWithPortableTransformContract", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodePushTransformRejectsReflectedMatrixShapeWithoutPortableContract", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptGlyphRunSkipsUnavailablePortableGlyphRunWithoutReflectionFallback", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("return portableBrushSource.TryGetPortableBrush(out var portableBrush)", wpfResourceResolver, StringComparison.Ordinal);

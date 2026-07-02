@@ -9255,6 +9255,14 @@ public sealed class WpfManagedProjectGraphTests
             "packaging",
             "Microsoft.DotNet.Wpf.GitHub",
             "Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj");
+        var wpfTransportProjectPath = FindRepoPath(
+            "packaging",
+            "Microsoft.DotNet.Wpf.GitHub",
+            "Microsoft.DotNet.Wpf.GitHub.csproj");
+        var wpfTransportReadmePath = FindRepoPath(
+            "packaging",
+            "Microsoft.DotNet.Wpf.GitHub",
+            "README.md");
         var runtimeHarnessProjectPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchRuntimeHarness",
@@ -9560,6 +9568,8 @@ public sealed class WpfManagedProjectGraphTests
         var sourceBitmapSource = File.ReadAllText(sourceBitmapSourcePath);
         var wpfTransportTargets = File.ReadAllText(wpfTransportTargetsPath);
         var wpfTransportArchNeutralProject = File.ReadAllText(wpfTransportArchNeutralProjectPath);
+        var wpfTransportProject = File.ReadAllText(wpfTransportProjectPath);
+        var wpfTransportReadme = File.ReadAllText(wpfTransportReadmePath);
         var runtimeHarnessProject = File.ReadAllText(runtimeHarnessProjectPath);
         var runtimeHarnessProgram = File.ReadAllText(runtimeHarnessProgramPath);
         var externalSdkHarnessProject = File.ReadAllText(externalSdkHarnessProjectPath);
@@ -12415,7 +12425,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("$(PkgMicrosoft_Private_Winforms)", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\System.Private.Windows.Core.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("Build the managed WPF assemblies for $(Configuration)|$(TargetFramework) before packing $(PackageName).", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReadmeFile>README.md</PackageReadmeFile>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
+        Assert.Contains("<PackagingContent Include=\"README.md\" SubFolder=\"root\" />", wpfTransportArchNeutralProject, StringComparison.Ordinal);
+        Assert.Contains("<None Include=\"README.md\" Pack=\"true\" PackagePath=\"\\\" />", wpfTransportArchNeutralProject, StringComparison.Ordinal);
         Assert.Contains("<IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
+        Assert.Contains("<PackageReadmeFile>README.md</PackageReadmeFile>", wpfTransportProject, StringComparison.Ordinal);
+        Assert.Contains("<PackagingContent Include=\"README.md\" SubFolder=\"root\" />", wpfTransportProject, StringComparison.Ordinal);
+        Assert.Contains("<None Include=\"README.md\" Pack=\"true\" PackagePath=\"\\\" />", wpfTransportProject, StringComparison.Ordinal);
+        Assert.Contains("managed WPF transport assemblies", wpfTransportReadme, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfManagedPackageId", wpfTransportReadme, StringComparison.Ordinal);
+        Assert.Contains("rebuild the managed WPF transport payload", wpfTransportReadme, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"Microsoft.NET.Sdk\">", runtimeHarnessProject, StringComparison.Ordinal);
         Assert.Contains("<OutputType>Exe</OutputType>", runtimeHarnessProject, StringComparison.Ordinal);

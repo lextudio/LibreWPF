@@ -15,7 +15,7 @@ namespace ProGPU.Wpf.HelloApp;
 public partial class MainWindow : Window
 {
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_HELLO_LIVE_VALIDATE";
-    private const int LiveValidationMaxAttempts = 400;
+    private const int LiveValidationMaxAttempts = 900;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
     private bool _liveValidationStarted;
 

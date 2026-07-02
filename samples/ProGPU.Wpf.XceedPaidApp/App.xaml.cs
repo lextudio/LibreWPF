@@ -14,6 +14,7 @@ namespace ProGPU.Wpf.XceedPaidApp;
 
 public partial class App : Application
 {
+    private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE";
     private const int MaxRunValidationAttempts = 40;
 
     internal static int StartupEventCount { get; private set; }
@@ -24,6 +25,7 @@ public partial class App : Application
     {
         var licenseStatus = XceedPaidLicenseBootstrap.ConfigureFromEnvironment();
         bool runValidate = Environment.GetEnvironmentVariable("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE") == "1";
+        bool liveValidate = Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) == "1";
 
         if (Environment.GetEnvironmentVariable("PROGPU_WPF_XCEED_PAID_VALIDATE") == "1")
         {
@@ -47,7 +49,7 @@ public partial class App : Application
 
         if (!licenseStatus.IsConfigured)
         {
-            if (runValidate)
+            if (runValidate || liveValidate)
             {
                 Console.Error.WriteLine($"ProGPU WPF paid Xceed Application.Run validation requires license variables: {licenseStatus.DescribePublic()}.");
                 Shutdown(1);
@@ -63,7 +65,7 @@ public partial class App : Application
         MainWindow = mainWindow;
         mainWindow.Show();
 
-        if (runValidate)
+        if (runValidate || liveValidate)
         {
             Dispatcher.BeginInvoke(
                 DispatcherPriority.ApplicationIdle,
@@ -86,6 +88,7 @@ public partial class App : Application
     {
         try
         {
+            bool liveValidate = Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) == "1";
             var window = Current.MainWindow as MainWindow
                 ?? Current.Windows.OfType<MainWindow>().FirstOrDefault()
                 ?? throw new InvalidOperationException("Expected paid Xceed MainWindow.");
@@ -105,7 +108,18 @@ public partial class App : Application
             }
 
             XceedPaidSelfTest.Validate(window, expectLoaded: true);
-            Console.WriteLine("ProGPU WPF paid Xceed Application.Run validation succeeded.");
+            if (liveValidate)
+            {
+                string geometryStatus = XceedPaidSelfTest.ValidateRenderSurfaceGeometry(
+                    window,
+                    requireFullViewport: true);
+                Console.WriteLine($"ProGPU WPF paid Xceed live geometry validation succeeded: {geometryStatus}; loaded-window commands, scroll clips, bounded DataGrid rows, and GPU hit testing updated.");
+            }
+            else
+            {
+                Console.WriteLine("ProGPU WPF paid Xceed Application.Run validation succeeded.");
+            }
+
             Current.Shutdown();
         }
         catch (Exception ex)
@@ -463,7 +477,7 @@ internal static class XceedPaidSelfTest
         ValidateGpuHitTestCache(window, "paid Xceed virtual DataGrid loaded render");
     }
 
-    private static void ValidateRenderSurfaceGeometry(MainWindow window)
+    internal static string ValidateRenderSurfaceGeometry(MainWindow window, bool requireFullViewport = false)
     {
         if (!ProGpuWpfDiagnostics.TryGetRenderSurfaceGeometry(window, out var geometry))
         {
@@ -483,6 +497,25 @@ internal static class XceedPaidSelfTest
             throw new InvalidOperationException(
                 $"Expected paid Xceed render-surface geometry to be nonzero; logical={geometry.LogicalWidth}x{geometry.LogicalHeight}, pixels={geometry.PixelWidth}x{geometry.PixelHeight}, viewport={geometry.ViewportX},{geometry.ViewportY},{geometry.ViewportWidth}x{geometry.ViewportHeight}, dpi={geometry.DpiScaleX:0.###}x{geometry.DpiScaleY:0.###}.");
         }
+
+        if (geometry.PixelWidth < geometry.LogicalWidth ||
+            geometry.PixelHeight < geometry.LogicalHeight)
+        {
+            throw new InvalidOperationException(
+                $"Expected paid Xceed render-surface pixels to cover logical content, but got logical {geometry.LogicalWidth}x{geometry.LogicalHeight} and pixels {geometry.PixelWidth}x{geometry.PixelHeight}.");
+        }
+
+        if (requireFullViewport &&
+            (geometry.ViewportX != 0 ||
+             geometry.ViewportY != 0 ||
+             geometry.ViewportWidth != geometry.PixelWidth ||
+             geometry.ViewportHeight != geometry.PixelHeight))
+        {
+            throw new InvalidOperationException(
+                $"Expected paid Xceed render-surface viewport to use the full physical target, but got viewport {geometry.ViewportWidth}x{geometry.ViewportHeight}@{geometry.ViewportX},{geometry.ViewportY} for pixels {geometry.PixelWidth}x{geometry.PixelHeight}.");
+        }
+
+        return $"logical {geometry.LogicalWidth}x{geometry.LogicalHeight}, pixels {geometry.PixelWidth}x{geometry.PixelHeight}, viewport {geometry.ViewportWidth}x{geometry.ViewportHeight}@{geometry.ViewportX},{geometry.ViewportY}, dpi {geometry.DpiScale:0.###}";
     }
 
     private static void ValidateGpuHitTestCache(MainWindow window, string description)

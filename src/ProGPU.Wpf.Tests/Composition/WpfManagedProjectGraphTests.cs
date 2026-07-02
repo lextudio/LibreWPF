@@ -8621,6 +8621,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PROGPU_WPF_XCEED_PAID_VALIDATE", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_REQUIRE_LICENSE", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.Toolkit.MaterialButton>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.Toolkit.MaterialTextField>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.Toolkit.MaterialSwitch>", appCodeBehind, StringComparison.Ordinal);
@@ -8686,6 +8687,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("GetType()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed package surface validation succeeded", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF paid Xceed live geometry validation succeeded:", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("requireFullViewport: true", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application.Run validation requires license variables", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Shutdown(1)", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("window.ExercisePaidDataGridRuntimeCommands();", appCodeBehind, StringComparison.Ordinal);
@@ -8694,6 +8697,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateProGpuDiagnostics(window);", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryGetWindowHost(window, out var host)", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateRenderSurfaceGeometry(window);", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Expected paid Xceed render-surface viewport to use the full physical target", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateGpuHitTestCache(window, \"paid Xceed DataGrid loaded render\")", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateGpuHitTestCache(window, \"paid Xceed virtual DataGrid loaded render\")", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("window.BringVirtualPaidDataGridItemIntoView(50_000);", appCodeBehind, StringComparison.Ordinal);
@@ -8889,13 +8893,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ColumnChooserControl", readme, StringComparison.Ordinal);
         Assert.Contains("ExportToCsv", readme, StringComparison.Ordinal);
         Assert.Contains("SaveUserSettings", readme, StringComparison.Ordinal);
-        Assert.Contains("drives the loaded window through the same command handlers", readme, StringComparison.Ordinal);
+        Assert.Contains("drive the loaded window through the same command handlers", readme, StringComparison.Ordinal);
         Assert.Contains("WPF internal `VisualClip` viewport clips", readme, StringComparison.Ordinal);
         Assert.Contains("`DataRow` realization stays bounded", readme, StringComparison.Ordinal);
         Assert.Contains("large-scroll offset and clip checks on the 100k-row DataGrid surfaces", readme, StringComparison.Ordinal);
         Assert.Contains("ProGPU owns windowing, input, invalidation, clipping, image/layer texture trimming, shaders, and final WebGPU rendering", readme, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE", runScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("hydrate_env_from_launchctl", runScript, StringComparison.Ordinal);
         Assert.Contains("launchctl getenv", runScript, StringComparison.Ordinal);
         Assert.Contains("XCEED_TOOLKIT_LICENSE_KEY", runScript, StringComparison.Ordinal);
@@ -8904,6 +8909,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("-newer \"${sdk_package}\"", runScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/src/ProGPU.Wpf\"", runScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/external/ProGPU/src/ProGPU.Wpf.Interop\"", runScript, StringComparison.Ordinal);
+        Assert.Contains("Launching ProGPU WPF paid Xceed apphost live geometry probe", runScript, StringComparison.Ordinal);
+        Assert.Contains("Expected paid Xceed apphost viewport to cover full physical target", runScript, StringComparison.Ordinal);
         Assert.Contains("Running ProGPU WPF paid Xceed apphost validation", runScript, StringComparison.Ordinal);
     }
 
@@ -9757,9 +9764,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PROGPU_WPF_SDK_CI_INCLUDE_XCEED_PAID", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("XCEED_TOOLKIT_LICENSE_KEY", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("XCEED_DATAGRID_LICENSE_KEY", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("Running paid Xceed SDK app validation", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Running paid Xceed SDK app live validation", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_SKIP_REBUILD_PACKAGES=1", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/run-progpu-wpf-xceed-paid.sh\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("artifacts/nuget/ProGPU.Wpf.SciChartMvpApp", sdkCiScript, StringComparison.Ordinal);

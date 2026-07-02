@@ -217,10 +217,11 @@ if [[ "${xceed_paid_gate}" == "1" ]] || \
    [[ "${xceed_paid_gate}" == "auto" && \
       "$(has_env_or_launchctl XCEED_TOOLKIT_LICENSE_KEY && echo 1 || echo 0)" == "1" && \
       "$(has_env_or_launchctl XCEED_DATAGRID_LICENSE_KEY && echo 1 || echo 0)" == "1" ]]; then
-  echo "Running paid Xceed SDK app validation..."
+  echo "Running paid Xceed SDK app live validation..."
   PROGPU_WPF_XCEED_PAID_SKIP_REBUILD_PACKAGES=1 \
   PROGPU_WPF_XCEED_PAID_VALIDATE=0 \
-  PROGPU_WPF_XCEED_PAID_RUN_VALIDATE=1 \
+  PROGPU_WPF_XCEED_PAID_RUN_VALIDATE=0 \
+  PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE=1 \
     "${repo_root}/eng/run-progpu-wpf-xceed-paid.sh"
 elif [[ "${xceed_paid_gate}" == "0" || "${xceed_paid_gate}" == "auto" ]]; then
   echo "Skipping paid Xceed SDK app validation because paid license environment is unavailable."

@@ -98,19 +98,28 @@ internal static class WpfMediaLineGeometryReader
 
         var figure = pathGeometry.Figures[0];
         var segmentCount = figure.Segments.Count;
-        if (figure.IsClosed || segmentCount < 2)
+        if (segmentCount < 2)
         {
             segments = Array.Empty<WpfReplayLineSegment>();
             return false;
         }
 
-        if (!IsUsablePoint(figure.StartPoint, out var currentPoint))
+        if (figure.IsClosed
+            && WpfMediaRectangleClipReader.TryGetRectangleStrokeBounds(pathGeometry, out _))
         {
             segments = Array.Empty<WpfReplayLineSegment>();
             return false;
         }
 
-        var lineSegments = new WpfReplayLineSegment[segmentCount];
+        if (!IsUsablePoint(figure.StartPoint, out var startPoint))
+        {
+            segments = Array.Empty<WpfReplayLineSegment>();
+            return false;
+        }
+
+        var currentPoint = startPoint;
+        var lineSegments = new WpfReplayLineSegment[segmentCount + (figure.IsClosed ? 1 : 0)];
+        var writtenSegmentCount = 0;
         for (var i = 0; i < segmentCount; i++)
         {
             if (figure.Segments[i] is not MediaLineSegment lineSegment
@@ -121,10 +130,22 @@ internal static class WpfMediaLineGeometryReader
                 return false;
             }
 
-            lineSegments[i] = new WpfReplayLineSegment(
+            lineSegments[writtenSegmentCount++] = new WpfReplayLineSegment(
                 new WpfReplayPoint(currentPoint.X, currentPoint.Y),
                 new WpfReplayPoint(nextPoint.X, nextPoint.Y));
             currentPoint = nextPoint;
+        }
+
+        if (figure.IsClosed && !SamePoint(currentPoint, startPoint))
+        {
+            lineSegments[writtenSegmentCount++] = new WpfReplayLineSegment(
+                new WpfReplayPoint(currentPoint.X, currentPoint.Y),
+                new WpfReplayPoint(startPoint.X, startPoint.Y));
+        }
+
+        if (writtenSegmentCount != lineSegments.Length)
+        {
+            Array.Resize(ref lineSegments, writtenSegmentCount);
         }
 
         segments = lineSegments;
@@ -144,6 +165,12 @@ internal static class WpfMediaLineGeometryReader
         usablePoint = point;
         return double.IsFinite(point.X)
             && double.IsFinite(point.Y);
+    }
+
+    private static bool SamePoint(Point left, Point right)
+    {
+        return left.X == right.X
+            && left.Y == right.Y;
     }
 }
 

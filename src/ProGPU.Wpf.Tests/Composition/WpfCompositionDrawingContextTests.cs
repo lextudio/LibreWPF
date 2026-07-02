@@ -916,6 +916,48 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextDrawsTileBrushRectanglePenAsNativeRectangle()
+    {
+        var sink = new NativeRecordingSink();
+        var imageSource = new FakeBitmapSource();
+        var imageBrush = new FakeMediaImageBrush(imageSource);
+        var adapter = new FakeImageSourceAdapter();
+        var pen = new MediaPen(Brushes.Black, 2);
+        using var context = new WpfCompositionDrawingContext(sink, adapter);
+
+        context.DrawRectangle(imageBrush, pen, new Rect(1, 2, 30, 40));
+
+        Assert.Equal(new[] { "PushNativeClip", "DrawImage", "Pop", "DrawNativeRectangle" }, sink.Operations);
+        Assert.Single(sink.NativeRectangles);
+        Assert.Empty(sink.Rectangles);
+        Assert.Contains(imageBrush, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextDrawsTileBrushGeometryPenAsNativeMediaGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        var imageSource = new FakeBitmapSource();
+        var imageBrush = new FakeMediaImageBrush(imageSource);
+        var adapter = new FakeImageSourceAdapter();
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreateCurvedPathGeometry(new Rect(2, 3, 40, 50));
+        using var context = new WpfCompositionDrawingContext(sink, adapter);
+
+        context.DrawGeometry(imageBrush, pen, geometry);
+
+        Assert.Equal(new[] { "PushNativeMediaGeometryClip", "DrawImage", "Pop", "DrawNativeMediaGeometry" }, sink.Operations);
+        Assert.Single(sink.NativeMediaGeometries);
+        Assert.Empty(sink.Geometries);
+        Assert.Contains(imageBrush, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported()
     {
         var sink = new RecordingSink();

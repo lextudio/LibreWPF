@@ -580,7 +580,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             RegisterRetainedDependencies(brush, pen);
             if (pen != null)
             {
-                _sink.DrawRectangle(null, pen, rectangle);
+                DrawRectanglePenAfterTileBrush(pen, rectangle);
             }
 
             CountDrawingReplayStatus(brushReplayStatus);
@@ -607,7 +607,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             RegisterRetainedDependencies(brush, pen, geometry);
             if (pen != null)
             {
-                _sink.DrawGeometry(null, pen, geometry);
+                DrawGeometryPenAfterTileBrush(pen, geometry);
             }
 
             CountDrawingReplayStatus(brushReplayStatus);
@@ -615,6 +615,28 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
 
         return false;
+    }
+
+    private void DrawRectanglePenAfterTileBrush(MediaPen pen, Rect rectangle)
+    {
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeRectangle(null, pen, ToReplayRect(rectangle));
+            return;
+        }
+
+        _sink.DrawRectangle(null, pen, rectangle);
+    }
+
+    private void DrawGeometryPenAfterTileBrush(MediaPen pen, MediaGeometry geometry)
+    {
+        if (_sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && nativeGeometrySink.DrawNativeGeometry(null, pen, geometry))
+        {
+            return;
+        }
+
+        _sink.DrawGeometry(null, pen, geometry);
     }
 
     private bool TryDrawPrimitiveLineGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)

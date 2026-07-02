@@ -12111,8 +12111,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("GetConstructors(MemberFlags)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("private readonly Func<object?, MediaImageSource?>? _imageSourceAdapter", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushRectangle(brush, pen, rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("DrawRectanglePenAfterTileBrush(pen, rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeRectangle(null, pen, ToReplayRect(rectangle))", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.DoesNotContain("WpfResourceResolver.CreateRectanglePath(rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("DrawGeometryPenAfterTileBrush(pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryPushNativeMediaGeometryClip(clipGeometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(clipGeometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveLineGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
@@ -12303,6 +12306,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObjectRenderDataDrawingContextReplaysMediaDrawingBrushBeforeGenericMediaBrushPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("\"PushNativeTransform\"", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextReplaysMediaImageBrushRectangleThroughImageSourceAdapter", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("GeneratedDrawingContextDrawsTileBrushRectanglePenAsNativeRectangle", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("GeneratedDrawingContextDrawsTileBrushGeometryPenAsNativeMediaGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextDrawsLinePathGeometryAsNativeLineWithoutGenericGeometryFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextDrawsTransformedLineGeometryAsNativeLine", wpfCompositionDrawingContextTests, StringComparison.Ordinal);

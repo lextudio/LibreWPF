@@ -1008,8 +1008,11 @@ public sealed class WpfVisualTreeRenderer
         }
         else if (TryGetVisualClip(visual, out var clip) && clip != null)
         {
-            var clipGeometry = WpfResourceResolver.AdaptGeometry(clip);
-            if (clipGeometry != null)
+            if (TryPushNativeVisualClip(sink, clip))
+            {
+                popCount++;
+            }
+            else if (WpfResourceResolver.AdaptGeometry(clip) is { } clipGeometry)
             {
                 sink.PushClip(clipGeometry);
                 popCount++;
@@ -1191,6 +1194,14 @@ public sealed class WpfVisualTreeRenderer
         stats.UnsupportedVisualStateCount += CountUnsupportedVisualState(visual);
 
         return popCount;
+    }
+
+    private static bool TryPushNativeVisualClip(IWpfCompositionCommandSink sink, object clip)
+    {
+        return sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && clip is IPortableGeometryPathSource portableGeometry
+            && portableGeometry.TryGetPortableGeometryPath(out var portablePath)
+            && nativeGeometrySink.PushNativeGeometryClip(portablePath);
     }
 
     private static void PushRectangleClip(IWpfCompositionCommandSink sink, WpfReplayRect bounds)

@@ -5636,7 +5636,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FakeVisual : PortableVisualChildrenSource, PortableVisualBoundsSource", rendererTests, StringComparison.Ordinal);
         Assert.Contains("clip is IPortableGeometryPathSource portableGeometry", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableRectangleClipBounds(portablePath, out bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryPushNativeVisualClip(sink, clip)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portablePath)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesPortableGeometryPathForVisualClipWithoutReflection", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeUsesNativePortableGeometryClipForNonRectangleVisualClip", rendererTests, StringComparison.Ordinal);
         Assert.Contains("Assert.DoesNotContain(nestedBrush, sink.VisualDependencies)", rendererTests, StringComparison.Ordinal);
         Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("if (hasPortableVisualState && visualState.HasClip)", rendererSource, StringComparison.Ordinal);

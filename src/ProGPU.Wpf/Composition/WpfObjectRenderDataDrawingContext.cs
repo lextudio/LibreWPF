@@ -399,16 +399,16 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             RegisterRetainedDependencies(brush, pen, geometry);
             var replayStatus = portableBrushReplayStatus;
-        if (mediaPen != null
-            && !TryDrawNativePortableGeometryPen(geometry, mediaPen)
-            && !TryDrawPrimitiveLineGeometryPen(geometry, mediaPen)
-            && !TryDrawPrimitivePolylineGeometryPen(geometry, mediaPen)
-            && !TryDrawPrimitiveRectangleGeometryPen(geometry, mediaPen)
-            && !TryDrawPrimitiveEllipseGeometryPen(geometry, mediaPen))
-        {
-            if (WpfResourceResolver.AdaptGeometry(geometry) is { } penGeometry)
+            if (mediaPen != null
+                && !TryDrawNativePortableGeometryPen(geometry, mediaPen)
+                && !TryDrawPrimitiveLineGeometryPen(geometry, mediaPen)
+                && !TryDrawPrimitivePolylineGeometryPen(geometry, mediaPen)
+                && !TryDrawPrimitiveRectangleGeometryPen(geometry, mediaPen)
+                && !TryDrawPrimitiveEllipseGeometryPen(geometry, mediaPen))
+            {
+                if (WpfResourceResolver.AdaptGeometry(geometry) is { } penGeometry)
                 {
-                    _sink.DrawGeometry(null, mediaPen, penGeometry);
+                    DrawMediaGeometry(null, mediaPen, penGeometry);
                 }
                 else
                 {
@@ -464,7 +464,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             RegisterRetainedDependencies(brush, pen, geometry);
             if (mediaPen != null)
             {
-                _sink.DrawGeometry(null, mediaPen, mediaGeometry);
+                DrawMediaGeometry(null, mediaPen, mediaGeometry);
             }
 
             CountDrawingReplayStatus(brushReplayStatus);
@@ -474,7 +474,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         if (mediaBrush != null)
         {
             RegisterRetainedDependencies(brush, pen, geometry);
-            _sink.DrawGeometry(mediaBrush, mediaPen, mediaGeometry);
+            DrawMediaGeometry(mediaBrush, mediaPen, mediaGeometry);
             CountApplied();
             return;
         }
@@ -482,7 +482,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         if (mediaPen != null)
         {
             RegisterRetainedDependencies(brush, pen, geometry);
-            _sink.DrawGeometry(null, mediaPen, mediaGeometry);
+            DrawMediaGeometry(null, mediaPen, mediaGeometry);
             if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
             {
                 CountPartiallyApplied();
@@ -501,8 +501,21 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     private bool TryDrawNativePortableGeometryPen(object? geometry, MediaPen pen)
     {
         return _sink is IWpfNativeGeometryCommandSink nativeGeometrySink
-            && TryGetPortableGeometryPath(geometry, out var portableGeometry)
-            && nativeGeometrySink.DrawNativeGeometry(null, pen, portableGeometry);
+            && ((TryGetPortableGeometryPath(geometry, out var portableGeometry)
+                    && nativeGeometrySink.DrawNativeGeometry(null, pen, portableGeometry))
+                || (geometry is MediaGeometry mediaGeometry
+                    && nativeGeometrySink.DrawNativeGeometry(null, pen, mediaGeometry)));
+    }
+
+    private void DrawMediaGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+    {
+        if (_sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && nativeGeometrySink.DrawNativeGeometry(brush, pen, geometry))
+        {
+            return;
+        }
+
+        _sink.DrawGeometry(brush, pen, geometry);
     }
 
     private bool TryDrawPrimitiveLineGeometryPen(object? geometry, MediaPen pen)
@@ -911,9 +924,21 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return false;
         }
 
-        if (_sink is not IWpfNativeGeometryCommandSink nativeGeometrySink
-            || !TryGetPortableGeometryPath(geometry, out var portableGeometry)
-            || !nativeGeometrySink.DrawNativeGeometry(mediaBrush, mediaPen, portableGeometry))
+        if (_sink is not IWpfNativeGeometryCommandSink nativeGeometrySink)
+        {
+            return false;
+        }
+
+        if (TryGetPortableGeometryPath(geometry, out var portableGeometry)
+            && nativeGeometrySink.DrawNativeGeometry(mediaBrush, mediaPen, portableGeometry))
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            CountApplied();
+            return true;
+        }
+
+        if (geometry is not MediaGeometry mediaGeometry
+            || !nativeGeometrySink.DrawNativeGeometry(mediaBrush, mediaPen, mediaGeometry))
         {
             return false;
         }

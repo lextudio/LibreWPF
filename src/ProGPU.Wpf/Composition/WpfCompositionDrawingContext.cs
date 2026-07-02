@@ -726,9 +726,20 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return false;
         }
 
-        if (_sink is not IWpfNativeGeometryCommandSink nativeGeometrySink
-            || !TryGetPortableGeometryPath(geometry, out var portableGeometry)
-            || !nativeGeometrySink.DrawNativeGeometry(brush, pen, portableGeometry))
+        if (_sink is not IWpfNativeGeometryCommandSink nativeGeometrySink)
+        {
+            return false;
+        }
+
+        if (TryGetPortableGeometryPath(geometry, out var portableGeometry)
+            && nativeGeometrySink.DrawNativeGeometry(brush, pen, portableGeometry))
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            CountApplied();
+            return true;
+        }
+
+        if (!nativeGeometrySink.DrawNativeGeometry(brush, pen, geometry))
         {
             return false;
         }

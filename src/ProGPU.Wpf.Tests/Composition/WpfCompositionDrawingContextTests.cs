@@ -162,6 +162,27 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextDrawsNonPrimitivePathGeometryAsNativeMediaGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var geometry = CreateCurvedPathGeometry(new Rect(2, 3, 40, 50));
+
+        context.DrawGeometry(Brushes.Green, null, geometry);
+
+        Assert.Equal(new[] { "DrawNativeMediaGeometry" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var draw = Assert.Single(sink.NativeMediaGeometries);
+        Assert.Same(Brushes.Green, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Same(geometry, draw.Geometry);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextDrawsPortableRectGeometryAsNativeRectangleWithoutManagedGeometry()
     {
         var sink = new NativeRecordingSink();
@@ -554,7 +575,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void ObjectRenderDataDrawingContextKeepsSkewedEllipseGeometryOnGenericGeometryPath()
+    public void ObjectRenderDataDrawingContextDrawsSkewedEllipseGeometryAsNativeMediaGeometry()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfObjectRenderDataDrawingContext(sink);
@@ -565,10 +586,11 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.DrawGeometry(Brushes.Green, null, geometry);
 
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Equal(new[] { "DrawNativeMediaGeometry" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
         Assert.Empty(sink.NativeEllipses);
         Assert.Empty(sink.NativeGeometries);
-        var replayed = Assert.Single(sink.Geometries);
+        var replayed = Assert.Single(sink.NativeMediaGeometries);
         Assert.Same(Brushes.Green, replayed.Brush);
         Assert.Null(replayed.Pen);
         Assert.Same(geometry, replayed.Geometry);
@@ -1009,6 +1031,27 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextDrawsNonPrimitivePathGeometryAsNativeMediaGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = CreateCurvedPathGeometry(new Rect(2, 3, 40, 50));
+
+        context.DrawGeometry(Brushes.Green, null, geometry);
+
+        Assert.Equal(new[] { "DrawNativeMediaGeometry" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var draw = Assert.Single(sink.NativeMediaGeometries);
+        Assert.Same(Brushes.Green, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Same(geometry, draw.Geometry);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextDrawsRectangleGeometryAsNativeRectangleWithoutGenericGeometryFallback()
     {
         var sink = new NativeRecordingSink();
@@ -1373,7 +1416,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void GeneratedDrawingContextKeepsSkewedEllipseGeometryOnGenericGeometryPath()
+    public void GeneratedDrawingContextDrawsSkewedEllipseGeometryAsNativeMediaGeometry()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfCompositionDrawingContext(sink);
@@ -1384,12 +1427,15 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.DrawGeometry(Brushes.Green, null, geometry);
 
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Equal(new[] { "DrawNativeMediaGeometry" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
         Assert.Empty(sink.NativeEllipses);
-        var replayed = Assert.Single(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeMediaGeometries);
         Assert.Same(Brushes.Green, replayed.Brush);
         Assert.Null(replayed.Pen);
         Assert.Same(geometry, replayed.Geometry);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
@@ -2215,6 +2261,26 @@ public sealed class WpfCompositionDrawingContextTests
         return geometry;
     }
 
+    private static PathGeometry CreateCurvedPathGeometry(Rect bounds)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(bounds.X, bounds.Y + bounds.Height),
+            IsClosed = true,
+            IsFilled = true
+        };
+        figure.Segments.Add(new BezierSegment(
+            new Point(bounds.X + bounds.Width * 0.25, bounds.Y),
+            new Point(bounds.X + bounds.Width * 0.75, bounds.Y),
+            new Point(bounds.X + bounds.Width, bounds.Y + bounds.Height),
+            isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(bounds.X, bounds.Y + bounds.Height), isStroked: true));
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
+    }
+
     private static PortableGeometryPath CreatePortableTrianglePath(PortableRect bounds)
     {
         return new PortableGeometryPath
@@ -2913,6 +2979,8 @@ public sealed class WpfCompositionDrawingContextTests
 
         public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeGeometries { get; } = new();
 
+        public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> NativeMediaGeometries { get; } = new();
+
         public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
 
         public List<MediaGeometry> NativeMediaGeometryClips { get; } = new();
@@ -2969,6 +3037,13 @@ public sealed class WpfCompositionDrawingContextTests
         {
             Operations.Add("DrawNativeGeometry");
             NativeGeometries.Add((brush, pen, geometry));
+            return true;
+        }
+
+        public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+        {
+            Operations.Add("DrawNativeMediaGeometry");
+            NativeMediaGeometries.Add((brush, pen, geometry));
             return true;
         }
 

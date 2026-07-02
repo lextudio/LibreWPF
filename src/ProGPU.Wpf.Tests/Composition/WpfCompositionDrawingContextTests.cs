@@ -984,6 +984,30 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextDrawsPortablePathGeometryAsNativeGeometryWithoutManagedGeometryFallback()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var path = CreatePortableTrianglePath(new PortableRect(1, 2, 30, 40));
+        var geometry = new PortablePathMediaGeometry(path);
+
+        context.DrawGeometry(Brushes.Green, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeGeometry" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.Rectangles);
+        var replayed = Assert.Single(sink.NativeGeometries);
+        Assert.Same(Brushes.Green, replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Same(path, replayed.Geometry);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextDrawsRectangleGeometryAsNativeRectangleWithoutGenericGeometryFallback()
     {
         var sink = new NativeRecordingSink();
@@ -2187,6 +2211,36 @@ public sealed class WpfCompositionDrawingContextTests
         return geometry;
     }
 
+    private static PortableGeometryPath CreatePortableTrianglePath(PortableRect bounds)
+    {
+        return new PortableGeometryPath
+        {
+            Kind = PortableGeometryPathKind.Path,
+            FillRule = PortableFillRule.Nonzero,
+            Bounds = bounds,
+            Figures =
+            [
+                new PortablePathFigure
+                {
+                    StartPoint = new PortablePoint(bounds.X, bounds.Y),
+                    IsClosed = true,
+                    IsFilled = true,
+                    Segments =
+                    [
+                        PortablePathSegment.Line(
+                            new PortablePoint(bounds.X + bounds.Width, bounds.Y),
+                            isSmoothJoin: false,
+                            isStroked: true),
+                        PortablePathSegment.Line(
+                            new PortablePoint(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height),
+                            isSmoothJoin: false,
+                            isStroked: true)
+                    ]
+                }
+            ]
+        };
+    }
+
     private static PathGeometry CreateIncompleteRectanglePathGeometry(Rect bounds)
     {
         var figure = new PathFigure
@@ -2206,6 +2260,28 @@ public sealed class WpfCompositionDrawingContextTests
 
     private sealed class FakeImageSource : MediaImageSource
     {
+    }
+
+    private sealed class PortablePathMediaGeometry : MediaGeometry, IPortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortablePathMediaGeometry(PortableGeometryPath path)
+        {
+            _path = path;
+        }
+
+        public override Rect Bounds => new(_path.Bounds.X, _path.Bounds.Y, _path.Bounds.Width, _path.Bounds.Height);
+
+        public override void Draw(ProGPU.Scene.DrawingContext context, ProGPU.Vector.Brush? fill, ProGPU.Vector.Pen? pen)
+        {
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
     }
 
     private sealed class FakeGeometryDrawing : IPortableGeometryDrawingStateSource

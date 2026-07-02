@@ -11,6 +11,8 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
+using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
+using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
@@ -204,6 +206,11 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
 
         if (TryDrawPrimitiveEllipseGeometry(brush, pen, geometry))
+        {
+            return;
+        }
+
+        if (TryDrawNativePortableGeometry(brush, pen, geometry))
         {
             return;
         }
@@ -702,6 +709,25 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         return true;
     }
 
+    private bool TryDrawNativePortableGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+    {
+        if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
+        {
+            return false;
+        }
+
+        if (_sink is not IWpfNativeGeometryCommandSink nativeGeometrySink
+            || !TryGetPortableGeometryPath(geometry, out var portableGeometry)
+            || !nativeGeometrySink.DrawNativeGeometry(brush, pen, portableGeometry))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(brush, pen, geometry);
+        CountApplied();
+        return true;
+    }
+
     private void DrawPolylineSegments(MediaPen pen, IReadOnlyList<WpfReplayLineSegment> segments)
     {
         if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
@@ -783,6 +809,14 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         out double radiusY)
     {
         return WpfMediaEllipseGeometryReader.TryGetEllipseGeometry(geometry, out center, out radiusX, out radiusY);
+    }
+
+    private static bool TryGetPortableGeometryPath(MediaGeometry geometry, out PortableGeometryPath portableGeometry)
+    {
+        portableGeometry = null!;
+        return geometry is PortableGeometryPathSource portableGeometrySource
+            && portableGeometrySource.TryGetPortableGeometryPath(out portableGeometry)
+            && portableGeometry != null;
     }
 
     private static bool HasIdentityGeometryTransform(MediaGeometry geometry)

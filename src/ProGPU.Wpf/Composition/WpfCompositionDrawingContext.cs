@@ -8,6 +8,7 @@ using MediaFormattedText = System.Windows.Media.FormattedText;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaLineGeometry = System.Windows.Media.LineGeometry;
 using MediaPen = System.Windows.Media.Pen;
 using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
@@ -184,6 +185,11 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
 
         if (brush != null && TryReplayTileBrushGeometry(brush, pen, geometry))
+        {
+            return;
+        }
+
+        if (TryDrawPrimitiveLineGeometry(brush, pen, geometry))
         {
             return;
         }
@@ -590,6 +596,31 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         return false;
     }
 
+    private bool TryDrawPrimitiveLineGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+    {
+        if (pen == null ||
+            !TryGetPrimitiveLineGeometry(geometry, out var startPoint, out var endPoint))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(brush, pen, geometry);
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeLine(
+                pen,
+                new WpfReplayPoint(startPoint.X, startPoint.Y),
+                new WpfReplayPoint(endPoint.X, endPoint.Y));
+        }
+        else
+        {
+            _sink.DrawLine(pen, startPoint, endPoint);
+        }
+
+        CountApplied();
+        return true;
+    }
+
     private bool TryDrawPrimitiveRectangleGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
     {
         if (!TryGetPrimitiveRectangleGeometry(geometry, out var rectangle, out var radiusX, out var radiusY))
@@ -642,6 +673,24 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
 
         CountApplied();
         return true;
+    }
+
+    private static bool TryGetPrimitiveLineGeometry(
+        MediaGeometry geometry,
+        out Point startPoint,
+        out Point endPoint)
+    {
+        if (geometry is MediaLineGeometry lineGeometry
+            && HasIdentityGeometryTransform(lineGeometry)
+            && IsUsablePoint(lineGeometry.StartPoint, out startPoint)
+            && IsUsablePoint(lineGeometry.EndPoint, out endPoint))
+        {
+            return true;
+        }
+
+        startPoint = default;
+        endPoint = default;
+        return false;
     }
 
     private static bool TryGetPrimitiveRectangleGeometry(

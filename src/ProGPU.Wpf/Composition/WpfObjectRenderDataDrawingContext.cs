@@ -7,6 +7,7 @@ using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaLineGeometry = System.Windows.Media.LineGeometry;
 using MediaPortableRenderDataSink = System.Windows.Media.IPortableRenderDataDrawingContextSink;
 using MediaPen = System.Windows.Media.Pen;
 using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
@@ -401,6 +402,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             var replayStatus = portableBrushReplayStatus;
             if (mediaPen != null
                 && !TryDrawNativePortableGeometryPen(geometry, mediaPen)
+                && !TryDrawPrimitiveLineGeometryPen(geometry, mediaPen)
                 && !TryDrawPrimitiveRectangleGeometryPen(geometry, mediaPen)
                 && !TryDrawPrimitiveEllipseGeometryPen(geometry, mediaPen))
             {
@@ -415,6 +417,11 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             }
 
             CountDrawingReplayStatus(replayStatus);
+            return;
+        }
+
+        if (TryDrawPrimitiveLineGeometry(brush, pen, geometry, mediaPen))
+        {
             return;
         }
 
@@ -491,6 +498,65 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         return _sink is IWpfNativeGeometryCommandSink nativeGeometrySink
             && TryGetPortableGeometryPath(geometry, out var portableGeometry)
             && nativeGeometrySink.DrawNativeGeometry(null, pen, portableGeometry);
+    }
+
+    private bool TryDrawPrimitiveLineGeometryPen(object? geometry, MediaPen pen)
+    {
+        if (!TryReadLineGeometry(geometry, out var startPoint, out var endPoint))
+        {
+            return false;
+        }
+
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeLine(
+                pen,
+                new WpfReplayPoint(startPoint.X, startPoint.Y),
+                new WpfReplayPoint(endPoint.X, endPoint.Y));
+        }
+        else
+        {
+            _sink.DrawLine(pen, startPoint, endPoint);
+        }
+
+        return true;
+    }
+
+    private bool TryDrawPrimitiveLineGeometry(
+        object? brush,
+        object? pen,
+        object? geometry,
+        MediaPen? mediaPen)
+    {
+        if (mediaPen == null ||
+            !TryReadLineGeometry(geometry, out var startPoint, out var endPoint))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(brush, pen, geometry);
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeLine(
+                mediaPen,
+                new WpfReplayPoint(startPoint.X, startPoint.Y),
+                new WpfReplayPoint(endPoint.X, endPoint.Y));
+        }
+        else
+        {
+            _sink.DrawLine(mediaPen, startPoint, endPoint);
+        }
+
+        if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
+        {
+            CountPartiallyApplied();
+        }
+        else
+        {
+            CountApplied();
+        }
+
+        return true;
     }
 
     private bool TryDrawPrimitiveRectangleGeometryPen(object? geometry, MediaPen pen)
@@ -1312,6 +1378,24 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         return geometry is PortableGeometryPathSource portableGeometrySource
             && portableGeometrySource.TryGetPortableGeometryPath(out portableGeometry)
             && portableGeometry != null;
+    }
+
+    private static bool TryReadLineGeometry(
+        object? geometry,
+        out Point startPoint,
+        out Point endPoint)
+    {
+        if (geometry is MediaLineGeometry lineGeometry
+            && HasIdentityGeometryTransform(lineGeometry)
+            && IsUsablePoint(lineGeometry.StartPoint, out startPoint)
+            && IsUsablePoint(lineGeometry.EndPoint, out endPoint))
+        {
+            return true;
+        }
+
+        startPoint = default;
+        endPoint = default;
+        return false;
     }
 
     private static bool TryReadRectangleGeometry(

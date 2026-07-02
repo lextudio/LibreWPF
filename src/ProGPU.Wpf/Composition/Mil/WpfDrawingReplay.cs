@@ -9,6 +9,7 @@ using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
+using MediaLineGeometry = System.Windows.Media.LineGeometry;
 using MediaMatrixTransform = System.Windows.Media.MatrixTransform;
 using MediaPen = System.Windows.Media.Pen;
 using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
@@ -213,6 +214,15 @@ internal static class WpfDrawingReplay
             return nativeStatus;
         }
 
+        if (TryReplayLineGeometryDrawing(
+                geometryValue,
+                pen,
+                sink,
+                out var lineStatus))
+        {
+            return lineStatus;
+        }
+
         if (TryReplayRectangleGeometryDrawing(
                 geometryValue,
                 brushValue,
@@ -284,6 +294,12 @@ internal static class WpfDrawingReplay
 
     private static bool TryDrawGeometryPen(object? geometryValue, MediaPen pen, IWpfCompositionCommandSink sink)
     {
+        if (TryGetDirectLineGeometry(geometryValue, out var startPoint, out var endPoint))
+        {
+            DrawLineGeometry(sink, pen, startPoint, endPoint);
+            return true;
+        }
+
         if (TryGetDirectRectangleGeometry(geometryValue, out var rectangle, out var rectangleRadiusX, out var rectangleRadiusY))
         {
             DrawRectangleGeometry(sink, null, pen, rectangle, rectangleRadiusX, rectangleRadiusY);
@@ -309,6 +325,24 @@ internal static class WpfDrawingReplay
         }
 
         sink.DrawGeometry(null, pen, geometry);
+        return true;
+    }
+
+    private static bool TryReplayLineGeometryDrawing(
+        object? geometryValue,
+        MediaPen? pen,
+        IWpfCompositionCommandSink sink,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        if (pen == null ||
+            !TryGetDirectLineGeometry(geometryValue, out var startPoint, out var endPoint))
+        {
+            return false;
+        }
+
+        DrawLineGeometry(sink, pen, startPoint, endPoint);
+        status = WpfDrawingReplayStatus.Applied;
         return true;
     }
 
@@ -422,6 +456,24 @@ internal static class WpfDrawingReplay
             ? unsupported ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
             : unsupported ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
         return true;
+    }
+
+    private static void DrawLineGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaPen pen,
+        Point startPoint,
+        Point endPoint)
+    {
+        if (sink is IWpfNativePrimitiveCommandSink nativePrimitiveSink)
+        {
+            nativePrimitiveSink.DrawNativeLine(
+                pen,
+                new WpfReplayPoint(startPoint.X, startPoint.Y),
+                new WpfReplayPoint(endPoint.X, endPoint.Y));
+            return;
+        }
+
+        sink.DrawLine(pen, startPoint, endPoint);
     }
 
     private static void DrawRectangleGeometry(
@@ -2190,6 +2242,24 @@ internal static class WpfDrawingReplay
 
         radiusX = default;
         radiusY = default;
+        return false;
+    }
+
+    private static bool TryGetDirectLineGeometry(
+        object? geometry,
+        out Point startPoint,
+        out Point endPoint)
+    {
+        if (geometry is MediaLineGeometry lineGeometry
+            && HasIdentityGeometryTransform(lineGeometry)
+            && IsUsablePoint(lineGeometry.StartPoint, out startPoint)
+            && IsUsablePoint(lineGeometry.EndPoint, out endPoint))
+        {
+            return true;
+        }
+
+        startPoint = default;
+        endPoint = default;
         return false;
     }
 

@@ -2750,6 +2750,25 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsAppliesAxisAlignedPortableTransformToExactCurveBounds()
+    {
+        var geometry = new PortableQuadraticCurveGeometry(
+            new PortableRect(0, 0, 1, 1),
+            new PortableMatrix3x2(2, 0, 0, 3, 5, 7));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(11, 19, 200, 150), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
     public void TryGetDrawingBoundsPreservesPortableHorizontalLineGeometryBounds()
     {
         var geometry = new PortableNonRectangleClipGeometry(3, 4, 50, 0, new PortableRect(0, 0, 1, 1));
@@ -5171,12 +5190,17 @@ public sealed class WpfVisualTreeRendererTests
         private readonly PortableGeometryPath _path;
 
         public PortableQuadraticCurveGeometry(PortableRect bounds)
+            : this(bounds, PortableMatrix3x2.Identity)
+        {
+        }
+
+        public PortableQuadraticCurveGeometry(PortableRect bounds, PortableMatrix3x2 transform)
         {
             _path = new PortableGeometryPath
             {
                 Kind = PortableGeometryPathKind.Path,
                 Bounds = bounds,
-                Transform = PortableMatrix3x2.Identity,
+                Transform = transform,
                 Figures =
                 [
                     new PortablePathFigure

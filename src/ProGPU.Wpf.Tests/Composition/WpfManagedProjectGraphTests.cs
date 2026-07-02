@@ -5665,6 +5665,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableCombinedGeometryOperands", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsPreservesPortableHorizontalLineGeometryBounds", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesTransformedPortablePathBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsAppliesAxisAlignedPortableTransformToExactCurveBounds", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableQuadraticGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableCubicGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableArcGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
@@ -12099,7 +12100,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("sameX == sameY", wpfPortableRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfPortablePathBoundsReader", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetPathBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
-        Assert.Contains("!geometry.Transform.IsIdentity", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("TryGetAxisAlignedTransform(geometry.Transform, out var transform)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("TryTransformAxisAlignedBounds(localBounds, transform, out bounds)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out bounds)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfPortablePathGeometryConverter", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetNativePathBounds(PortableGeometryPath portablePath, out WpfReplayRect bounds)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);

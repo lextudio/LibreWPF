@@ -12,11 +12,24 @@ internal static class WpfPortablePathBoundsReader
     public static bool TryGetPathBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
     {
         bounds = default;
-        if (!geometry.Transform.IsIdentity)
+        if (geometry.Transform.IsIdentity)
         {
-            return WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out bounds);
+            return TryGetPathBoundsCore(geometry, out bounds);
         }
 
+        if (TryGetAxisAlignedTransform(geometry.Transform, out var transform)
+            && TryGetPathBoundsCore(geometry, out var localBounds)
+            && TryTransformAxisAlignedBounds(localBounds, transform, out bounds))
+        {
+            return true;
+        }
+
+        return WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out bounds);
+    }
+
+    private static bool TryGetPathBoundsCore(PortableGeometryPath geometry, out WpfReplayRect bounds)
+    {
+        bounds = default;
         if (geometry.Kind == PortableGeometryPathKind.Combined)
         {
             return TryGetCombinedBounds(geometry, out bounds);
@@ -134,6 +147,64 @@ internal static class WpfPortablePathBoundsReader
 
         bounds = new WpfReplayRect(left, top, width, height);
         return true;
+    }
+
+    private static bool TryGetAxisAlignedTransform(PortableMatrix3x2 transform, out PortableMatrix3x2 axisAlignedTransform)
+    {
+        axisAlignedTransform = transform;
+        return transform.M12 == 0.0
+            && transform.M21 == 0.0
+            && double.IsFinite(transform.M11)
+            && double.IsFinite(transform.M22)
+            && double.IsFinite(transform.OffsetX)
+            && double.IsFinite(transform.OffsetY);
+    }
+
+    private static bool TryTransformAxisAlignedBounds(
+        WpfReplayRect bounds,
+        PortableMatrix3x2 transform,
+        out WpfReplayRect transformedBounds)
+    {
+        transformedBounds = default;
+        if (!IsUsableBounds(bounds))
+        {
+            return false;
+        }
+
+        var x0 = (bounds.X * transform.M11) + transform.OffsetX;
+        var x1 = ((bounds.X + bounds.Width) * transform.M11) + transform.OffsetX;
+        var y0 = (bounds.Y * transform.M22) + transform.OffsetY;
+        var y1 = ((bounds.Y + bounds.Height) * transform.M22) + transform.OffsetY;
+        var left = Math.Min(x0, x1);
+        var top = Math.Min(y0, y1);
+        var right = Math.Max(x0, x1);
+        var bottom = Math.Max(y0, y1);
+        var width = right - left;
+        var height = bottom - top;
+        if (!double.IsFinite(left)
+            || !double.IsFinite(top)
+            || !double.IsFinite(width)
+            || !double.IsFinite(height)
+            || width < 0
+            || height < 0
+            || (width == 0 && height == 0))
+        {
+            return false;
+        }
+
+        transformedBounds = new WpfReplayRect(left, top, width, height);
+        return true;
+    }
+
+    private static bool IsUsableBounds(WpfReplayRect bounds)
+    {
+        return double.IsFinite(bounds.X)
+            && double.IsFinite(bounds.Y)
+            && double.IsFinite(bounds.Width)
+            && double.IsFinite(bounds.Height)
+            && bounds.Width >= 0
+            && bounds.Height >= 0
+            && (bounds.Width != 0 || bounds.Height != 0);
     }
 
     private static bool TryGetCombinedBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)

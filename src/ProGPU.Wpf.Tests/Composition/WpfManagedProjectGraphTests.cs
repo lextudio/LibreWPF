@@ -5661,9 +5661,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableRectangleGeometryPathPoints", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableLineGeometryPathPoints", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableQuadraticGeometryPathPoints", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableArcGeometryPathPoints", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsPreservesPortableHorizontalLineGeometryBounds", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableQuadraticGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableCubicGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesPortableArcGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPrimitiveRenderDataThroughNativeBoundsSink", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromNativeRectangleClipRenderData", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromLocalPrimitiveClipRenderDataWithoutGenericBoundsFallback", rendererTests, StringComparison.Ordinal);
@@ -12081,8 +12083,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("case PortablePathSegmentKind.Line:", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("case PortablePathSegmentKind.QuadraticBezier:", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("case PortablePathSegmentKind.CubicBezier:", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("case PortablePathSegmentKind.Arc:", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("private static bool TryIncludeQuadraticExtremum", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("private static bool TryIncludeCubicExtrema", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("VectorArcSegmentGeometry.TryGetArcBounds", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("(!segment.IsStroked && !figure.IsFilled)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(portableGeometry, out", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);

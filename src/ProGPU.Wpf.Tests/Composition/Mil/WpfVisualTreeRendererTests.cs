@@ -52,6 +52,8 @@ using PortableShaderSamplingMode = ProGPU.Wpf.Interop.PortableShaderSamplingMode
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
+using PortableSize = ProGPU.Wpf.Interop.PortableSize;
+using PortableSweepDirection = ProGPU.Wpf.Interop.PortableSweepDirection;
 using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
 using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
 using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
@@ -820,6 +822,33 @@ public sealed class WpfVisualTreeRendererTests
         var transform = Assert.Single(sink.NativeTransforms);
         Assert.Equal(-3, transform.M41);
         Assert.Equal(-4, transform.M42);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void ReplaySubtreeInfersRetainedBoundsFromPortableArcGeometryPathPoints()
+    {
+        var geometry = new PortableArcCurveGeometry(new PortableRect(0, 0, 1, 1));
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateGeometryRenderData(geometry),
+            visualState);
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawNativeGeometry", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 100, 50, state.OpacityMaskBounds, precision: 4);
+        AssertReplayRect(3, 4, 100, 50, state.ContentBounds, precision: 4);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-3, transform.M41, 4);
+        Assert.Equal(-4, transform.M42, 4);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
     }
@@ -2685,6 +2714,26 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsUsesPortableArcGeometryPathPointsBeforeStaleBoundsMetadata()
+    {
+        var geometry = new PortableArcCurveGeometry(new PortableRect(0, 0, 1, 1));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(3, bounds.X, 4);
+        Assert.Equal(4, bounds.Y, 4);
+        Assert.Equal(100, bounds.Width, 4);
+        Assert.Equal(50, bounds.Height, 4);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
     public void TryGetDrawingBoundsUsesPortableDrawingGroupClipBoundsWithoutGeometryFallback()
     {
         var geometry = new PortableRectangleClipGeometry(0, 0, 100, 100);
@@ -3640,9 +3689,18 @@ public sealed class WpfVisualTreeRendererTests
         BinaryPrimitives.WriteInt64LittleEndian(target.AsSpan(offset, 8), BitConverter.DoubleToInt64Bits(value));
     }
 
-    private static void AssertReplayRect(double x, double y, double width, double height, WpfReplayRect? actual)
+    private static void AssertReplayRect(double x, double y, double width, double height, WpfReplayRect? actual, int? precision = null)
     {
         var bounds = Assert.NotNull(actual);
+        if (precision.HasValue)
+        {
+            Assert.Equal(x, bounds.X, precision.Value);
+            Assert.Equal(y, bounds.Y, precision.Value);
+            Assert.Equal(width, bounds.Width, precision.Value);
+            Assert.Equal(height, bounds.Height, precision.Value);
+            return;
+        }
+
         Assert.Equal(x, bounds.X);
         Assert.Equal(y, bounds.Y);
         Assert.Equal(width, bounds.Width);
@@ -5051,6 +5109,47 @@ public sealed class WpfVisualTreeRendererTests
                                 new PortablePoint(3, 104),
                                 new PortablePoint(103, 104),
                                 new PortablePoint(103, 4),
+                                isSmoothJoin: false,
+                                isStroked: true)
+                        ]
+                    }
+                ]
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableArcCurveGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableArcCurveGeometry(PortableRect bounds)
+        {
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = bounds,
+                Transform = PortableMatrix3x2.Identity,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(3, 54),
+                        IsClosed = false,
+                        IsFilled = false,
+                        Segments =
+                        [
+                            PortablePathSegment.Arc(
+                                new PortablePoint(103, 54),
+                                new PortableSize(50, 50),
+                                rotationAngle: 0,
+                                isLargeArc: false,
+                                PortableSweepDirection.Clockwise,
                                 isSmoothJoin: false,
                                 isStroked: true)
                         ]

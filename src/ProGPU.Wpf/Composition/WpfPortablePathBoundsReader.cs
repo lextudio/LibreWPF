@@ -1,5 +1,9 @@
 using System;
+using System.Numerics;
 using ProGPU.Wpf.Interop;
+using VectorArcSegment = ProGPU.Vector.ArcSegment;
+using VectorArcSegmentGeometry = ProGPU.Vector.ArcSegmentGeometry;
+using VectorSweepDirection = ProGPU.Vector.SweepDirection;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
@@ -87,6 +91,22 @@ internal static class WpfPortablePathBoundsReader
                         current = segment.Point3;
                         break;
 
+                    case PortablePathSegmentKind.Arc:
+                        if (!TryIncludeArcSegment(
+                                current,
+                                segment,
+                                ref hasPoint,
+                                ref left,
+                                ref top,
+                                ref right,
+                                ref bottom))
+                        {
+                            return false;
+                        }
+
+                        current = segment.Point1;
+                        break;
+
                     default:
                         return false;
                 }
@@ -105,6 +125,40 @@ internal static class WpfPortablePathBoundsReader
 
         bounds = new WpfReplayRect(left, top, width, height);
         return true;
+    }
+
+    private static bool TryIncludeArcSegment(
+        PortablePoint start,
+        PortablePathSegment segment,
+        ref bool hasPoint,
+        ref double left,
+        ref double top,
+        ref double right,
+        ref double bottom)
+    {
+        if (!TryCreateVector2(start, out var vectorStart)
+            || !TryCreateVector2(segment.Point1, out var vectorEnd)
+            || !TryCreateVector2(segment.Size, out var vectorSize)
+            || !float.IsFinite((float)segment.RotationAngle))
+        {
+            return false;
+        }
+
+        var arc = new VectorArcSegment(
+            vectorEnd,
+            vectorSize,
+            (float)segment.RotationAngle,
+            segment.IsLargeArc,
+            ToVectorSweepDirection(segment.SweepDirection),
+            segment.IsSmoothJoin,
+            segment.IsStroked);
+        if (!VectorArcSegmentGeometry.TryGetArcBounds(vectorStart, arc, out var min, out var max))
+        {
+            return TryIncludePoint(segment.Point1, ref hasPoint, ref left, ref top, ref right, ref bottom);
+        }
+
+        return TryIncludePoint(new PortablePoint(min.X, min.Y), ref hasPoint, ref left, ref top, ref right, ref bottom)
+            && TryIncludePoint(new PortablePoint(max.X, max.Y), ref hasPoint, ref left, ref top, ref right, ref bottom);
     }
 
     private static bool TryIncludeQuadraticBezier(
@@ -319,6 +373,31 @@ internal static class WpfPortablePathBoundsReader
             + (3 * u * t * t * control2.Y)
             + (t * t * t * end.Y);
         return new PortablePoint(x, y);
+    }
+
+    private static bool TryCreateVector2(PortablePoint point, out Vector2 vector)
+    {
+        vector = new Vector2((float)point.X, (float)point.Y);
+        return double.IsFinite(point.X)
+            && double.IsFinite(point.Y)
+            && float.IsFinite(vector.X)
+            && float.IsFinite(vector.Y);
+    }
+
+    private static bool TryCreateVector2(PortableSize size, out Vector2 vector)
+    {
+        vector = new Vector2((float)size.Width, (float)size.Height);
+        return double.IsFinite(size.Width)
+            && double.IsFinite(size.Height)
+            && float.IsFinite(vector.X)
+            && float.IsFinite(vector.Y);
+    }
+
+    private static VectorSweepDirection ToVectorSweepDirection(PortableSweepDirection sweepDirection)
+    {
+        return sweepDirection == PortableSweepDirection.Clockwise
+            ? VectorSweepDirection.Clockwise
+            : VectorSweepDirection.Counterclockwise;
     }
 
     private static bool TryIncludePoint(

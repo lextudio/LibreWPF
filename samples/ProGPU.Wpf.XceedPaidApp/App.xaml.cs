@@ -113,7 +113,7 @@ public partial class App : Application
                 string geometryStatus = XceedPaidSelfTest.ValidateRenderSurfaceGeometry(
                     window,
                     requireFullViewport: true);
-                Console.WriteLine($"ProGPU WPF paid Xceed live geometry validation succeeded: {geometryStatus}; loaded-window commands, scroll clips, bounded DataGrid rows, and GPU hit testing updated.");
+                Console.WriteLine($"ProGPU WPF paid Xceed live geometry validation succeeded: {geometryStatus}; loaded-window commands, scroll clips, bounded DataGrid rows, large-scroll performance budget, and GPU hit testing updated.");
             }
             else
             {

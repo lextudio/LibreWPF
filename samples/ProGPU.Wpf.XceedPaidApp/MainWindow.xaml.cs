@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -19,6 +20,8 @@ namespace ProGPU.Wpf.XceedPaidApp;
 
 public partial class MainWindow : Window
 {
+    private const double MaxLargeScrollValidationSeconds = 10.0;
+
     private SettingsRepository? _savedSettings;
     private int _priorityBandQueryCount;
 
@@ -245,8 +248,13 @@ public partial class MainWindow : Window
         ValidateScrollableExtent(paidScrollViewer, "paid Xceed DataGrid");
         ValidatePaidDataGridRealizedRowCount(PaidDataGrid, "paid Xceed DataGrid", "initial");
 
-        PaidDataGrid.BringItemIntoView(ViewModel.Rows[ViewModel.Rows.Count - 1]);
-        PumpBackgroundLayout(PaidDataGrid);
+        ValidateLargeScrollPerformance(
+            () =>
+            {
+                PaidDataGrid.BringItemIntoView(ViewModel.Rows[ViewModel.Rows.Count - 1]);
+                PumpBackgroundLayout(PaidDataGrid);
+            },
+            "paid Xceed DataGrid large scroll");
         var paidScrolledViewer = ValidateRequiredScrollableViewportClip(PaidDataGrid, "paid Xceed DataGrid after large scroll");
         ValidateLargeScrollOffset(paidScrolledViewer, "paid Xceed DataGrid after large scroll");
         ValidatePaidDataGridRealizedRowCount(PaidDataGrid, "paid Xceed DataGrid", "after large scroll");
@@ -266,8 +274,13 @@ public partial class MainWindow : Window
         ValidateScrollableExtent(virtualScrollViewer, "paid virtual Xceed DataGrid");
         ValidatePaidDataGridRealizedRowCount(VirtualPaidDataGrid, "paid virtual Xceed DataGrid", "initial");
 
-        BringVirtualPaidDataGridItemIntoView(50_000);
-        PumpBackgroundLayout(VirtualPaidDataGrid);
+        ValidateLargeScrollPerformance(
+            () =>
+            {
+                BringVirtualPaidDataGridItemIntoView(50_000);
+                PumpBackgroundLayout(VirtualPaidDataGrid);
+            },
+            "paid virtual Xceed DataGrid large scroll");
         var virtualScrolledViewer = ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, "paid virtual Xceed DataGrid after large scroll");
         ValidateLargeScrollOffset(virtualScrolledViewer, "paid virtual Xceed DataGrid after large scroll");
         ValidatePaidDataGridRealizedRowCount(VirtualPaidDataGrid, "paid virtual Xceed DataGrid", "after large scroll");
@@ -275,6 +288,18 @@ public partial class MainWindow : Window
         PaidDataGridDocument.IsSelected = true;
         PaidDataGridDocument.IsActive = true;
         DockManager.UpdateLayout();
+    }
+
+    private static void ValidateLargeScrollPerformance(Action scrollAndLayout, string description)
+    {
+        long start = Stopwatch.GetTimestamp();
+        scrollAndLayout();
+        TimeSpan elapsed = Stopwatch.GetElapsedTime(start);
+        if (elapsed.TotalSeconds > MaxLargeScrollValidationSeconds)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} validation to complete within {MaxLargeScrollValidationSeconds:0.#} seconds, got {elapsed.TotalSeconds:0.###} seconds.");
+        }
     }
 
     private void ValidateToolkitPaneScrollClip()

@@ -72,6 +72,20 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ProGpuWpfRenderDataCatalogUsesTypedDrawingReplayTerminology()
+    {
+        var sourcePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfRenderDataInstructionRedirectionCatalog.cs");
+        var source = File.ReadAllText(sourcePath);
+
+        Assert.Contains("TypedDrawingReplay", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReflectionReplay", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SystemXamlNameScopeDictionaryImplementsDictionaryContract()
     {
         var sourcePath = FindRepoPath(

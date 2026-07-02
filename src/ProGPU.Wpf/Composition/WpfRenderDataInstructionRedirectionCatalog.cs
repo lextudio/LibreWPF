@@ -6,7 +6,7 @@ public enum WpfRenderDataInstructionRedirectionKind
 {
     Direct,
     DirectWithAnimationFallback,
-    ReflectionReplay,
+    TypedDrawingReplay,
     UnsupportedDraw,
     UnsupportedScope,
 }
@@ -31,7 +31,7 @@ public static class WpfRenderDataInstructionRedirectionCatalog
         new("DrawGeometry", WpfRenderDataInstructionRedirectionKind.Direct, false, true, false, false, false),
         new("DrawImage", WpfRenderDataInstructionRedirectionKind.DirectWithAnimationFallback, true, true, false, false, false),
         new("DrawGlyphRun", WpfRenderDataInstructionRedirectionKind.Direct, false, true, false, false, false),
-        new("DrawDrawing", WpfRenderDataInstructionRedirectionKind.ReflectionReplay, false, true, false, false, false),
+        new("DrawDrawing", WpfRenderDataInstructionRedirectionKind.TypedDrawingReplay, false, true, false, false, false),
         new("DrawVideo", WpfRenderDataInstructionRedirectionKind.UnsupportedDraw, true, true, false, false, false),
         new("PushClip", WpfRenderDataInstructionRedirectionKind.Direct, false, false, true, false, true),
         new("PushOpacityMask", WpfRenderDataInstructionRedirectionKind.Direct, false, false, true, false, true),

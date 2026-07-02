@@ -5658,6 +5658,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portablePath)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(clipGeometry)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryCreatePortableIntersectedClip(first, second, out clip)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryReadPortableClipPath(first, out var firstPath)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("CreateRectangleClipGeometry(bounds).TryGetPortableGeometryPath(out path)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("new PortableIntersectedClipGeometry(firstPath, secondPath)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableGeometryBounds(first, out var firstBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableGeometryBounds(second, out var secondBounds)", rendererSource, StringComparison.Ordinal);
@@ -5692,6 +5694,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplaySubtreeUsesNativePortableGeometryClipForNonRectangleVisualClip", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativeMediaGeometryClipForLocalNonRectangleVisualClip", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreePreservesIntersectedPortableVisualClipsAsNativeCombinedGeometryBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreePreservesMixedPortableAndRectangleVisualClipsAsNativeCombinedGeometry", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativePortableClipBoundsBeforeStaleMetadataFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableGeometryRenderDataWithoutManagedGeometry", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableRectangleGeometryPathPoints", rendererTests, StringComparison.Ordinal);

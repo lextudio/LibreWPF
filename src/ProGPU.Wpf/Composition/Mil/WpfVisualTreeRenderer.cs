@@ -1700,10 +1700,8 @@ public sealed class WpfVisualTreeRenderer
 
     private static bool TryCreatePortableIntersectedClip(object first, object second, out object? clip)
     {
-        if (first is not IPortableGeometryPathSource firstPortable
-            || second is not IPortableGeometryPathSource secondPortable
-            || !firstPortable.TryGetPortableGeometryPath(out var firstPath)
-            || !secondPortable.TryGetPortableGeometryPath(out var secondPath))
+        if (!TryReadPortableClipPath(first, out var firstPath)
+            || !TryReadPortableClipPath(second, out var secondPath))
         {
             clip = null;
             return false;
@@ -1711,6 +1709,24 @@ public sealed class WpfVisualTreeRenderer
 
         clip = new PortableIntersectedClipGeometry(firstPath, secondPath);
         return true;
+    }
+
+    private static bool TryReadPortableClipPath(object clip, out PortableGeometryPath path)
+    {
+        if (clip is IPortableGeometryPathSource portable
+            && portable.TryGetPortableGeometryPath(out path)
+            && path != null)
+        {
+            return true;
+        }
+
+        if (TryReadRectangleClipBounds(clip, out var bounds))
+        {
+            return CreateRectangleClipGeometry(bounds).TryGetPortableGeometryPath(out path);
+        }
+
+        path = null!;
+        return false;
     }
 
     private static PortableRectangleClipGeometry CreateRectangleClipGeometry(WpfReplayRect bounds)

@@ -8070,6 +8070,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new MetroTheme()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new VS2010Theme()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetResourceUri", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("theme.GetResourceUri()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("VisualTreeHelper.GetClip(visual)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DockManager.AutoHideWindow", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateAvalonDockAutoHideCommandTarget", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ClickLiveControlAsync(liveHost, agendaAnchorControl, \"AgendaAutoHideAnchorControl\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("InvokeAvalonDockAutoHideWindowMethod", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("autoHideWindow.Model =", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(\"AutoHideWindow\"", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(\"VisualClip\"", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetMethod(", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DockThemeSwitchCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SourceDockManager.ActiveContentChanged", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ViewModel.SourceDocuments", mainWindowCodeBehind, StringComparison.Ordinal);

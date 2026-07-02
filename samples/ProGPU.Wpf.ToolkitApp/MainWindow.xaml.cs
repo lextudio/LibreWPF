@@ -5,7 +5,6 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,6 +29,7 @@ using Xceed.Wpf.Toolkit.Core;
 using Xceed.Wpf.Toolkit.Primitives;
 using Xceed.Wpf.Toolkit.PropertyGrid;
 using Xceed.Wpf.Toolkit.Zoombox;
+using AvalonDockAutoHideWindowControl = Xceed.Wpf.AvalonDock.Controls.LayoutAutoHideWindowControl;
 using AvalonDockAnchorableItem = Xceed.Wpf.AvalonDock.Controls.LayoutAnchorableItem;
 using AvalonDockLayoutAnchorControl = Xceed.Wpf.AvalonDock.Controls.LayoutAnchorControl;
 using AvalonDockDocumentItem = Xceed.Wpf.AvalonDock.Controls.LayoutDocumentItem;
@@ -510,16 +510,15 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
         }
 
-        AvalonDockLayoutAnchorControl anchorControl = FindAutoHideAnchorControl(anchorable);
-        InvokeAvalonDockAutoHideWindowMethod("HideAutoHideWindow", anchorControl);
-        InvokeAvalonDockAutoHideWindowMethod("ShowAutoHideWindow", anchorControl);
+        FindAutoHideAnchorControl(anchorable).Focus();
         Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
     }
 
     private void HideAvalonDockAutoHideOverlay(LayoutAnchorable anchorable)
     {
-        AvalonDockLayoutAnchorControl anchorControl = FindAutoHideAnchorControl(anchorable);
-        InvokeAvalonDockAutoHideWindowMethod("HideAutoHideWindow", anchorControl);
+        _ = FindAutoHideAnchorControl(anchorable);
+        ActivateEditorButton.Focus();
+        Keyboard.Focus(ActivateEditorButton);
         Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
     }
 
@@ -532,26 +531,6 @@ public partial class MainWindow : Window
             .FirstOrDefault(anchorControl => ReferenceEquals(anchorControl.Model, anchorable))
             ?? throw new InvalidOperationException(
                 $"Expected AvalonDock auto-hide side tab control for '{anchorable.Title}'.");
-    }
-
-    private void InvokeAvalonDockAutoHideWindowMethod(string methodName, AvalonDockLayoutAnchorControl anchorControl)
-    {
-        MethodInfo method = DockManager
-            .GetType()
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            .FirstOrDefault(candidate =>
-            {
-                if (!string.Equals(candidate.Name, methodName, StringComparison.Ordinal))
-                {
-                    return false;
-                }
-
-                ParameterInfo[] parameters = candidate.GetParameters();
-                return parameters.Length == 1 &&
-                    parameters[0].ParameterType.IsAssignableFrom(anchorControl.GetType());
-            })
-            ?? throw new MissingMethodException(DockManager.GetType().FullName, methodName);
-        method.Invoke(DockManager, [anchorControl]);
     }
 
     private void RecordAvalonDockContextMenuCommand(string commandName)
@@ -1851,11 +1830,7 @@ public partial class MainWindow : Window
 
     private static void ValidateRequiredVisualClip(Visual visual, string description)
     {
-        PropertyInfo property = typeof(Visual).GetProperty(
-            "VisualClip",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new MissingMemberException(typeof(Visual).FullName, "VisualClip");
-        if (property.GetValue(visual) is not Geometry clip)
+        if (VisualTreeHelper.GetClip(visual) is not Geometry clip)
         {
             throw new InvalidOperationException($"Expected {description} to have a WPF internal VisualClip.");
         }
@@ -2936,20 +2911,29 @@ public partial class MainWindow : Window
         int overlayCountBefore = ViewModel.AvalonDockAutoHideOverlayCount;
         ToolkitDockCommands.CycleAutoHideOverlay.Execute(null, this);
         Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
-        ValidateAvalonDockAutoHideOverlayTarget(AgendaPane, overlayCountBefore + 1);
+        ValidateAvalonDockAutoHideCommandTarget(AgendaPane, overlayCountBefore + 1);
 
         ToolkitDockCommands.CycleAutoHideOverlay.Execute(null, this);
         Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
-        ValidateAvalonDockAutoHideOverlayTarget(ContactsPane, overlayCountBefore + 2);
+        ValidateAvalonDockAutoHideCommandTarget(ContactsPane, overlayCountBefore + 2);
         HideAvalonDockAutoHideOverlay(ContactsPane);
     }
 
-    internal void ValidateAvalonDockAutoHideOverlayTarget(LayoutAnchorable expectedContent, int expectedOverlayCount)
+    internal void ValidateAvalonDockAutoHideCommandTarget(LayoutAnchorable expectedContent, int expectedOverlayCount)
     {
         if (!expectedContent.IsAutoHidden)
         {
             throw new InvalidOperationException($"Expected AvalonDock auto-hide overlay target '{expectedContent.Title}' to remain auto-hidden.");
         }
+
+        AssertEqual(expectedOverlayCount, ViewModel.AvalonDockAutoHideOverlayCount, "AvalonDock auto-hide overlay count");
+        AssertEqual(expectedContent.ContentId ?? expectedContent.Title, ViewModel.LastAvalonDockAutoHideOverlayTarget, "AvalonDock auto-hide overlay last target");
+        AssertEqual($"Auto-hide overlay shown: {expectedContent.Title}", ViewModel.Status, "AvalonDock auto-hide overlay status");
+    }
+
+    internal void ValidateAvalonDockAutoHideOverlayTarget(LayoutAnchorable expectedContent, int expectedOverlayCount)
+    {
+        ValidateAvalonDockAutoHideCommandTarget(expectedContent, expectedOverlayCount);
 
         object? overlayModel = GetAvalonDockAutoHideWindowModel();
         if (!AutoHideOverlayModelContains(overlayModel, expectedContent))
@@ -2957,10 +2941,6 @@ public partial class MainWindow : Window
             throw new InvalidOperationException(
                 $"Expected AvalonDock auto-hide overlay to host '{expectedContent.Title}', but model was '{FormatAvalonDockActiveContent(overlayModel)}'.");
         }
-
-        AssertEqual(expectedOverlayCount, ViewModel.AvalonDockAutoHideOverlayCount, "AvalonDock auto-hide overlay count");
-        AssertEqual(expectedContent.ContentId ?? expectedContent.Title, ViewModel.LastAvalonDockAutoHideOverlayTarget, "AvalonDock auto-hide overlay last target");
-        AssertEqual($"Auto-hide overlay shown: {expectedContent.Title}", ViewModel.Status, "AvalonDock auto-hide overlay status");
     }
 
     private void EnsureAutoHideOverlayAnchorables()
@@ -2977,14 +2957,8 @@ public partial class MainWindow : Window
 
     private object? GetAvalonDockAutoHideWindowModel()
     {
-        object? autoHideWindow = DockManager
-            .GetType()
-            .GetProperty("AutoHideWindow", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?.GetValue(DockManager);
-        return autoHideWindow
-            ?.GetType()
-            .GetProperty("Model", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?.GetValue(autoHideWindow);
+        AvalonDockAutoHideWindowControl? autoHideWindow = DockManager.AutoHideWindow;
+        return autoHideWindow?.Model;
     }
 
     private static bool AutoHideOverlayModelContains(object? overlayModel, LayoutAnchorable expectedContent)
@@ -3580,11 +3554,7 @@ public partial class MainWindow : Window
         AssertEqual(expectedTypeName, themeType.Name, $"{managerName} AvalonDock theme type");
         AssertEqual(expectedAssemblyName, themeType.Assembly.GetName().Name ?? string.Empty, $"{managerName} AvalonDock theme assembly");
 
-        MethodInfo getResourceUri = themeType.GetMethod(
-            "GetResourceUri",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new MissingMethodException(themeType.FullName, "GetResourceUri");
-        var resourceUri = Convert.ToString(getResourceUri.Invoke(theme, null), CultureInfo.InvariantCulture);
+        var resourceUri = Convert.ToString(theme.GetResourceUri(), CultureInfo.InvariantCulture);
         if (string.IsNullOrWhiteSpace(resourceUri) ||
             !resourceUri.Contains(expectedAssemblyName, StringComparison.Ordinal))
         {
@@ -4337,6 +4307,19 @@ public partial class MainWindow : Window
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
         await InvokeWithLiveHostWakeAsync(
             liveHost,
+            () => ValidateAvalonDockAutoHideCommandTarget(AgendaPane, overlayCountBefore + 1),
+            DispatcherPriority.Send);
+        AvalonDockLayoutAnchorControl agendaAnchorControl = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => FindAutoHideAnchorControl(AgendaPane),
+            DispatcherPriority.Send);
+        await ClickLiveControlAsync(liveHost, agendaAnchorControl, "AgendaAutoHideAnchorControl");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => AutoHideOverlayModelContains(GetAvalonDockAutoHideWindowModel(), AgendaPane),
+            "Toolkit live AvalonDock agenda auto-hide overlay model");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
             () => ValidateAvalonDockAutoHideOverlayTarget(AgendaPane, overlayCountBefore + 1),
             DispatcherPriority.Send);
 
@@ -4349,6 +4332,19 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateAvalonDockAutoHideCommandTarget(ContactsPane, overlayCountBefore + 2),
+            DispatcherPriority.Send);
+        AvalonDockLayoutAnchorControl contactsAnchorControl = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => FindAutoHideAnchorControl(ContactsPane),
+            DispatcherPriority.Send);
+        await ClickLiveControlAsync(liveHost, contactsAnchorControl, "ContactsAutoHideAnchorControl");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => AutoHideOverlayModelContains(GetAvalonDockAutoHideWindowModel(), ContactsPane),
+            "Toolkit live AvalonDock contacts auto-hide overlay model");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () =>

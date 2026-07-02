@@ -11544,6 +11544,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("PathGeometry.Parse(pathText)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("CreateCombinedGeometry(geometryA, geometryB, portablePath.CombineOperation)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("new ProGpuCombinedGeometry", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.False(
+            File.Exists(Path.Combine(Path.GetDirectoryName(wpfResourceResolverPath)!, "ProGpuCombinedGeometry.cs")),
+            "The transition ProGpuCombinedGeometry wrapper should stay removed; combined geometry must use typed portable/native paths or normal WPF geometry construction.");
         Assert.Contains("resource is PortableBrushSource portableBrushSource", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("resource is PortablePenSource portablePenSource", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativePortableBrush(portableBrush, bounds, out unsupportedStateCount)", wpfResourceResolver, StringComparison.Ordinal);

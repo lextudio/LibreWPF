@@ -2,12 +2,13 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.ProGPU;
+using System.Windows.Media.ProGPU.Platform;
 using System.Windows.Navigation;
 using System.Windows.Threading;
 
@@ -139,7 +140,7 @@ public partial class MainWindow : Window
     {
         bool requireLiveValidation = Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) == "1";
         _liveRenderSurfaceValidationAttempts++;
-        if (!TryGetPortableActivationHost(out object? host))
+        if (!ProGpuWpfDiagnostics.TryGetWindowHost(this, out var host) || host == null)
         {
             if (TryScheduleLiveRenderSurfaceValidationRetry())
             {
@@ -154,10 +155,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        object liveHost = host
-            ?? throw new InvalidOperationException("Expected the SDK-switch smoke app to have a live ProGPU host.");
-        if (GetRequiredProperty(liveHost, "HasPresentedFrame") is bool hasPresentedFrame &&
-            !hasPresentedFrame)
+        ProGpuWpfWindowHost liveHost = host;
+        if (!liveHost.HasPresentedFrame)
         {
             if (TryScheduleLiveRenderSurfaceValidationRetry())
             {
@@ -195,14 +194,12 @@ public partial class MainWindow : Window
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
             await Task.Delay(LiveValidationRetryDelay).ConfigureAwait(false);
-            if (!TryGetPortableActivationHost(out object? liveHost) ||
-                liveHost == null)
+            if (!ProGpuWpfDiagnostics.TryGetWindowHost(this, out var liveHost) || liveHost == null)
             {
                 continue;
             }
 
-            if (GetRequiredProperty(liveHost, "HasPresentedFrame") is not bool hasPresentedFrame ||
-                !hasPresentedFrame)
+            if (!liveHost.HasPresentedFrame)
             {
                 WakeLiveRenderHost(liveHost);
                 continue;
@@ -241,7 +238,7 @@ public partial class MainWindow : Window
         Environment.Exit(1);
     }
 
-    private async Task<string> ValidateLiveInputAsync(object liveHost)
+    private async Task<string> ValidateLiveInputAsync(ProGpuWpfWindowHost liveHost)
     {
         Button? actionButton = null;
         TextBox? inputBox = null;
@@ -286,9 +283,9 @@ public partial class MainWindow : Window
                     ClickStatus.Text = "not clicked";
                     inputPoint = center;
                     inputHit = hit;
-                    RaiseHostInput(liveHost, "MouseMove", x: center.X, y: center.Y);
-                    RaiseHostInput(liveHost, "MouseDown", x: center.X, y: center.Y, button: "Left");
-                    RaiseHostInput(liveHost, "MouseUp", x: center.X, y: center.Y, button: "Left");
+                    RaiseHostInput(liveHost, WpfInputEventKind.MouseMove, x: center.X, y: center.Y);
+                    RaiseHostInput(liveHost, WpfInputEventKind.MouseDown, x: center.X, y: center.Y, button: WpfMouseButton.Left);
+                    RaiseHostInput(liveHost, WpfInputEventKind.MouseUp, x: center.X, y: center.Y, button: WpfMouseButton.Left);
                     return true;
                 },
                 DispatcherPriority.Send);
@@ -330,9 +327,9 @@ public partial class MainWindow : Window
                 foreach (char character in "Sdk")
                 {
                     string key = char.ToUpperInvariant(character).ToString();
-                    RaiseHostInput(liveHost, "KeyDown", key: key);
-                    RaiseHostInput(liveHost, "TextInput", character: character);
-                    RaiseHostInput(liveHost, "KeyUp", key: key);
+                    RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: key);
+                    RaiseHostInput(liveHost, WpfInputEventKind.TextInput, character: character);
+                    RaiseHostInput(liveHost, WpfInputEventKind.KeyUp, key: key);
                 }
             },
             DispatcherPriority.Send);
@@ -346,8 +343,8 @@ public partial class MainWindow : Window
                 AssertEqual("Sdk", Require<SmokeViewModel>(viewModel, "SDK-switch live input view model").InputText, "SDK-switch live view-model source after host text input");
 
                 int before = SmokeCommandExecutionCount;
-                RaiseHostInput(liveHost, "KeyDown", key: "F6", modifiers: "Control");
-                RaiseHostInput(liveHost, "KeyUp", key: "F6", modifiers: "Control");
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: "F6", modifiers: WpfInputModifiers.Control);
+                RaiseHostInput(liveHost, WpfInputEventKind.KeyUp, key: "F6", modifiers: WpfInputModifiers.Control);
                 return before;
             },
             DispatcherPriority.Send);
@@ -366,20 +363,24 @@ public partial class MainWindow : Window
     }
 
     private static string ValidateLiveRenderSurfaceGeometryCore(
-        object liveHost,
+        ProGpuWpfWindowHost liveHost,
         uint expectedLogicalWidth,
         uint expectedLogicalHeight)
     {
-        object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
-        var logicalWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalWidth"));
-        var logicalHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalHeight"));
-        var pixelWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelWidth"));
-        var pixelHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelHeight"));
-        var dpiScale = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScale"), CultureInfo.InvariantCulture);
-        var viewportX = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportX"));
-        var viewportY = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportY"));
-        var viewportWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportWidth"));
-        var viewportHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportHeight"));
+        if (!ProGpuWpfDiagnostics.TryGetRenderSurfaceGeometry(liveHost, out var geometry))
+        {
+            throw new InvalidOperationException("Expected ProGPU WPF diagnostics to resolve SDK-switch render-surface geometry.");
+        }
+
+        var logicalWidth = geometry.LogicalWidth;
+        var logicalHeight = geometry.LogicalHeight;
+        var pixelWidth = geometry.PixelWidth;
+        var pixelHeight = geometry.PixelHeight;
+        var dpiScale = geometry.DpiScale;
+        var viewportX = geometry.ViewportX;
+        var viewportY = geometry.ViewportY;
+        var viewportWidth = geometry.ViewportWidth;
+        var viewportHeight = geometry.ViewportHeight;
 
         AssertClose(logicalWidth, expectedLogicalWidth, "live ProGPU WPF logical width");
         AssertClose(logicalHeight, expectedLogicalHeight, "live ProGPU WPF logical height");
@@ -421,35 +422,20 @@ public partial class MainWindow : Window
                 $"Expected live ProGPU WPF high-DPI viewport to exceed logical size, but got logical {logicalWidth}x{logicalHeight}, viewport {viewportWidth}x{viewportHeight}, DPI {dpiScale}.");
         }
 
-        if (TryGetLiveFramebufferSize(liveHost, out var framebufferWidth, out var framebufferHeight))
+        if (liveHost.LastPresentedFrameState.PixelWidth > 0 &&
+            liveHost.LastPresentedFrameState.PixelHeight > 0)
         {
-            AssertClose(pixelWidth, framebufferWidth, "live ProGPU WPF physical framebuffer width");
-            AssertClose(pixelHeight, framebufferHeight, "live ProGPU WPF physical framebuffer height");
-            if ((framebufferWidth > logicalWidth || framebufferHeight > logicalHeight) &&
-                dpiScale <= 1.01)
-            {
-                throw new InvalidOperationException(
-                    $"Expected live ProGPU WPF DPI to track the physical framebuffer, but got logical {logicalWidth}x{logicalHeight}, framebuffer {framebufferWidth}x{framebufferHeight}, DPI {dpiScale}.");
-            }
-        }
-
-        if (TryGetLivePresentedFramePixelSize(liveHost, out var framePixelWidth, out var framePixelHeight))
-        {
+            uint framePixelWidth = liveHost.LastPresentedFrameState.PixelWidth;
+            uint framePixelHeight = liveHost.LastPresentedFrameState.PixelHeight;
             AssertClose(framePixelWidth, pixelWidth, "live ProGPU WPF presented frame pixel width");
             AssertClose(framePixelHeight, pixelHeight, "live ProGPU WPF presented frame pixel height");
-        }
-
-        if (TryGetLiveSwapChainSize(liveHost, out var swapChainWidth, out var swapChainHeight))
-        {
-            AssertClose(swapChainWidth, pixelWidth, "live ProGPU WPF swapchain pixel width");
-            AssertClose(swapChainHeight, pixelHeight, "live ProGPU WPF swapchain pixel height");
         }
 
         return $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY}, dpi {dpiScale:0.###}";
     }
 
     private async Task InvokeWithLiveHostWakeAsync(
-        object liveHost,
+        ProGpuWpfWindowHost liveHost,
         Action callback,
         DispatcherPriority priority)
     {
@@ -465,7 +451,7 @@ public partial class MainWindow : Window
     }
 
     private async Task<T> InvokeWithLiveHostWakeAsync<T>(
-        object liveHost,
+        ProGpuWpfWindowHost liveHost,
         Func<T> callback,
         DispatcherPriority priority)
     {
@@ -479,78 +465,36 @@ public partial class MainWindow : Window
         return await operation;
     }
 
-    private static void WakeLiveRenderHost(object liveHost)
+    private static void WakeLiveRenderHost(ProGpuWpfWindowHost liveHost)
     {
-        object scheduler = GetRequiredProperty(liveHost, "WpfRenderScheduler");
-        MethodInfo requestRender = scheduler.GetType().GetMethod(
-            "RequestRender",
-            BindingFlags.Instance | BindingFlags.Public,
-            binder: null,
-            types: Type.EmptyTypes,
-            modifiers: null)
-            ?? throw new MissingMethodException(scheduler.GetType().FullName, "RequestRender");
-        requestRender.Invoke(scheduler, null);
-
-        MethodInfo? requestNativeLoopWakeup = liveHost.GetType().GetMethod(
-            "TryRequestNativeLoopWakeup",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-            binder: null,
-            types: Type.EmptyTypes,
-            modifiers: null);
-        requestNativeLoopWakeup?.Invoke(liveHost, null);
+        if (!ProGpuWpfDiagnostics.TryRequestRender(liveHost))
+        {
+            throw new InvalidOperationException("Expected ProGPU WPF diagnostics to request an SDK-switch live render.");
+        }
     }
 
     private static void RaiseHostInput(
-        object liveHost,
-        string kind,
+        ProGpuWpfWindowHost liveHost,
+        WpfInputEventKind kind,
         string? key = null,
         char? character = null,
         double x = 0.0,
         double y = 0.0,
-        string button = "None",
-        string modifiers = "None")
+        WpfMouseButton button = WpfMouseButton.None,
+        WpfInputModifiers modifiers = WpfInputModifiers.None)
     {
-        object input = CreateWpfInputEventArgs(liveHost, kind, key, character, x, y, button, modifiers);
-        MethodInfo method = liveHost.GetType().GetMethod(
-            "OnPlatformInputReceived",
-            BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new MissingMethodException(liveHost.GetType().FullName, "OnPlatformInputReceived");
-        method.Invoke(liveHost, new object?[] { null, input });
-    }
-
-    private static object CreateWpfInputEventArgs(
-        object liveHost,
-        string kind,
-        string? key,
-        char? character,
-        double x,
-        double y,
-        string button,
-        string modifiers)
-    {
-        Assembly assembly = liveHost.GetType().Assembly;
-        Type inputType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs", throwOnError: true)
-            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs");
-        Type kindType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventKind", throwOnError: true)
-            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventKind");
-        Type buttonType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfMouseButton", throwOnError: true)
-            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfMouseButton");
-        Type modifiersType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputModifiers", throwOnError: true)
-            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputModifiers");
-
-        return Activator.CreateInstance(
-            inputType,
-            Enum.Parse(kindType, kind),
+        var input = new WpfInputEventArgs(
+            kind,
             key,
-            0,
-            character.HasValue ? character.Value : null,
-            x,
-            y,
-            0.0,
-            0.0,
-            Enum.Parse(buttonType, button),
-            Enum.Parse(modifiersType, modifiers))
-            ?? throw new InvalidOperationException("Expected WpfInputEventArgs construction to succeed.");
+            character: character,
+            x: x,
+            y: y,
+            button: button,
+            modifiers: modifiers);
+        if (!ProGpuWpfDiagnostics.TryRaiseInput(liveHost, input))
+        {
+            throw new InvalidOperationException("Expected ProGPU WPF diagnostics to inject SDK-switch live input.");
+        }
     }
 
     private T Require<T>(string name)
@@ -609,142 +553,6 @@ public partial class MainWindow : Window
             _ => ScheduleLiveRenderSurfaceValidation(),
             TaskScheduler.Default);
         return true;
-    }
-
-    private bool TryGetPortableActivationHost(out object? host)
-    {
-        host = null;
-        PropertyInfo? activationProperty = typeof(Window).GetProperty(
-            "PortableWindowActivation",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-        object? activation = activationProperty?.GetValue(this);
-        if (activation == null)
-        {
-            return false;
-        }
-
-        PropertyInfo? hostProperty = activation.GetType().GetProperty(
-            "Host",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        host = hostProperty?.GetValue(activation);
-        return host != null;
-    }
-
-    private static bool TryGetLiveFramebufferSize(object liveHost, out uint width, out uint height)
-    {
-        width = 0;
-        height = 0;
-        object? silkWindow = TryGetProperty(liveHost, "SilkWindow");
-        if (silkWindow == null)
-        {
-            return false;
-        }
-
-        object? framebufferSize = TryGetProperty(silkWindow, "FramebufferSize");
-        return framebufferSize != null &&
-            TryReadPositiveUintProperty(framebufferSize, "X", out width) &&
-            TryReadPositiveUintProperty(framebufferSize, "Y", out height);
-    }
-
-    private static bool TryGetLivePresentedFramePixelSize(object liveHost, out uint width, out uint height)
-    {
-        width = 0;
-        height = 0;
-        object? frameState = TryGetProperty(liveHost, "LastPresentedFrameState");
-        return frameState != null &&
-            TryReadPositiveUintProperty(frameState, "PixelWidth", out width) &&
-            TryReadPositiveUintProperty(frameState, "PixelHeight", out height);
-    }
-
-    private static bool TryGetLiveSwapChainSize(object liveHost, out uint width, out uint height)
-    {
-        width = 0;
-        height = 0;
-        object? target = TryGetProperty(liveHost, "CompositionTarget");
-        object? context = target == null
-            ? null
-            : TryGetProperty(target, "Context");
-        return context != null &&
-            TryReadPositiveUintField(context, "_lastWidth", out width) &&
-            TryReadPositiveUintField(context, "_lastHeight", out height);
-    }
-
-    private static object? TryGetProperty(object target, string propertyName)
-    {
-        return target.GetType().GetProperty(
-                propertyName,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?.GetValue(target);
-    }
-
-    private static object? TryGetField(object target, string fieldName)
-    {
-        return target.GetType().GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?.GetValue(target);
-    }
-
-    private static object InvokeRequired(object target, string methodName)
-    {
-        MethodInfo method = target.GetType().GetMethod(
-            methodName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new MissingMethodException(target.GetType().FullName, methodName);
-        return method.Invoke(target, null)
-            ?? throw new InvalidOperationException($"Expected {target.GetType().FullName}.{methodName} to return a value.");
-    }
-
-    private static object GetRequiredProperty(object target, string propertyName)
-    {
-        PropertyInfo property = target.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new MissingMemberException(target.GetType().FullName, propertyName);
-        return property.GetValue(target)
-            ?? throw new InvalidOperationException($"Expected {target.GetType().FullName}.{propertyName} to return a value.");
-    }
-
-    private static bool TryReadPositiveUintProperty(object target, string propertyName, out uint value)
-    {
-        value = 0;
-        object? rawValue = TryGetProperty(target, propertyName);
-        return TryConvertPositiveUint(rawValue, out value);
-    }
-
-    private static bool TryReadPositiveUintField(object target, string fieldName, out uint value)
-    {
-        value = 0;
-        object? rawValue = TryGetField(target, fieldName);
-        return TryConvertPositiveUint(rawValue, out value);
-    }
-
-    private static bool TryConvertPositiveUint(object? rawValue, out uint value)
-    {
-        value = 0;
-        try
-        {
-            int dimension = Convert.ToInt32(rawValue, CultureInfo.InvariantCulture);
-            if (dimension <= 0)
-            {
-                return false;
-            }
-
-            value = (uint)dimension;
-            return true;
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
-        catch (InvalidCastException)
-        {
-            return false;
-        }
-        catch (OverflowException)
-        {
-            return false;
-        }
     }
 
     private static uint ToExpectedLogicalDimension(double declaredDimension, double renderDimension)

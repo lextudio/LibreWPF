@@ -8679,6 +8679,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("GetMethod(", appCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(", appCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GetType()", appCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("Assembly.Load", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetMethod(", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetType()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed package surface validation succeeded", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application.Run validation requires license variables", appCodeBehind, StringComparison.Ordinal);

@@ -1698,6 +1698,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal bool TryHitTestOwners(double x, double y, out object?[] owners)
     {
         owners = Array.Empty<object?>();
+        object?[] ownerBuffer = new object?[64];
+        if (!TryHitTestOwners(x, y, ownerBuffer, out int ownerCount))
+        {
+            return false;
+        }
+
+        if (ownerCount == 0)
+        {
+            return true;
+        }
+
+        owners = ownerBuffer[..ownerCount];
+        return true;
+    }
+
+    internal bool TryHitTestOwners(double x, double y, Span<object?> owners, out int ownerCount)
+    {
+        ownerCount = 0;
         if (_target == null ||
             !double.IsFinite(x) ||
             !double.IsFinite(y) ||
@@ -1710,23 +1728,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         EnsureGpuHitTestCacheCurrent();
-        object?[] ownerBuffer = new object?[64];
-        if (!_target.TryHitTestOwners(
-                new System.Numerics.Vector2((float)x, (float)y),
-                ownerBuffer,
-                out int ownerCount,
-                out _))
-        {
-            return false;
-        }
-
-        if (ownerCount == 0)
-        {
-            return true;
-        }
-
-        owners = ownerBuffer[..ownerCount];
-        return true;
+        return _target.TryHitTestOwners(
+            new System.Numerics.Vector2((float)x, (float)y),
+            owners,
+            out ownerCount,
+            out _);
     }
 
     private void EnsureGpuHitTestCacheCurrent()

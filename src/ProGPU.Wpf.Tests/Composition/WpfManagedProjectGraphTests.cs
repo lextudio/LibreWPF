@@ -791,6 +791,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TraceInputEvent(\"wpf\", input)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryHitTestOwner(double x, double y, out object? owner)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryHitTestOwners(double x, double y, out object?[] owners)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryHitTestOwners(double x, double y, Span<object?> owners, out int ownerCount)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestBoundsOwners(double minX, double minY, double maxX, double maxY, out object?[] owners)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestBoundsCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)", proGpuHost, StringComparison.Ordinal);
@@ -821,7 +822,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private object?[]? HitTestOwners(double rootX, double rootY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestEllipseBoundsOwners(double minX, double minY, double maxX, double maxY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("_host.TryHitTestOwners(rootX, rootY, out object?[] owners)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.TryHitTestOwners(rootX, rootY, ownerBuffer, out int ownerCount)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryQueryHitTestBoundsCandidates(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryQueryHitTestEllipseCandidates(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.DoesNotContain("_host.TryHitTestOwner(rootX, rootY", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);

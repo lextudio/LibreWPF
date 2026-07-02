@@ -1,6 +1,7 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Media.ProGPU.Platform;
 
@@ -8,6 +9,8 @@ namespace System.Windows.Media.ProGPU;
 
 public sealed class WpfPortablePresentationSourceBridge : IDisposable
 {
+    private const int HitTestOwnerBufferCapacity = 64;
+
     private readonly ProGpuWpfWindowHost _host;
     private readonly IPortablePresentationSourceHost _source;
     private readonly bool _ownsSource;
@@ -224,25 +227,34 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
     private object? TryHitTestOwner(double rootX, double rootY)
     {
-        if (_host.TryHitTestOwners(rootX, rootY, out object?[] owners))
+        object?[] ownerBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
+        try
         {
-            if (TrySelectPointerInputOwner(owners, out object? selectedOwner))
+            if (_host.TryHitTestOwners(rootX, rootY, ownerBuffer, out int ownerCount))
             {
-                TraceHitTestOwners(rootX, rootY, owners, selectedOwner);
-                return selectedOwner;
+                ReadOnlySpan<object?> owners = ownerBuffer.AsSpan(0, ownerCount);
+                if (TrySelectPointerInputOwner(owners, out object? selectedOwner))
+                {
+                    TraceHitTestOwners(rootX, rootY, owners, selectedOwner);
+                    return selectedOwner;
+                }
+
+                object? handledMiss = _host.HasGpuHitTestCache ? Source : null;
+                TraceHitTestOwners(rootX, rootY, owners, handledMiss);
+                return handledMiss;
             }
 
-            object? handledMiss = _host.HasGpuHitTestCache ? Source : null;
-            TraceHitTestOwners(rootX, rootY, owners, handledMiss);
-            return handledMiss;
+            object? fallbackOwner = _host.HasGpuHitTestCache ? Source : null;
+            TraceHitTestOwners(rootX, rootY, ReadOnlySpan<object?>.Empty, fallbackOwner, hasOwners: false);
+            return fallbackOwner;
         }
-
-        object? fallbackOwner = _host.HasGpuHitTestCache ? Source : null;
-        TraceHitTestOwners(rootX, rootY, owners: null, fallbackOwner);
-        return fallbackOwner;
+        finally
+        {
+            ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true);
+        }
     }
 
-    private static bool TrySelectPointerInputOwner(object?[] owners, out object? selectedOwner)
+    private static bool TrySelectPointerInputOwner(ReadOnlySpan<object?> owners, out object? selectedOwner)
     {
         selectedOwner = null;
         int selectedDepth = -1;
@@ -399,19 +411,41 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private static void TraceHitTestOwners(
         double rootX,
         double rootY,
-        object?[]? owners,
-        object? selectedOwner)
+        ReadOnlySpan<object?> owners,
+        object? selectedOwner,
+        bool hasOwners = true)
     {
         if (!IsHitTestTraceEnabled())
         {
             return;
         }
 
-        string ownerList = owners == null
+        string ownerList = !hasOwners
             ? "<none>"
-            : string.Join(", ", owners.Select(DescribeHitTestOwner));
+            : DescribeHitTestOwners(owners);
         Console.Error.WriteLine(
             $"ProGPU WPF GPU hit-test ({rootX:0.###},{rootY:0.###}) owners=[{ownerList}] selected={DescribeHitTestOwner(selectedOwner)}");
+    }
+
+    private static string DescribeHitTestOwners(ReadOnlySpan<object?> owners)
+    {
+        if (owners.IsEmpty)
+        {
+            return string.Empty;
+        }
+
+        var builder = new StringBuilder();
+        for (int i = 0; i < owners.Length; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(DescribeHitTestOwner(owners[i]));
+        }
+
+        return builder.ToString();
     }
 
     private static bool IsHitTestTraceEnabled()

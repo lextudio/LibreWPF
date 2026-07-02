@@ -2507,13 +2507,13 @@ internal static class WpfDrawingReplay
                     drawingGroupState,
                     out var transformValue))
                 {
-                    if (WpfResourceResolver.AdaptTransform(transformValue) is not { } transform)
+                    if (!WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out var transform))
                     {
                         bounds = default;
                         return false;
                     }
 
-                    bounds = TransformBounds(bounds, transform.Value);
+                    bounds = TransformBounds(bounds, transform);
                 }
 
                 return IsUsableRect(bounds, out bounds);

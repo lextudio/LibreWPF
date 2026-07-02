@@ -2058,6 +2058,31 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsUsesPortableDrawingGroupTransformMatrixWithoutMediaTransformFallback()
+    {
+        var geometry = new PortableRectangleClipGeometry(1, 2, 10, 12);
+        var child = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+        var group = new ThrowingPortableDrawingGroup(new PortableDrawingGroupState
+        {
+            HasTransform = true,
+            Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
+            Children = [child]
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(group, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(4, 6, 10, 12), bounds);
+        Assert.Equal(0, group.ReflectedStateProbeCount);
+        Assert.Equal(0, child.ReflectedStateProbeCount);
+        Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
+    }
+
+    [Fact]
     public void TryGetDrawingBoundsIgnoresNonPortableGenericBoundsShape()
     {
         var drawing = new ThrowingBoundsOnlyDrawing();

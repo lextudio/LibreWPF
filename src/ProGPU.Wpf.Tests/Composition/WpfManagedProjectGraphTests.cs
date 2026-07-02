@@ -5874,6 +5874,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static bool TryGetPortableGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableGeometryBounds(geometryValue, out bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingGroupClipBounds(clipValue, out var clipBounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out var transform)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("bounds = TransformBounds(bounds, transform)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(drawing, \"GeometryDrawing\")", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(drawing, \"Geometry\", out geometry)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(drawing, \"Brush\", out brush)", replaySource, StringComparison.Ordinal);
@@ -5893,6 +5895,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Assert.Equal(0, geometry.ReflectedGeometryProbeCount);", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableDrawingGroupClipBoundsWithoutGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("Assert.Equal(0, clip.ReflectedGeometryProbeCount);", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesPortableDrawingGroupTransformMatrixWithoutMediaTransformFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsIgnoresNonPortableGenericBoundsShape", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsDoesNotReflectUnavailablePortableDrawingState", rendererTests, StringComparison.Ordinal);
     }

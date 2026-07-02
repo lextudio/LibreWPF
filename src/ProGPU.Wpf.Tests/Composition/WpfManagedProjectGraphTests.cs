@@ -821,15 +821,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private object?[]? HitTestOwners(double rootX, double rootY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestEllipseBoundsOwners(double minX, double minY, double maxX, double maxY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
-        Assert.Contains("_host.TryHitTestOwner(rootX, rootY, out object? owner)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryHitTestOwners(rootX, rootY, out object?[] owners)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryQueryHitTestBoundsCandidates(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryQueryHitTestEllipseCandidates(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("_host.TryHitTestOwner(rootX, rootY", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Source : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Array.Empty<object>() : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("TryBindUsesTypedPortableSourceContractWithoutReflectiveShape", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("TryBindInstallsGpuHitTestOverrideWhenSourceExposesHook", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestOverridesReturnHandledMissWhenCacheExists", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
+        Assert.Contains("GpuHitTestPointOverrideTreatsTransparentGpuOwnerAsHandledMissWithoutSingleOwnerRetry", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("Assert.Empty(source.HitTestEllipseBoundsOverride", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TRACE_RENDER_SURFACE", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceRenderSurfaceGeometryIfRequested(geometry)", proGpuHost, StringComparison.Ordinal);

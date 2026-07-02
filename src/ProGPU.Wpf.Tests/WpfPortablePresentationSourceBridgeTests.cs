@@ -216,6 +216,36 @@ public sealed class WpfPortablePresentationSourceBridgeTests
     }
 
     [Fact]
+    public void GpuHitTestPointOverrideTreatsTransparentGpuOwnerAsHandledMissWithoutSingleOwnerRetry()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var source = new FakePortablePresentationSource();
+        var transparentOwner = new FakeVisualOwner(
+            PortableVisualOwnerKind.TransparentPointerOverlay);
+        int transparentOwnerId = target.GpuHitTestOwnerMap.GetOrCreateId(transparentOwner);
+        var index = GpuHitTestIndex.Build(
+            [
+                GpuHitTestPrimitive.RectangleFill(
+                    transparentOwnerId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 0f)
+            ]);
+        InstallCompositionTarget(host, target);
+        InstallGpuHitTestCache(target, index);
+
+        var bound = WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge);
+
+        Assert.True(bound);
+        Assert.NotNull(bridge);
+        Assert.NotNull(source.HitTestOverride);
+        Assert.Same(source, source.HitTestOverride(10, 10));
+        Assert.Empty(source.HitTestAllOverride!(10, 10)!);
+    }
+
+    [Fact]
     public void TryBindReturnsFalseWhenSourceShapeIsMissing()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -282,6 +312,11 @@ public sealed class WpfPortablePresentationSourceBridgeTests
     private static void InstallEmptyGpuHitTestCache(ProGpuWpfCompositionTarget target)
     {
         var index = GpuHitTestIndex.Build(Array.Empty<GpuHitTestPrimitive>());
+        InstallGpuHitTestCache(target, index);
+    }
+
+    private static void InstallGpuHitTestCache(ProGpuWpfCompositionTarget target, GpuHitTestIndex index)
+    {
         typeof(global::ProGPU.Scene.Compositor)
             .GetMethod("SetLastHitTestIndex", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .Invoke(target.Compositor, new object[] { index });
@@ -355,6 +390,18 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         {
             IsDisposed = true;
         }
+    }
+
+    private sealed class FakeVisualOwner(
+        PortableVisualOwnerKind ownerKind,
+        object? parent = null,
+        bool isInputEnabled = true) : IPortableVisualOwnerHost
+    {
+        public object PortableVisualParent { get; } = parent ?? null!;
+
+        public bool IsPortableInputEnabled { get; } = isInputEnabled;
+
+        public PortableVisualOwnerKind PortableVisualOwnerKind { get; } = ownerKind;
     }
 
     private sealed class FakeCursor

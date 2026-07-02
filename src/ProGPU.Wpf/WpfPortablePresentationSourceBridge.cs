@@ -224,17 +224,20 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
     private object? TryHitTestOwner(double rootX, double rootY)
     {
-        if (_host.TryHitTestOwners(rootX, rootY, out object?[] owners) &&
-            TrySelectPointerInputOwner(owners, out object? selectedOwner))
+        if (_host.TryHitTestOwners(rootX, rootY, out object?[] owners))
         {
-            TraceHitTestOwners(rootX, rootY, owners, selectedOwner);
-            return selectedOwner;
+            if (TrySelectPointerInputOwner(owners, out object? selectedOwner))
+            {
+                TraceHitTestOwners(rootX, rootY, owners, selectedOwner);
+                return selectedOwner;
+            }
+
+            object? handledMiss = _host.HasGpuHitTestCache ? Source : null;
+            TraceHitTestOwners(rootX, rootY, owners, handledMiss);
+            return handledMiss;
         }
 
-        object? fallbackOwner = _host.TryHitTestOwner(rootX, rootY, out object? owner) &&
-            owner != null
-                ? NormalizePointerInputOwner(owner)
-                : _host.HasGpuHitTestCache ? Source : null;
+        object? fallbackOwner = _host.HasGpuHitTestCache ? Source : null;
         TraceHitTestOwners(rootX, rootY, owners: null, fallbackOwner);
         return fallbackOwner;
     }

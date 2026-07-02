@@ -11357,6 +11357,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("resource is PortableGeometryPathSource portableGeometry", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("portableGeometry.TryGetPortableGeometryPath(out var portablePath)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptPortableGeometryPath(portablePath)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryAdaptPortableGeometryPath", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("catch (MissingMethodException)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("catch (TypeLoadException)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("ApplyPortableGeometryTransform(portablePath, geometry)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("DecodeGeometryAdaptsPortableRectangleGeometry", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodeGeometryAdaptsPortableLineGeometry", wpfResourceResolverTests, StringComparison.Ordinal);

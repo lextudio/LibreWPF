@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using System.Windows.Media.ProGPU.Composition;
 using ProGPU.Text;
 using MediaBrush = System.Windows.Media.Brush;
@@ -1263,8 +1262,7 @@ public sealed class WpfResourceResolver :
         if (resource is PortableGeometryPathSource portableGeometry)
         {
             return portableGeometry.TryGetPortableGeometryPath(out var portablePath)
-                && TryAdaptPortableGeometryPath(portablePath, out var portableGeometryPath)
-                    ? portableGeometryPath
+                ? AdaptPortableGeometryPath(portablePath)
                 : null;
         }
 
@@ -1274,25 +1272,6 @@ public sealed class WpfResourceResolver :
         }
 
         return null;
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool TryAdaptPortableGeometryPath(PortableGeometryPath portablePath, out MediaGeometry? geometry)
-    {
-        geometry = null;
-        try
-        {
-            geometry = AdaptPortableGeometryPath(portablePath);
-            return geometry != null;
-        }
-        catch (MissingMethodException)
-        {
-            return false;
-        }
-        catch (TypeLoadException)
-        {
-            return false;
-        }
     }
 
     private static MediaGeometry? AdaptPortableGeometryPath(PortableGeometryPath portablePath)

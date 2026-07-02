@@ -305,6 +305,10 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         {
             _sink.PushNoOpScope();
         }
+        else if (TryPushPrimitiveRectangleClip(clipGeometry))
+        {
+            RegisterRetainedDependencies(clipGeometry);
+        }
         else
         {
             RegisterRetainedDependencies(clipGeometry);
@@ -313,6 +317,20 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
 
         _stackDepth++;
         CountApplied();
+    }
+
+    private bool TryPushPrimitiveRectangleClip(MediaGeometry clipGeometry)
+    {
+        if (_sink is IWpfNativeClipCommandSink nativeClipSink
+            && TryGetPrimitiveRectangleGeometry(clipGeometry, out var rectangle, out var radiusX, out var radiusY)
+            && radiusX == 0
+            && radiusY == 0)
+        {
+            nativeClipSink.PushNativeClip(ToReplayRect(rectangle));
+            return true;
+        }
+
+        return false;
     }
 
     public void PushOpacity(double opacity)

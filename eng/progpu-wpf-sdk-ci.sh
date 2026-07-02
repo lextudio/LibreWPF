@@ -92,6 +92,10 @@ pack_project "external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj" "ProGPU.
 pack_project "external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj" "ProGPU.Vector"
 pack_project "external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj" "ProGPU.Text"
 pack_project "external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj" "ProGPU.Scene"
+pack_project "external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj" "ProGPU.Layout"
+pack_project "external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj" "ProGPU.Virtualization"
+pack_project "external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj" "ProGPU.WinUI"
+pack_project "external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj" "ProGPU.Avalonia"
 pack_project "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "ProGPU.Wpf.Interop"
 
 echo "Building managed WPF transport payload..."

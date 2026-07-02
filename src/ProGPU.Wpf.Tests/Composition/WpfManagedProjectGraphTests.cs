@@ -9792,6 +9792,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"${package_output}/${package_id}.${dev_package_version}.nupkg\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj\" \"ProGPU.DirectX\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj\" \"ProGPU.Scene\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj\" \"ProGPU.Layout\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj\" \"ProGPU.Virtualization\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj\" \"ProGPU.WinUI\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj\" \"ProGPU.Avalonia\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj\" \"ProGPU.Wpf.Interop\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"src/ProGPU.Wpf/ProGPU.Wpf.csproj\" \"ProGPU.Wpf\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj\" \"ProGPU.Wpf.Sdk\"", sdkCiScript, StringComparison.Ordinal);

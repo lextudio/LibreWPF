@@ -275,6 +275,30 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextDrawsLocalRectanglePathGeometryAsNativeRectangleWithoutGenericGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreateRectanglePathGeometry(new Rect(10, 20, 30, 40));
+
+        context.DrawGeometry(Brushes.Red, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        Assert.Empty(sink.Rectangles);
+        var replayed = Assert.Single(sink.NativeRectangles);
+        Assert.Same(Brushes.Red, replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayRect(10, 20, 30, 40), replayed.Rectangle);
+        Assert.Contains(Brushes.Red, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextDrawsLocalRoundedRectangleGeometryAsNativeRoundedRectangle()
     {
         var sink = new NativeRecordingSink();
@@ -856,6 +880,30 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextDrawsRectanglePathGeometryAsNativeRectangleWithoutGenericGeometryFallback()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreateRectanglePathGeometry(new Rect(1, 2, 30, 40));
+
+        context.DrawGeometry(Brushes.Green, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        Assert.Empty(sink.Rectangles);
+        var replayed = Assert.Single(sink.NativeRectangles);
+        Assert.Same(Brushes.Green, replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayRect(1, 2, 30, 40), replayed.Rectangle);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextDrawsLineGeometryAsNativeLineWithoutGenericGeometryFallback()
     {
         var sink = new NativeRecordingSink();
@@ -1304,6 +1352,28 @@ public sealed class WpfCompositionDrawingContextTests
         Assert.Same(pen, replayed.Pen);
         Assert.Equal(new WpfReplayPoint(1, 2), replayed.Point0);
         Assert.Equal(new WpfReplayPoint(30, 40), replayed.Point1);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void DrawDrawingReplaysLocalRectanglePathGeometryAsNativeRectangleWithoutManagedGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreateRectanglePathGeometry(new Rect(1, 2, 30, 40));
+        var drawing = new FakeGeometryDrawing(Brushes.Red, pen, geometry);
+
+        var status = context.DrawDrawing(drawing);
+
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeRectangles);
+        Assert.Same(Brushes.Red, replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayRect(1, 2, 30, 40), replayed.Rectangle);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
 

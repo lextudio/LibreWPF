@@ -708,6 +708,14 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return true;
         }
 
+        if (WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out var rectangleBounds))
+        {
+            rectangle = ToRect(rectangleBounds);
+            radiusX = 0;
+            radiusY = 0;
+            return true;
+        }
+
         rectangle = default;
         radiusX = default;
         radiusY = default;
@@ -777,6 +785,11 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
     private static WpfReplayRect ToReplayRect(Rect rectangle)
     {
         return new WpfReplayRect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
+    }
+
+    private static Rect ToRect(WpfReplayRect rectangle)
+    {
+        return new Rect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
     }
 
     private void CountUnsupportedStateIfAny(params object?[] unsupportedState)

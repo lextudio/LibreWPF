@@ -1832,6 +1832,11 @@ internal static class WpfDrawingReplay
             : new Rect(rect.X, rect.Y, rect.Width, rect.Height);
     }
 
+    private static Rect ToRect(WpfReplayRect rect)
+    {
+        return new Rect(rect.X, rect.Y, rect.Width, rect.Height);
+    }
+
     private static bool IsFullRelativeRect(Rect rect)
     {
         return NearlyEqual(rect.X, 0)
@@ -2270,6 +2275,15 @@ internal static class WpfDrawingReplay
             && IsUsableRadius(rectangleGeometry.RadiusX, out radiusX)
             && IsUsableRadius(rectangleGeometry.RadiusY, out radiusY))
         {
+            return true;
+        }
+
+        if (geometry is MediaGeometry mediaGeometry
+            && WpfMediaRectangleClipReader.TryGetRectangleClipBounds(mediaGeometry, out var rectangleBounds))
+        {
+            rectangle = ToRect(rectangleBounds);
+            radiusX = 0;
+            radiusY = 0;
             return true;
         }
 

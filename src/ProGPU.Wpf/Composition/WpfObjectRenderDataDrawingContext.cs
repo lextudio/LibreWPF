@@ -1413,6 +1413,15 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return true;
         }
 
+        if (geometry is MediaGeometry mediaGeometry
+            && WpfMediaRectangleClipReader.TryGetRectangleClipBounds(mediaGeometry, out var rectangleBounds))
+        {
+            rectangle = ToRect(rectangleBounds);
+            radiusX = 0;
+            radiusY = 0;
+            return true;
+        }
+
         if (TryReadRect(geometry, out rectangle))
         {
             radiusX = 0;
@@ -1488,6 +1497,11 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     private static WpfReplayRect ToReplayRect(Rect rectangle)
     {
         return new WpfReplayRect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
+    }
+
+    private static Rect ToRect(WpfReplayRect rectangle)
+    {
+        return new Rect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
     }
 
     private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)

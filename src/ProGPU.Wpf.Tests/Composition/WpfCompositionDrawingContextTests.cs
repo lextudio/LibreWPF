@@ -238,6 +238,40 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextUsesNativeTileClipForStretchedDrawingBrush()
+    {
+        var sink = new NativeClipRecordingSink();
+        var nestedDrawing = new FakeGeometryDrawing(
+            Brushes.Red,
+            null,
+            new FakeRectangleGeometry(new FakeRect(0, 0, 10, 10)));
+        var drawingBrush = new FakeDrawingBrush(nestedDrawing, PortableStretch.UniformToFill);
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+
+        context.DrawRectangle(drawingBrush, null, new Rect(1, 2, 30, 40));
+
+        Assert.Equal(
+            new[]
+            {
+                "PushClip",
+                "PushNativeClip",
+                "PushNativeTransform",
+                "DrawGeometry",
+                "Pop",
+                "Pop",
+                "Pop"
+            },
+            sink.Operations);
+        var nativeClip = Assert.Single(sink.NativeClips);
+        Assert.Equal(1, nativeClip.X);
+        Assert.Equal(2, nativeClip.Y);
+        Assert.Equal(30, nativeClip.Width);
+        Assert.Equal(40, nativeClip.Height);
+        Assert.Contains(drawingBrush, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextReplaysMediaDrawingBrushBeforeGenericMediaBrushPath()
     {
         var sink = new RecordingSink();
@@ -977,6 +1011,15 @@ public sealed class WpfCompositionDrawingContextTests
         object? content,
         out PortableTileBrush brush)
     {
+        return TryCreatePortableTileBrush(kind, content, PortableStretch.Fill, out brush);
+    }
+
+    private static bool TryCreatePortableTileBrush(
+        PortableTileBrushKind kind,
+        object? content,
+        PortableStretch stretch,
+        out PortableTileBrush brush)
+    {
         brush = null!;
         if (content == null)
         {
@@ -992,7 +1035,7 @@ public sealed class WpfCompositionDrawingContextTests
             viewportUnits: PortableBrushMappingMode.RelativeToBoundingBox,
             viewboxUnits: PortableBrushMappingMode.RelativeToBoundingBox,
             tileMode: PortableTileMode.None,
-            stretch: PortableStretch.Fill,
+            stretch: stretch,
             alignmentX: PortableAlignmentX.Center,
             alignmentY: PortableAlignmentY.Center,
             hasTransform: false,
@@ -1039,16 +1082,19 @@ public sealed class WpfCompositionDrawingContextTests
 
     private sealed class FakeDrawingBrush : IPortableTileBrushSource
     {
-        public FakeDrawingBrush(object? drawing)
+        private readonly PortableStretch _stretch;
+
+        public FakeDrawingBrush(object? drawing, PortableStretch stretch = PortableStretch.Fill)
         {
             Drawing = drawing;
+            _stretch = stretch;
         }
 
         public object? Drawing { get; }
 
         public bool TryGetPortableTileBrush(out PortableTileBrush brush)
         {
-            return TryCreatePortableTileBrush(PortableTileBrushKind.Drawing, Drawing, out brush);
+            return TryCreatePortableTileBrush(PortableTileBrushKind.Drawing, Drawing, _stretch, out brush);
         }
     }
 
@@ -1444,6 +1490,17 @@ public sealed class WpfCompositionDrawingContextTests
             Operations.Add("PushNativeGeometryClip");
             NativeGeometryClips.Add(clipGeometry);
             return true;
+        }
+    }
+
+    private sealed class NativeClipRecordingSink : RecordingSink, IWpfNativeClipCommandSink
+    {
+        public List<WpfReplayRect> NativeClips { get; } = new();
+
+        public void PushNativeClip(WpfReplayRect bounds)
+        {
+            Operations.Add("PushNativeClip");
+            NativeClips.Add(bounds);
         }
     }
 }

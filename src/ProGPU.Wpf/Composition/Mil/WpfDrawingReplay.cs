@@ -384,7 +384,7 @@ internal static class WpfDrawingReplay
             var tilePopCount = 0;
             if (needsTileClip)
             {
-                sink.PushClip(WpfResourceResolver.CreateRectanglePath(tile.Bounds));
+                PushRectangleClip(sink, tile.Bounds);
                 tilePopCount++;
             }
 
@@ -475,7 +475,7 @@ internal static class WpfDrawingReplay
             var tilePopCount = 0;
             if (needsTileClip)
             {
-                sink.PushClip(WpfResourceResolver.CreateRectanglePath(tile.Bounds));
+                PushRectangleClip(sink, tile.Bounds);
                 tilePopCount++;
             }
 
@@ -484,7 +484,7 @@ internal static class WpfDrawingReplay
 
             if (hasSourceClip)
             {
-                sink.PushClip(WpfResourceResolver.CreateRectanglePath(sourceBounds));
+                PushRectangleClip(sink, sourceBounds);
                 tilePopCount++;
             }
 
@@ -571,7 +571,7 @@ internal static class WpfDrawingReplay
             var tilePopCount = 0;
             if (needsTileClip)
             {
-                sink.PushClip(WpfResourceResolver.CreateRectanglePath(tile.Bounds));
+                PushRectangleClip(sink, tile.Bounds);
                 tilePopCount++;
             }
 
@@ -580,7 +580,7 @@ internal static class WpfDrawingReplay
 
             if (hasSourceClip)
             {
-                sink.PushClip(WpfResourceResolver.CreateRectanglePath(sourceBounds));
+                PushRectangleClip(sink, sourceBounds);
                 tilePopCount++;
             }
 
@@ -900,6 +900,17 @@ internal static class WpfDrawingReplay
         {
             sink.Pop();
         }
+    }
+
+    private static void PushRectangleClip(IWpfCompositionCommandSink sink, Rect bounds)
+    {
+        if (sink is IWpfNativeClipCommandSink nativeClipSink)
+        {
+            nativeClipSink.PushNativeClip(ToReplayRect(bounds));
+            return;
+        }
+
+        sink.PushClip(WpfResourceResolver.CreateRectanglePath(bounds));
     }
 
     private static WpfDrawingReplayStatus TryReplayImageDrawing(

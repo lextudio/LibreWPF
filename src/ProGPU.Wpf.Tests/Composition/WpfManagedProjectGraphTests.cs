@@ -6351,6 +6351,11 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfResourceResolverTests.cs"));
+        var drawingContextTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "WpfCompositionDrawingContextTests.cs"));
         var samplerCache = File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -6381,7 +6386,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("brush is PortableTileBrushSource portableSource", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("return TryReplayPortableTileBrushFill(portableSource, geometry, sink, imageSourceAdapter, out status)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("PushRectangleClip(sink, tile.Bounds)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("nativeClipSink.PushNativeClip(ToReplayRect(bounds))", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PortableTileBrushSourceAbsenceDoesNotFallBackToReflectedImageBrushShape", resolverTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextUsesNativeTileClipForStretchedDrawingBrush", drawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("\"PushNativeClip\"", drawingContextTests, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReplayImageBrushFill", drawingReplay, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReplayDrawingBrushFill", drawingReplay, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReplayVisualBrushFill", drawingReplay, StringComparison.Ordinal);

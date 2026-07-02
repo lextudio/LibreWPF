@@ -2098,7 +2098,7 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
-    public void ReplayKeepsTransformedLocalRectangleGeometryStateOnGenericGeometryPath()
+    public void ReplayDrawsTransformedLocalRectangleGeometryStateAsNativeRectangle()
     {
         var geometry = new RectangleGeometry(new Rect(8, 9, 24, 34))
         {
@@ -2115,13 +2115,13 @@ public sealed class WpfVisualTreeRendererTests
 
         var status = WpfDrawingReplay.Replay(drawing, sink);
 
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
-        Assert.Empty(sink.NativeDrawRectangles);
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
         Assert.Empty(sink.NativeDrawRoundedRectangles);
-        var draw = Assert.Single(sink.DrawGeometries);
+        Assert.Empty(sink.DrawGeometries);
+        var draw = Assert.Single(sink.NativeDrawRectangles);
         Assert.Same(Brushes.Blue, draw.Brush);
         Assert.Null(draw.Pen);
-        Assert.Same(geometry, draw.Geometry);
+        Assert.Equal(new WpfReplayRect(10, 12, 24, 34), draw.Rectangle);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
     }

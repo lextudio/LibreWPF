@@ -455,7 +455,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void ObjectRenderDataDrawingContextKeepsTransformedRectangleGeometryOnGenericGeometryPath()
+    public void ObjectRenderDataDrawingContextDrawsTransformedRectangleGeometryAsNativeRectangle()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfObjectRenderDataDrawingContext(sink);
@@ -466,14 +466,14 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.DrawGeometry(Brushes.Green, null, geometry);
 
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
-        Assert.Empty(sink.NativeRectangles);
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
         Assert.Empty(sink.NativeRoundedRectangles);
         Assert.Empty(sink.NativeGeometries);
-        var replayed = Assert.Single(sink.Geometries);
+        Assert.Empty(sink.Geometries);
+        var replayed = Assert.Single(sink.NativeRectangles);
         Assert.Same(Brushes.Green, replayed.Brush);
         Assert.Null(replayed.Pen);
-        Assert.Same(geometry, replayed.Geometry);
+        Assert.Equal(new WpfReplayRect(6, 8, 30, 40), replayed.Rectangle);
         Assert.Contains(Brushes.Green, sink.VisualDependencies);
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
@@ -711,7 +711,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void ObjectRenderDataDrawingContextKeepsTransformedRectangleGeometryClipOnGenericClipPath()
+    public void ObjectRenderDataDrawingContextPushesTransformedRectangleGeometryClipAsNativeClip()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfObjectRenderDataDrawingContext(sink);
@@ -722,8 +722,8 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.PushClip(geometry);
 
-        Assert.Equal(new[] { "PushClip" }, sink.Operations);
-        Assert.Empty(sink.NativeClips);
+        Assert.Equal(new[] { "PushNativeClip" }, sink.Operations);
+        Assert.Equal(new WpfReplayRect(12, 3, 40, 50), Assert.Single(sink.NativeClips));
         Assert.Empty(sink.NativeGeometryClips);
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(1, context.StackDepth);
@@ -1200,7 +1200,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void GeneratedDrawingContextKeepsTransformedRectangleGeometryOnGenericGeometryPath()
+    public void GeneratedDrawingContextDrawsTransformedRectangleGeometryAsNativeRectangle()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfCompositionDrawingContext(sink);
@@ -1211,12 +1211,12 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.DrawGeometry(Brushes.Green, null, geometry);
 
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
-        Assert.Empty(sink.NativeRectangles);
-        var replayed = Assert.Single(sink.Geometries);
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        var replayed = Assert.Single(sink.NativeRectangles);
         Assert.Same(Brushes.Green, replayed.Brush);
         Assert.Null(replayed.Pen);
-        Assert.Same(geometry, replayed.Geometry);
+        Assert.Equal(new WpfReplayRect(11, 2, 30, 40), replayed.Rectangle);
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
@@ -1347,7 +1347,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void GeneratedDrawingContextKeepsTransformedRectanglePathGeometryClipOnGenericClipPath()
+    public void GeneratedDrawingContextPushesTransformedRectanglePathGeometryClipAsNativeClip()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfCompositionDrawingContext(sink);
@@ -1356,8 +1356,8 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.PushClip(geometry);
 
-        Assert.Equal(new[] { "PushClip" }, sink.Operations);
-        Assert.Empty(sink.NativeClips);
+        Assert.Equal(new[] { "PushNativeClip" }, sink.Operations);
+        Assert.Equal(new WpfReplayRect(12, 3, 40, 50), Assert.Single(sink.NativeClips));
         Assert.Empty(sink.NativeGeometryClips);
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(1, context.StackDepth);

@@ -13,7 +13,7 @@ internal static class WpfMediaRectangleClipReader
     public static bool TryGetRectangleClipBounds(MediaGeometry geometry, out WpfReplayRect bounds)
     {
         bounds = default;
-        if (!HasIdentityGeometryTransform(geometry))
+        if (!TryGetAxisAlignedGeometryTransform(geometry, out var transform))
         {
             return false;
         }
@@ -22,7 +22,8 @@ internal static class WpfMediaRectangleClipReader
         {
             return rectangleGeometry.RadiusX == 0
                 && rectangleGeometry.RadiusY == 0
-                && TryCreateUsableRect(rectangleGeometry.Rect, out bounds);
+                && TryCreateUsableRect(rectangleGeometry.Rect, out bounds)
+                && TryTransformAxisAlignedBounds(bounds, transform, out bounds);
         }
 
         return geometry is MediaPathGeometry pathGeometry
@@ -30,13 +31,14 @@ internal static class WpfMediaRectangleClipReader
                 pathGeometry,
                 requireFilled: true,
                 requireStrokedSegments: false,
-                out bounds);
+                out bounds)
+            && TryTransformAxisAlignedBounds(bounds, transform, out bounds);
     }
 
     public static bool TryGetRectangleStrokeBounds(MediaGeometry geometry, out WpfReplayRect bounds)
     {
         bounds = default;
-        if (!HasIdentityGeometryTransform(geometry))
+        if (!TryGetAxisAlignedGeometryTransform(geometry, out var transform))
         {
             return false;
         }
@@ -46,15 +48,65 @@ internal static class WpfMediaRectangleClipReader
                 pathGeometry,
                 requireFilled: false,
                 requireStrokedSegments: true,
-                out bounds);
+                out bounds)
+            && TryTransformAxisAlignedBounds(bounds, transform, out bounds);
     }
 
-    private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
+    private static bool TryGetAxisAlignedGeometryTransform(MediaGeometry geometry, out System.Numerics.Matrix4x4 transform)
     {
-        var transform = geometry.Transform;
-        return transform == null
-            || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
-                && WpfResourceResolver.IsIdentityMatrix(matrix));
+        var transformValue = geometry.Transform;
+        if (transformValue == null)
+        {
+            transform = System.Numerics.Matrix4x4.Identity;
+            return true;
+        }
+
+        if (!WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out transform))
+        {
+            return false;
+        }
+
+        return IsAxisAlignedTransform(transform);
+    }
+
+    private static bool IsAxisAlignedTransform(System.Numerics.Matrix4x4 transform)
+    {
+        return transform.M12 == 0.0f
+            && transform.M21 == 0.0f
+            && float.IsFinite(transform.M11)
+            && float.IsFinite(transform.M22)
+            && float.IsFinite(transform.M41)
+            && float.IsFinite(transform.M42);
+    }
+
+    private static bool TryTransformAxisAlignedBounds(
+        WpfReplayRect bounds,
+        System.Numerics.Matrix4x4 transform,
+        out WpfReplayRect transformedBounds)
+    {
+        transformedBounds = default;
+        var x0 = (bounds.X * transform.M11) + transform.M41;
+        var x1 = ((bounds.X + bounds.Width) * transform.M11) + transform.M41;
+        var y0 = (bounds.Y * transform.M22) + transform.M42;
+        var y1 = ((bounds.Y + bounds.Height) * transform.M22) + transform.M42;
+        var left = Math.Min(x0, x1);
+        var top = Math.Min(y0, y1);
+        var right = Math.Max(x0, x1);
+        var bottom = Math.Max(y0, y1);
+        var width = right - left;
+        var height = bottom - top;
+        if (!double.IsFinite(left)
+            || !double.IsFinite(top)
+            || !double.IsFinite(width)
+            || !double.IsFinite(height)
+            || width <= 0
+            || height <= 0)
+        {
+            return false;
+        }
+
+        transformedBounds = new WpfReplayRect(left, top, width, height);
+        return true;
     }
 
     private static bool TryGetRectanglePathBounds(

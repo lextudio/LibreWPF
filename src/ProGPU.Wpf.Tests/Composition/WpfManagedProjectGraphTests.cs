@@ -551,6 +551,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public static bool TryGetRenderSurfaceGeometry(object? window, out RenderSurfaceGeometrySnapshot geometry)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryRaiseInput(", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool HasGpuHitTestCache(object? window)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetGpuHitTestCacheSnapshot(object? window, out GpuHitTestCacheSnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryHitTestOwner(object? window, double x, double y, out object? owner)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryHitTestOwners(object? window, double x, double y, out object?[] owners)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryQueryHitTestBoundsOwners(", proGpuDiagnostics, StringComparison.Ordinal);
@@ -737,6 +738,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal bool TryQueryHitTestBoundsCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool HasGpuHitTestCache => _target?.LastGpuHitTestIndex != null;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryGetGpuHitTestCacheSnapshot(out ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot snapshot)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryHitTestOwner(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryHitTestOwners(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryQueryHitTestBoundsOwners(", proGpuHost, StringComparison.Ordinal);
@@ -8387,11 +8389,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using System.Windows.Media.ProGPU;", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateProGpuDiagnostics(window);", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryGetWindowHost(window, out var host)", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRenderSurfaceGeometry(window);", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateGpuHitTestCache(window, \"paid Xceed DataGrid loaded render\")", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateGpuHitTestCache(window, \"paid Xceed virtual DataGrid loaded render\")", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("TryFindGpuPointOwnersUnder(host, window, window.PaidDataGrid", appCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("target.TryHitTestOwners(", appCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("mappedOwners={ownerCount}, summaryHits={summary.Hit}", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryHitTestOwners(host, point.X, point.Y, out owners)", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryGetGpuHitTestCacheSnapshot(", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("mappedOwners={owners.Length}", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryQueryHitTestBoundsOwners(", appCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("ProGpuWpfDiagnostics.HasGpuHitTestCache(window)", appCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:xcdg=\"http://schemas.xceed.com/wpf/xaml/datagrid\"", mainWindowXaml, StringComparison.Ordinal);

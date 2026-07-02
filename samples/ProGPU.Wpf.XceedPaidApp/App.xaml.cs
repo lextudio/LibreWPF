@@ -411,6 +411,7 @@ internal static class XceedPaidSelfTest
         window.PaidDataGridDocument.IsActive = true;
         window.PaidDataGrid.UpdateLayout();
         host.DoEvents();
+        ValidateRenderSurfaceGeometry(window);
 
         if (!TryFindGpuPointOwnersUnder(host, window, window.PaidDataGrid, out var pointOwners, out var hitPoint, out var pointDiagnostics))
         {
@@ -446,9 +447,58 @@ internal static class XceedPaidSelfTest
                 $"Expected paid Xceed DataGrid bounds GPU owners to include the DataGrid subtree; owners: {DescribeOwners(boundsOwners)}.");
         }
 
-        if (!ProGpuWpfDiagnostics.HasGpuHitTestCache(window))
+        ValidateGpuHitTestCache(window, "paid Xceed DataGrid loaded render");
+
+        window.VirtualDataGridDocument.IsSelected = true;
+        window.VirtualDataGridDocument.IsActive = true;
+        window.VirtualPaidDataGrid.BringItemIntoView(window.ViewModel.Rows[50_000]);
+        window.VirtualPaidDataGrid.UpdateLayout();
+        host.DoEvents();
+        if (window.VirtualPaidDataGrid.ActualWidth <= 0 || window.VirtualPaidDataGrid.ActualHeight <= 0)
         {
-            throw new InvalidOperationException("Expected paid Xceed validation to populate the ProGPU hit-test cache.");
+            throw new InvalidOperationException("Expected paid Xceed virtual DataGrid document to participate in loaded layout.");
+        }
+
+        ValidateGpuHitTestCache(window, "paid Xceed virtual DataGrid loaded render");
+    }
+
+    private static void ValidateRenderSurfaceGeometry(MainWindow window)
+    {
+        if (!ProGpuWpfDiagnostics.TryGetRenderSurfaceGeometry(window, out var geometry))
+        {
+            throw new InvalidOperationException("Expected paid Xceed validation to resolve ProGPU render-surface geometry.");
+        }
+
+        if (geometry.LogicalWidth == 0 ||
+            geometry.LogicalHeight == 0 ||
+            geometry.PixelWidth == 0 ||
+            geometry.PixelHeight == 0 ||
+            geometry.ViewportWidth == 0 ||
+            geometry.ViewportHeight == 0 ||
+            geometry.DpiScaleX <= 0 ||
+            geometry.DpiScaleY <= 0 ||
+            geometry.DpiScale <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Expected paid Xceed render-surface geometry to be nonzero; logical={geometry.LogicalWidth}x{geometry.LogicalHeight}, pixels={geometry.PixelWidth}x{geometry.PixelHeight}, viewport={geometry.ViewportX},{geometry.ViewportY},{geometry.ViewportWidth}x{geometry.ViewportHeight}, dpi={geometry.DpiScaleX:0.###}x{geometry.DpiScaleY:0.###}.");
+        }
+    }
+
+    private static void ValidateGpuHitTestCache(MainWindow window, string description)
+    {
+        if (!ProGpuWpfDiagnostics.TryGetGpuHitTestCacheSnapshot(window, out var cache))
+        {
+            throw new InvalidOperationException($"Expected {description} to expose ProGPU hit-test cache diagnostics.");
+        }
+
+        if (!cache.HasIndex ||
+            !cache.HasDeviceIndex ||
+            cache.PrimitiveCount < 16 ||
+            cache.NodeCount == 0 ||
+            cache.OwnerCount < 4)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to populate a GPU hit-test index; hasIndex={cache.HasIndex}, hasDeviceIndex={cache.HasDeviceIndex}, primitives={cache.PrimitiveCount}, nodes={cache.NodeCount}, primitiveIndices={cache.PrimitiveIndexCount}, pathSegments={cache.PathSegmentCount}, owners={cache.OwnerCount}.");
         }
     }
 
@@ -518,29 +568,22 @@ internal static class XceedPaidSelfTest
     private static string QueryGpuPointOwners(ProGpuWpfWindowHost host, Point point, out object?[] owners)
     {
         owners = Array.Empty<object?>();
-        var target = host.CompositionTarget;
-        if (target == null)
+        if (!ProGpuWpfDiagnostics.TryHitTestOwners(host, point.X, point.Y, out owners))
         {
-            return "No ProGPU composition target is attached.";
+            return $"GPU point query at {point.X:0.#},{point.Y:0.#} did not execute. {DescribeGpuHitTestCache(host)}";
         }
 
-        var ownerBuffer = new object?[64];
-        if (!target.TryHitTestOwners(
-                new System.Numerics.Vector2((float)point.X, (float)point.Y),
-                ownerBuffer,
-                out var ownerCount,
-                out var summary))
+        return $"GPU point query at {point.X:0.#},{point.Y:0.#}: mappedOwners={owners.Length}. {DescribeGpuHitTestCache(host)}";
+    }
+
+    private static string DescribeGpuHitTestCache(ProGpuWpfWindowHost host)
+    {
+        if (!ProGpuWpfDiagnostics.TryGetGpuHitTestCacheSnapshot(host, out var cache))
         {
-            return $"GPU point query at {point.X:0.#},{point.Y:0.#} did not execute; cache={target.LastGpuHitTestIndex != null}, ownerMap={target.GpuHitTestOwnerMap.Count}.";
+            return "cache=<unavailable>.";
         }
 
-        if (ownerCount > 0)
-        {
-            owners = ownerBuffer[..ownerCount];
-        }
-
-        var index = target.LastGpuHitTestIndex;
-        return $"GPU point query at {point.X:0.#},{point.Y:0.#}: mappedOwners={ownerCount}, summaryHits={summary.Hit}, candidates={summary.CandidateCount}, primitives={index?.Primitives.Count ?? 0}, nodes={index?.Nodes.Count ?? 0}, ownerMap={target.GpuHitTestOwnerMap.Count}.";
+        return $"cache={cache.HasIndex}, deviceIndex={cache.HasDeviceIndex}, primitives={cache.PrimitiveCount}, nodes={cache.NodeCount}, primitiveIndices={cache.PrimitiveIndexCount}, pathSegments={cache.PathSegmentCount}, ownerMap={cache.OwnerCount}.";
     }
 
     private static bool ContainsOwnerUnder(DependencyObject root, IEnumerable<object?> owners)

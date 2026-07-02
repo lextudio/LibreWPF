@@ -1785,6 +1785,27 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return true;
     }
 
+    internal bool TryGetGpuHitTestCacheSnapshot(out ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot snapshot)
+    {
+        snapshot = default;
+        if (_target == null)
+        {
+            return false;
+        }
+
+        EnsureGpuHitTestCacheCurrent();
+        var index = _target.LastGpuHitTestIndex;
+        snapshot = new ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot(
+            index is not null,
+            _target.LastGpuHitTestDeviceIndex is not null,
+            index?.Primitives.Count ?? 0,
+            index?.Nodes.Count ?? 0,
+            index?.PrimitiveIndices.Count ?? 0,
+            index?.PathSegments.Count ?? 0,
+            _target.GpuHitTestOwnerMap.Count);
+        return true;
+    }
+
     internal bool TryQueryHitTestBoundsCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)
     {
         candidates = Array.Empty<object?>();

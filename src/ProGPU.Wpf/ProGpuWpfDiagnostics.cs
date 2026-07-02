@@ -15,6 +15,15 @@ public static class ProGpuWpfDiagnostics
         uint ViewportWidth,
         uint ViewportHeight);
 
+    public readonly record struct GpuHitTestCacheSnapshot(
+        bool HasIndex,
+        bool HasDeviceIndex,
+        int PrimitiveCount,
+        int NodeCount,
+        int PrimitiveIndexCount,
+        int PathSegmentCount,
+        int OwnerCount);
+
     public static bool TryGetWindowHost(object? window, out ProGpuWpfWindowHost? host)
     {
         if (window is ProGpuWpfWindowHost directHost)
@@ -99,6 +108,18 @@ public static class ProGpuWpfDiagnostics
 
         ArgumentNullException.ThrowIfNull(host);
         return host.HasGpuHitTestCache;
+    }
+
+    public static bool TryGetGpuHitTestCacheSnapshot(object? window, out GpuHitTestCacheSnapshot snapshot)
+    {
+        snapshot = default;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        return host.TryGetGpuHitTestCacheSnapshot(out snapshot);
     }
 
     public static bool TryHitTestOwner(object? window, double x, double y, out object? owner)

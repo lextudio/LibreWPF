@@ -5619,6 +5619,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "WpfPortableGeometryPathData.cs"));
+        var wpfPortableGeometryBoundsReader = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfPortableGeometryBoundsReader.cs"));
         var wpfMediaGeometryBoundsReader = File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -5669,14 +5674,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfMediaGeometryBoundsReader.TryGetGeometryBounds(geometry, out var geometryBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("WpfMediaGeometryBoundsReader.TryGetGeometryBounds(clipGeometry, out var geometryClipBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPrimitiveMediaGeometryBounds", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(geometry, out bounds)", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out var nativeBounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("return WpfPortableGeometryBoundsReader.TryGetGeometryBounds(geometry, out bounds);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("WpfMediaEllipseGeometryReader.TryGetEllipseBounds(geometry, out bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("internal static class WpfPortableGeometryBoundsReader", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(geometry, out bounds)", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out bounds)", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("!WpfPortableGeometryPathData.HasPathData(geometry)", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfMediaGeometryBoundsReader", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
         Assert.Contains("geometry is PortableGeometryPathSource portableGeometrySource", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
-        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(portableGeometry, out bounds)", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
-        Assert.Contains("!WpfPortableGeometryPathData.HasPathData(portableGeometry)", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("return WpfPortableGeometryBoundsReader.TryGetGeometryBounds(portableGeometry, out bounds);", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfPortableGeometryPathData", wpfPortableGeometryPathData, StringComparison.Ordinal);
         Assert.Contains("public static bool HasPathData(PortableGeometryPath geometry)", wpfPortableGeometryPathData, StringComparison.Ordinal);
         Assert.Contains("geometry is NativePathGeometrySource nativePathGeometrySource", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
@@ -5930,6 +5937,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "WpfPortableGeometryPathData.cs"));
+        var wpfPortableGeometryBoundsReader = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfPortableGeometryBoundsReader.cs"));
 
         Assert.Contains("using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;", replaySource, StringComparison.Ordinal);
         Assert.Contains("drawing is PortableGeometryDrawingStateSource geometryDrawingStateSource", replaySource, StringComparison.Ordinal);
@@ -5951,9 +5963,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfMediaEllipseGeometryReader.TryGetEllipseGeometry(mediaGeometry, out center, out radiusX, out radiusY)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
-        Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(portableGeometry, out var rectangleBounds)", replaySource, StringComparison.Ordinal);
-        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(portableGeometry, out var nativeBounds)", replaySource, StringComparison.Ordinal);
-        Assert.Contains("!WpfPortableGeometryPathData.HasPathData(portableGeometry)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableGeometryBoundsReader.TryGetGeometryBounds(portableGeometry, out var portableBounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out bounds)", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("!WpfPortableGeometryPathData.HasPathData(geometry)", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfPortableGeometryPathData", wpfPortableGeometryPathData, StringComparison.Ordinal);
         Assert.Contains("public static bool HasPathData(PortableGeometryPath geometry)", wpfPortableGeometryPathData, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableGeometryBounds(geometryValue, out bounds)", replaySource, StringComparison.Ordinal);
@@ -9108,6 +9120,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "WpfPortableGeometryPathData.cs");
+        var wpfPortableGeometryBoundsReaderPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfPortableGeometryBoundsReader.cs");
         var wpfGuidelineSetReaderPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -9518,6 +9535,7 @@ public sealed class WpfManagedProjectGraphTests
         var wpfMediaRectangleClipReader = File.ReadAllText(wpfMediaRectangleClipReaderPath);
         var wpfMediaGeometryBoundsReader = File.ReadAllText(wpfMediaGeometryBoundsReaderPath);
         var wpfPortableGeometryPathData = File.ReadAllText(wpfPortableGeometryPathDataPath);
+        var wpfPortableGeometryBoundsReader = File.ReadAllText(wpfPortableGeometryBoundsReaderPath);
         var wpfGuidelineSetReader = File.ReadAllText(wpfGuidelineSetReaderPath);
         var wpfDrawingReplay = File.ReadAllText(wpfDrawingReplayPath);
         var wpfVisualTreeRenderer = File.ReadAllText(wpfVisualTreeRendererPath);
@@ -12241,19 +12259,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static bool TryIncludeCubicExtrema", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("VectorArcSegmentGeometry.TryGetArcBounds", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("(!segment.IsStroked && !figure.IsFilled)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
-        Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(portableGeometry, out", wpfDrawingReplay, StringComparison.Ordinal);
-        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(portableGeometry, out var nativeBounds)", wpfDrawingReplay, StringComparison.Ordinal);
-        Assert.Contains("!WpfPortableGeometryPathData.HasPathData(portableGeometry)", wpfDrawingReplay, StringComparison.Ordinal);
-        Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(geometry, out bounds)", wpfVisualTreeRenderer, StringComparison.Ordinal);
-        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out var nativeBounds)", wpfVisualTreeRenderer, StringComparison.Ordinal);
-        Assert.Contains("!WpfPortableGeometryPathData.HasPathData(geometry)", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableGeometryBoundsReader.TryGetGeometryBounds(portableGeometry, out var portableBounds)", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("return WpfPortableGeometryBoundsReader.TryGetGeometryBounds(geometry, out bounds);", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.Contains("internal static class WpfPortableGeometryBoundsReader", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(geometry, out bounds)", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out bounds)", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("!WpfPortableGeometryPathData.HasPathData(geometry)", wpfPortableGeometryBoundsReader, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfPortableGeometryPathData", wpfPortableGeometryPathData, StringComparison.Ordinal);
         Assert.Contains("public static bool HasPathData(PortableGeometryPath geometry)", wpfPortableGeometryPathData, StringComparison.Ordinal);
         Assert.Contains("WpfMediaGeometryBoundsReader.TryGetGeometryBounds(geometry, out var geometryBounds)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfMediaGeometryBoundsReader.TryGetGeometryBounds(mediaGeometry, out var mediaGeometryBounds)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfMediaGeometryBoundsReader.TryGetGeometryBounds(clipGeometry, out var geometryClipBounds)", wpfDrawingReplay, StringComparison.Ordinal);
-        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(portableGeometry, out bounds)", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
-        Assert.Contains("!WpfPortableGeometryPathData.HasPathData(portableGeometry)", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("return WpfPortableGeometryBoundsReader.TryGetGeometryBounds(portableGeometry, out bounds);", wpfMediaGeometryBoundsReader, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayPoint(object? pointValue, out WpfReplayPoint point)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);

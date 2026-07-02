@@ -788,30 +788,7 @@ public sealed class WpfVisualTreeRenderer
 
     private static bool TryReadPortableGeometryBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
     {
-        if (WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds))
-        {
-            return true;
-        }
-
-        if (WpfPortablePathBoundsReader.TryGetPathBounds(geometry, out bounds))
-        {
-            return true;
-        }
-
-        if (WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out var nativeBounds))
-        {
-            bounds = nativeBounds;
-            return true;
-        }
-
-        if (!WpfPortableGeometryPathData.HasPathData(geometry))
-        {
-            bounds = ToReplayRect(geometry.Bounds);
-            return IsUsableBounds(bounds);
-        }
-
-        bounds = default;
-        return false;
+        return WpfPortableGeometryBoundsReader.TryGetGeometryBounds(geometry, out bounds);
     }
 
     private static WpfReplayRect CombineClipBounds(WpfReplayRect? current, WpfReplayRect next)

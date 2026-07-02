@@ -8,8 +8,11 @@ using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
+using MediaLineSegment = System.Windows.Media.LineSegment;
 using MediaMatrixTransform = System.Windows.Media.MatrixTransform;
+using MediaPathGeometry = System.Windows.Media.PathGeometry;
 using MediaPen = System.Windows.Media.Pen;
+using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
 using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
@@ -1076,6 +1079,88 @@ internal static class WpfDrawingReplay
         return true;
     }
 
+    private static bool TryGetRectangleClipBounds(MediaGeometry geometry, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        if (!HasIdentityGeometryTransform(geometry))
+        {
+            return false;
+        }
+
+        if (geometry is MediaRectangleGeometry rectangleGeometry)
+        {
+            return TryCreateUsableRect(rectangleGeometry.Rect, out bounds);
+        }
+
+        return geometry is MediaPathGeometry pathGeometry
+            && TryGetRectanglePathBounds(pathGeometry, out bounds);
+    }
+
+    private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
+    {
+        var transform = geometry.Transform;
+        return transform == null
+            || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
+                && WpfResourceResolver.IsIdentityMatrix(matrix));
+    }
+
+    private static bool TryGetRectanglePathBounds(MediaPathGeometry pathGeometry, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        if (pathGeometry.Figures.Count != 1)
+        {
+            return false;
+        }
+
+        var figure = pathGeometry.Figures[0];
+        if (!figure.IsClosed || !figure.IsFilled)
+        {
+            return false;
+        }
+
+        var segmentCount = figure.Segments.Count;
+        if (segmentCount is not (3 or 4))
+        {
+            return false;
+        }
+
+        var points = new Point[4];
+        points[0] = figure.StartPoint;
+        for (var i = 0; i < 3; i++)
+        {
+            if (figure.Segments[i] is not MediaLineSegment lineSegment)
+            {
+                return false;
+            }
+
+            points[i + 1] = lineSegment.Point;
+        }
+
+        if (segmentCount == 4)
+        {
+            if (figure.Segments[3] is not MediaLineSegment closingSegment
+                || !NearlyEqual(closingSegment.Point.X, points[0].X)
+                || !NearlyEqual(closingSegment.Point.Y, points[0].Y))
+            {
+                return false;
+            }
+        }
+
+        return TryCreateRectangleClipFromPolygon(points, out bounds);
+    }
+
+    private static bool TryCreateUsableRect(Rect rect, out WpfReplayRect bounds)
+    {
+        if (IsUsableRect(rect, out var usableRect))
+        {
+            bounds = ToReplayRect(usableRect);
+            return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
     private static void PopPushedScopes(IWpfCompositionCommandSink sink, int popCount)
     {
         for (var i = 0; i < popCount; i++)
@@ -1154,6 +1239,14 @@ internal static class WpfDrawingReplay
             {
                 return true;
             }
+        }
+
+        if (geometry.MediaGeometry != null
+            && sink is IWpfNativeClipCommandSink mediaNativeClipSink
+            && TryGetRectangleClipBounds(geometry.MediaGeometry, out var mediaClipBounds))
+        {
+            mediaNativeClipSink.PushNativeClip(mediaClipBounds);
+            return true;
         }
 
         if (geometry.IsRectangle)

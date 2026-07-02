@@ -1789,6 +1789,70 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplayUsesNativeRectangleClipForMediaRectangleTileBrushFill()
+    {
+        var geometry = new RectangleGeometry(new Rect(1, 2, 10, 12));
+        var nestedDrawing = new FakeGeometryDrawing(
+            new RectangleGeometry(new Rect(0, 0, 10, 12)),
+            Brushes.Red);
+        var tileBrush = new FakeDrawingTileBrush(nestedDrawing);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = tileBrush
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Contains("PushNativeClip", sink.Operations);
+        Assert.DoesNotContain("PushClip", sink.Operations);
+        Assert.Empty(sink.Clips);
+        Assert.Empty(sink.NativeGeometryClips);
+        AssertReplayRect(1, 2, 10, 12, Assert.Single(sink.NativeClips));
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayKeepsMediaNonRectangleTileBrushFillOnManagedClip()
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(1, 2),
+            IsClosed = true,
+            IsFilled = true
+        };
+        figure.Segments.Add(new LineSegment(new Point(11, 2), isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(6, 14), isStroked: true));
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        var nestedDrawing = new FakeGeometryDrawing(
+            new RectangleGeometry(new Rect(0, 0, 10, 12)),
+            Brushes.Red);
+        var tileBrush = new FakeDrawingTileBrush(nestedDrawing);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = tileBrush
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Contains("PushClip", sink.Operations);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Single(sink.Clips);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
     public void ReplayAppliesPortableGeometryDrawingStateWithoutTypeNameShape()
     {
         var drawing = new PortableGeometryStateHost(new PortableGeometryDrawingState

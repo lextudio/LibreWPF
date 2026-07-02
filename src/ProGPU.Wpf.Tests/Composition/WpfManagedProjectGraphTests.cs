@@ -6418,6 +6418,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetRectangleClipBounds(geometry.PortableGeometry, out var clipBounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeClipSink.PushNativeClip(clipBounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(geometry.PortableGeometry)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TryGetRectangleClipBounds(geometry.MediaGeometry, out var mediaClipBounds)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("mediaNativeClipSink.PushNativeClip(mediaClipBounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("if (geometry.IsRectangle)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PushRectangleClip(sink, tile.Bounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeClipSink.PushNativeClip(ToReplayRect(bounds))", drawingReplay, StringComparison.Ordinal);
@@ -6429,6 +6431,18 @@ public sealed class WpfManagedProjectGraphTests
             "Mil",
             "WpfVisualTreeRendererTests.cs")), StringComparison.Ordinal);
         Assert.Contains("ReplayUsesNativePortableGeometryClipForNonRectangleTileBrushFill", File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeRendererTests.cs")), StringComparison.Ordinal);
+        Assert.Contains("ReplayUsesNativeRectangleClipForMediaRectangleTileBrushFill", File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeRendererTests.cs")), StringComparison.Ordinal);
+        Assert.Contains("ReplayKeepsMediaNonRectangleTileBrushFillOnManagedClip", File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf.Tests",
             "Composition",

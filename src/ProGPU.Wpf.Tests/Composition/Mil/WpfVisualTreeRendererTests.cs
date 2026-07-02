@@ -296,6 +296,25 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeDerivesPortableRectangleClipBoundsFromPathPoints()
+    {
+        var clip = new PortableRectangleClipGeometry(5, 6, 70, 80, new PortableRect(0, 0, 1, 1));
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
+        {
+            HasClip = true,
+            Clip = clip
+        });
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        AssertReplayRect(5, 6, 70, 80, sink.RetainedVisualStates[0].ClipBounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeLowersLayoutClipIntoRetainedOwnerScopes()
     {
         var root = new FakePortableVisualLayoutVisual(new PortableVisualLayoutState
@@ -4456,12 +4475,17 @@ public sealed class WpfVisualTreeRendererTests
         private readonly FakeRect _rect;
 
         public PortableRectangleClipGeometry(double x, double y, double width, double height)
+            : this(x, y, width, height, new PortableRect(x, y, width, height))
+        {
+        }
+
+        public PortableRectangleClipGeometry(double x, double y, double width, double height, PortableRect bounds)
         {
             _rect = new FakeRect(x, y, width, height);
             _path = new PortableGeometryPath
             {
                 Kind = PortableGeometryPathKind.Path,
-                Bounds = new PortableRect(x, y, width, height),
+                Bounds = bounds,
                 Transform = PortableMatrix3x2.Identity,
                 Figures =
                 [

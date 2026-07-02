@@ -26,8 +26,6 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 public sealed class WpfVisualTreeRenderer
 {
-    private const double RectangleClipPointTolerance = 0.000001;
-
     private enum RetainedOwnerScopeMode
     {
         None,
@@ -775,7 +773,7 @@ public sealed class WpfVisualTreeRenderer
         if (clip is IPortableGeometryPathSource portableGeometry)
         {
             if (portableGeometry.TryGetPortableGeometryPath(out var portablePath)
-                && TryReadPortableRectangleClipBounds(portablePath, out bounds))
+                && WpfPortableRectangleClipReader.TryGetRectangleClipBounds(portablePath, out bounds))
             {
                 return true;
             }
@@ -786,95 +784,6 @@ public sealed class WpfVisualTreeRenderer
 
         bounds = default;
         return false;
-    }
-
-    private static bool TryReadPortableRectangleClipBounds(PortableGeometryPath path, out WpfReplayRect bounds)
-    {
-        bounds = ToReplayRect(path.Bounds);
-        if (path.Kind != PortableGeometryPathKind.Path
-            || !path.Transform.IsIdentity
-            || !IsUsableBounds(bounds)
-            || path.Figures.Length != 1)
-        {
-            bounds = default;
-            return false;
-        }
-
-        var figure = path.Figures[0];
-        var segments = figure.Segments;
-        if (!figure.IsClosed
-            || !figure.IsFilled
-            || segments.Length is < 3 or > 4)
-        {
-            bounds = default;
-            return false;
-        }
-
-        if (!TryGetRectangleCornerMask(figure.StartPoint, bounds, out var cornerMask))
-        {
-            bounds = default;
-            return false;
-        }
-
-        foreach (var segment in segments)
-        {
-            if (segment.Kind != PortablePathSegmentKind.Line
-                || !TryGetRectangleCornerMask(segment.Point1, bounds, out var segmentCornerMask))
-            {
-                bounds = default;
-                return false;
-            }
-
-            cornerMask |= segmentCornerMask;
-        }
-
-        if (cornerMask != 0b1111)
-        {
-            bounds = default;
-            return false;
-        }
-
-        return true;
-    }
-
-    private static bool TryGetRectangleCornerMask(PortablePoint point, WpfReplayRect bounds, out int mask)
-    {
-        var left = bounds.X;
-        var top = bounds.Y;
-        var right = bounds.X + bounds.Width;
-        var bottom = bounds.Y + bounds.Height;
-
-        if (AreClose(point.X, left) && AreClose(point.Y, top))
-        {
-            mask = 0b0001;
-            return true;
-        }
-
-        if (AreClose(point.X, right) && AreClose(point.Y, top))
-        {
-            mask = 0b0010;
-            return true;
-        }
-
-        if (AreClose(point.X, right) && AreClose(point.Y, bottom))
-        {
-            mask = 0b0100;
-            return true;
-        }
-
-        if (AreClose(point.X, left) && AreClose(point.Y, bottom))
-        {
-            mask = 0b1000;
-            return true;
-        }
-
-        mask = 0;
-        return false;
-    }
-
-    private static bool AreClose(double left, double right)
-    {
-        return Math.Abs(left - right) <= RectangleClipPointTolerance;
     }
 
     private static WpfReplayRect CombineClipBounds(WpfReplayRect? current, WpfReplayRect next)

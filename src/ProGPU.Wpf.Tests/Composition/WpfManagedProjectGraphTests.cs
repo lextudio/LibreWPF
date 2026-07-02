@@ -5635,7 +5635,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplaySubtreeSynthesizesCellClipFromPortableClipToBoundsState", rendererTests, StringComparison.Ordinal);
         Assert.Contains("FakeVisual : PortableVisualChildrenSource, PortableVisualBoundsSource", rendererTests, StringComparison.Ordinal);
         Assert.Contains("clip is IPortableGeometryPathSource portableGeometry", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("TryReadPortableRectangleClipBounds(portablePath, out bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(portablePath, out bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadPortableRectangleClipBounds", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryPushNativeVisualClip(sink, clip)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portablePath)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryCreatePortableIntersectedClip(first, second, out clip)", rendererSource, StringComparison.Ordinal);
@@ -5821,6 +5822,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplaySubtreeAppliesPortableDrawingGroupStateWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativePortableDrawingGroupClipWhenAvailable", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativePortableDrawingGroupGeometryClipForNonRectangleClip", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeDerivesPortableRectangleClipBoundsFromPathPoints", rendererTests, StringComparison.Ordinal);
         Assert.Contains("\"PushNativeClip\"", rendererTests, StringComparison.Ordinal);
         Assert.Contains("\"PushNativeGeometryClip\"", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeDoesNotReflectAbsentPortableDrawingGroupState", rendererTests, StringComparison.Ordinal);

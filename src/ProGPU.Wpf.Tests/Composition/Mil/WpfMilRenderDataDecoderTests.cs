@@ -104,6 +104,42 @@ public sealed class WpfMilRenderDataDecoderTests
     }
 
     [Fact]
+    public void DecodeNativeDrawGeometryUsesLocalRectanglePrimitiveWithoutGenericGeometryFallback()
+    {
+        var brush = Brushes.Red;
+        var pen = new Pen(Brushes.Black, 2);
+        var geometry = new RectangleGeometry(new Rect(1, 2, 30, 40));
+        var resolver = new TestResolver
+        {
+            Brush = brush,
+            Pen = pen,
+            Geometry = geometry
+        };
+        var sink = new NativeTestSink();
+
+        var payload = new byte[16];
+        WriteUInt32(payload, 0, 1);
+        WriteUInt32(payload, 4, 2);
+        WriteUInt32(payload, 8, 3);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawGeometry, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(1, resolver.ResolveGeometryCallCount);
+        Assert.Empty(sink.DrawGeometries);
+        var draw = Assert.Single(sink.NativeRectangles);
+        Assert.Same(brush, draw.Brush);
+        Assert.Same(pen, draw.Pen);
+        Assert.Equal(1, draw.Rectangle.X);
+        Assert.Equal(2, draw.Rectangle.Y);
+        Assert.Equal(30, draw.Rectangle.Width);
+        Assert.Equal(40, draw.Rectangle.Height);
+    }
+
+    [Fact]
     public void DecodePortableRectangleClipUsesNativeClipWithoutManagedResolution()
     {
         var portableGeometry = CreatePortableRectangleGeometry(5, 6, 70, 80);
@@ -435,6 +471,8 @@ public sealed class WpfMilRenderDataDecoderTests
     {
         public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle)> DrawRectangles { get; } = new();
 
+        public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> DrawGeometries { get; } = new();
+
         public List<MediaImageSource> Images { get; } = new();
 
         public List<double> Opacities { get; } = new();
@@ -481,6 +519,7 @@ public sealed class WpfMilRenderDataDecoderTests
 
         public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
         {
+            DrawGeometries.Add((brush, pen, geometry));
         }
 
         public void DrawImage(MediaImageSource imageSource, Rect rectangle)
@@ -577,6 +616,8 @@ public sealed class WpfMilRenderDataDecoderTests
     {
         public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
 
+        public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayRect Rectangle)> NativeRectangles { get; } = new();
+
         public List<WpfReplayRect> NativeClipBounds { get; } = new();
 
         public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
@@ -587,6 +628,7 @@ public sealed class WpfMilRenderDataDecoderTests
 
         public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)
         {
+            NativeRectangles.Add((brush, pen, rectangle));
         }
 
         public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)

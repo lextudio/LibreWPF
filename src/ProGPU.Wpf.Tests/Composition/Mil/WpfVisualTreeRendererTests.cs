@@ -783,7 +783,7 @@ public sealed class WpfVisualTreeRendererTests
         var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(
-            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawGeometry", "Pop", "PopVisualOwner" },
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawLine", "Pop", "PopVisualOwner" },
             sink.Operations);
         var state = Assert.Single(sink.RetainedVisualStates);
         AssertReplayRect(0, 0, 34, 4, state.OpacityMaskBounds);
@@ -4961,6 +4961,7 @@ public sealed class WpfVisualTreeRendererTests
 
         public void DrawLine(MediaPen? pen, Point point0, Point point1)
         {
+            Operations.Add("DrawLine");
         }
 
         public void DrawRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle)

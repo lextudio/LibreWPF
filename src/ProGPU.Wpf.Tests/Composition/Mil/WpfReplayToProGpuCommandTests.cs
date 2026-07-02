@@ -586,7 +586,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeDrawGeometryThroughProGpuSinkPreservesWpfPenLineCapNativeMetadata()
+    public void DecodeDrawGeometryThroughProGpuSinkLowersLinePathAndPreservesWpfPenLineCapNativeMetadata()
     {
         var geometry = new PathGeometry();
         var figure = new PathFigure
@@ -619,7 +619,7 @@ public sealed class WpfReplayToProGpuCommandTests
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
         var command = Assert.Single(nativeContext.Commands);
-        Assert.Equal(RenderCommandType.DrawPath, command.Type);
+        Assert.Equal(RenderCommandType.DrawLine, command.Type);
         Assert.NotNull(command.Pen);
         Assert.Equal(global::ProGPU.Vector.PenLineCap.Square, command.Pen!.StartLineCap);
         Assert.Equal(global::ProGPU.Vector.PenLineCap.Triangle, command.Pen.EndLineCap);

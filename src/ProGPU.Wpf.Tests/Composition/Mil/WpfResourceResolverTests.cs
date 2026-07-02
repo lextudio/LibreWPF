@@ -735,8 +735,11 @@ public sealed class WpfResourceResolverTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        var adaptedGeometry = Assert.IsType<PathGeometry>(Assert.Single(sink.DrawGeometries).Geometry);
-        Assert.Equal(new Rect(5, 6, 70, 80), adaptedGeometry.Bounds);
+        Assert.Empty(sink.DrawGeometries);
+        var draw = Assert.Single(sink.DrawRectangles);
+        Assert.NotNull(draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Equal(new Rect(5, 6, 70, 80), draw.Rectangle);
     }
 
     [Fact]

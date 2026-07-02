@@ -5,10 +5,12 @@ using System.Numerics;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
 using MediaBrush = System.Windows.Media.Brush;
+using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
+using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
@@ -140,7 +142,11 @@ public sealed class WpfMilRenderDataDecoder
                     }
                     else if (TryResolveGeometry(resources, geometryToken, out var geometry))
                     {
-                        sink.DrawGeometry(brush, pen, geometry);
+                        if (!TryDrawPrimitiveGeometry(sink, brush, pen, geometry))
+                        {
+                            sink.DrawGeometry(brush, pen, geometry);
+                        }
+
                         appliedCount++;
                     }
                     else
@@ -468,7 +474,11 @@ public sealed class WpfMilRenderDataDecoder
                     }
                     else if (TryResolveGeometry(resources, nativeGeometryToken, out var geometry))
                     {
-                        sink.DrawGeometry(nativeBrush, nativePen, geometry);
+                        if (!TryDrawPrimitiveGeometry(sink, nativeBrush, nativePen, geometry))
+                        {
+                            sink.DrawGeometry(nativeBrush, nativePen, geometry);
+                        }
+
                         appliedCount++;
                     }
                     else
@@ -853,6 +863,228 @@ public sealed class WpfMilRenderDataDecoder
     private static bool TryGetRectangleClipBounds(MediaGeometry geometry, out WpfReplayRect bounds)
     {
         return WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds);
+    }
+
+    private static bool TryDrawPrimitiveGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaBrush? brush,
+        MediaPen? pen,
+        MediaGeometry geometry)
+    {
+        return TryDrawPrimitiveLineGeometry(sink, pen, geometry)
+            || TryDrawPrimitivePolylineGeometry(sink, brush, pen, geometry)
+            || TryDrawPrimitiveRectangleGeometry(sink, brush, pen, geometry)
+            || TryDrawPrimitiveEllipseGeometry(sink, brush, pen, geometry);
+    }
+
+    private static bool TryDrawPrimitiveLineGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaPen? pen,
+        MediaGeometry geometry)
+    {
+        if (pen == null
+            || !WpfMediaLineGeometryReader.TryGetLinePoints(geometry, out var startPoint, out var endPoint))
+        {
+            return false;
+        }
+
+        if (sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeLine(
+                pen,
+                new WpfReplayPoint(startPoint.X, startPoint.Y),
+                new WpfReplayPoint(endPoint.X, endPoint.Y));
+        }
+        else
+        {
+            sink.DrawLine(pen, startPoint, endPoint);
+        }
+
+        return true;
+    }
+
+    private static bool TryDrawPrimitivePolylineGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaBrush? brush,
+        MediaPen? pen,
+        MediaGeometry geometry)
+    {
+        if (brush != null
+            || pen == null
+            || !WpfMediaLineGeometryReader.TryGetPolylineSegments(geometry, out var segments))
+        {
+            return false;
+        }
+
+        if (sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            foreach (var segment in segments)
+            {
+                nativeSink.DrawNativeLine(pen, segment.StartPoint, segment.EndPoint);
+            }
+        }
+        else
+        {
+            foreach (var segment in segments)
+            {
+                sink.DrawLine(
+                    pen,
+                    new Point(segment.StartPoint.X, segment.StartPoint.Y),
+                    new Point(segment.EndPoint.X, segment.EndPoint.Y));
+            }
+        }
+
+        return true;
+    }
+
+    private static bool TryDrawPrimitiveRectangleGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaBrush? brush,
+        MediaPen? pen,
+        MediaGeometry geometry)
+    {
+        if (!TryGetPrimitiveRectangleGeometry(geometry, out var rectangle, out var radiusX, out var radiusY))
+        {
+            if (brush != null
+                || pen == null
+                || !WpfMediaRectangleClipReader.TryGetRectangleStrokeBounds(geometry, out var rectangleBounds))
+            {
+                return false;
+            }
+
+            rectangle = ToRect(rectangleBounds);
+            radiusX = 0;
+            radiusY = 0;
+        }
+
+        if (sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            var replayRectangle = ToReplayRect(rectangle);
+            if (radiusX > 0 || radiusY > 0)
+            {
+                nativeSink.DrawNativeRoundedRectangle(brush, pen, replayRectangle, radiusX, radiusY);
+            }
+            else
+            {
+                nativeSink.DrawNativeRectangle(brush, pen, replayRectangle);
+            }
+        }
+        else if (radiusX > 0 || radiusY > 0)
+        {
+            sink.DrawRoundedRectangle(brush, pen, rectangle, radiusX, radiusY);
+        }
+        else
+        {
+            sink.DrawRectangle(brush, pen, rectangle);
+        }
+
+        return true;
+    }
+
+    private static bool TryGetPrimitiveRectangleGeometry(
+        MediaGeometry geometry,
+        out Rect rectangle,
+        out double radiusX,
+        out double radiusY)
+    {
+        if (geometry is MediaRectangleGeometry rectangleGeometry
+            && HasIdentityGeometryTransform(rectangleGeometry)
+            && IsUsableRect(rectangleGeometry.Rect, out rectangle)
+            && IsUsableRadius(rectangleGeometry.RadiusX, out radiusX)
+            && IsUsableRadius(rectangleGeometry.RadiusY, out radiusY))
+        {
+            return true;
+        }
+
+        if (WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out var rectangleBounds))
+        {
+            rectangle = ToRect(rectangleBounds);
+            radiusX = 0;
+            radiusY = 0;
+            return true;
+        }
+
+        rectangle = default;
+        radiusX = default;
+        radiusY = default;
+        return false;
+    }
+
+    private static bool TryDrawPrimitiveEllipseGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaBrush? brush,
+        MediaPen? pen,
+        MediaGeometry geometry)
+    {
+        if (geometry is not MediaEllipseGeometry ellipseGeometry
+            || !HasIdentityGeometryTransform(ellipseGeometry)
+            || !IsUsablePoint(ellipseGeometry.Center, out var center)
+            || !IsPositiveRadius(ellipseGeometry.RadiusX, out var radiusX)
+            || !IsPositiveRadius(ellipseGeometry.RadiusY, out var radiusY))
+        {
+            return false;
+        }
+
+        if (sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeEllipse(brush, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY);
+        }
+        else
+        {
+            sink.DrawEllipse(brush, pen, center, radiusX, radiusY);
+        }
+
+        return true;
+    }
+
+    private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
+    {
+        var transform = geometry.Transform;
+        return transform == null
+            || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
+                && WpfResourceResolver.IsIdentityMatrix(matrix));
+    }
+
+    private static bool IsUsablePoint(Point point, out Point usablePoint)
+    {
+        usablePoint = point;
+        return double.IsFinite(point.X)
+            && double.IsFinite(point.Y);
+    }
+
+    private static bool IsUsableRect(Rect rectangle, out Rect usableRectangle)
+    {
+        usableRectangle = rectangle;
+        return !rectangle.IsEmpty
+            && double.IsFinite(rectangle.X)
+            && double.IsFinite(rectangle.Y)
+            && double.IsFinite(rectangle.Width)
+            && double.IsFinite(rectangle.Height)
+            && rectangle.Width > 0
+            && rectangle.Height > 0;
+    }
+
+    private static bool IsUsableRadius(double radius, out double usableRadius)
+    {
+        usableRadius = Math.Max(0, radius);
+        return double.IsFinite(radius);
+    }
+
+    private static bool IsPositiveRadius(double radius, out double usableRadius)
+    {
+        usableRadius = radius;
+        return double.IsFinite(radius)
+            && radius > 0;
+    }
+
+    private static Rect ToRect(WpfReplayRect rectangle)
+    {
+        return new Rect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
+    }
+
+    private static WpfReplayRect ToReplayRect(Rect rectangle)
+    {
+        return new WpfReplayRect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
     }
 
     private static WpfDrawingReplayStatus ReplayDrawing(

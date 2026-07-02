@@ -8,6 +8,7 @@ using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
+using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
 
 namespace System.Windows.Media.ProGPU.Composition;
@@ -182,6 +183,11 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
 
         if (brush != null && TryReplayTileBrushGeometry(brush, pen, geometry))
+        {
+            return;
+        }
+
+        if (TryDrawPrimitiveRectangleGeometry(brush, pen, geometry))
         {
             return;
         }
@@ -560,6 +566,91 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
 
         return false;
+    }
+
+    private bool TryDrawPrimitiveRectangleGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+    {
+        if (!TryGetPrimitiveRectangleGeometry(geometry, out var rectangle, out var radiusX, out var radiusY))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(brush, pen, geometry);
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            var replayRectangle = ToReplayRect(rectangle);
+            if (radiusX > 0 || radiusY > 0)
+            {
+                nativeSink.DrawNativeRoundedRectangle(brush, pen, replayRectangle, radiusX, radiusY);
+            }
+            else
+            {
+                nativeSink.DrawNativeRectangle(brush, pen, replayRectangle);
+            }
+        }
+        else if (radiusX > 0 || radiusY > 0)
+        {
+            _sink.DrawRoundedRectangle(brush, pen, rectangle, radiusX, radiusY);
+        }
+        else
+        {
+            _sink.DrawRectangle(brush, pen, rectangle);
+        }
+
+        CountApplied();
+        return true;
+    }
+
+    private static bool TryGetPrimitiveRectangleGeometry(
+        MediaGeometry geometry,
+        out Rect rectangle,
+        out double radiusX,
+        out double radiusY)
+    {
+        if (geometry is MediaRectangleGeometry rectangleGeometry
+            && HasIdentityGeometryTransform(rectangleGeometry)
+            && IsUsableRect(rectangleGeometry.Rect, out rectangle)
+            && IsUsableRadius(rectangleGeometry.RadiusX, out radiusX)
+            && IsUsableRadius(rectangleGeometry.RadiusY, out radiusY))
+        {
+            return true;
+        }
+
+        rectangle = default;
+        radiusX = default;
+        radiusY = default;
+        return false;
+    }
+
+    private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
+    {
+        var transform = geometry.Transform;
+        return transform == null
+            || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
+                && WpfResourceResolver.IsIdentityMatrix(matrix));
+    }
+
+    private static bool IsUsableRect(Rect rect, out Rect rectangle)
+    {
+        rectangle = rect;
+        return !rect.IsEmpty
+            && double.IsFinite(rect.X)
+            && double.IsFinite(rect.Y)
+            && double.IsFinite(rect.Width)
+            && double.IsFinite(rect.Height)
+            && rect.Width > 0
+            && rect.Height > 0;
+    }
+
+    private static bool IsUsableRadius(double radius, out double usableRadius)
+    {
+        usableRadius = radius;
+        return double.IsFinite(radius) && radius >= 0;
+    }
+
+    private static WpfReplayRect ToReplayRect(Rect rectangle)
+    {
+        return new WpfReplayRect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
     }
 
     private void CountUnsupportedStateIfAny(params object?[] unsupportedState)

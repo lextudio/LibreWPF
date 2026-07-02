@@ -519,6 +519,98 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextDrawsRectangleGeometryAsNativeRectangleWithoutGenericGeometryFallback()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = new RectangleGeometry(new Rect(1, 2, 30, 40));
+
+        context.DrawGeometry(Brushes.Green, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        Assert.Empty(sink.Rectangles);
+        var replayed = Assert.Single(sink.NativeRectangles);
+        Assert.Same(Brushes.Green, replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayRect(1, 2, 30, 40), replayed.Rectangle);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextDrawsRectangleGeometryAsRectangleWithoutGenericGeometryFallback()
+    {
+        var sink = new RecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = new RectangleGeometry(new Rect(5, 6, 70, 80));
+
+        context.DrawGeometry(Brushes.Blue, null, geometry);
+
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        var replayed = Assert.Single(sink.Rectangles);
+        Assert.Same(Brushes.Blue, replayed.Brush);
+        Assert.Null(replayed.Pen);
+        Assert.Equal(new Rect(5, 6, 70, 80), replayed.Rectangle);
+        Assert.Contains(Brushes.Blue, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextDrawsRoundedRectangleGeometryAsNativeRoundedRectangle()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = new RectangleGeometry(new Rect(2, 3, 40, 50))
+        {
+            RadiusX = 4,
+            RadiusY = 6
+        };
+
+        context.DrawGeometry(Brushes.Yellow, null, geometry);
+
+        Assert.Equal(new[] { "DrawNativeRoundedRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeRoundedRectangles);
+        Assert.Same(Brushes.Yellow, replayed.Brush);
+        Assert.Null(replayed.Pen);
+        Assert.Equal(new WpfReplayRect(2, 3, 40, 50), replayed.Rectangle);
+        Assert.Equal(4d, replayed.RadiusX);
+        Assert.Equal(6d, replayed.RadiusY);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextKeepsTransformedRectangleGeometryOnGenericGeometryPath()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = new RectangleGeometry(new Rect(1, 2, 30, 40))
+        {
+            Transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 10 })
+        };
+
+        context.DrawGeometry(Brushes.Green, null, geometry);
+
+        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Empty(sink.NativeRectangles);
+        var replayed = Assert.Single(sink.Geometries);
+        Assert.Same(Brushes.Green, replayed.Brush);
+        Assert.Null(replayed.Pen);
+        Assert.Same(geometry, replayed.Geometry);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextRegistersOriginalResourcesAsRetainedDependencies()
     {
         var sink = new RecordingSink();

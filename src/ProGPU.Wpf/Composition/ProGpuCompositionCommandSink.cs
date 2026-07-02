@@ -526,7 +526,7 @@ public sealed class ProGpuCompositionCommandSink :
         var textBounds = new WpfReplayRect(origin.X, origin.Y, formattedText.Width, formattedText.Height);
         var nativeBrush = formattedText.Foreground == null
             ? new VectorSolidColorBrush(Vector4.One)
-            : WpfReflectionResourceResolver.AdaptNativeBrush(formattedText.Foreground, textBounds, out _)
+            : WpfResourceResolver.AdaptNativeBrush(formattedText.Foreground, textBounds, out _)
                 ?? new VectorSolidColorBrush(Vector4.One);
         var position = new Vector2(
             (float)origin.X,
@@ -562,7 +562,7 @@ public sealed class ProGpuCompositionCommandSink :
             GlyphPositions = glyphRun.GlyphPositions,
             Font = glyphRun.Font,
             FontSize = glyphRun.FontSize,
-            Brush = WpfReflectionResourceResolver.AdaptNativeBrush(
+            Brush = WpfResourceResolver.AdaptNativeBrush(
                     foregroundBrush,
                     new WpfReplayRect(glyphRun.Position.X, glyphRun.Position.Y, glyphRun.FontSize, glyphRun.FontSize),
                     out _)
@@ -647,7 +647,7 @@ public sealed class ProGpuCompositionCommandSink :
     public void PushTransform(MediaTransform transform)
     {
         ThrowIfClosed();
-        var nativeTransform = WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var adaptedTransform)
+        var nativeTransform = WpfResourceResolver.TryAdaptTransformMatrix(transform, out var adaptedTransform)
             ? adaptedTransform
             : Matrix4x4.Identity;
         _transformStack.Push(nativeTransform * _transformStack.Peek());
@@ -780,7 +780,7 @@ public sealed class ProGpuCompositionCommandSink :
         ThrowIfClosed();
 
         if (foregroundBrush == null
-            || !WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRunResource, out var glyphRun))
+            || !WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRunResource, out var glyphRun))
         {
             return;
         }
@@ -1108,14 +1108,14 @@ public sealed class ProGpuCompositionCommandSink :
 
     private VectorBrush? ToNativeBrush(MediaBrush? brush, WpfReplayRect bounds)
     {
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(brush, bounds, out var unsupportedStateCount);
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(brush, bounds, out var unsupportedStateCount);
         UnsupportedStateCount += unsupportedStateCount;
         return nativeBrush;
     }
 
     private VectorPen? ToNativePen(MediaPen? pen, WpfReplayRect bounds)
     {
-        var nativePen = WpfReflectionResourceResolver.AdaptNativePen(pen, bounds, out var unsupportedStateCount);
+        var nativePen = WpfResourceResolver.AdaptNativePen(pen, bounds, out var unsupportedStateCount);
         UnsupportedStateCount += unsupportedStateCount;
         return nativePen;
     }
@@ -1286,7 +1286,7 @@ public sealed class ProGpuCompositionCommandSink :
         }
 
         var replayBounds = new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
             brush,
             replayBounds,
             out int unsupportedStateCount);

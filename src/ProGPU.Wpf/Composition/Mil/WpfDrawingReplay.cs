@@ -144,7 +144,7 @@ internal static class WpfDrawingReplay
         }
 
         if (!TryGetGeometryDrawingGeometry(drawing, hasPortableGeometryDrawingState, geometryDrawingState, out var geometryValue)
-            || WpfReflectionResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
+            || WpfResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
@@ -160,8 +160,8 @@ internal static class WpfDrawingReplay
             geometryDrawingState,
             out var penValue);
 
-        var brush = WpfReflectionResourceResolver.AdaptBrush(brushValue);
-        var pen = WpfReflectionResourceResolver.AdaptPen(penValue);
+        var brush = WpfResourceResolver.AdaptBrush(brushValue);
+        var pen = WpfResourceResolver.AdaptPen(penValue);
         var appliedAny = false;
         var unsupportedAny = hasPen && pen == null;
 
@@ -307,7 +307,7 @@ internal static class WpfDrawingReplay
             var tilePopCount = 0;
             if (needsTileClip)
             {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(tile.Bounds));
+                sink.PushClip(WpfResourceResolver.CreateRectanglePath(tile.Bounds));
                 tilePopCount++;
             }
 
@@ -398,7 +398,7 @@ internal static class WpfDrawingReplay
             var tilePopCount = 0;
             if (needsTileClip)
             {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(tile.Bounds));
+                sink.PushClip(WpfResourceResolver.CreateRectanglePath(tile.Bounds));
                 tilePopCount++;
             }
 
@@ -407,7 +407,7 @@ internal static class WpfDrawingReplay
 
             if (hasSourceClip)
             {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(sourceBounds));
+                sink.PushClip(WpfResourceResolver.CreateRectanglePath(sourceBounds));
                 tilePopCount++;
             }
 
@@ -494,7 +494,7 @@ internal static class WpfDrawingReplay
             var tilePopCount = 0;
             if (needsTileClip)
             {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(tile.Bounds));
+                sink.PushClip(WpfResourceResolver.CreateRectanglePath(tile.Bounds));
                 tilePopCount++;
             }
 
@@ -503,7 +503,7 @@ internal static class WpfDrawingReplay
 
             if (hasSourceClip)
             {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(sourceBounds));
+                sink.PushClip(WpfResourceResolver.CreateRectanglePath(sourceBounds));
                 tilePopCount++;
             }
 
@@ -581,7 +581,7 @@ internal static class WpfDrawingReplay
             hasPortableDrawingGroupState,
             drawingGroupState,
             out var transformValue);
-        var transform = hasTransform ? WpfReflectionResourceResolver.AdaptTransform(transformValue) : null;
+        var transform = hasTransform ? WpfResourceResolver.AdaptTransform(transformValue) : null;
         if (hasTransform && transform == null)
         {
             return WpfDrawingReplayStatus.Unsupported;
@@ -592,7 +592,7 @@ internal static class WpfDrawingReplay
             hasPortableDrawingGroupState,
             drawingGroupState,
             out var clipValue);
-        var clip = hasClip ? WpfReflectionResourceResolver.AdaptGeometry(clipValue) : null;
+        var clip = hasClip ? WpfResourceResolver.AdaptGeometry(clipValue) : null;
         if (hasClip && clip == null)
         {
             return WpfDrawingReplayStatus.Unsupported;
@@ -1365,15 +1365,15 @@ internal static class WpfDrawingReplay
             hasPortableGlyphRunDrawingState,
             glyphRunDrawingState,
             out var foregroundBrushValue);
-        var foregroundBrush = WpfReflectionResourceResolver.AdaptBrush(foregroundBrushValue);
+        var foregroundBrush = WpfResourceResolver.AdaptBrush(foregroundBrushValue);
         if (sink is IWpfNativePrimitiveCommandSink nativeSink
-            && WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out _))
+            && WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out _))
         {
             nativeSink.DrawNativeGlyphRun(foregroundBrush, glyphRunValue!);
             return WpfDrawingReplayStatus.Applied;
         }
 
-        if (WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is not { } glyphRun)
+        if (WpfResourceResolver.AdaptGlyphRun(glyphRunValue) is not { } glyphRun)
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
@@ -1961,7 +1961,7 @@ internal static class WpfDrawingReplay
             return false;
         }
 
-        opacityMask = WpfReflectionResourceResolver.AdaptBrush(maskValue);
+        opacityMask = WpfResourceResolver.AdaptBrush(maskValue);
         if (opacityMask == null)
         {
             return false;
@@ -2006,7 +2006,7 @@ internal static class WpfDrawingReplay
                     drawingGroupState,
                     out var transformValue))
                 {
-                    if (WpfReflectionResourceResolver.AdaptTransform(transformValue) is not { } transform)
+                    if (WpfResourceResolver.AdaptTransform(transformValue) is not { } transform)
                     {
                         bounds = default;
                         return false;
@@ -2038,7 +2038,7 @@ internal static class WpfDrawingReplay
                     hasPortableGeometryDrawingState,
                     geometryDrawingState,
                     out var geometryValue)
-                || WpfReflectionResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
+                || WpfResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
             {
                 bounds = default;
                 return false;
@@ -2092,12 +2092,12 @@ internal static class WpfDrawingReplay
                 return false;
             }
 
-            if (WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out var nativeGlyphRun))
+            if (WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out var nativeGlyphRun))
             {
                 return TryGetGlyphRunBounds(nativeGlyphRun, out bounds);
             }
 
-            if (WpfReflectionResourceResolver.AdaptGlyphRun(glyphRunValue) is not { } glyphRun)
+            if (WpfResourceResolver.AdaptGlyphRun(glyphRunValue) is not { } glyphRun)
             {
                 bounds = default;
                 return false;
@@ -2220,7 +2220,7 @@ internal static class WpfDrawingReplay
                 hasPortableDrawingGroupState,
                 drawingGroupState,
                 out var clipValue)
-            && WpfReflectionResourceResolver.AdaptGeometry(clipValue) is { } clipGeometry
+            && WpfResourceResolver.AdaptGeometry(clipValue) is { } clipGeometry
             && IsUsableRect(clipGeometry.Bounds, out var clipBounds))
         {
             bounds = IntersectBounds(bounds, clipBounds);

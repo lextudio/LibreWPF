@@ -43,7 +43,7 @@ public sealed class WpfRenderDataBridge
         ArgumentNullException.ThrowIfNull(sink);
 
         var snapshot = Extract(renderData);
-        resources ??= WpfReflectionResourceResolver.FromDependentResources(
+        resources ??= WpfResourceResolver.FromDependentResources(
             snapshot.DependentResources,
             imageSourceAdapter);
         return _decoder.Decode(snapshot.RenderData, sink, resources);
@@ -58,7 +58,7 @@ public sealed class WpfRenderDataBridge
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(sink);
 
-        resources ??= WpfReflectionResourceResolver.FromDependentResources(
+        resources ??= WpfResourceResolver.FromDependentResources(
             snapshot.DependentResources,
             imageSourceAdapter);
         return _decoder.Decode(snapshot.RenderData, sink, resources);

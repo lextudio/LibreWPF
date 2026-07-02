@@ -24,14 +24,14 @@ using ProGpuRadialGradientBrush = ProGPU.Vector.RadialGradientBrush;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
-public sealed class WpfReflectionResourceResolverTests
+public sealed class WpfResourceResolverTests
 {
     [Fact]
     public void DecodeRectangleAdaptsPortableBrushAndPenFixtures()
     {
         var brush = new FakeSolidColorBrush(new FakeColor(128, 10, 20, 30), opacity: 0.5);
         var pen = new FakePen(new FakeSolidColorBrush(new FakeColor(255, 1, 2, 3)), 4);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush, pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush, pen });
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -70,7 +70,7 @@ public sealed class WpfReflectionResourceResolverTests
             miterLimit: 2.0,
             dashArray: new[] { 2.0, 3.0 },
             dashOffset: 1.5);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush, pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush, pen });
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -117,7 +117,7 @@ public sealed class WpfReflectionResourceResolverTests
                 opacity: 0.75,
                 spreadMethod: PortableGradientSpreadMethod.Repeat,
                 colorInterpolationMode: PortableGradientColorInterpolationMode.ScRgbLinearInterpolation));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -162,7 +162,7 @@ public sealed class WpfReflectionResourceResolverTests
                 },
                 spreadMethod: PortableGradientSpreadMethod.Reflect));
 
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
             brush,
             new WpfReplayRect(10, 20, 100, 50),
             out var unsupportedStateCount);
@@ -195,7 +195,7 @@ public sealed class WpfReflectionResourceResolverTests
                 hasTransform: true,
                 transform: new PortableMatrix3x2(1, 0, 0, 1, 5, 7)));
 
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
             brush,
             new WpfReplayRect(0, 0, 100, 100),
             out var unsupportedStateCount);
@@ -222,7 +222,7 @@ public sealed class WpfReflectionResourceResolverTests
                 hasTransform: true,
                 transform: new PortableMatrix3x2(0, 0, 0, 1, 0, 0)));
 
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
             brush,
             new WpfReplayRect(0, 0, 100, 100),
             out var unsupportedStateCount);
@@ -245,7 +245,7 @@ public sealed class WpfReflectionResourceResolverTests
             Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 5, 7))
         };
 
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
             brush,
             new WpfReplayRect(0, 0, 100, 100),
             out var unsupportedStateCount);
@@ -269,7 +269,7 @@ public sealed class WpfReflectionResourceResolverTests
             Transform = new FakeMatrixTransform(new FakeMatrix(0, 0, 0, 1, 0, 0))
         };
 
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
             brush,
             new WpfReplayRect(0, 0, 100, 100),
             out var unsupportedStateCount);
@@ -293,7 +293,7 @@ public sealed class WpfReflectionResourceResolverTests
             dashArray: new[] { 2.0, 3.0 },
             dashOffset: 1.5);
 
-        var nativePen = WpfReflectionResourceResolver.AdaptNativePen(
+        var nativePen = WpfResourceResolver.AdaptNativePen(
             pen,
             new WpfReplayRect(0, 0, 10, 10),
             out var unsupportedStateCount);
@@ -320,8 +320,8 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var brush = new FakeUnavailablePortableSolidColorBrush();
 
-        var mediaBrush = WpfReflectionResourceResolver.AdaptBrush(brush);
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+        var mediaBrush = WpfResourceResolver.AdaptBrush(brush);
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
             brush,
             new WpfReplayRect(0, 0, 10, 10),
             out var unsupportedStateCount);
@@ -337,8 +337,8 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var pen = new FakeUnavailablePortablePen();
 
-        var mediaPen = WpfReflectionResourceResolver.AdaptPen(pen);
-        var nativePen = WpfReflectionResourceResolver.AdaptNativePen(
+        var mediaPen = WpfResourceResolver.AdaptPen(pen);
+        var nativePen = WpfResourceResolver.AdaptNativePen(
             pen,
             new WpfReplayRect(0, 0, 10, 10),
             out var unsupportedStateCount);
@@ -354,7 +354,7 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var brush = new DirectNativeBrush();
 
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
             brush,
             new WpfReplayRect(1, 2, 30, 40),
             out var unsupportedStateCount);
@@ -387,7 +387,7 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var brush = new DuckTypedNativeBrush();
 
-        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
             brush,
             new WpfReplayRect(1, 2, 30, 40),
             out var unsupportedStateCount);
@@ -402,7 +402,7 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var pen = new DuckTypedNativePen();
 
-        var nativePen = WpfReflectionResourceResolver.AdaptNativePen(
+        var nativePen = WpfResourceResolver.AdaptNativePen(
             pen,
             new WpfReplayRect(1, 2, 30, 40),
             out var unsupportedStateCount);
@@ -421,7 +421,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             DashStyle = new FakeDashStyle(new[] { 2.0, 3.0 }, 1.5)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.Red, pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.Red, pen });
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -450,7 +450,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             DashStyle = new FakeDashStyle(new[] { 0.0, 2.0 }, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.Red, pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.Red, pen });
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -480,7 +480,7 @@ public sealed class WpfReflectionResourceResolverTests
             EndLineCap = "Round",
             DashCap = "Round"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.Red, pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.Red, pen });
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -510,7 +510,7 @@ public sealed class WpfReflectionResourceResolverTests
             LineJoin = "Round",
             MiterLimit = 3.5
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.Red, pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.Red, pen });
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -542,7 +542,7 @@ public sealed class WpfReflectionResourceResolverTests
             SpreadMethod = "Repeat",
             ColorInterpolationMode = "ScRgbLinearInterpolation"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -584,7 +584,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             SpreadMethod = "Reflect"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -614,7 +614,7 @@ public sealed class WpfReflectionResourceResolverTests
     public void DecodePushTransformAdaptsPortableMatrixTransformContract()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 2, 3, 4, 10, 20));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { transform });
         var sink = new TestSink();
 
         var pushPayload = new byte[8];
@@ -640,7 +640,7 @@ public sealed class WpfReflectionResourceResolverTests
     public void DecodePushTransformAdaptsPortableTransformMatrixSource()
     {
         var transform = new FakePortableTransform(new PortableMatrix3x2(1, 2, 3, 4, 10, 20));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { transform });
         var sink = new TestSink();
 
         var pushPayload = new byte[8];
@@ -667,8 +667,8 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var transform = new FakeUnavailablePortableMatrixTransform(new FakeMatrix(1, 2, 3, 4, 10, 20));
 
-        var mediaTransform = WpfReflectionResourceResolver.AdaptTransform(transform);
-        var hasNativeMatrix = WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out _);
+        var mediaTransform = WpfResourceResolver.AdaptTransform(transform);
+        var hasNativeMatrix = WpfResourceResolver.TryAdaptTransformMatrix(transform, out _);
 
         Assert.Null(mediaTransform);
         Assert.False(hasNativeMatrix);
@@ -679,7 +679,7 @@ public sealed class WpfReflectionResourceResolverTests
     public void DecodePushTransformRejectsReflectedMatrixShapeWithoutPortableContract()
     {
         var transform = new FakeReflectedMatrixTransform(new FakeMatrix(1, 0, 0, 1, 6, 7));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { transform });
         var sink = new TestSink();
 
         var pushPayload = new byte[8];
@@ -701,7 +701,7 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var brush = new FakeSolidColorBrush(new FakeColor(255, 40, 50, 60));
         var geometry = new FakeRectangleGeometry(new FakeRect(5, 6, 70, 80));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush, geometry });
         var sink = new TestSink();
 
         var payload = new byte[16];
@@ -725,7 +725,7 @@ public sealed class WpfReflectionResourceResolverTests
             new FakeSolidColorBrush(new FakeColor(255, 100, 110, 120)),
             null,
             new FakeRectangleGeometry(new FakeRect(5, 6, 70, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -755,7 +755,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -801,7 +801,7 @@ public sealed class WpfReflectionResourceResolverTests
             new FakePortableTileBrushSource(tileBrush),
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -854,7 +854,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -884,7 +884,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -915,7 +915,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 100, 100)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -945,7 +945,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 100, 100)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -973,7 +973,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1005,7 +1005,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1038,7 +1038,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 25, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1068,7 +1068,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 25, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1104,7 +1104,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 25, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1138,7 +1138,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 25, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1172,7 +1172,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             new FakePen(new FakeSolidColorBrush(new FakeColor(255, 1, 2, 3)), 2),
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1207,7 +1207,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1247,7 +1247,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1282,7 +1282,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 100, 100)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1320,7 +1320,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 100, 100)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1357,7 +1357,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1395,7 +1395,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 25, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1443,7 +1443,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 20, 20)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1480,7 +1480,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 25, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1517,7 +1517,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 25, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1551,7 +1551,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1589,7 +1589,7 @@ public sealed class WpfReflectionResourceResolverTests
             new FakeDrawingBrush(nestedGroup),
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1622,7 +1622,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1661,7 +1661,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1696,7 +1696,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1733,7 +1733,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1768,7 +1768,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1806,7 +1806,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 25, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1854,7 +1854,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 20, 20)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1891,7 +1891,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 25, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1928,7 +1928,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(0, 0, 25, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1962,7 +1962,7 @@ public sealed class WpfReflectionResourceResolverTests
             },
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -1999,7 +1999,7 @@ public sealed class WpfReflectionResourceResolverTests
             new FakeVisualBrush(visual),
             null,
             new FakeRectangleGeometry(new FakeRect(10, 20, 100, 80)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2029,7 +2029,7 @@ public sealed class WpfReflectionResourceResolverTests
             Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
             Opacity = 0.5
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2058,7 +2058,7 @@ public sealed class WpfReflectionResourceResolverTests
                 null,
                 new FakeRectangleGeometry(new FakeRect(0, 0, 10, 20))),
             new object());
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2086,7 +2086,7 @@ public sealed class WpfReflectionResourceResolverTests
             Bounds = new FakeRect(1, 2, 30, 40),
             OpacityMask = new FakeSolidColorBrush(new FakeColor(128, 255, 255, 255))
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2117,7 +2117,7 @@ public sealed class WpfReflectionResourceResolverTests
             OpacityMask = new FakeSolidColorBrush(new FakeColor(128, 255, 255, 255))
         };
         var imageAdapter = new FakeImageSourceAdapter();
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2145,7 +2145,7 @@ public sealed class WpfReflectionResourceResolverTests
             ClipGeometry = new FakeRectangleGeometry(new FakeRect(10, 20, 30, 40)),
             OpacityMask = new FakeSolidColorBrush(new FakeColor(128, 255, 255, 255))
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2172,7 +2172,7 @@ public sealed class WpfReflectionResourceResolverTests
             Bounds = new FakeRect(1, 2, 30, 40),
             CacheMode = new object()
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink { AcceptDrawingCaches = true };
 
         var payload = new byte[8];
@@ -2199,7 +2199,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             CacheMode = new object()
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2226,7 +2226,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             GuidelineSet = new object()
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2252,7 +2252,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             BitmapScalingMode = "NearestNeighbor"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2279,7 +2279,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             BitmapScalingMode = "HighQuality"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2306,7 +2306,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             BitmapScalingMode = "Supersampled"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2333,7 +2333,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             EdgeMode = "Aliased"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2360,7 +2360,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             TextRenderingMode = "Aliased"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2387,7 +2387,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             TextRenderingMode = "ClearType"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2414,7 +2414,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             ClearTypeHint = "Enabled"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2441,7 +2441,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             TextHintingMode = "Animated"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2468,7 +2468,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             TextHintingMode = "Display"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2495,7 +2495,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             Transform = new object()
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2521,7 +2521,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             ClipGeometry = new object()
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2547,7 +2547,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             BitmapEffectInput = new object()
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2574,7 +2574,7 @@ public sealed class WpfReflectionResourceResolverTests
             Bounds = new FakeRect(1, 2, 30, 40),
             Effect = new FakeBlurEffect(8)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink { AcceptVisualEffects = true };
 
         var payload = new byte[8];
@@ -2604,7 +2604,7 @@ public sealed class WpfReflectionResourceResolverTests
             BitmapEffect = new FakeBlurBitmapEffect(6),
             BitmapEffectInput = new FakeContextBitmapEffectInput()
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink { AcceptVisualEffects = true };
 
         var payload = new byte[8];
@@ -2633,7 +2633,7 @@ public sealed class WpfReflectionResourceResolverTests
         {
             Effect = new FakeBlurEffect(4)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2652,7 +2652,7 @@ public sealed class WpfReflectionResourceResolverTests
     [Fact]
     public void DecodeDrawDrawingSkipsMissingDrawingResourceToken()
     {
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(Array.Empty<object?>());
+        var resolver = WpfResourceResolver.FromDependentResources(Array.Empty<object?>());
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2672,7 +2672,7 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var imageSource = new FakeBitmapSource();
         var imageAdapter = new FakeImageSourceAdapter();
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { imageSource }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { imageSource }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -2696,7 +2696,7 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var imageSource = new FakeImageSource();
         var imageAdapter = new FakeImageSourceAdapter();
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { imageSource }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { imageSource }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[40];
@@ -2721,7 +2721,7 @@ public sealed class WpfReflectionResourceResolverTests
         var imageSource = new FakeBitmapSource();
         var imageAdapter = new FakeImageSourceAdapter();
         var drawing = new FakeImageDrawing(imageSource, new FakeRect(3, 4, 50, 60));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing }, imageAdapter);
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2752,7 +2752,7 @@ public sealed class WpfReflectionResourceResolverTests
             FontRenderingEmSize = 12.5,
             FontFamilyNames = new[] { "Arial" }
         });
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush, glyphRun });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush, glyphRun });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2796,7 +2796,7 @@ public sealed class WpfReflectionResourceResolverTests
             FontFamilyNames = new[] { "ProGpuMissingFamilyNameForFontUriTest" }
         });
 
-        var adapted = WpfReflectionResourceResolver.AdaptGlyphRun(glyphRun);
+        var adapted = WpfResourceResolver.AdaptGlyphRun(glyphRun);
 
         Assert.NotNull(adapted);
         Assert.Equal(expectedFont.UnitsPerEm, adapted.Font.UnitsPerEm);
@@ -2820,7 +2820,7 @@ public sealed class WpfReflectionResourceResolverTests
             IsItalic = true
         });
 
-        var adapted = WpfReflectionResourceResolver.AdaptGlyphRun(glyphRun);
+        var adapted = WpfResourceResolver.AdaptGlyphRun(glyphRun);
 
         Assert.NotNull(adapted);
         Assert.True(adapted.IsBold);
@@ -2846,7 +2846,7 @@ public sealed class WpfReflectionResourceResolverTests
             IsItalic = true
         });
 
-        var adapted = WpfReflectionResourceResolver.AdaptGlyphRun(glyphRun);
+        var adapted = WpfResourceResolver.AdaptGlyphRun(glyphRun);
 
         Assert.NotNull(adapted);
         Assert.Equal(new ushort[] { 3, 4 }, adapted.GlyphIndices);
@@ -2874,7 +2874,7 @@ public sealed class WpfReflectionResourceResolverTests
             Transform = new PortableMatrix3x2(1, 0, 0, 1, 6, 7)
         });
 
-        Assert.True(WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var adapted));
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var adapted));
         Assert.Equal(new ushort[] { 5 }, adapted.GlyphIndices);
         Assert.Equal(14f, adapted.FontSize);
         Assert.Equal(new Vector2(3, 4), adapted.Position);
@@ -2889,8 +2889,8 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var glyphRun = new UnavailablePortableGlyphRun();
 
-        Assert.Null(WpfReflectionResourceResolver.AdaptGlyphRun(glyphRun));
-        Assert.False(WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _));
+        Assert.Null(WpfResourceResolver.AdaptGlyphRun(glyphRun));
+        Assert.False(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _));
         Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
     }
 
@@ -2907,7 +2907,7 @@ public sealed class WpfReflectionResourceResolverTests
                 FontRenderingEmSize = 14,
                 FontFamilyNames = new[] { "Arial" }
             }));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { drawing });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { drawing });
         var sink = new TestSink();
 
         var payload = new byte[8];
@@ -2930,7 +2930,7 @@ public sealed class WpfReflectionResourceResolverTests
     public void DecodeGeometryAdaptsPortableLineGeometry()
     {
         var geometry = new FakeLineGeometry(new FakePoint(1, 2), new FakePoint(31, 42));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { null, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { null, geometry });
         var sink = new TestSink();
 
         var payload = new byte[16];
@@ -2953,7 +2953,7 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var geometry = new FakeEllipseGeometry(new FakePoint(10, 20), 3, 4);
 
-        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfReflectionResourceResolver.AdaptGeometry(geometry));
+        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfResourceResolver.AdaptGeometry(geometry));
 
         Assert.Equal(new Rect(7, 16, 6, 8), adaptedGeometry.Bounds);
         Assert.Single(adaptedGeometry.Figures);
@@ -2971,7 +2971,7 @@ public sealed class WpfReflectionResourceResolverTests
             FillRule = FakeFillRule.Nonzero
         };
 
-        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfReflectionResourceResolver.AdaptGeometry(group));
+        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfResourceResolver.AdaptGeometry(group));
 
         Assert.Equal(FillRule.Nonzero, adaptedGeometry.FillRule);
         Assert.Equal(2, adaptedGeometry.Figures.Count);
@@ -3009,7 +3009,7 @@ public sealed class WpfReflectionResourceResolverTests
             ]
         });
 
-        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfReflectionResourceResolver.AdaptGeometry(source));
+        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfResourceResolver.AdaptGeometry(source));
 
         Assert.Equal(FillRule.EvenOdd, adaptedGeometry.FillRule);
         var transform = Assert.IsType<MatrixTransform>(adaptedGeometry.Transform);
@@ -3040,7 +3040,7 @@ public sealed class WpfReflectionResourceResolverTests
     {
         var geometry = new UnavailablePortableLineGeometry();
 
-        Assert.Null(WpfReflectionResourceResolver.AdaptGeometry(geometry));
+        Assert.Null(WpfResourceResolver.AdaptGeometry(geometry));
         Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
     }
 
@@ -3053,7 +3053,7 @@ public sealed class WpfReflectionResourceResolverTests
                 new FakeRectangleGeometry(new FakeRect(0, 0, 20, 20)),
                 new FakeRectangleGeometry(new FakeRect(10, 10, 20, 20))),
             new FakeRectangleGeometry(new FakeRect(40, 0, 10, 10)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, group });
         var nativeContext = new ProGPU.Scene.DrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -3094,7 +3094,7 @@ public sealed class WpfReflectionResourceResolverTests
                 Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 2, 3))
             });
 
-        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfReflectionResourceResolver.AdaptGeometry(group));
+        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfResourceResolver.AdaptGeometry(group));
 
         Assert.Equal(new Rect(5, 7, 27, 10), adaptedGeometry.Bounds);
         Assert.Equal(new Point(5, 7), adaptedGeometry.Figures[0].StartPoint);
@@ -3128,7 +3128,7 @@ public sealed class WpfReflectionResourceResolverTests
                 Transform = childTransform
             });
 
-        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfReflectionResourceResolver.AdaptGeometry(group));
+        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfResourceResolver.AdaptGeometry(group));
 
         var figure = Assert.Single(adaptedGeometry.Figures);
         var arc = Assert.IsType<ArcSegment>(Assert.Single(figure.Segments));
@@ -3170,7 +3170,7 @@ public sealed class WpfReflectionResourceResolverTests
             FillRule = FakeFillRule.Nonzero
         };
 
-        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfReflectionResourceResolver.AdaptGeometry(geometry));
+        var adaptedGeometry = Assert.IsType<PathGeometry>(WpfResourceResolver.AdaptGeometry(geometry));
 
         Assert.Equal(FillRule.Nonzero, adaptedGeometry.FillRule);
         var figure = Assert.Single(adaptedGeometry.Figures);
@@ -3215,7 +3215,7 @@ public sealed class WpfReflectionResourceResolverTests
 
     private static global::ProGPU.Vector.Brush? ToNative(MediaBrush brush, WpfReplayRect bounds)
     {
-        return WpfReflectionResourceResolver.AdaptNativeBrush(brush, bounds, out _);
+        return WpfResourceResolver.AdaptNativeBrush(brush, bounds, out _);
     }
 
     private static void WriteRect(byte[] target, int offset, double x, double y, double width, double height)
@@ -4735,7 +4735,7 @@ public sealed class WpfReflectionResourceResolverTests
             var canFlatten = true;
             foreach (var child in _children)
             {
-                if (!WpfReflectionResourceResolverTests.TryGetPortableGeometryPath(child, out var childPath))
+                if (!WpfResourceResolverTests.TryGetPortableGeometryPath(child, out var childPath))
                 {
                     continue;
                 }
@@ -4784,8 +4784,8 @@ public sealed class WpfReflectionResourceResolverTests
         public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
         {
             path = null!;
-            if (!WpfReflectionResourceResolverTests.TryGetPortableGeometryPath(Geometry1, out var pathA)
-                || !WpfReflectionResourceResolverTests.TryGetPortableGeometryPath(Geometry2, out var pathB))
+            if (!WpfResourceResolverTests.TryGetPortableGeometryPath(Geometry1, out var pathA)
+                || !WpfResourceResolverTests.TryGetPortableGeometryPath(Geometry2, out var pathB))
             {
                 return false;
             }

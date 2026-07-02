@@ -17,7 +17,7 @@ namespace System.Windows.Media.ProGPU.Composition;
 public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataSink, IDisposable
 {
     private readonly IWpfCompositionCommandSink _sink;
-    private readonly WpfReflectionResourceResolver _resources;
+    private readonly WpfResourceResolver _resources;
     private readonly IWpfImageSourceAdapter? _imageSourceAdapter;
     private int _stackDepth;
     private int _operationCount;
@@ -31,7 +31,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     {
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
         _imageSourceAdapter = imageSourceAdapter;
-        _resources = new WpfReflectionResourceResolver(imageSourceAdapter);
+        _resources = new WpfResourceResolver(imageSourceAdapter);
     }
 
     public int StackDepth => _stackDepth;
@@ -44,7 +44,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     public void DrawLine(object? pen, object? point0, object? point1)
     {
         ThrowIfClosed();
-        MediaPen? mediaPen = WpfReflectionResourceResolver.AdaptPen(pen);
+        MediaPen? mediaPen = WpfResourceResolver.AdaptPen(pen);
         if (mediaPen == null)
         {
             CountUnsupportedIfPresent(pen);
@@ -101,8 +101,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     public void DrawRectangle(object? brush, object? pen, object? rectangle)
     {
         ThrowIfClosed();
-        MediaBrush? mediaBrush = WpfReflectionResourceResolver.AdaptBrush(brush);
-        MediaPen? mediaPen = WpfReflectionResourceResolver.AdaptPen(pen);
+        MediaBrush? mediaBrush = WpfResourceResolver.AdaptBrush(brush);
+        MediaPen? mediaPen = WpfResourceResolver.AdaptPen(pen);
         if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
         {
             DrawNativeRectangle(brush, pen, rectangle, mediaBrush, mediaPen, nativeSink);
@@ -171,7 +171,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             && WpfDrawingReplay.IsTileBrush(brush)
             && WpfDrawingReplay.TryReplayTileBrushFill(
                 brush,
-                WpfReflectionResourceResolver.CreateRectanglePath(mediaRectangle),
+                WpfResourceResolver.CreateRectanglePath(mediaRectangle),
                 _sink,
                 _resources.AdaptImageSource,
                 out var brushReplayStatus))
@@ -222,8 +222,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     public void DrawRoundedRectangle(object? brush, object? pen, object? rectangle, object? radiusX, object? radiusY)
     {
         ThrowIfClosed();
-        MediaBrush? mediaBrush = WpfReflectionResourceResolver.AdaptBrush(brush);
-        MediaPen? mediaPen = WpfReflectionResourceResolver.AdaptPen(pen);
+        MediaBrush? mediaBrush = WpfResourceResolver.AdaptBrush(brush);
+        MediaPen? mediaPen = WpfResourceResolver.AdaptPen(pen);
         if (mediaBrush == null && mediaPen == null)
         {
             CountUnsupportedIfPresent(brush, pen);
@@ -302,8 +302,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     public void DrawEllipse(object? brush, object? pen, object? center, object? radiusX, object? radiusY)
     {
         ThrowIfClosed();
-        MediaBrush? mediaBrush = WpfReflectionResourceResolver.AdaptBrush(brush);
-        MediaPen? mediaPen = WpfReflectionResourceResolver.AdaptPen(pen);
+        MediaBrush? mediaBrush = WpfResourceResolver.AdaptBrush(brush);
+        MediaPen? mediaPen = WpfResourceResolver.AdaptPen(pen);
         if (mediaBrush == null && mediaPen == null)
         {
             CountUnsupportedIfPresent(brush, pen);
@@ -382,9 +382,9 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     public void DrawGeometry(object? brush, object? pen, object? geometry)
     {
         ThrowIfClosed();
-        MediaBrush? mediaBrush = WpfReflectionResourceResolver.AdaptBrush(brush);
-        MediaPen? mediaPen = WpfReflectionResourceResolver.AdaptPen(pen);
-        MediaGeometry? mediaGeometry = WpfReflectionResourceResolver.AdaptGeometry(geometry);
+        MediaBrush? mediaBrush = WpfResourceResolver.AdaptBrush(brush);
+        MediaPen? mediaPen = WpfResourceResolver.AdaptPen(pen);
+        MediaGeometry? mediaGeometry = WpfResourceResolver.AdaptGeometry(geometry);
         if (mediaGeometry == null)
         {
             CountUnsupportedIfPresent(brush, pen, geometry);
@@ -496,7 +496,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     public void DrawGlyphRun(object? foregroundBrush, object? glyphRun)
     {
         ThrowIfClosed();
-        MediaBrush? mediaBrush = WpfReflectionResourceResolver.AdaptBrush(foregroundBrush);
+        MediaBrush? mediaBrush = WpfResourceResolver.AdaptBrush(foregroundBrush);
         if (mediaBrush == null || glyphRun == null)
         {
             CountUnsupportedIfPresent(foregroundBrush, glyphRun);
@@ -518,7 +518,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         MediaBrush mediaBrush,
         IWpfNativePrimitiveCommandSink nativeSink)
     {
-        if (!WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _))
+        if (!WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _))
         {
             CountUnsupportedIfPresent(foregroundBrush, glyphRun);
             return;
@@ -532,7 +532,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     [MethodImpl(MethodImplOptions.NoInlining)]
     private void DrawGlyphRunTypedFallback(object? foregroundBrush, object glyphRun, MediaBrush mediaBrush)
     {
-        MediaGlyphRun? mediaGlyphRun = WpfReflectionResourceResolver.AdaptGlyphRun(glyphRun);
+        MediaGlyphRun? mediaGlyphRun = WpfResourceResolver.AdaptGlyphRun(glyphRun);
         if (mediaGlyphRun == null)
         {
             CountUnsupportedIfPresent(foregroundBrush, glyphRun);
@@ -574,7 +574,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             _sink.PushNoOpScope();
         }
-        else if (WpfReflectionResourceResolver.AdaptGeometry(clipGeometry) is { } mediaGeometry)
+        else if (WpfResourceResolver.AdaptGeometry(clipGeometry) is { } mediaGeometry)
         {
             RegisterRetainedDependencies(clipGeometry);
             _sink.PushClip(mediaGeometry);
@@ -596,7 +596,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             _sink.PushNoOpScope();
         }
-        else if (WpfReflectionResourceResolver.AdaptBrush(opacityMask) is { } mediaOpacityMask)
+        else if (WpfResourceResolver.AdaptBrush(opacityMask) is { } mediaOpacityMask)
         {
             RegisterRetainedDependencies(opacityMask);
             _sink.PushOpacityMask(mediaOpacityMask, Rect.Empty);
@@ -642,12 +642,12 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             _sink.PushNoOpScope();
         }
         else if (_sink is IWpfNativeTransformCommandSink nativeTransformSink
-            && WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
+            && WpfResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
         {
             RegisterRetainedDependencies(transform);
             nativeTransformSink.PushNativeTransform(nativeTransform);
         }
-        else if (WpfReflectionResourceResolver.AdaptTransform(transform) is { } mediaTransform)
+        else if (WpfResourceResolver.AdaptTransform(transform) is { } mediaTransform)
         {
             RegisterRetainedDependencies(transform);
             _sink.PushTransform(mediaTransform);

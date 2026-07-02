@@ -84,7 +84,7 @@ internal readonly struct WpfNativeGlyphRun
     public bool IsItalic { get; }
 }
 
-public sealed class WpfReflectionResourceResolver :
+public sealed class WpfResourceResolver :
     IWpfMilResourceResolver,
     IWpfDrawingResourceResolver,
     IWpfGuidelineSetResourceResolver,
@@ -135,22 +135,22 @@ public sealed class WpfReflectionResourceResolver :
     private readonly Dictionary<uint, MediaTransform?> _transforms = new();
     private readonly IWpfImageSourceAdapter? _imageSourceAdapter;
 
-    public WpfReflectionResourceResolver()
+    public WpfResourceResolver()
     {
     }
 
-    public WpfReflectionResourceResolver(IWpfImageSourceAdapter? imageSourceAdapter)
+    public WpfResourceResolver(IWpfImageSourceAdapter? imageSourceAdapter)
     {
         _imageSourceAdapter = imageSourceAdapter;
     }
 
-    public static WpfReflectionResourceResolver FromDependentResources(
+    public static WpfResourceResolver FromDependentResources(
         IEnumerable<object?> dependentResources,
         IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
         ArgumentNullException.ThrowIfNull(dependentResources);
 
-        var resolver = new WpfReflectionResourceResolver(imageSourceAdapter);
+        var resolver = new WpfResourceResolver(imageSourceAdapter);
         uint token = 1;
         foreach (var resource in dependentResources)
         {

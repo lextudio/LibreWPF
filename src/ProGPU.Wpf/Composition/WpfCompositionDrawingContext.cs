@@ -517,7 +517,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
 
         if (WpfDrawingReplay.TryReplayTileBrushFill(
                 brush,
-                WpfReflectionResourceResolver.CreateRectanglePath(rectangle),
+                WpfResourceResolver.CreateRectanglePath(rectangle),
                 _sink,
                 _imageSourceAdapter,
                 out var brushReplayStatus))

@@ -368,7 +368,7 @@ public sealed class WpfVisualTreeRenderer
 
         if (TryReadVisualTransform(visual, out var transformValue))
         {
-            if (!WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out transform))
+            if (!WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out transform))
             {
                 return false;
             }
@@ -748,7 +748,7 @@ public sealed class WpfVisualTreeRenderer
             return true;
         }
 
-        opacityMask = WpfReflectionResourceResolver.AdaptBrush(opacityMaskValue);
+        opacityMask = WpfResourceResolver.AdaptBrush(opacityMaskValue);
         if (opacityMask == null || !TryReadOpacityMaskBounds(visual, out var bounds))
         {
             opacityMask = null;
@@ -900,7 +900,7 @@ public sealed class WpfVisualTreeRenderer
 
     private static Matrix4x4 ToMatrix4x4(MediaTransform transform)
     {
-        return WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
+        return WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
             ? matrix
             : Matrix4x4.Identity;
     }
@@ -966,13 +966,13 @@ public sealed class WpfVisualTreeRenderer
         if (TryReadVisualTransform(visual, out var transform))
         {
             if (sink is IWpfNativeTransformCommandSink nativeTransformSink
-                && WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
+                && WpfResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
             {
                 nativeTransformSink.PushNativeTransform(nativeTransform);
                 localVisualTransform = nativeTransform * localVisualTransform;
                 popCount++;
             }
-            else if (WpfReflectionResourceResolver.AdaptTransform(transform) is { } mediaTransform)
+            else if (WpfResourceResolver.AdaptTransform(transform) is { } mediaTransform)
             {
                 sink.PushTransform(mediaTransform);
                 canProjectScrollableClipToOuterSpace = false;
@@ -1008,7 +1008,7 @@ public sealed class WpfVisualTreeRenderer
         }
         else if (TryGetVisualClip(visual, out var clip) && clip != null)
         {
-            var clipGeometry = WpfReflectionResourceResolver.AdaptGeometry(clip);
+            var clipGeometry = WpfResourceResolver.AdaptGeometry(clip);
             if (clipGeometry != null)
             {
                 sink.PushClip(clipGeometry);
@@ -1057,7 +1057,7 @@ public sealed class WpfVisualTreeRenderer
 
         if (TryGetOpacityMask(visual, out var opacityMask) && opacityMask != null)
         {
-            var mediaOpacityMask = WpfReflectionResourceResolver.AdaptBrush(opacityMask);
+            var mediaOpacityMask = WpfResourceResolver.AdaptBrush(opacityMask);
             if (mediaOpacityMask != null && TryReadOpacityMaskBounds(visual, out var opacityMaskBounds))
             {
                 WpfPortableCommandSinkBridge.PushOpacityMask(sink, mediaOpacityMask, opacityMaskBounds);
@@ -1201,7 +1201,7 @@ public sealed class WpfVisualTreeRenderer
             return;
         }
 
-        sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(bounds));
+        sink.PushClip(WpfResourceResolver.CreateRectanglePath(bounds));
     }
 
     private static int CountUnsupportedVisualState(object visual)
@@ -1469,7 +1469,7 @@ public sealed class WpfVisualTreeRenderer
             && content is PortableRenderDataSource)
         {
             var snapshot = WpfRenderDataBridge.Extract(content);
-            var resolver = WpfReflectionResourceResolver.FromDependentResources(snapshot.DependentResources);
+            var resolver = WpfResourceResolver.FromDependentResources(snapshot.DependentResources);
             var sink = new BoundsAccumulatingSink();
             try
             {
@@ -1518,7 +1518,7 @@ public sealed class WpfVisualTreeRenderer
         var transform = Matrix4x4.Identity;
         if (TryReadVisualTransform(child, out var transformValue))
         {
-            if (!WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out transform))
+            if (!WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out transform))
             {
                 return false;
             }
@@ -1719,8 +1719,8 @@ public sealed class WpfVisualTreeRenderer
             return true;
         }
 
-        var firstGeometry = WpfReflectionResourceResolver.AdaptGeometry(first);
-        var secondGeometry = WpfReflectionResourceResolver.AdaptGeometry(second);
+        var firstGeometry = WpfResourceResolver.AdaptGeometry(first);
+        var secondGeometry = WpfResourceResolver.AdaptGeometry(second);
         if (firstGeometry == null || secondGeometry == null)
         {
             clip = null;
@@ -1944,7 +1944,7 @@ public sealed class WpfVisualTreeRenderer
 
         public void PushTransform(MediaTransform transform)
         {
-            var nativeTransform = WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var adaptedTransform)
+            var nativeTransform = WpfResourceResolver.TryAdaptTransformMatrix(transform, out var adaptedTransform)
                 ? adaptedTransform
                 : System.Numerics.Matrix4x4.Identity;
             _transformStack.Push(nativeTransform * _transformStack.Peek());

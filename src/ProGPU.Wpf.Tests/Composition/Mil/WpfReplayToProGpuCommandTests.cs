@@ -34,7 +34,7 @@ public sealed class WpfReplayToProGpuCommandTests
             new FakePoint(1, 1),
             new FakeGradientStop(new FakeColor(255, 255, 0, 0), 0),
             new FakeGradientStop(new FakeColor(255, 0, 0, 255), 1));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -72,7 +72,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             MappingMode = "Absolute"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -106,7 +106,7 @@ public sealed class WpfReplayToProGpuCommandTests
             RelativeTransform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 0.5, 0.25)),
             Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9))
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -143,7 +143,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             ColorInterpolationMode = "ScRgbLinearInterpolation"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -173,7 +173,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             ColorInterpolationMode = "FutureInterpolationMode"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -199,7 +199,7 @@ public sealed class WpfReplayToProGpuCommandTests
             new FakePoint(0, 0),
             new FakePoint(1, 0),
             CreateGradientStops(12));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -228,7 +228,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             ColorInterpolationMode = "ScRgbLinearInterpolation"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -280,7 +280,7 @@ public sealed class WpfReplayToProGpuCommandTests
             radiusY: 1,
             new FakeGradientStop(new FakeColor(255, 255, 255, 255), 0),
             new FakeGradientStop(new FakeColor(255, 0, 0, 0), 1));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -319,7 +319,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             Transform = new FakeMatrixTransform(new FakeMatrix(2, 0, 0, 3, 5, 7))
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -362,7 +362,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             Transform = new FakeMatrixTransform(new FakeMatrix(1, 0.25, 0, 1, 5, 7))
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -405,7 +405,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             Transform = new FakeMatrixTransform(new FakeMatrix(0, 0, 0, 1, 0, 0))
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { brush });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -428,7 +428,7 @@ public sealed class WpfReplayToProGpuCommandTests
     public void DecodeTransformedRectangleThroughProGpuSinkStoresTransform()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform, Brushes.Red });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { transform, Brushes.Red });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -455,7 +455,7 @@ public sealed class WpfReplayToProGpuCommandTests
     public void DecodeTransformedLineThroughProGpuSinkStoresTransform()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 5, 6));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             transform,
             new Pen(Brushes.Black, 2)
@@ -497,7 +497,7 @@ public sealed class WpfReplayToProGpuCommandTests
             StartLineCap = "Square",
             EndLineCap = "Square"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { pen });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -531,7 +531,7 @@ public sealed class WpfReplayToProGpuCommandTests
             StartLineCap = "Triangle",
             EndLineCap = "Triangle"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { pen });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -563,7 +563,7 @@ public sealed class WpfReplayToProGpuCommandTests
             LineJoin = "Bevel",
             MiterLimit = 4.5
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { pen });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -604,7 +604,7 @@ public sealed class WpfReplayToProGpuCommandTests
             EndLineCap = "Triangle",
             DashCap = "Round"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { pen, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { pen, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -635,7 +635,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             DashStyle = new FakeDashStyle(new[] { 2.0, 2.0 }, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { pen });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -666,7 +666,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             DashStyle = new FakeDashStyle(new[] { 0.0, 2.0 }, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { pen });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -696,7 +696,7 @@ public sealed class WpfReplayToProGpuCommandTests
             DashStyle = new FakeDashStyle(new[] { 1.0, 1.0 }, 0),
             DashCap = "Round"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { pen });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -727,7 +727,7 @@ public sealed class WpfReplayToProGpuCommandTests
             DashStyle = new FakeDashStyle(new[] { 1.0, 1.0 }, 0),
             DashCap = "Triangle"
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { pen });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { pen });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -757,7 +757,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             DashStyle = new FakeDashStyle(new[] { 2.0, 2.0 }, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             Brushes.Blue,
             pen
@@ -791,7 +791,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             DashStyle = new FakeDashStyle(new[] { 100.0, 1.0 }, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             Brushes.Blue,
             pen
@@ -827,7 +827,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             DashStyle = new FakeDashStyle(new[] { 100.0, 1.0 }, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             Brushes.Blue,
             pen
@@ -875,7 +875,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             DashStyle = new FakeDashStyle(new[] { 100.0, 1.0 }, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             Brushes.Blue,
             pen,
@@ -930,7 +930,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             DashStyle = new FakeDashStyle(new[] { 100.0, 1.0 }, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             Brushes.Blue,
             pen,
@@ -974,7 +974,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             DashStyle = new FakeDashStyle(new[] { 100.0, 1.0 }, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             Brushes.Blue,
             pen,
@@ -1014,7 +1014,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             DashStyle = new FakeDashStyle(new[] { 100.0, 1.0 }, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             Brushes.Blue,
             pen,
@@ -1062,7 +1062,7 @@ public sealed class WpfReplayToProGpuCommandTests
     [Fact]
     public void DecodeNullResourcePushesThroughProGpuSinkDoNotAffectNativeCommands()
     {
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.Red });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.Red });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1105,7 +1105,7 @@ public sealed class WpfReplayToProGpuCommandTests
             Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9)),
             Opacity = 0.5
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1150,7 +1150,7 @@ public sealed class WpfReplayToProGpuCommandTests
             SweepDirection = SweepDirection.Clockwise
         });
         geometry.Figures.Add(figure);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1201,7 +1201,7 @@ public sealed class WpfReplayToProGpuCommandTests
             IsSmoothJoin = true
         });
         geometry.Figures.Add(figure);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1246,7 +1246,7 @@ public sealed class WpfReplayToProGpuCommandTests
             IsStroked = false
         });
         geometry.Figures.Add(figure);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1279,7 +1279,7 @@ public sealed class WpfReplayToProGpuCommandTests
             combineMode,
             new FakeRectangleGeometry(new FakeRect(0, 0, 20, 20)),
             new FakeRectangleGeometry(new FakeRect(10, 10, 20, 20)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1314,7 +1314,7 @@ public sealed class WpfReplayToProGpuCommandTests
         {
             Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9))
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1345,7 +1345,7 @@ public sealed class WpfReplayToProGpuCommandTests
             "Union",
             new object(),
             new FakeRectangleGeometry(new FakeRect(10, 10, 20, 20)));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1369,7 +1369,7 @@ public sealed class WpfReplayToProGpuCommandTests
         matrix.Translate(7, 9);
         var geometry = CreateArcPathGeometry();
         geometry.Transform = new MatrixTransform(matrix);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1402,7 +1402,7 @@ public sealed class WpfReplayToProGpuCommandTests
         matrix.Scale(2, 2);
         var geometry = CreateArcPathGeometry();
         geometry.Transform = new MatrixTransform(matrix);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1433,7 +1433,7 @@ public sealed class WpfReplayToProGpuCommandTests
         matrix.Scale(2, 3);
         var geometry = CreateArcPathGeometry(rotationAngle: 0);
         geometry.Transform = new MatrixTransform(matrix);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1472,7 +1472,7 @@ public sealed class WpfReplayToProGpuCommandTests
         var matrixTransform = new MatrixTransform(matrix);
         var geometry = CreateArcPathGeometry();
         geometry.Transform = matrixTransform;
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1507,7 +1507,7 @@ public sealed class WpfReplayToProGpuCommandTests
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9));
         var clip = CreateArcPathGeometry();
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform, clip });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { transform, clip });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1542,7 +1542,7 @@ public sealed class WpfReplayToProGpuCommandTests
             0f, 0f, 1f, 0f,
             5f, 7f, 0f, 1f);
         var clip = CreateArcPathGeometry();
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform, clip });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { transform, clip });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1577,7 +1577,7 @@ public sealed class WpfReplayToProGpuCommandTests
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9));
         var clip = new RectangleGeometry(new System.Windows.Rect(2, 3, 40, 50));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform, clip });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { transform, clip });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1620,7 +1620,7 @@ public sealed class WpfReplayToProGpuCommandTests
         figure.Segments.Add(new LineSegment(new Vector2(40, 0)));
         figure.Segments.Add(new LineSegment(new Vector2(20, 30)));
         clip.Figures.Add(figure);
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { clip });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { clip });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1673,7 +1673,7 @@ public sealed class WpfReplayToProGpuCommandTests
     [Fact]
     public void DecodeOpacityMaskThroughProGpuSinkEmitsMatchingPushAndPopCommands()
     {
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.White });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1705,7 +1705,7 @@ public sealed class WpfReplayToProGpuCommandTests
     public void DecodeTransformedOpacityMaskThroughProGpuSinkStoresMaskTransform()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform, Brushes.White });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { transform, Brushes.White });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1747,7 +1747,7 @@ public sealed class WpfReplayToProGpuCommandTests
             Bounds = new FakeRect(1, 2, 30, 40),
             OpacityMask = new FakeSolidColorBrush(new FakeColor(128, 255, 255, 255))
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { group });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1777,7 +1777,7 @@ public sealed class WpfReplayToProGpuCommandTests
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 11, 13));
         var imageSource = new FakeBitmapSource();
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform, imageSource });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { transform, imageSource });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -1938,7 +1938,7 @@ public sealed class WpfReplayToProGpuCommandTests
             Position = new Vector2(2, 3),
             Transform = Matrix4x4.CreateTranslation(17, 19, 0)
         };
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             transform,
             Brushes.Black,
@@ -2153,7 +2153,7 @@ public sealed class WpfReplayToProGpuCommandTests
     [Fact]
     public void DecodeGuidelineY1ThroughProGpuSinkPreservesNativeLineYCoordinate()
     {
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             new Pen(Brushes.Black, 2)
         });
@@ -2185,7 +2185,7 @@ public sealed class WpfReplayToProGpuCommandTests
     [Fact]
     public void DecodeGuidelineY2ThroughProGpuSinkPreservesNativeRectangleLeadingEdgeAndOffset()
     {
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.Red });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { Brushes.Red });
         var nativeContext = new ProGpuDrawingContext();
         using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
 
@@ -2215,7 +2215,7 @@ public sealed class WpfReplayToProGpuCommandTests
     public void DecodeGuidelineSetThroughProGpuSinkPreservesNativeRectangleCoordinates()
     {
         var guidelineSet = new FakeGuidelineSet(new[] { 2.25, 42.25 }, new[] { 3.25, 53.25 });
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             guidelineSet,
             Brushes.Red
@@ -2248,7 +2248,7 @@ public sealed class WpfReplayToProGpuCommandTests
     public void DecodeGuidelineY1ThroughProGpuSinkDoesNotSnapRotatedLine()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(0, 1, -1, 0, 0, 0));
-        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
         {
             transform,
             new Pen(Brushes.Black, 2)

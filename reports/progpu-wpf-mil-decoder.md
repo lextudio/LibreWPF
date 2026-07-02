@@ -59,23 +59,21 @@ Animated draw and opacity records replay the base values that WPF stored in the 
 
 ## RenderData Reflection Bridge
 
-`WpfRenderDataReflectionBridge` snapshots the current WPF private `RenderData` shape:
+`WpfRenderDataBridge` snapshots the portable WPF `RenderData` shape:
 
-- `_buffer` contains the pooled byte buffer.
-- `_curOffset` contains the active byte count.
-- `_dependentResources` contains the one-based resource table used by generated render data writers.
+- `PortableRenderDataSnapshot.RenderData` contains the active byte range.
+- `PortableRenderDataSnapshot.DependentResources` contains the one-based resource table used by generated render data writers.
 
-The bridge copies only the active byte range before decoding. This avoids retaining WPF's pooled buffer and makes replay deterministic for tests and early adapter work.
+The bridge copies the portable active byte range before decoding. This avoids retaining WPF's internal buffers and makes replay deterministic for tests and early adapter work without private-field probing.
 
-The default replay path builds `WpfReflectionResourceResolver` from `_dependentResources`. It returns ProGPU shim resources unchanged and adapts common real-WPF-shaped resources by reflection:
+The default replay path builds `WpfResourceResolver` from portable dependent resources. It adapts local media resources, source-built portable DTOs, and ProGPU-native resource wrappers without generic reflection/property probing:
 
-- `SolidColorBrush` using `Color` and `Opacity`.
-- `LinearGradientBrush` using `StartPoint`, `EndPoint`, `GradientStops`, `MappingMode`, `SpreadMethod`, `ColorInterpolationMode`, `Transform`, `RelativeTransform`, and `Opacity`.
-- `RadialGradientBrush` using `Center`, `GradientOrigin`, `RadiusX`, `RadiusY`, `GradientStops`, `MappingMode`, `SpreadMethod`, `ColorInterpolationMode`, `Transform`, and `RelativeTransform`.
-- `Pen` using `Brush`, `Thickness`, `DashStyle.Dashes`/`Offset`, cap, join, and miter metadata for native ProGPU replay.
-- `Transform` using the `Value` matrix.
-- `LineGeometry`, `RectangleGeometry`, and `EllipseGeometry` into ProGPU shim `PathGeometry`.
-- Pure-path `GeometryGroup` resources into ProGPU shim `PathGeometry`, preserving the geometry-group fill rule and applying child geometry transforms while flattening children into copied figures.
+- `IPortableBrushSource`/`PortableBrush` for solid, linear-gradient, and radial-gradient brushes.
+- `IPortablePenSource`/`PortablePen` for stroke brush, thickness, dash, cap, join, and miter metadata.
+- `IPortableTransformMatrixSource` for composed affine transform matrices.
+- `IPortableGeometryPathSource` for path, combined-geometry, fill-rule, transform, figure, segment, and arc metadata.
+- `IPortableGlyphRunSource`/`PortableGlyphRun` for package-neutral glyph indices, positions, font metadata, and style simulations.
+- Local media resources and explicit ProGPU-native wrappers on cold compatibility paths after portable DTO handling.
 - Mixed `GeometryGroup` resources that contain non-flattenable adapted children, such as `CombinedGeometry`, into ProGPU union combined-path trees so every adaptable child is retained.
 - `CombinedGeometry` into an internal ProGPU combined-path adapter that preserves WPF `Union`, `Intersect`, `Xor`, and `Exclude` boolean operations.
 - `PathGeometry` using reflected figures, fill rule, line/polyline, quadratic/polyquadratic bezier, cubic/polycubic bezier, and arc segment metadata.
@@ -122,7 +120,7 @@ Drawing-group `Effect` descriptors and context-bound emulatable legacy `BitmapEf
 
 ## DrawingVisual Content Bridge
 
-`WpfVisualContentReflectionBridge` moves the transition boundary one level above raw `RenderData`. Source-built `DrawingVisual` and `UIElement` expose their retained drawing content through `IPortableDrawingContentSource`; when that content has the `RenderData` private field shape, the bridge delegates to `WpfRenderDataReflectionBridge`. Private `_content`/`_drawingContent` field reads remain only as transitional compatibility fallback for fakes and non-source-integrated visual shapes.
+`WpfVisualContentBridge` moves the transition boundary one level above raw `RenderData`. Source-built `DrawingVisual` and `UIElement` expose their retained drawing content through `IPortableDrawingContentSource`; when that content implements `IPortableRenderDataSource`, the bridge delegates to `WpfRenderDataBridge`. Private `_content`/`_drawingContent` field reads are no longer part of the product bridge.
 
 This bridge is intentionally narrow. It does not yet walk `ContainerVisual.Children`, nor does it apply visual-level clip, opacity, opacity mask, transform, offset, guidelines, effects, or cache state. Those properties belong in the later `Visual`/`CompositionTarget` port layer, where child traversal and retained scene invalidation can be modeled against ProGPU directly.
 
@@ -136,7 +134,7 @@ This bridge is intentionally narrow. It does not yet walk `ContainerVisual.Child
 - applies compatible transform, offset, local geometry clip, real WPF `VisualScrollableAreaClip`, opacity, and opacity-mask state through source-built WPF `IPortableVisualStateSource`, and reads source-built `UIElement` render size/`ClipToBounds` plus `FrameworkElement` layout clips through `IPortableVisualLayoutStateSource`; public-property and layout-method reflection is kept only for transition shapes; rectangular native-scissor clips, opacity masks with exposed or inferred finite bounds, guideline state, and supported bitmap-scaling state then flow through `IWpfCompositionCommandSink`;
 - aggregates decoded MIL record counts and unsupported content/state counts in `WpfVisualReplayResult`.
 
-The transform order follows WPF's ancestor-transform path: visual transform first, then visual offset. Visual-level `Transform` and `Clip` properties use the same `WpfReflectionResourceResolver` adaptation helpers as `RenderData` dependent resources, so WPF-shaped matrix, translate, scale, rotate, skew, and transform-group affine transforms and line/rectangle/ellipse/group/path geometry clips can be pushed even when their assembly identity differs from the ProGPU shim. Richer media still need adapters until type identity is unified with the ProGPU shim.
+The transform order follows WPF's ancestor-transform path: visual transform first, then visual offset. Visual-level `Transform` and `Clip` properties use the same `WpfResourceResolver` adaptation helpers as `RenderData` dependent resources, so WPF-shaped matrix, translate, scale, rotate, skew, and transform-group affine transforms and line/rectangle/ellipse/group/path geometry clips can be pushed even when their assembly identity differs from the ProGPU shim. Richer media still need adapters until type identity is unified with the ProGPU shim.
 
 `WpfVisualInvalidationTracker` sits next to this transition renderer. It subscribes to common WPF-shaped invalidation signals (`Changed`, `Invalidated`, `INotifyPropertyChanged`, and `INotifyCollectionChanged`), captures reflected numeric source-version snapshots (`Version`, `ChangeVersion`, `_version`, and related internal names), records dirty source identity, and refreshes child subscriptions when observed collections change. The transition graph follows visual children, drawing collections, brushes, pens, geometries, path figures/segments/points, combined-geometry operands, gradient stops, image sources, glyph runs, transforms, clips, opacity masks, guideline sets, and Viewport3D camera/model/material/mesh collections. `ProGpuWpfCompositionTarget` uses it to invalidate mapped retained ProGPU branches when a replayed source graph changes after replay, falling back to retained-root invalidation when the current dirty set includes any source that the map cannot target exactly. `ProGpuWpfWindowHost` polls source-version snapshots before frame-state coalescing so silent mutable-resource changes can request a render before an unchanged frame is skipped, and it preserves the retained ProGPU WPF layer when the tracked source graph is clean but a native frame still needs to present. `WpfRetainedVisualBranchMap` records the reflected source visual that produced each retained ProGPU branch during replay, including branches created inside retained effect/cache scopes, and now performs dirty-source-to-native-branch invalidation while exposing dirty/mapped/unmapped source counts, shared-with-clean-owner branch counts, and fallback diagnostics.
 

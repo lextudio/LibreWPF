@@ -74,7 +74,7 @@ internal static class WpfPortableCommandSinkBridge
         MediaTransform transform)
     {
         if (sink is IWpfNativeTransformCommandSink nativeSink
-            && WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
+            && WpfResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
         {
             nativeSink.PushNativeTransform(nativeTransform);
             return;
@@ -93,7 +93,7 @@ internal static class WpfPortableCommandSinkBridge
             return;
         }
 
-        if (WpfReflectionResourceResolver.TryCreateManagedMatrixTransform(transform, out var mediaTransform))
+        if (WpfResourceResolver.TryCreateManagedMatrixTransform(transform, out var mediaTransform))
         {
             WpfManagedCommandSinkBridge.PushTransform(sink, mediaTransform);
             return;

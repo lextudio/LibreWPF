@@ -757,7 +757,7 @@ public sealed class WpfMilRenderDataDecoder
         out Matrix4x4 transform)
     {
         if (TryResolveRawResource(resources, resourceToken, out var resource)
-            && WpfReflectionResourceResolver.TryAdaptTransformMatrix(resource, out transform))
+            && WpfResourceResolver.TryAdaptTransformMatrix(resource, out transform))
         {
             return true;
         }
@@ -820,8 +820,8 @@ public sealed class WpfMilRenderDataDecoder
     {
         var transform = geometry.Transform;
         return transform == null
-            || (WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
-                && WpfReflectionResourceResolver.IsIdentityMatrix(matrix));
+            || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
+                && WpfResourceResolver.IsIdentityMatrix(matrix));
     }
 
     private static bool TryGetRectanglePathBounds(MediaPathGeometry pathGeometry, out WpfReplayRect bounds)

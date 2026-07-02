@@ -203,7 +203,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
 
     private static global::ProGPU.Vector.Brush? ToNativeBrush(MediaBrush brush, WpfReplayRect bounds)
     {
-        return WpfReflectionResourceResolver.AdaptNativeBrush(brush, bounds, out _);
+        return WpfResourceResolver.AdaptNativeBrush(brush, bounds, out _);
     }
 
     private static global::ProGPU.Scene.Rect ToNativeRect(WpfReplayRect bounds)

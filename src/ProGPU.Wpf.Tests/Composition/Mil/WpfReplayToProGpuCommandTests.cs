@@ -905,6 +905,64 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void DecodePortablePathThroughProGpuSinkMapsRelativeGradientFromNativePathBounds()
+    {
+        var brush = new FakeLinearGradientBrush(
+            new FakePoint(0, 0),
+            new FakePoint(1, 1),
+            new FakeGradientStop(new FakeColor(255, 255, 0, 0), 0),
+            new FakeGradientStop(new FakeColor(255, 0, 0, 255), 1));
+        var geometry = new FakePortablePathGeometry(new PortableGeometryPath
+        {
+            Kind = PortableGeometryPathKind.Path,
+            FillRule = PortableFillRule.Nonzero,
+            Bounds = new PortableRect(0, 0, 1, 1),
+            Figures =
+            [
+                new PortablePathFigure
+                {
+                    StartPoint = new PortablePoint(3, 4),
+                    IsClosed = false,
+                    IsFilled = true,
+                    Segments =
+                    [
+                        PortablePathSegment.QuadraticBezier(
+                            new PortablePoint(53, 4),
+                            new PortablePoint(103, 54),
+                            isSmoothJoin: false,
+                            isStroked: true)
+                    ]
+                }
+            ]
+        });
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[]
+        {
+            brush,
+            geometry
+        });
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+
+        var payload = new byte[16];
+        WriteUInt32(payload, 0, 1);
+        WriteUInt32(payload, 8, 2);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawGeometry, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawPath, command.Type);
+        var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(command.Brush);
+        Assert.Equal(3, nativeBrush.StartPoint.X);
+        Assert.Equal(4, nativeBrush.StartPoint.Y);
+        Assert.Equal(103, nativeBrush.EndPoint.X);
+        Assert.Equal(54, nativeBrush.EndPoint.Y);
+    }
+
+    [Fact]
     public void DecodeFilledDashedArcGeometryThroughProGpuSinkPreservesNativeArcDashMetadata()
     {
         var geometry = new PathGeometry();
@@ -2861,6 +2919,15 @@ public sealed class WpfReplayToProGpuCommandTests
         public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
         {
             path = CreatePortableRectangleGeometry(Rect);
+            return true;
+        }
+    }
+
+    private sealed class FakePortablePathGeometry(PortableGeometryPath path) : IPortableGeometryPathSource
+    {
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath portablePath)
+        {
+            portablePath = path;
             return true;
         }
     }

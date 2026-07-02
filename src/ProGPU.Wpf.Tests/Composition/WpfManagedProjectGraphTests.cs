@@ -11861,8 +11861,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var localTransform = ToMatrix4x4(portablePath.Transform)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("AddPortableSegment(figure, segment)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry is ProGpuCombinedGeometry", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("bounds = ToReplayRect(portablePath.Bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("bounds = GetNativePathBounds(path)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("portablePath.Bounds", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("var bounds = geometry.Bounds;", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("ReadGeometryTransform(geometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadTransformValue(transformValue", proGpuWpfCommandSink, StringComparison.Ordinal);

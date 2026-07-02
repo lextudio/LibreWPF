@@ -36,7 +36,6 @@ using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortablePathSegment = ProGPU.Wpf.Interop.PortablePathSegment;
 using PortablePathSegmentKind = ProGPU.Wpf.Interop.PortablePathSegmentKind;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
-using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableSize = ProGPU.Wpf.Interop.PortableSize;
 using PortableSweepDirection = ProGPU.Wpf.Interop.PortableSweepDirection;
 
@@ -1572,7 +1571,7 @@ public sealed class ProGpuCompositionCommandSink :
             path = path.CreateTransformed(transform);
         }
 
-        bounds = ToReplayRect(portablePath.Bounds);
+        bounds = GetNativePathBounds(path);
         return true;
     }
 
@@ -1706,13 +1705,6 @@ public sealed class ProGpuCompositionCommandSink :
     private static Vector2 ToVector2(PortableSize size)
     {
         return new Vector2((float)size.Width, (float)size.Height);
-    }
-
-    private static WpfReplayRect ToReplayRect(PortableRect rect)
-    {
-        return rect.IsEmpty
-            ? WpfReplayRect.Empty
-            : new WpfReplayRect(rect.X, rect.Y, rect.Width, rect.Height);
     }
 
     private static WpfReplayRect GetNativePathBounds(VectorPathGeometry path)

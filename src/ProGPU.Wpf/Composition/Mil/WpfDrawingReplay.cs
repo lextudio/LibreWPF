@@ -1140,11 +1140,20 @@ internal static class WpfDrawingReplay
 
     private static bool PushTileBrushFillClip(IWpfCompositionCommandSink sink, TileBrushFillGeometry geometry)
     {
-        if (geometry.PortableGeometry != null
-            && sink is IWpfNativeGeometryCommandSink nativeGeometrySink
-            && nativeGeometrySink.PushNativeGeometryClip(geometry.PortableGeometry))
+        if (geometry.PortableGeometry != null)
         {
-            return true;
+            if (sink is IWpfNativeClipCommandSink nativeClipSink
+                && TryGetRectangleClipBounds(geometry.PortableGeometry, out var clipBounds))
+            {
+                nativeClipSink.PushNativeClip(clipBounds);
+                return true;
+            }
+
+            if (sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+                && nativeGeometrySink.PushNativeGeometryClip(geometry.PortableGeometry))
+            {
+                return true;
+            }
         }
 
         if (geometry.IsRectangle)

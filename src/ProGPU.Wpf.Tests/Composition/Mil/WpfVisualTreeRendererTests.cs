@@ -1734,7 +1734,7 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
-    public void ReplayUsesNativePortableGeometryClipForTileBrushFill()
+    public void ReplayUsesNativeRectangleClipForPortableTileBrushFill()
     {
         var geometry = new PortableRectangleClipGeometry(1, 2, 10, 12);
         var nestedDrawing = new FakeGeometryDrawing(
@@ -1752,11 +1752,39 @@ public sealed class WpfVisualTreeRendererTests
 
         var status = WpfDrawingReplay.Replay(drawing, sink);
 
-        Assert.Contains("PushNativeGeometryClip", sink.Operations);
+        Assert.Contains("PushNativeClip", sink.Operations);
         Assert.DoesNotContain("PushClip", sink.Operations);
-        Assert.Single(sink.NativeGeometryClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        AssertReplayRect(1, 2, 10, 12, Assert.Single(sink.NativeClips));
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
         Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayUsesNativePortableGeometryClipForNonRectangleTileBrushFill()
+    {
+        var geometry = new PortableNonRectangleClipGeometry(1, 2, 10, 12);
+        var nestedDrawing = new FakeGeometryDrawing(
+            new RectangleGeometry(new Rect(0, 0, 10, 12)),
+            Brushes.Red);
+        var tileBrush = new FakeDrawingTileBrush(nestedDrawing);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = tileBrush
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Contains("PushNativeGeometryClip", sink.Operations);
+        Assert.DoesNotContain("PushClip", sink.Operations);
+        Assert.Empty(sink.NativeClips);
+        Assert.Single(sink.NativeGeometryClips);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
     }
 

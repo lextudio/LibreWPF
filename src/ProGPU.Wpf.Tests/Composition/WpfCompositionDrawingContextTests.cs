@@ -178,7 +178,7 @@ public sealed class WpfCompositionDrawingContextTests
         Assert.Equal(
             new[]
             {
-                "PushNativeGeometryClip",
+                "PushNativeClip",
                 "PushNativeTransform",
                 "DrawNativeGeometry",
                 "Pop",
@@ -186,7 +186,8 @@ public sealed class WpfCompositionDrawingContextTests
             },
             sink.Operations);
         Assert.Empty(sink.Geometries);
-        Assert.Single(sink.NativeGeometryClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Equal(new WpfReplayRect(1, 2, 30, 40), Assert.Single(sink.NativeClips));
         Assert.Single(sink.NativeGeometries);
         Assert.Contains(drawingBrush, sink.VisualDependencies);
         Assert.Contains(geometry, sink.VisualDependencies);
@@ -1449,7 +1450,8 @@ public sealed class WpfCompositionDrawingContextTests
     private sealed class NativeRecordingSink :
         RecordingSink,
         IWpfNativePrimitiveCommandSink,
-        IWpfNativeGeometryCommandSink
+        IWpfNativeGeometryCommandSink,
+        IWpfNativeClipCommandSink
     {
         public List<(MediaPen? Pen, WpfReplayPoint Point0, WpfReplayPoint Point1)> NativeLines { get; } = new();
 
@@ -1466,6 +1468,8 @@ public sealed class WpfCompositionDrawingContextTests
         public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeGeometries { get; } = new();
 
         public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
+
+        public List<WpfReplayRect> NativeClips { get; } = new();
 
         public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
         {
@@ -1525,6 +1529,12 @@ public sealed class WpfCompositionDrawingContextTests
             Operations.Add("PushNativeGeometryClip");
             NativeGeometryClips.Add(clipGeometry);
             return true;
+        }
+
+        public void PushNativeClip(WpfReplayRect bounds)
+        {
+            Operations.Add("PushNativeClip");
+            NativeClips.Add(bounds);
         }
     }
 

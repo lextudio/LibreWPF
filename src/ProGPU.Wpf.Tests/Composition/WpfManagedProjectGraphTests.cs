@@ -6415,12 +6415,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("geometry is WpfReplayRect replayRect", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("geometry is PortableRect portableRect", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PushTileBrushFillClip(sink, geometry)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TryGetRectangleClipBounds(geometry.PortableGeometry, out var clipBounds)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("nativeClipSink.PushNativeClip(clipBounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(geometry.PortableGeometry)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("if (geometry.IsRectangle)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PushRectangleClip(sink, tile.Bounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeClipSink.PushNativeClip(ToReplayRect(bounds))", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PortableTileBrushSourceAbsenceDoesNotFallBackToReflectedImageBrushShape", resolverTests, StringComparison.Ordinal);
-        Assert.Contains("ReplayUsesNativePortableGeometryClipForTileBrushFill", File.ReadAllText(FindRepoPath(
+        Assert.Contains("ReplayUsesNativeRectangleClipForPortableTileBrushFill", File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeRendererTests.cs")), StringComparison.Ordinal);
+        Assert.Contains("ReplayUsesNativePortableGeometryClipForNonRectangleTileBrushFill", File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf.Tests",
             "Composition",

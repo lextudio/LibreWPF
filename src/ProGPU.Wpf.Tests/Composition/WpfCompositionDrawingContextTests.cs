@@ -965,6 +965,23 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextPushesRectanglePathGeometryClipAsNativeClipWithoutGenericClipFallback()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = CreateRectanglePathGeometry(new Rect(1, 2, 30, 40));
+
+        context.PushClip(geometry);
+
+        Assert.Equal(new[] { "PushNativeClip" }, sink.Operations);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Equal(new WpfReplayRect(1, 2, 30, 40), Assert.Single(sink.NativeClips));
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextKeepsRoundedRectangleGeometryClipOnGenericClipPath()
     {
         var sink = new NativeRecordingSink();
@@ -974,6 +991,58 @@ public sealed class WpfCompositionDrawingContextTests
             RadiusX = 4,
             RadiusY = 6
         };
+
+        context.PushClip(geometry);
+
+        Assert.Equal(new[] { "PushClip" }, sink.Operations);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextKeepsTransformedRectanglePathGeometryClipOnGenericClipPath()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = CreateRectanglePathGeometry(new Rect(2, 3, 40, 50));
+        geometry.Transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 10 });
+
+        context.PushClip(geometry);
+
+        Assert.Equal(new[] { "PushClip" }, sink.Operations);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextKeepsNonRectanglePathGeometryClipOnGenericClipPath()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = CreateTrianglePathGeometry(new Rect(2, 3, 40, 50));
+
+        context.PushClip(geometry);
+
+        Assert.Equal(new[] { "PushClip" }, sink.Operations);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextKeepsIncompleteRectanglePathGeometryClipOnGenericClipPath()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = CreateIncompleteRectanglePathGeometry(new Rect(2, 3, 40, 50));
 
         context.PushClip(geometry);
 
@@ -1418,6 +1487,56 @@ public sealed class WpfCompositionDrawingContextTests
         context.Close();
 
         Assert.Throws<ObjectDisposedException>(() => context.DrawRectangle(Brushes.Red, null, new Rect(0, 0, 1, 1)));
+    }
+
+    private static PathGeometry CreateRectanglePathGeometry(Rect bounds)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(bounds.X, bounds.Y),
+            IsClosed = true,
+            IsFilled = true
+        };
+        figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width, bounds.Y), isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width, bounds.Y + bounds.Height), isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(bounds.X, bounds.Y + bounds.Height), isStroked: true));
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
+    }
+
+    private static PathGeometry CreateTrianglePathGeometry(Rect bounds)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(bounds.X, bounds.Y),
+            IsClosed = true,
+            IsFilled = true
+        };
+        figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width, bounds.Y), isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height), isStroked: true));
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
+    }
+
+    private static PathGeometry CreateIncompleteRectanglePathGeometry(Rect bounds)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(bounds.X, bounds.Y),
+            IsClosed = true,
+            IsFilled = true
+        };
+        figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width, bounds.Y), isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(bounds.X, bounds.Y), isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(bounds.X, bounds.Y + bounds.Height), isStroked: true));
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
     }
 
     private sealed class FakeImageSource : MediaImageSource

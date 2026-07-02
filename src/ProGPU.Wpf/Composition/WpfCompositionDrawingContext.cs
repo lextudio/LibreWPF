@@ -328,11 +328,9 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
     private bool TryPushPrimitiveRectangleClip(MediaGeometry clipGeometry)
     {
         if (_sink is IWpfNativeClipCommandSink nativeClipSink
-            && TryGetPrimitiveRectangleGeometry(clipGeometry, out var rectangle, out var radiusX, out var radiusY)
-            && radiusX == 0
-            && radiusY == 0)
+            && WpfMediaRectangleClipReader.TryGetRectangleClipBounds(clipGeometry, out var clipBounds))
         {
-            nativeClipSink.PushNativeClip(ToReplayRect(rectangle));
+            nativeClipSink.PushNativeClip(clipBounds);
             return true;
         }
 

@@ -131,6 +131,33 @@ public sealed class WpfMilRenderDataDecoderTests
     }
 
     [Fact]
+    public void DecodeRoundedRectangleClipUsesManagedClipWithoutBroadNativeClip()
+    {
+        var geometry = new RectangleGeometry(new Rect(5, 6, 70, 80))
+        {
+            RadiusX = 4,
+            RadiusY = 6
+        };
+        var resolver = new TestResolver { Geometry = geometry };
+        var sink = new NativeTestSink();
+
+        var payload = new byte[8];
+        WriteUInt32(payload, 0, 3);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.PushClip, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
+        Assert.Equal(1, resolver.ResolveGeometryCallCount);
+        Assert.Equal(1, sink.ClipCount);
+        Assert.Empty(sink.NativeClipBounds);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Equal(1, sink.PopCount);
+    }
+
+    [Fact]
     public void DecodeSkipsPopForUnresolvedPush()
     {
         var pushClipPayload = new byte[8];
@@ -424,6 +451,8 @@ public sealed class WpfMilRenderDataDecoderTests
 
         public int EllipseCount { get; private set; }
 
+        public int ClipCount { get; private set; }
+
         public int NoOpScopeCount { get; private set; }
 
         public int PopCount { get; private set; }
@@ -469,6 +498,7 @@ public sealed class WpfMilRenderDataDecoderTests
 
         public void PushClip(MediaGeometry clipGeometry)
         {
+            ClipCount++;
         }
 
         public void PushOpacity(double opacity)

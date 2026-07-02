@@ -9,9 +9,7 @@ using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
-using MediaLineSegment = System.Windows.Media.LineSegment;
 using MediaMatrixTransform = System.Windows.Media.MatrixTransform;
-using MediaPathGeometry = System.Windows.Media.PathGeometry;
 using MediaPen = System.Windows.Media.Pen;
 using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
@@ -1182,137 +1180,9 @@ internal static class WpfDrawingReplay
         return WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds);
     }
 
-    private static bool TryCreateRectangleClipFromPolygon(Point[] points, out WpfReplayRect bounds)
-    {
-        bounds = default;
-        var left = points[0].X;
-        var top = points[0].Y;
-        var right = points[0].X;
-        var bottom = points[0].Y;
-        for (var i = 1; i < points.Length; i++)
-        {
-            var point = points[i];
-            left = Math.Min(left, point.X);
-            top = Math.Min(top, point.Y);
-            right = Math.Max(right, point.X);
-            bottom = Math.Max(bottom, point.Y);
-        }
-
-        var width = right - left;
-        var height = bottom - top;
-        if (!double.IsFinite(left)
-            || !double.IsFinite(top)
-            || !double.IsFinite(width)
-            || !double.IsFinite(height)
-            || width <= 0
-            || height <= 0)
-        {
-            return false;
-        }
-
-        for (var i = 0; i < points.Length; i++)
-        {
-            var point = points[i];
-            var isOnVerticalEdge = NearlyEqual(point.X, left) || NearlyEqual(point.X, right);
-            var isOnHorizontalEdge = NearlyEqual(point.Y, top) || NearlyEqual(point.Y, bottom);
-            if (!isOnVerticalEdge || !isOnHorizontalEdge)
-            {
-                return false;
-            }
-
-            var next = points[(i + 1) % points.Length];
-            var sameX = NearlyEqual(point.X, next.X);
-            var sameY = NearlyEqual(point.Y, next.Y);
-            if (sameX == sameY)
-            {
-                return false;
-            }
-        }
-
-        bounds = new WpfReplayRect(left, top, width, height);
-        return true;
-    }
-
     private static bool TryGetRectangleClipBounds(MediaGeometry geometry, out WpfReplayRect bounds)
     {
-        bounds = default;
-        if (!HasIdentityGeometryTransform(geometry))
-        {
-            return false;
-        }
-
-        if (geometry is MediaRectangleGeometry rectangleGeometry)
-        {
-            return TryCreateUsableRect(rectangleGeometry.Rect, out bounds);
-        }
-
-        return geometry is MediaPathGeometry pathGeometry
-            && TryGetRectanglePathBounds(pathGeometry, out bounds);
-    }
-
-    private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
-    {
-        var transform = geometry.Transform;
-        return transform == null
-            || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
-                && WpfResourceResolver.IsIdentityMatrix(matrix));
-    }
-
-    private static bool TryGetRectanglePathBounds(MediaPathGeometry pathGeometry, out WpfReplayRect bounds)
-    {
-        bounds = default;
-        if (pathGeometry.Figures.Count != 1)
-        {
-            return false;
-        }
-
-        var figure = pathGeometry.Figures[0];
-        if (!figure.IsClosed || !figure.IsFilled)
-        {
-            return false;
-        }
-
-        var segmentCount = figure.Segments.Count;
-        if (segmentCount is not (3 or 4))
-        {
-            return false;
-        }
-
-        var points = new Point[4];
-        points[0] = figure.StartPoint;
-        for (var i = 0; i < 3; i++)
-        {
-            if (figure.Segments[i] is not MediaLineSegment lineSegment)
-            {
-                return false;
-            }
-
-            points[i + 1] = lineSegment.Point;
-        }
-
-        if (segmentCount == 4)
-        {
-            if (figure.Segments[3] is not MediaLineSegment closingSegment
-                || !NearlyEqual(closingSegment.Point.X, points[0].X)
-                || !NearlyEqual(closingSegment.Point.Y, points[0].Y))
-            {
-                return false;
-            }
-        }
-
-        return TryCreateRectangleClipFromPolygon(points, out bounds);
-    }
-
-    private static bool TryCreateUsableRect(Rect rect, out WpfReplayRect bounds)
-    {
-        if (IsUsableRect(rect, out var usableRect))
-        {
-            bounds = ToReplayRect(usableRect);
-            return true;
-        }
-
-        bounds = default;
-        return false;
+        return WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds);
     }
 
     private static void PopPushedScopes(IWpfCompositionCommandSink sink, int popCount)
@@ -2342,6 +2212,14 @@ internal static class WpfDrawingReplay
         radiusX = default;
         radiusY = default;
         return false;
+    }
+
+    private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
+    {
+        var transform = geometry.Transform;
+        return transform == null
+            || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
+                && WpfResourceResolver.IsIdentityMatrix(matrix));
     }
 
     private static bool TryGetImageDrawingImageSource(

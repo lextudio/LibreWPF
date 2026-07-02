@@ -1308,6 +1308,28 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void DrawDrawingReportsPartialLineReplayWhenBrushIsUnsupported()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = new LineGeometry(new Point(1, 2), new Point(30, 40));
+        var drawing = new FakeGeometryDrawing(new object(), pen, geometry);
+
+        var status = context.DrawDrawing(drawing);
+
+        Assert.Equal(WpfDrawingReplayStatus.PartiallyApplied, status);
+        Assert.Equal(new[] { "DrawNativeLine" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeLines);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayPoint(1, 2), replayed.Point0);
+        Assert.Equal(new WpfReplayPoint(30, 40), replayed.Point1);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 1), context.Result);
+    }
+
+    [Fact]
     public void DrawDrawingReplaysImageDrawingWithImageSourceAdapter()
     {
         var sink = new RecordingSink();

@@ -887,13 +887,26 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private static bool IsTerminalValue(object value)
     {
-        var type = value.GetType();
-        return type.IsPrimitive
-            || type.IsEnum
-            || value is string
-            || type == typeof(decimal)
-            || type == typeof(DateTime)
-            || type == typeof(TimeSpan);
+        return value is string
+            or bool
+            or byte
+            or sbyte
+            or short
+            or ushort
+            or int
+            or uint
+            or long
+            or ulong
+            or char
+            or float
+            or double
+            or decimal
+            or DateTime
+            or TimeSpan
+            or Guid
+            or IntPtr
+            or UIntPtr
+            or Enum;
     }
 
     private readonly struct VisualStateSnapshot : IEquatable<VisualStateSnapshot>

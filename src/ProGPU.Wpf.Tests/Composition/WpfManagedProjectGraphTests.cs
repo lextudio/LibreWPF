@@ -96,6 +96,7 @@ public sealed class WpfManagedProjectGraphTests
             "System.Reflection.Assembly",
             "TargetInvocationException",
             "Type.GetType",
+            "GetType()",
             "GetType().FullName",
             "BindingFlags",
             "GetProperty(",
@@ -5885,6 +5886,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableGeometryBounds(geometryValue, out bounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectLineGeometryBounds(geometry, out bounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryGetDirectLineGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("geometry is Rect rect", replaySource, StringComparison.Ordinal);
         Assert.Contains("geometry is WpfReplayRect replayRect", replaySource, StringComparison.Ordinal);
         Assert.Contains("geometry is PortableRect portableRect", replaySource, StringComparison.Ordinal);
@@ -5917,6 +5920,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetDrawingBoundsUsesTypedRectGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesReplayRectGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableRectGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesLocalLineGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDrawsTypedRectGeometryStateAsNativeRectangleWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDrawsPortableRectGeometryStateAsRectangleWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("Assert.Equal(0, geometry.ReflectedGeometryProbeCount);", rendererTests, StringComparison.Ordinal);
@@ -11928,8 +11932,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeSink.DrawNativeRoundedRectangle(brush, pen, replayRectangle, radiusX, radiusY)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeEllipse(brush, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayLineGeometryDrawing(", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("brushValue,", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("hasBrush,", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("status = hasBrush && (brush == null || IsTileBrush(brushValue))", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectLineGeometryBounds(geometry, out bounds)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("DrawLineGeometry(sink, pen, startPoint, endPoint)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("geometry is MediaLineGeometry lineGeometry", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("DrawDrawingReportsPartialLineReplayWhenBrushIsUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfMediaRectangleClipReader", wpfMediaRectangleClipReader, StringComparison.Ordinal);

@@ -420,7 +420,19 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
     private static string DescribeHitTestOwner(object? owner)
     {
-        return owner == null ? "<null>" : owner.GetType().Name;
+        if (owner == null)
+        {
+            return "<null>";
+        }
+
+        if (owner is IPortableVisualOwnerHost)
+        {
+            return "PortableVisualOwnerHost";
+        }
+
+        return owner is string label && !string.IsNullOrEmpty(label)
+            ? label
+            : "Owner";
     }
 
     private object?[]? HitTestOwners(double rootX, double rootY)

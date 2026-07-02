@@ -216,6 +216,9 @@ internal static class WpfDrawingReplay
 
         if (TryReplayLineGeometryDrawing(
                 geometryValue,
+                brushValue,
+                hasBrush,
+                brush,
                 pen,
                 sink,
                 out var lineStatus))
@@ -330,6 +333,9 @@ internal static class WpfDrawingReplay
 
     private static bool TryReplayLineGeometryDrawing(
         object? geometryValue,
+        object? brushValue,
+        bool hasBrush,
+        MediaBrush? brush,
         MediaPen? pen,
         IWpfCompositionCommandSink sink,
         out WpfDrawingReplayStatus status)
@@ -342,7 +348,9 @@ internal static class WpfDrawingReplay
         }
 
         DrawLineGeometry(sink, pen, startPoint, endPoint);
-        status = WpfDrawingReplayStatus.Applied;
+        status = hasBrush && (brush == null || IsTileBrush(brushValue))
+            ? WpfDrawingReplayStatus.PartiallyApplied
+            : WpfDrawingReplayStatus.Applied;
         return true;
     }
 
@@ -2190,6 +2198,11 @@ internal static class WpfDrawingReplay
             return true;
         }
 
+        if (TryGetDirectLineGeometryBounds(geometry, out bounds))
+        {
+            return true;
+        }
+
         return TryGetDirectRectangleGeometryBounds(geometry, out bounds);
     }
 
@@ -2216,6 +2229,33 @@ internal static class WpfDrawingReplay
 
         bounds = default;
         return false;
+    }
+
+    private static bool TryGetDirectLineGeometryBounds(object? geometry, out Rect bounds)
+    {
+        if (!TryGetDirectLineGeometry(geometry, out var startPoint, out var endPoint))
+        {
+            bounds = default;
+            return false;
+        }
+
+        var x = Math.Min(startPoint.X, endPoint.X);
+        var y = Math.Min(startPoint.Y, endPoint.Y);
+        var width = Math.Abs(endPoint.X - startPoint.X);
+        var height = Math.Abs(endPoint.Y - startPoint.Y);
+
+        if (!double.IsFinite(x)
+            || !double.IsFinite(y)
+            || !double.IsFinite(width)
+            || !double.IsFinite(height)
+            || (width == 0 && height == 0))
+        {
+            bounds = default;
+            return false;
+        }
+
+        bounds = new Rect(x, y, width, height);
+        return true;
     }
 
     private static bool TryGetDirectRectangleGeometry(

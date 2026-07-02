@@ -1369,7 +1369,22 @@ public sealed class WpfVisualTreeRenderer
         }
 
         Console.Error.WriteLine(
-            $"ProGPU WPF retained visual {state}: {visual.GetType().Name}");
+            $"ProGPU WPF retained visual {state}: {DescribeVisualForTrace(visual)}");
+    }
+
+    private static string DescribeVisualForTrace(object visual)
+    {
+        if (visual is PortableVisualStateSource)
+        {
+            return "PortableVisual";
+        }
+
+        if (visual is PortableRenderDataSource)
+        {
+            return "RenderDataVisual";
+        }
+
+        return "Owner";
     }
 
     private static bool IsRetainedVisualTraceEnabled()

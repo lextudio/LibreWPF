@@ -2988,6 +2988,23 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsUsesNativePortablePathBoundsBeforeStaleMetadataFallback()
+    {
+        var geometry = new PortableUnfilledUnstrokedLineGeometry(new PortableRect(0, 0, 1, 1));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(7, 9, 40, 0), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
     public void TryGetDrawingBoundsUsesPortableCubicGeometryPathPointsBeforeStaleBoundsMetadata()
     {
         var geometry = new PortableCubicCurveGeometry(new PortableRect(0, 0, 1, 1));
@@ -5498,6 +5515,43 @@ public sealed class WpfVisualTreeRendererTests
                                 new PortablePoint(103, 4),
                                 isSmoothJoin: false,
                                 isStroked: true)
+                        ]
+                    }
+                ]
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableUnfilledUnstrokedLineGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableUnfilledUnstrokedLineGeometry(PortableRect bounds)
+        {
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = bounds,
+                Transform = PortableMatrix3x2.Identity,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(7, 9),
+                        IsClosed = false,
+                        IsFilled = false,
+                        Segments =
+                        [
+                            PortablePathSegment.Line(
+                                new PortablePoint(47, 9),
+                                isSmoothJoin: false,
+                                isStroked: false)
                         ]
                     }
                 ]

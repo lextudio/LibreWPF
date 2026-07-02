@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaBrush = System.Windows.Media.Brush;
@@ -189,6 +190,11 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
 
         if (TryDrawPrimitiveLineGeometry(brush, pen, geometry))
+        {
+            return;
+        }
+
+        if (TryDrawPrimitivePolylineGeometry(brush, pen, geometry))
         {
             return;
         }
@@ -653,6 +659,21 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         return true;
     }
 
+    private bool TryDrawPrimitivePolylineGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+    {
+        if (brush != null
+            || pen == null
+            || !WpfMediaLineGeometryReader.TryGetPolylineSegments(geometry, out var segments))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(pen, geometry);
+        DrawPolylineSegments(pen, segments);
+        CountApplied();
+        return true;
+    }
+
     private bool TryDrawPrimitiveEllipseGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
     {
         if (!TryGetPrimitiveEllipseGeometry(geometry, out var center, out var radiusX, out var radiusY))
@@ -672,6 +693,29 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
 
         CountApplied();
         return true;
+    }
+
+    private void DrawPolylineSegments(MediaPen pen, IReadOnlyList<WpfReplayLineSegment> segments)
+    {
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            for (var i = 0; i < segments.Count; i++)
+            {
+                var segment = segments[i];
+                nativeSink.DrawNativeLine(pen, segment.StartPoint, segment.EndPoint);
+            }
+
+            return;
+        }
+
+        for (var i = 0; i < segments.Count; i++)
+        {
+            var segment = segments[i];
+            _sink.DrawLine(
+                pen,
+                new Point(segment.StartPoint.X, segment.StartPoint.Y),
+                new Point(segment.EndPoint.X, segment.EndPoint.Y));
+        }
     }
 
     private static bool TryGetPrimitiveLineGeometry(

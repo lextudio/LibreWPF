@@ -225,6 +225,16 @@ internal static class WpfDrawingReplay
             return lineStatus;
         }
 
+        if (TryReplayPolylineGeometryDrawing(
+                geometryValue,
+                hasBrush,
+                pen,
+                sink,
+                out var polylineStatus))
+        {
+            return polylineStatus;
+        }
+
         if (TryReplayRectangleGeometryDrawing(
                 geometryValue,
                 brushValue,
@@ -302,6 +312,12 @@ internal static class WpfDrawingReplay
             return true;
         }
 
+        if (TryGetDirectPolylineGeometry(geometryValue, out var segments))
+        {
+            DrawPolylineGeometry(sink, pen, segments);
+            return true;
+        }
+
         if (TryGetDirectRectangleGeometry(geometryValue, out var rectangle, out var rectangleRadiusX, out var rectangleRadiusY))
         {
             DrawRectangleGeometry(sink, null, pen, rectangle, rectangleRadiusX, rectangleRadiusY);
@@ -350,6 +366,26 @@ internal static class WpfDrawingReplay
         status = hasBrush && (brush == null || IsTileBrush(brushValue))
             ? WpfDrawingReplayStatus.PartiallyApplied
             : WpfDrawingReplayStatus.Applied;
+        return true;
+    }
+
+    private static bool TryReplayPolylineGeometryDrawing(
+        object? geometryValue,
+        bool hasBrush,
+        MediaPen? pen,
+        IWpfCompositionCommandSink sink,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        if (hasBrush
+            || pen == null
+            || !TryGetDirectPolylineGeometry(geometryValue, out var segments))
+        {
+            return false;
+        }
+
+        DrawPolylineGeometry(sink, pen, segments);
+        status = WpfDrawingReplayStatus.Applied;
         return true;
     }
 
@@ -481,6 +517,32 @@ internal static class WpfDrawingReplay
         }
 
         sink.DrawLine(pen, startPoint, endPoint);
+    }
+
+    private static void DrawPolylineGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaPen pen,
+        IReadOnlyList<WpfReplayLineSegment> segments)
+    {
+        if (sink is IWpfNativePrimitiveCommandSink nativePrimitiveSink)
+        {
+            for (var i = 0; i < segments.Count; i++)
+            {
+                var segment = segments[i];
+                nativePrimitiveSink.DrawNativeLine(pen, segment.StartPoint, segment.EndPoint);
+            }
+
+            return;
+        }
+
+        for (var i = 0; i < segments.Count; i++)
+        {
+            var segment = segments[i];
+            sink.DrawLine(
+                pen,
+                new Point(segment.StartPoint.X, segment.StartPoint.Y),
+                new Point(segment.EndPoint.X, segment.EndPoint.Y));
+        }
     }
 
     private static void DrawRectangleGeometry(
@@ -2310,6 +2372,19 @@ internal static class WpfDrawingReplay
 
         startPoint = default;
         endPoint = default;
+        return false;
+    }
+
+    private static bool TryGetDirectPolylineGeometry(
+        object? geometry,
+        out IReadOnlyList<WpfReplayLineSegment> segments)
+    {
+        if (geometry is MediaGeometry mediaGeometry)
+        {
+            return WpfMediaLineGeometryReader.TryGetPolylineSegments(mediaGeometry, out segments);
+        }
+
+        segments = Array.Empty<WpfReplayLineSegment>();
         return false;
     }
 

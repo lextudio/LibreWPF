@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaGeometry = System.Windows.Media.Geometry;
@@ -38,6 +39,20 @@ internal static class WpfMediaLineGeometryReader
         return false;
     }
 
+    public static bool TryGetPolylineSegments(
+        MediaGeometry geometry,
+        out IReadOnlyList<WpfReplayLineSegment> segments)
+    {
+        if (!HasIdentityGeometryTransform(geometry)
+            || geometry is not MediaPathGeometry pathGeometry)
+        {
+            segments = Array.Empty<WpfReplayLineSegment>();
+            return false;
+        }
+
+        return TryGetPathPolylineSegments(pathGeometry, out segments);
+    }
+
     private static bool TryGetPathLinePoints(
         MediaPathGeometry pathGeometry,
         out Point startPoint,
@@ -71,6 +86,51 @@ internal static class WpfMediaLineGeometryReader
         return false;
     }
 
+    private static bool TryGetPathPolylineSegments(
+        MediaPathGeometry pathGeometry,
+        out IReadOnlyList<WpfReplayLineSegment> segments)
+    {
+        if (pathGeometry.Figures.Count != 1)
+        {
+            segments = Array.Empty<WpfReplayLineSegment>();
+            return false;
+        }
+
+        var figure = pathGeometry.Figures[0];
+        var segmentCount = figure.Segments.Count;
+        if (figure.IsClosed || segmentCount < 2)
+        {
+            segments = Array.Empty<WpfReplayLineSegment>();
+            return false;
+        }
+
+        if (!IsUsablePoint(figure.StartPoint, out var currentPoint))
+        {
+            segments = Array.Empty<WpfReplayLineSegment>();
+            return false;
+        }
+
+        var lineSegments = new WpfReplayLineSegment[segmentCount];
+        for (var i = 0; i < segmentCount; i++)
+        {
+            if (figure.Segments[i] is not MediaLineSegment lineSegment
+                || !lineSegment.IsStroked
+                || !IsUsablePoint(lineSegment.Point, out var nextPoint))
+            {
+                segments = Array.Empty<WpfReplayLineSegment>();
+                return false;
+            }
+
+            lineSegments[i] = new WpfReplayLineSegment(
+                new WpfReplayPoint(currentPoint.X, currentPoint.Y),
+                new WpfReplayPoint(nextPoint.X, nextPoint.Y));
+            currentPoint = nextPoint;
+        }
+
+        segments = lineSegments;
+        return true;
+    }
+
     private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
     {
         var transform = geometry.Transform;
@@ -86,3 +146,7 @@ internal static class WpfMediaLineGeometryReader
             && double.IsFinite(point.Y);
     }
 }
+
+internal readonly record struct WpfReplayLineSegment(
+    WpfReplayPoint StartPoint,
+    WpfReplayPoint EndPoint);

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
@@ -399,13 +400,14 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             RegisterRetainedDependencies(brush, pen, geometry);
             var replayStatus = portableBrushReplayStatus;
-            if (mediaPen != null
-                && !TryDrawNativePortableGeometryPen(geometry, mediaPen)
-                && !TryDrawPrimitiveLineGeometryPen(geometry, mediaPen)
-                && !TryDrawPrimitiveRectangleGeometryPen(geometry, mediaPen)
-                && !TryDrawPrimitiveEllipseGeometryPen(geometry, mediaPen))
-            {
-                if (WpfResourceResolver.AdaptGeometry(geometry) is { } penGeometry)
+        if (mediaPen != null
+            && !TryDrawNativePortableGeometryPen(geometry, mediaPen)
+            && !TryDrawPrimitiveLineGeometryPen(geometry, mediaPen)
+            && !TryDrawPrimitivePolylineGeometryPen(geometry, mediaPen)
+            && !TryDrawPrimitiveRectangleGeometryPen(geometry, mediaPen)
+            && !TryDrawPrimitiveEllipseGeometryPen(geometry, mediaPen))
+        {
+            if (WpfResourceResolver.AdaptGeometry(geometry) is { } penGeometry)
                 {
                     _sink.DrawGeometry(null, mediaPen, penGeometry);
                 }
@@ -420,6 +422,11 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         }
 
         if (TryDrawPrimitiveLineGeometry(brush, pen, geometry, mediaPen))
+        {
+            return;
+        }
+
+        if (TryDrawPrimitivePolylineGeometry(brush, pen, geometry, mediaPen))
         {
             return;
         }
@@ -521,6 +528,17 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         return true;
     }
 
+    private bool TryDrawPrimitivePolylineGeometryPen(object? geometry, MediaPen pen)
+    {
+        if (!TryReadPolylineGeometry(geometry, out var segments))
+        {
+            return false;
+        }
+
+        DrawPolylineSegments(pen, segments);
+        return true;
+    }
+
     private bool TryDrawPrimitiveLineGeometry(
         object? brush,
         object? pen,
@@ -556,6 +574,48 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         }
 
         return true;
+    }
+
+    private bool TryDrawPrimitivePolylineGeometry(
+        object? brush,
+        object? pen,
+        object? geometry,
+        MediaPen? mediaPen)
+    {
+        if (brush != null
+            || mediaPen == null
+            || !TryReadPolylineGeometry(geometry, out var segments))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(pen, geometry);
+        DrawPolylineSegments(mediaPen, segments);
+        CountApplied();
+        return true;
+    }
+
+    private void DrawPolylineSegments(MediaPen pen, IReadOnlyList<WpfReplayLineSegment> segments)
+    {
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            for (var i = 0; i < segments.Count; i++)
+            {
+                var segment = segments[i];
+                nativeSink.DrawNativeLine(pen, segment.StartPoint, segment.EndPoint);
+            }
+
+            return;
+        }
+
+        for (var i = 0; i < segments.Count; i++)
+        {
+            var segment = segments[i];
+            _sink.DrawLine(
+                pen,
+                new Point(segment.StartPoint.X, segment.StartPoint.Y),
+                new Point(segment.EndPoint.X, segment.EndPoint.Y));
+        }
     }
 
     private bool TryDrawPrimitiveRectangleGeometryPen(object? geometry, MediaPen pen)
@@ -1391,6 +1451,19 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
 
         startPoint = default;
         endPoint = default;
+        return false;
+    }
+
+    private static bool TryReadPolylineGeometry(
+        object? geometry,
+        out IReadOnlyList<WpfReplayLineSegment> segments)
+    {
+        if (geometry is MediaGeometry mediaGeometry)
+        {
+            return WpfMediaLineGeometryReader.TryGetPolylineSegments(mediaGeometry, out segments);
+        }
+
+        segments = Array.Empty<WpfReplayLineSegment>();
         return false;
     }
 

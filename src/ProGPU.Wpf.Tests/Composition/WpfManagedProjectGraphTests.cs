@@ -11933,8 +11933,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("WpfResourceResolver.CreateRectanglePath(rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveLineGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("TryDrawPrimitivePolylineGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveRectangleGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveEllipseGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("brush != null\n            || pen == null", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("WpfMediaLineGeometryReader.TryGetPolylineSegments(geometry, out var segments)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("DrawPolylineSegments(pen, segments)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out var rectangleBounds)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryPushPrimitiveRectangleClip(clipGeometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfMediaRectangleClipReader.TryGetRectangleClipBounds(clipGeometry, out var clipBounds)", wpfCompositionDrawingContext, StringComparison.Ordinal);
@@ -11947,9 +11951,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeSink.DrawNativeRoundedRectangle(brush, pen, replayRectangle, radiusX, radiusY)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeEllipse(brush, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayLineGeometryDrawing(", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TryReplayPolylineGeometryDrawing(", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("brushValue,", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("hasBrush,", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("status = hasBrush && (brush == null || IsTileBrush(brushValue))", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("hasBrush\n            || pen == null", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectPolylineGeometry(geometryValue, out var segments)", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("DrawPolylineGeometry(sink, pen, segments)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryGetDirectLineGeometryBounds(geometry, out bounds)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("DrawLineGeometry(sink, pen, startPoint, endPoint)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfMediaLineGeometryReader.TryGetLinePoints(mediaGeometry, out startPoint, out endPoint)", wpfDrawingReplay, StringComparison.Ordinal);
@@ -11960,6 +11968,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("figure.IsClosed || figure.Segments.Count != 1", wpfMediaLineGeometryReader, StringComparison.Ordinal);
         Assert.Contains("figure.Segments[0] is MediaLineSegment lineSegment", wpfMediaLineGeometryReader, StringComparison.Ordinal);
         Assert.Contains("lineSegment.IsStroked", wpfMediaLineGeometryReader, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetPolylineSegments(", wpfMediaLineGeometryReader, StringComparison.Ordinal);
+        Assert.Contains("figure.IsClosed || segmentCount < 2", wpfMediaLineGeometryReader, StringComparison.Ordinal);
+        Assert.Contains("var lineSegments = new WpfReplayLineSegment[segmentCount]", wpfMediaLineGeometryReader, StringComparison.Ordinal);
+        Assert.Contains("lineSegments[i] = new WpfReplayLineSegment(", wpfMediaLineGeometryReader, StringComparison.Ordinal);
+        Assert.Contains("internal readonly record struct WpfReplayLineSegment", wpfMediaLineGeometryReader, StringComparison.Ordinal);
         Assert.Contains("WpfMediaRectangleClipReader.TryGetRectangleClipBounds(mediaGeometry, out var rectangleBounds)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
@@ -11972,6 +11985,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfDrawingReplay.TryReplayTileBrushFill(", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveLineGeometry(brush, pen, geometry, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveLineGeometryPen(geometry, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("TryDrawPrimitivePolylineGeometry(brush, pen, geometry, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("TryDrawPrimitivePolylineGeometryPen(geometry, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("brush != null\n            || mediaPen == null", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("WpfMediaLineGeometryReader.TryGetPolylineSegments(mediaGeometry, out segments)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveRectangleGeometry(brush, pen, geometry, mediaBrush, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveRectangleGeometryPen(geometry, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveEllipseGeometry(brush, pen, geometry, mediaBrush, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
@@ -12034,6 +12051,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GeneratedDrawingContextReplaysMediaImageBrushRectangleThroughImageSourceAdapter", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextDrawsLinePathGeometryAsNativeLineWithoutGenericGeometryFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("GeneratedDrawingContextDrawsPolylinePathGeometryAsNativeLinesWithoutGenericGeometryFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextDrawsRectangleGeometryAsNativeRectangleWithoutGenericGeometryFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextDrawsRectanglePathGeometryAsNativeRectangleWithoutGenericGeometryFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextDrawsRectangleGeometryAsRectangleWithoutGenericGeometryFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
@@ -12044,6 +12062,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GeneratedDrawingContextKeepsTransformedEllipseGeometryOnGenericGeometryPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalRectangleGeometryAsNativeRectangleWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalLinePathGeometryAsNativeLineWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalPolylinePathGeometryAsNativeLinesWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalRectanglePathGeometryAsNativeRectangleWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalRoundedRectangleGeometryAsNativeRoundedRectangle", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalRoundedRectangleGeometryAsRoundedRectangle", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
@@ -12052,6 +12071,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalEllipseGeometryAsEllipseWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextKeepsTransformedEllipseGeometryOnGenericGeometryPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("DrawDrawingReplaysLocalLinePathGeometryAsNativeLineWithoutManagedGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("DrawDrawingReplaysLocalPolylinePathGeometryAsNativeLinesWithoutManagedGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("DrawDrawingReplaysLocalRectanglePathGeometryAsNativeRectangleWithoutManagedGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextPushesRectangleGeometryClipAsNativeClipWithoutGenericClipFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextPushesRectanglePathGeometryClipAsNativeClipWithoutGenericClipFallback", wpfCompositionDrawingContextTests, StringComparison.Ordinal);

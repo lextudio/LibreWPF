@@ -1342,11 +1342,25 @@ internal static class WpfDrawingReplay
 
     private static bool TryGetTileBrushFillGeometry(object? geometry, out TileBrushFillGeometry fillGeometry)
     {
-        if (geometry is MediaGeometry mediaGeometry
-            && IsUsableRect(mediaGeometry.Bounds, out var mediaBounds))
+        if (geometry is MediaGeometry mediaGeometry)
         {
-            fillGeometry = new TileBrushFillGeometry(geometry, mediaBounds, mediaGeometry, null, false);
-            return true;
+            if (TryGetDirectPrimitiveGeometryBounds(mediaGeometry, out var mediaBounds))
+            {
+                if (IsUsableRect(mediaBounds, out mediaBounds))
+                {
+                    fillGeometry = new TileBrushFillGeometry(geometry, mediaBounds, mediaGeometry, null, false);
+                    return true;
+                }
+
+                fillGeometry = default;
+                return false;
+            }
+
+            if (IsUsableRect(mediaGeometry.Bounds, out mediaBounds))
+            {
+                fillGeometry = new TileBrushFillGeometry(geometry, mediaBounds, mediaGeometry, null, false);
+                return true;
+            }
         }
 
         if (TryGetPortableGeometryPath(geometry, out var portableGeometry)

@@ -2159,6 +2159,36 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplayUsesLocalPolylineTileBrushFillBoundsWithoutMediaGeometryBoundsFallback()
+    {
+        var geometry = CreateThrowingBoundsClosedPolylinePathGeometry(
+            new Point(1, 2),
+            new Point(11, 2),
+            new Point(6, 14));
+        var nestedDrawing = new FakeGeometryDrawing(
+            new RectangleGeometry(new Rect(0, 0, 10, 12)),
+            Brushes.Red);
+        var tileBrush = new FakeDrawingTileBrush(nestedDrawing);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = tileBrush
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Contains("PushClip", sink.Operations);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Same(geometry, Assert.Single(sink.Clips));
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
     public void ReplayAppliesPortableGeometryDrawingStateWithoutTypeNameShape()
     {
         var drawing = new PortableGeometryStateHost(new PortableGeometryDrawingState
@@ -3374,6 +3404,25 @@ public sealed class WpfVisualTreeRendererTests
         }
 
         var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
+    }
+
+    private static PathGeometry CreateThrowingBoundsClosedPolylinePathGeometry(params Point[] points)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = points[0],
+            IsClosed = true,
+            IsFilled = true
+        };
+
+        for (var i = 1; i < points.Length; i++)
+        {
+            figure.Segments.Add(new LineSegment(points[i], isStroked: true));
+        }
+
+        var geometry = new ThrowingBoundsPathGeometry();
         geometry.Figures.Add(figure);
         return geometry;
     }
@@ -4607,6 +4656,11 @@ public sealed class WpfVisualTreeRendererTests
                 relativeTransform: PortableMatrix3x2.Identity);
             return true;
         }
+    }
+
+    private sealed class ThrowingBoundsPathGeometry : PathGeometry
+    {
+        public override Rect Bounds => throw new InvalidOperationException("Generic path bounds should not be used.");
     }
 
     private sealed class FakeMatrixTransform : PortableTransformMatrixSource

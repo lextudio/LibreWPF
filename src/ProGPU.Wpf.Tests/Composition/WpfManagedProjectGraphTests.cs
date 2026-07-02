@@ -5803,7 +5803,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("sink is IWpfNativeTransformCommandSink", replaySource, StringComparison.Ordinal);
         Assert.Contains("WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out nativeTransform)", replaySource, StringComparison.Ordinal);
         Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(sink, nativeTransform)", replaySource, StringComparison.Ordinal);
-        Assert.Contains("TryGetNativeDrawingGroupClip(sink, clipValue, out nativeClip)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryPushNativeDrawingGroupClip(sink, clipValue)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("nativeClipSink.PushNativeClip(clipBounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(nativeClip)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(drawing, \"DrawingGroup\")", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(drawingGroup,", replaySource, StringComparison.Ordinal);
@@ -5819,6 +5820,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public object[] Children", interopSource, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeAppliesPortableDrawingGroupStateWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativePortableDrawingGroupClipWhenAvailable", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeUsesNativePortableDrawingGroupGeometryClipForNonRectangleClip", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("\"PushNativeClip\"", rendererTests, StringComparison.Ordinal);
         Assert.Contains("\"PushNativeGeometryClip\"", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeDoesNotReflectAbsentPortableDrawingGroupState", rendererTests, StringComparison.Ordinal);
     }

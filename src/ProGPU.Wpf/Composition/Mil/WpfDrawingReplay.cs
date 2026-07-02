@@ -21,10 +21,12 @@ using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunD
 using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
 using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
+using PortableGeometryPathKind = ProGPU.Wpf.Interop.PortableGeometryPathKind;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
 using PortableImageDrawingState = ProGPU.Wpf.Interop.PortableImageDrawingState;
 using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
+using PortablePathSegmentKind = ProGPU.Wpf.Interop.PortablePathSegmentKind;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableStretch = ProGPU.Wpf.Interop.PortableStretch;
 using PortableTileBrush = ProGPU.Wpf.Interop.PortableTileBrush;
@@ -749,13 +751,6 @@ internal static class WpfDrawingReplay
             hasPortableDrawingGroupState,
             drawingGroupState,
             out var clipValue);
-        PortableGeometryPath nativeClip = null!;
-        var hasNativeClip = hasClip && TryGetNativeDrawingGroupClip(sink, clipValue, out nativeClip);
-        var clip = hasClip && !hasNativeClip ? WpfResourceResolver.AdaptGeometry(clipValue) : null;
-        if (hasClip && !hasNativeClip && clip == null)
-        {
-            return WpfDrawingReplayStatus.Unsupported;
-        }
 
         if (useNativeTransform)
         {
@@ -770,13 +765,13 @@ internal static class WpfDrawingReplay
 
         if (hasClip)
         {
-            if (hasNativeClip && TryPushNativeDrawingGroupClip(sink, nativeClip))
+            if (TryPushNativeDrawingGroupClip(sink, clipValue))
             {
                 popCount++;
             }
             else
             {
-                clip ??= WpfResourceResolver.AdaptGeometry(clipValue);
+                var clip = WpfResourceResolver.AdaptGeometry(clipValue);
                 if (clip == null)
                 {
                     PopPushedScopes(sink, popCount);
@@ -961,22 +956,124 @@ internal static class WpfDrawingReplay
         return unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
     }
 
-    private static bool TryGetNativeDrawingGroupClip(
-        IWpfCompositionCommandSink sink,
-        object? clipValue,
-        out PortableGeometryPath nativeClip)
-    {
-        nativeClip = null!;
-        return sink is IWpfNativeGeometryCommandSink
-            && TryGetPortableGeometryPath(clipValue, out nativeClip);
-    }
-
     private static bool TryPushNativeDrawingGroupClip(
         IWpfCompositionCommandSink sink,
-        PortableGeometryPath nativeClip)
+        object? clipValue)
     {
+        if (!TryGetPortableGeometryPath(clipValue, out var nativeClip))
+        {
+            return false;
+        }
+
+        if (sink is IWpfNativeClipCommandSink nativeClipSink
+            && TryGetRectangleClipBounds(nativeClip, out var clipBounds))
+        {
+            nativeClipSink.PushNativeClip(clipBounds);
+            return true;
+        }
+
         return sink is IWpfNativeGeometryCommandSink nativeGeometrySink
             && nativeGeometrySink.PushNativeGeometryClip(nativeClip);
+    }
+
+    private static bool TryGetRectangleClipBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        if (!geometry.Transform.IsIdentity
+            || geometry.Kind != PortableGeometryPathKind.Path
+            || geometry.Figures.Length != 1)
+        {
+            return false;
+        }
+
+        var figure = geometry.Figures[0];
+        if (!figure.IsClosed || !figure.IsFilled)
+        {
+            return false;
+        }
+
+        var segmentCount = figure.Segments.Length;
+        if (segmentCount is not (3 or 4))
+        {
+            return false;
+        }
+
+        var points = new Point[4];
+        points[0] = new Point(figure.StartPoint.X, figure.StartPoint.Y);
+        for (var i = 0; i < 3; i++)
+        {
+            var segment = figure.Segments[i];
+            if (segment.Kind != PortablePathSegmentKind.Line)
+            {
+                return false;
+            }
+
+            points[i + 1] = new Point(segment.Point1.X, segment.Point1.Y);
+        }
+
+        if (segmentCount == 4)
+        {
+            var segment = figure.Segments[3];
+            if (segment.Kind != PortablePathSegmentKind.Line
+                || !NearlyEqual(segment.Point1.X, points[0].X)
+                || !NearlyEqual(segment.Point1.Y, points[0].Y))
+            {
+                return false;
+            }
+        }
+
+        return TryCreateRectangleClipFromPolygon(points, out bounds);
+    }
+
+    private static bool TryCreateRectangleClipFromPolygon(Point[] points, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        var left = points[0].X;
+        var top = points[0].Y;
+        var right = points[0].X;
+        var bottom = points[0].Y;
+        for (var i = 1; i < points.Length; i++)
+        {
+            var point = points[i];
+            left = Math.Min(left, point.X);
+            top = Math.Min(top, point.Y);
+            right = Math.Max(right, point.X);
+            bottom = Math.Max(bottom, point.Y);
+        }
+
+        var width = right - left;
+        var height = bottom - top;
+        if (!double.IsFinite(left)
+            || !double.IsFinite(top)
+            || !double.IsFinite(width)
+            || !double.IsFinite(height)
+            || width <= 0
+            || height <= 0)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < points.Length; i++)
+        {
+            var point = points[i];
+            var isOnVerticalEdge = NearlyEqual(point.X, left) || NearlyEqual(point.X, right);
+            var isOnHorizontalEdge = NearlyEqual(point.Y, top) || NearlyEqual(point.Y, bottom);
+            if (!isOnVerticalEdge || !isOnHorizontalEdge)
+            {
+                return false;
+            }
+
+            var next = points[(i + 1) % points.Length];
+            var sameX = NearlyEqual(point.X, next.X);
+            var sameY = NearlyEqual(point.Y, next.Y);
+            if (sameX == sameY)
+            {
+                return false;
+            }
+        }
+
+        bounds = new WpfReplayRect(left, top, width, height);
+        return true;
     }
 
     private static void PopPushedScopes(IWpfCompositionCommandSink sink, int popCount)

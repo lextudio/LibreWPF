@@ -2084,7 +2084,7 @@ public sealed class WpfVisualTreeRendererTests
             new[]
             {
                 "PushTransform",
-                "PushNativeGeometryClip",
+                "PushNativeClip",
                 "DrawNativeGeometry",
                 "Pop",
                 "Pop"
@@ -2092,11 +2092,57 @@ public sealed class WpfVisualTreeRendererTests
             sink.Operations);
         Assert.Empty(sink.Clips);
         Assert.Empty(sink.DrawGeometries);
-        Assert.Single(sink.NativeGeometryClips);
+        Assert.Empty(sink.NativeGeometryClips);
+        AssertReplayRect(0, 0, 20, 20, Assert.Single(sink.NativeClips));
         Assert.Single(sink.NativeDrawGeometries);
         Assert.Equal(0, group.ReflectedStateProbeCount);
         Assert.Equal(0, child.ReflectedStateProbeCount);
         Assert.Equal(0, clip.ReflectedGeometryProbeCount);
+        Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplaySubtreeUsesNativePortableDrawingGroupGeometryClipForNonRectangleClip()
+    {
+        var clip = new PortableNonRectangleClipGeometry(0, 0, 20, 20);
+        var geometry = new PortableRectangleClipGeometry(1, 2, 10, 12);
+        var child = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Green
+        });
+        var group = new ThrowingPortableDrawingGroup(new PortableDrawingGroupState
+        {
+            HasTransform = true,
+            Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
+            HasClipGeometry = true,
+            ClipGeometry = clip,
+            Children = [child]
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(group, sink);
+
+        Assert.Equal(
+            new[]
+            {
+                "PushTransform",
+                "PushNativeGeometryClip",
+                "DrawNativeGeometry",
+                "Pop",
+                "Pop"
+            },
+            sink.Operations);
+        Assert.Empty(sink.Clips);
+        Assert.Empty(sink.NativeClips);
+        Assert.Empty(sink.DrawGeometries);
+        Assert.Single(sink.NativeGeometryClips);
+        Assert.Single(sink.NativeDrawGeometries);
+        Assert.Equal(0, group.ReflectedStateProbeCount);
+        Assert.Equal(0, child.ReflectedStateProbeCount);
         Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
     }

@@ -11421,6 +11421,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("bool IPortableBrushSource.TryGetPortableBrush(out PortableBrush brush)", proGpuNativeBrush, StringComparison.Ordinal);
         Assert.Contains("protected override Freezable CreateInstanceCore()", proGpuNativeBrush, StringComparison.Ordinal);
         Assert.Contains("return new ProGpuNativeBrush(", proGpuNativeBrush, StringComparison.Ordinal);
+        Assert.DoesNotContain("ToNative(WpfReplayRect", proGpuNativeBrush, StringComparison.Ordinal);
+        Assert.DoesNotContain("CountUnsupportedStateForBounds", proGpuNativeBrush, StringComparison.Ordinal);
+        Assert.DoesNotContain("CreateRadialGradientBrush", proGpuNativeBrush, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetEffectiveTransform", proGpuNativeBrush, StringComparison.Ordinal);
         Assert.Contains("ProGpuNativeBrushClonePreservesNativeBrushState", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeBrushDoesNotUnwrapProGpuNativeBrushWithoutPortableContract", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodePushTransformRejectsReflectedMatrixShapeWithoutPortableContract", wpfResourceResolverTests, StringComparison.Ordinal);

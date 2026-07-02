@@ -369,16 +369,11 @@ public sealed class WpfResourceResolverTests
     public void ProGpuNativeBrushClonePreservesNativeBrushState()
     {
         var nativeBrush = new ProGPU.Vector.SolidColorBrush(Vector4.One);
-        var brush = new ProGpuNativeBrush(
-            nativeBrush,
-            ProGpuBrushMappingMode.RelativeToBoundingBox,
-            Matrix4x4.CreateTranslation(5, 7, 0),
-            Matrix4x4.Identity);
+        var brush = new ProGpuNativeBrush(nativeBrush);
 
         var clone = Assert.IsType<ProGpuNativeBrush>(brush.Clone());
 
         Assert.NotSame(brush, clone);
-        Assert.Equal(ProGpuBrushMappingMode.RelativeToBoundingBox, clone.MappingMode);
         Assert.Same(nativeBrush, clone.ToNative());
     }
 
@@ -398,10 +393,6 @@ public sealed class WpfResourceResolverTests
                 new Vector2(0, 0),
                 new Vector2(1, 1),
                 Array.Empty<ProGPU.Vector.GradientStop>()),
-            ProGpuBrushMappingMode.RelativeToBoundingBox,
-            transform: null,
-            relativeTransform: null,
-            unsupportedGradientStateCount: 0,
             portableBrush);
 
         var clone = Assert.IsType<ProGpuNativeBrush>(brush.Clone());

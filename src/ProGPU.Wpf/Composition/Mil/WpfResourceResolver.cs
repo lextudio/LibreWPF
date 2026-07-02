@@ -379,31 +379,23 @@ public sealed class WpfResourceResolver :
                 return new SolidColorBrush(ToMediaColor(brush));
 
             case PortableBrushKind.LinearGradient:
-                if (!TryCreatePortableLinearGradientBrush(brush, mapRelativeToBounds: false, default, out var linearBrush, out var linearStopsTruncated))
+                if (!TryCreatePortableLinearGradientBrush(brush, mapRelativeToBounds: false, default, out var linearBrush, out _))
                 {
                     return null;
                 }
 
                 return new ProGpuNativeBrush(
                     linearBrush,
-                    ToProGpuBrushMappingMode(brush.MappingMode),
-                    ToOptionalMatrix4x4(brush.HasTransform, brush.Transform),
-                    ToOptionalMatrix4x4(brush.HasRelativeTransform, brush.RelativeTransform),
-                    CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode: false),
                     brush);
 
             case PortableBrushKind.RadialGradient:
-                if (!TryCreatePortableRadialGradientBrush(brush, mapRelativeToBounds: false, default, out var radialBrush, out var radialStopsTruncated))
+                if (!TryCreatePortableRadialGradientBrush(brush, mapRelativeToBounds: false, default, out var radialBrush, out _))
                 {
                     return null;
                 }
 
                 return new ProGpuNativeBrush(
                     radialBrush,
-                    ToProGpuBrushMappingMode(brush.MappingMode),
-                    ToOptionalMatrix4x4(brush.HasTransform, brush.Transform),
-                    ToOptionalMatrix4x4(brush.HasRelativeTransform, brush.RelativeTransform),
-                    CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode: false),
                     brush);
 
             default:

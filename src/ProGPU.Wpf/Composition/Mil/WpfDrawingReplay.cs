@@ -8,6 +8,7 @@ using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaMatrixTransform = System.Windows.Media.MatrixTransform;
+using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
 using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
@@ -18,6 +19,8 @@ using PortableGlyphRunDrawingState = ProGPU.Wpf.Interop.PortableGlyphRunDrawingS
 using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource;
 using PortableGeometryDrawingState = ProGPU.Wpf.Interop.PortableGeometryDrawingState;
 using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
+using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
+using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
 using PortableImageDrawingState = ProGPU.Wpf.Interop.PortableImageDrawingState;
 using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
@@ -142,8 +145,7 @@ internal static class WpfDrawingReplay
             return WpfDrawingReplayStatus.Skipped;
         }
 
-        if (!TryGetGeometryDrawingGeometry(drawing, hasPortableGeometryDrawingState, geometryDrawingState, out var geometryValue)
-            || WpfResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
+        if (!TryGetGeometryDrawingGeometry(drawing, hasPortableGeometryDrawingState, geometryDrawingState, out var geometryValue))
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
@@ -161,6 +163,25 @@ internal static class WpfDrawingReplay
 
         var brush = WpfResourceResolver.AdaptBrush(brushValue);
         var pen = WpfResourceResolver.AdaptPen(penValue);
+
+        if (TryReplayNativePortableGeometryDrawing(
+                geometryValue,
+                brushValue,
+                hasBrush,
+                hasPen,
+                brush,
+                pen,
+                sink,
+                out var nativeStatus))
+        {
+            return nativeStatus;
+        }
+
+        if (WpfResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
+        {
+            return WpfDrawingReplayStatus.Unsupported;
+        }
+
         var appliedAny = false;
         var unsupportedAny = hasPen && pen == null;
 
@@ -200,6 +221,63 @@ internal static class WpfDrawingReplay
         return appliedAny
             ? unsupportedAny ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
             : unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
+    }
+
+    private static bool TryReplayNativePortableGeometryDrawing(
+        object? geometryValue,
+        object? brushValue,
+        bool hasBrush,
+        bool hasPen,
+        MediaBrush? brush,
+        MediaPen? pen,
+        IWpfCompositionCommandSink sink,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        if (brushValue != null && IsTileBrush(brushValue))
+        {
+            return false;
+        }
+
+        if (sink is not IWpfNativeGeometryCommandSink nativeGeometrySink
+            || !TryGetPortableGeometryPath(geometryValue, out var portableGeometry))
+        {
+            return false;
+        }
+
+        var unsupported = hasPen && pen == null;
+        MediaBrush? nativeBrush = null;
+        if (!hasBrush)
+        {
+            if (pen == null)
+            {
+                return false;
+            }
+        }
+        else if (brush != null)
+        {
+            nativeBrush = brush;
+        }
+        else
+        {
+            status = pen != null
+                ? WpfDrawingReplayStatus.PartiallyApplied
+                : WpfDrawingReplayStatus.Unsupported;
+            if (pen == null)
+            {
+                return true;
+            }
+
+            unsupported = true;
+        }
+
+        if (!nativeGeometrySink.DrawNativeGeometry(nativeBrush, pen, portableGeometry))
+        {
+            return false;
+        }
+
+        status = unsupported ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied;
+        return true;
     }
 
     internal static bool TryReplayTileBrushFill(
@@ -1612,6 +1690,14 @@ internal static class WpfDrawingReplay
 
         pen = null;
         return false;
+    }
+
+    private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)
+    {
+        portableGeometry = null!;
+        return geometry is PortableGeometryPathSource portableGeometrySource
+            && portableGeometrySource.TryGetPortableGeometryPath(out portableGeometry)
+            && portableGeometry != null;
     }
 
     private static bool TryGetImageDrawingImageSource(

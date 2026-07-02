@@ -5841,6 +5841,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("drawing is PortableGeometryDrawingStateSource geometryDrawingStateSource", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableGeometryDrawingState(out var portableState)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetGeometryDrawingGeometry(drawing, hasPortableGeometryDrawingState, geometryDrawingState", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryReplayNativePortableGeometryDrawing(", replaySource, StringComparison.Ordinal);
+        Assert.Contains("nativeGeometrySink.DrawNativeGeometry(nativeBrush, pen, portableGeometry)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(drawing, \"GeometryDrawing\")", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(drawing, \"Geometry\", out geometry)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(drawing, \"Brush\", out brush)", replaySource, StringComparison.Ordinal);
@@ -5854,6 +5857,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool HasBrush", interopSource, StringComparison.Ordinal);
         Assert.Contains("public bool HasPen", interopSource, StringComparison.Ordinal);
         Assert.Contains("ReplayAppliesPortableGeometryDrawingStateWithoutReflection", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplayUsesNativePortableGeometryDrawingWhenAvailable", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDoesNotReflectAbsentPortableGeometryDrawingState", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableDrawingStateWithoutGenericBoundsFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsIgnoresNonPortableGenericBoundsShape", rendererTests, StringComparison.Ordinal);

@@ -1564,6 +1564,32 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplayUsesNativePortableGeometryDrawingWhenAvailable()
+    {
+        var geometry = new PortableRectangleClipGeometry(1, 2, 10, 12);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Green
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawNativeGeometry" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        var draw = Assert.Single(sink.NativeDrawGeometries);
+        Assert.Same(Brushes.Green, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Equal(PortableGeometryPathKind.Path, draw.Geometry.Kind);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
     public void ReplayAppliesPortableGeometryDrawingStateWithoutTypeNameShape()
     {
         var drawing = new PortableGeometryStateHost(new PortableGeometryDrawingState
@@ -3818,7 +3844,7 @@ public sealed class WpfVisualTreeRendererTests
         }
     }
 
-    private sealed class TestSink :
+    private class TestSink :
         IWpfCompositionCommandSink,
         IWpfVisualEffectCommandSink,
         IWpfVisualCacheCommandSink,
@@ -4050,6 +4076,27 @@ public sealed class WpfVisualTreeRendererTests
 
         public void Dispose()
         {
+        }
+    }
+
+    private sealed class NativeGeometryTestSink : TestSink, IWpfNativeGeometryCommandSink
+    {
+        public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
+
+        public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
+
+        public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
+        {
+            Operations.Add("DrawNativeGeometry");
+            NativeDrawGeometries.Add((brush, pen, geometry));
+            return true;
+        }
+
+        public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
+        {
+            Operations.Add("PushNativeGeometryClip");
+            NativeGeometryClips.Add(clipGeometry);
+            return true;
         }
     }
 }

@@ -9437,6 +9437,10 @@ public sealed class WpfManagedProjectGraphTests
         var scichartRunScriptPath = FindRepoPath(
             "eng",
             "run-progpu-wpf-scichart.sh");
+        var proGpuDirectoryBuildPropsPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "Directory.Build.props");
         var proGpuDirectXBindingsPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -9611,6 +9615,7 @@ public sealed class WpfManagedProjectGraphTests
         var scichartRealMvp = File.ReadAllText(scichartRealMvpPath);
         var scichartReadme = File.ReadAllText(scichartReadmePath);
         var scichartRunScript = File.ReadAllText(scichartRunScriptPath);
+        var proGpuDirectoryBuildProps = File.ReadAllText(proGpuDirectoryBuildPropsPath);
         var proGpuDirectXBindings = File.ReadAllText(proGpuDirectXBindingsPath);
         var proGpuDirectXHlslTranslator = File.ReadAllText(proGpuDirectXHlslTranslatorPath);
         var proGpuDirectXSciChart = File.ReadAllText(proGpuDirectXSciChartPath);
@@ -9672,6 +9677,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProGpuWpfStbImageSharpVersion Condition=\"'$(ProGpuWpfStbImageSharpVersion)' == ''\">2.30.15</ProGpuWpfStbImageSharpVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", sdkProps, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.props", sdkProps, StringComparison.Ordinal);
+
+        Assert.Contains("<PackageReadmeFile Condition=\"'$(PackageReadmeFile)' == '' And Exists('$(MSBuildThisFileDirectory)README.md')\">README.md</PackageReadmeFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageDescription Condition=\"'$(PackageDescription)' == ''\">$(Description)</PackageDescription>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<None Include=\"$(MSBuildThisFileDirectory)README.md\" Pack=\"true\" PackagePath=\"\\\" Visible=\"false\" />", proGpuDirectoryBuildProps, StringComparison.Ordinal);
 
         Assert.Contains("name: ProGPU WPF SDK", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("submodules: recursive", sdkCiWorkflow, StringComparison.Ordinal);

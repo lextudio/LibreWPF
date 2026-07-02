@@ -771,6 +771,33 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeInfersRetainedBoundsFromPortableLineGeometryPathPoints()
+    {
+        var geometry = new PortableNonRectangleClipGeometry(3, 4, 50, 20, new PortableRect(0, 0, 1, 1));
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateGeometryRenderData(geometry),
+            visualState);
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawNativeGeometry", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 50, 20, state.OpacityMaskBounds);
+        AssertReplayRect(3, 4, 50, 20, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-3, transform.M41);
+        Assert.Equal(-4, transform.M42);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeInfersRetainedBoundsFromPrimitiveRenderDataThroughNativeBoundsSink()
     {
         var visualState = CreatePortableOpacityMaskState(Brushes.White);
@@ -2559,6 +2586,40 @@ public sealed class WpfVisualTreeRendererTests
 
         Assert.True(hasBounds);
         Assert.Equal(new Rect(1, 2, 49, 38), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesPortableLineGeometryPathPointsBeforeStaleBoundsMetadata()
+    {
+        var geometry = new PortableNonRectangleClipGeometry(3, 4, 50, 20, new PortableRect(0, 0, 1, 1));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(3, 4, 50, 20), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsPreservesPortableHorizontalLineGeometryBounds()
+    {
+        var geometry = new PortableNonRectangleClipGeometry(3, 4, 50, 0, new PortableRect(0, 0, 1, 1));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(3, 4, 50, 0), bounds);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
     }
 
@@ -4832,11 +4893,16 @@ public sealed class WpfVisualTreeRendererTests
         private readonly PortableGeometryPath _path;
 
         public PortableNonRectangleClipGeometry(double x, double y, double width, double height)
+            : this(x, y, width, height, new PortableRect(x, y, width, height))
+        {
+        }
+
+        public PortableNonRectangleClipGeometry(double x, double y, double width, double height, PortableRect bounds)
         {
             _path = new PortableGeometryPath
             {
                 Kind = PortableGeometryPathKind.Path,
-                Bounds = new PortableRect(x, y, width, height),
+                Bounds = bounds,
                 Transform = PortableMatrix3x2.Identity,
                 Figures =
                 [

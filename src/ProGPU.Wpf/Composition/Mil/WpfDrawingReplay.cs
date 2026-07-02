@@ -2294,6 +2294,12 @@ internal static class WpfDrawingReplay
                 return true;
             }
 
+            if (WpfPortablePathBoundsReader.TryGetLineBounds(portableGeometry, out var lineBounds))
+            {
+                bounds = ToRect(lineBounds);
+                return true;
+            }
+
             if (TryReadPortableRect(portableGeometry.Bounds, out bounds)
                 && IsUsableRect(bounds, out bounds))
             {

@@ -5653,11 +5653,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetPrimitiveMediaGeometryBounds(null, clipGeometry, out var primitiveClipBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPrimitiveMediaGeometryBounds", rendererSource, StringComparison.Ordinal);
         Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathBoundsReader.TryGetLineBounds(geometry, out bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesPortableGeometryPathForVisualClipWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativePortableGeometryClipForNonRectangleVisualClip", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreePreservesIntersectedPortableVisualClipsAsNativeCombinedGeometry", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableGeometryRenderDataWithoutManagedGeometry", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableRectangleGeometryPathPoints", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableLineGeometryPathPoints", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsPreservesPortableHorizontalLineGeometryBounds", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPrimitiveRenderDataThroughNativeBoundsSink", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromNativeRectangleClipRenderData", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromLocalPrimitiveClipRenderDataWithoutGenericBoundsFallback", rendererTests, StringComparison.Ordinal);
@@ -9003,6 +9006,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "WpfPortableRectangleClipReader.cs");
+        var wpfPortablePathBoundsReaderPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfPortablePathBoundsReader.cs");
         var wpfMediaRectangleClipReaderPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -9406,6 +9414,7 @@ public sealed class WpfManagedProjectGraphTests
         var wpfObjectRenderDataDrawingContext = File.ReadAllText(wpfObjectRenderDataDrawingContextPath);
         var wpfMediaLineGeometryReader = File.ReadAllText(wpfMediaLineGeometryReaderPath);
         var wpfPortableRectangleClipReader = File.ReadAllText(wpfPortableRectangleClipReaderPath);
+        var wpfPortablePathBoundsReader = File.ReadAllText(wpfPortablePathBoundsReaderPath);
         var wpfMediaRectangleClipReader = File.ReadAllText(wpfMediaRectangleClipReaderPath);
         var wpfGuidelineSetReader = File.ReadAllText(wpfGuidelineSetReaderPath);
         var wpfDrawingReplay = File.ReadAllText(wpfDrawingReplayPath);
@@ -12064,6 +12073,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("geometry.Kind != PortableGeometryPathKind.Path", wpfPortableRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("segment.Kind != PortablePathSegmentKind.Line", wpfPortableRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("sameX == sameY", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("internal static class WpfPortablePathBoundsReader", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetLineBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("segment.Kind != PortablePathSegmentKind.Line", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("(!segment.IsStroked && !figure.IsFilled)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathBoundsReader.TryGetLineBounds(portableGeometry, out", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayPoint(object? pointValue, out WpfReplayPoint point)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);

@@ -2376,6 +2376,11 @@ public sealed class WpfVisualTreeRenderer
                 return true;
             }
 
+            if (WpfPortablePathBoundsReader.TryGetLineBounds(geometry, out bounds))
+            {
+                return true;
+            }
+
             bounds = ToReplayRect(geometry.Bounds);
             return IsUsableBounds(bounds);
         }

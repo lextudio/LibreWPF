@@ -5885,6 +5885,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("geometry is MediaEllipseGeometry ellipseGeometry", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(portableGeometry, out var rectangleBounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableGeometryBounds(geometryValue, out bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetDirectPrimitiveGeometryBounds(geometry, out bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetDirectPrimitiveGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);

@@ -2286,11 +2286,19 @@ internal static class WpfDrawingReplay
 
     private static bool TryGetPortableGeometryBounds(object? geometry, out Rect bounds)
     {
-        if (TryGetPortableGeometryPath(geometry, out var portableGeometry)
-            && TryReadPortableRect(portableGeometry.Bounds, out bounds)
-            && IsUsableRect(bounds, out bounds))
+        if (TryGetPortableGeometryPath(geometry, out var portableGeometry))
         {
-            return true;
+            if (WpfPortableRectangleClipReader.TryGetRectangleClipBounds(portableGeometry, out var rectangleBounds)
+                && IsUsableRect(ToRect(rectangleBounds), out bounds))
+            {
+                return true;
+            }
+
+            if (TryReadPortableRect(portableGeometry.Bounds, out bounds)
+                && IsUsableRect(bounds, out bounds))
+            {
+                return true;
+            }
         }
 
         return TryGetDirectPrimitiveGeometryBounds(geometry, out bounds);

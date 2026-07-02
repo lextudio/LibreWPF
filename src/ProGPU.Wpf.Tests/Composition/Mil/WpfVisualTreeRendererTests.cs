@@ -2507,7 +2507,7 @@ public sealed class WpfVisualTreeRendererTests
     public void TryGetDrawingBoundsUsesPortableDrawingGroupClipBoundsWithoutGeometryFallback()
     {
         var geometry = new PortableRectangleClipGeometry(0, 0, 100, 100);
-        var clip = new PortableRectangleClipGeometry(10, 20, 30, 40);
+        var clip = new PortableRectangleClipGeometry(10, 20, 30, 40, new PortableRect(0, 0, 1, 1));
         var child = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
         {
             HasGeometry = true,

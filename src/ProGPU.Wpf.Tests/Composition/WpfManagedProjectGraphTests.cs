@@ -8142,6 +8142,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("GetProperty(\"AutoHideWindow\"", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(\"VisualClip\"", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GetMethod(", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetType()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DockThemeSwitchCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SourceDockManager.ActiveContentChanged", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ViewModel.SourceDocuments", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -8439,6 +8440,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("Assembly.Load", appCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GetMethod(", appCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(", appCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetType()", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed package surface validation succeeded", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application.Run validation requires license variables", appCodeBehind, StringComparison.Ordinal);

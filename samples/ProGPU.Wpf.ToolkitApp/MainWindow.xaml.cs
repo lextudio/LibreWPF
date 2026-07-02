@@ -3005,9 +3005,9 @@ public partial class MainWindow : Window
         return activeContent switch
         {
             null => "<null>",
-            LayoutContent content => $"{content.GetType().Name}:{content.ContentId ?? content.Title}",
-            FrameworkElement element => $"{element.GetType().Name}:{element.Name}",
-            _ => activeContent.ToString() ?? activeContent.GetType().FullName ?? activeContent.GetType().Name
+            LayoutContent content => $"LayoutContent:{content.ContentId ?? content.Title}",
+            FrameworkElement element => $"FrameworkElement:{element.Name}",
+            _ => activeContent.ToString() ?? "<active content>"
         };
     }
 
@@ -3550,9 +3550,14 @@ public partial class MainWindow : Window
             _ => throw new ArgumentOutOfRangeException(nameof(expectedThemeName), expectedThemeName, "Unknown AvalonDock theme.")
         };
 
-        Type themeType = theme.GetType();
-        AssertEqual(expectedTypeName, themeType.Name, $"{managerName} AvalonDock theme type");
-        AssertEqual(expectedAssemblyName, themeType.Assembly.GetName().Name ?? string.Empty, $"{managerName} AvalonDock theme assembly");
+        string actualTypeName = theme switch
+        {
+            AeroTheme => nameof(AeroTheme),
+            MetroTheme => nameof(MetroTheme),
+            VS2010Theme => nameof(VS2010Theme),
+            _ => "<unknown theme>"
+        };
+        AssertEqual(expectedTypeName, actualTypeName, $"{managerName} AvalonDock theme type");
 
         var resourceUri = Convert.ToString(theme.GetResourceUri(), CultureInfo.InvariantCulture);
         if (string.IsNullOrWhiteSpace(resourceUri) ||
@@ -5015,10 +5020,12 @@ public partial class MainWindow : Window
 
         if (element is FrameworkElement frameworkElement && !string.IsNullOrEmpty(frameworkElement.Name))
         {
-            return $"{element.GetType().Name}#{frameworkElement.Name}";
+            return $"FrameworkElement#{frameworkElement.Name}";
         }
 
-        return element.GetType().Name;
+        return element is IInputElement
+            ? "IInputElement"
+            : element.ToString() ?? "<input element>";
     }
 
     private static void PumpDispatcherUntil(

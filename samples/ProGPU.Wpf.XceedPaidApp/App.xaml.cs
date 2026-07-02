@@ -613,7 +613,19 @@ internal static class XceedPaidSelfTest
     {
         return string.Join(
             ", ",
-            owners.Select(owner => owner?.GetType().FullName ?? "<null>").Take(12));
+            owners.Select(DescribeOwner).Take(12));
+    }
+
+    private static string DescribeOwner(object? owner)
+    {
+        return owner switch
+        {
+            null => "<null>",
+            FrameworkElement element when !string.IsNullOrEmpty(element.Name) => $"FrameworkElement:{element.Name}",
+            FrameworkContentElement element when !string.IsNullOrEmpty(element.Name) => $"FrameworkContentElement:{element.Name}",
+            DependencyObject => "DependencyObject",
+            _ => owner.ToString() ?? "<owner>"
+        };
     }
 
     private static void AssertType<T>(string description)

@@ -1910,6 +1910,7 @@ public sealed class WpfVisualTreeRenderer
         IWpfCompositionCommandSink,
         IWpfNativePrimitiveCommandSink,
         IWpfNativeTransformCommandSink,
+        IWpfNativeClipCommandSink,
         IWpfNativeGeometryCommandSink
     {
         private enum PushKind
@@ -2038,10 +2039,12 @@ public sealed class WpfVisualTreeRenderer
 
         public void PushClip(MediaGeometry clipGeometry)
         {
-            var clip = TransformBounds(FromMediaRect(clipGeometry.Bounds), _transformStack.Peek());
-            var currentClip = _clipStack.Peek();
-            _clipStack.Push(currentClip.HasValue ? IntersectBounds(currentClip.Value, clip) : clip);
-            _pushStack.Push(PushKind.Clip);
+            PushClipCore(FromMediaRect(clipGeometry.Bounds));
+        }
+
+        public void PushNativeClip(WpfReplayRect bounds)
+        {
+            PushClipCore(bounds);
         }
 
         public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
@@ -2051,11 +2054,16 @@ public sealed class WpfVisualTreeRenderer
                 return false;
             }
 
+            PushClipCore(bounds);
+            return true;
+        }
+
+        private void PushClipCore(WpfReplayRect bounds)
+        {
             var clip = TransformBounds(bounds, _transformStack.Peek());
             var currentClip = _clipStack.Peek();
             _clipStack.Push(currentClip.HasValue ? IntersectBounds(currentClip.Value, clip) : clip);
             _pushStack.Push(PushKind.Clip);
-            return true;
         }
 
         public void PushOpacity(double opacity)

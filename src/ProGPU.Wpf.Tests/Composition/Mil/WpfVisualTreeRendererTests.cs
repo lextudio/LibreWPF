@@ -750,6 +750,35 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeInfersRetainedBoundsFromNativeRectangleClipRenderData()
+    {
+        var clip = new PortableRectangleClipGeometry(10, 12, 8, 10);
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateClippedRenderData(clip, Brushes.Green),
+            visualState);
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "PushNativeClip", "DrawRectangle", "Pop", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 8, 10, state.OpacityMaskBounds);
+        AssertReplayRect(10, 12, 8, 10, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-10, transform.M41);
+        Assert.Equal(-12, transform.M42);
+        AssertReplayRect(10, 12, 8, 10, Assert.Single(sink.NativeClips));
+        Assert.Equal(0, clip.ReflectedGeometryProbeCount);
+        Assert.Equal(new WpfMilDecodeResult(3, 3, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualReappliesNativeCacheState()
     {
         var cacheMode = new object();
@@ -2637,6 +2666,19 @@ public sealed class WpfVisualTreeRendererTests
     {
         var record = CreateGeometryRecord(1);
         return new FakeRenderData(record, record.Length, new FakeDependentResources(geometry));
+    }
+
+    private static FakeRenderData CreateClippedRenderData(object clip, MediaBrush brush)
+    {
+        var pushClipPayload = new byte[8];
+        WriteUInt32(pushClipPayload, 0, 1);
+
+        var record = CreateRecord(WpfMilCommandId.PushClip, pushClipPayload)
+            .Concat(CreateRectangleRecord(2, 0))
+            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
+            .ToArray();
+
+        return new FakeRenderData(record, record.Length, new FakeDependentResources(clip, brush));
     }
 
     private static FakeRenderData CreateTransformedRenderData(object transform, MediaBrush brush)

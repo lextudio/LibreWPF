@@ -26,7 +26,27 @@ internal static class WpfMediaRectangleClipReader
         }
 
         return geometry is MediaPathGeometry pathGeometry
-            && TryGetRectanglePathBounds(pathGeometry, out bounds);
+            && TryGetRectanglePathBounds(
+                pathGeometry,
+                requireFilled: true,
+                requireStrokedSegments: false,
+                out bounds);
+    }
+
+    public static bool TryGetRectangleStrokeBounds(MediaGeometry geometry, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        if (!HasIdentityGeometryTransform(geometry))
+        {
+            return false;
+        }
+
+        return geometry is MediaPathGeometry pathGeometry
+            && TryGetRectanglePathBounds(
+                pathGeometry,
+                requireFilled: false,
+                requireStrokedSegments: true,
+                out bounds);
     }
 
     private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
@@ -37,7 +57,11 @@ internal static class WpfMediaRectangleClipReader
                 && WpfResourceResolver.IsIdentityMatrix(matrix));
     }
 
-    private static bool TryGetRectanglePathBounds(MediaPathGeometry pathGeometry, out WpfReplayRect bounds)
+    private static bool TryGetRectanglePathBounds(
+        MediaPathGeometry pathGeometry,
+        bool requireFilled,
+        bool requireStrokedSegments,
+        out WpfReplayRect bounds)
     {
         bounds = default;
         if (pathGeometry.Figures.Count != 1)
@@ -46,7 +70,7 @@ internal static class WpfMediaRectangleClipReader
         }
 
         var figure = pathGeometry.Figures[0];
-        if (!figure.IsClosed || !figure.IsFilled)
+        if (!figure.IsClosed || (requireFilled && !figure.IsFilled))
         {
             return false;
         }
@@ -61,7 +85,8 @@ internal static class WpfMediaRectangleClipReader
         points[0] = figure.StartPoint;
         for (var i = 0; i < 3; i++)
         {
-            if (figure.Segments[i] is not MediaLineSegment lineSegment)
+            if (figure.Segments[i] is not MediaLineSegment lineSegment
+                || (requireStrokedSegments && !lineSegment.IsStroked))
             {
                 return false;
             }
@@ -72,6 +97,7 @@ internal static class WpfMediaRectangleClipReader
         if (segmentCount == 4)
         {
             if (figure.Segments[3] is not MediaLineSegment closingSegment
+                || (requireStrokedSegments && !closingSegment.IsStroked)
                 || !NearlyEqual(closingSegment.Point.X, points[0].X)
                 || !NearlyEqual(closingSegment.Point.Y, points[0].Y))
             {

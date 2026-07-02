@@ -324,6 +324,12 @@ internal static class WpfDrawingReplay
             return true;
         }
 
+        if (TryGetDirectRectangleStrokeGeometry(geometryValue, out var strokeRectangle))
+        {
+            DrawRectangleGeometry(sink, null, pen, strokeRectangle, 0, 0);
+            return true;
+        }
+
         if (TryGetDirectEllipseGeometry(geometryValue, out var center, out var radiusX, out var radiusY))
         {
             DrawEllipseGeometry(sink, null, pen, center, radiusX, radiusY);
@@ -458,7 +464,16 @@ internal static class WpfDrawingReplay
         status = WpfDrawingReplayStatus.Skipped;
         if (!TryGetDirectRectangleGeometry(geometryValue, out var rectangle, out var radiusX, out var radiusY))
         {
-            return false;
+            if (hasBrush
+                || pen == null
+                || !TryGetDirectRectangleStrokeGeometry(geometryValue, out rectangle))
+            {
+                return false;
+            }
+
+            DrawRectangleGeometry(sink, null, pen, rectangle, 0, 0);
+            status = WpfDrawingReplayStatus.Applied;
+            return true;
         }
 
         var applied = false;
@@ -2357,6 +2372,21 @@ internal static class WpfDrawingReplay
 
         radiusX = default;
         radiusY = default;
+        return false;
+    }
+
+    private static bool TryGetDirectRectangleStrokeGeometry(
+        object? geometry,
+        out Rect rectangle)
+    {
+        if (geometry is MediaGeometry mediaGeometry
+            && WpfMediaRectangleClipReader.TryGetRectangleStrokeBounds(mediaGeometry, out var rectangleBounds))
+        {
+            rectangle = ToRect(rectangleBounds);
+            return true;
+        }
+
+        rectangle = default;
         return false;
     }
 

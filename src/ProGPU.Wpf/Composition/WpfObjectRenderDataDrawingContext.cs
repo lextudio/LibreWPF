@@ -622,7 +622,13 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     {
         if (!TryReadRectangleGeometry(geometry, out var rectangle, out var radiusX, out var radiusY))
         {
-            return false;
+            if (!TryReadRectangleStrokeGeometry(geometry, out rectangle))
+            {
+                return false;
+            }
+
+            radiusX = 0;
+            radiusY = 0;
         }
 
         if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
@@ -665,7 +671,15 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     {
         if (!TryReadRectangleGeometry(geometry, out var rectangle, out var radiusX, out var radiusY))
         {
-            return false;
+            if (brush != null
+                || mediaPen == null
+                || !TryReadRectangleStrokeGeometry(geometry, out rectangle))
+            {
+                return false;
+            }
+
+            radiusX = 0;
+            radiusY = 0;
         }
 
         if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
@@ -1464,6 +1478,21 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         }
 
         segments = Array.Empty<WpfReplayLineSegment>();
+        return false;
+    }
+
+    private static bool TryReadRectangleStrokeGeometry(
+        object? geometry,
+        out Rect rectangle)
+    {
+        if (geometry is MediaGeometry mediaGeometry
+            && WpfMediaRectangleClipReader.TryGetRectangleStrokeBounds(mediaGeometry, out var rectangleBounds))
+        {
+            rectangle = ToRect(rectangleBounds);
+            return true;
+        }
+
+        rectangle = default;
         return false;
     }
 

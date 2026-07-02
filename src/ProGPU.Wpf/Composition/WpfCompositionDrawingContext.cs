@@ -630,7 +630,15 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
     {
         if (!TryGetPrimitiveRectangleGeometry(geometry, out var rectangle, out var radiusX, out var radiusY))
         {
-            return false;
+            if (brush != null
+                || pen == null
+                || !TryGetPrimitiveRectangleStrokeGeometry(geometry, out rectangle))
+            {
+                return false;
+            }
+
+            radiusX = 0;
+            radiusY = 0;
         }
 
         RegisterRetainedDependencies(brush, pen, geometry);
@@ -752,6 +760,20 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         rectangle = default;
         radiusX = default;
         radiusY = default;
+        return false;
+    }
+
+    private static bool TryGetPrimitiveRectangleStrokeGeometry(
+        MediaGeometry geometry,
+        out Rect rectangle)
+    {
+        if (WpfMediaRectangleClipReader.TryGetRectangleStrokeBounds(geometry, out var rectangleBounds))
+        {
+            rectangle = ToRect(rectangleBounds);
+            return true;
+        }
+
+        rectangle = default;
         return false;
     }
 

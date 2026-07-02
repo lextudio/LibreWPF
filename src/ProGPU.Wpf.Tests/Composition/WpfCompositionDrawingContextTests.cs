@@ -349,6 +349,29 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextDrawsUnfilledRectanglePathGeometryAsNativeRectangleStrokeWithoutGenericGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreateRectanglePathGeometry(new Rect(10, 20, 30, 40), isFilled: false);
+
+        context.DrawGeometry(null, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        Assert.Empty(sink.Rectangles);
+        var replayed = Assert.Single(sink.NativeRectangles);
+        Assert.Null(replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayRect(10, 20, 30, 40), replayed.Rectangle);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextDrawsLocalRoundedRectangleGeometryAsNativeRoundedRectangle()
     {
         var sink = new NativeRecordingSink();
@@ -954,6 +977,29 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextDrawsUnfilledRectanglePathGeometryAsNativeRectangleStrokeWithoutGenericGeometryFallback()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreateRectanglePathGeometry(new Rect(1, 2, 30, 40), isFilled: false);
+
+        context.DrawGeometry(null, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        Assert.Empty(sink.Rectangles);
+        var replayed = Assert.Single(sink.NativeRectangles);
+        Assert.Null(replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayRect(1, 2, 30, 40), replayed.Rectangle);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextDrawsLineGeometryAsNativeLineWithoutGenericGeometryFallback()
     {
         var sink = new NativeRecordingSink();
@@ -1527,6 +1573,28 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void DrawDrawingReplaysUnfilledRectanglePathGeometryAsNativeRectangleStrokeWithoutManagedGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = CreateRectanglePathGeometry(new Rect(1, 2, 30, 40), isFilled: false);
+        var drawing = new FakeGeometryDrawing(null, pen, geometry);
+
+        var status = context.DrawDrawing(drawing);
+
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeRectangles);
+        Assert.Null(replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayRect(1, 2, 30, 40), replayed.Rectangle);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void DrawDrawingReportsPartialLineReplayWhenBrushIsUnsupported()
     {
         var sink = new NativeRecordingSink();
@@ -1844,13 +1912,13 @@ public sealed class WpfCompositionDrawingContextTests
         Assert.Throws<ObjectDisposedException>(() => context.DrawRectangle(Brushes.Red, null, new Rect(0, 0, 1, 1)));
     }
 
-    private static PathGeometry CreateRectanglePathGeometry(Rect bounds)
+    private static PathGeometry CreateRectanglePathGeometry(Rect bounds, bool isFilled = true)
     {
         var figure = new PathFigure
         {
             StartPoint = new Point(bounds.X, bounds.Y),
             IsClosed = true,
-            IsFilled = true
+            IsFilled = isFilled
         };
         figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width, bounds.Y), isStroked: true));
         figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width, bounds.Y + bounds.Height), isStroked: true));

@@ -1500,6 +1500,13 @@ public sealed class ProGpuCompositionCommandSink :
         out WpfReplayRect bounds,
         bool allowEmpty = false)
     {
+        if (geometry is PortableGeometryPathSource portableGeometry
+            && portableGeometry.TryGetPortableGeometryPath(out var portablePath)
+            && TryConvertPortableGeometryPath(portablePath, transform, out path, out bounds))
+        {
+            return allowEmpty || path.IsCombined || path.Figures.Count > 0;
+        }
+
         if (geometry is NativePathGeometrySource nativePathSource
             && nativePathSource.TryGetPathGeometry(out path, out var nativeTransform))
         {
@@ -1510,13 +1517,6 @@ public sealed class ProGpuCompositionCommandSink :
             }
 
             bounds = GetNativePathBounds(path);
-            return allowEmpty || path.IsCombined || path.Figures.Count > 0;
-        }
-
-        if (geometry is PortableGeometryPathSource portableGeometry
-            && portableGeometry.TryGetPortableGeometryPath(out var portablePath)
-            && TryConvertPortableGeometryPath(portablePath, transform, out path, out bounds))
-        {
             return allowEmpty || path.IsCombined || path.Figures.Count > 0;
         }
 

@@ -7,7 +7,6 @@ using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
-using MediaMatrix = System.Windows.Media.Matrix;
 using MediaMatrixTransform = System.Windows.Media.MatrixTransform;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
@@ -903,15 +902,13 @@ internal static class WpfDrawingReplay
             return false;
         }
 
-        transform = new MediaMatrixTransform(new MediaMatrix
-        {
-            M11 = matrix.M11,
-            M12 = matrix.M12,
-            M21 = matrix.M21,
-            M22 = matrix.M22,
-            OffsetX = matrix.M41,
-            OffsetY = matrix.M42
-        });
+        transform = new MediaMatrixTransform(
+            matrix.M11,
+            matrix.M12,
+            matrix.M21,
+            matrix.M22,
+            matrix.M41,
+            matrix.M42);
         return true;
     }
 
@@ -1307,13 +1304,13 @@ internal static class WpfDrawingReplay
         var flipY = tile.FlipY(tileMode);
         var scaleX = destinationBounds.Width / sourceBounds.Width * (flipX ? -1 : 1);
         var scaleY = destinationBounds.Height / sourceBounds.Height * (flipY ? -1 : 1);
-        transform = new MediaMatrixTransform(new MediaMatrix
-        {
-            M11 = scaleX,
-            M22 = scaleY,
-            OffsetX = (flipX ? destinationBounds.X + destinationBounds.Width : destinationBounds.X) - sourceBounds.X * scaleX,
-            OffsetY = (flipY ? destinationBounds.Y + destinationBounds.Height : destinationBounds.Y) - sourceBounds.Y * scaleY
-        });
+        transform = new MediaMatrixTransform(
+            scaleX,
+            0,
+            0,
+            scaleY,
+            (flipX ? destinationBounds.X + destinationBounds.Width : destinationBounds.X) - sourceBounds.X * scaleX,
+            (flipY ? destinationBounds.Y + destinationBounds.Height : destinationBounds.Y) - sourceBounds.Y * scaleY);
         return true;
     }
 
@@ -1331,13 +1328,13 @@ internal static class WpfDrawingReplay
         }
 
         var bounds = tile.Bounds;
-        transform = new MediaMatrixTransform(new MediaMatrix
-        {
-            M11 = flipX ? -1 : 1,
-            M22 = flipY ? -1 : 1,
-            OffsetX = flipX ? bounds.X + bounds.X + bounds.Width : 0,
-            OffsetY = flipY ? bounds.Y + bounds.Y + bounds.Height : 0
-        });
+        transform = new MediaMatrixTransform(
+            flipX ? -1 : 1,
+            0,
+            0,
+            flipY ? -1 : 1,
+            flipX ? bounds.X + bounds.X + bounds.Width : 0,
+            flipY ? bounds.Y + bounds.Y + bounds.Height : 0);
         return true;
     }
 

@@ -11,7 +11,6 @@ using MediaColor = System.Windows.Media.Color;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
-using MediaMatrix = System.Windows.Media.Matrix;
 using MediaMatrixTransform = System.Windows.Media.MatrixTransform;
 using MediaPen = System.Windows.Media.Pen;
 using MediaPenLineCap = System.Windows.Media.PenLineCap;
@@ -1294,29 +1293,32 @@ public sealed class WpfResourceResolver :
         }
         else
         {
-            var pathGeometry = new PathGeometry
-            {
-                FillRule = ToMediaFillRule(portablePath.FillRule)
-            };
+            var figures = new List<PathFigure>(portablePath.Figures.Length);
 
             foreach (var portableFigure in portablePath.Figures)
             {
+                var segments = new List<PathSegment>(portableFigure.Segments.Length);
+                foreach (var segment in portableFigure.Segments)
+                {
+                    segments.Add(CreatePortablePathSegment(segment));
+                }
+
                 var figure = new PathFigure
                 {
+                    Segments = new PathSegmentCollection(segments),
                     StartPoint = ToPoint(portableFigure.StartPoint),
                     IsClosed = portableFigure.IsClosed,
                     IsFilled = portableFigure.IsFilled
                 };
 
-                foreach (var segment in portableFigure.Segments)
-                {
-                    AppendPortablePathSegment(figure, segment);
-                }
-
-                pathGeometry.Figures.Add(figure);
+                figures.Add(figure);
             }
 
-            geometry = pathGeometry;
+            geometry = new PathGeometry
+            {
+                Figures = new PathFigureCollection(figures),
+                FillRule = ToMediaFillRule(portablePath.FillRule)
+            };
         }
 
         return ApplyPortableGeometryTransform(portablePath, geometry);
@@ -1341,30 +1343,31 @@ public sealed class WpfResourceResolver :
         return geometry;
     }
 
-    private static void AppendPortablePathSegment(PathFigure figure, PortablePathSegment segment)
+    private static PathSegment CreatePortablePathSegment(PortablePathSegment segment)
     {
         switch (segment.Kind)
         {
             case PortablePathSegmentKind.Line:
-                figure.Segments.Add(new LineSegment(ToVector2(segment.Point1), segment.IsSmoothJoin, segment.IsStroked));
-                break;
+                return new LineSegment(ToPoint(segment.Point1), segment.IsStroked)
+                {
+                    IsSmoothJoin = segment.IsSmoothJoin
+                };
             case PortablePathSegmentKind.QuadraticBezier:
-                figure.Segments.Add(new QuadraticBezierSegment(
-                    ToVector2(segment.Point1),
-                    ToVector2(segment.Point2),
-                    segment.IsSmoothJoin,
-                    segment.IsStroked));
-                break;
+                return new QuadraticBezierSegment(ToPoint(segment.Point1), ToPoint(segment.Point2), segment.IsStroked)
+                {
+                    IsSmoothJoin = segment.IsSmoothJoin
+                };
             case PortablePathSegmentKind.CubicBezier:
-                figure.Segments.Add(new BezierSegment(
-                    ToVector2(segment.Point1),
-                    ToVector2(segment.Point2),
-                    ToVector2(segment.Point3),
-                    segment.IsSmoothJoin,
-                    segment.IsStroked));
-                break;
+                return new BezierSegment(
+                    ToPoint(segment.Point1),
+                    ToPoint(segment.Point2),
+                    ToPoint(segment.Point3),
+                    segment.IsStroked)
+                {
+                    IsSmoothJoin = segment.IsSmoothJoin
+                };
             case PortablePathSegmentKind.Arc:
-                figure.Segments.Add(new ArcSegment
+                return new ArcSegment
                 {
                     Point = ToPoint(segment.Point1),
                     Size = ToSize(segment.Size),
@@ -1373,8 +1376,9 @@ public sealed class WpfResourceResolver :
                     SweepDirection = ToMediaSweepDirection(segment.SweepDirection),
                     IsSmoothJoin = segment.IsSmoothJoin,
                     IsStroked = segment.IsStroked
-                });
-                break;
+                };
+            default:
+                throw new ArgumentOutOfRangeException(nameof(segment));
         }
     }
 
@@ -1404,18 +1408,26 @@ public sealed class WpfResourceResolver :
 
     private static PathGeometry CreateRectanglePath(double x, double y, double width, double height)
     {
-        var geometry = new PathGeometry();
-        var figure = new PathFigure
+        var segments = new[]
         {
-            StartPoint = new Point(x, y),
-            IsClosed = true,
-            IsFilled = true
+            new LineSegment(new Point(x + width, y), isStroked: true),
+            new LineSegment(new Point(x + width, y + height), isStroked: true),
+            new LineSegment(new Point(x, y + height), isStroked: true)
         };
 
-        figure.Segments.Add(new LineSegment(new Vector2((float)(x + width), (float)y)));
-        figure.Segments.Add(new LineSegment(new Vector2((float)(x + width), (float)(y + height))));
-        figure.Segments.Add(new LineSegment(new Vector2((float)x, (float)(y + height))));
-        geometry.Figures.Add(figure);
+        var geometry = new PathGeometry
+        {
+            Figures = new PathFigureCollection(new[]
+            {
+                new PathFigure
+                {
+                    Segments = new PathSegmentCollection(segments),
+                    StartPoint = new Point(x, y),
+                    IsClosed = true,
+                    IsFilled = true
+                }
+            })
+        };
 
         return geometry;
     }
@@ -1547,15 +1559,12 @@ public sealed class WpfResourceResolver :
     private static bool TryCreateMatrixTransform(WpfMatrix2D matrix, out MediaTransform? transform)
     {
         transform = new MediaMatrixTransform(
-            new MediaMatrix
-            {
-                M11 = matrix.M11,
-                M12 = matrix.M12,
-                M21 = matrix.M21,
-                M22 = matrix.M22,
-                OffsetX = matrix.OffsetX,
-                OffsetY = matrix.OffsetY
-            });
+            matrix.M11,
+            matrix.M12,
+            matrix.M21,
+            matrix.M22,
+            matrix.OffsetX,
+            matrix.OffsetY);
         return true;
     }
 

@@ -11599,6 +11599,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayPoint(object? pointValue, out WpfReplayPoint point)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("pointValue is Point mediaPoint", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("rectValue is Rect mediaRect && !mediaRect.IsEmpty", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("pointValue is PortablePoint portablePoint", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("rectValue is PortableRect portableRect && !portableRect.IsEmpty", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadPoint(object? pointValue, out Point point)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);

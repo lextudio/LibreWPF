@@ -110,11 +110,11 @@ public sealed class WpfCompositionDrawingContextTests
             FontFamilyNames = new[] { "Arial" }
         });
 
-        context.DrawLine(pen, new PortablePoint(1, 2), new PortablePoint(3, 4));
-        context.DrawRectangle(Brushes.Red, pen, new PortableRect(5, 6, 7, 8));
-        context.DrawRoundedRectangle(Brushes.Green, pen, new PortableRect(9, 10, 11, 12), 2, 3);
-        context.DrawEllipse(Brushes.Blue, null, new PortablePoint(13, 14), 15, 16);
-        context.DrawImage(image, new PortableRect(17, 18, 19, 20));
+        context.DrawLine(pen, new Point(1, 2), new Point(3, 4));
+        context.DrawRectangle(Brushes.Red, pen, new Rect(5, 6, 7, 8));
+        context.DrawRoundedRectangle(Brushes.Green, pen, new Rect(9, 10, 11, 12), 2, 3);
+        context.DrawEllipse(Brushes.Blue, null, new Point(13, 14), 15, 16);
+        context.DrawImage(image, new Rect(17, 18, 19, 20));
         context.DrawGlyphRun(Brushes.Black, glyphRun);
 
         Assert.Equal(new[]

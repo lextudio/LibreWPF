@@ -873,6 +873,12 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return true;
         }
 
+        if (pointValue is Point mediaPoint)
+        {
+            point = new WpfReplayPoint(mediaPoint.X, mediaPoint.Y);
+            return true;
+        }
+
         if (pointValue is PortablePoint portablePoint)
         {
             point = new WpfReplayPoint(portablePoint.X, portablePoint.Y);
@@ -906,6 +912,12 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         if (rectValue is WpfReplayRect replayRect)
         {
             rectangle = replayRect;
+            return true;
+        }
+
+        if (rectValue is Rect mediaRect && !mediaRect.IsEmpty)
+        {
+            rectangle = new WpfReplayRect(mediaRect.X, mediaRect.Y, mediaRect.Width, mediaRect.Height);
             return true;
         }
 

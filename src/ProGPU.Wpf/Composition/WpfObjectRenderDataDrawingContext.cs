@@ -403,7 +403,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             RegisterRetainedDependencies(brush, pen, geometry);
             var replayStatus = portableBrushReplayStatus;
             if (mediaPen != null
-                && !TryDrawNativePortableGeometryPen(geometry, mediaPen))
+                && !TryDrawNativePortableGeometryPen(geometry, mediaPen)
+                && !TryDrawPrimitiveRectangleGeometryPen(geometry, mediaPen))
             {
                 if (WpfResourceResolver.AdaptGeometry(geometry) is { } penGeometry)
                 {
@@ -416,6 +417,11 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             }
 
             CountDrawingReplayStatus(replayStatus);
+            return;
+        }
+
+        if (TryDrawPrimitiveRectangleGeometry(brush, pen, geometry, mediaBrush, mediaPen))
+        {
             return;
         }
 
@@ -477,6 +483,116 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         return _sink is IWpfNativeGeometryCommandSink nativeGeometrySink
             && TryGetPortableGeometryPath(geometry, out var portableGeometry)
             && nativeGeometrySink.DrawNativeGeometry(null, pen, portableGeometry);
+    }
+
+    private bool TryDrawPrimitiveRectangleGeometryPen(object? geometry, MediaPen pen)
+    {
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink
+            && TryReadReplayRect(geometry, out var replayRectangle))
+        {
+            nativeSink.DrawNativeRectangle(null, pen, replayRectangle);
+            return true;
+        }
+
+        if (TryReadRect(geometry, out var mediaRectangle))
+        {
+            _sink.DrawRectangle(null, pen, mediaRectangle);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryDrawPrimitiveRectangleGeometry(
+        object? brush,
+        object? pen,
+        object? geometry,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen)
+    {
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink
+            && TryReadReplayRect(geometry, out var replayRectangle))
+        {
+            return TryDrawNativeRectangleGeometry(brush, pen, geometry, mediaBrush, mediaPen, replayRectangle, nativeSink);
+        }
+
+        if (TryReadRect(geometry, out var mediaRectangle))
+        {
+            return TryDrawRectangleGeometryFallback(brush, pen, geometry, mediaBrush, mediaPen, mediaRectangle);
+        }
+
+        return false;
+    }
+
+    private bool TryDrawNativeRectangleGeometry(
+        object? brush,
+        object? pen,
+        object? geometry,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen,
+        WpfReplayRect rectangle,
+        IWpfNativePrimitiveCommandSink nativeSink)
+    {
+        if (mediaBrush != null)
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            nativeSink.DrawNativeRectangle(mediaBrush, mediaPen, rectangle);
+            CountApplied();
+            return true;
+        }
+
+        if (mediaPen != null)
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            nativeSink.DrawNativeRectangle(null, mediaPen, rectangle);
+            if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
+            {
+                CountPartiallyApplied();
+            }
+            else
+            {
+                CountApplied();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryDrawRectangleGeometryFallback(
+        object? brush,
+        object? pen,
+        object? geometry,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen,
+        Rect rectangle)
+    {
+        if (mediaBrush != null)
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            _sink.DrawRectangle(mediaBrush, mediaPen, rectangle);
+            CountApplied();
+            return true;
+        }
+
+        if (mediaPen != null)
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            _sink.DrawRectangle(null, mediaPen, rectangle);
+            if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
+            {
+                CountPartiallyApplied();
+            }
+            else
+            {
+                CountApplied();
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     private bool TryDrawNativePortableGeometry(
@@ -978,6 +1094,12 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
 
     private static bool TryReadRect(object? rectValue, out Rect rectangle)
     {
+        if (rectValue is WpfReplayRect replayRect)
+        {
+            rectangle = new Rect(replayRect.X, replayRect.Y, replayRect.Width, replayRect.Height);
+            return true;
+        }
+
         if (rectValue is Rect mediaRect)
         {
             rectangle = mediaRect;

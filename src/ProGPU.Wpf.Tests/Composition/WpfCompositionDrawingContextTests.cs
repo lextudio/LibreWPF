@@ -162,6 +162,86 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextDrawsPortableRectGeometryAsNativeRectangleWithoutManagedGeometry()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = new PortableRect(1, 2, 30, 40);
+
+        context.DrawGeometry(Brushes.Green, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeRectangles);
+        Assert.Same(Brushes.Green, replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayRect(1, 2, 30, 40), replayed.Rectangle);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextDrawsReplayRectGeometryAsRectangleWithoutManagedGeometry()
+    {
+        var sink = new RecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var geometry = new WpfReplayRect(5, 6, 70, 80);
+
+        context.DrawGeometry(Brushes.Blue, null, geometry);
+
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        var replayed = Assert.Single(sink.Rectangles);
+        Assert.Same(Brushes.Blue, replayed.Brush);
+        Assert.Null(replayed.Pen);
+        Assert.Equal(new Rect(5, 6, 70, 80), replayed.Rectangle);
+        Assert.Contains(Brushes.Blue, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextDrawsPortableRectTileBrushPenAsRectangleWithoutManagedGeometry()
+    {
+        var sink = new RecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var nestedDrawing = new FakeGeometryDrawing(
+            Brushes.Red,
+            null,
+            new FakeRectangleGeometry(new FakeRect(0, 0, 10, 10)));
+        var drawingBrush = new FakeDrawingBrush(nestedDrawing);
+        var geometry = new PortableRect(1, 2, 30, 40);
+
+        context.DrawGeometry(drawingBrush, pen, geometry);
+
+        Assert.Equal(
+            new[]
+            {
+                "PushClip",
+                "PushNativeTransform",
+                "DrawGeometry",
+                "Pop",
+                "Pop",
+                "DrawRectangle"
+            },
+            sink.Operations);
+        Assert.Single(sink.Geometries);
+        var replayedPen = Assert.Single(sink.Rectangles);
+        Assert.Null(replayedPen.Brush);
+        Assert.Same(pen, replayedPen.Pen);
+        Assert.Equal(new Rect(1, 2, 30, 40), replayedPen.Rectangle);
+        Assert.Contains(drawingBrush, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextReplaysPortableGeometryTileBrushWithoutManagedGeometry()
     {
         var sink = new NativeRecordingSink();

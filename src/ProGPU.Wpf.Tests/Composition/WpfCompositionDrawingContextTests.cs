@@ -716,7 +716,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void ObjectRenderDataDrawingContextKeepsRoundedRectangleGeometryClipOnGenericClipPath()
+    public void ObjectRenderDataDrawingContextPushesRoundedRectangleGeometryClipAsNativeGeometryClip()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfObjectRenderDataDrawingContext(sink);
@@ -728,9 +728,10 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.PushClip(geometry);
 
-        Assert.Equal(new[] { "PushClip" }, sink.Operations);
+        Assert.Equal(new[] { "PushNativeMediaGeometryClip" }, sink.Operations);
         Assert.Empty(sink.NativeClips);
         Assert.Empty(sink.NativeGeometryClips);
+        Assert.Same(geometry, Assert.Single(sink.NativeMediaGeometryClips));
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(1, context.StackDepth);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
@@ -1428,7 +1429,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void GeneratedDrawingContextKeepsRoundedRectangleGeometryClipOnGenericClipPath()
+    public void GeneratedDrawingContextPushesRoundedRectangleGeometryClipAsNativeGeometryClip()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfCompositionDrawingContext(sink);
@@ -1440,9 +1441,10 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.PushClip(geometry);
 
-        Assert.Equal(new[] { "PushClip" }, sink.Operations);
+        Assert.Equal(new[] { "PushNativeMediaGeometryClip" }, sink.Operations);
         Assert.Empty(sink.NativeClips);
         Assert.Empty(sink.NativeGeometryClips);
+        Assert.Same(geometry, Assert.Single(sink.NativeMediaGeometryClips));
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(1, context.StackDepth);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
@@ -1467,7 +1469,7 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void GeneratedDrawingContextKeepsNonRectanglePathGeometryClipOnGenericClipPath()
+    public void GeneratedDrawingContextPushesNonRectanglePathGeometryClipAsNativeGeometryClip()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfCompositionDrawingContext(sink);
@@ -1475,16 +1477,17 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.PushClip(geometry);
 
-        Assert.Equal(new[] { "PushClip" }, sink.Operations);
+        Assert.Equal(new[] { "PushNativeMediaGeometryClip" }, sink.Operations);
         Assert.Empty(sink.NativeClips);
         Assert.Empty(sink.NativeGeometryClips);
+        Assert.Same(geometry, Assert.Single(sink.NativeMediaGeometryClips));
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(1, context.StackDepth);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
 
     [Fact]
-    public void GeneratedDrawingContextKeepsIncompleteRectanglePathGeometryClipOnGenericClipPath()
+    public void GeneratedDrawingContextPushesIncompleteRectanglePathGeometryClipAsNativeGeometryClip()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfCompositionDrawingContext(sink);
@@ -1492,9 +1495,10 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.PushClip(geometry);
 
-        Assert.Equal(new[] { "PushClip" }, sink.Operations);
+        Assert.Equal(new[] { "PushNativeMediaGeometryClip" }, sink.Operations);
         Assert.Empty(sink.NativeClips);
         Assert.Empty(sink.NativeGeometryClips);
+        Assert.Same(geometry, Assert.Single(sink.NativeMediaGeometryClips));
         Assert.Contains(geometry, sink.VisualDependencies);
         Assert.Equal(1, context.StackDepth);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
@@ -2911,6 +2915,8 @@ public sealed class WpfCompositionDrawingContextTests
 
         public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
 
+        public List<MediaGeometry> NativeMediaGeometryClips { get; } = new();
+
         public List<WpfReplayRect> NativeClips { get; } = new();
 
         public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
@@ -2970,6 +2976,13 @@ public sealed class WpfCompositionDrawingContextTests
         {
             Operations.Add("PushNativeGeometryClip");
             NativeGeometryClips.Add(clipGeometry);
+            return true;
+        }
+
+        public bool PushNativeGeometryClip(MediaGeometry clipGeometry)
+        {
+            Operations.Add("PushNativeMediaGeometryClip");
+            NativeMediaGeometryClips.Add(clipGeometry);
             return true;
         }
 

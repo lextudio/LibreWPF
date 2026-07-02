@@ -332,6 +332,10 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         {
             RegisterRetainedDependencies(clipGeometry);
         }
+        else if (TryPushNativeMediaGeometryClip(clipGeometry))
+        {
+            RegisterRetainedDependencies(clipGeometry);
+        }
         else
         {
             RegisterRetainedDependencies(clipGeometry);
@@ -352,6 +356,12 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
 
         return false;
+    }
+
+    private bool TryPushNativeMediaGeometryClip(MediaGeometry clipGeometry)
+    {
+        return _sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && nativeGeometrySink.PushNativeGeometryClip(clipGeometry);
     }
 
     public void PushOpacity(double opacity)

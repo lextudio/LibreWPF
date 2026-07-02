@@ -1066,7 +1066,10 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             if (WpfResourceResolver.AdaptGeometry(clipGeometry) is { } mediaGeometry)
             {
                 RegisterRetainedDependencies(clipGeometry);
-                _sink.PushClip(mediaGeometry);
+                if (!TryPushNativeMediaGeometryClip(mediaGeometry))
+                {
+                    _sink.PushClip(mediaGeometry);
+                }
             }
             else
             {
@@ -1102,6 +1105,12 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
 
         RegisterRetainedDependencies(clipGeometry);
         return true;
+    }
+
+    private bool TryPushNativeMediaGeometryClip(MediaGeometry clipGeometry)
+    {
+        return _sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && nativeGeometrySink.PushNativeGeometryClip(clipGeometry);
     }
 
     private bool TryPushPrimitiveRectangleClip(object? clipGeometry)

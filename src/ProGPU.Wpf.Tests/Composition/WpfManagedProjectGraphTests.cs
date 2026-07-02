@@ -11766,6 +11766,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeSink.DrawNativeImage(mediaImageSource, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeGlyphRun(mediaBrush, glyphRun)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("TryDrawNativePortableGeometry(brush, pen, geometry, mediaBrush, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeGeometrySink.DrawNativeGeometry(mediaBrush, mediaPen, portableGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("TryPushNativePortableClip(clipGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portableGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayPoint(object? pointValue, out WpfReplayPoint point)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("pointValue is Point mediaPoint", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
@@ -11799,6 +11804,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObjectRenderDataDrawingContextAdaptsTypedPrimitiveValues", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.DoesNotContain("ObjectRenderDataDrawingContextAdaptsReflectedPrimitiveValues", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextUsesNativePrimitivesWhenAvailable", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextUsesNativePortableGeometryWhenAvailable", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextUsesNativePortableClipWhenAvailable", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.DoesNotContain("DecodePushTransformFallsBackToLocalMatrixTransformWhenForeignAssemblyShadowsType", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.DoesNotContain("\"System.Windows.Media.MatrixTransform\"", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);

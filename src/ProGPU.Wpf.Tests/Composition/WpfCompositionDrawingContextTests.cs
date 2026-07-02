@@ -143,6 +143,42 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextUsesNativePortableGeometryWhenAvailable()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var geometry = new FakeRectangleGeometry(new FakeRect(1, 2, 30, 40));
+
+        context.DrawGeometry(Brushes.Green, null, geometry);
+
+        Assert.Equal(new[] { "DrawNativeGeometry" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        var replayed = Assert.Single(sink.NativeGeometries);
+        Assert.Same(Brushes.Green, replayed.Brush);
+        Assert.Null(replayed.Pen);
+        Assert.Equal(PortableGeometryPathKind.Path, replayed.Geometry.Kind);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextUsesNativePortableClipWhenAvailable()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var geometry = new FakeRectangleGeometry(new FakeRect(5, 6, 70, 80));
+
+        context.PushClip(geometry);
+
+        Assert.Equal(new[] { "PushNativeGeometryClip" }, sink.Operations);
+        var clip = Assert.Single(sink.NativeGeometryClips);
+        Assert.Equal(PortableGeometryPathKind.Path, clip.Kind);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextUsesImageSourceAdapter()
     {
         var sink = new RecordingSink();
@@ -1329,7 +1365,10 @@ public sealed class WpfCompositionDrawingContextTests
         }
     }
 
-    private sealed class NativeRecordingSink : RecordingSink, IWpfNativePrimitiveCommandSink
+    private sealed class NativeRecordingSink :
+        RecordingSink,
+        IWpfNativePrimitiveCommandSink,
+        IWpfNativeGeometryCommandSink
     {
         public List<(MediaPen? Pen, WpfReplayPoint Point0, WpfReplayPoint Point1)> NativeLines { get; } = new();
 
@@ -1342,6 +1381,10 @@ public sealed class WpfCompositionDrawingContextTests
         public List<(MediaImageSource ImageSource, WpfReplayRect Rectangle)> NativeImages { get; } = new();
 
         public List<(MediaBrush? ForegroundBrush, object GlyphRunResource)> NativeGlyphRuns { get; } = new();
+
+        public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeGeometries { get; } = new();
+
+        public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
 
         public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
         {
@@ -1387,6 +1430,20 @@ public sealed class WpfCompositionDrawingContextTests
         public void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds)
         {
             Operations.Add("PushNativeOpacityMask");
+        }
+
+        public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
+        {
+            Operations.Add("DrawNativeGeometry");
+            NativeGeometries.Add((brush, pen, geometry));
+            return true;
+        }
+
+        public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
+        {
+            Operations.Add("PushNativeGeometryClip");
+            NativeGeometryClips.Add(clipGeometry);
+            return true;
         }
     }
 }

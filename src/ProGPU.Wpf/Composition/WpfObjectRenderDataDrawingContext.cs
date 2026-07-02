@@ -9,6 +9,8 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPortableRenderDataSink = System.Windows.Media.IPortableRenderDataDrawingContextSink;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
+using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
+using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 
@@ -384,6 +386,11 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         ThrowIfClosed();
         MediaBrush? mediaBrush = WpfResourceResolver.AdaptBrush(brush);
         MediaPen? mediaPen = WpfResourceResolver.AdaptPen(pen);
+        if (TryDrawNativePortableGeometry(brush, pen, geometry, mediaBrush, mediaPen))
+        {
+            return;
+        }
+
         MediaGeometry? mediaGeometry = WpfResourceResolver.AdaptGeometry(geometry);
         if (mediaGeometry == null)
         {
@@ -435,6 +442,35 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         }
 
         CountUnsupportedIfPresent(brush, pen, geometry);
+    }
+
+    private bool TryDrawNativePortableGeometry(
+        object? brush,
+        object? pen,
+        object? geometry,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen)
+    {
+        if (brush != null && WpfDrawingReplay.IsTileBrush(brush))
+        {
+            return false;
+        }
+
+        if (mediaBrush == null && mediaPen == null)
+        {
+            return false;
+        }
+
+        if (_sink is not IWpfNativeGeometryCommandSink nativeGeometrySink
+            || !TryGetPortableGeometryPath(geometry, out var portableGeometry)
+            || !nativeGeometrySink.DrawNativeGeometry(mediaBrush, mediaPen, portableGeometry))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(brush, pen, geometry);
+        CountApplied();
+        return true;
     }
 
     public void DrawImage(object? imageSource, object? rectangle)
@@ -574,19 +610,35 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             _sink.PushNoOpScope();
         }
-        else if (WpfResourceResolver.AdaptGeometry(clipGeometry) is { } mediaGeometry)
+        else if (!TryPushNativePortableClip(clipGeometry))
         {
-            RegisterRetainedDependencies(clipGeometry);
-            _sink.PushClip(mediaGeometry);
-        }
-        else
-        {
-            _sink.PushNoOpScope();
-            CountUnsupported();
+            if (WpfResourceResolver.AdaptGeometry(clipGeometry) is { } mediaGeometry)
+            {
+                RegisterRetainedDependencies(clipGeometry);
+                _sink.PushClip(mediaGeometry);
+            }
+            else
+            {
+                _sink.PushNoOpScope();
+                CountUnsupported();
+            }
         }
 
         _stackDepth++;
         CountApplied();
+    }
+
+    private bool TryPushNativePortableClip(object? clipGeometry)
+    {
+        if (_sink is not IWpfNativeGeometryCommandSink nativeGeometrySink
+            || !TryGetPortableGeometryPath(clipGeometry, out var portableGeometry)
+            || !nativeGeometrySink.PushNativeGeometryClip(portableGeometry))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(clipGeometry);
+        return true;
     }
 
     public void PushOpacityMask(object? opacityMask)
@@ -905,6 +957,14 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
 
         rectangle = default;
         return false;
+    }
+
+    private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)
+    {
+        portableGeometry = null!;
+        return geometry is PortableGeometryPathSource portableGeometrySource
+            && portableGeometrySource.TryGetPortableGeometryPath(out portableGeometry)
+            && portableGeometry != null;
     }
 
     private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)

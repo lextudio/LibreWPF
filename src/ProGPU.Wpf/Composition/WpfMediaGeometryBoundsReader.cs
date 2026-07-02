@@ -2,6 +2,7 @@ using System.Windows;
 using MediaGeometry = System.Windows.Media.Geometry;
 using NativePathGeometrySource = ProGPU.Scene.INativePathGeometrySource;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
+using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
@@ -17,6 +18,20 @@ internal static class WpfMediaGeometryBoundsReader
             {
                 return true;
             }
+
+            if (WpfPortablePathGeometryConverter.TryGetNativePathBounds(portableGeometry, out bounds))
+            {
+                return true;
+            }
+
+            if (!WpfPortableGeometryPathData.HasPathData(portableGeometry))
+            {
+                bounds = FromPortableRect(portableGeometry.Bounds);
+                return IsUsableBounds(bounds);
+            }
+
+            bounds = default;
+            return false;
         }
 
         if (geometry is NativePathGeometrySource nativePathGeometrySource
@@ -36,6 +51,11 @@ internal static class WpfMediaGeometryBoundsReader
     }
 
     private static WpfReplayRect FromMediaRect(Rect bounds)
+    {
+        return new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+    }
+
+    private static WpfReplayRect FromPortableRect(PortableRect bounds)
     {
         return new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }

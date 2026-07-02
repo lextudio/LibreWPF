@@ -876,6 +876,87 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void MediaGeometryBoundsReaderUsesNativePortablePathBeforeGenericBoundsFallback()
+    {
+        var geometry = new PortableThrowingBoundsPathGeometry(new PortableGeometryPath
+        {
+            Kind = PortableGeometryPathKind.Path,
+            Bounds = new PortableRect(0, 0, 1, 1),
+            Transform = PortableMatrix3x2.Identity,
+            Figures =
+            [
+                new PortablePathFigure
+                {
+                    StartPoint = new PortablePoint(7, 9),
+                    IsClosed = false,
+                    IsFilled = false,
+                    Segments =
+                    [
+                        PortablePathSegment.Line(
+                            new PortablePoint(47, 9),
+                            isSmoothJoin: false,
+                            isStroked: false)
+                    ]
+                }
+            ]
+        });
+
+        var hasBounds = WpfMediaGeometryBoundsReader.TryGetGeometryBounds(geometry, out var bounds);
+
+        Assert.True(hasBounds);
+        AssertReplayRect(7, 9, 40, 0, bounds);
+    }
+
+    [Fact]
+    public void MediaGeometryBoundsReaderPreservesMetadataOnlyPortableBoundsFallback()
+    {
+        var geometry = new PortableThrowingBoundsPathGeometry(new PortableGeometryPath
+        {
+            Kind = PortableGeometryPathKind.Path,
+            Bounds = new PortableRect(12, 14, 32, 24),
+            Transform = PortableMatrix3x2.Identity,
+            Figures = []
+        });
+
+        var hasBounds = WpfMediaGeometryBoundsReader.TryGetGeometryBounds(geometry, out var bounds);
+
+        Assert.True(hasBounds);
+        AssertReplayRect(12, 14, 32, 24, bounds);
+    }
+
+    [Fact]
+    public void MediaGeometryBoundsReaderRejectsStalePortableMetadataWhenPathDataCannotBeBound()
+    {
+        var geometry = new PortableThrowingBoundsPathGeometry(new PortableGeometryPath
+        {
+            Kind = PortableGeometryPathKind.Path,
+            Bounds = new PortableRect(12, 14, 32, 24),
+            Transform = PortableMatrix3x2.Identity,
+            Figures =
+            [
+                new PortablePathFigure
+                {
+                    StartPoint = new PortablePoint(double.NaN, 9),
+                    IsClosed = false,
+                    IsFilled = false,
+                    Segments =
+                    [
+                        PortablePathSegment.Line(
+                            new PortablePoint(double.NaN, 9),
+                            isSmoothJoin: false,
+                            isStroked: false)
+                    ]
+                }
+            ]
+        });
+
+        var hasBounds = WpfMediaGeometryBoundsReader.TryGetGeometryBounds(geometry, out var bounds);
+
+        Assert.False(hasBounds);
+        Assert.Equal(default, bounds);
+    }
+
+    [Fact]
     public void ReplaySubtreeInfersRetainedBoundsFromNativeMediaGeometryWithoutGenericBoundsFallback()
     {
         var geometry = CreateThrowingBoundsCurvedPathGeometry(new Rect(5, 6, 40, 30));
@@ -5437,6 +5518,24 @@ public sealed class WpfVisualTreeRendererTests
     private sealed class ThrowingBoundsPathGeometry : PathGeometry
     {
         public override Rect Bounds => throw new InvalidOperationException("Generic path bounds should not be used.");
+    }
+
+    private sealed class PortableThrowingBoundsPathGeometry : PathGeometry, PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableThrowingBoundsPathGeometry(PortableGeometryPath path)
+        {
+            _path = path;
+        }
+
+        public override Rect Bounds => throw new InvalidOperationException("Generic path bounds should not be used.");
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
     }
 
     private sealed class FakeMatrixTransform : PortableTransformMatrixSource

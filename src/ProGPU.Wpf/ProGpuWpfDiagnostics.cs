@@ -2,9 +2,68 @@ namespace System.Windows.Media.ProGPU;
 
 public static class ProGpuWpfDiagnostics
 {
+    public readonly record struct RenderSurfaceGeometrySnapshot(
+        uint LogicalWidth,
+        uint LogicalHeight,
+        uint PixelWidth,
+        uint PixelHeight,
+        double DpiScaleX,
+        double DpiScaleY,
+        double DpiScale,
+        uint ViewportX,
+        uint ViewportY,
+        uint ViewportWidth,
+        uint ViewportHeight);
+
     public static bool TryGetWindowHost(object? window, out ProGpuWpfWindowHost? host)
     {
+        if (window is ProGpuWpfWindowHost directHost)
+        {
+            host = directHost;
+            return true;
+        }
+
         return WpfPortableWindowActivation.TryGetActiveHost(window, out host);
+    }
+
+    public static bool TryRequestRender(object? window)
+    {
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        host.RequestRenderAndWakeNativeLoop();
+        return true;
+    }
+
+    public static bool TryGetRenderSurfaceGeometry(object? window, out RenderSurfaceGeometrySnapshot geometry)
+    {
+        geometry = default;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        geometry = CreateSnapshot(host.ResolveCurrentRenderSurfaceGeometryForDiagnostics());
+        return true;
+    }
+
+    public static bool TryRaiseInput(
+        object? window,
+        Platform.WpfInputEventArgs input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        host.RaiseInputForDiagnostics(input);
+        return true;
     }
 
     public static bool HasGpuHitTestCache(object? window)
@@ -58,5 +117,22 @@ public static class ProGpuWpfDiagnostics
 
         ArgumentNullException.ThrowIfNull(host);
         return host.TryQueryHitTestBoundsOwners(minX, minY, maxX, maxY, out owners);
+    }
+
+    private static RenderSurfaceGeometrySnapshot CreateSnapshot(
+        ProGpuWpfWindowHost.RenderSurfaceGeometry geometry)
+    {
+        return new RenderSurfaceGeometrySnapshot(
+            geometry.LogicalWidth,
+            geometry.LogicalHeight,
+            geometry.PixelWidth,
+            geometry.PixelHeight,
+            geometry.DpiScaleX,
+            geometry.DpiScaleY,
+            geometry.DpiScale,
+            geometry.ViewportX,
+            geometry.ViewportY,
+            geometry.ViewportWidth,
+            geometry.ViewportHeight);
     }
 }

@@ -1003,6 +1003,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return geometry;
     }
 
+    internal RenderSurfaceGeometry ResolveCurrentRenderSurfaceGeometryForDiagnostics()
+    {
+        return ResolveCurrentRenderSurfaceGeometry();
+    }
+
     private static uint ResolveGeometryViewportDimension(uint viewportDimension, uint fallbackPixelDimension)
     {
         return viewportDimension > 0u
@@ -1923,6 +1928,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         RequestRenderAndWakeNativeLoop();
+    }
+
+    internal void RaiseInputForDiagnostics(WpfInputEventArgs input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        OnPlatformInputReceived(null, input);
     }
 
     private static void TraceInputEvent(string stage, WpfInputEventArgs input)

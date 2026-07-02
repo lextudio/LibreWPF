@@ -31,7 +31,8 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfRetainedVisualStateSink,
     IWpfNativeTransformCommandSink,
     IWpfNativePrimitiveCommandSink,
-    IWpfNativeClipCommandSink
+    IWpfNativeClipCommandSink,
+    IWpfHitTestOwnerScopeCommandSink
 {
     private enum ScopeKind
     {
@@ -72,7 +73,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             throw new InvalidOperationException("The drawing frame does not expose a retained WPF visual root.");
         }
 
-        _visualScopes.Push(new VisualScope(rootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
+        _visualScopes.Push(new VisualScope(drawingFrame, rootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
     }
 
     internal ProGpuRetainedCompositionCommandSink(
@@ -85,7 +86,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         ArgumentNullException.ThrowIfNull(rootVisual);
 
         _drawingFrame = drawingFrame;
-        _visualScopes.Push(new VisualScope(rootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
+        _visualScopes.Push(new VisualScope(drawingFrame, rootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
     }
 
     public MediaDrawingContext? DrawingContext => Current.DrawingContext;
@@ -117,6 +118,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         int hitTestOwnerId = _drawingFrame.GetOrCreateHitTestOwnerId(sourceVisual);
         ownerVisual.HitTestId = hitTestOwnerId;
         _visualScopes.Push(new VisualScope(
+            _drawingFrame,
             ownerVisual,
             Current.Context,
             Current.Viewport3DTextureCache,
@@ -153,6 +155,21 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         }
 
         PopVisualScope();
+    }
+
+    bool IWpfHitTestOwnerScopeCommandSink.PushHitTestOwner(object sourceVisual)
+    {
+        ThrowIfClosed();
+        ArgumentNullException.ThrowIfNull(sourceVisual);
+
+        _drawingFrame.RegisterRetainedWpfVisualOwner(sourceVisual, Current.Visual);
+        return ((IWpfHitTestOwnerScopeCommandSink)Current.Sink).PushHitTestOwner(sourceVisual);
+    }
+
+    void IWpfHitTestOwnerScopeCommandSink.PopHitTestOwner()
+    {
+        ThrowIfClosed();
+        ((IWpfHitTestOwnerScopeCommandSink)Current.Sink).PopHitTestOwner();
     }
 
     public void ApplyVisualState(in WpfRetainedVisualState state)
@@ -534,7 +551,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         var visualScopeKind = scopeKind == ScopeKind.VisualEffect ? VisualScopeKind.Effect : VisualScopeKind.Cache;
         var hitTestId = Current.HitTestId;
         visual.HitTestId = hitTestId;
-        var scope = new VisualScope(visual, Current.Context, Current.Viewport3DTextureCache, visualScopeKind, _scopeStack.Count, hitTestId);
+        var scope = new VisualScope(_drawingFrame, visual, Current.Context, Current.Viewport3DTextureCache, visualScopeKind, _scopeStack.Count, hitTestId);
         if (bounds.X != 0 || bounds.Y != 0)
         {
             scope.Sink.PushNativeTransform(Matrix4x4.CreateTranslation((float)-bounds.X, (float)-bounds.Y, 0f));
@@ -572,6 +589,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     private sealed class VisualScope : IDisposable
     {
         public VisualScope(
+            ProGpuWpfDrawingFrame drawingFrame,
             ProGpuRetainedDrawingVisual visual,
             global::ProGPU.Backend.WgpuContext? context,
             WpfViewport3DTextureCache? viewport3DTextureCache,
@@ -579,13 +597,19 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             int scopeStackDepth,
             int hitTestId = 0)
         {
+            ArgumentNullException.ThrowIfNull(drawingFrame);
             Visual = visual;
             Context = context;
             Viewport3DTextureCache = viewport3DTextureCache;
             ScopeKind = scopeKind;
             ScopeStackDepth = scopeStackDepth;
             HitTestId = hitTestId;
-            Sink = new ProGpuCompositionCommandSink(visual.Context, context, viewport3DTextureCache, hitTestId: hitTestId);
+            Sink = new ProGpuCompositionCommandSink(
+                visual.Context,
+                context,
+                viewport3DTextureCache,
+                hitTestId: hitTestId,
+                hitTestOwnerMap: drawingFrame.HitTestOwnerMap);
         }
 
         public ProGpuRetainedDrawingVisual Visual { get; }

@@ -130,11 +130,12 @@ public sealed class WpfReflectionResourceResolverTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(Assert.Single(sink.DrawRectangles).Brush!.ToNative());
-        Assert.Equal(0, nativeBrush.StartPoint.X);
-        Assert.Equal(0, nativeBrush.StartPoint.Y);
-        Assert.Equal(1, nativeBrush.EndPoint.X);
-        Assert.Equal(1, nativeBrush.EndPoint.Y);
+        var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(
+            ToNative(Assert.Single(sink.DrawRectangles).Brush!, new WpfReplayRect(1, 2, 30, 40)));
+        Assert.Equal(1, nativeBrush.StartPoint.X);
+        Assert.Equal(2, nativeBrush.StartPoint.Y);
+        Assert.Equal(31, nativeBrush.EndPoint.X);
+        Assert.Equal(42, nativeBrush.EndPoint.Y);
         Assert.Equal(0.75f, nativeBrush.Opacity);
         Assert.Equal(ProGPU.Vector.GradientSpreadMethod.Repeat, nativeBrush.SpreadMethod);
         Assert.Equal(ProGPU.Vector.GradientColorInterpolationMode.ScRgbLinearInterpolation, nativeBrush.ColorInterpolationMode);
@@ -349,7 +350,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void AdaptNativeBrushUsesTypedMediaBrushWithoutReflection()
+    public void AdaptNativeBrushDoesNotInvokeShimOnlyMediaBrushToNative()
     {
         var brush = new DirectNativeBrush();
 
@@ -359,13 +360,26 @@ public sealed class WpfReflectionResourceResolverTests
             out var unsupportedStateCount);
 
         Assert.Equal(0, unsupportedStateCount);
-        Assert.Same(brush.NativeBrush, nativeBrush);
-        Assert.Equal(1, brush.BoundsCallCount);
+        Assert.Null(nativeBrush);
+        Assert.Equal(0, brush.BoundsCallCount);
         Assert.Equal(0, brush.ParameterlessCallCount);
-        Assert.Equal(1, brush.LastBounds.X);
-        Assert.Equal(2, brush.LastBounds.Y);
-        Assert.Equal(30, brush.LastBounds.Width);
-        Assert.Equal(40, brush.LastBounds.Height);
+    }
+
+    [Fact]
+    public void ProGpuNativeBrushClonePreservesNativeBrushState()
+    {
+        var nativeBrush = new ProGPU.Vector.SolidColorBrush(Vector4.One);
+        var brush = new ProGpuNativeBrush(
+            nativeBrush,
+            ProGpuBrushMappingMode.RelativeToBoundingBox,
+            Matrix4x4.CreateTranslation(5, 7, 0),
+            Matrix4x4.Identity);
+
+        var clone = Assert.IsType<ProGpuNativeBrush>(brush.Clone());
+
+        Assert.NotSame(brush, clone);
+        Assert.Equal(ProGpuBrushMappingMode.RelativeToBoundingBox, clone.MappingMode);
+        Assert.Same(nativeBrush, clone.ToNative());
     }
 
     [Fact]
@@ -541,11 +555,12 @@ public sealed class WpfReflectionResourceResolverTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(Assert.Single(sink.DrawRectangles).Brush!.ToNative());
-        Assert.Equal(0, nativeBrush.StartPoint.X);
-        Assert.Equal(0, nativeBrush.StartPoint.Y);
-        Assert.Equal(1, nativeBrush.EndPoint.X);
-        Assert.Equal(1, nativeBrush.EndPoint.Y);
+        var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(
+            ToNative(Assert.Single(sink.DrawRectangles).Brush!, new WpfReplayRect(1, 2, 30, 40)));
+        Assert.Equal(1, nativeBrush.StartPoint.X);
+        Assert.Equal(2, nativeBrush.StartPoint.Y);
+        Assert.Equal(31, nativeBrush.EndPoint.X);
+        Assert.Equal(42, nativeBrush.EndPoint.Y);
         Assert.Equal(0.75f, nativeBrush.Opacity);
         Assert.Equal(ProGPU.Vector.GradientSpreadMethod.Repeat, nativeBrush.SpreadMethod);
         Assert.Equal(ProGPU.Vector.GradientColorInterpolationMode.ScRgbLinearInterpolation, nativeBrush.ColorInterpolationMode);
@@ -582,14 +597,15 @@ public sealed class WpfReflectionResourceResolverTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        var nativeBrush = Assert.IsType<ProGpuRadialGradientBrush>(Assert.Single(sink.DrawRectangles).Brush!.ToNative());
-        Assert.Equal(0.5f, nativeBrush.Center.X);
-        Assert.Equal(0.5f, nativeBrush.Center.Y);
-        Assert.Equal(0.25f, nativeBrush.GradientOrigin.X);
-        Assert.Equal(0.75f, nativeBrush.GradientOrigin.Y);
-        Assert.Equal(0.25f, nativeBrush.RadiusX);
-        Assert.Equal(0.5f, nativeBrush.RadiusY);
-        Assert.Equal(0.5f, nativeBrush.Radius);
+        var nativeBrush = Assert.IsType<ProGpuRadialGradientBrush>(
+            ToNative(Assert.Single(sink.DrawRectangles).Brush!, new WpfReplayRect(1, 2, 30, 40)));
+        Assert.Equal(16, nativeBrush.Center.X);
+        Assert.Equal(22, nativeBrush.Center.Y);
+        Assert.Equal(8.5f, nativeBrush.GradientOrigin.X);
+        Assert.Equal(32, nativeBrush.GradientOrigin.Y);
+        Assert.Equal(7.5f, nativeBrush.RadiusX);
+        Assert.Equal(20, nativeBrush.RadiusY);
+        Assert.Equal(20, nativeBrush.Radius);
         Assert.Equal(ProGPU.Vector.GradientSpreadMethod.Reflect, nativeBrush.SpreadMethod);
         Assert.Equal(2, nativeBrush.Stops.Length);
     }
@@ -3195,6 +3211,11 @@ public sealed class WpfReflectionResourceResolverTests
         WriteUInt32(payload, 32, 1);
         var record = CreateRecord(WpfMilCommandId.DrawRectangle, payload);
         return new FakeRenderData(record, record.Length, new FakeDependentResources(brush));
+    }
+
+    private static global::ProGPU.Vector.Brush? ToNative(MediaBrush brush, WpfReplayRect bounds)
+    {
+        return WpfReflectionResourceResolver.AdaptNativeBrush(brush, bounds, out _);
     }
 
     private static void WriteRect(byte[] target, int offset, double x, double y, double width, double height)

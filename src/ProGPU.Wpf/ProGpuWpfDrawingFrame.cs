@@ -273,7 +273,8 @@ public sealed class ProGpuWpfDrawingFrame
             _rootVisual.Context,
             _context,
             _viewport3DTextureCache,
-            hitTestId: ownerVisual != null ? GetOrCreateHitTestOwnerId(ownerVisual) : 0);
+            hitTestId: ownerVisual != null ? GetOrCreateHitTestOwnerId(ownerVisual) : 0,
+            hitTestOwnerMap: _hitTestOwnerMap);
     }
 
     private static double NormalizeDpiScale(double dpiScale)

@@ -119,3 +119,10 @@ internal interface IWpfNativeClipCommandSink
 {
     void PushNativeClip(WpfReplayRect bounds);
 }
+
+internal interface IWpfHitTestOwnerScopeCommandSink
+{
+    bool PushHitTestOwner(object sourceVisual);
+
+    void PopHitTestOwner();
+}

@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using System.Windows;
+using System.Windows.Media.Composition;
 using System.Windows.Media.ProGPU.Composition;
 using MediaBrush = System.Windows.Media.Brush;
 using ProGpuBrush = global::ProGPU.Vector.Brush;
@@ -57,14 +58,43 @@ internal sealed class ProGpuNativeBrush : MediaBrush
 
     public ProGpuBrushMappingMode MappingMode { get; }
 
-    public override ProGpuBrush ToNative()
+    public new ProGpuBrush ToNative()
     {
         return _brush;
     }
 
-    public override ProGpuBrush ToNative(Rect bounds)
+    protected override Freezable CreateInstanceCore()
     {
-        return ToNative(bounds.X, bounds.Y, bounds.Width, bounds.Height, IsUsable(bounds));
+        return new ProGpuNativeBrush(
+            _brush,
+            MappingMode,
+            _transform,
+            _relativeTransform,
+            _unsupportedGradientStateCount);
+    }
+
+    internal override DUCE.ResourceHandle AddRefOnChannelCore(DUCE.Channel channel)
+    {
+        return DUCE.ResourceHandle.Null;
+    }
+
+    internal override void ReleaseOnChannelCore(DUCE.Channel channel)
+    {
+    }
+
+    internal override DUCE.ResourceHandle GetHandleCore(DUCE.Channel channel)
+    {
+        return DUCE.ResourceHandle.Null;
+    }
+
+    internal override int GetChannelCountCore()
+    {
+        return 0;
+    }
+
+    internal override DUCE.Channel GetChannelCore(int index)
+    {
+        throw new ArgumentOutOfRangeException(nameof(index));
     }
 
     internal ProGpuBrush ToNative(WpfReplayRect bounds)
@@ -99,17 +129,6 @@ internal sealed class ProGpuNativeBrush : MediaBrush
         };
     }
 
-    internal int CountUnsupportedStateForBounds(Rect bounds)
-    {
-        var count = _unsupportedGradientStateCount;
-        if (HasUnsupportedTransformForBounds(bounds))
-        {
-            count++;
-        }
-
-        return count;
-    }
-
     internal int CountUnsupportedStateForBounds(WpfReplayRect bounds)
     {
         var count = _unsupportedGradientStateCount;
@@ -119,11 +138,6 @@ internal sealed class ProGpuNativeBrush : MediaBrush
         }
 
         return count;
-    }
-
-    private bool HasUnsupportedTransformForBounds(Rect bounds)
-    {
-        return HasUnsupportedTransformForBounds(bounds.X, bounds.Y, bounds.Width, bounds.Height, IsUsable(bounds));
     }
 
     private bool HasUnsupportedTransformForBounds(WpfReplayRect bounds)
@@ -251,17 +265,6 @@ internal sealed class ProGpuNativeBrush : MediaBrush
     private static bool NearlyEqual(float left, float right)
     {
         return MathF.Abs(left - right) <= 0.0001f;
-    }
-
-    private static bool IsUsable(Rect bounds)
-    {
-        return !bounds.IsEmpty
-            && bounds.Width > 0
-            && bounds.Height > 0
-            && IsFinite(bounds.X)
-            && IsFinite(bounds.Y)
-            && IsFinite(bounds.Width)
-            && IsFinite(bounds.Height);
     }
 
     private static bool IsUsable(WpfReplayRect bounds)

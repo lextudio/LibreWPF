@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.ProGPU;
 using System.Windows.Threading;
 using DataGridLicenser = Xceed.Wpf.DataGrid.Licenser;
 using ToolkitLicenser = Xceed.Wpf.Toolkit.Licenser;
@@ -13,6 +15,8 @@ namespace ProGPU.Wpf.XceedPaidApp;
 
 public partial class App : Application
 {
+    private const int MaxRunValidationAttempts = 40;
+
     internal static int StartupEventCount { get; private set; }
 
     internal static int ExitEventCount { get; private set; }
@@ -86,6 +90,21 @@ public partial class App : Application
             var window = Current.MainWindow as MainWindow
                 ?? Current.Windows.OfType<MainWindow>().FirstOrDefault()
                 ?? throw new InvalidOperationException("Expected paid Xceed MainWindow.");
+            if (!IsProGpuNativeTargetReady(window))
+            {
+                var attempt = Current.Properties["XceedPaidRunValidationAttempt"] is int currentAttempt
+                    ? currentAttempt
+                    : 0;
+                if (attempt < MaxRunValidationAttempts)
+                {
+                    Current.Properties["XceedPaidRunValidationAttempt"] = attempt + 1;
+                    Current.Dispatcher.BeginInvoke(
+                        DispatcherPriority.ApplicationIdle,
+                        new Action(ValidateRunningApplication));
+                    return;
+                }
+            }
+
             XceedPaidSelfTest.Validate(window, expectLoaded: true);
             Console.WriteLine("ProGPU WPF paid Xceed Application.Run validation succeeded.");
             Current.Shutdown();
@@ -95,6 +114,17 @@ public partial class App : Application
             Console.Error.WriteLine(ex);
             Current.Shutdown(1);
         }
+    }
+
+    private static bool IsProGpuNativeTargetReady(MainWindow window)
+    {
+        if (!ProGpuWpfDiagnostics.TryGetWindowHost(window, out var host) || host is null)
+        {
+            return false;
+        }
+
+        host.DoEvents();
+        return host.CompositionTarget != null;
     }
 
     private static Window CreateMissingLicenseWindow(XceedPaidLicenseStatus licenseStatus)
@@ -377,7 +407,186 @@ internal static class XceedPaidSelfTest
             AssertEqual(true, window.MaterialActionsSwitch.IsChecked, "paid Toolkit loaded MaterialSwitch binding");
             AssertEqual("ProGPU", window.MaterialFilterTextField.Text, "paid Toolkit loaded MaterialTextField binding");
             window.ExercisePaidDataGridRuntimeCommands();
+            ValidateProGpuDiagnostics(window);
         }
+    }
+
+    private static void ValidateProGpuDiagnostics(MainWindow window)
+    {
+        if (!ProGpuWpfDiagnostics.TryGetWindowHost(window, out var host) || host is null)
+        {
+            throw new InvalidOperationException("Expected paid Xceed window to be attached to a ProGPU WPF host.");
+        }
+
+        if (host.PortablePresentationSource is null)
+        {
+            throw new InvalidOperationException("Expected paid Xceed ProGPU host to expose a portable presentation source.");
+        }
+
+        window.PaidDataGridDocument.IsSelected = true;
+        window.PaidDataGridDocument.IsActive = true;
+        window.PaidDataGrid.UpdateLayout();
+        host.DoEvents();
+
+        if (!TryFindGpuPointOwnersUnder(host, window, window.PaidDataGrid, out var pointOwners, out var hitPoint, out var pointDiagnostics))
+        {
+            throw new InvalidOperationException(
+                $"Expected paid Xceed DataGrid point to resolve GPU hit-test owners. {pointDiagnostics}");
+        }
+
+        if (!ContainsOwnerUnder(window.PaidDataGrid, pointOwners))
+        {
+            throw new InvalidOperationException(
+                $"Expected paid Xceed DataGrid point GPU owners at {hitPoint.X:0.#},{hitPoint.Y:0.#} to include the DataGrid subtree; owners: {DescribeOwners(pointOwners)}.");
+        }
+
+        var topLeft = window.PaidDataGrid.TranslatePoint(new Point(8, 8), window);
+        var bottomRight = window.PaidDataGrid.TranslatePoint(
+            new Point(Math.Max(9, window.PaidDataGrid.ActualWidth - 8), Math.Max(9, window.PaidDataGrid.ActualHeight - 8)),
+            window);
+        if (!ProGpuWpfDiagnostics.TryQueryHitTestBoundsOwners(
+                window,
+                topLeft.X,
+                topLeft.Y,
+                bottomRight.X,
+                bottomRight.Y,
+                out var boundsOwners) ||
+            boundsOwners.Length == 0)
+        {
+            throw new InvalidOperationException("Expected paid Xceed DataGrid bounds to resolve GPU hit-test owners.");
+        }
+
+        if (!ContainsOwnerUnder(window.PaidDataGrid, boundsOwners))
+        {
+            throw new InvalidOperationException(
+                $"Expected paid Xceed DataGrid bounds GPU owners to include the DataGrid subtree; owners: {DescribeOwners(boundsOwners)}.");
+        }
+
+        if (!ProGpuWpfDiagnostics.HasGpuHitTestCache(window))
+        {
+            throw new InvalidOperationException("Expected paid Xceed validation to populate the ProGPU hit-test cache.");
+        }
+    }
+
+    private static Point GetElementCenter(FrameworkElement element, UIElement root)
+    {
+        return element.TranslatePoint(
+            new Point(Math.Max(1, element.ActualWidth) / 2.0, Math.Max(1, element.ActualHeight) / 2.0),
+            root);
+    }
+
+    private static bool TryFindGpuPointOwnersUnder(
+        ProGpuWpfWindowHost host,
+        MainWindow window,
+        FrameworkElement element,
+        out object?[] owners,
+        out Point point,
+        out string diagnostics)
+    {
+        owners = Array.Empty<object?>();
+        point = default;
+        diagnostics = "No GPU point probes were executed.";
+
+        var width = Math.Max(1, element.ActualWidth);
+        var height = Math.Max(1, element.ActualHeight);
+        object?[] bestOwners = Array.Empty<object?>();
+        Point bestPoint = default;
+        string bestDiagnostics = string.Empty;
+        ReadOnlySpan<double> probes = [0.12, 0.25, 0.5, 0.75, 0.88];
+        foreach (var yFraction in probes)
+        {
+            foreach (var xFraction in probes)
+            {
+                var candidate = element.TranslatePoint(new Point(width * xFraction, height * yFraction), window);
+                var candidateDiagnostics = QueryGpuPointOwners(host, candidate, out var candidateOwners);
+                diagnostics = candidateDiagnostics;
+                if (candidateOwners.Length > 0)
+                {
+                    bestOwners = candidateOwners;
+                    bestPoint = candidate;
+                    bestDiagnostics = candidateDiagnostics;
+                }
+
+                if (candidateOwners.Length > 0 && ContainsOwnerUnder(element, candidateOwners))
+                {
+                    owners = candidateOwners;
+                    point = candidate;
+                    diagnostics = candidateDiagnostics;
+                    return true;
+                }
+            }
+        }
+
+        if (bestOwners.Length > 0)
+        {
+            owners = bestOwners;
+            point = bestPoint;
+            diagnostics = $"Closest mapped GPU owners at {bestPoint.X:0.#},{bestPoint.Y:0.#}: {DescribeOwners(bestOwners)}. {bestDiagnostics}";
+        }
+        else if (!string.IsNullOrWhiteSpace(bestDiagnostics))
+        {
+            diagnostics = bestDiagnostics;
+        }
+
+        return false;
+    }
+
+    private static string QueryGpuPointOwners(ProGpuWpfWindowHost host, Point point, out object?[] owners)
+    {
+        owners = Array.Empty<object?>();
+        var target = host.CompositionTarget;
+        if (target == null)
+        {
+            return "No ProGPU composition target is attached.";
+        }
+
+        var ownerBuffer = new object?[64];
+        if (!target.TryHitTestOwners(
+                new System.Numerics.Vector2((float)point.X, (float)point.Y),
+                ownerBuffer,
+                out var ownerCount,
+                out var summary))
+        {
+            return $"GPU point query at {point.X:0.#},{point.Y:0.#} did not execute; cache={target.LastGpuHitTestIndex != null}, ownerMap={target.GpuHitTestOwnerMap.Count}.";
+        }
+
+        if (ownerCount > 0)
+        {
+            owners = ownerBuffer[..ownerCount];
+        }
+
+        var index = target.LastGpuHitTestIndex;
+        return $"GPU point query at {point.X:0.#},{point.Y:0.#}: mappedOwners={ownerCount}, summaryHits={summary.Hit}, candidates={summary.CandidateCount}, primitives={index?.Primitives.Count ?? 0}, nodes={index?.Nodes.Count ?? 0}, ownerMap={target.GpuHitTestOwnerMap.Count}.";
+    }
+
+    private static bool ContainsOwnerUnder(DependencyObject root, IEnumerable<object?> owners)
+    {
+        return owners.OfType<DependencyObject>().Any(owner => IsSelfOrDescendantOf(owner, root));
+    }
+
+    private static bool IsSelfOrDescendantOf(DependencyObject owner, DependencyObject root)
+    {
+        for (DependencyObject? current = owner; current != null; current = GetParent(current))
+        {
+            if (ReferenceEquals(current, root))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static DependencyObject? GetParent(DependencyObject current)
+    {
+        return VisualTreeHelper.GetParent(current) ?? LogicalTreeHelper.GetParent(current);
+    }
+
+    private static string DescribeOwners(IEnumerable<object?> owners)
+    {
+        return string.Join(
+            ", ",
+            owners.Select(owner => owner?.GetType().FullName ?? "<null>").Take(12));
     }
 
     private static void AssertType<T>(string description)

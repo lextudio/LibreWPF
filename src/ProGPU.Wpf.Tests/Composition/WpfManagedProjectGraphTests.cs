@@ -278,6 +278,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "WpfPortableWindowActivation.cs");
+        var proGpuDiagnosticsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfDiagnostics.cs");
         var proGpuSchedulerPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -390,6 +394,7 @@ public sealed class WpfManagedProjectGraphTests
         var activationService = File.ReadAllText(activationServicePath);
         var presentationFrameworkModuleInitializer = File.ReadAllText(presentationFrameworkModuleInitializerPath);
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
+        var proGpuDiagnostics = File.ReadAllText(proGpuDiagnosticsPath);
         var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
         var proGpuPlatformServices = File.ReadAllText(proGpuPlatformServicesPath);
         var silkNetMonitorService = File.ReadAllText(silkNetMonitorServicePath);
@@ -533,6 +538,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryRegisterMediaContextRenderServiceByReflection", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(Action<object, TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(Action<TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("ConditionalWeakTable<object, WpfPortableWindowActivation>", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("RegisterActiveActivation(window, this)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("s_activeActivations.Remove(Window)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryGetActiveHost(object? window, out ProGpuWpfWindowHost? host)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("public static class ProGpuWpfDiagnostics", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableWindowActivation.TryGetActiveHost(window, out host)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("public static bool HasGpuHitTestCache(object? window)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryHitTestOwner(object? window, double x, double y, out object? owner)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryHitTestOwners(object? window, double x, double y, out object?[] owners)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryQueryHitTestBoundsOwners(", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("IWpfDelayedRenderScheduler delayedScheduler", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ProcessHostInputAndRequestRender", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.TryRequestNativeLoopWakeup();", proGpuActivation, StringComparison.Ordinal);
@@ -8331,6 +8346,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Application.Run validation requires license variables", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Shutdown(1)", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("window.ExercisePaidDataGridRuntimeCommands();", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Media.ProGPU;", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateProGpuDiagnostics(window);", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryGetWindowHost(window, out var host)", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TryFindGpuPointOwnersUnder(host, window, window.PaidDataGrid", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("target.TryHitTestOwners(", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("mappedOwners={ownerCount}, summaryHits={summary.Hit}", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryQueryHitTestBoundsOwners(", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.HasGpuHitTestCache(window)", appCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:xcdg=\"http://schemas.xceed.com/wpf/xaml/datagrid\"", mainWindowXaml, StringComparison.Ordinal);
@@ -8503,6 +8526,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("launchctl getenv", runScript, StringComparison.Ordinal);
         Assert.Contains("XCEED_TOOLKIT_LICENSE_KEY", runScript, StringComparison.Ordinal);
         Assert.Contains("XCEED_DATAGRID_LICENSE_KEY", runScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_REBUILD_PACKAGES", runScript, StringComparison.Ordinal);
+        Assert.Contains("-newer \"${sdk_package}\"", runScript, StringComparison.Ordinal);
+        Assert.Contains("\"${repo_root}/src/ProGPU.Wpf\"", runScript, StringComparison.Ordinal);
+        Assert.Contains("\"${repo_root}/external/ProGPU/src/ProGPU.Wpf.Interop\"", runScript, StringComparison.Ordinal);
         Assert.Contains("Running ProGPU WPF paid Xceed apphost validation", runScript, StringComparison.Ordinal);
     }
 
@@ -8748,6 +8775,35 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfReflectionResourceResolver.cs");
+        var proGpuPresentationCoreBrushPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Brush.cs");
+        var proGpuPresentationCoreProjectPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "PresentationCore",
+            "PresentationCore.csproj");
+        var proGpuPresentationCoreFreezablePath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "WindowsBase",
+            "System",
+            "Windows",
+            "Freezable.cs");
+        var proGpuNativeBrushPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "ProGpuNativeBrush.cs");
         var wpfBitmapSourceImageAdapterPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -9063,6 +9119,10 @@ public sealed class WpfManagedProjectGraphTests
         var wpfReflectionResourceResolverTests = File.ReadAllText(wpfReflectionResourceResolverTestsPath);
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
         var wpfReflectionResourceResolver = File.ReadAllText(wpfReflectionResourceResolverPath);
+        var proGpuPresentationCoreBrush = File.ReadAllText(proGpuPresentationCoreBrushPath);
+        var proGpuPresentationCoreProject = File.ReadAllText(proGpuPresentationCoreProjectPath);
+        var proGpuPresentationCoreFreezable = File.ReadAllText(proGpuPresentationCoreFreezablePath);
+        var proGpuNativeBrush = File.ReadAllText(proGpuNativeBrushPath);
         var wpfBitmapSourceImageAdapter = File.ReadAllText(wpfBitmapSourceImageAdapterPath);
         var portableBitmapSourcePixels = File.ReadAllText(portableBitmapSourcePixelsPath);
         var sourceBitmapSource = File.ReadAllText(sourceBitmapSourcePath);
@@ -11349,6 +11409,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AdaptNativeBrushCountsNonInvertiblePortableFixtureBrushTransform", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeBrushAppliesPortableLinearGradientTransform", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeBrushCountsNonInvertiblePortableLinearGradientTransform", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("public abstract class Brush : Freezable", proGpuPresentationCoreBrush, StringComparison.Ordinal);
+        Assert.Contains(@"<ProjectReference Include=""..\WindowsBase\WindowsBase.csproj"" />", proGpuPresentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains("public abstract class Freezable", proGpuPresentationCoreFreezable, StringComparison.Ordinal);
+        Assert.Contains("public Freezable Clone()", proGpuPresentationCoreFreezable, StringComparison.Ordinal);
+        Assert.Contains("protected virtual Freezable CreateInstanceCore()", proGpuPresentationCoreFreezable, StringComparison.Ordinal);
+        Assert.Contains("protected override Freezable CreateInstanceCore()", proGpuNativeBrush, StringComparison.Ordinal);
+        Assert.Contains("return new ProGpuNativeBrush(", proGpuNativeBrush, StringComparison.Ordinal);
+        Assert.Contains("ProGpuNativeBrushClonePreservesNativeBrushState", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodePushTransformRejectsReflectedMatrixShapeWithoutPortableContract", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptGlyphRunSkipsUnavailablePortableGlyphRunWithoutReflectionFallback", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("return portableBrushSource.TryGetPortableBrush(out var portableBrush)", wpfReflectionResourceResolver, StringComparison.Ordinal);
@@ -11363,10 +11431,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return ToMappedNativeBrush(brush, mappingMode, transform, relativeTransform, bounds);", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("adaptedPen.DashStyle = new DashStyle(dashArray, dashOffset)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("TryAdaptNativeShimBrush(resource, bounds, out var nativeProGpuBrush, out unsupportedStateCount)", wpfReflectionResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("TryAdaptNativeMediaBrush(resource, bounds, out var nativeBrush)", wpfReflectionResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("TryAdaptNativeMediaPen(resource, bounds, out var nativePen)", wpfReflectionResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("if (resource is not MediaBrush mediaBrush)", wpfReflectionResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("if (resource is not MediaPen mediaPen)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryAdaptNativeMediaBrush", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryAdaptNativeMediaPen", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain(".ToNative(ToMediaRect(bounds))", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (resource is not MediaBrush mediaBrush)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (resource is not MediaPen mediaPen)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("TryInvokeNativeBrush", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("TryInvokeNativePen", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("Type.GetType", wpfReflectionResourceResolver, StringComparison.Ordinal);

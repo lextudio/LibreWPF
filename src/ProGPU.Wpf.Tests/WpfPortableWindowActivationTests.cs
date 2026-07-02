@@ -101,6 +101,37 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void DiagnosticsResolveActiveHostWithoutReflectionUntilActivationDisposes()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        Assert.False(ProGpuWpfDiagnostics.TryGetWindowHost(window, out var missingHost));
+        Assert.Null(missingHost);
+        Assert.False(ProGpuWpfDiagnostics.HasGpuHitTestCache(window));
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+        Assert.True(ProGpuWpfDiagnostics.TryGetWindowHost(window, out var activeHost));
+        Assert.Same(host, activeHost);
+        Assert.False(ProGpuWpfDiagnostics.HasGpuHitTestCache(window));
+        Assert.False(ProGpuWpfDiagnostics.TryHitTestOwner(window, 1, 1, out var owner));
+        Assert.Null(owner);
+        Assert.False(ProGpuWpfDiagnostics.TryHitTestOwners(window, 1, 1, out var owners));
+        Assert.Empty(owners);
+        Assert.False(ProGpuWpfDiagnostics.TryQueryHitTestBoundsOwners(window, 0, 0, 10, 10, out var boundsOwners));
+        Assert.Empty(boundsOwners);
+
+        activation.Dispose();
+
+        Assert.False(ProGpuWpfDiagnostics.TryGetWindowHost(window, out var disposedHost));
+        Assert.Null(disposedHost);
+    }
+
+    [Fact]
     public void SetTitleAndClientSizeForwardWindowPropertyChangesToHost()
     {
         var scheduler = new TestRenderScheduler();

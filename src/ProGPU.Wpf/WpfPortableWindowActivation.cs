@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using ProGPU.Wpf.Interop;
 using System.Windows.Media.ProGPU.Platform;
 
@@ -7,6 +8,7 @@ namespace System.Windows.Media.ProGPU;
 
 public sealed class WpfPortableWindowActivation : IDisposable
 {
+    private static readonly ConditionalWeakTable<object, WpfPortableWindowActivation> s_activeActivations = new();
     private static readonly TimeSpan ApplicationIdleFlushTimeout = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan UpdateTickFlushTimeout = TimeSpan.FromMilliseconds(8);
     private bool _isDisposed;
@@ -32,6 +34,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.DragDropReceived += OnHostDragDropReceived;
         Host.RenderWakeupRequested += OnHostRenderWakeupRequested;
         Host.UpdateTick += OnHostUpdateTick;
+        RegisterActiveActivation(window, this);
         SynchronizeInitialWindowState(updatePortablePresentationSource: false);
     }
 
@@ -102,6 +105,20 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return true;
         }
 
+        return false;
+    }
+
+    internal static bool TryGetActiveHost(object? window, out ProGpuWpfWindowHost? host)
+    {
+        if (window != null &&
+            s_activeActivations.TryGetValue(window, out var activation) &&
+            !activation._isDisposed)
+        {
+            host = activation.Host;
+            return true;
+        }
+
+        host = null;
         return false;
     }
 
@@ -284,8 +301,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.UpdateTick -= OnHostUpdateTick;
         _mediaContextRenderRegistration?.Dispose();
         _mediaContextRenderRegistration = null;
+        s_activeActivations.Remove(Window);
         Host.Dispose();
         _isDisposed = true;
+    }
+
+    private static void RegisterActiveActivation(object window, WpfPortableWindowActivation activation)
+    {
+        s_activeActivations.Remove(window);
+        s_activeActivations.Add(window, activation);
     }
 
     public static bool TryAttach(

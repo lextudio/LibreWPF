@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using ProGPU.Backend;
 using ProGPU.DirectX;
+using Silk.NET.Core.Contexts;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 using Silk.NET.Windowing;
@@ -400,8 +401,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         ThrowIfDisposed();
         ProcessDispatcherQueueCore();
         EnsureWindow();
-        _window!.DoEvents();
+        _window!.IsVisible = _isHostVisible;
+        if (!_window.IsInitialized)
+        {
+            _window.Initialize();
+        }
+
+        EnsureCompositionTargetLoaded();
+        _window.DoEvents();
         _window.DoUpdate();
+        EnsureCompositionTargetLoaded();
         _window.DoRender();
         ProcessDispatcherQueueCore();
     }
@@ -568,9 +577,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnLoad()
     {
+        EnsureCompositionTargetLoaded();
+    }
+
+    private bool EnsureCompositionTargetLoaded()
+    {
+        if (_target != null)
+        {
+            return true;
+        }
+
         if (_window == null)
         {
-            return;
+            return false;
+        }
+
+        if (!CanCreateNativeRenderSurface(_window))
+        {
+            return false;
         }
 
         _target = ProGpuWpfCompositionTarget.CreateForWindow(_window);
@@ -581,6 +605,17 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         AttachWindowEventService();
         SynchronizePortablePresentationSourceGeometry();
         RequestRenderAndWakeNativeLoop();
+        return true;
+    }
+
+    private static bool CanCreateNativeRenderSurface(IWindow window)
+    {
+        if (window is not IView view || view.Handle == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        return window is INativeWindowSource { Native: not null };
     }
 
     private void OnResize(Vector2D<int> size)

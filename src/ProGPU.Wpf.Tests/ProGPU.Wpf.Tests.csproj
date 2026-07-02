@@ -15,8 +15,22 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\external\ProGPU\src\WindowsBase\WindowsBase.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\external\ProGPU\src\PresentationCore\PresentationCore.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj" />
     <ProjectReference Include="..\ProGPU.Wpf\ProGPU.Wpf.csproj" />
   </ItemGroup>
+
+  <Target Name="_ProGpuWpfRemoveNetCoreWindowsBaseFacade"
+          BeforeTargets="ResolveAssemblyReferences"
+          DependsOnTargets="ResolveTargetingPackAssets;ResolveLockFileReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference)"
+                 Condition="'%(Reference.Filename)' == 'WindowsBase' And $([System.String]::Copy('%(Reference.RootDir)%(Reference.Directory)').Contains('microsoft.netcore.app.ref'))" />
+      <ReferencePath Remove="@(ReferencePath)"
+                     Condition="'%(ReferencePath.Filename)' == 'WindowsBase' And $([System.String]::Copy('%(ReferencePath.RootDir)%(ReferencePath.Directory)').Contains('microsoft.netcore.app.ref'))" />
+      <ReferencePathWithRefAssemblies Remove="@(ReferencePathWithRefAssemblies)"
+                                      Condition="'%(ReferencePathWithRefAssemblies.Filename)' == 'WindowsBase' And $([System.String]::Copy('%(ReferencePathWithRefAssemblies.RootDir)%(ReferencePathWithRefAssemblies.Directory)').Contains('microsoft.netcore.app.ref'))" />
+    </ItemGroup>
+  </Target>
 </Project>

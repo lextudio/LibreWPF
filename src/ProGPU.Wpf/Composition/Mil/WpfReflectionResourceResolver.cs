@@ -309,11 +309,6 @@ public sealed class WpfReflectionResourceResolver :
             return nativeProGpuBrush;
         }
 
-        if (TryAdaptNativeMediaBrush(resource, bounds, out var nativeBrush))
-        {
-            return nativeBrush;
-        }
-
         return null;
     }
 
@@ -335,11 +330,6 @@ public sealed class WpfReflectionResourceResolver :
                 : null;
         }
 
-        if (TryAdaptNativeMediaPen(resource, bounds, out var nativePen))
-        {
-            return nativePen;
-        }
-
         return null;
     }
 
@@ -351,11 +341,6 @@ public sealed class WpfReflectionResourceResolver :
             && double.IsFinite(bounds.Y)
             && double.IsFinite(bounds.Width)
             && double.IsFinite(bounds.Height);
-    }
-
-    private static Rect ToMediaRect(WpfReplayRect bounds)
-    {
-        return new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -377,60 +362,6 @@ public sealed class WpfReflectionResourceResolver :
             unsupportedStateCount = proGpuNativeBrush.CountUnsupportedStateForBounds(bounds);
             nativeBrush = proGpuNativeBrush.ToNative(bounds);
             return nativeBrush != null;
-        }
-        catch (MissingMethodException)
-        {
-            return false;
-        }
-        catch (TypeLoadException)
-        {
-            return false;
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool TryAdaptNativeMediaBrush(
-        object resource,
-        WpfReplayRect bounds,
-        out global::ProGPU.Vector.Brush? nativeBrush)
-    {
-        nativeBrush = null;
-        try
-        {
-            if (resource is not MediaBrush mediaBrush)
-            {
-                return false;
-            }
-
-            nativeBrush = mediaBrush.ToNative(ToMediaRect(bounds));
-            return nativeBrush != null;
-        }
-        catch (MissingMethodException)
-        {
-            return false;
-        }
-        catch (TypeLoadException)
-        {
-            return false;
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool TryAdaptNativeMediaPen(
-        object resource,
-        WpfReplayRect bounds,
-        out global::ProGPU.Vector.Pen? nativePen)
-    {
-        nativePen = null;
-        try
-        {
-            if (resource is not MediaPen mediaPen)
-            {
-                return false;
-            }
-
-            nativePen = mediaPen.ToNative(ToMediaRect(bounds));
-            return nativePen != null;
         }
         catch (MissingMethodException)
         {

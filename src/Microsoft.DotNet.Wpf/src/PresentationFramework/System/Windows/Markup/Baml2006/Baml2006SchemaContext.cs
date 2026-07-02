@@ -552,10 +552,16 @@ namespace System.Windows.Baml2006
                 return xType;
             }
 
-            // NOTE: If XamlSchemaContext to can provide an UnknownType of name bamlType.Name
-            // return a new UnknownType instead of throwing NotImplemented. 
-            // return bamlType.XamlType = new UnknownType(new XamlTypeName(bamlType.Name), this, null);
-            throw new NotImplementedException();
+            string assemblyName = null;
+            if (TryGetBamlAssembly(bamlType.AssemblyId, out BamlAssembly unresolvedAssembly))
+            {
+                assemblyName = unresolvedAssembly.Assembly?.FullName ?? unresolvedAssembly.Name;
+            }
+
+            // NOTE: If XamlSchemaContext can provide an UnknownType of name bamlType.Name
+            // return a new UnknownType instead of throwing.
+            throw new XamlParseException(
+                $"Could not resolve BAML type '{bamlType.Name}' from assembly id '{bamlType.AssemblyId}' ('{assemblyName ?? "<unknown>"}').");
         }
 
         private bool TryGetBamlAssembly(Int16 assemblyId, out BamlAssembly bamlAssembly)

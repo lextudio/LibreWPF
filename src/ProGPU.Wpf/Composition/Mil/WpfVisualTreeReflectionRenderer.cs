@@ -28,6 +28,13 @@ public sealed class WpfVisualTreeReflectionRenderer
 {
     private const double RectangleClipPointTolerance = 0.000001;
 
+    private enum RetainedOwnerScopeMode
+    {
+        None,
+        LightweightOnly,
+        Full
+    }
+
     private readonly WpfRenderDataReflectionBridge _renderDataBridge;
 
     public WpfVisualTreeReflectionRenderer()
@@ -50,7 +57,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         ArgumentNullException.ThrowIfNull(sink);
 
         var stats = new ReplayStats();
-        ReplaySubtreeCore(rootVisual, sink, resources, imageSourceAdapter, stats, allowRetainedVisualOwnerScopes: true);
+        ReplaySubtreeCore(rootVisual, sink, resources, imageSourceAdapter, stats, RetainedOwnerScopeMode.Full);
         return stats.ToResult();
     }
 
@@ -89,35 +96,66 @@ public sealed class WpfVisualTreeReflectionRenderer
         IWpfMilResourceResolver? resources,
         IWpfImageSourceAdapter? imageSourceAdapter,
         ReplayStats stats,
-        bool allowRetainedVisualOwnerScopes)
+        RetainedOwnerScopeMode retainedOwnerScopeMode)
     {
         stats.VisualCount++;
 
-        if (allowRetainedVisualOwnerScopes
+        if (retainedOwnerScopeMode == RetainedOwnerScopeMode.Full
             && TryReplaySubtreeWithRetainedVisualOwner(visual, sink, resources, imageSourceAdapter, stats))
         {
             return;
         }
 
-        var popCount = PushVisualState(visual, sink, imageSourceAdapter, stats);
-        RegisterRetainedVisualOwner(visual, sink);
-        RegisterRetainedVisualStateDependencies(visual, sink);
-
-        if (!ReplayViewport3DVisual(visual, sink, stats))
+        var hitTestOwnerPushed = retainedOwnerScopeMode != RetainedOwnerScopeMode.None &&
+            TryPushHitTestOwner(visual, sink);
+        try
         {
-            ReplayVisualContent(visual, sink, resources, imageSourceAdapter, stats);
-
-            foreach (var child in ExtractChildren(visual))
+            var popCount = PushVisualState(visual, sink, imageSourceAdapter, stats);
+            try
             {
-                stats.ChildEdgeCount++;
-                ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, allowRetainedVisualOwnerScopes: false);
+                RegisterRetainedVisualOwner(visual, sink);
+                RegisterRetainedVisualStateDependencies(visual, sink);
+
+                if (!ReplayViewport3DVisual(visual, sink, stats))
+                {
+                    ReplayVisualContent(visual, sink, resources, imageSourceAdapter, stats);
+
+                    var childScopeMode = hitTestOwnerPushed
+                        ? RetainedOwnerScopeMode.LightweightOnly
+                        : RetainedOwnerScopeMode.None;
+                    foreach (var child in ExtractChildren(visual))
+                    {
+                        stats.ChildEdgeCount++;
+                        ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, childScopeMode);
+                    }
+                }
+            }
+            finally
+            {
+                for (var i = 0; i < popCount; i++)
+                {
+                    sink.Pop();
+                }
             }
         }
-
-        for (var i = 0; i < popCount; i++)
+        finally
         {
-            sink.Pop();
+            if (hitTestOwnerPushed)
+            {
+                PopHitTestOwner(sink);
+            }
         }
+    }
+
+    private static bool TryPushHitTestOwner(object visual, IWpfCompositionCommandSink sink)
+    {
+        return sink is IWpfHitTestOwnerScopeCommandSink hitTestOwnerScopeSink &&
+            hitTestOwnerScopeSink.PushHitTestOwner(visual);
+    }
+
+    private static void PopHitTestOwner(IWpfCompositionCommandSink sink)
+    {
+        ((IWpfHitTestOwnerScopeCommandSink)sink).PopHitTestOwner();
     }
 
     private bool TryReplaySubtreeIntoCurrentRetainedVisualCore(
@@ -158,7 +196,7 @@ public sealed class WpfVisualTreeReflectionRenderer
                         resources,
                         imageSourceAdapter,
                         stats,
-                        allowRetainedVisualOwnerScopes: true);
+                        RetainedOwnerScopeMode.Full);
                 }
             }
         }
@@ -216,7 +254,7 @@ public sealed class WpfVisualTreeReflectionRenderer
                             resources,
                             imageSourceAdapter,
                             stats,
-                            allowRetainedVisualOwnerScopes: true);
+                            RetainedOwnerScopeMode.Full);
                     }
                 }
             }

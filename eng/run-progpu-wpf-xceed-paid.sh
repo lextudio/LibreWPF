@@ -42,7 +42,37 @@ case "$(uname -s 2>/dev/null || echo unknown)" in
     ;;
 esac
 
-if [[ "${PROGPU_WPF_XCEED_PAID_REBUILD_PACKAGES:-0}" == "1" || ! -f "${sdk_package}" ]]; then
+if [[ "${PROGPU_WPF_XCEED_PAID_SKIP_REBUILD_PACKAGES:-0}" == "1" ]]; then
+  rebuild_packages=0
+elif [[ "${PROGPU_WPF_XCEED_PAID_REBUILD_PACKAGES:-0}" == "1" || ! -f "${sdk_package}" ]]; then
+  rebuild_packages=1
+else
+  rebuild_packages=0
+  for source_path in \
+    "${repo_root}/src/ProGPU.Wpf" \
+    "${repo_root}/packaging/ProGPU.Wpf.Sdk" \
+    "${repo_root}/external/ProGPU/src/ProGPU.Backend" \
+    "${repo_root}/external/ProGPU/src/ProGPU.Compute" \
+    "${repo_root}/external/ProGPU/src/ProGPU.DirectX" \
+    "${repo_root}/external/ProGPU/src/ProGPU.Layout" \
+    "${repo_root}/external/ProGPU/src/ProGPU.Scene" \
+    "${repo_root}/external/ProGPU/src/ProGPU.Text" \
+    "${repo_root}/external/ProGPU/src/ProGPU.Transpiler" \
+    "${repo_root}/external/ProGPU/src/ProGPU.Vector" \
+    "${repo_root}/external/ProGPU/src/ProGPU.Wpf.Interop" \
+    "${repo_root}/external/ProGPU/src/PresentationCore" \
+    "${repo_root}/external/ProGPU/src/WindowsBase"; do
+    if find "${source_path}" \
+      \( -path '*/bin' -o -path '*/obj' \) -prune -o \
+      -type f \( -name '*.cs' -o -name '*.props' -o -name '*.targets' -o -name '*.csproj' \) \
+      -newer "${sdk_package}" -print -quit | grep -q .; then
+      rebuild_packages=1
+      break
+    fi
+  done
+fi
+
+if [[ "${rebuild_packages}" == "1" ]]; then
   echo "Building ProGPU WPF SDK packages before launching paid Xceed app..."
   PROGPU_WPF_HELLO_REBUILD_PACKAGES=0 \
   PROGPU_WPF_HELLO_RUN_VALIDATE=0 \

@@ -48,7 +48,8 @@ public sealed class ProGpuCompositionCommandSink :
     IWpfCompositionCommandSinkDiagnostics,
     IWpfNativeTransformCommandSink,
     IWpfNativePrimitiveCommandSink,
-    IWpfNativeClipCommandSink
+    IWpfNativeClipCommandSink,
+    IWpfHitTestOwnerScopeCommandSink
 {
     private const float TransformEpsilon = 0.0001f;
 
@@ -69,6 +70,7 @@ public sealed class ProGpuCompositionCommandSink :
     }
 
     private readonly Stack<PushKind> _pushStack = new();
+    private readonly Stack<int> _hitTestOwnerStack = new();
     private readonly Stack<GuidelineState> _guidelineStack = new();
     private readonly Stack<Matrix4x4> _transformStack = new();
     private readonly Stack<global::ProGPU.Scene.TextureSamplingMode> _bitmapScalingModeStack = new();
@@ -79,7 +81,8 @@ public sealed class ProGpuCompositionCommandSink :
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
     private readonly Func<VectorPathGeometry, VectorPathGeometry?>? _pathOperationResolver;
     private readonly MediaDrawingContext? _drawingContext;
-    private readonly int _hitTestId;
+    private readonly WpfGpuHitTestOwnerMap? _hitTestOwnerMap;
+    private int _activeHitTestId;
     private bool _isClosed;
 
     public ProGpuCompositionCommandSink(MediaDrawingContext drawingContext)
@@ -92,14 +95,16 @@ public sealed class ProGpuCompositionCommandSink :
         global::ProGPU.Backend.WgpuContext? context,
         WpfViewport3DTextureCache? viewport3DTextureCache,
         Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver = null,
-        int hitTestId = 0)
+        int hitTestId = 0,
+        WpfGpuHitTestOwnerMap? hitTestOwnerMap = null)
         : this(
             drawingContext?.NativeContext ?? throw new ArgumentNullException(nameof(drawingContext)),
             context,
             viewport3DTextureCache,
             pathOperationResolver,
             drawingContext,
-            hitTestId)
+            hitTestId,
+            hitTestOwnerMap)
     {
     }
 
@@ -113,8 +118,9 @@ public sealed class ProGpuCompositionCommandSink :
         global::ProGPU.Backend.WgpuContext? context,
         WpfViewport3DTextureCache? viewport3DTextureCache,
         Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver = null,
-        int hitTestId = 0)
-        : this(nativeContext, context, viewport3DTextureCache, pathOperationResolver, drawingContext: null, hitTestId)
+        int hitTestId = 0,
+        WpfGpuHitTestOwnerMap? hitTestOwnerMap = null)
+        : this(nativeContext, context, viewport3DTextureCache, pathOperationResolver, drawingContext: null, hitTestId, hitTestOwnerMap)
     {
     }
 
@@ -124,14 +130,16 @@ public sealed class ProGpuCompositionCommandSink :
         WpfViewport3DTextureCache? viewport3DTextureCache,
         Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver,
         MediaDrawingContext? drawingContext,
-        int hitTestId)
+        int hitTestId,
+        WpfGpuHitTestOwnerMap? hitTestOwnerMap)
     {
         NativeContext = nativeContext ?? throw new ArgumentNullException(nameof(nativeContext));
         _drawingContext = drawingContext;
         _context = context;
         _viewport3DTextureCache = viewport3DTextureCache;
         _pathOperationResolver = pathOperationResolver;
-        _hitTestId = hitTestId;
+        _activeHitTestId = hitTestId;
+        _hitTestOwnerMap = hitTestOwnerMap;
         _transformStack.Push(Matrix4x4.Identity);
         _bitmapScalingModeStack.Push(global::ProGPU.Scene.TextureSamplingMode.Linear);
         _edgeModeStack.Push(false);
@@ -145,8 +153,33 @@ public sealed class ProGpuCompositionCommandSink :
 
     private void AddNativeCommand(global::ProGPU.Scene.RenderCommand command)
     {
-        command.HitTestId = _hitTestId;
+        command.HitTestId = _activeHitTestId;
         NativeContext.Commands.Add(command);
+    }
+
+    bool IWpfHitTestOwnerScopeCommandSink.PushHitTestOwner(object sourceVisual)
+    {
+        ThrowIfClosed();
+        ArgumentNullException.ThrowIfNull(sourceVisual);
+        if (_hitTestOwnerMap == null)
+        {
+            return false;
+        }
+
+        _hitTestOwnerStack.Push(_activeHitTestId);
+        _activeHitTestId = _hitTestOwnerMap.GetOrCreateId(sourceVisual);
+        return true;
+    }
+
+    void IWpfHitTestOwnerScopeCommandSink.PopHitTestOwner()
+    {
+        ThrowIfClosed();
+        if (_hitTestOwnerStack.Count == 0)
+        {
+            throw new InvalidOperationException("There is no WPF hit-test owner scope to pop.");
+        }
+
+        _activeHitTestId = _hitTestOwnerStack.Pop();
     }
 
     public int UnsupportedStateCount { get; private set; }
@@ -490,7 +523,11 @@ public sealed class ProGpuCompositionCommandSink :
             return;
         }
 
-        var nativeBrush = formattedText.Foreground?.ToNative() ?? new VectorSolidColorBrush(Vector4.One);
+        var textBounds = new WpfReplayRect(origin.X, origin.Y, formattedText.Width, formattedText.Height);
+        var nativeBrush = formattedText.Foreground == null
+            ? new VectorSolidColorBrush(Vector4.One)
+            : WpfReflectionResourceResolver.AdaptNativeBrush(formattedText.Foreground, textBounds, out _)
+                ?? new VectorSolidColorBrush(Vector4.One);
         var position = new Vector2(
             (float)origin.X,
             (float)(origin.Y + formattedText.Height * 0.8));
@@ -525,7 +562,11 @@ public sealed class ProGpuCompositionCommandSink :
             GlyphPositions = glyphRun.GlyphPositions,
             Font = glyphRun.Font,
             FontSize = glyphRun.FontSize,
-            Brush = foregroundBrush.ToNative(),
+            Brush = WpfReflectionResourceResolver.AdaptNativeBrush(
+                    foregroundBrush,
+                    new WpfReplayRect(glyphRun.Position.X, glyphRun.Position.Y, glyphRun.FontSize, glyphRun.FontSize),
+                    out _)
+                ?? new VectorSolidColorBrush(Vector4.One),
             Position = glyphRun.Position,
             Transform = glyphRun.Transform * _transformStack.Peek(),
             IsBold = glyphRun.IsBold,

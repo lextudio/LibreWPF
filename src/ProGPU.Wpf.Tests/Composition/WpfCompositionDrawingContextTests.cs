@@ -611,6 +611,76 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextDrawsEllipseGeometryAsNativeEllipseWithoutGenericGeometryFallback()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = new EllipseGeometry(new Point(10, 20), 30, 40);
+
+        context.DrawGeometry(Brushes.Red, pen, geometry);
+
+        Assert.Equal(new[] { "DrawNativeEllipse" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        Assert.Empty(sink.Ellipses);
+        var replayed = Assert.Single(sink.NativeEllipses);
+        Assert.Same(Brushes.Red, replayed.Brush);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfReplayPoint(10, 20), replayed.Center);
+        Assert.Equal(30d, replayed.RadiusX);
+        Assert.Equal(40d, replayed.RadiusY);
+        Assert.Contains(Brushes.Red, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextDrawsEllipseGeometryAsEllipseWithoutGenericGeometryFallback()
+    {
+        var sink = new RecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = new EllipseGeometry(new Point(5, 6), 70, 80);
+
+        context.DrawGeometry(Brushes.Blue, null, geometry);
+
+        Assert.Equal(new[] { "DrawEllipse" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        var replayed = Assert.Single(sink.Ellipses);
+        Assert.Same(Brushes.Blue, replayed.Brush);
+        Assert.Null(replayed.Pen);
+        Assert.Equal(new Point(5, 6), replayed.Center);
+        Assert.Equal(70d, replayed.RadiusX);
+        Assert.Equal(80d, replayed.RadiusY);
+        Assert.Contains(Brushes.Blue, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextKeepsTransformedEllipseGeometryOnGenericGeometryPath()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = new EllipseGeometry(new Point(10, 20), 30, 40)
+        {
+            Transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 10 })
+        };
+
+        context.DrawGeometry(Brushes.Green, null, geometry);
+
+        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Empty(sink.NativeEllipses);
+        var replayed = Assert.Single(sink.Geometries);
+        Assert.Same(Brushes.Green, replayed.Brush);
+        Assert.Null(replayed.Pen);
+        Assert.Same(geometry, replayed.Geometry);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextPushesRectangleGeometryClipAsNativeClipWithoutGenericClipFallback()
     {
         var sink = new NativeRecordingSink();

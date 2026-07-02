@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaFormattedText = System.Windows.Media.FormattedText;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
@@ -188,6 +189,11 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
 
         if (TryDrawPrimitiveRectangleGeometry(brush, pen, geometry))
+        {
+            return;
+        }
+
+        if (TryDrawPrimitiveEllipseGeometry(brush, pen, geometry))
         {
             return;
         }
@@ -619,6 +625,27 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         return true;
     }
 
+    private bool TryDrawPrimitiveEllipseGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+    {
+        if (!TryGetPrimitiveEllipseGeometry(geometry, out var center, out var radiusX, out var radiusY))
+        {
+            return false;
+        }
+
+        RegisterRetainedDependencies(brush, pen, geometry);
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeEllipse(brush, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY);
+        }
+        else
+        {
+            _sink.DrawEllipse(brush, pen, center, radiusX, radiusY);
+        }
+
+        CountApplied();
+        return true;
+    }
+
     private static bool TryGetPrimitiveRectangleGeometry(
         MediaGeometry geometry,
         out Rect rectangle,
@@ -635,6 +662,27 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
 
         rectangle = default;
+        radiusX = default;
+        radiusY = default;
+        return false;
+    }
+
+    private static bool TryGetPrimitiveEllipseGeometry(
+        MediaGeometry geometry,
+        out Point center,
+        out double radiusX,
+        out double radiusY)
+    {
+        if (geometry is MediaEllipseGeometry ellipseGeometry
+            && HasIdentityGeometryTransform(ellipseGeometry)
+            && IsUsablePoint(ellipseGeometry.Center, out center)
+            && IsPositiveRadius(ellipseGeometry.RadiusX, out radiusX)
+            && IsPositiveRadius(ellipseGeometry.RadiusY, out radiusY))
+        {
+            return true;
+        }
+
+        center = default;
         radiusX = default;
         radiusY = default;
         return false;
@@ -660,10 +708,23 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             && rect.Height > 0;
     }
 
+    private static bool IsUsablePoint(Point point, out Point usablePoint)
+    {
+        usablePoint = point;
+        return double.IsFinite(point.X)
+            && double.IsFinite(point.Y);
+    }
+
     private static bool IsUsableRadius(double radius, out double usableRadius)
     {
         usableRadius = radius;
         return double.IsFinite(radius) && radius >= 0;
+    }
+
+    private static bool IsPositiveRadius(double radius, out double usableRadius)
+    {
+        usableRadius = radius;
+        return double.IsFinite(radius) && radius > 0;
     }
 
     private static WpfReplayRect ToReplayRect(Rect rectangle)

@@ -476,6 +476,8 @@ Default-discovered SDK resources are an SDK/MSBuild and managed WPF loading boun
 
 Viewport clipping is a WPF layout/rendering boundary. Controls such as `ScrollContentPresenter`, `DataGridColumnHeadersPresenter`, and third-party panel templates can produce clip rectangles through protected layout-clip APIs even when the public `UIElement.Clip` property is null. The transition renderer therefore prefers materialized `VisualClip`, then source-integrated `IPortableVisualLayoutStateSource` layout clips from `FrameworkElement`, intersects them with any explicit clip, and lowers rectangular results into ProGPU native clip scopes. Transitional `GetLayoutClipInternal()` probing remains only for non-integrated compatibility shapes. Toolkit/AvalonDock and large WPF `DataGrid` clipping should be fixed in that bridge/native scissor path, not by changing sample XAML or duplicating control scroll logic.
 
+Preview SDK release validation is part of the architecture boundary too. The custom SDK must prove normal WPF app migration from package artifacts, so `eng/progpu-wpf-sdk-ci.sh` validates package-mode SDK switching, real WPF XAML/Application.Run/theme startup, no-source-change external apps, Hello/MVP live host input and resize, free Toolkit/AvalonDock live behavior, paid Xceed when licensed or forced, SciChart MVP DirectX-shim smoke, and the graph guard in one lane. Commercial license keys stay outside source and reports; the release gate only checks whether the environment can run paid Xceed and never prints key values.
+
 ## Win32 Abstraction Strategy
 
 Win32 usage should be split into three groups:

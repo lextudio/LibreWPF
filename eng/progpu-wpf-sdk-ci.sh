@@ -32,6 +32,19 @@ run_dotnet() {
   "${dotnet}" "$@"
 }
 
+has_env_or_launchctl() {
+  local name="$1"
+  if [[ -n "${!name:-}" ]]; then
+    return 0
+  fi
+
+  if command -v launchctl >/dev/null 2>&1 && [[ -n "$(launchctl getenv "${name}" 2>/dev/null || true)" ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
 apphost_name() {
   local assembly_name="$1"
   case "$(uname -s 2>/dev/null || echo unknown)" in
@@ -53,6 +66,8 @@ clean_sdk_smoke_outputs() {
     "ProGPU.Wpf.SdkExternalSmokeHarness" \
     "ProGPU.Wpf.HelloApp" \
     "ProGPU.Wpf.MvpApp" \
+    "ProGPU.Wpf.ToolkitApp" \
+    "ProGPU.Wpf.XceedPaidApp" \
     "ProGPU.Wpf.SciChartMvpApp"
   do
     rm -rf \
@@ -64,6 +79,8 @@ clean_sdk_smoke_outputs() {
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke" \
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.HelloApp" \
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.MvpApp" \
+    "${repo_root}/artifacts/nuget/ProGPU.Wpf.ToolkitApp" \
+    "${repo_root}/artifacts/nuget/ProGPU.Wpf.XceedPaidApp" \
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.SciChartMvpApp"
 }
 
@@ -187,6 +204,30 @@ PROGPU_WPF_MVP_VALIDATE=0 \
 PROGPU_WPF_MVP_RUN_VALIDATE=0 \
 PROGPU_WPF_MVP_LIVE_VALIDATE=1 \
   "${repo_root}/eng/run-progpu-wpf-mvp.sh"
+
+echo "Running Toolkit SDK app live validation..."
+PROGPU_WPF_TOOLKIT_REBUILD_PACKAGES=0 \
+PROGPU_WPF_TOOLKIT_VALIDATE=0 \
+PROGPU_WPF_TOOLKIT_RUN_VALIDATE=0 \
+PROGPU_WPF_TOOLKIT_LIVE_VALIDATE=1 \
+  "${repo_root}/eng/run-progpu-wpf-toolkit.sh"
+
+xceed_paid_gate="${PROGPU_WPF_SDK_CI_INCLUDE_XCEED_PAID:-auto}"
+if [[ "${xceed_paid_gate}" == "1" ]] || \
+   [[ "${xceed_paid_gate}" == "auto" && \
+      "$(has_env_or_launchctl XCEED_TOOLKIT_LICENSE_KEY && echo 1 || echo 0)" == "1" && \
+      "$(has_env_or_launchctl XCEED_DATAGRID_LICENSE_KEY && echo 1 || echo 0)" == "1" ]]; then
+  echo "Running paid Xceed SDK app validation..."
+  PROGPU_WPF_XCEED_PAID_SKIP_REBUILD_PACKAGES=1 \
+  PROGPU_WPF_XCEED_PAID_VALIDATE=0 \
+  PROGPU_WPF_XCEED_PAID_RUN_VALIDATE=1 \
+    "${repo_root}/eng/run-progpu-wpf-xceed-paid.sh"
+elif [[ "${xceed_paid_gate}" == "0" || "${xceed_paid_gate}" == "auto" ]]; then
+  echo "Skipping paid Xceed SDK app validation because paid license environment is unavailable."
+else
+  echo "Invalid PROGPU_WPF_SDK_CI_INCLUDE_XCEED_PAID value '${xceed_paid_gate}'. Expected 0, 1, or auto." >&2
+  exit 1
+fi
 
 echo "Building SciChart MVP SDK app..."
 run_dotnet build "${repo_root}/samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj" -v:minimal

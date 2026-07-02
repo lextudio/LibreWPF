@@ -10093,6 +10093,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("RegisterDeterministicFileDialog", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("ReadPortableRequestString", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("ReadPortableRequestValue", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetType()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP OpenFileDialog FileName", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP file dialog request count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Controls.Primitives;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -10790,6 +10791,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("GetProperty(", helloMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GetMethod(", helloMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("Activator.CreateInstance", helloMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetType()", helloMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"Live\", ViewModel.Name", helloMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"Updated for Live\", ViewModel.Status", helloMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF HelloApp live input validation succeeded:", helloRunScript, StringComparison.Ordinal);

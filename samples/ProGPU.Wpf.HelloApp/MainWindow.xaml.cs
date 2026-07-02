@@ -343,10 +343,12 @@ public partial class MainWindow : Window
 
         if (element is FrameworkElement frameworkElement && !string.IsNullOrEmpty(frameworkElement.Name))
         {
-            return $"{element.GetType().Name}#{frameworkElement.Name}";
+            return frameworkElement.Name;
         }
 
-        return element.GetType().Name;
+        return element is IInputElement
+            ? "InputElement"
+            : "Element";
     }
 
     private static void AssertEqual<T>(T expected, T actual, string description)

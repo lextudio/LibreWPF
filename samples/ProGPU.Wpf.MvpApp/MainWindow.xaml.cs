@@ -412,7 +412,7 @@ public partial class MainWindow : Window
         DocumentLinkRequestNavigateCount++;
         LastDocumentLinkRequestNavigateText = sender is Hyperlink link
             ? new TextRange(link.ContentStart, link.ContentEnd).Text.Trim()
-            : sender.GetType().Name;
+            : "RequestNavigateSource";
         LastDocumentLinkRequestNavigateUri = e.Uri?.ToString();
         LastDocumentLinkRequestNavigateRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
@@ -528,7 +528,9 @@ public partial class MainWindow : Window
         }
         catch (InvalidOperationException ex)
         {
-            ChromeDragMoveStatus = ex.GetType().Name;
+            ChromeDragMoveStatus = string.IsNullOrWhiteSpace(ex.Message)
+                ? "Unavailable"
+                : ex.Message;
         }
     }
 
@@ -937,7 +939,7 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                lastState = $"{description}: {ex.GetType().Name}: {ex.Message}";
+                lastState = $"{description}: {ex.Message}";
             }
         }
 
@@ -2116,10 +2118,12 @@ public partial class MainWindow : Window
 
         if (element is FrameworkElement frameworkElement && !string.IsNullOrEmpty(frameworkElement.Name))
         {
-            return $"{element.GetType().Name}#{frameworkElement.Name}";
+            return frameworkElement.Name;
         }
 
-        return element.GetType().Name;
+        return element is IInputElement
+            ? "InputElement"
+            : "Element";
     }
 
     private LiveLayoutSize CaptureLiveLayoutSize(ProGpuWpfWindowHost liveHost)
@@ -6290,7 +6294,7 @@ internal static class MvpSelfTest
         {
             WpfCalendar => WpfCalendar.SelectedDateProperty,
             DatePicker => DatePicker.SelectedDateProperty,
-            _ => throw new InvalidOperationException($"Unsupported selected-date control {control.GetType().Name}.")
+            _ => throw new InvalidOperationException("Unsupported selected-date control.")
         };
 
         return BindingOperations.GetBinding(control, property)?.Path.Path
@@ -6469,7 +6473,9 @@ internal static class MvpSelfTest
             DispatcherPriority.Background);
         AssertEqual(
             typeof(DispatcherSynchronizationContext),
-            capturedContext?.GetType(),
+            capturedContext is DispatcherSynchronizationContext
+                ? typeof(DispatcherSynchronizationContext)
+                : null,
             "dispatcher synchronization context type");
 
         var context = new DispatcherSynchronizationContext(window.Dispatcher, DispatcherPriority.Background);
@@ -6489,7 +6495,9 @@ internal static class MvpSelfTest
         var copy = context.CreateCopy();
         AssertEqual(
             typeof(DispatcherSynchronizationContext),
-            copy.GetType(),
+            copy is DispatcherSynchronizationContext
+                ? typeof(DispatcherSynchronizationContext)
+                : null,
             "dispatcher synchronization context copy type");
 
         var copyPostHasAccess = false;

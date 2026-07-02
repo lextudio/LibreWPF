@@ -9096,6 +9096,12 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfDrawingReplay.cs");
+        var wpfVisualTreeRendererPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeRenderer.cs");
         var wpfPortableCommandSinkBridgePath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -9490,6 +9496,7 @@ public sealed class WpfManagedProjectGraphTests
         var wpfMediaGeometryBoundsReader = File.ReadAllText(wpfMediaGeometryBoundsReaderPath);
         var wpfGuidelineSetReader = File.ReadAllText(wpfGuidelineSetReaderPath);
         var wpfDrawingReplay = File.ReadAllText(wpfDrawingReplayPath);
+        var wpfVisualTreeRenderer = File.ReadAllText(wpfVisualTreeRendererPath);
         var wpfPortableCommandSinkBridge = File.ReadAllText(wpfPortableCommandSinkBridgePath);
         var proGpuWpfDrawingFrame = File.ReadAllText(proGpuWpfDrawingFramePath);
         var proGpuWpfWindowHost = File.ReadAllText(proGpuWpfWindowHostPath);
@@ -12213,6 +12220,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(portableGeometry, out", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(portableGeometry, out var nativeBounds)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("!HasPortableGeometryPathData(portableGeometry)", wpfDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(geometry, out bounds)", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.Contains("WpfPortablePathGeometryConverter.TryGetNativePathBounds(geometry, out var nativeBounds)", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.Contains("!HasPortableGeometryPathData(geometry)", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.Contains("private static bool HasPortableGeometryPathData(PortableGeometryPath geometry)", wpfVisualTreeRenderer, StringComparison.Ordinal);
         Assert.Contains("WpfMediaGeometryBoundsReader.TryGetGeometryBounds(geometry, out var geometryBounds)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfMediaGeometryBoundsReader.TryGetGeometryBounds(mediaGeometry, out var mediaGeometryBounds)", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfMediaGeometryBoundsReader.TryGetGeometryBounds(clipGeometry, out var geometryClipBounds)", wpfDrawingReplay, StringComparison.Ordinal);

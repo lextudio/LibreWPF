@@ -804,8 +804,30 @@ public sealed class WpfVisualTreeRenderer
             return true;
         }
 
-        bounds = ToReplayRect(geometry.Bounds);
-        return IsUsableBounds(bounds);
+        if (!HasPortableGeometryPathData(geometry))
+        {
+            bounds = ToReplayRect(geometry.Bounds);
+            return IsUsableBounds(bounds);
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static bool HasPortableGeometryPathData(PortableGeometryPath geometry)
+    {
+        if (geometry.Kind == PortableGeometryPathKind.Path)
+        {
+            return geometry.Figures.Length > 0;
+        }
+
+        if (geometry.Kind == PortableGeometryPathKind.Combined)
+        {
+            return (geometry.PathA != null && HasPortableGeometryPathData(geometry.PathA))
+                || (geometry.PathB != null && HasPortableGeometryPathData(geometry.PathB));
+        }
+
+        return false;
     }
 
     private static WpfReplayRect CombineClipBounds(WpfReplayRect? current, WpfReplayRect next)

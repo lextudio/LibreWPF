@@ -831,6 +831,51 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreePreservesRetainedMetadataOnlyPortableBoundsFallback()
+    {
+        var geometry = new PortableMetadataOnlyGeometry(new PortableRect(12, 14, 32, 24));
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateGeometryRenderData(geometry),
+            CreatePortableEffectState(new FakeBlurEffect(4)));
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawNativeGeometry", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(12, 14, 32, 24, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-12, transform.M41);
+        Assert.Equal(-14, transform.M42);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void ReplaySubtreeRejectsStaleRetainedMetadataWhenPortablePathDataCannotBeBound()
+    {
+        var geometry = new PortableInvalidPathGeometry(new PortableRect(12, 14, 32, 24));
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateGeometryRenderData(geometry),
+            CreatePortableEffectState(new FakeBlurEffect(4)));
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "DrawNativeGeometry", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        Assert.Null(state.ContentBounds);
+        Assert.Null(state.Size);
+        Assert.Empty(sink.NativeTransforms);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeInfersRetainedBoundsFromNativeMediaGeometryWithoutGenericBoundsFallback()
     {
         var geometry = CreateThrowingBoundsCurvedPathGeometry(new Rect(5, 6, 40, 30));

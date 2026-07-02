@@ -6,7 +6,10 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Media;
+using System.Windows.Threading;
 using Xceed.Wpf.DataGrid;
 using Xceed.Wpf.DataGrid.Settings;
 using Xceed.Wpf.DataGrid.ThemePack;
@@ -227,6 +230,123 @@ public partial class MainWindow : Window
         AssertRuntimeCondition(
             ViewModel.LastAction.Contains("Score must stay between 0 and 100.", StringComparison.Ordinal),
             "Validate edit command should execute the paid editable DataGrid score validation path.");
+    }
+
+    internal void ValidatePaidScrollClipState()
+    {
+        DockManager.UpdateLayout();
+        ValidateToolkitPaneScrollClip();
+
+        PaidDataGridDocument.IsSelected = true;
+        PaidDataGridDocument.IsActive = true;
+        DockManager.UpdateLayout();
+        PaidDataGrid.UpdateLayout();
+        ValidateRequiredScrollableViewportClip(PaidDataGrid, "paid Xceed DataGrid");
+
+        PaidDataGrid.BringItemIntoView(ViewModel.Rows[ViewModel.Rows.Count - 1]);
+        PumpBackgroundLayout(PaidDataGrid);
+        ValidateRequiredScrollableViewportClip(PaidDataGrid, "paid Xceed DataGrid after large scroll");
+
+        EditableDataGridDocument.IsSelected = true;
+        EditableDataGridDocument.IsActive = true;
+        DockManager.UpdateLayout();
+        EditablePaidDataGrid.UpdateLayout();
+        ValidateRequiredScrollableViewportClip(EditablePaidDataGrid, "paid editable Xceed DataGrid");
+
+        VirtualDataGridDocument.IsSelected = true;
+        VirtualDataGridDocument.IsActive = true;
+        DockManager.UpdateLayout();
+        VirtualPaidDataGrid.UpdateLayout();
+        ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, "paid virtual Xceed DataGrid");
+
+        VirtualPaidDataGrid.BringItemIntoView(ViewModel.Rows[50_000]);
+        PumpBackgroundLayout(VirtualPaidDataGrid);
+        ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, "paid virtual Xceed DataGrid after large scroll");
+
+        PaidDataGridDocument.IsSelected = true;
+        PaidDataGridDocument.IsActive = true;
+        DockManager.UpdateLayout();
+    }
+
+    private void ValidateToolkitPaneScrollClip()
+    {
+        ToolkitPaneScrollViewer.ApplyTemplate();
+        ToolkitPaneScrollViewer.UpdateLayout();
+        if (ToolkitPaneScrollViewer.ViewportHeight <= 0)
+        {
+            throw new InvalidOperationException("Expected paid Toolkit pane ScrollViewer to expose a clipped viewport.");
+        }
+
+        ValidateRequiredScrollContentPresenterClip(ToolkitPaneScrollViewer, "paid Toolkit pane ScrollViewer");
+    }
+
+    private static void ValidateRequiredScrollableViewportClip(DependencyObject root, string description)
+    {
+        if (root is FrameworkElement element)
+        {
+            element.ApplyTemplate();
+            element.UpdateLayout();
+        }
+
+        var scrollViewer = EnumerateVisualDescendants<ScrollViewer>(root)
+            .Where(static viewer => viewer.ViewportWidth > 0 && viewer.ViewportHeight > 0)
+            .OrderByDescending(static viewer => viewer.ScrollableHeight)
+            .FirstOrDefault()
+            ?? throw new InvalidOperationException($"Expected {description} to expose a ScrollViewer with a finite viewport.");
+        ValidateRequiredScrollContentPresenterClip(scrollViewer, $"{description} ScrollViewer");
+    }
+
+    private static void ValidateRequiredScrollContentPresenterClip(ScrollViewer scrollViewer, string description)
+    {
+        scrollViewer.ApplyTemplate();
+        scrollViewer.UpdateLayout();
+        var presenter = EnumerateVisualDescendants<ScrollContentPresenter>(scrollViewer)
+            .FirstOrDefault()
+            ?? throw new InvalidOperationException($"Expected {description} to expose a ScrollContentPresenter.");
+        ValidateRequiredVisualClip(presenter, $"{description} content presenter");
+    }
+
+    private static void ValidateRequiredVisualClip(Visual visual, string description)
+    {
+        if (VisualTreeHelper.GetClip(visual) is not Geometry clip)
+        {
+            throw new InvalidOperationException($"Expected {description} to have a WPF internal VisualClip.");
+        }
+
+        Rect bounds = clip.Bounds;
+        if (bounds.IsEmpty ||
+            bounds.Width <= 0 ||
+            bounds.Height <= 0 ||
+            !double.IsFinite(bounds.Width) ||
+            !double.IsFinite(bounds.Height))
+        {
+            throw new InvalidOperationException($"Expected {description} to have a finite non-empty VisualClip, got {bounds}.");
+        }
+    }
+
+    private static IEnumerable<T> EnumerateVisualDescendants<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        int childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var descendant in EnumerateVisualDescendants<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private static void PumpBackgroundLayout(FrameworkElement element)
+    {
+        element.Dispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+        element.UpdateLayout();
     }
 
     internal static ColumnBase FindPaidColumn(DataGridControl grid, string fieldName)

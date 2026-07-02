@@ -391,6 +391,7 @@ internal static class XceedPaidSelfTest
             AssertEqual(true, window.MaterialActionsSwitch.IsChecked, "paid Toolkit loaded MaterialSwitch binding");
             AssertEqual("ProGPU", window.MaterialFilterTextField.Text, "paid Toolkit loaded MaterialTextField binding");
             window.ExercisePaidDataGridRuntimeCommands();
+            window.ValidatePaidScrollClipState();
             ValidateProGpuDiagnostics(window);
         }
     }

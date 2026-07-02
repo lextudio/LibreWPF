@@ -8566,6 +8566,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Application.Run validation requires license variables", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Shutdown(1)", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("window.ExercisePaidDataGridRuntimeCommands();", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("window.ValidatePaidScrollClipState();", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Media.ProGPU;", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateProGpuDiagnostics(window);", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryGetWindowHost(window, out var host)", appCodeBehind, StringComparison.Ordinal);
@@ -8610,6 +8611,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xctk:MaterialSlider x:Name=\"MaterialScoreSlider\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:MaterialProgressBar x:Name=\"MaterialProgressBar\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:BusyIndicator x:Name=\"PaidBusyIndicator\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<ScrollViewer x:Name=\"ToolkitPaneScrollViewer\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridCollectionViewSource x:Key=\"PaidRowsView\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridVirtualizingQueryableCollectionViewSource x:Key=\"VirtualPaidRowsView\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridCollectionViewSource x:Key=\"EditableRowsView\"", mainWindowXaml, StringComparison.Ordinal);
@@ -8697,6 +8699,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("statusColumn.Visible = !statusColumn.Visible", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidDataGrid.VisibleColumns.Count", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal void ExercisePaidDataGridRuntimeCommands()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal void ValidatePaidScrollClipState()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRequiredScrollContentPresenterClip(ToolkitPaneScrollViewer", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRequiredScrollableViewportClip(PaidDataGrid, \"paid Xceed DataGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRequiredScrollableViewportClip(EditablePaidDataGrid, \"paid editable Xceed DataGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRequiredScrollableViewportClip(VirtualPaidDataGrid, \"paid virtual Xceed DataGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("VisualTreeHelper.GetClip(visual)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("EnumerateVisualDescendants<ScrollContentPresenter>(scrollViewer)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AddRowButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SelectLastButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SaveSettingsButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -8742,6 +8751,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExportToCsv", readme, StringComparison.Ordinal);
         Assert.Contains("SaveUserSettings", readme, StringComparison.Ordinal);
         Assert.Contains("drives the loaded window through the same command handlers", readme, StringComparison.Ordinal);
+        Assert.Contains("WPF internal `VisualClip` viewport clips", readme, StringComparison.Ordinal);
+        Assert.Contains("large-scroll clip checks on the 100k-row DataGrid surfaces", readme, StringComparison.Ordinal);
         Assert.Contains("ProGPU owns windowing, input, invalidation, clipping, image/layer texture trimming, shaders, and final WebGPU rendering", readme, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE", runScript, StringComparison.Ordinal);

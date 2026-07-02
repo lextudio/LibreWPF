@@ -213,7 +213,8 @@
                                    Title="Toolkit Plus"
                                    CanClose="False"
                                    CanHide="False">
-              <ScrollViewer VerticalScrollBarVisibility="Auto"
+              <ScrollViewer x:Name="ToolkitPaneScrollViewer"
+                            VerticalScrollBarVisibility="Auto"
                             Padding="12"
                             Background="{StaticResource PaidPanelBrush}">
                 <StackPanel>

@@ -416,7 +416,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
     {
         ThrowIfClosed();
 
-        if (WpfEffectReflection.TryCreateProGpuPushEffect(effect, effectInput, out var proGpuEffect)
+        if (WpfEffectMapper.TryCreateProGpuPushEffect(effect, effectInput, out var proGpuEffect)
             && _sink is IWpfVisualEffectCommandSink effectSink
             && effectSink.PushVisualEffect(proGpuEffect))
         {

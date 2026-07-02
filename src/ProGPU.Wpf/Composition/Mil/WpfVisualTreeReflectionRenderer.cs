@@ -654,7 +654,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetVisualEffect(visual, out var effectValue))
         {
-            if (!WpfEffectReflection.TryCreateProGpuEffect(effectValue, out effect, imageSourceAdapter))
+            if (!WpfEffectMapper.TryCreateProGpuEffect(effectValue, out effect, imageSourceAdapter))
             {
                 return false;
             }
@@ -670,7 +670,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
 
             TryGetVisualBitmapEffectInput(visual, out var bitmapEffectInput);
-            if (!WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out effect, imageSourceAdapter))
+            if (!WpfEffectMapper.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out effect, imageSourceAdapter))
             {
                 return false;
             }
@@ -1071,7 +1071,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetVisualEffect(visual, out var effect))
         {
-            if (WpfEffectReflection.TryCreateProGpuEffect(effect, out var proGpuEffect, imageSourceAdapter)
+            if (WpfEffectMapper.TryCreateProGpuEffect(effect, out var proGpuEffect, imageSourceAdapter)
                 && WpfPortableCommandSinkBridge.TryPushVisualEffect(
                     sink,
                     proGpuEffect,
@@ -1088,7 +1088,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         if (TryGetVisualBitmapEffect(visual, out var bitmapEffect))
         {
             TryGetVisualBitmapEffectInput(visual, out var bitmapEffectInput);
-            if (WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out var proGpuBitmapEffect, imageSourceAdapter)
+            if (WpfEffectMapper.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out var proGpuBitmapEffect, imageSourceAdapter)
                 && WpfPortableCommandSinkBridge.TryPushVisualEffect(
                     sink,
                     proGpuBitmapEffect,

@@ -6041,14 +6041,14 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
-    public void EffectReflectionPrefersPortableEffectSource()
+    public void EffectMapperPrefersPortableEffectSource()
     {
-        var effectReflection = File.ReadAllText(FindRepoPath(
+        var effectMapper = File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfEffectReflection.cs"));
+            "WpfEffectMapper.cs"));
         var portableEffect = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -6127,31 +6127,31 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DropShadowEffect : System.Windows.Media.Effects.Effect, ProGPU.Wpf.Interop.IPortableEffectSource", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("BitmapEffect : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortableEffectSource", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("BitmapEffectInput : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortableBitmapEffectInputSource", presentationCoreRef, StringComparison.Ordinal);
-        Assert.Contains("using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;", effectReflection, StringComparison.Ordinal);
-        Assert.Contains("using PortableBitmapEffectInputSource = ProGPU.Wpf.Interop.IPortableBitmapEffectInputSource;", effectReflection, StringComparison.Ordinal);
-        Assert.Contains("effect is PortableEffectSource effectSource", effectReflection, StringComparison.Ordinal);
-        Assert.Contains("effectInput is PortableBitmapEffectInputSource inputSource", effectReflection, StringComparison.Ordinal);
-        Assert.Contains("TryCreatePortableEffect(portableEffect, out proGpuEffect)", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryCreateEmulatedBitmapEffect", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("CanBeEmulatedUsingEffectPipeline", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("GetEmulatingEffect", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("ShouldSerializeInput", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("ContextInputSource", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("TypeNameEndsWith(effect, \"BlurEffect\")", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("TypeNameEndsWith(effect, \"DropShadowEffect\")", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryReadDoubleProperty(effect", effectReflection, StringComparison.Ordinal);
+        Assert.Contains("using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("using PortableBitmapEffectInputSource = ProGPU.Wpf.Interop.IPortableBitmapEffectInputSource;", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("effect is PortableEffectSource effectSource", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("effectInput is PortableBitmapEffectInputSource inputSource", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("TryCreatePortableEffect(portableEffect, out proGpuEffect)", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryCreateEmulatedBitmapEffect", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("CanBeEmulatedUsingEffectPipeline", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetEmulatingEffect", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("ShouldSerializeInput", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("ContextInputSource", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(effect, \"BlurEffect\")", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(effect, \"DropShadowEffect\")", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDoubleProperty(effect", effectMapper, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreePushesPortableEffectWithoutReflectedTypeName", rendererTests, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ShaderEffectReflectionPrefersPortableShaderEffectSource()
+    public void ShaderEffectMapperPrefersPortableShaderEffectSource()
     {
-        var effectReflection = File.ReadAllText(FindRepoPath(
+        var effectMapper = File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfEffectReflection.cs"));
+            "WpfEffectMapper.cs"));
         var portableShaderEffect = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -6212,20 +6212,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("bool ProGPU.Wpf.Interop.IPortablePixelShaderSource.TryGetPortablePixelShader", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("ShaderEffect : System.Windows.Media.Effects.Effect, ProGPU.Wpf.Interop.IPortableShaderEffectSource", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("bool ProGPU.Wpf.Interop.IPortableShaderEffectSource.TryGetPortableShaderEffect", presentationCoreRef, StringComparison.Ordinal);
-        Assert.Contains("using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;", effectReflection, StringComparison.Ordinal);
-        Assert.Contains("effect is PortableShaderEffectSource shaderEffectSource", effectReflection, StringComparison.Ordinal);
-        Assert.Contains("TryCreatePortableShaderEffect(portableShaderEffect, imageSourceAdapter, out proGpuEffect)", effectReflection, StringComparison.Ordinal);
-        Assert.Contains("portableSampler.Kind", effectReflection, StringComparison.Ordinal);
-        Assert.Contains("TryCreateImageSourceShaderSampler(", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("using System.Reflection", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("BindingFlags", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("IsShaderEffectLike(effect)", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryCreateShaderEffect(", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("TypeNameEndsWith", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("TryGetPropertyValue", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("GetProperty(", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("_floatRegisters", effectReflection, StringComparison.Ordinal);
-        Assert.DoesNotContain("_samplerData", effectReflection, StringComparison.Ordinal);
+        Assert.Contains("using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("effect is PortableShaderEffectSource shaderEffectSource", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("TryCreatePortableShaderEffect(portableShaderEffect, imageSourceAdapter, out proGpuEffect)", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("portableSampler.Kind", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("TryCreateImageSourceShaderSampler(", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("IsShaderEffectLike(effect)", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryCreateShaderEffect(", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("_floatRegisters", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("_samplerData", effectMapper, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreePushesPortableShaderEffectWithoutReflectedPixelShaderShape", rendererTests, StringComparison.Ordinal);
     }
 

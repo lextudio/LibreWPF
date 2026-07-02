@@ -727,7 +727,7 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     {
         ThrowIfClosed();
 
-        if (WpfEffectReflection.TryCreateProGpuPushEffect(effect, effectInput, out var proGpuEffect, _imageSourceAdapter)
+        if (WpfEffectMapper.TryCreateProGpuPushEffect(effect, effectInput, out var proGpuEffect, _imageSourceAdapter)
             && _sink is IWpfVisualEffectCommandSink effectSink
             && effectSink.PushVisualEffect(proGpuEffect))
         {

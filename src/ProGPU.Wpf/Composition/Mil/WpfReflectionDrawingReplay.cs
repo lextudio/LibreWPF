@@ -1423,7 +1423,7 @@ internal static class WpfReflectionDrawingReplay
         if (TryGetDrawingGroupEffect(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var effectValue))
         {
             hasEffect = true;
-            if (!WpfEffectReflection.TryCreateProGpuEffect(
+            if (!WpfEffectMapper.TryCreateProGpuEffect(
                     effectValue,
                     out var proGpuEffect,
                     CreateImageSourceAdapter(imageSourceAdapter))
@@ -1449,7 +1449,7 @@ internal static class WpfReflectionDrawingReplay
                 hasPortableDrawingGroupState,
                 drawingGroupState,
                 out var bitmapEffectInput);
-            if (!WpfEffectReflection.TryCreateProGpuPushEffect(
+            if (!WpfEffectMapper.TryCreateProGpuPushEffect(
                     bitmapEffect,
                     bitmapEffectInput,
                     out var proGpuEffect,

@@ -4,7 +4,7 @@ using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
-public static class WpfViewport3DReflectionBridge
+public static class WpfViewport3DSceneBridge
 {
     private const float DefaultNearPlaneDistance = 0.125f;
     private const float DefaultPerspectiveFieldOfView = 45f;

@@ -5965,14 +5965,14 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
-    public void Viewport3DBridgeRequiresPortableSceneSnapshot()
+    public void Viewport3DSceneBridgeRequiresPortableSceneSnapshot()
     {
         var bridgeSource = File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf",
             "Composition",
             "Mil",
-            "WpfViewport3DReflectionBridge.cs"));
+            "WpfViewport3DSceneBridge.cs"));
         var rendererSource = File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -5984,7 +5984,7 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf.Tests",
             "Composition",
             "Mil",
-            "WpfViewport3DReflectionBridgeTests.cs"));
+            "WpfViewport3DSceneBridgeTests.cs"));
         var viewportSource = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",

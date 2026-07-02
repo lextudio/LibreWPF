@@ -193,7 +193,7 @@ public sealed class ProGpuCompositionCommandSink :
             return false;
         }
 
-        if (!WpfViewport3DReflectionBridge.TryCreateReplayData(
+        if (!WpfViewport3DSceneBridge.TryCreateReplayData(
                 viewportVisual,
                 _viewport3DTextureCache,
                 out var replayData)

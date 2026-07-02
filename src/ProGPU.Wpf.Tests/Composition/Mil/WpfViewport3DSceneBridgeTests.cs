@@ -15,14 +15,14 @@ using MediaTransform = System.Windows.Media.Transform;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
-public sealed class WpfViewport3DReflectionBridgeTests
+public sealed class WpfViewport3DSceneBridgeTests
 {
     [Fact]
     public void TryCreateReplayDataRejectsWpfShapedViewport3DVisual()
     {
         var viewport = CreateTriangleViewport();
 
-        var replayed = WpfViewport3DReflectionBridge.TryCreateReplayData(viewport, out var replayData);
+        var replayed = WpfViewport3DSceneBridge.TryCreateReplayData(viewport, out var replayData);
 
         Assert.False(replayed);
         Assert.Equal(default, replayData);
@@ -33,7 +33,7 @@ public sealed class WpfViewport3DReflectionBridgeTests
     {
         var viewport = new PortableViewport3DVisual();
 
-        var replayed = WpfViewport3DReflectionBridge.TryCreateReplayData(viewport, out var replayData);
+        var replayed = WpfViewport3DSceneBridge.TryCreateReplayData(viewport, out var replayData);
 
         Assert.True(replayed);
         Assert.Equal(new Vector2(320, 180), replayData.Payload.ViewportSize);

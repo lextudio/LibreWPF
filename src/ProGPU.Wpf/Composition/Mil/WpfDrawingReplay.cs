@@ -8,7 +8,6 @@ using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
-using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaMatrixTransform = System.Windows.Media.MatrixTransform;
 using MediaPen = System.Windows.Media.Pen;
 using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
@@ -2513,13 +2512,9 @@ internal static class WpfDrawingReplay
         out double radiusX,
         out double radiusY)
     {
-        if (geometry is MediaEllipseGeometry ellipseGeometry
-            && HasIdentityGeometryTransform(ellipseGeometry)
-            && IsUsablePoint(ellipseGeometry.Center, out center)
-            && IsPositiveRadius(ellipseGeometry.RadiusX, out radiusX)
-            && IsPositiveRadius(ellipseGeometry.RadiusY, out radiusY))
+        if (geometry is MediaGeometry mediaGeometry)
         {
-            return true;
+            return WpfMediaEllipseGeometryReader.TryGetEllipseGeometry(mediaGeometry, out center, out radiusX, out radiusY);
         }
 
         center = default;
@@ -3296,19 +3291,6 @@ internal static class WpfDrawingReplay
             && double.IsFinite(rect.Height)
             && rect.Width > 0
             && rect.Height > 0;
-    }
-
-    private static bool IsUsablePoint(Point point, out Point usablePoint)
-    {
-        usablePoint = point;
-        return double.IsFinite(point.X)
-            && double.IsFinite(point.Y);
-    }
-
-    private static bool IsPositiveRadius(double radius, out double usableRadius)
-    {
-        usableRadius = radius;
-        return double.IsFinite(radius) && radius > 0;
     }
 
     private static bool IsUsableRadius(double radius, out double usableRadius)

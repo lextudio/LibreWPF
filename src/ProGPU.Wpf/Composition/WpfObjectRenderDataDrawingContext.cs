@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaBrush = System.Windows.Media.Brush;
-using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
@@ -1538,13 +1537,9 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         out double radiusX,
         out double radiusY)
     {
-        if (geometry is MediaEllipseGeometry ellipseGeometry
-            && HasIdentityGeometryTransform(ellipseGeometry)
-            && IsUsablePoint(ellipseGeometry.Center, out center)
-            && IsPositiveRadius(ellipseGeometry.RadiusX, out radiusX)
-            && IsPositiveRadius(ellipseGeometry.RadiusY, out radiusY))
+        if (geometry is MediaGeometry mediaGeometry)
         {
-            return true;
+            return WpfMediaEllipseGeometryReader.TryGetEllipseGeometry(mediaGeometry, out center, out radiusX, out radiusY);
         }
 
         center = default;
@@ -1559,13 +1554,6 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         return transform == null
             || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
                 && WpfResourceResolver.IsIdentityMatrix(matrix));
-    }
-
-    private static bool IsUsablePoint(Point point, out Point usablePoint)
-    {
-        usablePoint = point;
-        return double.IsFinite(point.X)
-            && double.IsFinite(point.Y);
     }
 
     private static bool IsUsableRect(Rect rect, out Rect rectangle)
@@ -1584,12 +1572,6 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
     {
         usableRadius = radius;
         return double.IsFinite(radius) && radius >= 0;
-    }
-
-    private static bool IsPositiveRadius(double radius, out double usableRadius)
-    {
-        usableRadius = radius;
-        return double.IsFinite(radius) && radius > 0;
     }
 
     private static WpfReplayRect ToReplayRect(Rect rectangle)

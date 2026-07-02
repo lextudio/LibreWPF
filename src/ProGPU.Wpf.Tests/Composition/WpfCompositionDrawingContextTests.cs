@@ -528,13 +528,39 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void ObjectRenderDataDrawingContextKeepsTransformedEllipseGeometryOnGenericGeometryPath()
+    public void ObjectRenderDataDrawingContextDrawsTransformedEllipseGeometryAsNativeEllipse()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfObjectRenderDataDrawingContext(sink);
         var geometry = new EllipseGeometry(new Point(10, 20), 30, 40)
         {
-            Transform = new MatrixTransform(1, 0, 0, 1, 5, 6)
+            Transform = new MatrixTransform(2, 0, 0, 3, 5, -1)
+        };
+
+        context.DrawGeometry(Brushes.Green, null, geometry);
+
+        Assert.Equal(new[] { "DrawNativeEllipse" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        Assert.Empty(sink.NativeGeometries);
+        var replayed = Assert.Single(sink.NativeEllipses);
+        Assert.Same(Brushes.Green, replayed.Brush);
+        Assert.Null(replayed.Pen);
+        Assert.Equal(new WpfReplayPoint(25, 59), replayed.Center);
+        Assert.Equal(60, replayed.RadiusX);
+        Assert.Equal(120, replayed.RadiusY);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextKeepsSkewedEllipseGeometryOnGenericGeometryPath()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var geometry = new EllipseGeometry(new Point(10, 20), 30, 40)
+        {
+            Transform = new MatrixTransform(1, 0.25, 0, 1, 5, 6)
         };
 
         context.DrawGeometry(Brushes.Green, null, geometry);
@@ -1298,13 +1324,37 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
-    public void GeneratedDrawingContextKeepsTransformedEllipseGeometryOnGenericGeometryPath()
+    public void GeneratedDrawingContextDrawsTransformedEllipseGeometryAsNativeEllipse()
     {
         var sink = new NativeRecordingSink();
         using var context = new WpfCompositionDrawingContext(sink);
         var geometry = new EllipseGeometry(new Point(10, 20), 30, 40)
         {
-            Transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 10 })
+            Transform = new MatrixTransform(new Matrix { M11 = 2, M22 = 3, OffsetX = 5, OffsetY = -1 })
+        };
+
+        context.DrawGeometry(Brushes.Green, null, geometry);
+
+        Assert.Equal(new[] { "DrawNativeEllipse" }, sink.Operations);
+        Assert.Empty(sink.Geometries);
+        var replayed = Assert.Single(sink.NativeEllipses);
+        Assert.Same(Brushes.Green, replayed.Brush);
+        Assert.Null(replayed.Pen);
+        Assert.Equal(new WpfReplayPoint(25, 59), replayed.Center);
+        Assert.Equal(60, replayed.RadiusX);
+        Assert.Equal(120, replayed.RadiusY);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextKeepsSkewedEllipseGeometryOnGenericGeometryPath()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var geometry = new EllipseGeometry(new Point(10, 20), 30, 40)
+        {
+            Transform = new MatrixTransform(new Matrix { M11 = 1, M12 = 0.25, M22 = 1, OffsetX = 5, OffsetY = 6 })
         };
 
         context.DrawGeometry(Brushes.Green, null, geometry);

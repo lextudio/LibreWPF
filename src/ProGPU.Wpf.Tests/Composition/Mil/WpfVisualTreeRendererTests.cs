@@ -2185,11 +2185,41 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
-    public void ReplayKeepsTransformedLocalEllipseGeometryStateOnGenericGeometryPath()
+    public void ReplayDrawsTransformedLocalEllipseGeometryStateAsNativeEllipse()
     {
         var geometry = new EllipseGeometry(new Point(8, 9), 24, 34)
         {
-            Transform = new MatrixTransform(1, 0, 0, 1, 2, 3)
+            Transform = new MatrixTransform(2, 0, 0, 3, 2, -1)
+        };
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry,
+            HasBrush = true,
+            Brush = Brushes.Blue
+        });
+        var sink = new NativePrimitiveTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawNativeEllipse" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        var draw = Assert.Single(sink.NativeDrawEllipses);
+        Assert.Same(Brushes.Blue, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Equal(new WpfReplayPoint(18, 26), draw.Center);
+        Assert.Equal(48, draw.RadiusX);
+        Assert.Equal(102, draw.RadiusY);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayKeepsSkewedLocalEllipseGeometryStateOnGenericGeometryPath()
+    {
+        var geometry = new EllipseGeometry(new Point(8, 9), 24, 34)
+        {
+            Transform = new MatrixTransform(1, 0.25, 0, 1, 2, 3)
         };
         var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
         {
@@ -2686,6 +2716,26 @@ public sealed class WpfVisualTreeRendererTests
 
         Assert.True(hasBounds);
         Assert.Equal(new Rect(4, 5, 20, 40), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesTransformedLocalEllipseGeometryStateWithoutMediaGeometryFallback()
+    {
+        var geometry = new EllipseGeometry(new Point(14, 25), 10, 20)
+        {
+            Transform = new MatrixTransform(2, 0, 0, 3, 5, -1)
+        };
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(13, 14, 40, 120), bounds);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
     }
 

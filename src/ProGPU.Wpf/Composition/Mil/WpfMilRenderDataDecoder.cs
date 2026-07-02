@@ -5,7 +5,6 @@ using System.Numerics;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
 using MediaBrush = System.Windows.Media.Brush;
-using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
@@ -1016,11 +1015,7 @@ public sealed class WpfMilRenderDataDecoder
         MediaPen? pen,
         MediaGeometry geometry)
     {
-        if (geometry is not MediaEllipseGeometry ellipseGeometry
-            || !HasIdentityGeometryTransform(ellipseGeometry)
-            || !IsUsablePoint(ellipseGeometry.Center, out var center)
-            || !IsPositiveRadius(ellipseGeometry.RadiusX, out var radiusX)
-            || !IsPositiveRadius(ellipseGeometry.RadiusY, out var radiusY))
+        if (!WpfMediaEllipseGeometryReader.TryGetEllipseGeometry(geometry, out var center, out var radiusX, out var radiusY))
         {
             return false;
         }
@@ -1045,13 +1040,6 @@ public sealed class WpfMilRenderDataDecoder
                 && WpfResourceResolver.IsIdentityMatrix(matrix));
     }
 
-    private static bool IsUsablePoint(Point point, out Point usablePoint)
-    {
-        usablePoint = point;
-        return double.IsFinite(point.X)
-            && double.IsFinite(point.Y);
-    }
-
     private static bool IsUsableRect(Rect rectangle, out Rect usableRectangle)
     {
         usableRectangle = rectangle;
@@ -1068,13 +1056,6 @@ public sealed class WpfMilRenderDataDecoder
     {
         usableRadius = Math.Max(0, radius);
         return double.IsFinite(radius);
-    }
-
-    private static bool IsPositiveRadius(double radius, out double usableRadius)
-    {
-        usableRadius = radius;
-        return double.IsFinite(radius)
-            && radius > 0;
     }
 
     private static Rect ToRect(WpfReplayRect rectangle)

@@ -508,6 +508,37 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreePreservesIntersectedPortableVisualClipsAsNativeCombinedGeometry()
+    {
+        var root = new FakePortableVisualStateAndLayoutVisual(
+            new PortableVisualState
+            {
+                HasClip = true,
+                Clip = new PortableNonRectangleClipGeometry(0, 0, 100, 50)
+            },
+            new PortableVisualLayoutState
+            {
+                HasLayoutClip = true,
+                LayoutClip = new PortableRectangleClipGeometry(10, 12, 60, 70)
+            });
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushNativeGeometryClip", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Empty(sink.RetainedVisualStates);
+        Assert.Empty(sink.Clips);
+        var clip = Assert.Single(sink.NativeGeometryClips);
+        Assert.Equal(PortableGeometryPathKind.Combined, clip.Kind);
+        Assert.NotNull(clip.PathA);
+        Assert.NotNull(clip.PathB);
+        Assert.Equal(1, clip.CombineOperation);
+        Assert.Equal(new PortableRect(10, 12, 60, 38), clip.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeLowersVisualScrollableAreaClipIntoRetainedOwnerScopes()
     {
         var root = new FakePortableVisualStateVisual(CreatePortableScrollableAreaClipState(2, 3, 40, 50));

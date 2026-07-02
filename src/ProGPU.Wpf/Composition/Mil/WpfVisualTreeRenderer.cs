@@ -1730,6 +1730,11 @@ public sealed class WpfVisualTreeRenderer
             return true;
         }
 
+        if (TryCreatePortableIntersectedClip(first, second, out clip))
+        {
+            return true;
+        }
+
         var firstGeometry = WpfResourceResolver.AdaptGeometry(first);
         var secondGeometry = WpfResourceResolver.AdaptGeometry(second);
         if (firstGeometry == null || secondGeometry == null)
@@ -1742,6 +1747,21 @@ public sealed class WpfVisualTreeRenderer
             System.Windows.Media.GeometryCombineMode.Intersect,
             firstGeometry,
             secondGeometry);
+        return true;
+    }
+
+    private static bool TryCreatePortableIntersectedClip(object first, object second, out object? clip)
+    {
+        if (first is not IPortableGeometryPathSource firstPortable
+            || second is not IPortableGeometryPathSource secondPortable
+            || !firstPortable.TryGetPortableGeometryPath(out var firstPath)
+            || !secondPortable.TryGetPortableGeometryPath(out var secondPath))
+        {
+            clip = null;
+            return false;
+        }
+
+        clip = new PortableIntersectedClipGeometry(firstPath, secondPath);
         return true;
     }
 
@@ -1844,6 +1864,38 @@ public sealed class WpfVisualTreeRenderer
                         ]
                     }
                 ]
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableIntersectedClipGeometry : IPortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableIntersectedClipGeometry(PortableGeometryPath first, PortableGeometryPath second)
+        {
+            var firstBounds = ToReplayRect(first.Bounds);
+            var secondBounds = ToReplayRect(second.Bounds);
+            var bounds = IsUsableBounds(firstBounds) && IsUsableBounds(secondBounds)
+                ? CombineClipBounds(firstBounds, secondBounds)
+                : default;
+
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Combined,
+                Bounds = IsUsableBounds(bounds)
+                    ? new PortableRect(bounds.X, bounds.Y, bounds.Width, bounds.Height)
+                    : PortableRect.Empty,
+                Transform = PortableMatrix3x2.Identity,
+                PathA = first,
+                PathB = second,
+                CombineOperation = 1
             };
         }
 

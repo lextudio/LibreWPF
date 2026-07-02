@@ -5638,8 +5638,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryReadPortableRectangleClipBounds(portablePath, out bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryPushNativeVisualClip(sink, clip)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portablePath)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryCreatePortableIntersectedClip(first, second, out clip)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("new PortableIntersectedClipGeometry(firstPath, secondPath)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesPortableGeometryPathForVisualClipWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativePortableGeometryClipForNonRectangleVisualClip", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreePreservesIntersectedPortableVisualClipsAsNativeCombinedGeometry", rendererTests, StringComparison.Ordinal);
         Assert.Contains("Assert.DoesNotContain(nestedBrush, sink.VisualDependencies)", rendererTests, StringComparison.Ordinal);
         Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("if (hasPortableVisualState && visualState.HasClip)", rendererSource, StringComparison.Ordinal);

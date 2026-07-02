@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
 using MediaBrush = System.Windows.Media.Brush;
@@ -729,10 +730,18 @@ internal static class WpfDrawingReplay
             hasPortableDrawingGroupState,
             drawingGroupState,
             out var transformValue);
-        var transform = hasTransform ? WpfResourceResolver.AdaptTransform(transformValue) : null;
-        if (hasTransform && transform == null)
+        Matrix4x4 nativeTransform = default;
+        MediaTransform? transform = null;
+        var useNativeTransform = hasTransform
+            && sink is IWpfNativeTransformCommandSink
+            && WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out nativeTransform);
+        if (hasTransform && !useNativeTransform)
         {
-            return WpfDrawingReplayStatus.Unsupported;
+            transform = WpfResourceResolver.AdaptTransform(transformValue);
+            if (transform == null)
+            {
+                return WpfDrawingReplayStatus.Unsupported;
+            }
         }
 
         var hasClip = TryGetDrawingGroupClipGeometry(
@@ -748,7 +757,12 @@ internal static class WpfDrawingReplay
             return WpfDrawingReplayStatus.Unsupported;
         }
 
-        if (transform != null)
+        if (useNativeTransform)
+        {
+            WpfPortableCommandSinkBridge.PushTransform(sink, nativeTransform);
+            popCount++;
+        }
+        else if (transform != null)
         {
             WpfPortableCommandSinkBridge.PushTransform(sink, transform);
             popCount++;

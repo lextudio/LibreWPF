@@ -5800,6 +5800,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetPortableDrawingGroupState(out var portableState)", replaySource, StringComparison.Ordinal);
         Assert.Contains("var hasPortableDrawingGroupState = TryGetPortableDrawingGroupState(", replaySource, StringComparison.Ordinal);
         Assert.Contains("ExtractChildren(drawingGroup, hasPortableDrawingGroupState, drawingGroupState)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("sink is IWpfNativeTransformCommandSink", replaySource, StringComparison.Ordinal);
+        Assert.Contains("WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out nativeTransform)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(sink, nativeTransform)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetNativeDrawingGroupClip(sink, clipValue, out nativeClip)", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(nativeClip)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(drawing, \"DrawingGroup\")", replaySource, StringComparison.Ordinal);

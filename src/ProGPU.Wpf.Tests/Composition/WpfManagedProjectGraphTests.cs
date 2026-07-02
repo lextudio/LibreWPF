@@ -11584,8 +11584,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayPoint(object? pointValue, out WpfReplayPoint point)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("pointValue is PortablePoint portablePoint", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("rectValue is PortableRect portableRect && !portableRect.IsEmpty", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryReadPoint(object? pointValue, out Point point)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryReadRect(object? rectValue, out Rect rectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("pointValue is Point mediaPoint", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("rectValue is Rect mediaRect", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadLocalReplayPoint", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadLocalReplayRect", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("catch (TypeLoadException)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.DoesNotContain("Type.GetType", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
@@ -11605,7 +11612,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObjectRenderDataDrawingContextPushesPortableTransformsThroughNativeSink", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextAdaptsTypedPrimitiveValues", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.DoesNotContain("ObjectRenderDataDrawingContextAdaptsReflectedPrimitiveValues", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
-        Assert.Contains("ObjectRenderDataDrawingContextUsesNativeRectangleWhenAvailable", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextUsesNativePrimitivesWhenAvailable", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.DoesNotContain("DecodePushTransformFallsBackToLocalMatrixTransformWhenForeignAssemblyShadowsType", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.DoesNotContain("\"System.Windows.Media.MatrixTransform\"", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);

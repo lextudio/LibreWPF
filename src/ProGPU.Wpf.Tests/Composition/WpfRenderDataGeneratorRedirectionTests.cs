@@ -293,6 +293,12 @@ public sealed class WpfRenderDataGeneratorRedirectionTests
         Assert.DoesNotContain("BindingFlags", source, StringComparison.Ordinal);
         Assert.DoesNotContain("MethodInfo", source, StringComparison.Ordinal);
         Assert.DoesNotContain(".Invoke(", source, StringComparison.Ordinal);
+        Assert.Contains("ToPortablePoint(point0)", source, StringComparison.Ordinal);
+        Assert.Contains("ToPortablePoint(point1)", source, StringComparison.Ordinal);
+        Assert.Contains("ToPortablePoint(center)", source, StringComparison.Ordinal);
+        Assert.Contains("ToPortableRect(rectangle)", source, StringComparison.Ordinal);
+        Assert.Contains("return new PortablePoint(point.X, point.Y);", source, StringComparison.Ordinal);
+        Assert.Contains("return rect.IsEmpty", source, StringComparison.Ordinal);
 
         foreach (var instruction in WpfRenderDataInstructionRedirectionCatalog.Instructions)
         {

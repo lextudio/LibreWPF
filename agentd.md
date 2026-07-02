@@ -8,7 +8,7 @@ As the port approaches a workable MVP, performance and clean reflection-free cod
 
 The product bridge source is currently reflection-free by audit; keep that as an invariant while returning to broader SDK/sample work. New Xceed, SciChart, SDK smoke, input, clipping, hit-test, rendering, or platform fixes must use typed APIs, generated accessors, reusable ProGPU scene/vector/text primitives, or source-integrated WPF internals. Do not add managed WPF workarounds when the correct fix belongs in ProGPU rendering, shaders, layout/cache metadata, input, or DirectX/Silk.NET platform support.
 
-Bridge contracts used by package-mode apps must avoid shim-owned WPF structs/classes in public callback signatures. Prefer primitives, neutral DTOs, or source-integrated WPF interfaces/factories over runtime type lookup, reflected properties/events, or expression-built adapter delegates.
+Bridge contracts used by package-mode apps must avoid shim-owned WPF structs/classes in public callback signatures. Prefer primitives, neutral DTOs, or source-integrated WPF interfaces/factories over runtime type lookup, reflected properties/events, or expression-built adapter delegates. Object render-data native callbacks must continue to use `PortablePoint`/`PortableRect` or replay-native structs, not local shim `Point`/`Rect` fallbacks.
 
 GPU geometry hit-test candidate payloads must use the neutral `PortableGeometryHitTestCandidate` DTO from `ProGPU.Wpf.Interop`. `PortablePresentationSource` should consume that typed payload directly and must not scrape arbitrary callback result objects for `VisualHit` or `IntersectionDetail` properties; missing candidate data is a typed-contract gap to fix in ProGPU or source-built WPF, not a reason to add bridge-local reflection.
 

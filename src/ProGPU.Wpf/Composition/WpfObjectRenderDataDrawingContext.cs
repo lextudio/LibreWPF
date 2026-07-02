@@ -879,7 +879,8 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
             return true;
         }
 
-        return TryReadLocalReplayPoint(pointValue, out point);
+        point = default;
+        return false;
     }
 
     private static bool TryReadRect(object? rectValue, out Rect rectangle)
@@ -912,43 +913,6 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         {
             rectangle = new WpfReplayRect(portableRect.X, portableRect.Y, portableRect.Width, portableRect.Height);
             return true;
-        }
-
-        return TryReadLocalReplayRect(rectValue, out rectangle);
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool TryReadLocalReplayPoint(object? pointValue, out WpfReplayPoint point)
-    {
-        try
-        {
-            if (pointValue is Point mediaPoint)
-            {
-                point = new WpfReplayPoint(mediaPoint.X, mediaPoint.Y);
-                return true;
-            }
-        }
-        catch (TypeLoadException)
-        {
-        }
-
-        point = default;
-        return false;
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool TryReadLocalReplayRect(object? rectValue, out WpfReplayRect rectangle)
-    {
-        try
-        {
-            if (rectValue is Rect mediaRect)
-            {
-                rectangle = new WpfReplayRect(mediaRect.X, mediaRect.Y, mediaRect.Width, mediaRect.Height);
-                return true;
-            }
-        }
-        catch (TypeLoadException)
-        {
         }
 
         rectangle = default;

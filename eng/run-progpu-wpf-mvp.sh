@@ -75,11 +75,9 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
 
   live_validation_line=""
   render_surface_line=""
-  swapchain_line=""
   for _ in {1..600}; do
     live_validation_line="$(grep -E "ProGPU WPF MVP live input validation succeeded:" "${live_log}" | tail -n 1 || true)"
     render_surface_line="$(grep -E "ProGPU WPF render surface:" "${live_log}" | tail -n 1 || true)"
-    swapchain_line="$(grep -E "Configuring SwapChain: [0-9]+x[0-9]+" "${live_log}" | tail -n 1 || true)"
     if [[ -n "${live_validation_line}" ]]; then
       break
     fi
@@ -87,7 +85,6 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
     if ! kill -0 "${apphost_pid}" 2>/dev/null; then
       live_validation_line="$(grep -E "ProGPU WPF MVP live input validation succeeded:" "${live_log}" | tail -n 1 || true)"
       render_surface_line="$(grep -E "ProGPU WPF render surface:" "${live_log}" | tail -n 1 || true)"
-      swapchain_line="$(grep -E "Configuring SwapChain: [0-9]+x[0-9]+" "${live_log}" | tail -n 1 || true)"
       if [[ -n "${live_validation_line}" ]]; then
         break
       fi
@@ -141,20 +138,9 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
     viewport_y="${BASH_REMATCH[8]}"
     has_viewport_geometry=1
   else
-    if [[ -z "${swapchain_line}" ]]; then
-      echo "Expected MVP apphost to configure a ProGPU swapchain." >&2
-      cat "${live_log}" >&2
-      exit 1
-    fi
-
-    if [[ ! "${swapchain_line}" =~ Configuring[[:space:]]SwapChain:[[:space:]]([0-9]+)x([0-9]+) ]]; then
-      echo "Could not parse MVP apphost swapchain line: ${swapchain_line}" >&2
-      cat "${live_log}" >&2
-      exit 1
-    fi
-
-    pixel_width="${BASH_REMATCH[1]}"
-    pixel_height="${BASH_REMATCH[2]}"
+    echo "Could not parse MVP apphost geometry from live validation or render-surface line." >&2
+    cat "${live_log}" >&2
+    exit 1
   fi
 
   if (( logical_width != 760 || logical_height != 560 )); then

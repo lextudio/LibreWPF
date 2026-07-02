@@ -218,11 +218,11 @@ internal static class Program
                 defaultItemsAppHostOutput,
                 "External SDK default-item Application.Run validation succeeded.",
                 "external SDK default-item apphost validation output");
-            string defaultItemsLiveGeometryOutput = RunAppHostLiveSwapChainProbe(
+            string defaultItemsLiveGeometryOutput = RunAppHostLiveValidationProbe(
                 Path.Combine(defaultItemsOutputRoot, GetAppHostFileName(DefaultItemsAssemblyName)),
                 defaultItemsOutputRoot,
-                expectedLogicalWidth: 260,
-                expectedLogicalHeight: 140,
+                "PROGPU_WPF_EXTERNAL_DEFAULT_LIVE_GEOMETRY_VALIDATE",
+                "External SDK default-item apphost live geometry validation succeeded:",
                 "External SDK default-item apphost live geometry");
             AssertContains(
                 defaultItemsLiveGeometryOutput,
@@ -14873,6 +14873,7 @@ internal static class Program
             using System.Linq;
             using System.Reflection;
             using System.Runtime.CompilerServices;
+            using System.Threading.Tasks;
             using ExternalSdkDefaultItemsLibrary;
             using Microsoft.Win32;
             using System.Windows;
@@ -14882,6 +14883,7 @@ internal static class Program
             using System.Windows.Documents;
             using System.Windows.Input;
             using System.Windows.Media;
+            using System.Windows.Media.ProGPU;
             using System.Windows.Media.Imaging;
             using System.Windows.Threading;
 
@@ -15201,6 +15203,13 @@ internal static class Program
                         nameof(DefaultItemsCommand),
                         typeof(MainWindow));
 
+                private const string DefaultItemsLiveGeometryValidationEnvironmentVariable =
+                    "PROGPU_WPF_EXTERNAL_DEFAULT_LIVE_GEOMETRY_VALIDATE";
+                private const int DefaultItemsLiveGeometryValidationMaxAttempts = 1000;
+                private static readonly TimeSpan DefaultItemsLiveGeometryValidationRetryDelay =
+                    TimeSpan.FromMilliseconds(16);
+                private bool _defaultItemsLiveGeometryValidationStarted;
+
                 public int LoadedCount { get; private set; }
 
                 public int ButtonClickCount { get; private set; }
@@ -15253,6 +15262,104 @@ internal static class Program
                 {
                     InitializeComponent();
                     DataContext = ViewModel;
+                    if (Environment.GetEnvironmentVariable(DefaultItemsLiveGeometryValidationEnvironmentVariable) == "1")
+                    {
+                        Loaded += OnDefaultItemsLiveGeometryValidationLoaded;
+                        StartDefaultItemsLiveGeometryValidationIfRequired();
+                    }
+                }
+
+                private void OnDefaultItemsLiveGeometryValidationLoaded(object sender, RoutedEventArgs e)
+                {
+                    StartDefaultItemsLiveGeometryValidationIfRequired();
+                }
+
+                private void StartDefaultItemsLiveGeometryValidationIfRequired()
+                {
+                    if (_defaultItemsLiveGeometryValidationStarted ||
+                        Environment.GetEnvironmentVariable(DefaultItemsLiveGeometryValidationEnvironmentVariable) != "1")
+                    {
+                        return;
+                    }
+
+                    _defaultItemsLiveGeometryValidationStarted = true;
+                    _ = Task.Run(
+                        async () =>
+                        {
+                            try
+                            {
+                                await ValidateRequiredDefaultItemsLiveGeometryAsync().ConfigureAwait(false);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.Error.WriteLine(ex);
+                                Environment.Exit(1);
+                            }
+                        });
+                }
+
+                private async Task ValidateRequiredDefaultItemsLiveGeometryAsync()
+                {
+                    for (int attempt = 0; attempt < DefaultItemsLiveGeometryValidationMaxAttempts; attempt++)
+                    {
+                        await Task.Delay(DefaultItemsLiveGeometryValidationRetryDelay).ConfigureAwait(false);
+                        if (!ProGpuWpfDiagnostics.TryGetWindowHost(this, out var liveHost) ||
+                            liveHost == null)
+                        {
+                            continue;
+                        }
+
+                        if (!liveHost.HasPresentedFrame)
+                        {
+                            WakeDefaultItemsLiveHost();
+                            continue;
+                        }
+
+                        WakeDefaultItemsLiveHost();
+                        string status = await Dispatcher.InvokeAsync(
+                            ValidateDefaultItemsLiveRenderSurfaceGeometryCore,
+                            DispatcherPriority.Send);
+                        Console.WriteLine($"External SDK default-item apphost live geometry validation succeeded: {status}.");
+                        Environment.Exit(0);
+                        return;
+                    }
+
+                    Console.Error.WriteLine(
+                        "Expected the external SDK default-item apphost to present a stable ProGPU frame before live geometry validation.");
+                    Environment.Exit(1);
+                }
+
+                private string ValidateDefaultItemsLiveRenderSurfaceGeometryCore()
+                {
+                    if (!ProGpuWpfDiagnostics.TryGetRenderSurfaceGeometry(this, out var geometry))
+                    {
+                        throw new InvalidOperationException("Expected default-item live ProGPU WPF host geometry.");
+                    }
+
+                    Require(geometry.LogicalWidth == 260u, "Expected default-item live ProGPU WPF logical width.");
+                    Require(geometry.LogicalHeight == 140u, "Expected default-item live ProGPU WPF logical height.");
+                    if (geometry.PixelWidth < geometry.LogicalWidth || geometry.PixelHeight < geometry.LogicalHeight)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected default-item live ProGPU WPF pixels to cover logical content, but got logical {geometry.LogicalWidth}x{geometry.LogicalHeight} and pixels {geometry.PixelWidth}x{geometry.PixelHeight}.");
+                    }
+
+                    if (geometry.ViewportX != 0 ||
+                        geometry.ViewportY != 0 ||
+                        geometry.ViewportWidth != geometry.PixelWidth ||
+                        geometry.ViewportHeight != geometry.PixelHeight)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected default-item live ProGPU WPF viewport to use the full physical target, but got viewport {geometry.ViewportWidth}x{geometry.ViewportHeight}@{geometry.ViewportX},{geometry.ViewportY} for pixels {geometry.PixelWidth}x{geometry.PixelHeight}.");
+                    }
+
+                    return $"logical {geometry.LogicalWidth}x{geometry.LogicalHeight}, pixels {geometry.PixelWidth}x{geometry.PixelHeight}, viewport {geometry.ViewportWidth}x{geometry.ViewportHeight}@{geometry.ViewportX},{geometry.ViewportY}, dpi {geometry.DpiScale:0.###}";
+                }
+
+                private void WakeDefaultItemsLiveHost()
+                {
+                    ProGpuWpfDiagnostics.TryRequestRender(this);
+                    ProGpuWpfDiagnostics.TryWakeNativeLoop(this);
                 }
 
                 public void ValidateDefaultItemsRun()
@@ -18526,100 +18633,6 @@ internal static class Program
         }
     }
 
-    private static string RunAppHostLiveSwapChainProbe(
-        string fileName,
-        string workingDirectory,
-        uint expectedLogicalWidth,
-        uint expectedLogicalHeight,
-        string description,
-        params string[] arguments)
-    {
-        var startInfo = new ProcessStartInfo(fileName)
-        {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false
-        };
-        startInfo.Environment["DOTNET_ROLL_FORWARD"] = "Major";
-
-        foreach (string argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        var output = new StringBuilder();
-        object outputGate = new();
-        using var process = new Process
-        {
-            StartInfo = startInfo,
-            EnableRaisingEvents = true
-        };
-        process.OutputDataReceived += (_, e) => AppendProcessOutput(output, outputGate, e.Data);
-        process.ErrorDataReceived += (_, e) => AppendProcessOutput(output, outputGate, e.Data);
-
-        if (!process.Start())
-        {
-            throw new InvalidOperationException($"Failed to start '{fileName}' for {description}.");
-        }
-
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-
-        try
-        {
-            var timeout = TimeSpan.FromSeconds(15);
-            Stopwatch stopwatch = Stopwatch.StartNew();
-            while (stopwatch.Elapsed < timeout)
-            {
-                string snapshot;
-                lock (outputGate)
-                {
-                    snapshot = output.ToString();
-                }
-
-                if (TryReadSwapChainSize(snapshot, out uint pixelWidth, out uint pixelHeight))
-                {
-                    if (pixelWidth < expectedLogicalWidth || pixelHeight < expectedLogicalHeight)
-                    {
-                        throw new InvalidOperationException(
-                            $"Expected {description} pixels to cover {expectedLogicalWidth}x{expectedLogicalHeight} logical content, but got {pixelWidth}x{pixelHeight}.{Environment.NewLine}{snapshot}");
-                    }
-
-                    StopLiveProbeProcess(process);
-                    return $"{description} validation succeeded: logical {expectedLogicalWidth}x{expectedLogicalHeight}, pixels {pixelWidth}x{pixelHeight}.";
-                }
-
-                if (process.HasExited)
-                {
-                    string exitOutput;
-                    lock (outputGate)
-                    {
-                        exitOutput = output.ToString();
-                    }
-
-                    throw new InvalidOperationException(
-                        $"Expected {description} to configure a ProGPU swapchain before exiting with code {process.ExitCode}.{Environment.NewLine}{exitOutput}");
-                }
-
-                Thread.Sleep(50);
-            }
-
-            string timedOutOutput;
-            lock (outputGate)
-            {
-                timedOutOutput = output.ToString();
-            }
-
-            throw new InvalidOperationException(
-                $"Timed out waiting for {description} to configure a ProGPU swapchain.{Environment.NewLine}{timedOutOutput}");
-        }
-        finally
-        {
-            StopLiveProbeProcess(process);
-        }
-    }
-
     private static void AppendProcessOutput(StringBuilder output, object outputGate, string? data)
     {
         if (data == null)
@@ -18631,42 +18644,6 @@ internal static class Program
         {
             output.AppendLine(data);
         }
-    }
-
-    private static bool TryReadSwapChainSize(string output, out uint width, out uint height)
-    {
-        const string marker = "Configuring SwapChain:";
-        width = 0;
-        height = 0;
-
-        int markerIndex = output.LastIndexOf(marker, StringComparison.Ordinal);
-        if (markerIndex < 0)
-        {
-            return false;
-        }
-
-        int sizeStart = markerIndex + marker.Length;
-        while (sizeStart < output.Length && char.IsWhiteSpace(output[sizeStart]))
-        {
-            sizeStart++;
-        }
-
-        int xIndex = output.IndexOf('x', sizeStart);
-        if (xIndex < 0)
-        {
-            return false;
-        }
-
-        int sizeEnd = xIndex + 1;
-        while (sizeEnd < output.Length && char.IsDigit(output[sizeEnd]))
-        {
-            sizeEnd++;
-        }
-
-        return uint.TryParse(output.AsSpan(sizeStart, xIndex - sizeStart), NumberStyles.None, CultureInfo.InvariantCulture, out width) &&
-            uint.TryParse(output.AsSpan(xIndex + 1, sizeEnd - xIndex - 1), NumberStyles.None, CultureInfo.InvariantCulture, out height) &&
-            width > 0 &&
-            height > 0;
     }
 
     private static void StopLiveProbeProcess(Process process)

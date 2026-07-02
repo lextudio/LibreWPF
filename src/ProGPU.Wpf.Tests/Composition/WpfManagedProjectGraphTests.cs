@@ -12580,9 +12580,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RunAppHostLiveValidationProbe(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PROGPU_WPF_EXTERNAL_LIVE_VALIDATE\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"External SDK apphost live input\"", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("RunAppHostLiveSwapChainProbe(", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("expectedLogicalWidth: 260", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("expectedLogicalHeight: 140", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"PROGPU_WPF_EXTERNAL_DEFAULT_LIVE_GEOMETRY_VALIDATE\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryGetRenderSurfaceGeometry(this, out var geometry)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"External SDK default-item apphost live geometry\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("assembly=ExternalSdkControls", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("assembly=ExternalSdkDefaultItemsLibrary", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -12964,7 +12963,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"E\", modifiers: \"Control\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK live Ctrl+E KeyBinding execution count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK default-item apphost live geometry validation succeeded:", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("Configuring SwapChain:", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Expected default-item live ProGPU WPF viewport to use the full physical target", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertContains(locText, \"ExternalLocalizationRoot\",", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertContains(locText, \"ExternalLocalizationText\",", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSystemCommands(window)", externalSdkHarnessProgram, StringComparison.Ordinal);

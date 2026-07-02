@@ -2376,6 +2376,77 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsUsesLocalRectangleGeometryStateWithoutMediaGeometryFallback()
+    {
+        var geometry = new RectangleGeometry(new Rect(4, 5, 20, 30));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(4, 5, 20, 30), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesUnfilledRectanglePathGeometryStateWithoutMediaGeometryFallback()
+    {
+        var geometry = CreateRectanglePathGeometry(new Rect(4, 5, 20, 30), isFilled: false);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(4, 5, 20, 30), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesLocalEllipseGeometryStateWithoutMediaGeometryFallback()
+    {
+        var geometry = new EllipseGeometry(new Point(14, 25), 10, 20);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(4, 5, 20, 40), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesClosedPolylinePathGeometryStateWithoutMediaGeometryFallback()
+    {
+        var geometry = CreateClosedPolylinePathGeometry(
+            new Point(1, 2),
+            new Point(30, 40),
+            new Point(50, 10));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(1, 2, 49, 38), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
     public void TryGetDrawingBoundsUsesPortableDrawingGroupClipBoundsWithoutGeometryFallback()
     {
         var geometry = new PortableRectangleClipGeometry(0, 0, 100, 100);
@@ -3229,6 +3300,42 @@ public sealed class WpfVisualTreeRendererTests
         var payload = new byte[16];
         WriteUInt32(payload, 8, geometryToken);
         return CreateRecord(WpfMilCommandId.DrawGeometry, payload);
+    }
+
+    private static PathGeometry CreateRectanglePathGeometry(Rect bounds, bool isFilled)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(bounds.X, bounds.Y),
+            IsClosed = true,
+            IsFilled = isFilled
+        };
+        figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width, bounds.Y), isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(bounds.X + bounds.Width, bounds.Y + bounds.Height), isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(bounds.X, bounds.Y + bounds.Height), isStroked: true));
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
+    }
+
+    private static PathGeometry CreateClosedPolylinePathGeometry(params Point[] points)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = points[0],
+            IsClosed = true,
+            IsFilled = false
+        };
+
+        for (var i = 1; i < points.Length; i++)
+        {
+            figure.Segments.Add(new LineSegment(points[i], isStroked: true));
+        }
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
     }
 
     private static byte[] CreateRecord(WpfMilCommandId commandId, byte[] payload)

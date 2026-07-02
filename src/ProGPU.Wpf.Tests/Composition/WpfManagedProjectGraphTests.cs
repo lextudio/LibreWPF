@@ -5886,6 +5886,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableGeometryBounds(geometryValue, out bounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectPrimitiveGeometryBounds(geometry, out bounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryGetDirectPrimitiveGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectRectangleGeometry(geometry, out var rectangle, out _, out _)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectRectangleStrokeGeometry(geometry, out rectangle)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectEllipseGeometry(geometry, out var center, out var radiusX, out var radiusY)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDirectPolylineGeometry(geometry, out var segments)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetLineSegmentBounds(segments, out bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetDirectLineGeometryBounds(geometry, out bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetDirectLineGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("geometry is Rect rect", replaySource, StringComparison.Ordinal);
@@ -5921,6 +5928,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetDrawingBoundsUsesReplayRectGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableRectGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesLocalLineGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesLocalRectangleGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesUnfilledRectanglePathGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesLocalEllipseGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesClosedPolylinePathGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDrawsTypedRectGeometryStateAsNativeRectangleWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDrawsPortableRectGeometryStateAsRectangleWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("Assert.Equal(0, geometry.ReflectedGeometryProbeCount);", rendererTests, StringComparison.Ordinal);

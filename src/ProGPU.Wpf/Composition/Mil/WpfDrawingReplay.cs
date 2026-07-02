@@ -2279,12 +2279,31 @@ internal static class WpfDrawingReplay
             return true;
         }
 
-        if (TryGetDirectLineGeometryBounds(geometry, out bounds))
+        return TryGetDirectPrimitiveGeometryBounds(geometry, out bounds);
+    }
+
+    private static bool TryGetDirectPrimitiveGeometryBounds(object? geometry, out Rect bounds)
+    {
+        if (TryGetDirectRectangleGeometry(geometry, out var rectangle, out _, out _)
+            || TryGetDirectRectangleStrokeGeometry(geometry, out rectangle))
         {
+            bounds = rectangle;
             return true;
         }
 
-        return TryGetDirectRectangleGeometryBounds(geometry, out bounds);
+        if (TryGetDirectEllipseGeometry(geometry, out var center, out var radiusX, out var radiusY))
+        {
+            return IsUsableRect(
+                new Rect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2),
+                out bounds);
+        }
+
+        if (TryGetDirectPolylineGeometry(geometry, out var segments))
+        {
+            return TryGetLineSegmentBounds(segments, out bounds);
+        }
+
+        return TryGetDirectLineGeometryBounds(geometry, out bounds);
     }
 
     private static bool TryGetDirectRectangleGeometryBounds(object? geometry, out Rect bounds)
@@ -2337,6 +2356,48 @@ internal static class WpfDrawingReplay
 
         bounds = new Rect(x, y, width, height);
         return true;
+    }
+
+    private static bool TryGetLineSegmentBounds(IReadOnlyList<WpfReplayLineSegment> segments, out Rect bounds)
+    {
+        bounds = default;
+        if (segments.Count == 0)
+        {
+            return false;
+        }
+
+        var left = double.PositiveInfinity;
+        var top = double.PositiveInfinity;
+        var right = double.NegativeInfinity;
+        var bottom = double.NegativeInfinity;
+        for (var i = 0; i < segments.Count; i++)
+        {
+            var segment = segments[i];
+            IncludePoint(segment.StartPoint);
+            IncludePoint(segment.EndPoint);
+        }
+
+        var width = right - left;
+        var height = bottom - top;
+        if (!double.IsFinite(left)
+            || !double.IsFinite(top)
+            || !double.IsFinite(width)
+            || !double.IsFinite(height)
+            || (width == 0 && height == 0))
+        {
+            return false;
+        }
+
+        bounds = new Rect(left, top, width, height);
+        return true;
+
+        void IncludePoint(WpfReplayPoint point)
+        {
+            left = Math.Min(left, point.X);
+            top = Math.Min(top, point.Y);
+            right = Math.Max(right, point.X);
+            bottom = Math.Max(bottom, point.Y);
+        }
     }
 
     private static bool TryGetDirectRectangleGeometry(

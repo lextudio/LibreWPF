@@ -5652,10 +5652,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryGetPrimitiveMediaGeometryBounds(null, clipGeometry, out var primitiveClipBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPrimitiveMediaGeometryBounds", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesPortableGeometryPathForVisualClipWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativePortableGeometryClipForNonRectangleVisualClip", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreePreservesIntersectedPortableVisualClipsAsNativeCombinedGeometry", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableGeometryRenderDataWithoutManagedGeometry", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableRectangleGeometryPathPoints", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPrimitiveRenderDataThroughNativeBoundsSink", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromNativeRectangleClipRenderData", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromLocalPrimitiveClipRenderDataWithoutGenericBoundsFallback", rendererTests, StringComparison.Ordinal);

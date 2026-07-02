@@ -2371,6 +2371,11 @@ public sealed class WpfVisualTreeRenderer
 
         private static bool TryReadPortableGeometryBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
         {
+            if (WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds))
+            {
+                return true;
+            }
+
             bounds = ToReplayRect(geometry.Bounds);
             return IsUsableBounds(bounds);
         }

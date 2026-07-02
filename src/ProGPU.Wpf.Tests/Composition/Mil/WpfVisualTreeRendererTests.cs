@@ -743,6 +743,34 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeInfersRetainedBoundsFromPortableRectangleGeometryPathPoints()
+    {
+        var geometry = new PortableRectangleClipGeometry(10, 20, 30, 40, new PortableRect(0, 0, 1, 1));
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateGeometryRenderData(geometry),
+            visualState);
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawNativeGeometry", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 30, 40, state.OpacityMaskBounds);
+        AssertReplayRect(10, 20, 30, 40, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-10, transform.M41);
+        Assert.Equal(-20, transform.M42);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeInfersRetainedBoundsFromPrimitiveRenderDataThroughNativeBoundsSink()
     {
         var visualState = CreatePortableOpacityMaskState(Brushes.White);

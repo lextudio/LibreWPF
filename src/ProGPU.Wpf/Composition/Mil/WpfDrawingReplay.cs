@@ -216,6 +216,19 @@ internal static class WpfDrawingReplay
             return nativeStatus;
         }
 
+        if (TryReplayRectangleGeometryDrawing(
+                geometryValue,
+                brushValue,
+                hasBrush,
+                hasPen,
+                brush,
+                pen,
+                sink,
+                out var rectangleStatus))
+        {
+            return rectangleStatus;
+        }
+
         if (WpfResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
         {
             return WpfDrawingReplayStatus.Unsupported;
@@ -261,6 +274,12 @@ internal static class WpfDrawingReplay
 
     private static bool TryDrawGeometryPen(object? geometryValue, MediaPen pen, IWpfCompositionCommandSink sink)
     {
+        if (TryGetDirectRectangleGeometryBounds(geometryValue, out var rectangle))
+        {
+            DrawRectangleGeometry(sink, null, pen, rectangle);
+            return true;
+        }
+
         if (sink is IWpfNativeGeometryCommandSink nativeGeometrySink
             && TryGetPortableGeometryPath(geometryValue, out var portableGeometry)
             && nativeGeometrySink.DrawNativeGeometry(null, pen, portableGeometry))
@@ -275,6 +294,77 @@ internal static class WpfDrawingReplay
 
         sink.DrawGeometry(null, pen, geometry);
         return true;
+    }
+
+    private static bool TryReplayRectangleGeometryDrawing(
+        object? geometryValue,
+        object? brushValue,
+        bool hasBrush,
+        bool hasPen,
+        MediaBrush? brush,
+        MediaPen? pen,
+        IWpfCompositionCommandSink sink,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        if (!TryGetDirectRectangleGeometryBounds(geometryValue, out var rectangle))
+        {
+            return false;
+        }
+
+        var applied = false;
+        var unsupported = hasPen && pen == null;
+        if (!hasBrush)
+        {
+            if (pen != null)
+            {
+                DrawRectangleGeometry(sink, null, pen, rectangle);
+                applied = true;
+            }
+        }
+        else if (IsTileBrush(brushValue))
+        {
+            unsupported = true;
+            if (pen != null)
+            {
+                DrawRectangleGeometry(sink, null, pen, rectangle);
+                applied = true;
+            }
+        }
+        else if (brush != null)
+        {
+            DrawRectangleGeometry(sink, brush, pen, rectangle);
+            applied = true;
+        }
+        else
+        {
+            unsupported = true;
+            if (pen != null)
+            {
+                DrawRectangleGeometry(sink, null, pen, rectangle);
+                applied = true;
+            }
+        }
+
+        status = applied
+            ? unsupported ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
+            : unsupported ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
+        return true;
+    }
+
+    private static void DrawRectangleGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaBrush? brush,
+        MediaPen? pen,
+        Rect rectangle)
+    {
+        if (sink is IWpfNativePrimitiveCommandSink nativePrimitiveSink)
+        {
+            nativePrimitiveSink.DrawNativeRectangle(brush, pen, ToReplayRect(rectangle));
+            return;
+        }
+
+        sink.DrawRectangle(brush, pen, rectangle);
     }
 
     private static bool TryReplayNativePortableGeometryDrawing(
@@ -2114,6 +2204,11 @@ internal static class WpfDrawingReplay
             return true;
         }
 
+        return TryGetDirectRectangleGeometryBounds(geometry, out bounds);
+    }
+
+    private static bool TryGetDirectRectangleGeometryBounds(object? geometry, out Rect bounds)
+    {
         if (geometry is Rect rect
             && IsUsableRect(rect, out bounds))
         {

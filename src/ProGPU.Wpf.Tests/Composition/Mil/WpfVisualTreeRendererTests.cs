@@ -1734,6 +1734,57 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplayDrawsTypedRectGeometryStateAsNativeRectangleWithoutMediaGeometryFallback()
+    {
+        var pen = new MediaPen(Brushes.Black, 2);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = new Rect(4, 5, 20, 30),
+            HasBrush = true,
+            Brush = Brushes.Green,
+            HasPen = true,
+            Pen = pen
+        });
+        var sink = new NativePrimitiveTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        var draw = Assert.Single(sink.NativeDrawRectangles);
+        Assert.Same(Brushes.Green, draw.Brush);
+        Assert.Same(pen, draw.Pen);
+        Assert.Equal(new WpfReplayRect(4, 5, 20, 30), draw.Rectangle);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
+    public void ReplayDrawsPortableRectGeometryStateAsRectangleWithoutMediaGeometryFallback()
+    {
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = new PortableRect(8, 9, 24, 34),
+            HasBrush = true,
+            Brush = Brushes.Blue
+        });
+        var sink = new TestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        Assert.Empty(sink.DrawGeometries);
+        var draw = Assert.Single(sink.DrawRectangles);
+        Assert.Same(Brushes.Blue, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Equal(new Rect(8, 9, 24, 34), draw.Rectangle);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+    }
+
+    [Fact]
     public void ReplayUsesNativeRectangleClipForPortableTileBrushFill()
     {
         var geometry = new PortableRectangleClipGeometry(1, 2, 10, 12);
@@ -4616,6 +4667,45 @@ public sealed class WpfVisualTreeRendererTests
             Operations.Add("PushNativeGeometryClip");
             NativeGeometryClips.Add(clipGeometry);
             return true;
+        }
+    }
+
+    private sealed class NativePrimitiveTestSink : TestSink, IWpfNativePrimitiveCommandSink
+    {
+        public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayRect Rectangle)> NativeDrawRectangles { get; } = new();
+
+        public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
+        {
+        }
+
+        public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)
+        {
+            Operations.Add("DrawNativeRectangle");
+            NativeDrawRectangles.Add((brush, pen, rectangle));
+        }
+
+        public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)
+        {
+        }
+
+        public void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY)
+        {
+        }
+
+        public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)
+        {
+        }
+
+        public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle, WpfReplayRect sourceRectangle)
+        {
+        }
+
+        public void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRun)
+        {
+        }
+
+        public void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds)
+        {
         }
     }
 }

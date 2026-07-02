@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Windows;
 using System.Windows.Media.Composition;
 using System.Windows.Media.ProGPU.Composition;
+using ProGPU.Wpf.Interop;
 using MediaBrush = System.Windows.Media.Brush;
 using ProGpuBrush = global::ProGPU.Vector.Brush;
 using ProGpuLinearGradientBrush = global::ProGPU.Vector.LinearGradientBrush;
@@ -16,11 +17,12 @@ internal enum ProGpuBrushMappingMode
     Absolute
 }
 
-internal sealed class ProGpuNativeBrush : MediaBrush
+internal sealed class ProGpuNativeBrush : MediaBrush, IPortableBrushSource
 {
     private readonly ProGpuBrush _brush;
     private readonly Matrix4x4? _transform;
     private readonly Matrix4x4? _relativeTransform;
+    private readonly PortableBrush? _portableBrush;
     private readonly int _unsupportedGradientStateCount;
 
     public ProGpuNativeBrush(ProGpuBrush brush)
@@ -47,11 +49,13 @@ internal sealed class ProGpuNativeBrush : MediaBrush
         ProGpuBrushMappingMode mappingMode,
         Matrix4x4? transform,
         Matrix4x4? relativeTransform,
-        int unsupportedGradientStateCount)
+        int unsupportedGradientStateCount,
+        PortableBrush? portableBrush = null)
     {
         _brush = brush;
         _transform = transform;
         _relativeTransform = relativeTransform;
+        _portableBrush = portableBrush;
         _unsupportedGradientStateCount = Math.Max(0, unsupportedGradientStateCount);
         MappingMode = mappingMode;
     }
@@ -70,7 +74,8 @@ internal sealed class ProGpuNativeBrush : MediaBrush
             MappingMode,
             _transform,
             _relativeTransform,
-            _unsupportedGradientStateCount);
+            _unsupportedGradientStateCount,
+            _portableBrush);
     }
 
     internal override DUCE.ResourceHandle AddRefOnChannelCore(DUCE.Channel channel)
@@ -100,6 +105,18 @@ internal sealed class ProGpuNativeBrush : MediaBrush
     internal ProGpuBrush ToNative(WpfReplayRect bounds)
     {
         return ToNative(bounds.X, bounds.Y, bounds.Width, bounds.Height, IsUsable(bounds));
+    }
+
+    bool IPortableBrushSource.TryGetPortableBrush(out PortableBrush brush)
+    {
+        if (_portableBrush == null)
+        {
+            brush = null!;
+            return false;
+        }
+
+        brush = _portableBrush;
+        return true;
     }
 
     private ProGpuBrush ToNative(double x, double y, double width, double height, bool hasUsableBounds)

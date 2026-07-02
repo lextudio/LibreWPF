@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Composition;
+using ProGPU.Wpf.Interop;
 using Xunit;
 using ProGpuContainerVisual = ProGPU.Scene.ContainerVisual;
 using ProGpuDrawingVisual = ProGPU.Scene.DrawingVisual;
@@ -113,7 +114,7 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
 
         var context = Assert.IsType<WpfObjectRenderDataDrawingContext>(
             PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory!(new FakeVisual()));
-        context.DrawRectangle(Brushes.Red, null, new Rect(1, 2, 3, 4));
+        context.DrawRectangle(Brushes.Red, null, new PortableRect(1, 2, 3, 4));
         context.Close();
 
         Assert.Equal(1, frame.ObjectRenderDataSinkContextCount);
@@ -151,7 +152,7 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         using (var context = Assert.IsType<WpfObjectRenderDataDrawingContext>(
                    PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory!(ownerVisual)))
         {
-            context.DrawRectangle(brush, null, new Rect(1, 2, 3, 4));
+            context.DrawRectangle(brush, null, new PortableRect(1, 2, 3, 4));
         }
 
         Assert.Equal(1, frame.ObjectRenderDataSinkContextCount);

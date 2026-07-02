@@ -383,6 +383,49 @@ public sealed class WpfResourceResolverTests
     }
 
     [Fact]
+    public void ProGpuNativeBrushClonePreservesPortableBrushContract()
+    {
+        var portableBrush = PortableBrush.LinearGradient(
+            new PortablePoint(0, 0),
+            new PortablePoint(1, 1),
+            new[]
+            {
+                new PortableGradientStop(new PortableColor(255, 255, 0, 0), 0),
+                new PortableGradientStop(new PortableColor(255, 0, 0, 255), 1)
+            });
+        var brush = new ProGpuNativeBrush(
+            new ProGpuLinearGradientBrush(
+                new Vector2(0, 0),
+                new Vector2(1, 1),
+                Array.Empty<ProGPU.Vector.GradientStop>()),
+            ProGpuBrushMappingMode.RelativeToBoundingBox,
+            transform: null,
+            relativeTransform: null,
+            unsupportedGradientStateCount: 0,
+            portableBrush);
+
+        var clone = Assert.IsType<ProGpuNativeBrush>(brush.Clone());
+        var portableSource = Assert.IsAssignableFrom<IPortableBrushSource>(clone);
+
+        Assert.True(portableSource.TryGetPortableBrush(out var clonePortableBrush));
+        Assert.Same(portableBrush, clonePortableBrush);
+    }
+
+    [Fact]
+    public void AdaptNativeBrushDoesNotUnwrapProGpuNativeBrushWithoutPortableContract()
+    {
+        var brush = new ProGpuNativeBrush(new ProGPU.Vector.SolidColorBrush(Vector4.One));
+
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(1, 2, 30, 40),
+            out var unsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Null(nativeBrush);
+    }
+
+    [Fact]
     public void AdaptNativeBrushDoesNotInvokeDuckTypedToNativeMethods()
     {
         var brush = new DuckTypedNativeBrush();

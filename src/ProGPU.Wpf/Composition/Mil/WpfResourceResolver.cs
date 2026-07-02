@@ -304,11 +304,6 @@ public sealed class WpfResourceResolver :
                 : null;
         }
 
-        if (TryAdaptNativeShimBrush(resource, bounds, out var nativeProGpuBrush, out unsupportedStateCount))
-        {
-            return nativeProGpuBrush;
-        }
-
         return null;
     }
 
@@ -341,36 +336,6 @@ public sealed class WpfResourceResolver :
             && double.IsFinite(bounds.Y)
             && double.IsFinite(bounds.Width)
             && double.IsFinite(bounds.Height);
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static bool TryAdaptNativeShimBrush(
-        object resource,
-        WpfReplayRect bounds,
-        out global::ProGPU.Vector.Brush? nativeBrush,
-        out int unsupportedStateCount)
-    {
-        nativeBrush = null;
-        unsupportedStateCount = 0;
-        try
-        {
-            if (resource is not ProGpuNativeBrush proGpuNativeBrush)
-            {
-                return false;
-            }
-
-            unsupportedStateCount = proGpuNativeBrush.CountUnsupportedStateForBounds(bounds);
-            nativeBrush = proGpuNativeBrush.ToNative(bounds);
-            return nativeBrush != null;
-        }
-        catch (MissingMethodException)
-        {
-            return false;
-        }
-        catch (TypeLoadException)
-        {
-            return false;
-        }
     }
 
     private static int CountUnsupportedGradientState(bool stopsTruncated, bool unsupportedColorInterpolationMode)
@@ -424,7 +389,8 @@ public sealed class WpfResourceResolver :
                     ToProGpuBrushMappingMode(brush.MappingMode),
                     ToOptionalMatrix4x4(brush.HasTransform, brush.Transform),
                     ToOptionalMatrix4x4(brush.HasRelativeTransform, brush.RelativeTransform),
-                    CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode: false));
+                    CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode: false),
+                    brush);
 
             case PortableBrushKind.RadialGradient:
                 if (!TryCreatePortableRadialGradientBrush(brush, mapRelativeToBounds: false, default, out var radialBrush, out var radialStopsTruncated))
@@ -437,7 +403,8 @@ public sealed class WpfResourceResolver :
                     ToProGpuBrushMappingMode(brush.MappingMode),
                     ToOptionalMatrix4x4(brush.HasTransform, brush.Transform),
                     ToOptionalMatrix4x4(brush.HasRelativeTransform, brush.RelativeTransform),
-                    CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode: false));
+                    CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode: false),
+                    brush);
 
             default:
                 return null;

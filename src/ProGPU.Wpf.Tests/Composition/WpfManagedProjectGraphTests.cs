@@ -11417,9 +11417,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public abstract class Freezable", proGpuPresentationCoreFreezable, StringComparison.Ordinal);
         Assert.Contains("public Freezable Clone()", proGpuPresentationCoreFreezable, StringComparison.Ordinal);
         Assert.Contains("protected virtual Freezable CreateInstanceCore()", proGpuPresentationCoreFreezable, StringComparison.Ordinal);
+        Assert.Contains("internal sealed class ProGpuNativeBrush : MediaBrush, IPortableBrushSource", proGpuNativeBrush, StringComparison.Ordinal);
+        Assert.Contains("bool IPortableBrushSource.TryGetPortableBrush(out PortableBrush brush)", proGpuNativeBrush, StringComparison.Ordinal);
         Assert.Contains("protected override Freezable CreateInstanceCore()", proGpuNativeBrush, StringComparison.Ordinal);
         Assert.Contains("return new ProGpuNativeBrush(", proGpuNativeBrush, StringComparison.Ordinal);
         Assert.Contains("ProGpuNativeBrushClonePreservesNativeBrushState", wpfResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativeBrushDoesNotUnwrapProGpuNativeBrushWithoutPortableContract", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodePushTransformRejectsReflectedMatrixShapeWithoutPortableContract", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptGlyphRunSkipsUnavailablePortableGlyphRunWithoutReflectionFallback", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("return portableBrushSource.TryGetPortableBrush(out var portableBrush)", wpfResourceResolver, StringComparison.Ordinal);
@@ -11433,7 +11436,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("unsupportedStateCount = unsupportedGradientStateCount;", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("return ToMappedNativeBrush(brush, mappingMode, transform, relativeTransform, bounds);", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("adaptedPen.DashStyle = new DashStyle(dashArray, dashOffset)", wpfResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("TryAdaptNativeShimBrush(resource, bounds, out var nativeProGpuBrush, out unsupportedStateCount)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryAdaptNativeShimBrush", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("TryAdaptNativeMediaBrush", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("TryAdaptNativeMediaPen", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain(".ToNative(ToMediaRect(bounds))", wpfResourceResolver, StringComparison.Ordinal);

@@ -1337,7 +1337,7 @@ public sealed class ProGpuWpfDrawingFrameTests
 
         using (var context = frame.OpenObjectRenderDataSinkContext(ownerVisual))
         {
-            context.DrawRectangle(brush, null, new Rect(9, 10, 11, 12));
+            context.DrawRectangle(brush, null, new PortableRect(9, 10, 11, 12));
         }
 
         Assert.Equal(0, frame.DrawingContextCount);
@@ -1384,7 +1384,7 @@ public sealed class ProGpuWpfDrawingFrameTests
 
         using (var context = frame.OpenObjectRenderDataSinkContext(ownerVisual))
         {
-            context.DrawRectangle(brush, null, new Rect(9, 10, 11, 12));
+            context.DrawRectangle(brush, null, new PortableRect(9, 10, 11, 12));
         }
 
         var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));

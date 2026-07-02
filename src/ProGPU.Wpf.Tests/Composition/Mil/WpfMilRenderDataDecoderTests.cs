@@ -140,6 +140,41 @@ public sealed class WpfMilRenderDataDecoderTests
     }
 
     [Fact]
+    public void DecodeNativeDrawGeometryUsesLocalMediaGeometryWithoutGenericGeometryFallback()
+    {
+        var brush = Brushes.Red;
+        var pen = new Pen(Brushes.Black, 2);
+        var geometry = CreateCurvedPathGeometry(new Rect(1, 2, 30, 40));
+        var resolver = new TestResolver
+        {
+            Brush = brush,
+            Pen = pen,
+            Geometry = geometry
+        };
+        var sink = new NativeTestSink();
+
+        var payload = new byte[16];
+        WriteUInt32(payload, 0, 1);
+        WriteUInt32(payload, 4, 2);
+        WriteUInt32(payload, 8, 3);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawGeometry, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(1, resolver.ResolveGeometryCallCount);
+        Assert.Empty(sink.DrawGeometries);
+        Assert.Empty(sink.NativeDrawGeometries);
+        Assert.Empty(sink.NativeRectangles);
+        var draw = Assert.Single(sink.NativeMediaDrawGeometries);
+        Assert.Same(brush, draw.Brush);
+        Assert.Same(pen, draw.Pen);
+        Assert.Same(geometry, draw.Geometry);
+    }
+
+    [Fact]
     public void DecodePortableRectangleClipUsesNativeClipWithoutManagedResolution()
     {
         var portableGeometry = CreatePortableRectangleGeometry(5, 6, 70, 80);
@@ -432,6 +467,26 @@ public sealed class WpfMilRenderDataDecoderTests
         };
     }
 
+    private static PathGeometry CreateCurvedPathGeometry(Rect bounds)
+    {
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(bounds.X, bounds.Y + bounds.Height),
+            IsClosed = true,
+            IsFilled = true
+        };
+        figure.Segments.Add(new BezierSegment(
+            new Point(bounds.X + bounds.Width * 0.25, bounds.Y),
+            new Point(bounds.X + bounds.Width * 0.75, bounds.Y),
+            new Point(bounds.X + bounds.Width, bounds.Y + bounds.Height),
+            isStroked: true));
+        figure.Segments.Add(new LineSegment(new Point(bounds.X, bounds.Y + bounds.Height), isStroked: true));
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return geometry;
+    }
+
     private sealed class TestResolver : IWpfMilResourceResolver, IWpfRawMilResourceResolver
     {
         public Dictionary<uint, object> RawResources { get; } = new();
@@ -594,6 +649,8 @@ public sealed class WpfMilRenderDataDecoderTests
     {
         public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
 
+        public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> NativeMediaDrawGeometries { get; } = new();
+
         public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
 
         public List<MediaGeometry> NativeMediaGeometryClips { get; } = new();
@@ -601,6 +658,12 @@ public sealed class WpfMilRenderDataDecoderTests
         public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
         {
             NativeDrawGeometries.Add((brush, pen, geometry));
+            return true;
+        }
+
+        public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+        {
+            NativeMediaDrawGeometries.Add((brush, pen, geometry));
             return true;
         }
 
@@ -624,6 +687,8 @@ public sealed class WpfMilRenderDataDecoderTests
         IWpfNativeClipCommandSink
     {
         public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
+
+        public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> NativeMediaDrawGeometries { get; } = new();
 
         public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayRect Rectangle)> NativeRectangles { get; } = new();
 
@@ -674,6 +739,12 @@ public sealed class WpfMilRenderDataDecoderTests
         public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
         {
             NativeDrawGeometries.Add((brush, pen, geometry));
+            return true;
+        }
+
+        public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+        {
+            NativeMediaDrawGeometries.Add((brush, pen, geometry));
             return true;
         }
 

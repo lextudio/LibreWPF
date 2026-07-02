@@ -11917,6 +11917,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("geometry.Draw(recordingContext", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryDrawNativeGeometry(resources, sink, nativeBrush, nativePen, nativeGeometryToken)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveGeometry(sink, nativeBrush, nativePen, geometry)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("DrawMediaGeometry(sink, nativeBrush, nativePen, geometry)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("nativeGeometrySink.DrawNativeGeometry(brush, pen, geometry)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("TryResolvePortableGeometryPath(resources, clipToken, out var portableClip)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portableClip)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
@@ -11924,6 +11926,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DecodeNativeDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodeTypedDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodeNativeDrawGeometryUsesLocalRectanglePrimitiveWithoutGenericGeometryFallback", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
+        Assert.Contains("DecodeNativeDrawGeometryUsesLocalMediaGeometryWithoutGenericGeometryFallback", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodePortableRectangleClipUsesNativeClipWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodeRoundedRectangleClipUsesNativeMediaGeometryClipWithoutBroadNativeClip", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("guidelines is not IPortableGuidelineSetSource guidelineSource", wpfGuidelineSetReader, StringComparison.Ordinal);
@@ -12099,6 +12102,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfMediaRectangleClipReader.TryGetRectangleStrokeBounds(geometry, out var rectangleBounds)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("WpfMediaEllipseGeometryReader.TryGetEllipseGeometry(geometry, out var center, out var radiusX, out var radiusY)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeRectangle(brush, pen, replayRectangle)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("DrawMediaGeometry(sink, brush, pen, geometry)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfMediaRectangleClipReader", wpfMediaRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("TryGetRectangleStrokeBounds(MediaGeometry geometry, out WpfReplayRect bounds)", wpfMediaRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("requireFilled: true", wpfMediaRectangleClipReader, StringComparison.Ordinal);

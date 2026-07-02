@@ -143,7 +143,7 @@ public sealed class WpfMilRenderDataDecoder
                     {
                         if (!TryDrawPrimitiveGeometry(sink, brush, pen, geometry))
                         {
-                            sink.DrawGeometry(brush, pen, geometry);
+                            DrawMediaGeometry(sink, brush, pen, geometry);
                         }
 
                         appliedCount++;
@@ -475,7 +475,7 @@ public sealed class WpfMilRenderDataDecoder
                     {
                         if (!TryDrawPrimitiveGeometry(sink, nativeBrush, nativePen, geometry))
                         {
-                            sink.DrawGeometry(nativeBrush, nativePen, geometry);
+                            DrawMediaGeometry(sink, nativeBrush, nativePen, geometry);
                         }
 
                         appliedCount++;
@@ -880,6 +880,21 @@ public sealed class WpfMilRenderDataDecoder
             || TryDrawPrimitivePolylineGeometry(sink, brush, pen, geometry)
             || TryDrawPrimitiveRectangleGeometry(sink, brush, pen, geometry)
             || TryDrawPrimitiveEllipseGeometry(sink, brush, pen, geometry);
+    }
+
+    private static void DrawMediaGeometry(
+        IWpfCompositionCommandSink sink,
+        MediaBrush? brush,
+        MediaPen? pen,
+        MediaGeometry geometry)
+    {
+        if (sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && nativeGeometrySink.DrawNativeGeometry(brush, pen, geometry))
+        {
+            return;
+        }
+
+        sink.DrawGeometry(brush, pen, geometry);
     }
 
     private static bool TryDrawPrimitiveLineGeometry(

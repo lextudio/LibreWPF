@@ -697,6 +697,33 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeInfersRetainedBoundsFromPortableGeometryRenderDataWithoutManagedGeometry()
+    {
+        var geometry = new PortableNonRectangleClipGeometry(3, 4, 50, 20);
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateGeometryRenderData(geometry),
+            visualState);
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawNativeGeometry", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 50, 20, state.OpacityMaskBounds);
+        AssertReplayRect(3, 4, 50, 20, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-3, transform.M41);
+        Assert.Equal(-4, transform.M42);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualReappliesNativeCacheState()
     {
         var cacheMode = new object();
@@ -2580,6 +2607,12 @@ public sealed class WpfVisualTreeRendererTests
         return new FakeRenderData(record, record.Length, new FakeDependentResources(imageSource));
     }
 
+    private static FakeRenderData CreateGeometryRenderData(object geometry)
+    {
+        var record = CreateGeometryRecord(1);
+        return new FakeRenderData(record, record.Length, new FakeDependentResources(geometry));
+    }
+
     private static FakeRenderData CreateTransformedRenderData(object transform, MediaBrush brush)
     {
         var pushTransformPayload = new byte[8];
@@ -2612,6 +2645,13 @@ public sealed class WpfVisualTreeRendererTests
         WriteRect(payload, 0, 1, 2, 30, 40);
         WriteUInt32(payload, 32, imageSourceToken);
         return CreateRecord(WpfMilCommandId.DrawImage, payload);
+    }
+
+    private static byte[] CreateGeometryRecord(uint geometryToken)
+    {
+        var payload = new byte[16];
+        WriteUInt32(payload, 8, geometryToken);
+        return CreateRecord(WpfMilCommandId.DrawGeometry, payload);
     }
 
     private static byte[] CreateRecord(WpfMilCommandId commandId, byte[] payload)

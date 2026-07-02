@@ -1906,7 +1906,9 @@ public sealed class WpfVisualTreeRenderer
         }
     }
 
-    private sealed class BoundsAccumulatingSink : IWpfCompositionCommandSink
+    private sealed class BoundsAccumulatingSink :
+        IWpfCompositionCommandSink,
+        IWpfNativeGeometryCommandSink
     {
         private enum PushKind
         {
@@ -1965,6 +1967,17 @@ public sealed class WpfVisualTreeRenderer
             AddBounds(InflateForPen(FromMediaRect(geometry.Bounds), pen));
         }
 
+        public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
+        {
+            if (!TryReadPortableGeometryBounds(geometry, out var bounds))
+            {
+                return false;
+            }
+
+            AddBounds(InflateForPen(bounds, pen));
+            return true;
+        }
+
         public void DrawImage(MediaImageSource imageSource, Rect rectangle)
         {
             AddBounds(FromMediaRect(rectangle));
@@ -1993,6 +2006,20 @@ public sealed class WpfVisualTreeRenderer
             var currentClip = _clipStack.Peek();
             _clipStack.Push(currentClip.HasValue ? IntersectBounds(currentClip.Value, clip) : clip);
             _pushStack.Push(PushKind.Clip);
+        }
+
+        public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
+        {
+            if (!TryReadPortableGeometryBounds(clipGeometry, out var bounds))
+            {
+                return false;
+            }
+
+            var clip = TransformBounds(bounds, _transformStack.Peek());
+            var currentClip = _clipStack.Peek();
+            _clipStack.Push(currentClip.HasValue ? IntersectBounds(currentClip.Value, clip) : clip);
+            _pushStack.Push(PushKind.Clip);
+            return true;
         }
 
         public void PushOpacity(double opacity)
@@ -2126,6 +2153,12 @@ public sealed class WpfVisualTreeRenderer
         private static WpfReplayRect FromMediaRect(Rect bounds)
         {
             return new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+        }
+
+        private static bool TryReadPortableGeometryBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
+        {
+            bounds = ToReplayRect(geometry.Bounds);
+            return IsUsableBounds(bounds);
         }
     }
 

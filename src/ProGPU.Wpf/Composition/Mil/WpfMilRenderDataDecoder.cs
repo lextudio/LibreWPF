@@ -14,6 +14,10 @@ using MediaPathGeometry = System.Windows.Media.PathGeometry;
 using MediaPen = System.Windows.Media.Pen;
 using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
+using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
+using PortableGeometryPathKind = ProGPU.Wpf.Interop.PortableGeometryPathKind;
+using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
+using PortablePathSegmentKind = ProGPU.Wpf.Interop.PortablePathSegmentKind;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -457,12 +461,16 @@ public sealed class WpfMilRenderDataDecoder
                     break;
 
                 case WpfMilCommandId.DrawGeometry:
-                    if (TryResolveGeometry(resources, ReadUInt32(payload, 8), out var geometry))
+                    var nativeBrush = ResolveOptionalBrush(resources, ReadUInt32(payload, 0));
+                    var nativePen = ResolveOptionalPen(resources, ReadUInt32(payload, 4));
+                    var nativeGeometryToken = ReadUInt32(payload, 8);
+                    if (TryDrawNativeGeometry(resources, sink, nativeBrush, nativePen, nativeGeometryToken))
                     {
-                        sink.DrawGeometry(
-                            ResolveOptionalBrush(resources, ReadUInt32(payload, 0)),
-                            ResolveOptionalPen(resources, ReadUInt32(payload, 4)),
-                            geometry);
+                        appliedCount++;
+                    }
+                    else if (TryResolveGeometry(resources, nativeGeometryToken, out var geometry))
+                    {
+                        sink.DrawGeometry(nativeBrush, nativePen, geometry);
                         appliedCount++;
                     }
                     else
@@ -725,6 +733,30 @@ public sealed class WpfMilRenderDataDecoder
         return geometry != null;
     }
 
+    private static bool TryResolvePortableGeometryPath(
+        IWpfMilResourceResolver resources,
+        uint resourceToken,
+        out PortableGeometryPath geometry)
+    {
+        geometry = null!;
+        return TryResolveRawResource(resources, resourceToken, out var resource)
+            && resource is PortableGeometryPathSource portableGeometry
+            && portableGeometry.TryGetPortableGeometryPath(out geometry)
+            && geometry != null;
+    }
+
+    private static bool TryDrawNativeGeometry(
+        IWpfMilResourceResolver resources,
+        IWpfCompositionCommandSink sink,
+        MediaBrush? brush,
+        MediaPen? pen,
+        uint geometryToken)
+    {
+        return sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+            && TryResolvePortableGeometryPath(resources, geometryToken, out var geometry)
+            && nativeGeometrySink.DrawNativeGeometry(brush, pen, geometry);
+    }
+
     private static bool TryResolveImageSource(IWpfMilResourceResolver resources, uint resourceToken, out MediaImageSource imageSource)
     {
         imageSource = resourceToken == 0 ? null! : resources.ResolveImageSource(resourceToken)!;
@@ -783,6 +815,22 @@ public sealed class WpfMilRenderDataDecoder
         IWpfCompositionCommandSink sink,
         uint clipToken)
     {
+        if (TryResolvePortableGeometryPath(resources, clipToken, out var portableClip))
+        {
+            if (sink is IWpfNativeClipCommandSink nativePortableClipSink
+                && TryGetRectangleClipBounds(portableClip, out var portableClipBounds))
+            {
+                nativePortableClipSink.PushNativeClip(portableClipBounds);
+                return true;
+            }
+
+            if (sink is IWpfNativeGeometryCommandSink nativeGeometrySink
+                && nativeGeometrySink.PushNativeGeometryClip(portableClip))
+            {
+                return true;
+            }
+        }
+
         if (!TryResolveGeometry(resources, clipToken, out var clipGeometry))
         {
             return false;
@@ -797,6 +845,55 @@ public sealed class WpfMilRenderDataDecoder
 
         sink.PushClip(clipGeometry);
         return true;
+    }
+
+    private static bool TryGetRectangleClipBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        if (!geometry.Transform.IsIdentity
+            || geometry.Kind != PortableGeometryPathKind.Path
+            || geometry.Figures.Length != 1)
+        {
+            return false;
+        }
+
+        var figure = geometry.Figures[0];
+        if (!figure.IsClosed || !figure.IsFilled)
+        {
+            return false;
+        }
+
+        var segmentCount = figure.Segments.Length;
+        if (segmentCount is not (3 or 4))
+        {
+            return false;
+        }
+
+        var points = new Point[4];
+        points[0] = new Point(figure.StartPoint.X, figure.StartPoint.Y);
+        for (var i = 0; i < 3; i++)
+        {
+            var segment = figure.Segments[i];
+            if (segment.Kind != PortablePathSegmentKind.Line)
+            {
+                return false;
+            }
+
+            points[i + 1] = new Point(segment.Point1.X, segment.Point1.Y);
+        }
+
+        if (segmentCount == 4)
+        {
+            var segment = figure.Segments[3];
+            if (segment.Kind != PortablePathSegmentKind.Line
+                || !NearlyEqual(segment.Point1.X, points[0].X)
+                || !NearlyEqual(segment.Point1.Y, points[0].Y))
+            {
+                return false;
+            }
+        }
+
+        return TryCreateRectangleFromPolygon(points, out bounds);
     }
 
     private static bool TryGetRectangleClipBounds(MediaGeometry geometry, out WpfReplayRect bounds)

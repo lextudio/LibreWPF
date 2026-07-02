@@ -9,6 +9,7 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
 using MediaFormattedText = System.Windows.Media.FormattedText;
+using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
@@ -118,6 +119,13 @@ internal interface IWpfNativePrimitiveCommandSink
 internal interface IWpfNativeClipCommandSink
 {
     void PushNativeClip(WpfReplayRect bounds);
+}
+
+internal interface IWpfNativeGeometryCommandSink
+{
+    bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry);
+
+    bool PushNativeGeometryClip(PortableGeometryPath clipGeometry);
 }
 
 internal interface IWpfHitTestOwnerScopeCommandSink

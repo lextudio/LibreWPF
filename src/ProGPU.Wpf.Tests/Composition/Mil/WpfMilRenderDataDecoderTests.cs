@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
+using ProGPU.Wpf.Interop;
 using Xunit;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
@@ -46,6 +47,60 @@ public sealed class WpfMilRenderDataDecoderTests
         Assert.Equal(2, sink.DrawRectangles[0].Rectangle.Y);
         Assert.Equal(30, sink.DrawRectangles[0].Rectangle.Width);
         Assert.Equal(40, sink.DrawRectangles[0].Rectangle.Height);
+    }
+
+    [Fact]
+    public void DecodeNativeDrawGeometryUsesPortableRawGeometryWithoutManagedResolution()
+    {
+        var brush = Brushes.Red;
+        var portableGeometry = CreatePortableRectangleGeometry(1, 2, 30, 40);
+        var resolver = new TestResolver { Brush = brush };
+        resolver.RawResources[2] = new FakePortableGeometry(portableGeometry);
+        var sink = new NativeTestSink();
+
+        var payload = new byte[16];
+        WriteUInt32(payload, 0, 1);
+        WriteUInt32(payload, 4, 0);
+        WriteUInt32(payload, 8, 2);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawGeometry, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(0, resolver.ResolveGeometryCallCount);
+        var draw = Assert.Single(sink.NativeDrawGeometries);
+        Assert.Same(brush, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Same(portableGeometry, draw.Geometry);
+    }
+
+    [Fact]
+    public void DecodePortableRectangleClipUsesNativeClipWithoutManagedResolution()
+    {
+        var portableGeometry = CreatePortableRectangleGeometry(5, 6, 70, 80);
+        var resolver = new TestResolver();
+        resolver.RawResources[3] = new FakePortableGeometry(portableGeometry);
+        var sink = new NativeTestSink();
+
+        var payload = new byte[8];
+        WriteUInt32(payload, 0, 3);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.PushClip, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
+        Assert.Equal(0, resolver.ResolveGeometryCallCount);
+        var clip = Assert.Single(sink.NativeClipBounds);
+        Assert.Equal(5, clip.X);
+        Assert.Equal(6, clip.Y);
+        Assert.Equal(70, clip.Width);
+        Assert.Equal(80, clip.Height);
+        Assert.Empty(sink.NativeGeometryClips);
+        Assert.Equal(1, sink.PopCount);
     }
 
     [Fact]
@@ -261,28 +316,68 @@ public sealed class WpfMilRenderDataDecoderTests
         BinaryPrimitives.WriteInt64LittleEndian(target.AsSpan(offset, 8), BitConverter.DoubleToInt64Bits(value));
     }
 
-    private sealed class TestResolver : IWpfMilResourceResolver
+    private static PortableGeometryPath CreatePortableRectangleGeometry(double x, double y, double width, double height)
     {
+        return new PortableGeometryPath
+        {
+            Kind = PortableGeometryPathKind.Path,
+            FillRule = PortableFillRule.Nonzero,
+            Bounds = new PortableRect(x, y, width, height),
+            Figures =
+            [
+                new PortablePathFigure
+                {
+                    StartPoint = new PortablePoint(x, y),
+                    IsClosed = true,
+                    IsFilled = true,
+                    Segments =
+                    [
+                        PortablePathSegment.Line(new PortablePoint(x + width, y), isSmoothJoin: false, isStroked: true),
+                        PortablePathSegment.Line(new PortablePoint(x + width, y + height), isSmoothJoin: false, isStroked: true),
+                        PortablePathSegment.Line(new PortablePoint(x, y + height), isSmoothJoin: false, isStroked: true)
+                    ]
+                }
+            ]
+        };
+    }
+
+    private sealed class TestResolver : IWpfMilResourceResolver, IWpfRawMilResourceResolver
+    {
+        public Dictionary<uint, object> RawResources { get; } = new();
+
         public MediaBrush? Brush { get; init; }
 
         public MediaPen? Pen { get; init; }
 
+        public MediaGeometry? Geometry { get; init; }
+
         public MediaImageSource? ImageSource { get; init; }
+
+        public int ResolveGeometryCallCount { get; private set; }
 
         public MediaBrush? ResolveBrush(uint resourceToken) => Brush;
 
         public MediaPen? ResolvePen(uint resourceToken) => Pen;
 
-        public MediaGeometry? ResolveGeometry(uint resourceToken) => null;
+        public MediaGeometry? ResolveGeometry(uint resourceToken)
+        {
+            ResolveGeometryCallCount++;
+            return Geometry;
+        }
 
         public MediaImageSource? ResolveImageSource(uint resourceToken) => ImageSource;
 
         public MediaGlyphRun? ResolveGlyphRun(uint resourceToken) => null;
 
         public MediaTransform? ResolveTransform(uint resourceToken) => null;
+
+        public bool TryResolveRawResource(uint resourceToken, out object resource)
+        {
+            return RawResources.TryGetValue(resourceToken, out resource!);
+        }
     }
 
-    private sealed class TestSink : IWpfCompositionCommandSink
+    private class TestSink : IWpfCompositionCommandSink
     {
         public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle)> DrawRectangles { get; } = new();
 
@@ -393,6 +488,77 @@ public sealed class WpfMilRenderDataDecoderTests
 
         public void Dispose()
         {
+        }
+    }
+
+    private sealed class NativeTestSink :
+        TestSink,
+        IWpfNativePrimitiveCommandSink,
+        IWpfNativeGeometryCommandSink,
+        IWpfNativeClipCommandSink
+    {
+        public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
+
+        public List<WpfReplayRect> NativeClipBounds { get; } = new();
+
+        public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
+
+        public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
+        {
+        }
+
+        public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)
+        {
+        }
+
+        public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)
+        {
+        }
+
+        public void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY)
+        {
+        }
+
+        public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)
+        {
+        }
+
+        public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle, WpfReplayRect sourceRectangle)
+        {
+        }
+
+        public void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRun)
+        {
+        }
+
+        public void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds)
+        {
+        }
+
+        public void PushNativeClip(WpfReplayRect bounds)
+        {
+            NativeClipBounds.Add(bounds);
+        }
+
+        public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
+        {
+            NativeDrawGeometries.Add((brush, pen, geometry));
+            return true;
+        }
+
+        public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
+        {
+            NativeGeometryClips.Add(clipGeometry);
+            return true;
+        }
+    }
+
+    private sealed class FakePortableGeometry(PortableGeometryPath path) : IPortableGeometryPathSource
+    {
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath portablePath)
+        {
+            portablePath = path;
+            return true;
         }
     }
 

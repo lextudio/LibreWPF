@@ -12,6 +12,7 @@ using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
+using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
 using ProGpuContainerVisual = global::ProGPU.Scene.ContainerVisual;
 using ProGpuDrawingContext = global::ProGPU.Scene.DrawingContext;
 using ProGpuEffectBase = global::ProGPU.Scene.EffectBase;
@@ -32,6 +33,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfNativeTransformCommandSink,
     IWpfNativePrimitiveCommandSink,
     IWpfNativeClipCommandSink,
+    IWpfNativeGeometryCommandSink,
     IWpfHitTestOwnerScopeCommandSink
 {
     private enum ScopeKind
@@ -269,6 +271,12 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         Current.Sink.DrawGeometry(brush, pen, geometry);
     }
 
+    public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
+    {
+        return Current.Sink is IWpfNativeGeometryCommandSink nativeSink
+            && nativeSink.DrawNativeGeometry(brush, pen, geometry);
+    }
+
     public void DrawImage(MediaImageSource imageSource, Rect rectangle)
     {
         Current.Sink.DrawImage(imageSource, rectangle);
@@ -313,6 +321,18 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     {
         Current.Sink.PushClip(clipGeometry);
         _scopeStack.Push(ScopeKind.Delegate);
+    }
+
+    public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
+    {
+        if (Current.Sink is not IWpfNativeGeometryCommandSink nativeSink
+            || !nativeSink.PushNativeGeometryClip(clipGeometry))
+        {
+            return false;
+        }
+
+        _scopeStack.Push(ScopeKind.Delegate);
+        return true;
     }
 
     public void PushOpacity(double opacity)

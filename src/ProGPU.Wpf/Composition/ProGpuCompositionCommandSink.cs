@@ -49,6 +49,7 @@ public sealed class ProGpuCompositionCommandSink :
     IWpfNativeTransformCommandSink,
     IWpfNativePrimitiveCommandSink,
     IWpfNativeClipCommandSink,
+    IWpfNativeGeometryCommandSink,
     IWpfHitTestOwnerScopeCommandSink
 {
     private const float TransformEpsilon = 0.0001f;
@@ -454,6 +455,26 @@ public sealed class ProGpuCompositionCommandSink :
         }
     }
 
+    public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
+    {
+        ThrowIfClosed();
+        if (brush == null && pen == null)
+        {
+            return false;
+        }
+
+        if (!TryConvertPortableGeometryPath(geometry, Matrix4x4.Identity, out var path, out var bounds)
+            || (!path.IsCombined && path.Figures.Count == 0))
+        {
+            return false;
+        }
+
+        var nativeBrush = ToNativeBrush(brush, bounds);
+        var nativePen = ToNativePen(pen, bounds);
+        AddNativePath(nativeBrush, nativePen, path);
+        return true;
+    }
+
     private void AddNativePath(VectorBrush? brush, VectorPen? pen, VectorPathGeometry path)
     {
         AddNativeCommand(new global::ProGPU.Scene.RenderCommand
@@ -597,6 +618,20 @@ public sealed class ProGpuCompositionCommandSink :
             UnsupportedStateCount++;
             _pushStack.Push(PushKind.NoOp);
         }
+    }
+
+    public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
+    {
+        ThrowIfClosed();
+        if (!TryConvertPortableGeometryPath(clipGeometry, _transformStack.Peek(), out var path, out _)
+            || (!path.IsCombined && path.Figures.Count == 0))
+        {
+            return false;
+        }
+
+        NativeContext.PushGeometryClip(path);
+        _pushStack.Push(PushKind.GeometryClip);
+        return true;
     }
 
     void IWpfNativeClipCommandSink.PushNativeClip(WpfReplayRect bounds)

@@ -8866,6 +8866,12 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfResourceResolverTests.cs");
+        var wpfMilRenderDataDecoderTestsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfMilRenderDataDecoderTests.cs");
         var wpfMilRenderDataDecoderPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -9223,6 +9229,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuWpfInputService = File.ReadAllText(proGpuWpfInputServicePath);
         var wpfCompositionDrawingContextTests = File.ReadAllText(wpfCompositionDrawingContextTestsPath);
         var wpfResourceResolverTests = File.ReadAllText(wpfResourceResolverTestsPath);
+        var wpfMilRenderDataDecoderTests = File.ReadAllText(wpfMilRenderDataDecoderTestsPath);
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
         var wpfResourceResolver = File.ReadAllText(wpfResourceResolverPath);
         var proGpuPresentationCoreBrush = File.ReadAllText(proGpuPresentationCoreBrushPath);
@@ -11629,6 +11636,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("geometry is PortableGeometryPathSource portableGeometry", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("portableGeometry.TryGetPortableGeometryPath(out var portablePath)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryConvertPortableGeometryPath(portablePath", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("PushNativeGeometryClip(PortableGeometryPath clipGeometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("ConvertPortableGeometryPath(PortableGeometryPath portablePath)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("portablePath.Kind == PortableGeometryPathKind.Combined", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("PathA = portablePath.PathA != null", proGpuWpfCommandSink, StringComparison.Ordinal);
@@ -11654,6 +11663,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("geometry.GetType().GetMethod(", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("drawMethod.Invoke(", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry.Draw(recordingContext", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("TryDrawNativeGeometry(resources, sink, nativeBrush, nativePen, nativeGeometryToken)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("TryResolvePortableGeometryPath(resources, clipToken, out var portableClip)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portableClip)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("DecodeNativeDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
+        Assert.Contains("DecodePortableRectangleClipUsesNativeClipWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("guidelines is not IPortableGuidelineSetSource guidelineSource", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.Contains("collection is not IList<double> typedValues", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection", wpfGuidelineSetReader, StringComparison.Ordinal);

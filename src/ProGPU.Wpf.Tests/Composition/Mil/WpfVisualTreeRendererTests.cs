@@ -1752,10 +1752,11 @@ public sealed class WpfVisualTreeRendererTests
     [Fact]
     public void TryGetDrawingBoundsUsesPortableDrawingStateWithoutGenericBoundsFallback()
     {
+        var geometry = new PortableRectangleClipGeometry(1, 2, 10, 12);
         var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
         {
             HasGeometry = true,
-            Geometry = new RectangleGeometry(new Rect(1, 2, 10, 12))
+            Geometry = geometry
         });
 
         var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
@@ -1763,6 +1764,7 @@ public sealed class WpfVisualTreeRendererTests
         Assert.True(hasBounds);
         Assert.Equal(new Rect(1, 2, 10, 12), bounds);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
+        Assert.Equal(0, geometry.ReflectedGeometryProbeCount);
     }
 
     [Fact]

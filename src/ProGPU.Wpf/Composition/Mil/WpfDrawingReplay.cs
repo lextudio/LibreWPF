@@ -1700,6 +1700,19 @@ internal static class WpfDrawingReplay
             && portableGeometry != null;
     }
 
+    private static bool TryGetPortableGeometryBounds(object? geometry, out Rect bounds)
+    {
+        if (TryGetPortableGeometryPath(geometry, out var portableGeometry)
+            && TryReadPortableRect(portableGeometry.Bounds, out bounds)
+            && IsUsableRect(bounds, out bounds))
+        {
+            return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
     private static bool TryGetImageDrawingImageSource(
         object drawing,
         bool hasPortableImageDrawingState,
@@ -2120,8 +2133,18 @@ internal static class WpfDrawingReplay
                     drawing,
                     hasPortableGeometryDrawingState,
                     geometryDrawingState,
-                    out var geometryValue)
-                || WpfResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
+                    out var geometryValue))
+            {
+                bounds = default;
+                return false;
+            }
+
+            if (TryGetPortableGeometryBounds(geometryValue, out bounds))
+            {
+                return true;
+            }
+
+            if (WpfResourceResolver.AdaptGeometry(geometryValue) is not { } geometry)
             {
                 bounds = default;
                 return false;

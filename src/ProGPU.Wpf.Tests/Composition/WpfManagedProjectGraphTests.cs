@@ -11792,7 +11792,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public static class SmokeResourceFactory", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CreateGreeting(string prefix, int value)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("return $\"{prefix}:{value}\";", smokeMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("<PackageReadmeFile>README.md</PackageReadmeFile>", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("README.md\" Pack=\"true\" PackagePath=\"\\\"", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("<SignAssembly>true</SignAssembly>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains(@"<AssemblyOriginatorKeyFile>..\..\external\ProGPU\eng\ProGPU.snk</AssemblyOriginatorKeyFile>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("<Version Condition=\"'$(Version)' == ''\">11.0.0-dev</Version>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
@@ -11805,7 +11807,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InternalsVisibleTo(", proGpuWpfAssemblyInfo, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Tests, PublicKey=", proGpuWpfAssemblyInfo, StringComparison.Ordinal);
         Assert.Contains("c891cb91", proGpuWpfAssemblyInfo, StringComparison.Ordinal);
+        Assert.Contains("WindowsBase\\WindowsBase.csproj\" PrivateAssets=\"all\"", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("PresentationCore\\PresentationCore.csproj\" PrivateAssets=\"all\"", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Backend\\ProGPU.Backend.csproj", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.DirectX\\ProGPU.DirectX.csproj", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Scene\\ProGPU.Scene.csproj", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Interop\\ProGPU.Wpf.Interop.csproj", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("ReadReplayPoint", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("ReadReplayRect", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("DrawNativeGlyphRun", wpfMilRenderDataDecoder, StringComparison.Ordinal);

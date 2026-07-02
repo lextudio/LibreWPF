@@ -3,10 +3,14 @@
     <AssemblyName>ProGPU.Wpf</AssemblyName>
     <RootNamespace>System.Windows.Media.ProGPU</RootNamespace>
     <Description>Cross-platform ProGPU rendering host and adapter lane for WPF managed rendering.</Description>
-    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\external\ProGPU\eng\ProGPU.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Silk.NET.Input" Version="2.23.0" />

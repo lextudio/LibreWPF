@@ -825,6 +825,37 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeInfersRetainedBoundsFromLocalPrimitiveClipRenderDataWithoutGenericBoundsFallback()
+    {
+        var clip = CreateThrowingBoundsClosedPolylinePathGeometry(
+            new Point(5, 6),
+            new Point(45, 6),
+            new Point(20, 36));
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateClippedRenderData(clip, Brushes.Green),
+            visualState);
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "PushClip", "DrawRectangle", "Pop", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 26, 30, state.OpacityMaskBounds);
+        AssertReplayRect(5, 6, 26, 30, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-5, transform.M41);
+        Assert.Equal(-6, transform.M42);
+        Assert.Same(clip, Assert.Single(sink.Clips));
+        Assert.Equal(new WpfMilDecodeResult(3, 3, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualReappliesNativeCacheState()
     {
         var cacheMode = new object();

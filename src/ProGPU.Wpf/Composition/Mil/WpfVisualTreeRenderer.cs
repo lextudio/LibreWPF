@@ -1907,8 +1907,9 @@ public sealed class WpfVisualTreeRenderer
 
         public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
         {
-            if (TryAddPrimitiveMediaGeometryBounds(pen, geometry))
+            if (TryGetPrimitiveMediaGeometryBounds(pen, geometry, out var bounds))
             {
+                AddBounds(bounds);
                 return;
             }
 
@@ -1972,6 +1973,12 @@ public sealed class WpfVisualTreeRenderer
             if (WpfMediaRectangleClipReader.TryGetRectangleClipBounds(clipGeometry, out var clipBounds))
             {
                 PushClipCore(clipBounds);
+                return;
+            }
+
+            if (TryGetPrimitiveMediaGeometryBounds(null, clipGeometry, out var primitiveClipBounds))
+            {
+                PushClipCore(primitiveClipBounds);
                 return;
             }
 
@@ -2105,55 +2112,44 @@ public sealed class WpfVisualTreeRenderer
             AddBounds(new WpfReplayRect(minX, minY, maxX - minX, maxY - minY));
         }
 
-        private bool TryAddPrimitiveMediaGeometryBounds(MediaPen? pen, MediaGeometry geometry)
+        private static bool TryGetPrimitiveMediaGeometryBounds(
+            MediaPen? pen,
+            MediaGeometry geometry,
+            out WpfReplayRect bounds)
         {
             if (WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out var rectangleBounds)
                 || WpfMediaRectangleClipReader.TryGetRectangleStrokeBounds(geometry, out rectangleBounds)
                 || TryGetEllipseGeometryBounds(geometry, out rectangleBounds))
             {
-                AddBounds(InflateForPen(rectangleBounds, pen));
+                bounds = InflateForPen(rectangleBounds, pen);
                 return true;
             }
 
             if (WpfMediaLineGeometryReader.TryGetPolylineSegments(geometry, out var segments))
             {
-                if (pen != null)
+                if (TryGetLineSegmentBounds(segments, out bounds))
                 {
-                    foreach (var segment in segments)
-                    {
-                        AddLineBounds(
-                            pen,
-                            segment.StartPoint.X,
-                            segment.StartPoint.Y,
-                            segment.EndPoint.X,
-                            segment.EndPoint.Y);
-                    }
-
+                    bounds = InflateForLinePen(bounds, pen);
                     return true;
                 }
 
-                if (TryGetLineSegmentBounds(segments, out var bounds))
-                {
-                    AddBounds(bounds);
-                }
-
-                return true;
+                bounds = default;
+                return false;
             }
 
             if (WpfMediaLineGeometryReader.TryGetLinePoints(geometry, out var startPoint, out var endPoint))
             {
-                if (pen != null)
+                if (TryGetLineBounds(startPoint.X, startPoint.Y, endPoint.X, endPoint.Y, out bounds))
                 {
-                    AddLineBounds(pen, startPoint.X, startPoint.Y, endPoint.X, endPoint.Y);
-                }
-                else if (TryGetLineBounds(startPoint.X, startPoint.Y, endPoint.X, endPoint.Y, out var lineBounds))
-                {
-                    AddBounds(lineBounds);
+                    bounds = InflateForLinePen(bounds, pen);
+                    return true;
                 }
 
-                return true;
+                bounds = default;
+                return false;
             }
 
+            bounds = default;
             return false;
         }
 
@@ -2165,6 +2161,21 @@ public sealed class WpfVisualTreeRenderer
             }
 
             var halfThickness = Math.Max(0, pen.Thickness) / 2;
+            return new WpfReplayRect(
+                bounds.X - halfThickness,
+                bounds.Y - halfThickness,
+                bounds.Width + halfThickness * 2,
+                bounds.Height + halfThickness * 2);
+        }
+
+        private static WpfReplayRect InflateForLinePen(WpfReplayRect bounds, MediaPen? pen)
+        {
+            if (pen == null || !IsUsableBounds(bounds))
+            {
+                return bounds;
+            }
+
+            var halfThickness = Math.Max(1, pen.Thickness) / 2;
             return new WpfReplayRect(
                 bounds.X - halfThickness,
                 bounds.Y - halfThickness,

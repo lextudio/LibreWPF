@@ -5650,12 +5650,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public void PushNativeClip(WpfReplayRect bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetPrimitiveMediaGeometryBounds(null, clipGeometry, out var primitiveClipBounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryGetPrimitiveMediaGeometryBounds", rendererSource, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesPortableGeometryPathForVisualClipWithoutReflection", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeUsesNativePortableGeometryClipForNonRectangleVisualClip", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreePreservesIntersectedPortableVisualClipsAsNativeCombinedGeometry", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableGeometryRenderDataWithoutManagedGeometry", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPrimitiveRenderDataThroughNativeBoundsSink", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromNativeRectangleClipRenderData", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromLocalPrimitiveClipRenderDataWithoutGenericBoundsFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("Assert.DoesNotContain(nestedBrush, sink.VisualDependencies)", rendererTests, StringComparison.Ordinal);
         Assert.Contains("var hasPortableVisualState = TryGetPortableVisualState(visual, out var visualState);", rendererSource, StringComparison.Ordinal);
         Assert.Contains("if (hasPortableVisualState && visualState.HasClip)", rendererSource, StringComparison.Ordinal);

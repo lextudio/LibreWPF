@@ -3,11 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using ProGPU.DirectX;
+using SciChart.Core;
 using SciChart.Charting.Model.DataSeries;
 using SciChart.Charting.Visuals;
 using SciChart.Charting.Visuals.Axes;
@@ -60,6 +60,15 @@ internal static class RealSciChartMvp
     internal const string NativeDependenciesPathEnvironmentVariable = "PROGPU_WPF_SCICHART_NATIVE_DEPENDENCIES_ROOT";
 
     private const int SampleCount = 96;
+    private static readonly string[] KnownSciChartNativeModules =
+    [
+        "AbtLicensingNative.dll",
+        "VXccelEngine3D.dll",
+        "d3d9.dll",
+        "d3d11.dll",
+        "dxgi.dll",
+        "D3DCOMPILER_47.dll"
+    ];
     private static readonly object NativeDiagnosticsGate = new();
     private static RealSciChartLicenseStatus? s_licenseStatus;
     private static RealSciChartNativeDependencyDiagnostics? s_nativeDiagnostics;
@@ -297,7 +306,10 @@ internal static class RealSciChartMvp
             }
 
             var assemblies = GetSciChartAssemblies();
-            var report = ProGpuDirectXNativeDependencyInspector.Inspect(assemblies);
+            var moduleHints = CreateNativeModuleHints(assemblies);
+            var report = ProGpuDirectXNativeDependencyInspector.Inspect(
+                Array.Empty<ProGpuDirectXNativeImport>(),
+                moduleHints);
             var plan = ProGpuDirectXNativeCompatibilityPlanner.Create(report);
             var abiPlan = ProGpuDirectXNativeAbiPlanner.Create(report);
             var facadeSource = ProGpuDirectXNativeFacadeSourceEmitter.Emit(abiPlan);
@@ -323,46 +335,64 @@ internal static class RealSciChartMvp
         }
     }
 
-    private static IReadOnlyList<Assembly> GetSciChartAssemblies()
+    private static IReadOnlyList<System.Reflection.Assembly> GetSciChartAssemblies()
     {
-        var assemblies = new Dictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
+        var assemblies = new Dictionary<string, System.Reflection.Assembly>(StringComparer.OrdinalIgnoreCase);
+        AddAssembly(assemblies, typeof(NativeDllLoader).Assembly);
+        AddAssembly(assemblies, typeof(SciChart.Data.Model.DoubleRange).Assembly);
+        AddAssembly(assemblies, typeof(SciChart.Drawing.Common.IRenderSurface).Assembly);
         AddAssembly(assemblies, typeof(SciChartSurface).Assembly);
         AddAssembly(assemblies, typeof(SciChart3DSurface).Assembly);
-        foreach (var assemblyName in new[]
-        {
-            "SciChart.Core",
-            "SciChart.Data",
-            "SciChart.Drawing",
-            "SciChart.Charting",
-            "SciChart.Charting3D"
-        })
-        {
-            TryAddAssembly(assemblies, assemblyName);
-        }
 
         return assemblies.Values
             .OrderBy(static assembly => assembly.GetName().Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
-    private static void TryAddAssembly(IDictionary<string, Assembly> assemblies, string assemblyName)
+    private static IReadOnlyList<ProGpuDirectXNativeModuleHint> CreateNativeModuleHints(
+        IReadOnlyList<System.Reflection.Assembly> assemblies)
     {
-        try
+        var moduleHints = new List<ProGpuDirectXNativeModuleHint>();
+        foreach (var assembly in assemblies)
         {
-            AddAssembly(assemblies, Assembly.Load(new AssemblyName(assemblyName)));
+            var assemblyName = assembly.GetName().Name ?? assembly.FullName ?? string.Empty;
+            var location = assembly.Location;
+            if (string.IsNullOrWhiteSpace(location) || !File.Exists(location))
+            {
+                continue;
+            }
+
+            try
+            {
+                moduleHints.AddRange(
+                    ProGpuDirectXNativeDependencyInspector.CreateModuleHintsFromBytes(
+                        assemblyName,
+                        File.ReadAllBytes(location),
+                        "SciChartAssemblyImage"));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
+            {
+                moduleHints.Add(new ProGpuDirectXNativeModuleHint(
+                    assemblyName,
+                    $"{assemblyName}.dll",
+                    $"SciChartAssemblyImageReadFailed:{ex.GetType().Name}"));
+            }
         }
-        catch (FileNotFoundException)
+
+        foreach (var moduleName in KnownSciChartNativeModules)
         {
+            moduleHints.Add(new ProGpuDirectXNativeModuleHint(
+                "SciChart.Native",
+                moduleName,
+                "KnownSciChartRuntime"));
         }
-        catch (FileLoadException)
-        {
-        }
-        catch (BadImageFormatException)
-        {
-        }
+
+        return moduleHints;
     }
 
-    private static void AddAssembly(IDictionary<string, Assembly> assemblies, Assembly assembly)
+    private static void AddAssembly(
+        IDictionary<string, System.Reflection.Assembly> assemblies,
+        System.Reflection.Assembly assembly)
     {
         var assemblyName = assembly.GetName().Name;
         if (!string.IsNullOrWhiteSpace(assemblyName))
@@ -383,17 +413,10 @@ internal static class RealSciChartMvp
 
             Directory.CreateDirectory(path);
 
-            var loaderType = Type.GetType("SciChart.Core.NativeDllLoader, SciChart.Core", throwOnError: false);
-            var property = loaderType?.GetProperty("DependenciesPathRoot", BindingFlags.Public | BindingFlags.Static);
-            if (property is null || property.PropertyType != typeof(string) || !property.CanWrite)
-            {
-                return (path, "SciChart.Core.NativeDllLoader.DependenciesPathRoot was not found.");
-            }
-
-            property.SetValue(null, path);
+            NativeDllLoader.DependenciesPathRoot = path;
             return (path, null);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or TargetInvocationException or ArgumentException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or TypeInitializationException)
         {
             return (null, ex.GetBaseException().Message);
         }

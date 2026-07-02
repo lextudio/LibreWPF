@@ -9335,6 +9335,9 @@ public sealed class WpfManagedProjectGraphTests
         var avaloniaPackageSmokeScriptPath = FindRepoPath(
             "eng",
             "progpu-avalonia-package-smoke.sh");
+        var previewPackageAuditScriptPath = FindRepoPath(
+            "eng",
+            "progpu-preview-package-audit.sh");
         var sdkCiWorkflowPath = FindRepoPath(
             ".github",
             "workflows",
@@ -9617,6 +9620,7 @@ public sealed class WpfManagedProjectGraphTests
         var textEditorCopyPaste = File.ReadAllText(textEditorCopyPastePath);
         var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
         var avaloniaPackageSmokeScript = File.ReadAllText(avaloniaPackageSmokeScriptPath);
+        var previewPackageAuditScript = File.ReadAllText(previewPackageAuditScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
         var mvpProject = File.ReadAllText(mvpProjectPath);
         var mvpAppConfig = File.ReadAllText(mvpAppConfigPath);
@@ -9805,6 +9809,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"${repo_root}/eng/progpu-avalonia-package-smoke.sh\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"src/ProGPU.Wpf/ProGPU.Wpf.csproj\" \"ProGPU.Wpf\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj\" \"ProGPU.Wpf.Sdk\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Auditing preview package artifacts", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"${repo_root}/eng/progpu-preview-package-audit.sh\"", sdkCiScript, StringComparison.Ordinal);
 
         Assert.Contains("NUGET_PACKAGES=\"${smoke_root}/packages\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.Contains("cat >\"${project_dir}/Directory.Build.props\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
@@ -9816,6 +9822,21 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\\\"ProGPU.Avalonia/${dev_package_version}\\\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.Contains("\\\"ProGPU.WinUI/${dev_package_version}\\\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.DoesNotContain("<ProjectReference", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+
+        Assert.Contains("all_packages=(", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.DotNet.Wpf.GitHub", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Sdk", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("require_entry ProGPU.Wpf.Sdk \"Sdk/Sdk.props\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("require_entry ProGPU.Wpf.Sdk \"targets/ProGPU.Wpf.Sdk.targets\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("require_nuspec_contains ProGPU.Wpf.Sdk \"<packageType name=\\\"MSBuildSdk\\\" />\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("require_entry ProGPU.Wpf \"lib/net10.0/ProGPU.Wpf.dll\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("dependency id=\\\"ProGPU.DirectX\\\" version=\\\"${dev_package_version}\\\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("dependency id=\\\"Silk.NET.WebGPU\\\" version=\\\"2.23.0\\\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("dependency id=\\\"ProGPU.WinUI\\\" version=\\\"${dev_package_version}\\\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("dependency id=\\\"Avalonia\\\" version=\\\"12.0.3\\\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("lib/net11.0/PresentationFramework.dll", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("ref/net11.0/PresentationFramework.dll", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF preview package audit succeeded", previewPackageAuditScript, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", mvpProject, StringComparison.Ordinal);

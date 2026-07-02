@@ -138,6 +138,9 @@ pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.
 pack_project "src/ProGPU.Wpf/ProGPU.Wpf.csproj" "ProGPU.Wpf"
 pack_project "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" "ProGPU.Wpf.Sdk"
 
+echo "Auditing preview package artifacts..."
+"${repo_root}/eng/progpu-preview-package-audit.sh"
+
 echo "Cleaning package-mode SDK smoke outputs..."
 clean_sdk_smoke_outputs
 

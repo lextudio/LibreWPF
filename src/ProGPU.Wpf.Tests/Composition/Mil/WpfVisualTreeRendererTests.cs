@@ -769,6 +769,33 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeInfersRetainedBoundsFromLocalLineGeometryRenderDataWithoutGenericBoundsFallback()
+    {
+        var geometry = new LineGeometry(new Point(1, 2), new Point(31, 2));
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateStrokedGeometryRenderData(geometry, new MediaPen(Brushes.Black, 4)),
+            visualState);
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawGeometry", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 34, 4, state.OpacityMaskBounds);
+        AssertReplayRect(-1, 0, 34, 4, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(1, transform.M41);
+        Assert.Equal(0, transform.M42);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeInfersRetainedBoundsFromNativeRectangleClipRenderData()
     {
         var clip = new PortableRectangleClipGeometry(10, 12, 8, 10);
@@ -3248,6 +3275,12 @@ public sealed class WpfVisualTreeRendererTests
         return new FakeRenderData(record, record.Length, new FakeDependentResources(geometry));
     }
 
+    private static FakeRenderData CreateStrokedGeometryRenderData(object geometry, MediaPen pen)
+    {
+        var record = CreateGeometryRecord(0, 2, 3);
+        return new FakeRenderData(record, record.Length, new FakeDependentResources(null, pen, geometry));
+    }
+
     private static FakeRenderData CreateClippedRenderData(object clip, MediaBrush brush)
     {
         var pushClipPayload = new byte[8];
@@ -3297,7 +3330,14 @@ public sealed class WpfVisualTreeRendererTests
 
     private static byte[] CreateGeometryRecord(uint geometryToken)
     {
+        return CreateGeometryRecord(0, 0, geometryToken);
+    }
+
+    private static byte[] CreateGeometryRecord(uint brushToken, uint penToken, uint geometryToken)
+    {
         var payload = new byte[16];
+        WriteUInt32(payload, 0, brushToken);
+        WriteUInt32(payload, 4, penToken);
         WriteUInt32(payload, 8, geometryToken);
         return CreateRecord(WpfMilCommandId.DrawGeometry, payload);
     }

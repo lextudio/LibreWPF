@@ -6,6 +6,7 @@ using System.Windows.Media.ProGPU.Composition;
 using ProGPU.Wpf.Interop;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaFormattedText = System.Windows.Media.FormattedText;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
@@ -1906,6 +1907,11 @@ public sealed class WpfVisualTreeRenderer
 
         public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
         {
+            if (TryAddPrimitiveMediaGeometryBounds(pen, geometry))
+            {
+                return;
+            }
+
             AddBounds(InflateForPen(FromMediaRect(geometry.Bounds), pen));
         }
 
@@ -1963,6 +1969,12 @@ public sealed class WpfVisualTreeRenderer
 
         public void PushClip(MediaGeometry clipGeometry)
         {
+            if (WpfMediaRectangleClipReader.TryGetRectangleClipBounds(clipGeometry, out var clipBounds))
+            {
+                PushClipCore(clipBounds);
+                return;
+            }
+
             PushClipCore(FromMediaRect(clipGeometry.Bounds));
         }
 
@@ -2093,6 +2105,58 @@ public sealed class WpfVisualTreeRenderer
             AddBounds(new WpfReplayRect(minX, minY, maxX - minX, maxY - minY));
         }
 
+        private bool TryAddPrimitiveMediaGeometryBounds(MediaPen? pen, MediaGeometry geometry)
+        {
+            if (WpfMediaRectangleClipReader.TryGetRectangleClipBounds(geometry, out var rectangleBounds)
+                || WpfMediaRectangleClipReader.TryGetRectangleStrokeBounds(geometry, out rectangleBounds)
+                || TryGetEllipseGeometryBounds(geometry, out rectangleBounds))
+            {
+                AddBounds(InflateForPen(rectangleBounds, pen));
+                return true;
+            }
+
+            if (WpfMediaLineGeometryReader.TryGetPolylineSegments(geometry, out var segments))
+            {
+                if (pen != null)
+                {
+                    foreach (var segment in segments)
+                    {
+                        AddLineBounds(
+                            pen,
+                            segment.StartPoint.X,
+                            segment.StartPoint.Y,
+                            segment.EndPoint.X,
+                            segment.EndPoint.Y);
+                    }
+
+                    return true;
+                }
+
+                if (TryGetLineSegmentBounds(segments, out var bounds))
+                {
+                    AddBounds(bounds);
+                }
+
+                return true;
+            }
+
+            if (WpfMediaLineGeometryReader.TryGetLinePoints(geometry, out var startPoint, out var endPoint))
+            {
+                if (pen != null)
+                {
+                    AddLineBounds(pen, startPoint.X, startPoint.Y, endPoint.X, endPoint.Y);
+                }
+                else if (TryGetLineBounds(startPoint.X, startPoint.Y, endPoint.X, endPoint.Y, out var lineBounds))
+                {
+                    AddBounds(lineBounds);
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
         private static WpfReplayRect InflateForPen(WpfReplayRect bounds, MediaPen? pen)
         {
             if (pen == null || !IsUsableBounds(bounds))
@@ -2176,6 +2240,117 @@ public sealed class WpfVisualTreeRenderer
                 new WpfReplayRect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY)),
                 glyphRun.Transform);
             return IsUsableBounds(bounds);
+        }
+
+        private static bool TryGetEllipseGeometryBounds(MediaGeometry geometry, out WpfReplayRect bounds)
+        {
+            if (geometry is MediaEllipseGeometry ellipseGeometry
+                && HasIdentityGeometryTransform(ellipseGeometry)
+                && IsUsablePoint(ellipseGeometry.Center, out var center)
+                && IsPositiveRadius(ellipseGeometry.RadiusX, out var radiusX)
+                && IsPositiveRadius(ellipseGeometry.RadiusY, out var radiusY))
+            {
+                bounds = new WpfReplayRect(
+                    center.X - radiusX,
+                    center.Y - radiusY,
+                    radiusX * 2,
+                    radiusY * 2);
+                return IsUsableBounds(bounds);
+            }
+
+            bounds = default;
+            return false;
+        }
+
+        private static bool TryGetLineSegmentBounds(
+            IReadOnlyList<WpfReplayLineSegment> segments,
+            out WpfReplayRect bounds)
+        {
+            bounds = default;
+            if (segments.Count == 0)
+            {
+                return false;
+            }
+
+            var left = double.PositiveInfinity;
+            var top = double.PositiveInfinity;
+            var right = double.NegativeInfinity;
+            var bottom = double.NegativeInfinity;
+            foreach (var segment in segments)
+            {
+                IncludePoint(segment.StartPoint);
+                IncludePoint(segment.EndPoint);
+            }
+
+            return TryCreateLineBounds(left, top, right, bottom, out bounds);
+
+            void IncludePoint(WpfReplayPoint point)
+            {
+                left = Math.Min(left, point.X);
+                top = Math.Min(top, point.Y);
+                right = Math.Max(right, point.X);
+                bottom = Math.Max(bottom, point.Y);
+            }
+        }
+
+        private static bool TryGetLineBounds(
+            double x0,
+            double y0,
+            double x1,
+            double y1,
+            out WpfReplayRect bounds)
+        {
+            return TryCreateLineBounds(
+                Math.Min(x0, x1),
+                Math.Min(y0, y1),
+                Math.Max(x0, x1),
+                Math.Max(y0, y1),
+                out bounds);
+        }
+
+        private static bool TryCreateLineBounds(
+            double left,
+            double top,
+            double right,
+            double bottom,
+            out WpfReplayRect bounds)
+        {
+            var width = right - left;
+            var height = bottom - top;
+            if (!double.IsFinite(left)
+                || !double.IsFinite(top)
+                || !double.IsFinite(width)
+                || !double.IsFinite(height)
+                || (width == 0 && height == 0))
+            {
+                bounds = default;
+                return false;
+            }
+
+            bounds = new WpfReplayRect(left, top, width, height);
+            return IsUsableBounds(bounds);
+        }
+
+        private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
+        {
+            var transform = geometry.Transform;
+            return transform == null
+                || (WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
+                    && WpfResourceResolver.IsIdentityMatrix(matrix));
+        }
+
+        private static bool IsUsablePoint(Point point, out Point usablePoint)
+        {
+            usablePoint = point;
+            return double.IsFinite(point.X)
+                && double.IsFinite(point.Y);
+        }
+
+        private static bool IsPositiveRadius(double radius, out double usableRadius)
+        {
+            usableRadius = radius;
+            return double.IsFinite(radius)
+                && radius > 0;
         }
 
         private static WpfReplayRect FromMediaRect(Rect bounds)

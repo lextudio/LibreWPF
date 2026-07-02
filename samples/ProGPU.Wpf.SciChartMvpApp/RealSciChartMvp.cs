@@ -69,6 +69,14 @@ internal static class RealSciChartMvp
         "dxgi.dll",
         "D3DCOMPILER_47.dll"
     ];
+    private static readonly Type[] SciChartAssemblyAnchorTypes =
+    [
+        typeof(NativeDllLoader),
+        typeof(SciChart.Data.Model.DoubleRange),
+        typeof(SciChart.Drawing.Common.IRenderSurface),
+        typeof(SciChartSurface),
+        typeof(SciChart3DSurface)
+    ];
     private static readonly object NativeDiagnosticsGate = new();
     private static RealSciChartLicenseStatus? s_licenseStatus;
     private static RealSciChartNativeDependencyDiagnostics? s_nativeDiagnostics;
@@ -217,7 +225,7 @@ internal static class RealSciChartMvp
         catch (Exception ex) when (IsNativeRuntimeFailure(ex))
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}. Native dependency extraction: {DescribeNativeDependencyPath(licenseStatus)}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native exports: {nativeDiagnostics.ExportSummary}. Native facade: {nativeDiagnostics.FacadeSummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
+                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {DescribeNativeRuntimeFailure(ex)}. Native dependency extraction: {DescribeNativeDependencyPath(licenseStatus)}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native exports: {nativeDiagnostics.ExportSummary}. Native facade: {nativeDiagnostics.FacadeSummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -305,8 +313,7 @@ internal static class RealSciChartMvp
                 return s_nativeDiagnostics;
             }
 
-            var assemblies = GetSciChartAssemblies();
-            var moduleHints = CreateNativeModuleHints(assemblies);
+            var moduleHints = CreateNativeModuleHints();
             var report = ProGpuDirectXNativeDependencyInspector.Inspect(
                 Array.Empty<ProGpuDirectXNativeImport>(),
                 moduleHints);
@@ -314,16 +321,10 @@ internal static class RealSciChartMvp
             var abiPlan = ProGpuDirectXNativeAbiPlanner.Create(report);
             var facadeSource = ProGpuDirectXNativeFacadeSourceEmitter.Emit(abiPlan);
             var resolverOptions = ProGpuDirectXNativeResolverOptions.FromEnvironment();
-            var registrations = new List<ProGpuDirectXNativeResolverRegistration>();
-            foreach (var assembly in assemblies)
-            {
-                ProGpuDirectXNativeResolver.TryRegister(
-                    assembly,
-                    plan,
-                    resolverOptions,
-                    out var registration);
-                registrations.Add(registration);
-            }
+            var registrations = ProGpuDirectXNativeResolver.RegisterAnchorAssemblies(
+                SciChartAssemblyAnchorTypes,
+                plan,
+                resolverOptions);
 
             s_nativeDiagnostics = new RealSciChartNativeDependencyDiagnostics(
                 report.DescribeModules(),
@@ -335,49 +336,12 @@ internal static class RealSciChartMvp
         }
     }
 
-    private static IReadOnlyList<System.Reflection.Assembly> GetSciChartAssemblies()
+    private static IReadOnlyList<ProGpuDirectXNativeModuleHint> CreateNativeModuleHints()
     {
-        var assemblies = new Dictionary<string, System.Reflection.Assembly>(StringComparer.OrdinalIgnoreCase);
-        AddAssembly(assemblies, typeof(NativeDllLoader).Assembly);
-        AddAssembly(assemblies, typeof(SciChart.Data.Model.DoubleRange).Assembly);
-        AddAssembly(assemblies, typeof(SciChart.Drawing.Common.IRenderSurface).Assembly);
-        AddAssembly(assemblies, typeof(SciChartSurface).Assembly);
-        AddAssembly(assemblies, typeof(SciChart3DSurface).Assembly);
-
-        return assemblies.Values
-            .OrderBy(static assembly => assembly.GetName().Name, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-    }
-
-    private static IReadOnlyList<ProGpuDirectXNativeModuleHint> CreateNativeModuleHints(
-        IReadOnlyList<System.Reflection.Assembly> assemblies)
-    {
-        var moduleHints = new List<ProGpuDirectXNativeModuleHint>();
-        foreach (var assembly in assemblies)
-        {
-            var assemblyName = assembly.GetName().Name ?? assembly.FullName ?? string.Empty;
-            var location = assembly.Location;
-            if (string.IsNullOrWhiteSpace(location) || !File.Exists(location))
-            {
-                continue;
-            }
-
-            try
-            {
-                moduleHints.AddRange(
-                    ProGpuDirectXNativeDependencyInspector.CreateModuleHintsFromBytes(
-                        assemblyName,
-                        File.ReadAllBytes(location),
-                        "SciChartAssemblyImage"));
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
-            {
-                moduleHints.Add(new ProGpuDirectXNativeModuleHint(
-                    assemblyName,
-                    $"{assemblyName}.dll",
-                    $"SciChartAssemblyImageReadFailed:{ex.GetType().Name}"));
-            }
-        }
+        var moduleHints = new List<ProGpuDirectXNativeModuleHint>(
+            ProGpuDirectXNativeDependencyInspector.CreateModuleHintsFromAssemblyImages(
+                SciChartAssemblyAnchorTypes,
+                "SciChartAssemblyImage"));
 
         foreach (var moduleName in KnownSciChartNativeModules)
         {
@@ -388,17 +352,6 @@ internal static class RealSciChartMvp
         }
 
         return moduleHints;
-    }
-
-    private static void AddAssembly(
-        IDictionary<string, System.Reflection.Assembly> assemblies,
-        System.Reflection.Assembly assembly)
-    {
-        var assemblyName = assembly.GetName().Name;
-        if (!string.IsNullOrWhiteSpace(assemblyName))
-        {
-            assemblies[assemblyName] = assembly;
-        }
     }
 
     private static (string? Path, string? Failure) ConfigureNativeDependenciesPath()
@@ -432,6 +385,12 @@ internal static class RealSciChartMvp
         }
 
         return licenseStatus.NativeDependenciesFailure ?? "unavailable";
+    }
+
+    private static string DescribeNativeRuntimeFailure(Exception exception)
+    {
+        var message = exception.GetBaseException().Message;
+        return string.IsNullOrWhiteSpace(message) ? "native runtime failure" : message;
     }
 
     private static Grid CreateTwoColumnGrid(FrameworkElement surface2D, FrameworkElement surface3D)

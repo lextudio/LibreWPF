@@ -156,6 +156,7 @@ namespace System.Windows
             PortableMessageBoxRequest request)
         {
             return new ProGPU.Wpf.Interop.PortableMessageBoxRequest(
+                request.Owner,
                 request.MessageBoxText,
                 request.Caption,
                 request.Button.ToString(),

@@ -29,6 +29,7 @@ using System.Windows.Navigation;
 using System.Windows.Shell;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using ProGPU.Wpf.Interop;
 using WpfCalendar = System.Windows.Controls.Calendar;
 
 namespace ProGPU.Wpf.MvpApp;
@@ -6631,18 +6632,17 @@ internal static class MvpSelfTest
             return;
         }
 
-        Type serviceType = typeof(MessageBox).Assembly.GetType(
-                "System.Windows.PortableMessageBoxService",
-                throwOnError: false)
-            ?? throw new TypeLoadException("System.Windows.PortableMessageBoxService");
-        var isEnabledProperty = serviceType.GetProperty(
-                "IsEnabled",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new MissingMemberException(serviceType.FullName, "IsEnabled");
+        if (!PortableWpfServiceRegistry.TryGetMessageBoxService(
+                PortableWpfServiceKey.PresentationFramework,
+                out var messageBoxService))
+        {
+            throw new InvalidOperationException("Expected PresentationFramework portable MessageBox service registration.");
+        }
+
         AssertEqual(
-            true,
-            (bool)(isEnabledProperty.GetValue(null) ?? false),
-            "MVP portable MessageBox service enabled");
+            PortableWpfServiceKey.PresentationFramework,
+            messageBoxService.ServiceKey,
+            "MVP portable MessageBox service key");
 
         int requestCount = 0;
         object? requestOwner = null;
@@ -6653,19 +6653,18 @@ internal static class MvpSelfTest
         string? requestDefaultResult = null;
         string? requestOptions = null;
         string? requestFallbackResult = null;
-        IDisposable? registration = RegisterDeterministicMessageBox(
-            serviceType,
+        IDisposable registration = messageBoxService.Register(
             request =>
             {
                 requestCount++;
-                requestOwner = ReadPortableRequestValue(request, "Owner");
-                requestText = ReadPortableRequestString(request, "MessageBoxText");
-                requestCaption = ReadPortableRequestString(request, "Caption");
-                requestButton = ReadPortableRequestString(request, "Button");
-                requestIcon = ReadPortableRequestString(request, "Icon");
-                requestDefaultResult = ReadPortableRequestString(request, "DefaultResult");
-                requestOptions = ReadPortableRequestString(request, "Options");
-                requestFallbackResult = ReadPortableRequestString(request, "FallbackResult");
+                requestOwner = request.Owner;
+                requestText = request.MessageBoxText;
+                requestCaption = request.Caption;
+                requestButton = request.Button;
+                requestIcon = request.Icon;
+                requestDefaultResult = request.DefaultResult;
+                requestOptions = request.Options;
+                requestFallbackResult = request.FallbackResult;
                 return requestFallbackResult;
             });
         try
@@ -6688,23 +6687,8 @@ internal static class MvpSelfTest
         }
         finally
         {
-            registration?.Dispose();
+            registration.Dispose();
         }
-    }
-
-    private static IDisposable? RegisterDeterministicMessageBox(
-        Type serviceType,
-        Func<object, object> show)
-    {
-        var registerMethod = serviceType.GetMethod(
-                "Register",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[] { typeof(Func<object, object>) },
-                modifiers: null)
-            ?? throw new MissingMethodException(serviceType.FullName, "Register");
-
-        return registerMethod.Invoke(null, new object[] { show }) as IDisposable;
     }
 
     private static void ValidateFileDialogs(MainWindow window, Button button, TextBlock statusText)
@@ -6717,18 +6701,17 @@ internal static class MvpSelfTest
             return;
         }
 
-        Type serviceType = typeof(OpenFileDialog).Assembly.GetType(
-                "Microsoft.Win32.PortableFileDialogService",
-                throwOnError: false)
-            ?? throw new TypeLoadException("Microsoft.Win32.PortableFileDialogService");
-        var isEnabledProperty = serviceType.GetProperty(
-                "IsEnabled",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new MissingMemberException(serviceType.FullName, "IsEnabled");
+        if (!PortableWpfServiceRegistry.TryGetFileDialogService(
+                PortableWpfServiceKey.PresentationFramework,
+                out var fileDialogService))
+        {
+            throw new InvalidOperationException("Expected PresentationFramework portable file dialog service registration.");
+        }
+
         AssertEqual(
-            true,
-            (bool)(isEnabledProperty.GetValue(null) ?? false),
-            "MVP portable file dialog service enabled");
+            PortableWpfServiceKey.PresentationFramework,
+            fileDialogService.ServiceKey,
+            "MVP portable file dialog service key");
 
         string tempDirectory = Path.Combine(
             Path.GetTempPath(),
@@ -6745,16 +6728,15 @@ internal static class MvpSelfTest
         var seenFilters = new List<string>();
         var seenDefaultExtensions = new List<string>();
         var seenSuggestedItemNames = new List<string>();
-        IDisposable? registration = RegisterDeterministicFileDialog(
-            serviceType,
+        IDisposable registration = fileDialogService.Register(
             request =>
             {
-                string kind = ReadPortableRequestString(request, "Kind");
+                string kind = request.Kind;
                 seenKinds.Add(kind);
-                seenTitles.Add(ReadPortableRequestString(request, "Title"));
-                seenFilters.Add(ReadPortableRequestString(request, "Filter"));
-                seenDefaultExtensions.Add(ReadPortableRequestString(request, "DefaultExtension"));
-                seenSuggestedItemNames.Add(ReadPortableRequestString(request, "SuggestedItemName"));
+                seenTitles.Add(request.Title);
+                seenFilters.Add(request.Filter);
+                seenDefaultExtensions.Add(request.DefaultExtension);
+                seenSuggestedItemNames.Add(request.SuggestedItemName);
                 requestCount++;
 
                 return kind switch
@@ -6800,39 +6782,9 @@ internal static class MvpSelfTest
         }
         finally
         {
-            registration?.Dispose();
+            registration.Dispose();
             Directory.Delete(tempDirectory, recursive: true);
         }
-    }
-
-    private static IDisposable? RegisterDeterministicFileDialog(
-        Type serviceType,
-        Func<object, string> show)
-    {
-        var registerMethod = serviceType.GetMethod(
-                "Register",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                types: new[] { typeof(Func<object, string>) },
-                modifiers: null)
-            ?? throw new MissingMethodException(serviceType.FullName, "Register");
-
-        return registerMethod.Invoke(null, new object[] { show }) as IDisposable;
-    }
-
-    private static string ReadPortableRequestString(object request, string propertyName)
-    {
-        return ReadPortableRequestValue(request, propertyName)?.ToString() ?? string.Empty;
-    }
-
-    private static object? ReadPortableRequestValue(object request, string propertyName)
-    {
-        var property = request.GetType().GetProperty(
-                propertyName,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new MissingMemberException(request.GetType().FullName, propertyName);
-
-        return property.GetValue(request);
     }
 
     private static void ValidateSecondaryWindow(MainWindow window, MenuItem aboutMenuItem)

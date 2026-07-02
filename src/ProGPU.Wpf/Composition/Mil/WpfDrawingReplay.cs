@@ -2114,6 +2114,25 @@ internal static class WpfDrawingReplay
             return true;
         }
 
+        if (geometry is Rect rect
+            && IsUsableRect(rect, out bounds))
+        {
+            return true;
+        }
+
+        if (geometry is WpfReplayRect replayRect
+            && IsUsableRect(new Rect(replayRect.X, replayRect.Y, replayRect.Width, replayRect.Height), out bounds))
+        {
+            return true;
+        }
+
+        if (geometry is PortableRect portableRect
+            && TryReadPortableRect(portableRect, out bounds)
+            && IsUsableRect(bounds, out bounds))
+        {
+            return true;
+        }
+
         bounds = default;
         return false;
     }

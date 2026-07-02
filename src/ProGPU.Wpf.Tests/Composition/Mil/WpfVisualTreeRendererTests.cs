@@ -2031,6 +2031,54 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void TryGetDrawingBoundsUsesTypedRectGeometryStateWithoutMediaGeometryFallback()
+    {
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = new Rect(4, 5, 20, 30)
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(4, 5, 20, 30), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesReplayRectGeometryStateWithoutMediaGeometryFallback()
+    {
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = new WpfReplayRect(6, 7, 22, 32)
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(6, 7, 22, 32), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesPortableRectGeometryStateWithoutMediaGeometryFallback()
+    {
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = new PortableRect(8, 9, 24, 34)
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(8, 9, 24, 34), bounds);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
     public void TryGetDrawingBoundsUsesPortableDrawingGroupClipBoundsWithoutGeometryFallback()
     {
         var geometry = new PortableRectangleClipGeometry(0, 0, 100, 100);

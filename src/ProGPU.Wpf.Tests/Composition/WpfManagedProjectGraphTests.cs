@@ -5873,6 +5873,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static bool TryGetPortableGeometryPath(object? geometry, out PortableGeometryPath portableGeometry)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetPortableGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableGeometryBounds(geometryValue, out bounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("geometry is Rect rect", replaySource, StringComparison.Ordinal);
+        Assert.Contains("geometry is WpfReplayRect replayRect", replaySource, StringComparison.Ordinal);
+        Assert.Contains("geometry is PortableRect portableRect", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingGroupClipBounds(clipValue, out var clipBounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out var transform)", replaySource, StringComparison.Ordinal);
         Assert.Contains("bounds = TransformBounds(bounds, transform)", replaySource, StringComparison.Ordinal);
@@ -5892,6 +5895,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplayUsesNativePortableGeometryDrawingWhenAvailable", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplayDoesNotReflectAbsentPortableGeometryDrawingState", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableDrawingStateWithoutGenericBoundsFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesTypedRectGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesReplayRectGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesPortableRectGeometryStateWithoutMediaGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("Assert.Equal(0, geometry.ReflectedGeometryProbeCount);", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableDrawingGroupClipBoundsWithoutGeometryFallback", rendererTests, StringComparison.Ordinal);
         Assert.Contains("Assert.Equal(0, clip.ReflectedGeometryProbeCount);", rendererTests, StringComparison.Ordinal);

@@ -12,8 +12,17 @@ internal static class WpfPortablePathBoundsReader
     public static bool TryGetPathBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
     {
         bounds = default;
-        if (!geometry.Transform.IsIdentity
-            || geometry.Kind != PortableGeometryPathKind.Path
+        if (!geometry.Transform.IsIdentity)
+        {
+            return false;
+        }
+
+        if (geometry.Kind == PortableGeometryPathKind.Combined)
+        {
+            return TryGetCombinedBounds(geometry, out bounds);
+        }
+
+        if (geometry.Kind != PortableGeometryPathKind.Path
             || geometry.Figures.Length == 0)
         {
             return false;
@@ -124,6 +133,90 @@ internal static class WpfPortablePathBoundsReader
         }
 
         bounds = new WpfReplayRect(left, top, width, height);
+        return true;
+    }
+
+    private static bool TryGetCombinedBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        var boundsA = default(WpfReplayRect);
+        var boundsB = default(WpfReplayRect);
+        var hasA = geometry.PathA != null && TryGetPathBounds(geometry.PathA, out boundsA);
+        var hasB = geometry.PathB != null && TryGetPathBounds(geometry.PathB, out boundsB);
+
+        switch (geometry.CombineOperation)
+        {
+            case 1:
+                if (!hasA || !hasB)
+                {
+                    return false;
+                }
+
+                return TryIntersectBounds(boundsA, boundsB, out bounds);
+
+            case 0:
+                if (hasA)
+                {
+                    bounds = boundsA;
+                    return true;
+                }
+
+                return false;
+
+            case 4:
+                if (hasB)
+                {
+                    bounds = boundsB;
+                    return true;
+                }
+
+                return false;
+
+            default:
+                if (hasA && hasB)
+                {
+                    bounds = UnionBounds(boundsA, boundsB);
+                    return true;
+                }
+
+                if (hasA)
+                {
+                    bounds = boundsA;
+                    return true;
+                }
+
+                if (hasB)
+                {
+                    bounds = boundsB;
+                    return true;
+                }
+
+                return false;
+        }
+    }
+
+    private static WpfReplayRect UnionBounds(WpfReplayRect left, WpfReplayRect right)
+    {
+        var x1 = Math.Min(left.X, right.X);
+        var y1 = Math.Min(left.Y, right.Y);
+        var x2 = Math.Max(left.X + left.Width, right.X + right.Width);
+        var y2 = Math.Max(left.Y + left.Height, right.Y + right.Height);
+        return new WpfReplayRect(x1, y1, x2 - x1, y2 - y1);
+    }
+
+    private static bool TryIntersectBounds(WpfReplayRect left, WpfReplayRect right, out WpfReplayRect bounds)
+    {
+        var x1 = Math.Max(left.X, right.X);
+        var y1 = Math.Max(left.Y, right.Y);
+        var x2 = Math.Min(left.X + left.Width, right.X + right.Width);
+        var y2 = Math.Min(left.Y + left.Height, right.Y + right.Height);
+        if (x2 < x1 || y2 < y1)
+        {
+            bounds = default;
+            return false;
+        }
+
+        bounds = new WpfReplayRect(x1, y1, x2 - x1, y2 - y1);
         return true;
     }
 

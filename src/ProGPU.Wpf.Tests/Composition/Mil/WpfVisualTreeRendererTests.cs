@@ -854,6 +854,37 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeInfersRetainedBoundsFromPortableCombinedGeometryOperands()
+    {
+        var geometry = new PortableCombinedGeometry(
+            combineOperation: 2,
+            new PortableQuadraticCurveGeometry(new PortableRect(0, 0, 1, 1)),
+            new PortableRectangleClipGeometry(200, 10, 20, 30, new PortableRect(0, 0, 1, 1)),
+            new PortableRect(0, 0, 1, 1));
+        var visualState = CreatePortableOpacityMaskState(Brushes.White);
+        visualState.HasEffect = true;
+        visualState.Effect = new FakeBlurEffect(4);
+        var root = new FakePortableVisualStateDrawingVisual(
+            CreateGeometryRenderData(geometry),
+            visualState);
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawNativeGeometry", "Pop", "PopVisualOwner" },
+            sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        AssertReplayRect(0, 0, 217, 50, state.OpacityMaskBounds);
+        AssertReplayRect(3, 4, 217, 50, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-3, transform.M41);
+        Assert.Equal(-4, transform.M42);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeInfersRetainedBoundsFromPrimitiveRenderDataThroughNativeBoundsSink()
     {
         var visualState = CreatePortableOpacityMaskState(Brushes.White);
@@ -2730,6 +2761,27 @@ public sealed class WpfVisualTreeRendererTests
         Assert.Equal(4, bounds.Y, 4);
         Assert.Equal(100, bounds.Width, 4);
         Assert.Equal(50, bounds.Height, 4);
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
+    public void TryGetDrawingBoundsUsesPortableCombinedIntersectionOperandsBeforeStaleBoundsMetadata()
+    {
+        var geometry = new PortableCombinedGeometry(
+            combineOperation: 1,
+            new PortableRectangleClipGeometry(0, 0, 100, 100, new PortableRect(0, 0, 1, 1)),
+            new PortableRectangleClipGeometry(20, 30, 50, 10, new PortableRect(0, 0, 1, 1)),
+            new PortableRect(0, 0, 1, 1));
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = geometry
+        });
+
+        var hasBounds = WpfDrawingReplay.TryGetDrawingBounds(drawing, null, out var bounds);
+
+        Assert.True(hasBounds);
+        Assert.Equal(new Rect(20, 30, 50, 10), bounds);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
     }
 
@@ -5155,6 +5207,36 @@ public sealed class WpfVisualTreeRendererTests
                         ]
                     }
                 ]
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableCombinedGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableCombinedGeometry(
+            int combineOperation,
+            PortableGeometryPathSource first,
+            PortableGeometryPathSource second,
+            PortableRect bounds)
+        {
+            Assert.True(first.TryGetPortableGeometryPath(out var firstPath));
+            Assert.True(second.TryGetPortableGeometryPath(out var secondPath));
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Combined,
+                Bounds = bounds,
+                Transform = PortableMatrix3x2.Identity,
+                PathA = firstPath,
+                PathB = secondPath,
+                CombineOperation = combineOperation
             };
         }
 

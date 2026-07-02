@@ -5662,10 +5662,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableLineGeometryPathPoints", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableQuadraticGeometryPathPoints", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableArcGeometryPathPoints", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPortableCombinedGeometryOperands", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsPreservesPortableHorizontalLineGeometryBounds", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableQuadraticGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableCubicGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
         Assert.Contains("TryGetDrawingBoundsUsesPortableArcGeometryPathPointsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingBoundsUsesPortableCombinedIntersectionOperandsBeforeStaleBoundsMetadata", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromPrimitiveRenderDataThroughNativeBoundsSink", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromNativeRectangleClipRenderData", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeInfersRetainedBoundsFromLocalPrimitiveClipRenderDataWithoutGenericBoundsFallback", rendererTests, StringComparison.Ordinal);
@@ -12080,6 +12082,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("sameX == sameY", wpfPortableRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfPortablePathBoundsReader", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetPathBounds(PortableGeometryPath geometry, out WpfReplayRect bounds)", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("geometry.Kind == PortableGeometryPathKind.Combined", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryGetCombinedBounds", wpfPortablePathBoundsReader, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryIntersectBounds", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("case PortablePathSegmentKind.Line:", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("case PortablePathSegmentKind.QuadraticBezier:", wpfPortablePathBoundsReader, StringComparison.Ordinal);
         Assert.Contains("case PortablePathSegmentKind.CubicBezier:", wpfPortablePathBoundsReader, StringComparison.Ordinal);

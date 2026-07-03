@@ -11280,6 +11280,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new WpfInputEventArgs(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ISilkNetWpfInputContextProvider", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("TryGetInputContext(object window", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("var mouseSubscriptions = new Dictionary<SilkInput.IMouse, Action>();", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("var keyboardSubscriptions = new Dictionary<SilkInput.IKeyboard, Action>();", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("DisposeSubscriptions(_mouseSubscriptions);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("DisposeSubscriptions(_keyboardSubscriptions);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.DoesNotContain("var subscriptions = new List<Action>();", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.DoesNotContain("subscriptions.Remove(unsubscribe);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.DoesNotContain("List<Action> _unsubscribe", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("inputContextProvider.TryGetInputContext(_window", proGpuWpfWindowHost, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, WpfInputEventKind.MouseDown", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, WpfInputEventKind.TextInput", mvpMainWindowCodeBehind, StringComparison.Ordinal);

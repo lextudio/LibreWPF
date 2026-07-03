@@ -72,14 +72,8 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
     {
         ArgumentNullException.ThrowIfNull(inputContext);
 
-        var subscriptions = new List<Action>();
         var mouseSubscriptions = new Dictionary<SilkInput.IMouse, Action>();
         var keyboardSubscriptions = new Dictionary<SilkInput.IKeyboard, Action>();
-
-        void TrackSubscription(Action unsubscribe)
-        {
-            subscriptions.Add(unsubscribe);
-        }
 
         void AttachMouse(SilkInput.IMouse mouse)
         {
@@ -144,7 +138,6 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             }
 
             mouseSubscriptions.Add(mouse, Unsubscribe);
-            TrackSubscription(Unsubscribe);
         }
 
         void DetachMouse(SilkInput.IMouse mouse)
@@ -155,7 +148,6 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             }
 
             unsubscribe();
-            subscriptions.Remove(unsubscribe);
         }
 
         void AttachKeyboard(SilkInput.IKeyboard keyboard)
@@ -186,7 +178,6 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             }
 
             keyboardSubscriptions.Add(keyboard, Unsubscribe);
-            TrackSubscription(Unsubscribe);
         }
 
         void DetachKeyboard(SilkInput.IKeyboard keyboard)
@@ -197,7 +188,6 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             }
 
             unsubscribe();
-            subscriptions.Remove(unsubscribe);
         }
 
         foreach (var mouse in inputContext.Mice)
@@ -230,9 +220,13 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
         }
 
         inputContext.ConnectionChanged += ConnectionChanged;
-        TrackSubscription(() => inputContext.ConnectionChanged -= ConnectionChanged);
 
-        return new InputSubscription(inputContext, subscriptions, onDispose);
+        return new InputSubscription(
+            inputContext,
+            mouseSubscriptions,
+            keyboardSubscriptions,
+            () => inputContext.ConnectionChanged -= ConnectionChanged,
+            onDispose);
     }
 
     public static WpfInputEventArgs CreateKeyEvent(
@@ -429,14 +423,23 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
     private sealed class InputSubscription : IDisposable
     {
         private readonly SilkInput.IInputContext _inputContext;
-        private readonly List<Action> _unsubscribe;
+        private readonly Dictionary<SilkInput.IMouse, Action> _mouseSubscriptions;
+        private readonly Dictionary<SilkInput.IKeyboard, Action> _keyboardSubscriptions;
+        private readonly Action _unsubscribeConnectionChanged;
         private readonly Action? _onDispose;
         private bool _isDisposed;
 
-        public InputSubscription(SilkInput.IInputContext inputContext, List<Action> unsubscribe, Action? onDispose)
+        public InputSubscription(
+            SilkInput.IInputContext inputContext,
+            Dictionary<SilkInput.IMouse, Action> mouseSubscriptions,
+            Dictionary<SilkInput.IKeyboard, Action> keyboardSubscriptions,
+            Action unsubscribeConnectionChanged,
+            Action? onDispose)
         {
             _inputContext = inputContext;
-            _unsubscribe = unsubscribe;
+            _mouseSubscriptions = mouseSubscriptions;
+            _keyboardSubscriptions = keyboardSubscriptions;
+            _unsubscribeConnectionChanged = unsubscribeConnectionChanged;
             _onDispose = onDispose;
         }
 
@@ -447,14 +450,41 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
                 return;
             }
 
-            foreach (var unsubscribe in _unsubscribe)
-            {
-                unsubscribe();
-            }
+            _unsubscribeConnectionChanged();
+            DisposeSubscriptions(_mouseSubscriptions);
+            DisposeSubscriptions(_keyboardSubscriptions);
 
             _onDispose?.Invoke();
             _inputContext.Dispose();
             _isDisposed = true;
+        }
+
+        private static void DisposeSubscriptions<TDevice>(Dictionary<TDevice, Action> subscriptions)
+            where TDevice : notnull
+        {
+            while (TryTakeFirstSubscription(subscriptions, out var device, out var unsubscribe))
+            {
+                subscriptions.Remove(device);
+                unsubscribe();
+            }
+        }
+
+        private static bool TryTakeFirstSubscription<TDevice>(
+            Dictionary<TDevice, Action> subscriptions,
+            out TDevice device,
+            out Action unsubscribe)
+            where TDevice : notnull
+        {
+            foreach (var subscription in subscriptions)
+            {
+                device = subscription.Key;
+                unsubscribe = subscription.Value;
+                return true;
+            }
+
+            device = default!;
+            unsubscribe = null!;
+            return false;
         }
     }
 }

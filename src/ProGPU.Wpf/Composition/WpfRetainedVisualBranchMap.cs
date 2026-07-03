@@ -13,6 +13,11 @@ public sealed class WpfRetainedVisualBranchMap
     private readonly Dictionary<ProGpuVisual, HashSet<object>> _sourcesByVisual = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<ProGpuVisual, HashSet<object>> _sourceOwnersByVisual = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<ProGpuVisual, HashSet<object>> _dependenciesByVisual = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<object> _scratchDistinctSources = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<ProGpuVisual> _scratchVisitedVisuals = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<ProGpuVisual> _scratchInvalidatedVisuals = new(ReferenceEqualityComparer.Instance);
+    private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchReplayTargets = new();
+    private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchTopLevelReplayTargets = new();
 
     public int SourceCount => _visualsBySource.Count;
 
@@ -30,6 +35,11 @@ public sealed class WpfRetainedVisualBranchMap
         _sourcesByVisual.Clear();
         _sourceOwnersByVisual.Clear();
         _dependenciesByVisual.Clear();
+        _scratchDistinctSources.Clear();
+        _scratchVisitedVisuals.Clear();
+        _scratchInvalidatedVisuals.Clear();
+        _scratchReplayTargets.Clear();
+        _scratchTopLevelReplayTargets.Clear();
         VisualCount = 0;
         LastSource = null;
         LastVisual = null;
@@ -145,13 +155,20 @@ public sealed class WpfRetainedVisualBranchMap
             return GetReplayTargetsForDistinctSourceSet(referenceDirtySources);
         }
 
-        var dirtySources = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        foreach (var source in sources)
+        _scratchDistinctSources.Clear();
+        try
         {
-            dirtySources.Add(source);
-        }
+            foreach (var source in sources)
+            {
+                _scratchDistinctSources.Add(source);
+            }
 
-        return GetReplayTargetsForDistinctSourceSet(dirtySources);
+            return GetReplayTargetsForDistinctSourceSet(_scratchDistinctSources);
+        }
+        finally
+        {
+            _scratchDistinctSources.Clear();
+        }
     }
 
     private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForDistinctSourceSet(
@@ -162,35 +179,40 @@ public sealed class WpfRetainedVisualBranchMap
             return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
         }
 
-        var targets = new List<WpfRetainedVisualBranchReplayTarget>();
-        var visitedVisuals = new HashSet<ProGpuVisual>(ReferenceEqualityComparer.Instance);
-        foreach (var source in dirtySources)
+        _scratchReplayTargets.Clear();
+        _scratchVisitedVisuals.Clear();
+        try
         {
-            if (!_visualsBySource.TryGetValue(source, out var visuals))
+            foreach (var source in dirtySources)
             {
-                return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
-            }
-
-            foreach (var visual in visuals)
-            {
-                if (!TryGetReplaySourceForVisual(visual, out var replaySource))
+                if (!_visualsBySource.TryGetValue(source, out var visuals))
                 {
                     return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
                 }
 
-                if (visitedVisuals.Add(visual))
+                foreach (var visual in visuals)
                 {
-                    targets.Add(new WpfRetainedVisualBranchReplayTarget(replaySource, visual));
+                    if (!TryGetReplaySourceForVisual(visual, out var replaySource))
+                    {
+                        return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+                    }
+
+                    if (_scratchVisitedVisuals.Add(visual))
+                    {
+                        _scratchReplayTargets.Add(new WpfRetainedVisualBranchReplayTarget(replaySource, visual));
+                    }
                 }
             }
-        }
 
-        if (targets.Count <= 1)
+            return _scratchReplayTargets.Count <= 1
+                ? SnapshotReplayTargets(_scratchReplayTargets)
+                : SelectTopLevelReplayTargets(_scratchReplayTargets);
+        }
+        finally
         {
-            return targets;
+            _scratchReplayTargets.Clear();
+            _scratchVisitedVisuals.Clear();
         }
-
-        return SelectTopLevelReplayTargets(targets);
     }
 
     private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForSingleSource(object source)
@@ -208,23 +230,27 @@ public sealed class WpfRetainedVisualBranchMap
                 : Array.Empty<WpfRetainedVisualBranchReplayTarget>();
         }
 
-        var targets = new List<WpfRetainedVisualBranchReplayTarget>(visuals.Count);
-        foreach (var visual in visuals)
+        _scratchReplayTargets.Clear();
+        try
         {
-            if (!TryGetReplaySourceForVisual(visual, out var replaySource))
+            foreach (var visual in visuals)
             {
-                return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+                if (!TryGetReplaySourceForVisual(visual, out var replaySource))
+                {
+                    return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+                }
+
+                _scratchReplayTargets.Add(new WpfRetainedVisualBranchReplayTarget(replaySource, visual));
             }
 
-            targets.Add(new WpfRetainedVisualBranchReplayTarget(replaySource, visual));
+            return _scratchReplayTargets.Count <= 1
+                ? SnapshotReplayTargets(_scratchReplayTargets)
+                : SelectTopLevelReplayTargets(_scratchReplayTargets);
         }
-
-        if (targets.Count <= 1)
+        finally
         {
-            return targets;
+            _scratchReplayTargets.Clear();
         }
-
-        return SelectTopLevelReplayTargets(targets);
     }
 
     private static bool TryGetSingleSource(
@@ -241,34 +267,54 @@ public sealed class WpfRetainedVisualBranchMap
         return false;
     }
 
-    private static IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SelectTopLevelReplayTargets(
+    private static IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SnapshotReplayTargets(
         List<WpfRetainedVisualBranchReplayTarget> targets)
     {
-        var topLevelTargets = new List<WpfRetainedVisualBranchReplayTarget>(targets.Count);
-        foreach (var target in targets)
+        if (targets.Count == 0)
         {
-            var isCoveredByAncestor = false;
-            foreach (var candidateAncestor in targets)
-            {
-                if (ReferenceEquals(candidateAncestor.Visual, target.Visual))
-                {
-                    continue;
-                }
-
-                if (IsAncestorOf(candidateAncestor.Visual, target.Visual))
-                {
-                    isCoveredByAncestor = true;
-                    break;
-                }
-            }
-
-            if (!isCoveredByAncestor)
-            {
-                topLevelTargets.Add(target);
-            }
+            return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
         }
 
-        return topLevelTargets;
+        var snapshot = new WpfRetainedVisualBranchReplayTarget[targets.Count];
+        targets.CopyTo(snapshot);
+        return snapshot;
+    }
+
+    private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SelectTopLevelReplayTargets(
+        List<WpfRetainedVisualBranchReplayTarget> targets)
+    {
+        _scratchTopLevelReplayTargets.Clear();
+        try
+        {
+            foreach (var target in targets)
+            {
+                var isCoveredByAncestor = false;
+                foreach (var candidateAncestor in targets)
+                {
+                    if (ReferenceEquals(candidateAncestor.Visual, target.Visual))
+                    {
+                        continue;
+                    }
+
+                    if (IsAncestorOf(candidateAncestor.Visual, target.Visual))
+                    {
+                        isCoveredByAncestor = true;
+                        break;
+                    }
+                }
+
+                if (!isCoveredByAncestor)
+                {
+                    _scratchTopLevelReplayTargets.Add(target);
+                }
+            }
+
+            return SnapshotReplayTargets(_scratchTopLevelReplayTargets);
+        }
+        finally
+        {
+            _scratchTopLevelReplayTargets.Clear();
+        }
     }
 
     public void UnregisterVisualTree(ProGpuVisual visual)
@@ -303,13 +349,20 @@ public sealed class WpfRetainedVisualBranchMap
             return InvalidateVisualsForDistinctSourceSet(referenceVisitedSources);
         }
 
-        var visitedSources = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        foreach (var source in sources)
+        _scratchDistinctSources.Clear();
+        try
         {
-            visitedSources.Add(source);
-        }
+            foreach (var source in sources)
+            {
+                _scratchDistinctSources.Add(source);
+            }
 
-        return InvalidateVisualsForDistinctSourceSet(visitedSources);
+            return InvalidateVisualsForDistinctSourceSet(_scratchDistinctSources);
+        }
+        finally
+        {
+            _scratchDistinctSources.Clear();
+        }
     }
 
     private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForSingleSource(object source)
@@ -375,73 +428,79 @@ public sealed class WpfRetainedVisualBranchMap
             return new WpfRetainedVisualBranchInvalidationResult(0, 0, 0);
         }
 
-        var invalidatedVisuals = new HashSet<ProGpuVisual>(ReferenceEqualityComparer.Instance);
+        _scratchInvalidatedVisuals.Clear();
         var mappedSourceCount = 0;
         var sharedWithCleanSourceVisualCount = 0;
         var replayTargetConflictCount = 0;
-
-        foreach (var source in visitedSources)
+        try
         {
-            if (!_visualsBySource.TryGetValue(source, out var visuals))
+            foreach (var source in visitedSources)
             {
-                continue;
-            }
-
-            mappedSourceCount++;
-
-            foreach (var visual in visuals)
-            {
-                if (invalidatedVisuals.Add(visual))
+                if (!_visualsBySource.TryGetValue(source, out var visuals))
                 {
-                    visual.Invalidate();
+                    continue;
+                }
+
+                mappedSourceCount++;
+
+                foreach (var visual in visuals)
+                {
+                    if (_scratchInvalidatedVisuals.Add(visual))
+                    {
+                        visual.Invalidate();
+                    }
                 }
             }
-        }
 
-        foreach (var visual in invalidatedVisuals)
+            foreach (var visual in _scratchInvalidatedVisuals)
+            {
+                if (!_sourceOwnersByVisual.TryGetValue(visual, out var sourceOwners))
+                {
+                    replayTargetConflictCount++;
+                    continue;
+                }
+
+                if (sourceOwners.Count != 1)
+                {
+                    replayTargetConflictCount++;
+                }
+
+                var hasDirtySourceOwner = false;
+                foreach (var sourceOwner in sourceOwners)
+                {
+                    if (visitedSources.Contains(sourceOwner))
+                    {
+                        hasDirtySourceOwner = true;
+                        break;
+                    }
+                }
+
+                if (!hasDirtySourceOwner)
+                {
+                    continue;
+                }
+
+                foreach (var sourceOwner in sourceOwners)
+                {
+                    if (!visitedSources.Contains(sourceOwner))
+                    {
+                        sharedWithCleanSourceVisualCount++;
+                        break;
+                    }
+                }
+            }
+
+            return new WpfRetainedVisualBranchInvalidationResult(
+                visitedSources.Count,
+                mappedSourceCount,
+                _scratchInvalidatedVisuals.Count,
+                sharedWithCleanSourceVisualCount,
+                replayTargetConflictCount);
+        }
+        finally
         {
-            if (!_sourceOwnersByVisual.TryGetValue(visual, out var sourceOwners))
-            {
-                replayTargetConflictCount++;
-                continue;
-            }
-
-            if (sourceOwners.Count != 1)
-            {
-                replayTargetConflictCount++;
-            }
-
-            var hasDirtySourceOwner = false;
-            foreach (var sourceOwner in sourceOwners)
-            {
-                if (visitedSources.Contains(sourceOwner))
-                {
-                    hasDirtySourceOwner = true;
-                    break;
-                }
-            }
-
-            if (!hasDirtySourceOwner)
-            {
-                continue;
-            }
-
-            foreach (var sourceOwner in sourceOwners)
-            {
-                if (!visitedSources.Contains(sourceOwner))
-                {
-                    sharedWithCleanSourceVisualCount++;
-                    break;
-                }
-            }
+            _scratchInvalidatedVisuals.Clear();
         }
-
-        return new WpfRetainedVisualBranchInvalidationResult(
-            visitedSources.Count,
-            mappedSourceCount,
-            invalidatedVisuals.Count,
-            sharedWithCleanSourceVisualCount,
-            replayTargetConflictCount);
     }
 
     private static bool TryGetReferenceEqualityHashSet(

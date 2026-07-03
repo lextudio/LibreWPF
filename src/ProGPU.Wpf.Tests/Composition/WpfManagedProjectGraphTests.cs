@@ -5629,11 +5629,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("\"GetVisualChild\"", rendererSource, StringComparison.Ordinal);
         Assert.Contains("using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;", trackerSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableVisualChildrenSnapshot(source, out var snapshot)", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("CollectVisualChildrenChanges(_root, _visualChildrenSnapshots)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("CollectVisualStateChanges(_visualStateSnapshots, currentVisualStateSnapshots, changedSources)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("CollectVisualChildrenChanges(_root, _visualChildrenSnapshots, changedSources)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisitPortableDependency(ref state, visitor, TryGetPortableVisualChild(visualChildrenSource, i))", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private static IEnumerable EnumerateCollection(object source)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("return source is IEnumerable enumerable", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var changedSource in CollectVisualStateChanges", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var changedSource in CollectVisualChildrenChanges", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static List<object> CollectVisualStateChanges", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static List<object> CollectVisualChildrenChanges", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("var result = new List<object?>();", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("result.Add(item);", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("currentVisualChildrenSnapshots", trackerSource, StringComparison.Ordinal);

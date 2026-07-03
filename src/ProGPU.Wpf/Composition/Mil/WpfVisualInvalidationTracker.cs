@@ -117,15 +117,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         var currentVisualStateSnapshots = CaptureVisualStateSnapshots(_root);
         var changedSources = new List<object>();
-        foreach (var changedSource in CollectVisualStateChanges(_visualStateSnapshots, currentVisualStateSnapshots))
-        {
-            changedSources.Add(changedSource);
-        }
-
-        foreach (var changedSource in CollectVisualChildrenChanges(_root, _visualChildrenSnapshots))
-        {
-            changedSources.Add(changedSource);
-        }
+        CollectVisualStateChanges(_visualStateSnapshots, currentVisualStateSnapshots, changedSources);
+        CollectVisualChildrenChanges(_root, _visualChildrenSnapshots, changedSources);
 
         if (changedSources.Count == 0)
         {
@@ -339,12 +332,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return registered;
     }
 
-    private static List<object> CollectVisualStateChanges(
+    private static void CollectVisualStateChanges(
         IReadOnlyDictionary<object, VisualStateSnapshot> previous,
-        IReadOnlyDictionary<object, VisualStateSnapshot> current)
+        IReadOnlyDictionary<object, VisualStateSnapshot> current,
+        List<object> changedSources)
     {
-        var changedSources = new List<object>();
-
         foreach (var snapshot in current)
         {
             if (!previous.TryGetValue(snapshot.Key, out var previousSnapshot) ||
@@ -361,15 +353,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 changedSources.Add(snapshot.Key);
             }
         }
-
-        return changedSources;
     }
 
-    private static List<object> CollectVisualChildrenChanges(
+    private static void CollectVisualChildrenChanges(
         object root,
-        IReadOnlyDictionary<object, object?[]> previous)
+        IReadOnlyDictionary<object, object?[]> previous,
+        List<object> changedSources)
     {
-        var changedSources = new List<object>();
         var currentSources = new HashSet<object>(ReferenceEqualityComparer.Instance);
         var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
         CollectVisualChildrenChanges(root, previous, currentSources, changedSources, visited);
@@ -381,8 +371,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 changedSources.Add(snapshot.Key);
             }
         }
-
-        return changedSources;
     }
 
     private static void CollectVisualChildrenChanges(

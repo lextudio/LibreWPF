@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 
@@ -38,9 +37,17 @@ public sealed class SilkNetWpfMonitorService : IWpfMonitorService
     public IReadOnlyList<WpfMonitorInfo> GetMonitors()
     {
         var mainMonitor = _getMainMonitor();
-        return _getMonitors()
-            .Select(monitor => ToMonitorInfo(monitor, mainMonitor, _getDpiScale))
-            .ToArray();
+        var monitors = _getMonitors();
+        var mapped = monitors is ICollection<IMonitor> monitorCollection
+            ? new List<WpfMonitorInfo>(monitorCollection.Count)
+            : new List<WpfMonitorInfo>();
+
+        foreach (var monitor in monitors)
+        {
+            mapped.Add(ToMonitorInfo(monitor, mainMonitor, _getDpiScale));
+        }
+
+        return mapped;
     }
 
     public static WpfMonitorInfo ToMonitorInfo(IMonitor monitor, IMonitor? mainMonitor)

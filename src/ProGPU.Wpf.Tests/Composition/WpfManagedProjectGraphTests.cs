@@ -754,8 +754,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DisplayScaleResolver.ResolveDisplayScaleWithPlatformFallback(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("DisplayScaleResolver.NormalizeDisplayScale(dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Func<IMonitor, double?>? getDpiScale", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.Contains("var monitors = _getMonitors();", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.Contains("new List<WpfMonitorInfo>(monitorCollection.Count)", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.Contains("mapped.Add(ToMonitorInfo(monitor, mainMonitor, _getDpiScale));", silkNetMonitorService, StringComparison.Ordinal);
         Assert.Contains("ResolveDpiScale(monitor, width, height, getDpiScale?.Invoke(monitor))", silkNetMonitorService, StringComparison.Ordinal);
         Assert.Contains("monitor.VideoMode.Resolution is Vector2D<int> resolution", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Linq;", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Select(monitor => ToMonitorInfo", silkNetMonitorService, StringComparison.Ordinal);
+        Assert.DoesNotContain(".ToArray()", silkNetMonitorService, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection", silkNetMonitorService, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", silkNetMonitorService, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(", silkNetMonitorService, StringComparison.Ordinal);

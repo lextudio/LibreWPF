@@ -140,12 +140,23 @@ public sealed class WpfRetainedVisualBranchMap
             }
         }
 
+        if (TryGetReferenceEqualityHashSet(sources, out var referenceDirtySources))
+        {
+            return GetReplayTargetsForDistinctSourceSet(referenceDirtySources);
+        }
+
         var dirtySources = new HashSet<object>(ReferenceEqualityComparer.Instance);
         foreach (var source in sources)
         {
             dirtySources.Add(source);
         }
 
+        return GetReplayTargetsForDistinctSourceSet(dirtySources);
+    }
+
+    private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForDistinctSourceSet(
+        HashSet<object> dirtySources)
+    {
         if (dirtySources.Count == 0)
         {
             return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
@@ -287,82 +298,18 @@ public sealed class WpfRetainedVisualBranchMap
             }
         }
 
-        var visitedSources = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        var invalidatedVisuals = new HashSet<ProGpuVisual>(ReferenceEqualityComparer.Instance);
-        var dirtySourceCount = 0;
-        var mappedSourceCount = 0;
-        var sharedWithCleanSourceVisualCount = 0;
-        var replayTargetConflictCount = 0;
+        if (TryGetReferenceEqualityHashSet(sources, out var referenceVisitedSources))
+        {
+            return InvalidateVisualsForDistinctSourceSet(referenceVisitedSources);
+        }
 
+        var visitedSources = new HashSet<object>(ReferenceEqualityComparer.Instance);
         foreach (var source in sources)
         {
-            if (!visitedSources.Add(source))
-            {
-                continue;
-            }
-
-            dirtySourceCount++;
-
-            if (!_visualsBySource.TryGetValue(source, out var visuals))
-            {
-                continue;
-            }
-
-            mappedSourceCount++;
-
-            foreach (var visual in visuals)
-            {
-                if (invalidatedVisuals.Add(visual))
-                {
-                    visual.Invalidate();
-                }
-            }
+            visitedSources.Add(source);
         }
 
-        foreach (var visual in invalidatedVisuals)
-        {
-            if (!_sourceOwnersByVisual.TryGetValue(visual, out var sourceOwners))
-            {
-                replayTargetConflictCount++;
-                continue;
-            }
-
-            if (sourceOwners.Count != 1)
-            {
-                replayTargetConflictCount++;
-            }
-
-            var hasDirtySourceOwner = false;
-            foreach (var sourceOwner in sourceOwners)
-            {
-                if (visitedSources.Contains(sourceOwner))
-                {
-                    hasDirtySourceOwner = true;
-                    break;
-                }
-            }
-
-            if (!hasDirtySourceOwner)
-            {
-                continue;
-            }
-
-            foreach (var sourceOwner in sourceOwners)
-            {
-                if (!visitedSources.Contains(sourceOwner))
-                {
-                    sharedWithCleanSourceVisualCount++;
-                    break;
-                }
-            }
-        }
-
-        return new WpfRetainedVisualBranchInvalidationResult(
-            dirtySourceCount,
-            mappedSourceCount,
-            invalidatedVisuals.Count,
-            sharedWithCleanSourceVisualCount,
-            replayTargetConflictCount);
+        return InvalidateVisualsForDistinctSourceSet(visitedSources);
     }
 
     private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForSingleSource(object source)
@@ -418,6 +365,98 @@ public sealed class WpfRetainedVisualBranchMap
             invalidatedVisualCount,
             sharedWithCleanSourceVisualCount,
             replayTargetConflictCount);
+    }
+
+    private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForDistinctSourceSet(
+        HashSet<object> visitedSources)
+    {
+        if (visitedSources.Count == 0)
+        {
+            return new WpfRetainedVisualBranchInvalidationResult(0, 0, 0);
+        }
+
+        var invalidatedVisuals = new HashSet<ProGpuVisual>(ReferenceEqualityComparer.Instance);
+        var mappedSourceCount = 0;
+        var sharedWithCleanSourceVisualCount = 0;
+        var replayTargetConflictCount = 0;
+
+        foreach (var source in visitedSources)
+        {
+            if (!_visualsBySource.TryGetValue(source, out var visuals))
+            {
+                continue;
+            }
+
+            mappedSourceCount++;
+
+            foreach (var visual in visuals)
+            {
+                if (invalidatedVisuals.Add(visual))
+                {
+                    visual.Invalidate();
+                }
+            }
+        }
+
+        foreach (var visual in invalidatedVisuals)
+        {
+            if (!_sourceOwnersByVisual.TryGetValue(visual, out var sourceOwners))
+            {
+                replayTargetConflictCount++;
+                continue;
+            }
+
+            if (sourceOwners.Count != 1)
+            {
+                replayTargetConflictCount++;
+            }
+
+            var hasDirtySourceOwner = false;
+            foreach (var sourceOwner in sourceOwners)
+            {
+                if (visitedSources.Contains(sourceOwner))
+                {
+                    hasDirtySourceOwner = true;
+                    break;
+                }
+            }
+
+            if (!hasDirtySourceOwner)
+            {
+                continue;
+            }
+
+            foreach (var sourceOwner in sourceOwners)
+            {
+                if (!visitedSources.Contains(sourceOwner))
+                {
+                    sharedWithCleanSourceVisualCount++;
+                    break;
+                }
+            }
+        }
+
+        return new WpfRetainedVisualBranchInvalidationResult(
+            visitedSources.Count,
+            mappedSourceCount,
+            invalidatedVisuals.Count,
+            sharedWithCleanSourceVisualCount,
+            replayTargetConflictCount);
+    }
+
+    private static bool TryGetReferenceEqualityHashSet(
+        IEnumerable<object> sources,
+        out HashSet<object> sourceSet)
+    {
+        if (sources is HashSet<object> candidate &&
+            ReferenceEquals(candidate.Comparer, ReferenceEqualityComparer.Instance))
+        {
+            sourceSet = candidate;
+            return true;
+        }
+
+        sourceSet = null!;
+        return false;
     }
 
     private void UnregisterVisualTreeCore(ProGpuVisual visual)

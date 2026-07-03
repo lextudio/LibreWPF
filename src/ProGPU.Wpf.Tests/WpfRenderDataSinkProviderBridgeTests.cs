@@ -248,11 +248,15 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
             "WpfRetainedVisualBranchMap.cs"));
 
         var fastPathIndex = source.IndexOf("return GetReplayTargetsForSingleSource(singleSource);", StringComparison.Ordinal);
+        var referenceSetFastPathIndex = source.IndexOf("return GetReplayTargetsForDistinctSourceSet(referenceDirtySources);", StringComparison.Ordinal);
         var multiSourceIndex = source.IndexOf("var dirtySources = new HashSet<object>", StringComparison.Ordinal);
 
         Assert.True(fastPathIndex >= 0);
-        Assert.True(multiSourceIndex > fastPathIndex);
+        Assert.True(referenceSetFastPathIndex > fastPathIndex);
+        Assert.True(multiSourceIndex > referenceSetFastPathIndex);
         Assert.Contains("GetReplayTargetsForSingleSource(singleSource)", source, StringComparison.Ordinal);
+        Assert.Contains("TryGetReferenceEqualityHashSet(sources, out var referenceDirtySources)", source, StringComparison.Ordinal);
+        Assert.Contains("private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForDistinctSourceSet(", source, StringComparison.Ordinal);
         Assert.Contains("new[] { new WpfRetainedVisualBranchReplayTarget(replaySource, visual) }", source, StringComparison.Ordinal);
         Assert.Contains("SelectTopLevelReplayTargets(targets)", source, StringComparison.Ordinal);
     }
@@ -267,13 +271,26 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
             "WpfRetainedVisualBranchMap.cs"));
 
         var fastPathIndex = source.IndexOf("return InvalidateVisualsForSingleSource(singleSource);", StringComparison.Ordinal);
+        var referenceSetFastPathIndex = source.IndexOf("return InvalidateVisualsForDistinctSourceSet(referenceVisitedSources);", StringComparison.Ordinal);
         var multiSourceIndex = source.IndexOf("var visitedSources = new HashSet<object>", StringComparison.Ordinal);
 
         Assert.True(fastPathIndex >= 0);
-        Assert.True(multiSourceIndex > fastPathIndex);
+        Assert.True(referenceSetFastPathIndex > fastPathIndex);
+        Assert.True(multiSourceIndex > referenceSetFastPathIndex);
         Assert.Contains("private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForSingleSource(object source)", source, StringComparison.Ordinal);
+        Assert.Contains("TryGetReferenceEqualityHashSet(sources, out var referenceVisitedSources)", source, StringComparison.Ordinal);
+        Assert.Contains("private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForDistinctSourceSet(", source, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(candidate.Comparer, ReferenceEqualityComparer.Instance)", source, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(sourceOwner, source)", source, StringComparison.Ordinal);
         Assert.Contains("new WpfRetainedVisualBranchInvalidationResult(\n            1,\n            1,", source, StringComparison.Ordinal);
+
+        var trackerSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfVisualInvalidationTracker.cs"));
+        Assert.DoesNotContain("private sealed class ReferenceEqualityComparer", trackerSource, StringComparison.Ordinal);
     }
 
     [Fact]

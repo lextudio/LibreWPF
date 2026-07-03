@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU;
@@ -694,6 +695,43 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(0, result.SharedWithCleanSourceVisualCount);
         Assert.Equal(1, result.ReplayTargetConflictCount);
         Assert.False(result.CanTargetAllDirtySources);
+    }
+
+    [Fact]
+    public void BranchMapConsumesReferenceDirtySourceSetWithoutChangingReplayOrInvalidation()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var firstSource = new object();
+        var secondSource = new object();
+        var firstVisual = new ProGpuRetainedDrawingVisual
+        {
+            IsDirty = false
+        };
+        var secondVisual = new ProGpuRetainedDrawingVisual
+        {
+            IsDirty = false
+        };
+        var dirtySources = new HashSet<object>(ReferenceEqualityComparer.Instance)
+        {
+            firstSource,
+            secondSource
+        };
+        branchMap.Register(firstSource, firstVisual);
+        branchMap.Register(secondSource, secondVisual);
+
+        var result = branchMap.InvalidateVisualsForSources(dirtySources);
+        var targets = branchMap.GetReplayTargetsForSources(dirtySources);
+
+        Assert.Equal(2, result.DirtySourceCount);
+        Assert.Equal(2, result.MappedSourceCount);
+        Assert.Equal(0, result.UnmappedSourceCount);
+        Assert.Equal(2, result.InvalidatedVisualCount);
+        Assert.True(result.CanTargetAllDirtySources);
+        Assert.True(firstVisual.IsDirty);
+        Assert.True(secondVisual.IsDirty);
+        Assert.Equal(2, targets.Count);
+        Assert.Contains(targets, target => ReferenceEquals(target.Source, firstSource) && ReferenceEquals(target.Visual, firstVisual));
+        Assert.Contains(targets, target => ReferenceEquals(target.Source, secondSource) && ReferenceEquals(target.Visual, secondVisual));
     }
 
     [Fact]

@@ -410,6 +410,13 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Scene",
             "Extensions",
             "GpuLineSeriesExtensionPipeline.cs");
+        var proGpuAcisPipelinePath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Extensions",
+            "AcisSolidExtensionPipeline.cs");
         var proGpuScatterSeriesPipelinePath = FindRepoPath(
             "external",
             "ProGPU",
@@ -492,6 +499,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
         var proGpuSeriesBuffer = File.ReadAllText(proGpuSeriesBufferPath);
         var proGpuLineSeriesPipeline = File.ReadAllText(proGpuLineSeriesPipelinePath);
+        var proGpuAcisPipeline = File.ReadAllText(proGpuAcisPipelinePath);
         var proGpuScatterSeriesPipeline = File.ReadAllText(proGpuScatterSeriesPipelinePath);
         var proGpuHitTestCache = File.ReadAllText(proGpuHitTestCachePath);
         var proGpuHitTesting = File.ReadAllText(proGpuHitTestingPath);
@@ -1247,6 +1255,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var array = new float[pointsCount * 3];", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var array = new float[pointsCount * 2];", proGpuLineSeriesPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("var array = new float[pointsCount * 3];", proGpuScatterSeriesPipeline, StringComparison.Ordinal);
+        Assert.Contains("cmd.Edges3D is { } edges", proGpuAcisPipeline, StringComparison.Ordinal);
+        Assert.Contains("ReadOnlySpan<Line3D>.Empty", proGpuAcisPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("cmd.Edges3D ?? new List<Line3D>()", proGpuAcisPipeline, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);

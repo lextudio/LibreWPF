@@ -10210,6 +10210,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public unsafe sealed class GpuTextureReadbackBuffer", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("public static uint AlignBytesPerRow", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.PollDevice(wait: false)", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("uint sourceWidth = GetMipDimension(texture.Width, mipLevel);", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("width = width == 0 ? sourceWidth : width;", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("originDepthOrArrayLayer", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("Origin = new Origin3D { X = 0, Y = 0, Z = originDepthOrArrayLayer }", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("finally\n        {\n            UnmapActiveBuffer();\n        }", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.Wgpu.BufferUnmap(_buffer);", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.QueueBufferDisposal((IntPtr)_buffer)", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
@@ -10222,6 +10226,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var snapshot = new List<IntPtr>(pending.Count)", proGpuWgpuContext, StringComparison.Ordinal);
         Assert.DoesNotContain("return snapshot.ToArray();", proGpuWgpuContext, StringComparison.Ordinal);
         Assert.Contains("public byte[] ReadPixels(uint mipLevel = 0)", proGpuTexture, StringComparison.Ordinal);
+        Assert.Contains("public void ReadPixels(\n        Span<byte> destination", proGpuTexture, StringComparison.Ordinal);
+        Assert.Contains("ReadPixels(unpaddedPixels, mipLevel);", proGpuTexture, StringComparison.Ordinal);
         Assert.Contains("var readbackBuffer = new GpuTextureReadbackBuffer(_context);", proGpuTexture, StringComparison.Ordinal);
         Assert.Contains("readbackBuffer.TryReadTextureRows(", proGpuTexture, StringComparison.Ordinal);
         Assert.Contains("_context.CleanupPendingResources();", proGpuTexture, StringComparison.Ordinal);
@@ -10242,7 +10248,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_backendBuffer.ReadBytes(writeShadowSpan, offsetBytes);", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("internal void ReadWriteShadowBytes(Span<byte> destination, uint offsetBytes)", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("sourceIndexBuffer.ReadWriteShadowBytes(MemoryMarshal.AsBytes(result.AsSpan()), offsetBytes);", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("public void ReadPixels(Span<byte> destination)", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.Contains("private void ReadBackendSubresourceIntoWriteShadow", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.Contains("texture.ReadPixels(\n            _writeShadow.AsSpan(", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.Contains("depthOrArrayLayers: 1", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.DoesNotContain("var bytes = _backendBuffer.ReadBytes(offsetBytes, sizeInBytes);", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.DoesNotContain("var pixels = texture.ReadPixels(subresourceInfo.MipLevel);", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.DoesNotContain("pixels.AsSpan(sourceOffset", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.DoesNotContain("return MemoryMarshal.Cast<byte, uint>(bytes).ToArray();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("wgpuDevicePoll", proGpuBuffer, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferDestroy(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);

@@ -5598,6 +5598,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;", rendererSource, StringComparison.Ordinal);
         Assert.Contains("visual is PortableVisualChildrenSource visualChildrenSource", rendererSource, StringComparison.Ordinal);
         Assert.Contains("ExtractPortableVisualChildren(visualChildrenSource)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private readonly struct PortableVisualChildrenEnumerable", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("public PortableVisualChildrenEnumerator GetEnumerator()", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IReadOnlyList<object> ExtractChildren", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("var result = new List<object>(count);", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("result.Add(child);", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDirectDependency(visual, \"Children\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(visual, \"Children\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("ExtractVisualChildren", rendererSource, StringComparison.Ordinal);

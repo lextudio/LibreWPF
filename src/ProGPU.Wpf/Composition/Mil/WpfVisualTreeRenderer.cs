@@ -1181,33 +1181,80 @@ public sealed class WpfVisualTreeRenderer
         return false;
     }
 
-    private static IReadOnlyList<object> ExtractChildren(object visual)
+    private static PortableVisualChildrenEnumerable ExtractChildren(object visual)
     {
         if (visual is PortableVisualChildrenSource visualChildrenSource)
         {
             return ExtractPortableVisualChildren(visualChildrenSource);
         }
 
-        return Array.Empty<object>();
+        return default;
     }
 
-    private static IReadOnlyList<object> ExtractPortableVisualChildren(PortableVisualChildrenSource visualChildrenSource)
+    private static PortableVisualChildrenEnumerable ExtractPortableVisualChildren(PortableVisualChildrenSource visualChildrenSource)
     {
         if (!visualChildrenSource.TryGetPortableVisualChildCount(out var count) || count <= 0)
         {
-            return Array.Empty<object>();
+            return default;
         }
 
-        var result = new List<object>(count);
-        for (var i = 0; i < count; i++)
+        return new PortableVisualChildrenEnumerable(visualChildrenSource, count);
+    }
+
+    private readonly struct PortableVisualChildrenEnumerable
+    {
+        private readonly PortableVisualChildrenSource? _source;
+        private readonly int _count;
+
+        public PortableVisualChildrenEnumerable(PortableVisualChildrenSource source, int count)
         {
-            if (visualChildrenSource.TryGetPortableVisualChild(i, out var child) && child != null)
-            {
-                result.Add(child);
-            }
+            _source = source;
+            _count = count;
         }
 
-        return result;
+        public PortableVisualChildrenEnumerator GetEnumerator()
+        {
+            return new PortableVisualChildrenEnumerator(_source, _count);
+        }
+    }
+
+    private struct PortableVisualChildrenEnumerator
+    {
+        private readonly PortableVisualChildrenSource? _source;
+        private readonly int _count;
+        private int _index;
+        private object? _current;
+
+        public PortableVisualChildrenEnumerator(PortableVisualChildrenSource? source, int count)
+        {
+            _source = source;
+            _count = count;
+            _index = 0;
+            _current = null;
+        }
+
+        public object Current => _current!;
+
+        public bool MoveNext()
+        {
+            if (_source == null)
+            {
+                return false;
+            }
+
+            while (_index < _count)
+            {
+                var index = _index++;
+                if (_source.TryGetPortableVisualChild(index, out var child) && child != null)
+                {
+                    _current = child;
+                    return true;
+                }
+            }
+
+            _current = null;
+            return false;
+        }
     }
 
     private static bool TryGetPortableVisualState(object visual, out PortableVisualState state)

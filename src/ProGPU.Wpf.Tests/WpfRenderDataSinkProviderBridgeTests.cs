@@ -247,7 +247,7 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
             "Composition",
             "WpfRetainedVisualBranchMap.cs"));
 
-        var fastPathIndex = source.IndexOf("sourceCollection.Count == 1", StringComparison.Ordinal);
+        var fastPathIndex = source.IndexOf("return GetReplayTargetsForSingleSource(singleSource);", StringComparison.Ordinal);
         var multiSourceIndex = source.IndexOf("var dirtySources = new HashSet<object>", StringComparison.Ordinal);
 
         Assert.True(fastPathIndex >= 0);
@@ -255,6 +255,25 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("GetReplayTargetsForSingleSource(singleSource)", source, StringComparison.Ordinal);
         Assert.Contains("new[] { new WpfRetainedVisualBranchReplayTarget(replaySource, visual) }", source, StringComparison.Ordinal);
         Assert.Contains("SelectTopLevelReplayTargets(targets)", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RetainedVisualBranchMapFastPathsSingleSourceInvalidation()
+    {
+        var source = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfRetainedVisualBranchMap.cs"));
+
+        var fastPathIndex = source.IndexOf("return InvalidateVisualsForSingleSource(singleSource);", StringComparison.Ordinal);
+        var multiSourceIndex = source.IndexOf("var visitedSources = new HashSet<object>", StringComparison.Ordinal);
+
+        Assert.True(fastPathIndex >= 0);
+        Assert.True(multiSourceIndex > fastPathIndex);
+        Assert.Contains("private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForSingleSource(object source)", source, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(sourceOwner, source)", source, StringComparison.Ordinal);
+        Assert.Contains("new WpfRetainedVisualBranchInvalidationResult(\n            1,\n            1,", source, StringComparison.Ordinal);
     }
 
     [Fact]

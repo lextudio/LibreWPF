@@ -273,6 +273,20 @@ public sealed class WpfRetainedVisualBranchMap
     {
         ArgumentNullException.ThrowIfNull(sources);
 
+        if (sources is IReadOnlyCollection<object> sourceCollection)
+        {
+            if (sourceCollection.Count == 0)
+            {
+                return new WpfRetainedVisualBranchInvalidationResult(0, 0, 0);
+            }
+
+            if (sourceCollection.Count == 1 &&
+                TryGetSingleSource(sourceCollection, out var singleSource))
+            {
+                return InvalidateVisualsForSingleSource(singleSource);
+            }
+        }
+
         var visitedSources = new HashSet<object>(ReferenceEqualityComparer.Instance);
         var invalidatedVisuals = new HashSet<ProGpuVisual>(ReferenceEqualityComparer.Instance);
         var dirtySourceCount = 0;
@@ -347,6 +361,61 @@ public sealed class WpfRetainedVisualBranchMap
             dirtySourceCount,
             mappedSourceCount,
             invalidatedVisuals.Count,
+            sharedWithCleanSourceVisualCount,
+            replayTargetConflictCount);
+    }
+
+    private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForSingleSource(object source)
+    {
+        if (!_visualsBySource.TryGetValue(source, out var visuals))
+        {
+            return new WpfRetainedVisualBranchInvalidationResult(1, 0, 0);
+        }
+
+        var invalidatedVisualCount = 0;
+        var sharedWithCleanSourceVisualCount = 0;
+        var replayTargetConflictCount = 0;
+
+        foreach (var visual in visuals)
+        {
+            visual.Invalidate();
+            invalidatedVisualCount++;
+
+            if (!_sourceOwnersByVisual.TryGetValue(visual, out var sourceOwners))
+            {
+                replayTargetConflictCount++;
+                continue;
+            }
+
+            if (sourceOwners.Count != 1)
+            {
+                replayTargetConflictCount++;
+            }
+
+            var hasDirtySourceOwner = false;
+            var hasCleanSourceOwner = false;
+            foreach (var sourceOwner in sourceOwners)
+            {
+                if (ReferenceEquals(sourceOwner, source))
+                {
+                    hasDirtySourceOwner = true;
+                }
+                else
+                {
+                    hasCleanSourceOwner = true;
+                }
+            }
+
+            if (hasDirtySourceOwner && hasCleanSourceOwner)
+            {
+                sharedWithCleanSourceVisualCount++;
+            }
+        }
+
+        return new WpfRetainedVisualBranchInvalidationResult(
+            1,
+            1,
+            invalidatedVisualCount,
             sharedWithCleanSourceVisualCount,
             replayTargetConflictCount);
     }

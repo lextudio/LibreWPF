@@ -71,7 +71,7 @@ progpu_has_tracked_changes="$(git_has_tracked_changes "${repo_root}/external/Pro
 
 {
   printf '{\n'
-  printf '  "schemaVersion": 1,\n'
+  printf '  "schemaVersion": 2,\n'
   printf '  "version": "%s",\n' "$(json_escape "${dev_package_version}")"
   printf '  "source": {\n'
   printf '    "wpfCommit": "%s",\n' "$(json_escape "${wpf_commit}")"

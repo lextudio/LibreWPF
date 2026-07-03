@@ -10097,7 +10097,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("git -C \"${git_root}\" diff --quiet --ignore-submodules=dirty -- .", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("wpf_commit=\"$(git_commit \"${repo_root}\")\"", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("progpu_commit=\"$(git_commit \"${repo_root}/external/ProGPU\")\"", previewPackageManifestScript, StringComparison.Ordinal);
-        Assert.Contains("\"schemaVersion\": 1", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 2", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"source\": {", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"wpfCommit\": \"%s\"", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"progpuCommit\": \"%s\"", previewPackageManifestScript, StringComparison.Ordinal);

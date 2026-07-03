@@ -31,6 +31,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private readonly Dictionary<object, object?[]> _visualChildrenSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _dirtySources = new(ReferenceEqualityComparer.Instance);
     private readonly List<object> _changedSources = new();
+    private readonly Dictionary<object, VisualStateSnapshot> _currentVisualStateSnapshots = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<object> _visualStateTraversalVisited = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<object> _visualChildrenCurrentSources = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<object> _visualChildrenTraversalVisited = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<object> _subscriptionTraversalVisited = new(ReferenceEqualityComparer.Instance);
     private object? _root;
     private object? _lastDirtySource;
     private bool _isDirty;
@@ -117,11 +122,24 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         _changedSources.Clear();
+        _currentVisualStateSnapshots.Clear();
+        _visualStateTraversalVisited.Clear();
+        _visualChildrenCurrentSources.Clear();
+        _visualChildrenTraversalVisited.Clear();
         try
         {
-            var currentVisualStateSnapshots = CaptureVisualStateSnapshots(_root);
-            CollectVisualStateChanges(_visualStateSnapshots, currentVisualStateSnapshots, _changedSources);
-            CollectVisualChildrenChanges(_root, _visualChildrenSnapshots, _changedSources);
+            CaptureVisualStateSnapshots(_root, _currentVisualStateSnapshots, _visualStateTraversalVisited);
+            CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources);
+            CollectVisualChildrenChanges(
+                _root,
+                _visualChildrenSnapshots,
+                _visualChildrenCurrentSources,
+                _changedSources,
+                _visualChildrenTraversalVisited);
+            CollectRemovedVisualChildrenSources(
+                _visualChildrenSnapshots,
+                _visualChildrenCurrentSources,
+                _changedSources);
 
             if (_changedSources.Count == 0)
             {
@@ -134,6 +152,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         finally
         {
             _changedSources.Clear();
+            _currentVisualStateSnapshots.Clear();
+            _visualStateTraversalVisited.Clear();
+            _visualChildrenCurrentSources.Clear();
+            _visualChildrenTraversalVisited.Clear();
         }
     }
 
@@ -166,6 +188,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         _visualChildrenSnapshots.Clear();
         _dirtySources.Clear();
         _changedSources.Clear();
+        _currentVisualStateSnapshots.Clear();
+        _visualStateTraversalVisited.Clear();
+        _visualChildrenCurrentSources.Clear();
+        _visualChildrenTraversalVisited.Clear();
+        _subscriptionTraversalVisited.Clear();
         _root = null;
         _lastDirtySource = null;
         _isDirty = false;
@@ -215,8 +242,15 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private void SubscribeGraph(object root)
     {
-        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        SubscribeObject(root, visited);
+        _subscriptionTraversalVisited.Clear();
+        try
+        {
+            SubscribeObject(root, _subscriptionTraversalVisited);
+        }
+        finally
+        {
+            _subscriptionTraversalVisited.Clear();
+        }
     }
 
     private void SubscribeObject(object? source, HashSet<object> visited)
@@ -263,12 +297,14 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
     }
 
-    private static Dictionary<object, VisualStateSnapshot> CaptureVisualStateSnapshots(object root)
+    private static void CaptureVisualStateSnapshots(
+        object root,
+        Dictionary<object, VisualStateSnapshot> snapshots,
+        HashSet<object> visited)
     {
-        var snapshots = new Dictionary<object, VisualStateSnapshot>(ReferenceEqualityComparer.Instance);
-        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        snapshots.Clear();
+        visited.Clear();
         CaptureObjectVisualStates(root, snapshots, visited);
-        return snapshots;
     }
 
     private static void CaptureObjectVisualStates(
@@ -365,24 +401,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     }
 
     private static void CollectVisualChildrenChanges(
-        object root,
-        IReadOnlyDictionary<object, object?[]> previous,
-        List<object> changedSources)
-    {
-        var currentSources = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        CollectVisualChildrenChanges(root, previous, currentSources, changedSources, visited);
-
-        foreach (var snapshot in previous)
-        {
-            if (!currentSources.Contains(snapshot.Key))
-            {
-                changedSources.Add(snapshot.Key);
-            }
-        }
-    }
-
-    private static void CollectVisualChildrenChanges(
         object? source,
         IReadOnlyDictionary<object, object?[]> previous,
         HashSet<object> currentSources,
@@ -415,6 +433,20 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             changedSources,
             visited);
         VisitPortableDependencies(source, ref dependencyState, default(CollectVisualChildrenDependencyVisitor));
+    }
+
+    private static void CollectRemovedVisualChildrenSources(
+        IReadOnlyDictionary<object, object?[]> previous,
+        HashSet<object> currentSources,
+        List<object> changedSources)
+    {
+        foreach (var snapshot in previous)
+        {
+            if (!currentSources.Contains(snapshot.Key))
+            {
+                changedSources.Add(snapshot.Key);
+            }
+        }
     }
 
     private static bool TryReadVisualStateSnapshot(object source, out VisualStateSnapshot snapshot)

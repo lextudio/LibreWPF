@@ -9899,6 +9899,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<EnableWindowsTargeting Condition=\"'$(EnableWindowsTargeting)' == ''\">true</EnableWindowsTargeting>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<CopyLocalLockFileAssemblies Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(CopyLocalLockFileAssemblies)' == ''\">true</CopyLocalLockFileAssemblies>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<NoWarn>$(NoWarn);NETSDK1137</NoWarn>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<MSBuildWarningsAsMessages Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'\">$(MSBuildWarningsAsMessages);NETSDK1106</MSBuildWarningsAsMessages>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfEnablePortableBootstrap Condition=\"'$(ProGpuWpfEnablePortableBootstrap)' == ''\">true</ProGpuWpfEnablePortableBootstrap>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfUseCurrentRuntimeIdentifier Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == ''\">true</ProGpuWpfUseCurrentRuntimeIdentifier>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<RuntimeIdentifier Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(RuntimeIdentifier)' == ''\">$([System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)</RuntimeIdentifier>", sdkProps, StringComparison.Ordinal);
@@ -9914,8 +9915,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGpuWpfClearMutablePackageOutputs", sdkProps, StringComparison.Ordinal);
         Assert.Contains("Contains(`-dev`)", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSilkNetVersion Condition=\"'$(ProGpuWpfSilkNetVersion)' == ''\">2.23.0</ProGpuWpfSilkNetVersion>", sdkProps, StringComparison.Ordinal);
-        Assert.Contains("<ProGpuWpfSystemIOPackagingVersion Condition=\"'$(ProGpuWpfSystemIOPackagingVersion)' == ''\">", sdkProps, StringComparison.Ordinal);
-        Assert.Contains("<ProGpuWpfSystemWindowsExtensionsVersion Condition=\"'$(ProGpuWpfSystemWindowsExtensionsVersion)' == ''\">", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfSystemConfigurationConfigurationManagerVersion Condition=\"'$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)' == ''\">11.0.0-preview.5.26302.115</ProGpuWpfSystemConfigurationConfigurationManagerVersion>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfSystemFormatsNrbfVersion Condition=\"'$(ProGpuWpfSystemFormatsNrbfVersion)' == ''\">11.0.0-preview.5.26302.115</ProGpuWpfSystemFormatsNrbfVersion>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfSystemIOPackagingVersion Condition=\"'$(ProGpuWpfSystemIOPackagingVersion)' == ''\">11.0.0-preview.5.26302.115</ProGpuWpfSystemIOPackagingVersion>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfSystemWindowsExtensionsVersion Condition=\"'$(ProGpuWpfSystemWindowsExtensionsVersion)' == ''\">11.0.0-preview.5.26302.115</ProGpuWpfSystemWindowsExtensionsVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfStbImageSharpVersion Condition=\"'$(ProGpuWpfStbImageSharpVersion)' == ''\">2.30.15</ProGpuWpfStbImageSharpVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", sdkProps, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.props", sdkProps, StringComparison.Ordinal);

@@ -1173,10 +1173,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RentListSnapshot(_textVerticesList", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("RentListSnapshot(_drawCalls", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("ReturnListSnapshot(savedVectorVertices", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private readonly Stack<List<CompositorDrawCall>> _drawCallListPool = new();", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private List<CompositorDrawCall> RentDrawCallList(int capacity)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private List<CompositorDrawCall> RentMaskDrawCallList(int capacity)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private void ReturnMaskRenderPassDrawCallLists()", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("ReturnMaskRenderPassDrawCallLists();", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("RentMaskDrawCallList(maskDrawCallCount)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var staticDrawCallList = RentDrawCallList(commands.Count)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var staticDrawCallList = RentDrawCallList(context.Commands.Count)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("ReturnDrawCallList(staticDrawCalls)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("var staticDrawCalls = new List<CompositorDrawCall>();", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("_maskDrawCallListPool", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static void AddRemovalItem<T>(ref T[]? buffer, ref int count, int capacity, T item)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static void ReturnRemovalBuffer<T>(T[]? buffer, int count)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("AddRemovalItem(ref keysToRemove", proGpuCompositor, StringComparison.Ordinal);

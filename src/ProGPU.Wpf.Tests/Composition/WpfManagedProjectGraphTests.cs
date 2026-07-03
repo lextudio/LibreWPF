@@ -12282,6 +12282,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("FindIndexer", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Linq;", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("resource.ToString()", wpfResourceResolver, StringComparison.Ordinal);

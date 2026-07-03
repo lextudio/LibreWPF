@@ -1057,6 +1057,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static bool TryCreateDashedStrokePath(PathGeometry source, Pen pen, out PathGeometry dashedPath)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("internal static Pen CreateUndashedPen(Pen pen)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("SetLastHitTestIndex(_hitTestCacheBuilder.BuildIndex());", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("CollectionsMarshal.AsSpan(_primitives)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("CollectionsMarshal.AsSpan(_pathSegments)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("_primitives.ToArray()", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("_pathSegments.ToArray()", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("if (pen?.HasDashPattern != true)", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("TryGetDashedStrokePath(command, commandPath, pen, out var strokePath, out var strokePen)", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("TryAddPathStrokePrimitive(strokePath, transform, id, zIndex, strokePen);", proGpuHitTestCache, StringComparison.Ordinal);

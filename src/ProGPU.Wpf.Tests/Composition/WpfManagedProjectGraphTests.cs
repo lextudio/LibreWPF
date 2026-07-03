@@ -893,7 +893,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("AddEventHandler", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("PortableInvalidationSourceMarksTrackerDirtyWithoutReflectedEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("NonPortableChangedEventDoesNotMarkTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
-        Assert.Contains("EnumeratePortableDependencies(source)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("VisitPortableDependencies(source, ref dependencyState", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("private static void VisitPortableDependencies<TState, TVisitor>", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("private interface IPortableDependencyVisitor<TState>", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static IReadOnlyList<object?> EnumeratePortableDependencies", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<object?> { drawingContent }", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("dependencies ??= new List<object?>();", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableDrawingContentSource drawingContentSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableRenderDataSource renderDataSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("renderDataSnapshot.DependentResources", proGpuInvalidationTracker, StringComparison.Ordinal);
@@ -943,7 +948,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source is PortableDrawingGroupChildrenSource childrenSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableTileBrushSource tileBrushSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableShaderEffectSource shaderEffectSource", proGpuInvalidationTracker, StringComparison.Ordinal);
-        Assert.Contains("AddPortableDrawingGroupChildren(ref dependencies, source, drawingGroupState)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("VisitPortableDrawingGroupChildren(ref state, visitor, source, drawingGroupState)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("tileBrush.Content", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("sampler.Kind == PortableShaderSamplerKind.Brush", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_content\"", proGpuInvalidationTracker, StringComparison.Ordinal);
@@ -5626,7 +5631,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryReadPortableVisualChildrenSnapshot(source, out var snapshot)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CollectVisualChildrenChanges(_root, _visualChildrenSnapshots)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot)", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("AddPortableDependency(ref dependencies, TryGetPortableVisualChild(visualChildrenSource, i))", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("VisitPortableDependency(ref state, visitor, TryGetPortableVisualChild(visualChildrenSource, i))", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private static IEnumerable EnumerateCollection(object source)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("return source is IEnumerable enumerable", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("var result = new List<object?>();", trackerSource, StringComparison.Ordinal);

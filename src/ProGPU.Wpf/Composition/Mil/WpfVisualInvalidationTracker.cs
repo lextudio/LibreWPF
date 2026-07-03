@@ -241,10 +241,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             SubscribeObject(item, visited);
         }
 
-        foreach (var dependency in EnumeratePortableDependencies(source))
-        {
-            SubscribeObject(dependency, visited);
-        }
+        var dependencyState = new SubscribeDependencyState(this, visited);
+        VisitPortableDependencies(source, ref dependencyState, default(SubscribeDependencyVisitor));
     }
 
     private void CaptureVisualStateSnapshot(object source)
@@ -291,10 +289,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             CaptureObjectVisualStates(item, snapshots, visited);
         }
 
-        foreach (var dependency in EnumeratePortableDependencies(source))
-        {
-            CaptureObjectVisualStates(dependency, snapshots, visited);
-        }
+        var dependencyState = new CaptureVisualStateDependencyState(snapshots, visited);
+        VisitPortableDependencies(source, ref dependencyState, default(CaptureVisualStateDependencyVisitor));
     }
 
     private static void CollectTrackedDependencies(
@@ -314,10 +310,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             CollectTrackedDependencies(item, dependencies, visited);
         }
 
-        foreach (var dependency in EnumeratePortableDependencies(source))
-        {
-            CollectTrackedDependencies(dependency, dependencies, visited);
-        }
+        var dependencyState = new CollectTrackedDependencyState(dependencies, visited);
+        VisitPortableDependencies(source, ref dependencyState, default(CollectTrackedDependencyVisitor));
     }
 
     private static bool RegisterTrackedDependencies(
@@ -338,10 +332,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             registered |= RegisterTrackedDependencies(sink, item, visited);
         }
 
-        foreach (var dependency in EnumeratePortableDependencies(source))
-        {
-            registered |= RegisterTrackedDependencies(sink, dependency, visited);
-        }
+        var dependencyState = new RegisterTrackedDependencyState(sink, visited);
+        VisitPortableDependencies(source, ref dependencyState, default(RegisterTrackedDependencyVisitor));
+        registered |= dependencyState.Registered;
 
         return registered;
     }
@@ -419,10 +412,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             CollectVisualChildrenChanges(item, previous, currentSources, changedSources, visited);
         }
 
-        foreach (var dependency in EnumeratePortableDependencies(source))
-        {
-            CollectVisualChildrenChanges(dependency, previous, currentSources, changedSources, visited);
-        }
+        var dependencyState = new CollectVisualChildrenDependencyState(
+            previous,
+            currentSources,
+            changedSources,
+            visited);
+        VisitPortableDependencies(source, ref dependencyState, default(CollectVisualChildrenDependencyVisitor));
     }
 
     private static bool TryReadVisualStateSnapshot(object source, out VisualStateSnapshot snapshot)
@@ -718,15 +713,17 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             : Array.Empty<object?>();
     }
 
-    private static IReadOnlyList<object?> EnumeratePortableDependencies(object source)
+    private static void VisitPortableDependencies<TState, TVisitor>(
+        object source,
+        ref TState state,
+        TVisitor visitor)
+        where TVisitor : struct, IPortableDependencyVisitor<TState>
     {
-        List<object?>? dependencies = null;
-
         if (source is PortableDrawingContentSource drawingContentSource
             && drawingContentSource.TryGetPortableDrawingContent(out var drawingContent)
             && drawingContent != null)
         {
-            dependencies = new List<object?> { drawingContent };
+            VisitPortableDependency(ref state, visitor, drawingContent);
         }
 
         if (source is PortableRenderDataSource renderDataSource
@@ -734,7 +731,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             foreach (var dependency in renderDataSnapshot.DependentResources)
             {
-                AddPortableDependency(ref dependencies, dependency);
+                VisitPortableDependency(ref state, visitor, dependency);
             }
         }
 
@@ -742,7 +739,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             for (var i = 0; i < visualChildrenCount; i++)
             {
-                AddPortableDependency(ref dependencies, TryGetPortableVisualChild(visualChildrenSource, i));
+                VisitPortableDependency(ref state, visitor, TryGetPortableVisualChild(visualChildrenSource, i));
             }
         }
 
@@ -751,37 +748,37 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             if (visualState.HasTransform)
             {
-                AddPortableDependency(ref dependencies, visualState.Transform);
+                VisitPortableDependency(ref state, visitor, visualState.Transform);
             }
 
             if (visualState.HasClip)
             {
-                AddPortableDependency(ref dependencies, visualState.Clip);
+                VisitPortableDependency(ref state, visitor, visualState.Clip);
             }
 
             if (visualState.HasOpacityMask)
             {
-                AddPortableDependency(ref dependencies, visualState.OpacityMask);
+                VisitPortableDependency(ref state, visitor, visualState.OpacityMask);
             }
 
             if (visualState.HasEffect)
             {
-                AddPortableDependency(ref dependencies, visualState.Effect);
+                VisitPortableDependency(ref state, visitor, visualState.Effect);
             }
 
             if (visualState.HasBitmapEffect)
             {
-                AddPortableDependency(ref dependencies, visualState.BitmapEffect);
+                VisitPortableDependency(ref state, visitor, visualState.BitmapEffect);
             }
 
             if (visualState.HasBitmapEffectInput)
             {
-                AddPortableDependency(ref dependencies, visualState.BitmapEffectInput);
+                VisitPortableDependency(ref state, visitor, visualState.BitmapEffectInput);
             }
 
             if (visualState.HasCacheMode)
             {
-                AddPortableDependency(ref dependencies, visualState.CacheMode);
+                VisitPortableDependency(ref state, visitor, visualState.CacheMode);
             }
         }
 
@@ -789,7 +786,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             && visualLayoutSource.TryGetPortableVisualLayoutState(out var layoutState)
             && layoutState.HasLayoutClip)
         {
-            AddPortableDependency(ref dependencies, layoutState.LayoutClip);
+            VisitPortableDependency(ref state, visitor, layoutState.LayoutClip);
         }
 
         if (source is PortableGeometryDrawingStateSource geometryDrawingSource
@@ -797,17 +794,17 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             if (geometryDrawingState.HasGeometry)
             {
-                AddPortableDependency(ref dependencies, geometryDrawingState.Geometry);
+                VisitPortableDependency(ref state, visitor, geometryDrawingState.Geometry);
             }
 
             if (geometryDrawingState.HasBrush)
             {
-                AddPortableDependency(ref dependencies, geometryDrawingState.Brush);
+                VisitPortableDependency(ref state, visitor, geometryDrawingState.Brush);
             }
 
             if (geometryDrawingState.HasPen)
             {
-                AddPortableDependency(ref dependencies, geometryDrawingState.Pen);
+                VisitPortableDependency(ref state, visitor, geometryDrawingState.Pen);
             }
         }
 
@@ -815,7 +812,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             && imageDrawingSource.TryGetPortableImageDrawingState(out var imageDrawingState)
             && imageDrawingState.HasImageSource)
         {
-            AddPortableDependency(ref dependencies, imageDrawingState.ImageSource);
+            VisitPortableDependency(ref state, visitor, imageDrawingState.ImageSource);
         }
 
         if (source is PortableGlyphRunDrawingStateSource glyphRunDrawingSource
@@ -823,12 +820,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             if (glyphRunDrawingState.HasGlyphRun)
             {
-                AddPortableDependency(ref dependencies, glyphRunDrawingState.GlyphRun);
+                VisitPortableDependency(ref state, visitor, glyphRunDrawingState.GlyphRun);
             }
 
             if (glyphRunDrawingState.HasForegroundBrush)
             {
-                AddPortableDependency(ref dependencies, glyphRunDrawingState.ForegroundBrush);
+                VisitPortableDependency(ref state, visitor, glyphRunDrawingState.ForegroundBrush);
             }
         }
 
@@ -837,77 +834,77 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             if (drawingGroupState.HasTransform)
             {
-                AddPortableDependency(ref dependencies, drawingGroupState.Transform);
+                VisitPortableDependency(ref state, visitor, drawingGroupState.Transform);
             }
 
             if (drawingGroupState.HasClipGeometry)
             {
-                AddPortableDependency(ref dependencies, drawingGroupState.ClipGeometry);
+                VisitPortableDependency(ref state, visitor, drawingGroupState.ClipGeometry);
             }
 
             if (drawingGroupState.HasOpacityMask)
             {
-                AddPortableDependency(ref dependencies, drawingGroupState.OpacityMask);
+                VisitPortableDependency(ref state, visitor, drawingGroupState.OpacityMask);
             }
 
             if (drawingGroupState.HasGuidelineSet)
             {
-                AddPortableDependency(ref dependencies, drawingGroupState.GuidelineSet);
+                VisitPortableDependency(ref state, visitor, drawingGroupState.GuidelineSet);
             }
 
             if (drawingGroupState.HasEffect)
             {
-                AddPortableDependency(ref dependencies, drawingGroupState.Effect);
+                VisitPortableDependency(ref state, visitor, drawingGroupState.Effect);
             }
 
             if (drawingGroupState.HasBitmapEffect)
             {
-                AddPortableDependency(ref dependencies, drawingGroupState.BitmapEffect);
+                VisitPortableDependency(ref state, visitor, drawingGroupState.BitmapEffect);
             }
 
             if (drawingGroupState.HasBitmapEffectInput)
             {
-                AddPortableDependency(ref dependencies, drawingGroupState.BitmapEffectInput);
+                VisitPortableDependency(ref state, visitor, drawingGroupState.BitmapEffectInput);
             }
 
             if (drawingGroupState.HasCacheMode)
             {
-                AddPortableDependency(ref dependencies, drawingGroupState.CacheMode);
+                VisitPortableDependency(ref state, visitor, drawingGroupState.CacheMode);
             }
 
-            AddPortableDrawingGroupChildren(ref dependencies, source, drawingGroupState);
+            VisitPortableDrawingGroupChildren(ref state, visitor, source, drawingGroupState);
         }
 
         if (source is PortableTileBrushSource tileBrushSource
             && tileBrushSource.TryGetPortableTileBrush(out var tileBrush))
         {
-            AddPortableDependency(ref dependencies, tileBrush.Content);
+            VisitPortableDependency(ref state, visitor, tileBrush.Content);
         }
 
         if (source is PortableShaderEffectSource shaderEffectSource
             && shaderEffectSource.TryGetPortableShaderEffect(out var shaderEffect))
         {
-            AddPortableDependency(ref dependencies, shaderEffect.PixelShader);
+            VisitPortableDependency(ref state, visitor, shaderEffect.PixelShader);
             foreach (var sampler in shaderEffect.Samplers)
             {
                 if (sampler.Kind == PortableShaderSamplerKind.Brush)
                 {
-                    AddPortableDependency(ref dependencies, sampler.Brush);
+                    VisitPortableDependency(ref state, visitor, sampler.Brush);
                 }
                 else if (sampler.Kind == PortableShaderSamplerKind.ImageSource)
                 {
-                    AddPortableDependency(ref dependencies, sampler.ImageSource);
+                    VisitPortableDependency(ref state, visitor, sampler.ImageSource);
                 }
             }
         }
-
-        return dependencies ?? (IReadOnlyList<object?>)Array.Empty<object?>();
     }
 
-    private static void AddPortableDrawingGroupChildren(
-        ref List<object?>? dependencies,
+    private static void VisitPortableDrawingGroupChildren<TState, TVisitor>(
+        ref TState state,
+        TVisitor visitor,
         object source,
         PortableDrawingGroupState drawingGroupState)
+        where TVisitor : struct, IPortableDependencyVisitor<TState>
     {
         if (source is PortableDrawingGroupChildrenSource childrenSource
             && childrenSource.TryGetPortableDrawingGroupChildCount(out var count)
@@ -917,7 +914,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             {
                 if (childrenSource.TryGetPortableDrawingGroupChild(i, out var child))
                 {
-                    AddPortableDependency(ref dependencies, child);
+                    VisitPortableDependency(ref state, visitor, child);
                 }
             }
 
@@ -926,19 +923,150 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         foreach (var child in drawingGroupState.Children)
         {
-            AddPortableDependency(ref dependencies, child);
+            VisitPortableDependency(ref state, visitor, child);
         }
     }
 
-    private static void AddPortableDependency(ref List<object?>? dependencies, object? dependency)
+    private static void VisitPortableDependency<TState, TVisitor>(
+        ref TState state,
+        TVisitor visitor,
+        object? dependency)
+        where TVisitor : struct, IPortableDependencyVisitor<TState>
     {
-        if (dependency == null)
+        if (dependency != null)
         {
-            return;
+            visitor.Visit(ref state, dependency);
+        }
+    }
+
+    private interface IPortableDependencyVisitor<TState>
+    {
+        void Visit(ref TState state, object? dependency);
+    }
+
+    private readonly struct SubscribeDependencyState
+    {
+        public SubscribeDependencyState(WpfVisualInvalidationTracker tracker, HashSet<object> visited)
+        {
+            Tracker = tracker;
+            Visited = visited;
         }
 
-        dependencies ??= new List<object?>();
-        dependencies.Add(dependency);
+        public WpfVisualInvalidationTracker Tracker { get; }
+
+        public HashSet<object> Visited { get; }
+    }
+
+    private readonly struct SubscribeDependencyVisitor : IPortableDependencyVisitor<SubscribeDependencyState>
+    {
+        public void Visit(ref SubscribeDependencyState state, object? dependency)
+        {
+            state.Tracker.SubscribeObject(dependency, state.Visited);
+        }
+    }
+
+    private readonly struct CaptureVisualStateDependencyState
+    {
+        public CaptureVisualStateDependencyState(
+            Dictionary<object, VisualStateSnapshot> snapshots,
+            HashSet<object> visited)
+        {
+            Snapshots = snapshots;
+            Visited = visited;
+        }
+
+        public Dictionary<object, VisualStateSnapshot> Snapshots { get; }
+
+        public HashSet<object> Visited { get; }
+    }
+
+    private readonly struct CaptureVisualStateDependencyVisitor : IPortableDependencyVisitor<CaptureVisualStateDependencyState>
+    {
+        public void Visit(ref CaptureVisualStateDependencyState state, object? dependency)
+        {
+            CaptureObjectVisualStates(dependency, state.Snapshots, state.Visited);
+        }
+    }
+
+    private readonly struct CollectTrackedDependencyState
+    {
+        public CollectTrackedDependencyState(List<object> dependencies, HashSet<object> visited)
+        {
+            Dependencies = dependencies;
+            Visited = visited;
+        }
+
+        public List<object> Dependencies { get; }
+
+        public HashSet<object> Visited { get; }
+    }
+
+    private readonly struct CollectTrackedDependencyVisitor : IPortableDependencyVisitor<CollectTrackedDependencyState>
+    {
+        public void Visit(ref CollectTrackedDependencyState state, object? dependency)
+        {
+            CollectTrackedDependencies(dependency, state.Dependencies, state.Visited);
+        }
+    }
+
+    private struct RegisterTrackedDependencyState
+    {
+        public RegisterTrackedDependencyState(IWpfRetainedVisualBranchSink sink, HashSet<object> visited)
+        {
+            Sink = sink;
+            Visited = visited;
+            Registered = false;
+        }
+
+        public IWpfRetainedVisualBranchSink Sink { get; }
+
+        public HashSet<object> Visited { get; }
+
+        public bool Registered { get; set; }
+    }
+
+    private readonly struct RegisterTrackedDependencyVisitor : IPortableDependencyVisitor<RegisterTrackedDependencyState>
+    {
+        public void Visit(ref RegisterTrackedDependencyState state, object? dependency)
+        {
+            state.Registered |= RegisterTrackedDependencies(state.Sink, dependency, state.Visited);
+        }
+    }
+
+    private readonly struct CollectVisualChildrenDependencyState
+    {
+        public CollectVisualChildrenDependencyState(
+            IReadOnlyDictionary<object, object?[]> previous,
+            HashSet<object> currentSources,
+            List<object> changedSources,
+            HashSet<object> visited)
+        {
+            Previous = previous;
+            CurrentSources = currentSources;
+            ChangedSources = changedSources;
+            Visited = visited;
+        }
+
+        public IReadOnlyDictionary<object, object?[]> Previous { get; }
+
+        public HashSet<object> CurrentSources { get; }
+
+        public List<object> ChangedSources { get; }
+
+        public HashSet<object> Visited { get; }
+    }
+
+    private readonly struct CollectVisualChildrenDependencyVisitor : IPortableDependencyVisitor<CollectVisualChildrenDependencyState>
+    {
+        public void Visit(ref CollectVisualChildrenDependencyState state, object? dependency)
+        {
+            CollectVisualChildrenChanges(
+                dependency,
+                state.Previous,
+                state.CurrentSources,
+                state.ChangedSources,
+                state.Visited);
+        }
     }
 
     private static bool IsTerminalValue(object value)

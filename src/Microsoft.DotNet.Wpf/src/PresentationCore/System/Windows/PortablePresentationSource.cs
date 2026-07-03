@@ -30,7 +30,9 @@ namespace System.Windows
         private Func<double, double, object[]> _hostHitTestAllOverride;
         private PortableHitTestAllBufferOverride _hostHitTestAllBufferOverride;
         private Func<double, double, double, double, object[]> _hostHitTestBoundsOverride;
+        private PortableGeometryHitTestBufferOverride _hostHitTestBoundsBufferOverride;
         private Func<double, double, double, double, object[]> _hostHitTestEllipseBoundsOverride;
+        private PortableGeometryHitTestBufferOverride _hostHitTestEllipseBoundsBufferOverride;
         private bool _hasClientSize;
         private bool _contentRenderedQueued;
         private bool _isDisposed;
@@ -77,7 +79,11 @@ namespace System.Windows
 
         internal Func<Point, Point, object[]> HitTestBoundsOverride { get; set; }
 
+        internal PortableGeometryHitTestBufferOverride HitTestBoundsBufferOverride { get; set; }
+
         internal Func<Point, Point, object[]> HitTestEllipseBoundsOverride { get; set; }
+
+        internal PortableGeometryHitTestBufferOverride HitTestEllipseBoundsBufferOverride { get; set; }
 
         event EventHandler IPortablePresentationSourceHost.RenderRequested
         {
@@ -167,6 +173,18 @@ namespace System.Windows
             }
         }
 
+        PortableGeometryHitTestBufferOverride IPortablePresentationSourceHost.HitTestBoundsBufferOverride
+        {
+            get { return _hostHitTestBoundsBufferOverride; }
+            set
+            {
+                _hostHitTestBoundsBufferOverride = value;
+                HitTestBoundsBufferOverride = value == null
+                    ? null
+                    : (double minX, double minY, double maxX, double maxY, Span<object> results, out int resultCount) => value(minX, minY, maxX, maxY, results, out resultCount);
+            }
+        }
+
         Func<double, double, double, double, object[]> IPortablePresentationSourceHost.HitTestEllipseBoundsOverride
         {
             get { return _hostHitTestEllipseBoundsOverride; }
@@ -176,6 +194,18 @@ namespace System.Windows
                 HitTestEllipseBoundsOverride = value == null
                     ? null
                     : (min, max) => value(min.X, min.Y, max.X, max.Y);
+            }
+        }
+
+        PortableGeometryHitTestBufferOverride IPortablePresentationSourceHost.HitTestEllipseBoundsBufferOverride
+        {
+            get { return _hostHitTestEllipseBoundsBufferOverride; }
+            set
+            {
+                _hostHitTestEllipseBoundsBufferOverride = value;
+                HitTestEllipseBoundsBufferOverride = value == null
+                    ? null
+                    : (double minX, double minY, double maxX, double maxY, Span<object> results, out int resultCount) => value(minX, minY, maxX, maxY, results, out resultCount);
             }
         }
 
@@ -589,7 +619,10 @@ namespace System.Windows
         {
             result = HitTestResultBehavior.Continue;
             if (_isDisposed ||
-                (HitTestBoundsOverride == null && HitTestEllipseBoundsOverride == null) ||
+                (HitTestBoundsBufferOverride == null &&
+                 HitTestEllipseBoundsBufferOverride == null &&
+                 HitTestBoundsOverride == null &&
+                 HitTestEllipseBoundsOverride == null) ||
                 reference == null ||
                 geometryParams == null ||
                 resultCallback == null ||
@@ -606,59 +639,140 @@ namespace System.Windows
                 return false;
             }
 
-            object[] hitTestResults = null;
-            if (geometryParams.PortableHitTestGeometryKind == PortableHitTestGeometryKind.AxisAlignedEllipse &&
-                preservesAxisAlignedBounds &&
-                HitTestEllipseBoundsOverride != null)
-            {
-                hitTestResults = HitTestEllipseBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight);
-            }
-
-            if (hitTestResults == null && HitTestBoundsOverride != null)
-            {
-                hitTestResults = HitTestBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight);
-            }
-
-            if (hitTestResults == null)
+            if (!TryGetGeometryHitTestResults(
+                    rootBounds,
+                    geometryParams.PortableHitTestGeometryKind == PortableHitTestGeometryKind.AxisAlignedEllipse && preservesAxisAlignedBounds,
+                    out object[] hitTestResults,
+                    out int hitTestResultCount,
+                    out bool shouldReturnHitTestResults))
             {
                 return false;
             }
 
-            Dictionary<Visual, HitTestFilterBehavior> filterResults = filterCallback == null
-                ? null
-                : new Dictionary<Visual, HitTestFilterBehavior>();
-
-            for (int i = 0; i < hitTestResults.Length; i++)
+            try
             {
-                if (!TryGetPortableGeometryHitCandidate(hitTestResults[i], out Visual visualHit, out IntersectionDetail intersectionDetail) ||
-                    !IsVisualDescendantOf(visualHit, reference))
-                {
-                    continue;
-                }
+                Dictionary<Visual, HitTestFilterBehavior> filterResults = filterCallback == null
+                    ? null
+                    : new Dictionary<Visual, HitTestFilterBehavior>();
 
-                if (!IsPointHitVisibleByFilter(
-                        reference,
-                        visualHit,
-                        filterCallback,
-                        filterResults,
-                        out bool stopFilter))
+                for (int i = 0; i < hitTestResultCount; i++)
                 {
-                    if (stopFilter)
+                    if (!TryGetPortableGeometryHitCandidate(hitTestResults[i], out Visual visualHit, out IntersectionDetail intersectionDetail) ||
+                        !IsVisualDescendantOf(visualHit, reference))
                     {
-                        result = HitTestResultBehavior.Stop;
-                        return true;
+                        continue;
                     }
 
-                    continue;
-                }
+                    if (!IsPointHitVisibleByFilter(
+                            reference,
+                            visualHit,
+                            filterCallback,
+                            filterResults,
+                            out bool stopFilter))
+                    {
+                        if (stopFilter)
+                        {
+                            result = HitTestResultBehavior.Stop;
+                            return true;
+                        }
 
-                result = resultCallback(new GeometryHitTestResult(visualHit, intersectionDetail));
-                if (result == HitTestResultBehavior.Stop)
+                        continue;
+                    }
+
+                    result = resultCallback(new GeometryHitTestResult(visualHit, intersectionDetail));
+                    if (result == HitTestResultBehavior.Stop)
+                    {
+                        return true;
+                    }
+                }
+            }
+            finally
+            {
+                ReturnHitTestAllResults(hitTestResults, shouldReturnHitTestResults);
+            }
+
+            return true;
+        }
+
+        private bool TryGetGeometryHitTestResults(
+            Rect rootBounds,
+            bool preferEllipse,
+            out object[] hitTestResults,
+            out int hitTestResultCount,
+            out bool shouldReturnHitTestResults)
+        {
+            if (preferEllipse &&
+                TryGetGeometryHitTestBufferResults(HitTestEllipseBoundsBufferOverride, rootBounds, out hitTestResults, out hitTestResultCount))
+            {
+                shouldReturnHitTestResults = true;
+                return true;
+            }
+
+            if (preferEllipse &&
+                HitTestEllipseBoundsOverride != null)
+            {
+                hitTestResults = HitTestEllipseBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight);
+                if (hitTestResults != null)
                 {
+                    hitTestResultCount = hitTestResults.Length;
+                    shouldReturnHitTestResults = false;
                     return true;
                 }
             }
 
+            if (TryGetGeometryHitTestBufferResults(HitTestBoundsBufferOverride, rootBounds, out hitTestResults, out hitTestResultCount))
+            {
+                shouldReturnHitTestResults = true;
+                return true;
+            }
+
+            if (HitTestBoundsOverride != null)
+            {
+                hitTestResults = HitTestBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight);
+                if (hitTestResults != null)
+                {
+                    hitTestResultCount = hitTestResults.Length;
+                    shouldReturnHitTestResults = false;
+                    return true;
+                }
+            }
+
+            hitTestResults = null;
+            hitTestResultCount = 0;
+            shouldReturnHitTestResults = false;
+            return false;
+        }
+
+        private static bool TryGetGeometryHitTestBufferResults(
+            PortableGeometryHitTestBufferOverride hitTestOverride,
+            Rect rootBounds,
+            out object[] hitTestResults,
+            out int hitTestResultCount)
+        {
+            hitTestResults = null;
+            hitTestResultCount = 0;
+            if (hitTestOverride == null)
+            {
+                return false;
+            }
+
+            object[] rentedResults = ArrayPool<object>.Shared.Rent(HitTestOwnerBufferCapacity);
+            if (!hitTestOverride(
+                    rootBounds.Left,
+                    rootBounds.Top,
+                    rootBounds.Right,
+                    rootBounds.Bottom,
+                    rentedResults,
+                    out hitTestResultCount) ||
+                hitTestResultCount < 0 ||
+                hitTestResultCount > rentedResults.Length)
+            {
+                ArrayPool<object>.Shared.Return(rentedResults, clearArray: true);
+                hitTestResultCount = 0;
+                return false;
+            }
+
+            hitTestResults = rentedResults;
             return true;
         }
 

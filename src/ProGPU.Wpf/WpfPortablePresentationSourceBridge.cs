@@ -20,7 +20,9 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private Func<double, double, object?[]?>? _hitTestAllOverrideHandler;
     private PortableHitTestAllBufferOverride? _hitTestAllBufferOverrideHandler;
     private Func<double, double, double, double, object?[]?>? _hitTestBoundsOverrideHandler;
+    private PortableGeometryHitTestBufferOverride? _hitTestBoundsBufferOverrideHandler;
     private Func<double, double, double, double, object?[]?>? _hitTestEllipseBoundsOverrideHandler;
+    private PortableGeometryHitTestBufferOverride? _hitTestEllipseBoundsBufferOverrideHandler;
     private bool _isDisposed;
 
     private WpfPortablePresentationSourceBridge(
@@ -149,10 +151,22 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             _source.HitTestBoundsOverride = null;
         }
 
+        if (_hitTestBoundsBufferOverrideHandler != null &&
+            ReferenceEquals(_source.HitTestBoundsBufferOverride, _hitTestBoundsBufferOverrideHandler))
+        {
+            _source.HitTestBoundsBufferOverride = null;
+        }
+
         if (_hitTestEllipseBoundsOverrideHandler != null &&
             ReferenceEquals(_source.HitTestEllipseBoundsOverride, _hitTestEllipseBoundsOverrideHandler))
         {
             _source.HitTestEllipseBoundsOverride = null;
+        }
+
+        if (_hitTestEllipseBoundsBufferOverrideHandler != null &&
+            ReferenceEquals(_source.HitTestEllipseBoundsBufferOverride, _hitTestEllipseBoundsBufferOverrideHandler))
+        {
+            _source.HitTestEllipseBoundsBufferOverride = null;
         }
 
         object? rootVisual = _source.RootVisual;
@@ -204,13 +218,17 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         _hitTestAllOverrideHandler = HitTestOwners;
         _hitTestAllBufferOverrideHandler = HitTestOwners;
         _hitTestBoundsOverrideHandler = HitTestBoundsOwners;
+        _hitTestBoundsBufferOverrideHandler = HitTestBoundsOwners;
         _hitTestEllipseBoundsOverrideHandler = HitTestEllipseBoundsOwners;
+        _hitTestEllipseBoundsBufferOverrideHandler = HitTestEllipseBoundsOwners;
 
         _source.HitTestOverride = _hitTestOverrideHandler;
         _source.HitTestAllOverride = _hitTestAllOverrideHandler;
         _source.HitTestAllBufferOverride = _hitTestAllBufferOverrideHandler;
         _source.HitTestBoundsOverride = _hitTestBoundsOverrideHandler;
+        _source.HitTestBoundsBufferOverride = _hitTestBoundsBufferOverrideHandler;
         _source.HitTestEllipseBoundsOverride = _hitTestEllipseBoundsOverrideHandler;
+        _source.HitTestEllipseBoundsBufferOverride = _hitTestEllipseBoundsBufferOverrideHandler;
     }
 
     private void OnSourceRenderRequested(object? sender, EventArgs e)
@@ -544,32 +562,62 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
     private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)
     {
-        if (_host.TryQueryHitTestBoundsCandidates(
-                minX,
-                minY,
-                maxX,
-                maxY,
-                out object?[] candidates))
+        return HitTestGeometryOwners(minX, minY, maxX, maxY, isEllipse: false);
+    }
+
+    private bool HitTestBoundsOwners(double minX, double minY, double maxX, double maxY, Span<object?> candidates, out int candidateCount)
+    {
+        if (_host.TryQueryHitTestBoundsCandidates(minX, minY, maxX, maxY, candidates, out candidateCount))
         {
-            return candidates;
+            return true;
         }
 
-        return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;
+        candidateCount = 0;
+        return _host.HasGpuHitTestCache;
     }
 
     private object?[]? HitTestEllipseBoundsOwners(double minX, double minY, double maxX, double maxY)
     {
-        if (_host.TryQueryHitTestEllipseCandidates(
-                minX,
-                minY,
-                maxX,
-                maxY,
-                out object?[] candidates))
+        return HitTestGeometryOwners(minX, minY, maxX, maxY, isEllipse: true);
+    }
+
+    private bool HitTestEllipseBoundsOwners(double minX, double minY, double maxX, double maxY, Span<object?> candidates, out int candidateCount)
+    {
+        if (_host.TryQueryHitTestEllipseCandidates(minX, minY, maxX, maxY, candidates, out candidateCount))
         {
-            return candidates;
+            return true;
         }
 
-        return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;
+        candidateCount = 0;
+        return _host.HasGpuHitTestCache;
+    }
+
+    private object?[]? HitTestGeometryOwners(double minX, double minY, double maxX, double maxY, bool isEllipse)
+    {
+        object?[] candidateBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
+        try
+        {
+            bool hit = isEllipse
+                ? HitTestEllipseBoundsOwners(minX, minY, maxX, maxY, candidateBuffer, out int candidateCount)
+                : HitTestBoundsOwners(minX, minY, maxX, maxY, candidateBuffer, out candidateCount);
+            if (!hit)
+            {
+                return null;
+            }
+
+            if (candidateCount == 0)
+            {
+                return Array.Empty<object>();
+            }
+
+            var candidates = new object?[candidateCount];
+            candidateBuffer.AsSpan(0, candidateCount).CopyTo(candidates);
+            return candidates;
+        }
+        finally
+        {
+            ArrayPool<object?>.Shared.Return(candidateBuffer, clearArray: true);
+        }
     }
 
     private static WpfCursor ToWpfCursor(string? cursorName)

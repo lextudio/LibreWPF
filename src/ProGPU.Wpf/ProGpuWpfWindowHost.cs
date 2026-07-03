@@ -1840,33 +1840,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal bool TryQueryHitTestBoundsCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)
     {
         candidates = Array.Empty<object?>();
-        if (_target == null ||
-            !double.IsFinite(minX) ||
-            !double.IsFinite(minY) ||
-            !double.IsFinite(maxX) ||
-            !double.IsFinite(maxY) ||
-            minX < float.MinValue ||
-            minX > float.MaxValue ||
-            minY < float.MinValue ||
-            minY > float.MaxValue ||
-            maxX < float.MinValue ||
-            maxX > float.MaxValue ||
-            maxY < float.MinValue ||
-            maxY > float.MaxValue)
-        {
-            return false;
-        }
-
-        EnsureGpuHitTestCacheCurrent();
         object?[] candidateBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
         try
         {
-            if (!_target.TryQueryHitTestBoundsCandidates(
-                    new System.Numerics.Vector2((float)minX, (float)minY),
-                    new System.Numerics.Vector2((float)maxX, (float)maxY),
-                    candidateBuffer,
-                    out int candidateCount,
-                    out _))
+            if (!TryQueryHitTestBoundsCandidates(minX, minY, maxX, maxY, candidateBuffer, out int candidateCount))
             {
                 return false;
             }
@@ -1885,9 +1862,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
-    internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)
+    internal bool TryQueryHitTestBoundsCandidates(double minX, double minY, double maxX, double maxY, Span<object?> candidates, out int candidateCount)
     {
-        candidates = Array.Empty<object?>();
+        candidateCount = 0;
         if (_target == null ||
             !double.IsFinite(minX) ||
             !double.IsFinite(minY) ||
@@ -1906,15 +1883,21 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         EnsureGpuHitTestCacheCurrent();
+        return _target.TryQueryHitTestBoundsCandidates(
+            new System.Numerics.Vector2((float)minX, (float)minY),
+            new System.Numerics.Vector2((float)maxX, (float)maxY),
+            candidates,
+            out candidateCount,
+            out _);
+    }
+
+    internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)
+    {
+        candidates = Array.Empty<object?>();
         object?[] candidateBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
         try
         {
-            if (!_target.TryQueryHitTestEllipseCandidates(
-                    new System.Numerics.Vector2((float)minX, (float)minY),
-                    new System.Numerics.Vector2((float)maxX, (float)maxY),
-                    candidateBuffer,
-                    out int candidateCount,
-                    out _))
+            if (!TryQueryHitTestEllipseCandidates(minX, minY, maxX, maxY, candidateBuffer, out int candidateCount))
             {
                 return false;
             }
@@ -1931,6 +1914,35 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             ArrayPool<object?>.Shared.Return(candidateBuffer, clearArray: true);
         }
+    }
+
+    internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, Span<object?> candidates, out int candidateCount)
+    {
+        candidateCount = 0;
+        if (_target == null ||
+            !double.IsFinite(minX) ||
+            !double.IsFinite(minY) ||
+            !double.IsFinite(maxX) ||
+            !double.IsFinite(maxY) ||
+            minX < float.MinValue ||
+            minX > float.MaxValue ||
+            minY < float.MinValue ||
+            minY > float.MaxValue ||
+            maxX < float.MinValue ||
+            maxX > float.MaxValue ||
+            maxY < float.MinValue ||
+            maxY > float.MaxValue)
+        {
+            return false;
+        }
+
+        EnsureGpuHitTestCacheCurrent();
+        return _target.TryQueryHitTestEllipseCandidates(
+            new System.Numerics.Vector2((float)minX, (float)minY),
+            new System.Numerics.Vector2((float)maxX, (float)maxY),
+            candidates,
+            out candidateCount,
+            out _);
     }
 
     private void AttachInputService()

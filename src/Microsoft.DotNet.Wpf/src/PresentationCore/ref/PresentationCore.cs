@@ -1146,13 +1146,16 @@ namespace System.Windows
         Inherit = 2,
     }
     public delegate bool PortableHitTestAllBufferOverride(double x, double y, System.Span<object> results, out int resultCount);
+    public delegate bool PortableGeometryHitTestBufferOverride(double minX, double minY, double maxX, double maxY, System.Span<object> results, out int resultCount);
     public partial interface IPortablePresentationSourceHost : System.IDisposable
     {
         object CompositionTarget { get; }
         System.Func<double, double, object[]> HitTestAllOverride { get; set; }
         System.Windows.PortableHitTestAllBufferOverride HitTestAllBufferOverride { get; set; }
         System.Func<double, double, double, double, object[]> HitTestBoundsOverride { get; set; }
+        System.Windows.PortableGeometryHitTestBufferOverride HitTestBoundsBufferOverride { get; set; }
         System.Func<double, double, double, double, object[]> HitTestEllipseBoundsOverride { get; set; }
+        System.Windows.PortableGeometryHitTestBufferOverride HitTestEllipseBoundsBufferOverride { get; set; }
         System.Func<double, double, object> HitTestOverride { get; set; }
         System.IntPtr Handle { get; }
         object RequestedCursor { get; }

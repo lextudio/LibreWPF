@@ -1903,7 +1903,11 @@ public sealed class ProGpuWpfWindowHostTests
 
         public Func<double, double, double, double, object?[]?>? HitTestBoundsOverride { get; set; }
 
+        public PortableGeometryHitTestBufferOverride? HitTestBoundsBufferOverride { get; set; }
+
         public Func<double, double, double, double, object?[]?>? HitTestEllipseBoundsOverride { get; set; }
+
+        public PortableGeometryHitTestBufferOverride? HitTestEllipseBoundsBufferOverride { get; set; }
 
         public object? RootVisual
         {

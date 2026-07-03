@@ -9503,6 +9503,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Backend",
             "GpuTexture.cs");
+        var proGpuBufferPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Backend",
+            "GpuBuffer.cs");
         var proGpuDirectXBindingsPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -9685,6 +9691,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuAvaloniaHostControl = File.ReadAllText(proGpuAvaloniaHostControlPath);
         var proGpuTextureReadbackBuffer = File.ReadAllText(proGpuTextureReadbackBufferPath);
         var proGpuTexture = File.ReadAllText(proGpuTexturePath);
+        var proGpuBuffer = File.ReadAllText(proGpuBufferPath);
         var proGpuDirectXBindings = File.ReadAllText(proGpuDirectXBindingsPath);
         var proGpuDirectXHlslTranslator = File.ReadAllText(proGpuDirectXHlslTranslatorPath);
         var proGpuDirectXSciChart = File.ReadAllText(proGpuDirectXSciChartPath);
@@ -9765,6 +9772,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("readbackBuffer.TryReadTextureRows(", proGpuTexture, StringComparison.Ordinal);
         Assert.Contains("_context.CleanupPendingResources();", proGpuTexture, StringComparison.Ordinal);
         Assert.DoesNotContain("wgpuDevicePoll", proGpuTexture, StringComparison.Ordinal);
+        Assert.Contains("_context.PollDevice(wait: false)", proGpuBuffer, StringComparison.Ordinal);
+        Assert.Contains("QueueTemporaryReadbackBufferDisposal(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);
+        Assert.Contains("_context.QueueBufferDisposal((IntPtr)buffer)", proGpuBuffer, StringComparison.Ordinal);
+        Assert.Contains("_context.CleanupPendingResources();", proGpuBuffer, StringComparison.Ordinal);
+        Assert.DoesNotContain("wgpuDevicePoll", proGpuBuffer, StringComparison.Ordinal);
+        Assert.DoesNotContain("BufferDestroy(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);
+        Assert.DoesNotContain("BufferRelease(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);
+        Assert.DoesNotContain("BufferDestroy(buffer)", proGpuBuffer, StringComparison.Ordinal);
+        Assert.DoesNotContain("BufferRelease(buffer)", proGpuBuffer, StringComparison.Ordinal);
 
         Assert.Contains("name: ProGPU WPF SDK", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("submodules: recursive", sdkCiWorkflow, StringComparison.Ordinal);

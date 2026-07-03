@@ -901,6 +901,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("sink.RegisterVisualDependency(source);", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("WpfVisualInvalidationTracker.RegisterTrackedDependencies(retainedVisualBranchSink, dependency)", proGpuRetainedVisualDependencyRegistrar, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var trackedDependency in WpfVisualInvalidationTracker.EnumerateTrackedDependencies(dependency))", proGpuRetainedVisualDependencyRegistrar, StringComparison.Ordinal);
+        Assert.DoesNotContain("Register(IWpfCompositionCommandSink sink, params object?[] dependencies)", proGpuRetainedVisualDependencyRegistrar, StringComparison.Ordinal);
         Assert.Contains("EnumerateTrackedDependenciesUsesPortableDrawingAndRenderDataSources", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("PortableDrawingRenderDataDependencyChangeMarksTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("EnumerateTrackedDependenciesIgnoresNonPortablePrivateDrawingContentGraph", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
@@ -12469,6 +12470,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void CountUnsupportedStateIfAny(object? state)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private void CountUnsupportedStateIfAny(object? first, object? second)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private void CountUnsupportedStateIfAny(object? first, object? second, object? third)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("RegisterRetainedDependencies(params object?[] dependencies)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("CountUnsupportedStateIfAny(params object?[] unsupportedState)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.DoesNotContain("WpfRetainedVisualDependencyRegistrar.Register(_sink, dependencies);", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayLineGeometryDrawing(", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryReplayPolylineGeometryDrawing(", wpfDrawingReplay, StringComparison.Ordinal);
@@ -12564,6 +12567,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void CountUnsupportedStateIfAny(object? state)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private void CountUnsupportedStateIfAny(object? first, object? second)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private void CountUnsupportedStateIfAny(object? first, object? second, object? third)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void CountUnsupportedIfPresent(object? state)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void CountUnsupportedIfPresent(object? first, object? second)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void CountUnsupportedIfPresent(object? first, object? second, object? third)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("RegisterRetainedDependencies(params object?[] dependencies)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("CountUnsupportedStateIfAny(params object?[] unsupportedState)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("CountUnsupportedIfPresent(params object?[] unsupportedState)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.DoesNotContain("WpfRetainedVisualDependencyRegistrar.Register(_sink, dependencies);", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawNativePortableGeometry(brush, pen, geometry, mediaBrush, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);

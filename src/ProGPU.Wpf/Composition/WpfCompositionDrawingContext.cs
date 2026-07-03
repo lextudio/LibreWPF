@@ -919,14 +919,6 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         CountUnsupportedStateIfAny(third);
     }
 
-    private void CountUnsupportedStateIfAny(params object?[] unsupportedState)
-    {
-        foreach (var state in unsupportedState)
-        {
-            CountUnsupportedStateIfAny(state);
-        }
-    }
-
     private void RegisterRetainedDependencies(object? dependency)
     {
         WpfRetainedVisualDependencyRegistrar.Register(_sink, dependency);
@@ -943,14 +935,6 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         RegisterRetainedDependencies(first);
         RegisterRetainedDependencies(second);
         RegisterRetainedDependencies(third);
-    }
-
-    private void RegisterRetainedDependencies(params object?[] dependencies)
-    {
-        foreach (var dependency in dependencies)
-        {
-            RegisterRetainedDependencies(dependency);
-        }
     }
 
 }

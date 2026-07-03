@@ -1413,15 +1413,27 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         _unsupportedCount++;
     }
 
-    private void CountUnsupportedIfPresent(params object?[] unsupportedState)
+    private void CountUnsupportedIfPresent(object? state)
     {
-        foreach (object? state in unsupportedState)
+        if (state != null)
         {
-            if (state != null)
-            {
-                CountUnsupported();
-                return;
-            }
+            CountUnsupported();
+        }
+    }
+
+    private void CountUnsupportedIfPresent(object? first, object? second)
+    {
+        if (first != null || second != null)
+        {
+            CountUnsupported();
+        }
+    }
+
+    private void CountUnsupportedIfPresent(object? first, object? second, object? third)
+    {
+        if (first != null || second != null || third != null)
+        {
+            CountUnsupported();
         }
     }
 
@@ -1462,14 +1474,6 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         CountUnsupportedStateIfAny(third);
     }
 
-    private void CountUnsupportedStateIfAny(params object?[] unsupportedState)
-    {
-        foreach (object? state in unsupportedState)
-        {
-            CountUnsupportedStateIfAny(state);
-        }
-    }
-
     private void RegisterRetainedDependencies(object? dependency)
     {
         WpfRetainedVisualDependencyRegistrar.Register(_sink, dependency);
@@ -1486,14 +1490,6 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         RegisterRetainedDependencies(first);
         RegisterRetainedDependencies(second);
         RegisterRetainedDependencies(third);
-    }
-
-    private void RegisterRetainedDependencies(params object?[] dependencies)
-    {
-        foreach (var dependency in dependencies)
-        {
-            RegisterRetainedDependencies(dependency);
-        }
     }
 
     private static bool TryReadPoint(object? pointValue, out Point point)

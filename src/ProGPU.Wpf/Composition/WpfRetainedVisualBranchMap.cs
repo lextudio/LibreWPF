@@ -73,19 +73,17 @@ public sealed class WpfRetainedVisualBranchMap
             _visualsBySource.Add(source, visuals);
         }
 
-        foreach (var existing in visuals)
+        if (_sourcesByVisual.TryGetValue(visual, out var sources) &&
+            sources.Contains(source))
         {
-            if (ReferenceEquals(existing, visual))
-            {
-                RegisterOwnerKind(source, visual, ownerKind);
-                LastSource = source;
-                LastVisual = visual;
-                return;
-            }
+            RegisterOwnerKind(source, visual, ownerKind);
+            LastSource = source;
+            LastVisual = visual;
+            return;
         }
 
         visuals.Add(visual);
-        if (!_sourcesByVisual.TryGetValue(visual, out var sources))
+        if (sources == null)
         {
             sources = new HashSet<object>(ReferenceEqualityComparer.Instance);
             _sourcesByVisual.Add(visual, sources);

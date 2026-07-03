@@ -819,62 +819,78 @@ namespace System.Windows
                 return true;
             }
 
-            List<Visual> path = new List<Visual>();
-            DependencyObject current = visualHit;
-            while (current != null)
+            Visual[] path = ArrayPool<Visual>.Shared.Rent(16);
+            int pathCount = 0;
+            try
             {
-                if (current is Visual currentVisual)
+                DependencyObject current = visualHit;
+                while (current != null)
                 {
-                    path.Add(currentVisual);
+                    if (current is Visual currentVisual)
+                    {
+                        if (pathCount == path.Length)
+                        {
+                            Visual[] expandedPath = ArrayPool<Visual>.Shared.Rent(path.Length * 2);
+                            Array.Copy(path, expandedPath, pathCount);
+                            ArrayPool<Visual>.Shared.Return(path, clearArray: true);
+                            path = expandedPath;
+                        }
+
+                        path[pathCount++] = currentVisual;
+                    }
+
+                    if (current == reference)
+                    {
+                        break;
+                    }
+
+                    current = VisualTreeHelper.GetParentInternal(current);
                 }
 
-                if (current == reference)
+                if (pathCount == 0 || path[pathCount - 1] != reference)
                 {
-                    break;
+                    return false;
                 }
 
-                current = VisualTreeHelper.GetParentInternal(current);
+                for (int i = pathCount - 1; i >= 0; i--)
+                {
+                    Visual currentVisual = path[i];
+                    if (!filterResults.TryGetValue(currentVisual, out HitTestFilterBehavior filter))
+                    {
+                        filter = filterCallback(currentVisual);
+                        filterResults.Add(currentVisual, filter);
+                    }
+
+                    if (filter == HitTestFilterBehavior.Stop)
+                    {
+                        stop = true;
+                        return false;
+                    }
+
+                    if (filter == HitTestFilterBehavior.ContinueSkipSelfAndChildren)
+                    {
+                        return false;
+                    }
+
+                    if (filter == HitTestFilterBehavior.ContinueSkipChildren &&
+                        currentVisual != visualHit)
+                    {
+                        return false;
+                    }
+
+                    if (filter == HitTestFilterBehavior.ContinueSkipSelf &&
+                        currentVisual == visualHit)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
             }
-
-            if (path.Count == 0 || path[path.Count - 1] != reference)
+            finally
             {
-                return false;
+                ArrayPool<Visual>.Shared.Return(path, clearArray: true);
             }
-
-            for (int i = path.Count - 1; i >= 0; i--)
-            {
-                Visual currentVisual = path[i];
-                if (!filterResults.TryGetValue(currentVisual, out HitTestFilterBehavior filter))
-                {
-                    filter = filterCallback(currentVisual);
-                    filterResults.Add(currentVisual, filter);
-                }
-
-                if (filter == HitTestFilterBehavior.Stop)
-                {
-                    stop = true;
-                    return false;
-                }
-
-                if (filter == HitTestFilterBehavior.ContinueSkipSelfAndChildren)
-                {
-                    return false;
-                }
-
-                if (filter == HitTestFilterBehavior.ContinueSkipChildren &&
-                    currentVisual != visualHit)
-                {
-                    return false;
-                }
-
-                if (filter == HitTestFilterBehavior.ContinueSkipSelf &&
-                    currentVisual == visualHit)
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         internal bool TryInputHitTestOverride(UIElement reference, Point referencePoint, out DependencyObject candidate, out HitTestResult hitTestResult)

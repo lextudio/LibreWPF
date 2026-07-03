@@ -1422,6 +1422,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("GetProperty(\"VisualHit\"", portableSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(\"IntersectionDetail\"", portableSource, StringComparison.Ordinal);
         Assert.Contains("IsPointHitVisibleByFilter(", portableSource, StringComparison.Ordinal);
+        Assert.Contains("Visual[] path = ArrayPool<Visual>.Shared.Rent(16);", portableSource, StringComparison.Ordinal);
+        Assert.Contains("Visual[] expandedPath = ArrayPool<Visual>.Shared.Rent(path.Length * 2);", portableSource, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<Visual>.Shared.Return(path, clearArray: true);", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<Visual>()", portableSource, StringComparison.Ordinal);
         Assert.Contains("private readonly PortableHitTestGeometryKind _portableHitTestGeometryKind;", geometryHitTestParameters, StringComparison.Ordinal);
         Assert.Contains("internal PortableHitTestGeometryKind PortableHitTestGeometryKind", geometryHitTestParameters, StringComparison.Ordinal);
         Assert.Contains("geometry is EllipseGeometry ellipseGeometry", geometryHitTestParameters, StringComparison.Ordinal);

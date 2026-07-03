@@ -5,24 +5,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
 manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/progpu-wpf-preview-packages-${dev_package_version}.json}"
+source "${repo_root}/eng/progpu-preview-package-list.sh"
 
-package_ids=(
-  Microsoft.DotNet.Wpf.GitHub
-  ProGPU.Backend
-  ProGPU.DirectX
-  ProGPU.Transpiler
-  ProGPU.Compute
-  ProGPU.Vector
-  ProGPU.Text
-  ProGPU.Scene
-  ProGPU.Layout
-  ProGPU.Virtualization
-  ProGPU.WinUI
-  ProGPU.Avalonia
-  ProGPU.Wpf.Interop
-  ProGPU.Wpf
-  ProGPU.Wpf.Sdk
-)
+package_ids=("${progpu_preview_package_ids[@]}")
 
 package_path() {
   local package_id="$1"

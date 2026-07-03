@@ -9425,6 +9425,9 @@ public sealed class WpfManagedProjectGraphTests
         var previewPackageAuditScriptPath = FindRepoPath(
             "eng",
             "progpu-preview-package-audit.sh");
+        var previewPackageListScriptPath = FindRepoPath(
+            "eng",
+            "progpu-preview-package-list.sh");
         var previewPackageManifestScriptPath = FindRepoPath(
             "eng",
             "progpu-preview-package-manifest.sh");
@@ -9756,6 +9759,7 @@ public sealed class WpfManagedProjectGraphTests
         var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
         var avaloniaPackageSmokeScript = File.ReadAllText(avaloniaPackageSmokeScriptPath);
         var previewPackageAuditScript = File.ReadAllText(previewPackageAuditScriptPath);
+        var previewPackageListScript = File.ReadAllText(previewPackageListScriptPath);
         var previewPackageManifestScript = File.ReadAllText(previewPackageManifestScriptPath);
         var previewReleaseBundleScript = File.ReadAllText(previewReleaseBundleScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
@@ -10013,9 +10017,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\\\"ProGPU.WinUI/${dev_package_version}\\\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.DoesNotContain("<ProjectReference", avaloniaPackageSmokeScript, StringComparison.Ordinal);
 
-        Assert.Contains("all_packages=(", previewPackageAuditScript, StringComparison.Ordinal);
-        Assert.Contains("Microsoft.DotNet.Wpf.GitHub", previewPackageAuditScript, StringComparison.Ordinal);
-        Assert.Contains("ProGPU.Wpf.Sdk", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("progpu_preview_runtime_package_ids=(", previewPackageListScript, StringComparison.Ordinal);
+        Assert.Contains("progpu_preview_package_ids=(", previewPackageListScript, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.DotNet.Wpf.GitHub", previewPackageListScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Avalonia", previewPackageListScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Sdk", previewPackageListScript, StringComparison.Ordinal);
+        Assert.Contains("source \"${repo_root}/eng/progpu-preview-package-list.sh\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("runtime_packages=(\"${progpu_preview_runtime_package_ids[@]}\")", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("all_packages=(\"${progpu_preview_package_ids[@]}\")", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("all_packages=(\n  Microsoft.DotNet.Wpf.GitHub", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("require_entry ProGPU.Wpf.Sdk \"Sdk/Sdk.props\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("require_entry ProGPU.Wpf.Sdk \"targets/ProGPU.Wpf.Sdk.targets\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("require_nuspec_contains ProGPU.Wpf.Sdk \"<packageType name=\\\"MSBuildSdk\\\" />\"", previewPackageAuditScript, StringComparison.Ordinal);
@@ -10029,10 +10039,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU WPF preview package audit succeeded", previewPackageAuditScript, StringComparison.Ordinal);
 
         Assert.Contains("manifest_path=\"${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/progpu-wpf-preview-packages-${dev_package_version}.json}\"", previewPackageManifestScript, StringComparison.Ordinal);
-        Assert.Contains("package_ids=(", previewPackageManifestScript, StringComparison.Ordinal);
-        Assert.Contains("Microsoft.DotNet.Wpf.GitHub", previewPackageManifestScript, StringComparison.Ordinal);
-        Assert.Contains("ProGPU.Avalonia", previewPackageManifestScript, StringComparison.Ordinal);
-        Assert.Contains("ProGPU.Wpf.Sdk", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("source \"${repo_root}/eng/progpu-preview-package-list.sh\"", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("package_ids=(\"${progpu_preview_package_ids[@]}\")", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("package_ids=(\n  Microsoft.DotNet.Wpf.GitHub", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("file_sha256()", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("shasum -a 256", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("sha256sum", previewPackageManifestScript, StringComparison.Ordinal);
@@ -10043,10 +10052,9 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("bundle_output=\"${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}\"", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/progpu-preview-package-manifest.sh\"", previewReleaseBundleScript, StringComparison.Ordinal);
-        Assert.Contains("package_ids=(", previewReleaseBundleScript, StringComparison.Ordinal);
-        Assert.Contains("Microsoft.DotNet.Wpf.GitHub", previewReleaseBundleScript, StringComparison.Ordinal);
-        Assert.Contains("ProGPU.Avalonia", previewReleaseBundleScript, StringComparison.Ordinal);
-        Assert.Contains("ProGPU.Wpf.Sdk", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("source \"${repo_root}/eng/progpu-preview-package-list.sh\"", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("package_ids=(\"${progpu_preview_package_ids[@]}\")", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("package_ids=(\n  Microsoft.DotNet.Wpf.GitHub", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("archive_entries+=(\"${manifest_name}\")", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("COPYFILE_DISABLE=1 tar -czf \"${bundle_output}\"", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF preview release bundle written", previewReleaseBundleScript, StringComparison.Ordinal);

@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
+source "${repo_root}/eng/progpu-preview-package-list.sh"
 
 package_path() {
   local package_id="$1"
@@ -44,27 +45,8 @@ require_nuspec_contains() {
   fi
 }
 
-runtime_packages=(
-  ProGPU.Backend
-  ProGPU.DirectX
-  ProGPU.Transpiler
-  ProGPU.Compute
-  ProGPU.Vector
-  ProGPU.Text
-  ProGPU.Scene
-  ProGPU.Layout
-  ProGPU.Virtualization
-  ProGPU.WinUI
-  ProGPU.Avalonia
-  ProGPU.Wpf.Interop
-)
-
-all_packages=(
-  Microsoft.DotNet.Wpf.GitHub
-  "${runtime_packages[@]}"
-  ProGPU.Wpf
-  ProGPU.Wpf.Sdk
-)
+runtime_packages=("${progpu_preview_runtime_package_ids[@]}")
+all_packages=("${progpu_preview_package_ids[@]}")
 
 for package_id in "${all_packages[@]}"; do
   require_package "${package_id}"

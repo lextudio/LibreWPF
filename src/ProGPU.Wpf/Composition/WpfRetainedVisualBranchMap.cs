@@ -16,6 +16,7 @@ public sealed class WpfRetainedVisualBranchMap
     private readonly HashSet<object> _scratchDistinctSources = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<ProGpuVisual> _scratchVisitedVisuals = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<ProGpuVisual> _scratchInvalidatedVisuals = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<ProGpuVisual> _scratchTargetVisuals = new(ReferenceEqualityComparer.Instance);
     private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchReplayTargets = new();
     private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchTopLevelReplayTargets = new();
 
@@ -38,6 +39,7 @@ public sealed class WpfRetainedVisualBranchMap
         _scratchDistinctSources.Clear();
         _scratchVisitedVisuals.Clear();
         _scratchInvalidatedVisuals.Clear();
+        _scratchTargetVisuals.Clear();
         _scratchReplayTargets.Clear();
         _scratchTopLevelReplayTargets.Clear();
         VisualCount = 0;
@@ -284,26 +286,17 @@ public sealed class WpfRetainedVisualBranchMap
         List<WpfRetainedVisualBranchReplayTarget> targets)
     {
         _scratchTopLevelReplayTargets.Clear();
+        _scratchTargetVisuals.Clear();
         try
         {
             foreach (var target in targets)
             {
-                var isCoveredByAncestor = false;
-                foreach (var candidateAncestor in targets)
-                {
-                    if (ReferenceEquals(candidateAncestor.Visual, target.Visual))
-                    {
-                        continue;
-                    }
+                _scratchTargetVisuals.Add(target.Visual);
+            }
 
-                    if (IsAncestorOf(candidateAncestor.Visual, target.Visual))
-                    {
-                        isCoveredByAncestor = true;
-                        break;
-                    }
-                }
-
-                if (!isCoveredByAncestor)
+            foreach (var target in targets)
+            {
+                if (!IsCoveredByTargetAncestor(target.Visual, _scratchTargetVisuals))
                 {
                     _scratchTopLevelReplayTargets.Add(target);
                 }
@@ -314,6 +307,7 @@ public sealed class WpfRetainedVisualBranchMap
         finally
         {
             _scratchTopLevelReplayTargets.Clear();
+            _scratchTargetVisuals.Clear();
         }
     }
 
@@ -586,11 +580,13 @@ public sealed class WpfRetainedVisualBranchMap
         return false;
     }
 
-    private static bool IsAncestorOf(ProGpuVisual ancestor, ProGpuVisual visual)
+    private static bool IsCoveredByTargetAncestor(
+        ProGpuVisual visual,
+        HashSet<ProGpuVisual> targetVisuals)
     {
         for (var current = visual.Parent; current != null; current = current.Parent)
         {
-            if (ReferenceEquals(current, ancestor))
+            if (targetVisuals.Contains(current))
             {
                 return true;
             }

@@ -262,14 +262,18 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForDistinctSourceSet(", source, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<object> _scratchDistinctSources = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<ProGpuVisual> _scratchVisitedVisuals = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
+        Assert.Contains("private readonly HashSet<ProGpuVisual> _scratchTargetVisuals = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchReplayTargets = new();", source, StringComparison.Ordinal);
         Assert.Contains("private static IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SnapshotReplayTargets(", source, StringComparison.Ordinal);
         Assert.Contains("new[] { new WpfRetainedVisualBranchReplayTarget(replaySource, visual) }", source, StringComparison.Ordinal);
         Assert.Contains("SelectTopLevelReplayTargets(_scratchReplayTargets)", source, StringComparison.Ordinal);
+        Assert.Contains("if (!IsCoveredByTargetAncestor(target.Visual, _scratchTargetVisuals))", source, StringComparison.Ordinal);
+        Assert.Contains("private static bool IsCoveredByTargetAncestor(", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var dirtySources = new HashSet<object>", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var targets = new List<WpfRetainedVisualBranchReplayTarget>", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var visitedVisuals = new HashSet<ProGpuVisual>", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var topLevelTargets = new List<WpfRetainedVisualBranchReplayTarget>", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var candidateAncestor in targets)", source, StringComparison.Ordinal);
     }
 
     [Fact]

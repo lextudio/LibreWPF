@@ -9491,6 +9491,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Avalonia",
             "ProGpuHostControl.cs");
+        var proGpuTextureReadbackBufferPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Backend",
+            "GpuTextureReadbackBuffer.cs");
         var proGpuDirectXBindingsPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -9671,6 +9677,7 @@ public sealed class WpfManagedProjectGraphTests
         var scichartRunScript = File.ReadAllText(scichartRunScriptPath);
         var proGpuDirectoryBuildProps = File.ReadAllText(proGpuDirectoryBuildPropsPath);
         var proGpuAvaloniaHostControl = File.ReadAllText(proGpuAvaloniaHostControlPath);
+        var proGpuTextureReadbackBuffer = File.ReadAllText(proGpuTextureReadbackBufferPath);
         var proGpuDirectXBindings = File.ReadAllText(proGpuDirectXBindingsPath);
         var proGpuDirectXHlslTranslator = File.ReadAllText(proGpuDirectXHlslTranslatorPath);
         var proGpuDirectXSciChart = File.ReadAllText(proGpuDirectXSciChartPath);
@@ -9736,13 +9743,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReadmeFile Condition=\"'$(PackageReadmeFile)' == '' And Exists('$(MSBuildThisFileDirectory)README.md')\">README.md</PackageReadmeFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<PackageDescription Condition=\"'$(PackageDescription)' == ''\">$(Description)</PackageDescription>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<None Include=\"$(MSBuildThisFileDirectory)README.md\" Pack=\"true\" PackagePath=\"\\\" Visible=\"false\" />", proGpuDirectoryBuildProps, StringComparison.Ordinal);
-        Assert.Contains("private bool _isStagingBufferMapActive;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
-        Assert.Contains("private BufferMapAsyncStatus _lastMapStatus = BufferMapAsyncStatus.ValidationError;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
-        Assert.Contains("_lastMapStatus = status;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
-        Assert.Contains("if (_lastMapStatus == BufferMapAsyncStatus.Success)", proGpuAvaloniaHostControl, StringComparison.Ordinal);
-        Assert.Contains("finally\n                {\n                    UnmapActiveStagingBuffer();\n                }", proGpuAvaloniaHostControl, StringComparison.Ordinal);
-        Assert.Contains("UnmapActiveStagingBuffer();\n\n        if (_wgpuContext is { IsDisposed: false })", proGpuAvaloniaHostControl, StringComparison.Ordinal);
-        Assert.Contains("_wgpuContext.QueueBufferDisposal((IntPtr)_stagingBuffer)", proGpuAvaloniaHostControl, StringComparison.Ordinal);
+        Assert.Contains("private GpuTextureReadbackBuffer? _readbackBuffer;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
+        Assert.Contains("_readbackBuffer.TryReadTextureRows(", proGpuAvaloniaHostControl, StringComparison.Ordinal);
+        Assert.DoesNotContain("private GpuBuffer* _stagingBuffer;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
+        Assert.DoesNotContain("BufferMapAsync(_stagingBuffer", proGpuAvaloniaHostControl, StringComparison.Ordinal);
+        Assert.Contains("public unsafe sealed class GpuTextureReadbackBuffer", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("public static uint AlignBytesPerRow", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("_context.PollDevice(wait: false)", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("finally\n        {\n            UnmapActiveBuffer();\n        }", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("_context.Wgpu.BufferUnmap(_buffer);", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("_context.QueueBufferDisposal((IntPtr)_buffer)", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
 
         Assert.Contains("name: ProGPU WPF SDK", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("submodules: recursive", sdkCiWorkflow, StringComparison.Ordinal);

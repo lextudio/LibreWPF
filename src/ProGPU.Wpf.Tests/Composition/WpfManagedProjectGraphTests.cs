@@ -9480,6 +9480,9 @@ public sealed class WpfManagedProjectGraphTests
         var previewReleaseBundleScriptPath = FindRepoPath(
             "eng",
             "progpu-preview-release-bundle.sh");
+        var previewReleaseVerifyScriptPath = FindRepoPath(
+            "eng",
+            "progpu-preview-release-verify.sh");
         var sdkCiWorkflowPath = FindRepoPath(
             ".github",
             "workflows",
@@ -9808,6 +9811,7 @@ public sealed class WpfManagedProjectGraphTests
         var previewPackageListScript = File.ReadAllText(previewPackageListScriptPath);
         var previewPackageManifestScript = File.ReadAllText(previewPackageManifestScriptPath);
         var previewReleaseBundleScript = File.ReadAllText(previewReleaseBundleScriptPath);
+        var previewReleaseVerifyScript = File.ReadAllText(previewReleaseVerifyScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
         var mvpProject = File.ReadAllText(mvpProjectPath);
         var mvpAppConfig = File.ReadAllText(mvpAppConfigPath);
@@ -10050,6 +10054,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"${repo_root}/eng/progpu-preview-package-manifest.sh\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Writing preview release bundle", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/progpu-preview-release-bundle.sh\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Verifying preview release bundle", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"${repo_root}/eng/progpu-preview-release-verify.sh\"", sdkCiScript, StringComparison.Ordinal);
 
         Assert.Contains("NUGET_PACKAGES=\"${smoke_root}/packages\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.Contains("cat >\"${project_dir}/Directory.Build.props\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
@@ -10123,6 +10129,28 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("printf '%s  %s\\n' \"${bundle_sha256}\" \"$(basename \"${bundle_output}\")\" >\"${sidecar_output}\"", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF preview release bundle written", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF preview release bundle SHA-256 written", previewReleaseBundleScript, StringComparison.Ordinal);
+
+        Assert.Contains("bundle_output=\"${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("sidecar_output=\"${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE_SHA256:-${bundle_output}.sha256}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("source \"${repo_root}/eng/progpu-preview-package-list.sh\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("package_ids=(\"${progpu_preview_package_ids[@]}\")", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("bundle_sha256=\"$(file_sha256 \"${bundle_output}\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("sidecar_sha256=\"$(awk '{print $1}' \"${sidecar_output}\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("sidecar_file=\"$(awk '{print $2}' \"${sidecar_output}\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("Preview release bundle checksum sidecar does not match", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("Preview release bundle entries do not match the expected manifest/package set.", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("extract_dir=\"$(mktemp -d \"${TMPDIR:-/tmp}/progpu-wpf-preview-release-verify.XXXXXX\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("tar -xzf \"${bundle_output}\" -C \"${extract_dir}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("cmp -s \"${manifest_path}\" \"${extract_dir}/${manifest_name}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("const [extractDirectory, manifestName, devPackageVersion, ...packageIds] = process.argv.slice(2);", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("if (manifest.schemaVersion !== 2)", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("manifest.source.wpfCommit", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("manifest.source.progpuCommit", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("path.join(extractDirectory, expectedFile)", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("crypto.createHash(\"sha256\")", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("Preview package ${expectedFile} size mismatch", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("Preview package ${expectedFile} SHA-256 mismatch.", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF preview release bundle verification succeeded", previewReleaseVerifyScript, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", mvpProject, StringComparison.Ordinal);

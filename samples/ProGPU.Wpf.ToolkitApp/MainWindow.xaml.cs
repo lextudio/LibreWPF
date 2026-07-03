@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -81,6 +82,8 @@ public static class ToolkitDockCommands
 
 public partial class MainWindow : Window
 {
+    private const int GpuOwnerBufferCapacity = 64;
+
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_TOOLKIT_LIVE_VALIDATE";
     private const int LiveValidationMaxAttempts = 400;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
@@ -4871,18 +4874,51 @@ public partial class MainWindow : Window
         out string state)
     {
         state = "GpuHitTest=<unavailable>";
-        if (!ProGpuWpfDiagnostics.TryHitTestOwners(liveHost, x, y, out object?[] owners))
+        object?[] ownerBuffer = ArrayPool<object?>.Shared.Rent(GpuOwnerBufferCapacity);
+        try
         {
+            if (!ProGpuWpfDiagnostics.TryHitTestOwners(liveHost, x, y, ownerBuffer, out int ownerCount))
+            {
+                return false;
+            }
+
+            var owners = ownerBuffer.AsSpan(0, ownerCount);
+            state = $"GpuHitTest=[{DescribeInputElements(owners)}]";
+            if (ownerCount == 0)
+            {
+                return false;
+            }
+
+            foreach (var owner in owners)
+            {
+                if (owner != null && IsInputElementWithinTarget(owner, target))
+                {
+                    return true;
+                }
+            }
+
             return false;
         }
-
-        state = $"GpuHitTest=[{string.Join(", ", owners.Select(DescribeInputElement))}]";
-        if (owners.Length == 0)
+        finally
         {
-            return false;
+            ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true);
+        }
+    }
+
+    private static string DescribeInputElements(ReadOnlySpan<object?> owners)
+    {
+        var builder = new StringBuilder();
+        for (int i = 0; i < owners.Length; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(DescribeInputElement(owners[i]));
         }
 
-        return owners.Any(owner => owner != null && IsInputElementWithinTarget(owner, target));
+        return builder.ToString();
     }
 
     private static bool IsInputElementWithinTarget(object hit, FrameworkElement target)

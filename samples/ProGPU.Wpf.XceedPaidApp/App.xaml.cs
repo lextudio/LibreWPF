@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -232,6 +233,8 @@ internal static class XceedPaidLicenseBootstrap
 
 internal static class XceedPaidSelfTest
 {
+    private const int GpuOwnerBufferCapacity = 64;
+
     internal static void ValidatePackageSurface(XceedPaidLicenseStatus licenseStatus)
     {
         AssertType<Xceed.Wpf.Toolkit.MaterialButton>("Toolkit Plus MaterialButton");
@@ -444,22 +447,32 @@ internal static class XceedPaidSelfTest
         var bottomRight = window.PaidDataGrid.TranslatePoint(
             new Point(Math.Max(9, window.PaidDataGrid.ActualWidth - 8), Math.Max(9, window.PaidDataGrid.ActualHeight - 8)),
             window);
-        if (!ProGpuWpfDiagnostics.TryQueryHitTestBoundsOwners(
-                window,
-                topLeft.X,
-                topLeft.Y,
-                bottomRight.X,
-                bottomRight.Y,
-                out var boundsOwners) ||
-            boundsOwners.Length == 0)
+        object?[] boundsOwnerBuffer = ArrayPool<object?>.Shared.Rent(GpuOwnerBufferCapacity);
+        try
         {
-            throw new InvalidOperationException("Expected paid Xceed DataGrid bounds to resolve GPU hit-test owners.");
-        }
+            if (!ProGpuWpfDiagnostics.TryQueryHitTestBoundsOwners(
+                    window,
+                    topLeft.X,
+                    topLeft.Y,
+                    bottomRight.X,
+                    bottomRight.Y,
+                    boundsOwnerBuffer,
+                    out int boundsOwnerCount) ||
+                boundsOwnerCount == 0)
+            {
+                throw new InvalidOperationException("Expected paid Xceed DataGrid bounds to resolve GPU hit-test owners.");
+            }
 
-        if (!ContainsOwnerUnder(window.PaidDataGrid, boundsOwners))
+            var boundsOwners = boundsOwnerBuffer.AsSpan(0, boundsOwnerCount);
+            if (!ContainsOwnerUnder(window.PaidDataGrid, boundsOwners))
+            {
+                throw new InvalidOperationException(
+                    $"Expected paid Xceed DataGrid bounds GPU owners to include the DataGrid subtree; owners: {DescribeOwners(boundsOwners)}.");
+            }
+        }
+        finally
         {
-            throw new InvalidOperationException(
-                $"Expected paid Xceed DataGrid bounds GPU owners to include the DataGrid subtree; owners: {DescribeOwners(boundsOwners)}.");
+            ArrayPool<object?>.Shared.Return(boundsOwnerBuffer, clearArray: true);
         }
 
         ValidateGpuHitTestCache(window, "paid Xceed DataGrid loaded render");
@@ -560,29 +573,38 @@ internal static class XceedPaidSelfTest
         object?[] bestOwners = Array.Empty<object?>();
         Point bestPoint = default;
         string bestDiagnostics = string.Empty;
+        object?[] ownerBuffer = ArrayPool<object?>.Shared.Rent(GpuOwnerBufferCapacity);
         ReadOnlySpan<double> probes = [0.12, 0.25, 0.5, 0.75, 0.88];
-        foreach (var yFraction in probes)
+        try
         {
-            foreach (var xFraction in probes)
+            foreach (var yFraction in probes)
             {
-                var candidate = element.TranslatePoint(new Point(width * xFraction, height * yFraction), window);
-                var candidateDiagnostics = QueryGpuPointOwners(host, candidate, out var candidateOwners);
-                diagnostics = candidateDiagnostics;
-                if (candidateOwners.Length > 0)
+                foreach (var xFraction in probes)
                 {
-                    bestOwners = candidateOwners;
-                    bestPoint = candidate;
-                    bestDiagnostics = candidateDiagnostics;
-                }
-
-                if (candidateOwners.Length > 0 && ContainsOwnerUnder(element, candidateOwners))
-                {
-                    owners = candidateOwners;
-                    point = candidate;
+                    var candidate = element.TranslatePoint(new Point(width * xFraction, height * yFraction), window);
+                    var candidateDiagnostics = QueryGpuPointOwners(host, candidate, ownerBuffer, out int candidateOwnerCount);
                     diagnostics = candidateDiagnostics;
-                    return true;
+                    var candidateOwners = ownerBuffer.AsSpan(0, candidateOwnerCount);
+                    if (candidateOwnerCount > 0)
+                    {
+                        bestOwners = CopyOwners(candidateOwners);
+                        bestPoint = candidate;
+                        bestDiagnostics = candidateDiagnostics;
+                    }
+
+                    if (candidateOwnerCount > 0 && ContainsOwnerUnder(element, candidateOwners))
+                    {
+                        owners = CopyOwners(candidateOwners);
+                        point = candidate;
+                        diagnostics = candidateDiagnostics;
+                        return true;
+                    }
                 }
             }
+        }
+        finally
+        {
+            ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true);
         }
 
         if (bestOwners.Length > 0)
@@ -599,15 +621,27 @@ internal static class XceedPaidSelfTest
         return false;
     }
 
-    private static string QueryGpuPointOwners(ProGpuWpfWindowHost host, Point point, out object?[] owners)
+    private static string QueryGpuPointOwners(ProGpuWpfWindowHost host, Point point, Span<object?> owners, out int ownerCount)
     {
-        owners = Array.Empty<object?>();
-        if (!ProGpuWpfDiagnostics.TryHitTestOwners(host, point.X, point.Y, out owners))
+        ownerCount = 0;
+        if (!ProGpuWpfDiagnostics.TryHitTestOwners(host, point.X, point.Y, owners, out ownerCount))
         {
             return $"GPU point query at {point.X:0.#},{point.Y:0.#} did not execute. {DescribeGpuHitTestCache(host)}";
         }
 
-        return $"GPU point query at {point.X:0.#},{point.Y:0.#}: mappedOwners={owners.Length}. {DescribeGpuHitTestCache(host)}";
+        return $"GPU point query at {point.X:0.#},{point.Y:0.#}: mappedOwners={ownerCount}. {DescribeGpuHitTestCache(host)}";
+    }
+
+    private static object?[] CopyOwners(ReadOnlySpan<object?> owners)
+    {
+        if (owners.Length == 0)
+        {
+            return Array.Empty<object?>();
+        }
+
+        var copy = new object?[owners.Length];
+        owners.CopyTo(copy);
+        return copy;
     }
 
     private static string DescribeGpuHitTestCache(ProGpuWpfWindowHost host)
@@ -623,6 +657,20 @@ internal static class XceedPaidSelfTest
     private static bool ContainsOwnerUnder(DependencyObject root, IEnumerable<object?> owners)
     {
         return owners.OfType<DependencyObject>().Any(owner => IsSelfOrDescendantOf(owner, root));
+    }
+
+    private static bool ContainsOwnerUnder(DependencyObject root, ReadOnlySpan<object?> owners)
+    {
+        foreach (var owner in owners)
+        {
+            if (owner is DependencyObject dependencyObject &&
+                IsSelfOrDescendantOf(dependencyObject, root))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsSelfOrDescendantOf(DependencyObject owner, DependencyObject root)
@@ -648,6 +696,23 @@ internal static class XceedPaidSelfTest
         return string.Join(
             ", ",
             owners.Select(DescribeOwner).Take(12));
+    }
+
+    private static string DescribeOwners(ReadOnlySpan<object?> owners)
+    {
+        var builder = new System.Text.StringBuilder();
+        int count = Math.Min(owners.Length, 12);
+        for (int i = 0; i < count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(DescribeOwner(owners[i]));
+        }
+
+        return builder.ToString();
     }
 
     private static string DescribeOwner(object? owner)

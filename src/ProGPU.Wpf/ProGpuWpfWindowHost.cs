@@ -1765,6 +1765,31 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal bool TryQueryHitTestBoundsOwners(double minX, double minY, double maxX, double maxY, out object?[] owners)
     {
         owners = Array.Empty<object?>();
+        object?[] ownerBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
+        try
+        {
+            if (!TryQueryHitTestBoundsOwners(minX, minY, maxX, maxY, ownerBuffer, out int ownerCount))
+            {
+                return false;
+            }
+
+            if (ownerCount == 0)
+            {
+                return true;
+            }
+
+            owners = ownerBuffer.AsSpan(0, ownerCount).ToArray();
+            return true;
+        }
+        finally
+        {
+            ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true);
+        }
+    }
+
+    internal bool TryQueryHitTestBoundsOwners(double minX, double minY, double maxX, double maxY, Span<object?> owners, out int ownerCount)
+    {
+        ownerCount = 0;
         if (_target == null ||
             !double.IsFinite(minX) ||
             !double.IsFinite(minY) ||
@@ -1783,31 +1808,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         EnsureGpuHitTestCacheCurrent();
-        object?[] ownerBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
-        try
-        {
-            if (!_target.TryQueryHitTestBoundsOwners(
-                    new System.Numerics.Vector2((float)minX, (float)minY),
-                    new System.Numerics.Vector2((float)maxX, (float)maxY),
-                    ownerBuffer,
-                    out int ownerCount,
-                    out _))
-            {
-                return false;
-            }
-
-            if (ownerCount == 0)
-            {
-                return true;
-            }
-
-            owners = ownerBuffer.AsSpan(0, ownerCount).ToArray();
-            return true;
-        }
-        finally
-        {
-            ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true);
-        }
+        return _target.TryQueryHitTestBoundsOwners(
+            new System.Numerics.Vector2((float)minX, (float)minY),
+            new System.Numerics.Vector2((float)maxX, (float)maxY),
+            owners,
+            out ownerCount,
+            out _);
     }
 
     internal bool TryGetGpuHitTestCacheSnapshot(out ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot snapshot)

@@ -618,7 +618,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public static bool TryGetGpuHitTestCacheSnapshot(object? window, out GpuHitTestCacheSnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryHitTestOwner(object? window, double x, double y, out object? owner)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryHitTestOwners(object? window, double x, double y, out object?[] owners)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryHitTestOwners(object? window, double x, double y, Span<object?> owners, out int ownerCount)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryQueryHitTestBoundsOwners(", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("Span<object?> owners,\n        out int ownerCount)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("IWpfDelayedRenderScheduler delayedScheduler", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ProcessHostInputAndRequestRender", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.TryRequestNativeLoopWakeup();", proGpuActivation, StringComparison.Ordinal);
@@ -808,6 +810,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal bool TryHitTestOwners(double x, double y, out object?[] owners)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryHitTestOwners(double x, double y, Span<object?> owners, out int ownerCount)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestBoundsOwners(double minX, double minY, double maxX, double maxY, out object?[] owners)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryQueryHitTestBoundsOwners(double minX, double minY, double maxX, double maxY, Span<object?> owners, out int ownerCount)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestBoundsCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool HasGpuHitTestCache => _target?.LastGpuHitTestIndex != null;", proGpuHost, StringComparison.Ordinal);
@@ -8718,6 +8721,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateLiveAvalonDockAutoHideOverlayAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryGetWindowHost(this", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryHitTestOwners(liveHost", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<object?>.Shared.Rent(GpuOwnerBufferCapacity)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DescribeInputElements(owners)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryHitTestOwners(liveHost, x, y, out object?[] owners)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("owners.Select(DescribeInputElement)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryGetRenderSurfaceGeometry(liveHost", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryRaiseInput(liveHost", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: \"F9\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -8930,9 +8937,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateGpuHitTestCache(window, \"paid Xceed virtual DataGrid loaded render\")", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("window.BringVirtualPaidDataGridItemIntoView(50_000);", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("TryFindGpuPointOwnersUnder(host, window, window.PaidDataGrid", appCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("ProGpuWpfDiagnostics.TryHitTestOwners(host, point.X, point.Y, out owners)", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<object?>.Shared.Rent(GpuOwnerBufferCapacity)", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryHitTestOwners(host, point.X, point.Y, owners, out ownerCount)", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryQueryHitTestBoundsOwners(\n                    window,", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("boundsOwnerBuffer,\n                    out int boundsOwnerCount)", appCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfDiagnostics.TryHitTestOwners(host, point.X, point.Y, out owners)", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryGetGpuHitTestCacheSnapshot(", appCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("mappedOwners={owners.Length}", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("mappedOwners={ownerCount}", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryQueryHitTestBoundsOwners(", appCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", mainWindowXaml, StringComparison.Ordinal);

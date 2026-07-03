@@ -146,6 +146,18 @@ public static class ProGpuWpfDiagnostics
         return host.TryHitTestOwners(x, y, out owners);
     }
 
+    public static bool TryHitTestOwners(object? window, double x, double y, Span<object?> owners, out int ownerCount)
+    {
+        ownerCount = 0;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        return host.TryHitTestOwners(x, y, owners, out ownerCount);
+    }
+
     public static bool TryQueryHitTestBoundsOwners(
         object? window,
         double minX,
@@ -162,6 +174,25 @@ public static class ProGpuWpfDiagnostics
 
         ArgumentNullException.ThrowIfNull(host);
         return host.TryQueryHitTestBoundsOwners(minX, minY, maxX, maxY, out owners);
+    }
+
+    public static bool TryQueryHitTestBoundsOwners(
+        object? window,
+        double minX,
+        double minY,
+        double maxX,
+        double maxY,
+        Span<object?> owners,
+        out int ownerCount)
+    {
+        ownerCount = 0;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        return host.TryQueryHitTestBoundsOwners(minX, minY, maxX, maxY, owners, out ownerCount);
     }
 
     private static RenderSurfaceGeometrySnapshot CreateSnapshot(

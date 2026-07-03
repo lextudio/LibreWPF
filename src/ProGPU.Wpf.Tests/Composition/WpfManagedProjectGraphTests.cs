@@ -1067,6 +1067,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CountNonEmpty(child0, child1, child2, child3)", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("int child0NodeIndex = AddChildNodeSlot(child0);", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("FillChildNode(child0NodeIndex, 0, child0, min, max, center, depth);", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("builder.AddRootNode(min, max);", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("new RootPrimitiveIndices(_primitives.Length)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("new ListPrimitiveIndices(childPrimitives)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("private readonly struct RootPrimitiveIndices", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("var all = new List<int>(primitiveArray.Length);", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("builder.AddNode(min, max, all, depth: 0);", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("var retained = new List<int>();", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("var childPrimitiveLists = new List<int>[4];", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("childPrimitiveLists[i] = [];", proGpuHitTesting, StringComparison.Ordinal);

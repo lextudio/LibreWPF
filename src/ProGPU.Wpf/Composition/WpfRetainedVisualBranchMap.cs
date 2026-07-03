@@ -19,6 +19,7 @@ public sealed class WpfRetainedVisualBranchMap
     private readonly HashSet<ProGpuVisual> _scratchTargetVisuals = new(ReferenceEqualityComparer.Instance);
     private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchReplayTargets = new();
     private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchTopLevelReplayTargets = new();
+    private readonly SingleReplayTargetList _scratchSingleReplayTarget = new();
 
     public int SourceCount => _visualsBySource.Count;
 
@@ -42,6 +43,7 @@ public sealed class WpfRetainedVisualBranchMap
         _scratchTargetVisuals.Clear();
         _scratchReplayTargets.Clear();
         _scratchTopLevelReplayTargets.Clear();
+        _scratchSingleReplayTarget.Clear();
         VisualCount = 0;
         LastSource = null;
         LastVisual = null;
@@ -226,7 +228,7 @@ public sealed class WpfRetainedVisualBranchMap
         {
             var visual = visuals[0];
             return TryGetReplaySourceForVisual(visual, out var replaySource)
-                ? new[] { new WpfRetainedVisualBranchReplayTarget(replaySource, visual) }
+                ? CreateSingleReplayTarget(replaySource, visual)
                 : Array.Empty<WpfRetainedVisualBranchReplayTarget>();
         }
 
@@ -267,12 +269,26 @@ public sealed class WpfRetainedVisualBranchMap
         return false;
     }
 
-    private static IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SnapshotReplayTargets(
+    private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> CreateSingleReplayTarget(
+        object source,
+        ProGpuVisual visual)
+    {
+        _scratchSingleReplayTarget.Set(new WpfRetainedVisualBranchReplayTarget(source, visual));
+        return _scratchSingleReplayTarget;
+    }
+
+    private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SnapshotReplayTargets(
         List<WpfRetainedVisualBranchReplayTarget> targets)
     {
         if (targets.Count == 0)
         {
             return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+        }
+
+        if (targets.Count == 1)
+        {
+            _scratchSingleReplayTarget.Set(targets[0]);
+            return _scratchSingleReplayTarget;
         }
 
         var snapshot = new WpfRetainedVisualBranchReplayTarget[targets.Count];
@@ -616,6 +632,52 @@ public sealed class WpfRetainedVisualBranchMap
         }
 
         return false;
+    }
+
+    private sealed class SingleReplayTargetList : IReadOnlyList<WpfRetainedVisualBranchReplayTarget>
+    {
+        private WpfRetainedVisualBranchReplayTarget _target;
+        private bool _hasTarget;
+
+        public int Count => _hasTarget ? 1 : 0;
+
+        public WpfRetainedVisualBranchReplayTarget this[int index]
+        {
+            get
+            {
+                if (!_hasTarget || index != 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                }
+
+                return _target;
+            }
+        }
+
+        public void Set(WpfRetainedVisualBranchReplayTarget target)
+        {
+            _target = target;
+            _hasTarget = true;
+        }
+
+        public void Clear()
+        {
+            _target = default;
+            _hasTarget = false;
+        }
+
+        public IEnumerator<WpfRetainedVisualBranchReplayTarget> GetEnumerator()
+        {
+            if (_hasTarget)
+            {
+                yield return _target;
+            }
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
     }
 }
 

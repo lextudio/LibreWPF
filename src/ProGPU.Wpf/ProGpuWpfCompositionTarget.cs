@@ -822,8 +822,9 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
         try
         {
-            foreach (var target in targets)
+            for (var i = 0; i < targets.Count; i++)
             {
+                var target = targets[i];
                 var branchVisual = (ProGpuRetainedDrawingVisual)target.Visual;
                 RetainedVisualBranchMap.UnregisterVisualTree(branchVisual);
                 ResetRetainedDrawingVisualBranch(branchVisual, drawingFrame.LogicalWidth, drawingFrame.LogicalHeight);
@@ -959,8 +960,9 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             return false;
         }
 
-        foreach (var target in targets)
+        for (var i = 0; i < targets.Count; i++)
         {
+            var target = targets[i];
             if (target.Visual is not ProGpuRetainedDrawingVisual branchVisual ||
                 !_visualTreeRenderer.CanReplaySubtreeIntoCurrentRetainedVisual(
                     target.Source,

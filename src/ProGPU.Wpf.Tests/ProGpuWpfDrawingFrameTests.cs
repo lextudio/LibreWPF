@@ -735,6 +735,30 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void BranchMapReusesSingleReplayTargetList()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var source = new object();
+        var visual = new ProGpuRetainedDrawingVisual();
+        branchMap.Register(source, visual);
+
+        var firstTargets = branchMap.GetReplayTargetsForSources(new[] { source });
+        var firstTarget = Assert.Single(firstTargets);
+        var secondTargets = branchMap.GetReplayTargetsForSources(new[] { source });
+        var secondTarget = Assert.Single(secondTargets);
+
+        Assert.Same(firstTargets, secondTargets);
+        Assert.Same(source, firstTarget.Source);
+        Assert.Same(visual, firstTarget.Visual);
+        Assert.Same(source, secondTarget.Source);
+        Assert.Same(visual, secondTarget.Visual);
+
+        branchMap.Clear();
+
+        Assert.Empty(firstTargets);
+    }
+
+    [Fact]
     public void BranchMapReportsUnmappedDirtySourcesForFallbackDecisions()
     {
         var branchMap = new WpfRetainedVisualBranchMap();

@@ -64,6 +64,14 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return dependencies;
     }
 
+    internal static bool RegisterTrackedDependencies(
+        IWpfRetainedVisualBranchSink sink,
+        object? source)
+    {
+        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        return RegisterTrackedDependencies(sink, source, visited);
+    }
+
     public void AttachIfChanged(object? root)
     {
         if (!ReferenceEquals(_root, root))
@@ -310,6 +318,32 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             CollectTrackedDependencies(dependency, dependencies, visited);
         }
+    }
+
+    private static bool RegisterTrackedDependencies(
+        IWpfRetainedVisualBranchSink sink,
+        object? source,
+        HashSet<object> visited)
+    {
+        if (source == null || IsTerminalValue(source) || !visited.Add(source))
+        {
+            return false;
+        }
+
+        sink.RegisterVisualDependency(source);
+        var registered = true;
+
+        foreach (var item in EnumerateCollection(source))
+        {
+            registered |= RegisterTrackedDependencies(sink, item, visited);
+        }
+
+        foreach (var dependency in EnumeratePortableDependencies(source))
+        {
+            registered |= RegisterTrackedDependencies(sink, dependency, visited);
+        }
+
+        return registered;
     }
 
     private static List<object> CollectVisualStateChanges(

@@ -380,6 +380,12 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfVisualInvalidationTracker.cs");
+        var proGpuRetainedVisualDependencyRegistrarPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfRetainedVisualDependencyRegistrar.cs");
         var proGpuRetainedCompositionCommandSinkPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -461,6 +467,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuDrawingFrame = File.ReadAllText(proGpuDrawingFramePath);
         var proGpuCompositionTarget = File.ReadAllText(proGpuCompositionTargetPath);
         var proGpuInvalidationTracker = File.ReadAllText(proGpuInvalidationTrackerPath);
+        var proGpuRetainedVisualDependencyRegistrar = File.ReadAllText(proGpuRetainedVisualDependencyRegistrarPath);
         var proGpuRetainedCompositionCommandSink = File.ReadAllText(proGpuRetainedCompositionCommandSinkPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
         var proGpuHitTestCache = File.ReadAllText(proGpuHitTestCachePath);
@@ -890,6 +897,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source is PortableDrawingContentSource drawingContentSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableRenderDataSource renderDataSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("renderDataSnapshot.DependentResources", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("internal static bool RegisterTrackedDependencies(", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("sink.RegisterVisualDependency(source);", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("WpfVisualInvalidationTracker.RegisterTrackedDependencies(retainedVisualBranchSink, dependency)", proGpuRetainedVisualDependencyRegistrar, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var trackedDependency in WpfVisualInvalidationTracker.EnumerateTrackedDependencies(dependency))", proGpuRetainedVisualDependencyRegistrar, StringComparison.Ordinal);
         Assert.Contains("EnumerateTrackedDependenciesUsesPortableDrawingAndRenderDataSources", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("PortableDrawingRenderDataDependencyChangeMarksTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("EnumerateTrackedDependenciesIgnoresNonPortablePrivateDrawingContentGraph", proGpuInvalidationTrackerTests, StringComparison.Ordinal);

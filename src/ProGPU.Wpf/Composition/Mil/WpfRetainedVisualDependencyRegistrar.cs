@@ -9,14 +9,7 @@ internal static class WpfRetainedVisualDependencyRegistrar
             return;
         }
 
-        var registered = false;
-        foreach (var trackedDependency in WpfVisualInvalidationTracker.EnumerateTrackedDependencies(dependency))
-        {
-            retainedVisualBranchSink.RegisterVisualDependency(trackedDependency);
-            registered = true;
-        }
-
-        if (!registered)
+        if (!WpfVisualInvalidationTracker.RegisterTrackedDependencies(retainedVisualBranchSink, dependency))
         {
             retainedVisualBranchSink.RegisterVisualDependency(dependency);
         }

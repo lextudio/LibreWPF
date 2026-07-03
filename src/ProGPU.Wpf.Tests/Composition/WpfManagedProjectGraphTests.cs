@@ -8937,9 +8937,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("hydrate_env_from_launchctl", runScript, StringComparison.Ordinal);
+        Assert.Contains("has_env_or_launchctl()", runScript, StringComparison.Ordinal);
         Assert.Contains("launchctl getenv", runScript, StringComparison.Ordinal);
         Assert.Contains("XCEED_TOOLKIT_LICENSE_KEY", runScript, StringComparison.Ordinal);
         Assert.Contains("XCEED_DATAGRID_LICENSE_KEY", runScript, StringComparison.Ordinal);
+        Assert.Contains("sdk_ci_runs_paid_xceed=1", runScript, StringComparison.Ordinal);
+        Assert.Contains("validation_requested=1", runScript, StringComparison.Ordinal);
+        Assert.Contains("Paid Xceed validation already completed during SDK package rebuild.", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_REBUILD_PACKAGES", runScript, StringComparison.Ordinal);
         Assert.Contains("-newer \"${sdk_package}\"", runScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/src/ProGPU.Wpf\"", runScript, StringComparison.Ordinal);

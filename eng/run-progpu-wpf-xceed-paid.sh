@@ -30,6 +30,35 @@ hydrate_env_from_launchctl() {
 hydrate_env_from_launchctl "XCEED_TOOLKIT_LICENSE_KEY"
 hydrate_env_from_launchctl "XCEED_DATAGRID_LICENSE_KEY"
 
+has_env_or_launchctl() {
+  local name="$1"
+  if [[ -n "${!name:-}" ]]; then
+    return 0
+  fi
+
+  if ! command -v launchctl >/dev/null 2>&1; then
+    return 1
+  fi
+
+  [[ -n "$(launchctl getenv "${name}" 2>/dev/null || true)" ]]
+}
+
+sdk_ci_runs_paid_xceed=0
+xceed_paid_gate="${PROGPU_WPF_SDK_CI_INCLUDE_XCEED_PAID:-auto}"
+if [[ "${xceed_paid_gate}" == "1" ]] || \
+   [[ "${xceed_paid_gate}" == "auto" && \
+      "$(has_env_or_launchctl XCEED_TOOLKIT_LICENSE_KEY && echo 1 || echo 0)" == "1" && \
+      "$(has_env_or_launchctl XCEED_DATAGRID_LICENSE_KEY && echo 1 || echo 0)" == "1" ]]; then
+  sdk_ci_runs_paid_xceed=1
+fi
+
+validation_requested=0
+if [[ "${PROGPU_WPF_XCEED_PAID_VALIDATE:-0}" == "1" || \
+      "${PROGPU_WPF_XCEED_PAID_RUN_VALIDATE:-0}" == "1" || \
+      "${PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE:-0}" == "1" ]]; then
+  validation_requested=1
+fi
+
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 sdk_package="${package_output}/ProGPU.Wpf.Sdk.11.0.0-dev.nupkg"
 xceed_project="${repo_root}/samples/ProGPU.Wpf.XceedPaidApp/ProGPU.Wpf.XceedPaidApp.csproj"
@@ -86,6 +115,11 @@ if [[ "${rebuild_packages}" == "1" ]]; then
   PROGPU_WPF_TOOLKIT_RUN_VALIDATE=0 \
   PROGPU_WPF_TOOLKIT_LIVE_VALIDATE=0 \
     "${repo_root}/eng/progpu-wpf-sdk-ci.sh"
+
+  if [[ "${validation_requested}" == "1" && "${sdk_ci_runs_paid_xceed}" == "1" ]]; then
+    echo "Paid Xceed validation already completed during SDK package rebuild."
+    exit 0
+  fi
 fi
 
 rm -rf \

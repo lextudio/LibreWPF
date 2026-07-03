@@ -26,6 +26,12 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 public sealed class WpfVisualInvalidationTracker : IDisposable
 {
+    [ThreadStatic]
+    private static HashSet<object>? s_registerTrackedDependenciesVisited;
+
+    [ThreadStatic]
+    private static HashSet<object>? s_enumerateTrackedDependenciesVisited;
+
     private readonly List<Action> _unsubscribeActions = new();
     private readonly Dictionary<object, VisualStateSnapshot> _visualStateSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<object, object?[]> _visualChildrenSnapshots = new(ReferenceEqualityComparer.Instance);
@@ -65,17 +71,73 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         var dependencies = new List<object>();
-        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        CollectTrackedDependencies(source, dependencies, visited);
-        return dependencies;
+        var visited = s_enumerateTrackedDependenciesVisited;
+        if (visited == null)
+        {
+            visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            s_enumerateTrackedDependenciesVisited = visited;
+        }
+        else if (visited.Count != 0)
+        {
+            var reentrantVisited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            try
+            {
+                CollectTrackedDependencies(source, dependencies, reentrantVisited);
+                return dependencies;
+            }
+            finally
+            {
+                reentrantVisited.Clear();
+            }
+        }
+
+        try
+        {
+            CollectTrackedDependencies(source, dependencies, visited);
+            return dependencies;
+        }
+        finally
+        {
+            visited.Clear();
+        }
     }
 
     internal static bool RegisterTrackedDependencies(
         IWpfRetainedVisualBranchSink sink,
         object? source)
     {
-        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        return RegisterTrackedDependencies(sink, source, visited);
+        if (source == null || IsTerminalValue(source))
+        {
+            return false;
+        }
+
+        var visited = s_registerTrackedDependenciesVisited;
+        if (visited == null)
+        {
+            visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            s_registerTrackedDependenciesVisited = visited;
+        }
+        else if (visited.Count != 0)
+        {
+            var reentrantVisited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            try
+            {
+                return RegisterTrackedDependencies(sink, source, reentrantVisited);
+            }
+            finally
+            {
+                reentrantVisited.Clear();
+            }
+        }
+
+        try
+        {
+            return RegisterTrackedDependencies(sink, source, visited);
+        }
+        finally
+        {
+            visited.Clear();
+        }
     }
 
     public void AttachIfChanged(object? root)

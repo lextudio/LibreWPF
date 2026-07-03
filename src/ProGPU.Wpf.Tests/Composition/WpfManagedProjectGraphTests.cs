@@ -927,7 +927,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source is PortableRenderDataSource renderDataSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("renderDataSnapshot.DependentResources", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("internal static bool RegisterTrackedDependencies(", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("private static HashSet<object>? s_registerTrackedDependenciesVisited;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("private static HashSet<object>? s_enumerateTrackedDependenciesVisited;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("var visited = s_registerTrackedDependenciesVisited;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("s_registerTrackedDependenciesVisited = visited;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("visited.Clear();", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("sink.RegisterVisualDependency(source);", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);\n        return RegisterTrackedDependencies(sink, source, visited);", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("WpfVisualInvalidationTracker.RegisterTrackedDependencies(retainedVisualBranchSink, dependency)", proGpuRetainedVisualDependencyRegistrar, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var trackedDependency in WpfVisualInvalidationTracker.EnumerateTrackedDependencies(dependency))", proGpuRetainedVisualDependencyRegistrar, StringComparison.Ordinal);
         Assert.DoesNotContain("Register(IWpfCompositionCommandSink sink, params object?[] dependencies)", proGpuRetainedVisualDependencyRegistrar, StringComparison.Ordinal);

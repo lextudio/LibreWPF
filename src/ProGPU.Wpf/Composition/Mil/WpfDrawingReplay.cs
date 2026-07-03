@@ -15,6 +15,7 @@ using MediaTransform = System.Windows.Media.Transform;
 using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
 using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
 using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
+using PortableDrawingGroupChildrenSource = ProGPU.Wpf.Interop.IPortableDrawingGroupChildrenSource;
 using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
 using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
 using PortableGlyphRunDrawingState = ProGPU.Wpf.Interop.PortableGlyphRunDrawingState;
@@ -3347,17 +3348,108 @@ internal static class WpfDrawingReplay
         return new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
-    private static IReadOnlyList<object> ExtractChildren(
+    private static PortableDrawingGroupChildrenEnumerable ExtractChildren(
         object drawingGroup,
         bool hasPortableDrawingGroupState,
         PortableDrawingGroupState? drawingGroupState)
     {
-        if (hasPortableDrawingGroupState)
+        if (drawingGroup is PortableDrawingGroupChildrenSource childrenSource
+            && childrenSource.TryGetPortableDrawingGroupChildCount(out var count)
+            && count > 0)
         {
-            return drawingGroupState!.Children ?? Array.Empty<object>();
+            return new PortableDrawingGroupChildrenEnumerable(childrenSource, count);
         }
 
-        return Array.Empty<object>();
+        if (hasPortableDrawingGroupState)
+        {
+            return new PortableDrawingGroupChildrenEnumerable(drawingGroupState!.Children);
+        }
+
+        return default;
+    }
+
+    private readonly struct PortableDrawingGroupChildrenEnumerable
+    {
+        private readonly PortableDrawingGroupChildrenSource? _source;
+        private readonly object[]? _children;
+        private readonly int _count;
+
+        public PortableDrawingGroupChildrenEnumerable(PortableDrawingGroupChildrenSource source, int count)
+        {
+            _source = source;
+            _children = null;
+            _count = count;
+        }
+
+        public PortableDrawingGroupChildrenEnumerable(object[]? children)
+        {
+            _source = null;
+            _children = children;
+            _count = children?.Length ?? 0;
+        }
+
+        public PortableDrawingGroupChildrenEnumerator GetEnumerator()
+        {
+            return new PortableDrawingGroupChildrenEnumerator(_source, _children, _count);
+        }
+    }
+
+    private struct PortableDrawingGroupChildrenEnumerator
+    {
+        private readonly PortableDrawingGroupChildrenSource? _source;
+        private readonly object[]? _children;
+        private readonly int _count;
+        private int _index;
+        private object? _current;
+
+        public PortableDrawingGroupChildrenEnumerator(
+            PortableDrawingGroupChildrenSource? source,
+            object[]? children,
+            int count)
+        {
+            _source = source;
+            _children = children;
+            _count = count;
+            _index = 0;
+            _current = null;
+        }
+
+        public object Current => _current!;
+
+        public bool MoveNext()
+        {
+            while (_index < _count)
+            {
+                var index = _index++;
+                object? child;
+                if (_source != null)
+                {
+                    if (!_source.TryGetPortableDrawingGroupChild(index, out var sourceChild))
+                    {
+                        continue;
+                    }
+
+                    child = sourceChild;
+                }
+                else if (_children != null && index < _children.Length)
+                {
+                    child = _children[index];
+                }
+                else
+                {
+                    continue;
+                }
+
+                if (child != null)
+                {
+                    _current = child;
+                    return true;
+                }
+            }
+
+            _current = null;
+            return false;
+        }
     }
 
     private static bool TryReadPortableRect(PortableRect portableRect, out Rect rectangle)

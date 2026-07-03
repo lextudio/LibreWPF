@@ -915,6 +915,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableImageDrawingStateSource = ProGPU.Wpf.Interop.IPortableImageDrawingStateSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("using PortableDrawingGroupChildrenSource = ProGPU.Wpf.Interop.IPortableDrawingGroupChildrenSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableTileBrushSource = ProGPU.Wpf.Interop.IPortableTileBrushSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
@@ -927,9 +928,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source is PortableImageDrawingStateSource imageDrawingSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableGlyphRunDrawingStateSource glyphRunDrawingSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableDrawingGroupStateSource drawingGroupSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("source is PortableDrawingGroupChildrenSource childrenSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableTileBrushSource tileBrushSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableShaderEffectSource shaderEffectSource", proGpuInvalidationTracker, StringComparison.Ordinal);
-        Assert.Contains("drawingGroupState.Children", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("AddPortableDrawingGroupChildren(ref dependencies, source, drawingGroupState)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("tileBrush.Content", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("sampler.Kind == PortableShaderSamplerKind.Brush", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_content\"", proGpuInvalidationTracker, StringComparison.Ordinal);
@@ -5904,11 +5906,16 @@ public sealed class WpfManagedProjectGraphTests
             "Mil",
             "WpfVisualTreeRendererTests.cs"));
 
+        Assert.Contains("using PortableDrawingGroupChildrenSource = ProGPU.Wpf.Interop.IPortableDrawingGroupChildrenSource;", replaySource, StringComparison.Ordinal);
         Assert.Contains("using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;", replaySource, StringComparison.Ordinal);
         Assert.Contains("drawingGroup is PortableDrawingGroupStateSource drawingGroupStateSource", replaySource, StringComparison.Ordinal);
+        Assert.Contains("drawingGroup is PortableDrawingGroupChildrenSource childrenSource", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableDrawingGroupState(out var portableState)", replaySource, StringComparison.Ordinal);
         Assert.Contains("var hasPortableDrawingGroupState = TryGetPortableDrawingGroupState(", replaySource, StringComparison.Ordinal);
         Assert.Contains("ExtractChildren(drawingGroup, hasPortableDrawingGroupState, drawingGroupState)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("private readonly struct PortableDrawingGroupChildrenEnumerable", replaySource, StringComparison.Ordinal);
+        Assert.Contains("public PortableDrawingGroupChildrenEnumerator GetEnumerator()", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IReadOnlyList<object> ExtractChildren", replaySource, StringComparison.Ordinal);
         Assert.Contains("sink is IWpfNativeTransformCommandSink", replaySource, StringComparison.Ordinal);
         Assert.Contains("WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out nativeTransform)", replaySource, StringComparison.Ordinal);
         Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(sink, nativeTransform)", replaySource, StringComparison.Ordinal);
@@ -5921,11 +5928,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryGetPropertyValue(drawingGroup,", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("HasNonNullProperty(drawingGroup,", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadFiniteRectProperty(drawingGroup", replaySource, StringComparison.Ordinal);
-        Assert.Contains("DrawingGroup : Drawing, IPortableDrawingGroupStateSource", drawingGroupSource, StringComparison.Ordinal);
+        Assert.Contains("DrawingGroup : Drawing, IPortableDrawingGroupStateSource, IPortableDrawingGroupChildrenSource", drawingGroupSource, StringComparison.Ordinal);
         Assert.Contains("IPortableDrawingGroupStateSource.TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)", drawingGroupSource, StringComparison.Ordinal);
-        Assert.Contains("CopyPortableDrawingGroupChildren(Children)", drawingGroupSource, StringComparison.Ordinal);
-        Assert.Contains("DrawingGroup : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("IPortableDrawingGroupChildrenSource.TryGetPortableDrawingGroupChildCount(out int count)", drawingGroupSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableDrawingGroupChildrenSource.TryGetPortableDrawingGroupChild(int index, out object child)", drawingGroupSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("CopyPortableDrawingGroupChildren", drawingGroupSource, StringComparison.Ordinal);
+        Assert.Contains("DrawingGroup : System.Windows.Media.Drawing, ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource, ProGPU.Wpf.Interop.IPortableDrawingGroupChildrenSource", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("interface IPortableDrawingGroupStateSource", interopSource, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableDrawingGroupChildrenSource", interopSource, StringComparison.Ordinal);
         Assert.Contains("public bool HasClipGeometry", interopSource, StringComparison.Ordinal);
         Assert.Contains("public bool HasBitmapScalingMode", interopSource, StringComparison.Ordinal);
         Assert.Contains("public object[] Children", interopSource, StringComparison.Ordinal);

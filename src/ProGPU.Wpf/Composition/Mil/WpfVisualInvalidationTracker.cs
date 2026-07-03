@@ -5,6 +5,8 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
+using PortableDrawingGroupChildrenSource = ProGPU.Wpf.Interop.IPortableDrawingGroupChildrenSource;
+using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
 using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
 using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
 using PortableGlyphRunDrawingStateSource = ProGPU.Wpf.Interop.IPortableGlyphRunDrawingStateSource;
@@ -839,10 +841,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 AddPortableDependency(ref dependencies, drawingGroupState.CacheMode);
             }
 
-            foreach (var child in drawingGroupState.Children)
-            {
-                AddPortableDependency(ref dependencies, child);
-            }
+            AddPortableDrawingGroupChildren(ref dependencies, source, drawingGroupState);
         }
 
         if (source is PortableTileBrushSource tileBrushSource
@@ -869,6 +868,32 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         return dependencies ?? (IReadOnlyList<object?>)Array.Empty<object?>();
+    }
+
+    private static void AddPortableDrawingGroupChildren(
+        ref List<object?>? dependencies,
+        object source,
+        PortableDrawingGroupState drawingGroupState)
+    {
+        if (source is PortableDrawingGroupChildrenSource childrenSource
+            && childrenSource.TryGetPortableDrawingGroupChildCount(out var count)
+            && count > 0)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                if (childrenSource.TryGetPortableDrawingGroupChild(i, out var child))
+                {
+                    AddPortableDependency(ref dependencies, child);
+                }
+            }
+
+            return;
+        }
+
+        foreach (var child in drawingGroupState.Children)
+        {
+            AddPortableDependency(ref dependencies, child);
+        }
     }
 
     private static void AddPortableDependency(ref List<object?>? dependencies, object? dependency)

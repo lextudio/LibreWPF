@@ -13,7 +13,7 @@ namespace System.Windows.Media
     /// collections.
     /// </summary>
     [ContentProperty("Children")]
-    public sealed partial class DrawingGroup : Drawing, IPortableDrawingGroupStateSource
+    public sealed partial class DrawingGroup : Drawing, IPortableDrawingGroupStateSource, IPortableDrawingGroupChildrenSource
     {
         #region Constructors
 
@@ -101,26 +101,29 @@ namespace System.Windows.Media
                 HasEdgeMode = edgeMode != EdgeMode.Unspecified,
                 EdgeMode = edgeMode,
                 HasClearTypeHint = clearTypeHint != ClearTypeHint.Auto,
-                ClearTypeHint = clearTypeHint,
-                Children = CopyPortableDrawingGroupChildren(Children)
+                ClearTypeHint = clearTypeHint
             };
             return true;
         }
 
-        private static object[] CopyPortableDrawingGroupChildren(DrawingCollection children)
+        bool IPortableDrawingGroupChildrenSource.TryGetPortableDrawingGroupChildCount(out int count)
         {
-            if (children == null || children.Count == 0)
+            DrawingCollection children = Children;
+            count = children?.Count ?? 0;
+            return count > 0;
+        }
+
+        bool IPortableDrawingGroupChildrenSource.TryGetPortableDrawingGroupChild(int index, out object child)
+        {
+            DrawingCollection children = Children;
+            if (children != null && index >= 0 && index < children.Count)
             {
-                return global::System.Array.Empty<object>();
+                child = children.Internal_GetItem(index);
+                return child != null;
             }
 
-            object[] values = new object[children.Count];
-            for (int i = 0; i < values.Length; i++)
-            {
-                values[i] = children.Internal_GetItem(i);
-            }
-
-            return values;
+            child = null;
+            return false;
         }
 
         private static bool IsPortableUsableRect(Rect rect)

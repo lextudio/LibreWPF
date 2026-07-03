@@ -7985,7 +7985,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var textureContext = texture.Context", adapter, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(textureContext, context)", adapter, StringComparison.Ordinal);
         Assert.Contains("private sealed class AdaptedTextureCache", adapter, StringComparison.Ordinal);
-        Assert.Contains("private readonly Dictionary<WgpuContext, GpuTexture> _texturesByContext", adapter, StringComparison.Ordinal);
+        Assert.Contains("private readonly Dictionary<WgpuContext, AdaptedTextureEntry> _texturesByContext", adapter, StringComparison.Ordinal);
+        Assert.Contains("private readonly record struct AdaptedTextureEntry", adapter, StringComparison.Ordinal);
 
         Assert.Contains("private bool IsTextureBindable(GpuTexture? texture)", compositor, StringComparison.Ordinal);
         Assert.Contains("var textureContext = texture?.Context", compositor, StringComparison.Ordinal);
@@ -12294,6 +12295,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CanProvideGpuTexture(imageSource)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("&& CanProvideGpuTexture(mediaImageSource)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("imageSource is IProGpuTextureSource", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("BitmapSourceTextureCacheKey", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("adapted.TryGet(context, cacheKey, out _)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains(".Set(context, cacheKey, adaptedTexture)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("replacedTexture?.Dispose();", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("TryCreateBitmapSourceTextureCacheKey(portablePixels, out cacheKey)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("HashBytes(portablePixels.Pixels)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("ResolveGpuTextureProperty", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("\"GpuTexture\",", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableBitmapSourcePixels", portableBitmapSourcePixels, StringComparison.Ordinal);
@@ -12305,7 +12312,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CopyPixels(sourcePixels, stride, 0);", sourceBitmapSource, StringComparison.Ordinal);
         Assert.Contains("using ProGPU.Wpf.Interop;", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("imageSource is IPortableBitmapSourcePixelsSource portableSource", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
-        Assert.Contains("TryCopyPortableBitmapSourceAsPbgra32Buffer(", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableBitmapSourcePixels(", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("TryConvertPortableBitmapSourceAsPbgra32Buffer(", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("TryMapPixelDataFormat(portablePixels.Format", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);

@@ -26,10 +26,11 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             return mediaImageSource;
         }
 
-        if (!TryCopyPortableBitmapSourceAsPbgra32Buffer(
+        if (!TryGetPortableBitmapSourcePixels(
                 imageSource,
                 out var portablePixels,
-                out var pixelBuffer))
+                out var formatKind,
+                out var cacheKey))
         {
             return null;
         }
@@ -37,11 +38,26 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         var width = portablePixels.Width;
         var height = portablePixels.Height;
         var context = ResolveGpuContext();
-        if (imageSource is MediaImageSource mediaSource
-            && TryCreateGpuTexture(context, width, height, pixelBuffer, out var adaptedTexture))
+        if (imageSource is not MediaImageSource mediaSource)
+        {
+            return null;
+        }
+
+        if (s_adaptedTextures.TryGetValue(mediaSource, out var adapted)
+            && adapted.TryGet(context, cacheKey, out _))
+        {
+            return mediaSource;
+        }
+
+        if (!TryConvertPortableBitmapSourceAsPbgra32Buffer(portablePixels, formatKind, out var pixelBuffer))
+        {
+            return null;
+        }
+
+        if (TryCreateGpuTexture(context, width, height, pixelBuffer, out var adaptedTexture))
         {
             s_adaptedTextures.GetValue(mediaSource, static _ => new AdaptedTextureCache())
-                .Set(context, adaptedTexture);
+                .Set(context, cacheKey, adaptedTexture);
             return mediaSource;
         }
 
@@ -173,15 +189,42 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
     private sealed class AdaptedTextureCache
     {
         private readonly object _gate = new();
-        private readonly Dictionary<WgpuContext, GpuTexture> _texturesByContext = new();
+        private readonly Dictionary<WgpuContext, AdaptedTextureEntry> _texturesByContext = new();
 
-        public void Set(WgpuContext context, GpuTexture texture)
+        public void Set(WgpuContext context, BitmapSourceTextureCacheKey cacheKey, GpuTexture texture)
+        {
+            GpuTexture? replacedTexture = null;
+            lock (_gate)
+            {
+                RemoveDisposedNoLock();
+                if (_texturesByContext.TryGetValue(context, out var existing)
+                    && !ReferenceEquals(existing.Texture, texture))
+                {
+                    replacedTexture = existing.Texture;
+                }
+
+                _texturesByContext[context] = new AdaptedTextureEntry(cacheKey, texture);
+            }
+
+            replacedTexture?.Dispose();
+        }
+
+        public bool TryGet(WgpuContext context, BitmapSourceTextureCacheKey cacheKey, out GpuTexture texture)
         {
             lock (_gate)
             {
                 RemoveDisposedNoLock();
-                _texturesByContext[context] = texture;
+                if (_texturesByContext.TryGetValue(context, out var entry)
+                    && entry.CacheKey.Equals(cacheKey)
+                    && IsUsableInContext(entry.Texture, context))
+                {
+                    texture = entry.Texture;
+                    return true;
+                }
             }
+
+            texture = null!;
+            return false;
         }
 
         public bool TryGet(WgpuContext? context, out GpuTexture texture)
@@ -192,15 +235,22 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 
                 if (context != null)
                 {
-                    return _texturesByContext.TryGetValue(context, out texture!)
-                        && IsUsableInContext(texture, context);
+                    if (_texturesByContext.TryGetValue(context, out var entry)
+                        && IsUsableInContext(entry.Texture, context))
+                    {
+                        texture = entry.Texture;
+                        return true;
+                    }
+
+                    texture = null!;
+                    return false;
                 }
 
                 foreach (var candidate in _texturesByContext.Values)
                 {
-                    if (IsUsableInContext(candidate, context))
+                    if (IsUsableInContext(candidate.Texture, context))
                     {
-                        texture = candidate;
+                        texture = candidate.Texture;
                         return true;
                     }
                 }
@@ -215,7 +265,7 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             List<WgpuContext>? staleContexts = null;
             foreach (var entry in _texturesByContext)
             {
-                if (entry.Key.IsDisposed || entry.Value.IsDisposed)
+                if (entry.Key.IsDisposed || entry.Value.Texture.IsDisposed)
                 {
                     staleContexts ??= new List<WgpuContext>();
                     staleContexts.Add(entry.Key);
@@ -233,6 +283,19 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             }
         }
     }
+
+    private readonly record struct AdaptedTextureEntry(
+        BitmapSourceTextureCacheKey CacheKey,
+        GpuTexture Texture);
+
+    internal readonly record struct BitmapSourceTextureCacheKey(
+        int Width,
+        int Height,
+        int Stride,
+        PortablePixelDataFormat Format,
+        int PaletteLength,
+        ulong PaletteHash,
+        ulong PixelHash);
 
     internal static bool TryCopyPixelsAsPbgra32(
         object imageSource,
@@ -263,10 +326,16 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         pixelBuffer = default;
 
         if (imageSource is not IPortableBitmapSourcePixelsSource portableSource
-            || !TryCopyPortableBitmapSourceAsPbgra32Buffer(
+            || !TryGetPortableBitmapSourcePixels(
                 portableSource,
                 out var portablePixels,
-                out pixelBuffer))
+                out var formatKind,
+                out _))
+        {
+            return false;
+        }
+
+        if (!TryConvertPortableBitmapSourceAsPbgra32Buffer(portablePixels, formatKind, out pixelBuffer))
         {
             return false;
         }
@@ -280,31 +349,35 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         return false;
     }
 
-    private static bool TryCopyPortableBitmapSourceAsPbgra32Buffer(
+    private static bool TryGetPortableBitmapSourcePixels(
         object imageSource,
         out PortableBitmapSourcePixels portablePixels,
-        out Pbgra32PixelBuffer pixelBuffer)
+        out PixelDataFormat formatKind,
+        out BitmapSourceTextureCacheKey cacheKey)
     {
         if (imageSource is IPortableBitmapSourcePixelsSource portableSource)
         {
-            return TryCopyPortableBitmapSourceAsPbgra32Buffer(
+            return TryGetPortableBitmapSourcePixels(
                 portableSource,
                 out portablePixels,
-                out pixelBuffer);
+                out formatKind,
+                out cacheKey);
         }
 
         portablePixels = null!;
-        pixelBuffer = default;
+        formatKind = default;
+        cacheKey = default;
         return false;
     }
 
-    private static bool TryCopyPortableBitmapSourceAsPbgra32Buffer(
+    private static bool TryGetPortableBitmapSourcePixels(
         IPortableBitmapSourcePixelsSource portableSource,
         out PortableBitmapSourcePixels portablePixels,
-        out Pbgra32PixelBuffer pixelBuffer)
+        out PixelDataFormat formatKind,
+        out BitmapSourceTextureCacheKey cacheKey)
     {
-        portablePixels = null!;
-        pixelBuffer = default;
+        formatKind = default;
+        cacheKey = default;
 
         if (!portableSource.TryGetPortableBitmapSourcePixels(out portablePixels)
             || portablePixels == null
@@ -312,10 +385,21 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             || portablePixels.Height <= 0
             || portablePixels.Stride <= 0
             || portablePixels.Pixels == null
-            || !TryMapPixelDataFormat(portablePixels.Format, out var formatKind))
+            || !TryMapPixelDataFormat(portablePixels.Format, out formatKind)
+            || !TryCreateBitmapSourceTextureCacheKey(portablePixels, out cacheKey))
         {
             return false;
         }
+
+        return true;
+    }
+
+    private static bool TryConvertPortableBitmapSourceAsPbgra32Buffer(
+        PortableBitmapSourcePixels portablePixels,
+        PixelDataFormat formatKind,
+        out Pbgra32PixelBuffer pixelBuffer)
+    {
+        pixelBuffer = default;
 
         var palette = CreatePalette(portablePixels.Palette);
         if (PixelDataConverter.RequiresPalette(formatKind) && palette.Length == 0)
@@ -337,6 +421,63 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 
         pixelBuffer = pbgra32Buffer;
         return true;
+    }
+
+    internal static bool TryCreateBitmapSourceTextureCacheKey(
+        PortableBitmapSourcePixels portablePixels,
+        out BitmapSourceTextureCacheKey cacheKey)
+    {
+        cacheKey = default;
+
+        if (portablePixels == null
+            || portablePixels.Width <= 0
+            || portablePixels.Height <= 0
+            || portablePixels.Stride <= 0
+            || portablePixels.Pixels == null)
+        {
+            return false;
+        }
+
+        var palette = portablePixels.Palette ?? Array.Empty<PortablePbgra32Color>();
+        cacheKey = new BitmapSourceTextureCacheKey(
+            portablePixels.Width,
+            portablePixels.Height,
+            portablePixels.Stride,
+            portablePixels.Format,
+            palette.Length,
+            HashPalette(palette),
+            HashBytes(portablePixels.Pixels));
+        return true;
+    }
+
+    private static ulong HashPalette(ReadOnlySpan<PortablePbgra32Color> palette)
+    {
+        ulong hash = 14695981039346656037UL;
+        foreach (var color in palette)
+        {
+            hash = AddHashByte(hash, color.B);
+            hash = AddHashByte(hash, color.G);
+            hash = AddHashByte(hash, color.R);
+            hash = AddHashByte(hash, color.A);
+        }
+
+        return hash;
+    }
+
+    private static ulong HashBytes(ReadOnlySpan<byte> bytes)
+    {
+        ulong hash = 14695981039346656037UL;
+        foreach (var value in bytes)
+        {
+            hash = AddHashByte(hash, value);
+        }
+
+        return hash;
+    }
+
+    private static ulong AddHashByte(ulong hash, byte value)
+    {
+        return (hash ^ value) * 1099511628211UL;
     }
 
     private static bool TryMapPixelDataFormat(

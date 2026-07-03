@@ -106,6 +106,71 @@ public sealed class WpfBitmapSourceImageAdapterTests
     }
 
     [Fact]
+    public void BitmapTextureCacheKeyTracksTypedPixelChanges()
+    {
+        var first = new PortableBitmapSourcePixels(
+            width: 2,
+            height: 1,
+            dpiX: 96,
+            dpiY: 96,
+            stride: 8,
+            format: PortablePixelDataFormat.Pbgra32,
+            pixels: new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 });
+        var second = new PortableBitmapSourcePixels(
+            width: 2,
+            height: 1,
+            dpiX: 96,
+            dpiY: 96,
+            stride: 8,
+            format: PortablePixelDataFormat.Pbgra32,
+            pixels: new byte[] { 1, 2, 3, 4, 5, 6, 7, 9 });
+
+        Assert.True(WpfBitmapSourceImageAdapter.TryCreateBitmapSourceTextureCacheKey(first, out var firstKey));
+        Assert.True(WpfBitmapSourceImageAdapter.TryCreateBitmapSourceTextureCacheKey(second, out var secondKey));
+
+        Assert.NotEqual(firstKey, secondKey);
+        Assert.NotEqual(firstKey.PixelHash, secondKey.PixelHash);
+    }
+
+    [Fact]
+    public void BitmapTextureCacheKeyTracksPaletteChanges()
+    {
+        var first = new PortableBitmapSourcePixels(
+            width: 2,
+            height: 1,
+            dpiX: 96,
+            dpiY: 96,
+            stride: 1,
+            format: PortablePixelDataFormat.Indexed1,
+            pixels: new byte[] { 0b1000_0000 },
+            palette: new[]
+            {
+                new PortablePbgra32Color(1, 2, 3, 255),
+                new PortablePbgra32Color(10, 25, 50, 128)
+            });
+        var second = new PortableBitmapSourcePixels(
+            width: 2,
+            height: 1,
+            dpiX: 96,
+            dpiY: 96,
+            stride: 1,
+            format: PortablePixelDataFormat.Indexed1,
+            pixels: new byte[] { 0b1000_0000 },
+            palette: new[]
+            {
+                new PortablePbgra32Color(1, 2, 3, 255),
+                new PortablePbgra32Color(11, 25, 50, 128)
+            });
+
+        Assert.True(WpfBitmapSourceImageAdapter.TryCreateBitmapSourceTextureCacheKey(first, out var firstKey));
+        Assert.True(WpfBitmapSourceImageAdapter.TryCreateBitmapSourceTextureCacheKey(second, out var secondKey));
+
+        Assert.NotEqual(firstKey, secondKey);
+        Assert.NotEqual(firstKey.PaletteHash, secondKey.PaletteHash);
+        Assert.Equal(firstKey.PixelHash, secondKey.PixelHash);
+    }
+
+    [Fact]
     public void CopyPixelsAsPbgra32PremultipliesBgra32()
     {
         var source = new FakeBitmapSource(

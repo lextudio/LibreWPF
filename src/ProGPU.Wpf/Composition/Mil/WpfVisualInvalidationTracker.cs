@@ -40,7 +40,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private readonly Dictionary<object, VisualStateSnapshot> _currentVisualStateSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _visualStateTraversalVisited = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _visualChildrenCurrentSources = new(ReferenceEqualityComparer.Instance);
-    private readonly HashSet<object> _visualChildrenTraversalVisited = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _subscriptionTraversalVisited = new(ReferenceEqualityComparer.Instance);
     private object? _root;
     private object? _lastDirtySource;
@@ -187,17 +186,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         _currentVisualStateSnapshots.Clear();
         _visualStateTraversalVisited.Clear();
         _visualChildrenCurrentSources.Clear();
-        _visualChildrenTraversalVisited.Clear();
         try
         {
-            CaptureVisualStateSnapshots(_root, _currentVisualStateSnapshots, _visualStateTraversalVisited);
-            CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources);
-            CollectVisualChildrenChanges(
+            CaptureVisualStateSnapshotsAndCollectVisualChildrenChanges(
                 _root,
+                _currentVisualStateSnapshots,
                 _visualChildrenSnapshots,
                 _visualChildrenCurrentSources,
                 _changedSources,
-                _visualChildrenTraversalVisited);
+                _visualStateTraversalVisited);
+            CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources);
             CollectRemovedVisualChildrenSources(
                 _visualChildrenSnapshots,
                 _visualChildrenCurrentSources,
@@ -217,7 +215,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             _currentVisualStateSnapshots.Clear();
             _visualStateTraversalVisited.Clear();
             _visualChildrenCurrentSources.Clear();
-            _visualChildrenTraversalVisited.Clear();
         }
     }
 
@@ -253,7 +250,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         _currentVisualStateSnapshots.Clear();
         _visualStateTraversalVisited.Clear();
         _visualChildrenCurrentSources.Clear();
-        _visualChildrenTraversalVisited.Clear();
         _subscriptionTraversalVisited.Clear();
         _root = null;
         _lastDirtySource = null;
@@ -359,19 +355,32 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
     }
 
-    private static void CaptureVisualStateSnapshots(
+    private static void CaptureVisualStateSnapshotsAndCollectVisualChildrenChanges(
         object root,
         Dictionary<object, VisualStateSnapshot> snapshots,
+        IReadOnlyDictionary<object, object?[]> previousChildren,
+        HashSet<object> currentChildrenSources,
+        List<object> changedSources,
         HashSet<object> visited)
     {
         snapshots.Clear();
+        currentChildrenSources.Clear();
         visited.Clear();
-        CaptureObjectVisualStates(root, snapshots, visited);
+        CaptureObjectVisualStateAndChildren(
+            root,
+            snapshots,
+            previousChildren,
+            currentChildrenSources,
+            changedSources,
+            visited);
     }
 
-    private static void CaptureObjectVisualStates(
+    private static void CaptureObjectVisualStateAndChildren(
         object? source,
         Dictionary<object, VisualStateSnapshot> snapshots,
+        IReadOnlyDictionary<object, object?[]> previousChildren,
+        HashSet<object> currentChildrenSources,
+        List<object> changedSources,
         HashSet<object> visited)
     {
         if (source == null || IsTerminalValue(source) || !visited.Add(source))
@@ -384,13 +393,34 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             snapshots[source] = snapshot;
         }
 
-        foreach (var item in EnumerateCollection(source))
+        if (TryGetPortableVisualChildrenSource(source, out var visualChildrenSource, out var count))
         {
-            CaptureObjectVisualStates(item, snapshots, visited);
+            currentChildrenSources.Add(source);
+            if (!previousChildren.TryGetValue(source, out var previousSnapshot) ||
+                !VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot))
+            {
+                changedSources.Add(source);
+            }
         }
 
-        var dependencyState = new CaptureVisualStateDependencyState(snapshots, visited);
-        VisitPortableDependencies(source, ref dependencyState, default(CaptureVisualStateDependencyVisitor));
+        foreach (var item in EnumerateCollection(source))
+        {
+            CaptureObjectVisualStateAndChildren(
+                item,
+                snapshots,
+                previousChildren,
+                currentChildrenSources,
+                changedSources,
+                visited);
+        }
+
+        var dependencyState = new CaptureVisualStateAndChildrenDependencyState(
+            snapshots,
+            previousChildren,
+            currentChildrenSources,
+            changedSources,
+            visited);
+        VisitPortableDependencies(source, ref dependencyState, default(CaptureVisualStateAndChildrenDependencyVisitor));
     }
 
     private static void CollectTrackedDependencies(
@@ -460,41 +490,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 changedSources.Add(snapshot.Key);
             }
         }
-    }
-
-    private static void CollectVisualChildrenChanges(
-        object? source,
-        IReadOnlyDictionary<object, object?[]> previous,
-        HashSet<object> currentSources,
-        List<object> changedSources,
-        HashSet<object> visited)
-    {
-        if (source == null || IsTerminalValue(source) || !visited.Add(source))
-        {
-            return;
-        }
-
-        if (TryGetPortableVisualChildrenSource(source, out var visualChildrenSource, out var count))
-        {
-            currentSources.Add(source);
-            if (!previous.TryGetValue(source, out var previousSnapshot) ||
-                !VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot))
-            {
-                changedSources.Add(source);
-            }
-        }
-
-        foreach (var item in EnumerateCollection(source))
-        {
-            CollectVisualChildrenChanges(item, previous, currentSources, changedSources, visited);
-        }
-
-        var dependencyState = new CollectVisualChildrenDependencyState(
-            previous,
-            currentSources,
-            changedSources,
-            visited);
-        VisitPortableDependencies(source, ref dependencyState, default(CollectVisualChildrenDependencyVisitor));
     }
 
     private static void CollectRemovedVisualChildrenSources(
@@ -1056,26 +1051,44 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
     }
 
-    private readonly struct CaptureVisualStateDependencyState
+    private readonly struct CaptureVisualStateAndChildrenDependencyState
     {
-        public CaptureVisualStateDependencyState(
+        public CaptureVisualStateAndChildrenDependencyState(
             Dictionary<object, VisualStateSnapshot> snapshots,
+            IReadOnlyDictionary<object, object?[]> previousChildren,
+            HashSet<object> currentChildrenSources,
+            List<object> changedSources,
             HashSet<object> visited)
         {
             Snapshots = snapshots;
+            PreviousChildren = previousChildren;
+            CurrentChildrenSources = currentChildrenSources;
+            ChangedSources = changedSources;
             Visited = visited;
         }
 
         public Dictionary<object, VisualStateSnapshot> Snapshots { get; }
 
+        public IReadOnlyDictionary<object, object?[]> PreviousChildren { get; }
+
+        public HashSet<object> CurrentChildrenSources { get; }
+
+        public List<object> ChangedSources { get; }
+
         public HashSet<object> Visited { get; }
     }
 
-    private readonly struct CaptureVisualStateDependencyVisitor : IPortableDependencyVisitor<CaptureVisualStateDependencyState>
+    private readonly struct CaptureVisualStateAndChildrenDependencyVisitor : IPortableDependencyVisitor<CaptureVisualStateAndChildrenDependencyState>
     {
-        public void Visit(ref CaptureVisualStateDependencyState state, object? dependency)
+        public void Visit(ref CaptureVisualStateAndChildrenDependencyState state, object? dependency)
         {
-            CaptureObjectVisualStates(dependency, state.Snapshots, state.Visited);
+            CaptureObjectVisualStateAndChildren(
+                dependency,
+                state.Snapshots,
+                state.PreviousChildren,
+                state.CurrentChildrenSources,
+                state.ChangedSources,
+                state.Visited);
         }
     }
 
@@ -1121,42 +1134,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         public void Visit(ref RegisterTrackedDependencyState state, object? dependency)
         {
             state.Registered |= RegisterTrackedDependencies(state.Sink, dependency, state.Visited);
-        }
-    }
-
-    private readonly struct CollectVisualChildrenDependencyState
-    {
-        public CollectVisualChildrenDependencyState(
-            IReadOnlyDictionary<object, object?[]> previous,
-            HashSet<object> currentSources,
-            List<object> changedSources,
-            HashSet<object> visited)
-        {
-            Previous = previous;
-            CurrentSources = currentSources;
-            ChangedSources = changedSources;
-            Visited = visited;
-        }
-
-        public IReadOnlyDictionary<object, object?[]> Previous { get; }
-
-        public HashSet<object> CurrentSources { get; }
-
-        public List<object> ChangedSources { get; }
-
-        public HashSet<object> Visited { get; }
-    }
-
-    private readonly struct CollectVisualChildrenDependencyVisitor : IPortableDependencyVisitor<CollectVisualChildrenDependencyState>
-    {
-        public void Visit(ref CollectVisualChildrenDependencyState state, object? dependency)
-        {
-            CollectVisualChildrenChanges(
-                dependency,
-                state.Previous,
-                state.CurrentSources,
-                state.ChangedSources,
-                state.Visited);
         }
     }
 

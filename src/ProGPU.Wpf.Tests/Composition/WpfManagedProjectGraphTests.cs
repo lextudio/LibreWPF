@@ -5825,13 +5825,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private readonly Dictionary<object, VisualStateSnapshot> _currentVisualStateSnapshots = new(ReferenceEqualityComparer.Instance);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<object> _visualStateTraversalVisited = new(ReferenceEqualityComparer.Instance);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<object> _visualChildrenCurrentSources = new(ReferenceEqualityComparer.Instance);", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("private readonly HashSet<object> _visualChildrenTraversalVisited = new(ReferenceEqualityComparer.Instance);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<object> _subscriptionTraversalVisited = new(ReferenceEqualityComparer.Instance);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("_changedSources.Clear();", trackerSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableVisualChildrenSnapshot(source, out var snapshot)", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("CaptureVisualStateSnapshots(_root, _currentVisualStateSnapshots, _visualStateTraversalVisited)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("CaptureVisualStateSnapshotsAndCollectVisualChildrenChanges(", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("CaptureObjectVisualStateAndChildren(", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources)", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("_visualChildrenCurrentSources,\n                _changedSources,\n                _visualChildrenTraversalVisited)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("_visualChildrenSnapshots,\n                _visualChildrenCurrentSources,\n                _changedSources,\n                _visualStateTraversalVisited)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CollectRemovedVisualChildrenSources(", trackerSource, StringComparison.Ordinal);
         Assert.Contains("MarkDirtyAndRefresh(_changedSources)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot)", trackerSource, StringComparison.Ordinal);
@@ -5843,6 +5843,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var changedSource in CollectVisualChildrenChanges", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static List<object> CollectVisualStateChanges", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static List<object> CollectVisualChildrenChanges", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static void CollectVisualChildrenChanges(", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("CollectVisualChildrenDependencyState", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("_visualChildrenTraversalVisited", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("var currentVisualStateSnapshots = CaptureVisualStateSnapshots(_root)", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("var currentSources = new HashSet<object>(ReferenceEqualityComparer.Instance);", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("var snapshots = new Dictionary<object, VisualStateSnapshot>(ReferenceEqualityComparer.Instance);", trackerSource, StringComparison.Ordinal);

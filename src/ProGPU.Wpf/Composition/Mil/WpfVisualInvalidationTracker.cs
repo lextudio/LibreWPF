@@ -106,14 +106,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         var currentVisualStateSnapshots = CaptureVisualStateSnapshots(_root);
-        var currentVisualChildrenSnapshots = CaptureVisualChildrenSnapshots(_root);
         var changedSources = new List<object>();
         foreach (var changedSource in CollectVisualStateChanges(_visualStateSnapshots, currentVisualStateSnapshots))
         {
             changedSources.Add(changedSource);
         }
 
-        foreach (var changedSource in CollectVisualChildrenChanges(_visualChildrenSnapshots, currentVisualChildrenSnapshots))
+        foreach (var changedSource in CollectVisualChildrenChanges(_root, _visualChildrenSnapshots))
         {
             changedSources.Add(changedSource);
         }
@@ -262,14 +261,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return snapshots;
     }
 
-    private static Dictionary<object, object?[]> CaptureVisualChildrenSnapshots(object root)
-    {
-        var snapshots = new Dictionary<object, object?[]>(ReferenceEqualityComparer.Instance);
-        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        CaptureObjectVisualChildren(root, snapshots, visited);
-        return snapshots;
-    }
-
     private static void CaptureObjectVisualStates(
         object? source,
         Dictionary<object, VisualStateSnapshot> snapshots,
@@ -293,32 +284,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         foreach (var dependency in EnumeratePortableDependencies(source))
         {
             CaptureObjectVisualStates(dependency, snapshots, visited);
-        }
-    }
-
-    private static void CaptureObjectVisualChildren(
-        object? source,
-        Dictionary<object, object?[]> snapshots,
-        HashSet<object> visited)
-    {
-        if (source == null || IsTerminalValue(source) || !visited.Add(source))
-        {
-            return;
-        }
-
-        if (TryReadPortableVisualChildrenSnapshot(source, out var snapshot))
-        {
-            snapshots[source] = snapshot;
-        }
-
-        foreach (var item in EnumerateCollection(source))
-        {
-            CaptureObjectVisualChildren(item, snapshots, visited);
-        }
-
-        foreach (var dependency in EnumeratePortableDependencies(source))
-        {
-            CaptureObjectVisualChildren(dependency, snapshots, visited);
         }
     }
 
@@ -372,29 +337,56 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     }
 
     private static List<object> CollectVisualChildrenChanges(
-        IReadOnlyDictionary<object, object?[]> previous,
-        IReadOnlyDictionary<object, object?[]> current)
+        object root,
+        IReadOnlyDictionary<object, object?[]> previous)
     {
         var changedSources = new List<object>();
-
-        foreach (var snapshot in current)
-        {
-            if (!previous.TryGetValue(snapshot.Key, out var previousSnapshot) ||
-                !VisualChildArraysEqual(previousSnapshot, snapshot.Value))
-            {
-                changedSources.Add(snapshot.Key);
-            }
-        }
+        var currentSources = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        CollectVisualChildrenChanges(root, previous, currentSources, changedSources, visited);
 
         foreach (var snapshot in previous)
         {
-            if (!current.ContainsKey(snapshot.Key))
+            if (!currentSources.Contains(snapshot.Key))
             {
                 changedSources.Add(snapshot.Key);
             }
         }
 
         return changedSources;
+    }
+
+    private static void CollectVisualChildrenChanges(
+        object? source,
+        IReadOnlyDictionary<object, object?[]> previous,
+        HashSet<object> currentSources,
+        List<object> changedSources,
+        HashSet<object> visited)
+    {
+        if (source == null || IsTerminalValue(source) || !visited.Add(source))
+        {
+            return;
+        }
+
+        if (TryGetPortableVisualChildrenSource(source, out var visualChildrenSource, out var count))
+        {
+            currentSources.Add(source);
+            if (!previous.TryGetValue(source, out var previousSnapshot) ||
+                !VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot))
+            {
+                changedSources.Add(source);
+            }
+        }
+
+        foreach (var item in EnumerateCollection(source))
+        {
+            CollectVisualChildrenChanges(item, previous, currentSources, changedSources, visited);
+        }
+
+        foreach (var dependency in EnumeratePortableDependencies(source))
+        {
+            CollectVisualChildrenChanges(dependency, previous, currentSources, changedSources, visited);
+        }
     }
 
     private static bool TryReadVisualStateSnapshot(object source, out VisualStateSnapshot snapshot)
@@ -538,9 +530,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private static bool TryReadPortableVisualChildrenSnapshot(object source, out object?[] children)
     {
         children = Array.Empty<object?>();
-        if (source is not PortableVisualChildrenSource visualChildrenSource ||
-            !visualChildrenSource.TryGetPortableVisualChildCount(out var count) ||
-            count < 0)
+        if (!TryGetPortableVisualChildrenSource(source, out var visualChildrenSource, out var count))
         {
             return false;
         }
@@ -559,6 +549,24 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return true;
     }
 
+    private static bool TryGetPortableVisualChildrenSource(
+        object source,
+        out PortableVisualChildrenSource visualChildrenSource,
+        out int count)
+    {
+        if (source is PortableVisualChildrenSource sourceVisualChildrenSource &&
+            sourceVisualChildrenSource.TryGetPortableVisualChildCount(out count) &&
+            count >= 0)
+        {
+            visualChildrenSource = sourceVisualChildrenSource;
+            return true;
+        }
+
+        visualChildrenSource = null!;
+        count = 0;
+        return false;
+    }
+
     private static object? TryGetPortableVisualChild(PortableVisualChildrenSource visualChildrenSource, int index)
     {
         try
@@ -575,21 +583,19 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
     }
 
-    private static bool VisualChildArraysEqual(object?[] previous, object?[] current)
+    private static bool VisualChildrenSnapshotEquals(
+        PortableVisualChildrenSource visualChildrenSource,
+        int count,
+        object?[] previous)
     {
-        if (ReferenceEquals(previous, current))
-        {
-            return true;
-        }
-
-        if (previous.Length != current.Length)
+        if (previous.Length != count)
         {
             return false;
         }
 
-        for (var i = 0; i < previous.Length; i++)
+        for (var i = 0; i < count; i++)
         {
-            if (!ReferenceEquals(previous[i], current[i]))
+            if (!ReferenceEquals(previous[i], TryGetPortableVisualChild(visualChildrenSource, i)))
             {
                 return false;
             }
@@ -705,11 +711,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
-        if (TryReadPortableVisualChildrenSnapshot(source, out var visualChildren))
+        if (TryGetPortableVisualChildrenSource(source, out var visualChildrenSource, out var visualChildrenCount))
         {
-            foreach (var visualChild in visualChildren)
+            for (var i = 0; i < visualChildrenCount; i++)
             {
-                AddPortableDependency(ref dependencies, visualChild);
+                AddPortableDependency(ref dependencies, TryGetPortableVisualChild(visualChildrenSource, i));
             }
         }
 

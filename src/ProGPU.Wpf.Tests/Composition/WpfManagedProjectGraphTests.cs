@@ -5592,8 +5592,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("\"GetVisualChild\"", rendererSource, StringComparison.Ordinal);
         Assert.Contains("using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;", trackerSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableVisualChildrenSnapshot(source, out var snapshot)", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("CollectVisualChildrenChanges(_visualChildrenSnapshots, currentVisualChildrenSnapshots)", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("AddPortableDependency(ref dependencies, visualChild)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("CollectVisualChildrenChanges(_root, _visualChildrenSnapshots)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("AddPortableDependency(ref dependencies, TryGetPortableVisualChild(visualChildrenSource, i))", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("currentVisualChildrenSnapshots", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("CaptureVisualChildrenSnapshots(_root)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualChildrenSource.TryGetPortableVisualChildCount(out int count)", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualChildrenSource.TryGetPortableVisualChild(int index, out object child)", visualSource, StringComparison.Ordinal);

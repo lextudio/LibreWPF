@@ -848,6 +848,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("_host.TryHitTestOwner(rootX, rootY", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Source : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Array.Empty<object>() : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private const string TraceHitTestEnvironmentVariable = \"PROGPU_WPF_TRACE_HIT_TEST\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private static readonly bool s_traceHitTest = IsHitTestTraceEnabled();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("if (!s_traceHitTest)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("TryBindUsesTypedPortableSourceContractWithoutReflectiveShape", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("TryBindInstallsGpuHitTestOverrideWhenSourceExposesHook", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestOverridesReturnHandledMissWhenCacheExists", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
@@ -5632,6 +5635,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ExtractVisualChildren", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadIntProperty(visual, \"VisualChildrenCount\"", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("\"GetVisualChild\"", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private const string TraceRetainedVisualsEnvironmentVariable = \"PROGPU_WPF_TRACE_RETAINED_VISUALS\";", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private static readonly bool s_traceRetainedVisuals = IsRetainedVisualTraceEnabled();", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("if (!s_traceRetainedVisuals)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;", trackerSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableVisualChildrenSnapshot(source, out var snapshot)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CollectVisualStateChanges(_visualStateSnapshots, currentVisualStateSnapshots, changedSources)", trackerSource, StringComparison.Ordinal);

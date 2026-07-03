@@ -26,6 +26,10 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 public sealed class WpfVisualTreeRenderer
 {
+    private const string TraceRetainedVisualsEnvironmentVariable = "PROGPU_WPF_TRACE_RETAINED_VISUALS";
+
+    private static readonly bool s_traceRetainedVisuals = IsRetainedVisualTraceEnabled();
+
     private enum RetainedOwnerScopeMode
     {
         None,
@@ -1434,7 +1438,7 @@ public sealed class WpfVisualTreeRenderer
 
     private static void TraceRetainedVisualOwnerState(object visual, string state)
     {
-        if (!IsRetainedVisualTraceEnabled())
+        if (!s_traceRetainedVisuals)
         {
             return;
         }
@@ -1460,7 +1464,7 @@ public sealed class WpfVisualTreeRenderer
 
     private static bool IsRetainedVisualTraceEnabled()
     {
-        string? value = Environment.GetEnvironmentVariable("PROGPU_WPF_TRACE_RETAINED_VISUALS");
+        string? value = Environment.GetEnvironmentVariable(TraceRetainedVisualsEnvironmentVariable);
         return string.Equals(value, "1", StringComparison.Ordinal) ||
             string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
     }

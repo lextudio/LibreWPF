@@ -8,7 +8,10 @@ namespace System.Windows.Media.ProGPU;
 
 public sealed class WpfPortablePresentationSourceBridge : IDisposable
 {
+    private const string TraceHitTestEnvironmentVariable = "PROGPU_WPF_TRACE_HIT_TEST";
     private const int HitTestOwnerBufferCapacity = 64;
+
+    private static readonly bool s_traceHitTest = IsHitTestTraceEnabled();
 
     private readonly ProGpuWpfWindowHost _host;
     private readonly IPortablePresentationSourceHost _source;
@@ -423,7 +426,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         object? selectedOwner,
         bool hasOwners = true)
     {
-        if (!IsHitTestTraceEnabled())
+        if (!s_traceHitTest)
         {
             return;
         }
@@ -458,7 +461,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
     private static bool IsHitTestTraceEnabled()
     {
-        string? value = Environment.GetEnvironmentVariable("PROGPU_WPF_TRACE_HIT_TEST");
+        string? value = Environment.GetEnvironmentVariable(TraceHitTestEnvironmentVariable);
         return string.Equals(value, "1", StringComparison.Ordinal) ||
             string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
     }

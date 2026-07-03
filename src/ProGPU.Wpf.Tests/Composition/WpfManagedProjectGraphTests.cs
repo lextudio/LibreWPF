@@ -8319,6 +8319,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PooledRemovalBuffer.Return(keysToRemove, keysToRemoveCount)", imageEffectPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("List<Compositor.TextureCacheKey>? keysToRemove", imageEffectPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("keysToRemove ??= new List<Compositor.TextureCacheKey>();", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("PathInfo[]? activePaths = null;", pathAtlas, StringComparison.Ordinal);
+        Assert.Contains("PooledRemovalBuffer.Add(ref activePaths", pathAtlas, StringComparison.Ordinal);
+        Assert.Contains("PooledRemovalBuffer.Return(activePaths, activePathCount)", pathAtlas, StringComparison.Ordinal);
+        Assert.DoesNotContain("var activePaths = new List<PathInfo>();", pathAtlas, StringComparison.Ordinal);
         Assert.Contains("nint[]? bindGroupsToRelease = null;", pathAtlas, StringComparison.Ordinal);
         Assert.Contains("PooledRemovalBuffer.Add(ref bindGroupsToRelease", pathAtlas, StringComparison.Ordinal);
         Assert.Contains("PooledRemovalBuffer.Return(bindGroupsToRelease, bindGroupToReleaseCount)", pathAtlas, StringComparison.Ordinal);

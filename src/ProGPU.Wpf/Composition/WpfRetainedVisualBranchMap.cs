@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using MediaBrush = System.Windows.Media.Brush;
 using ProGpuVisual = global::ProGPU.Scene.Visual;
@@ -10,9 +11,9 @@ namespace System.Windows.Media.ProGPU.Composition;
 public sealed class WpfRetainedVisualBranchMap
 {
     private readonly Dictionary<object, List<ProGpuVisual>> _visualsBySource = new(ReferenceEqualityComparer.Instance);
-    private readonly Dictionary<ProGpuVisual, HashSet<object>> _sourcesByVisual = new(ReferenceEqualityComparer.Instance);
-    private readonly Dictionary<ProGpuVisual, HashSet<object>> _sourceOwnersByVisual = new(ReferenceEqualityComparer.Instance);
-    private readonly Dictionary<ProGpuVisual, HashSet<object>> _dependenciesByVisual = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _sourcesByVisual = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _sourceOwnersByVisual = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _dependenciesByVisual = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _scratchDistinctSources = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<ProGpuVisual> _scratchVisitedVisuals = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<ProGpuVisual> _scratchInvalidatedVisuals = new(ReferenceEqualityComparer.Instance);
@@ -75,8 +76,11 @@ public sealed class WpfRetainedVisualBranchMap
             _visualsBySource.Add(source, visuals);
         }
 
-        if (_sourcesByVisual.TryGetValue(visual, out var sources) &&
-            sources.Contains(source))
+        ref var sources = ref CollectionsMarshal.GetValueRefOrAddDefault(
+            _sourcesByVisual,
+            visual,
+            out var hasSources);
+        if (hasSources && sources.Contains(source))
         {
             RegisterOwnerKind(source, visual, ownerKind);
             LastSource = source;
@@ -85,12 +89,6 @@ public sealed class WpfRetainedVisualBranchMap
         }
 
         visuals.Add(visual);
-        if (sources == null)
-        {
-            sources = new HashSet<object>(ReferenceEqualityComparer.Instance);
-            _sourcesByVisual.Add(visual, sources);
-        }
-
         sources.Add(source);
         RegisterOwnerKind(source, visual, ownerKind);
         VisualCount++;
@@ -594,12 +592,7 @@ public sealed class WpfRetainedVisualBranchMap
         var ownersByVisual = ownerKind == WpfRetainedVisualBranchOwnerKind.SourceOwner
             ? _sourceOwnersByVisual
             : _dependenciesByVisual;
-        if (!ownersByVisual.TryGetValue(visual, out var owners))
-        {
-            owners = new HashSet<object>(ReferenceEqualityComparer.Instance);
-            ownersByVisual.Add(visual, owners);
-        }
-
+        ref var owners = ref CollectionsMarshal.GetValueRefOrAddDefault(ownersByVisual, visual, out _);
         owners.Add(source);
     }
 
@@ -609,18 +602,12 @@ public sealed class WpfRetainedVisualBranchMap
     {
         replaySource = null!;
         if (!_sourceOwnersByVisual.TryGetValue(visual, out var sourceOwners) ||
-            sourceOwners.Count != 1)
+            !sourceOwners.TryGetSingle(out replaySource))
         {
             return false;
         }
 
-        foreach (var sourceOwner in sourceOwners)
-        {
-            replaySource = sourceOwner;
-            return true;
-        }
-
-        return false;
+        return true;
     }
 
     private static bool IsCoveredByTargetAncestor(
@@ -681,6 +668,123 @@ public sealed class WpfRetainedVisualBranchMap
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+    }
+
+    private struct ReferenceOwnerSet
+    {
+        private object? _single;
+        private HashSet<object>? _many;
+
+        public int Count => _many?.Count ?? (_single == null ? 0 : 1);
+
+        public bool Add(object source)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            if (_many != null)
+            {
+                return _many.Add(source);
+            }
+
+            if (_single == null)
+            {
+                _single = source;
+                return true;
+            }
+
+            if (ReferenceEquals(_single, source))
+            {
+                return false;
+            }
+
+            _many = new HashSet<object>(ReferenceEqualityComparer.Instance)
+            {
+                _single,
+                source
+            };
+            _single = null;
+            return true;
+        }
+
+        public bool Contains(object source)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            if (_many != null)
+            {
+                return _many.Contains(source);
+            }
+
+            return ReferenceEquals(_single, source);
+        }
+
+        public bool TryGetSingle(out object source)
+        {
+            if (_many == null && _single != null)
+            {
+                source = _single;
+                return true;
+            }
+
+            source = null!;
+            return false;
+        }
+
+        public Enumerator GetEnumerator()
+        {
+            return new Enumerator(_single, _many);
+        }
+
+        public struct Enumerator
+        {
+            private readonly object? _single;
+            private HashSet<object>.Enumerator _manyEnumerator;
+            private readonly bool _hasMany;
+            private bool _singleConsumed;
+
+            internal Enumerator(object? single, HashSet<object>? many)
+            {
+                _single = single;
+                if (many != null)
+                {
+                    _manyEnumerator = many.GetEnumerator();
+                    _hasMany = true;
+                }
+                else
+                {
+                    _manyEnumerator = default;
+                    _hasMany = false;
+                }
+
+                _singleConsumed = false;
+                Current = null!;
+            }
+
+            public object Current { get; private set; }
+
+            public bool MoveNext()
+            {
+                if (_hasMany)
+                {
+                    if (!_manyEnumerator.MoveNext())
+                    {
+                        return false;
+                    }
+
+                    Current = _manyEnumerator.Current;
+                    return true;
+                }
+
+                if (_singleConsumed || _single == null)
+                {
+                    return false;
+                }
+
+                Current = _single;
+                _singleConsumed = true;
+                return true;
+            }
         }
     }
 }

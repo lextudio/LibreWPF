@@ -9898,6 +9898,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Backend",
             "GpuTextureReadbackBuffer.cs");
+        var proGpuWgpuContextPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Backend",
+            "WgpuContext.cs");
         var proGpuTexturePath = FindRepoPath(
             "external",
             "ProGPU",
@@ -10113,6 +10119,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuAvaloniaHostControl = File.ReadAllText(proGpuAvaloniaHostControlPath);
         var proGpuAvaloniaSampleMainWindow = File.ReadAllText(proGpuAvaloniaSampleMainWindowPath);
         var proGpuTextureReadbackBuffer = File.ReadAllText(proGpuTextureReadbackBufferPath);
+        var proGpuWgpuContext = File.ReadAllText(proGpuWgpuContextPath);
         var proGpuTexture = File.ReadAllText(proGpuTexturePath);
         var proGpuBuffer = File.ReadAllText(proGpuBufferPath);
         var proGpuSceneCompositor = File.ReadAllText(proGpuSceneCompositorPath);
@@ -10206,6 +10213,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("finally\n        {\n            UnmapActiveBuffer();\n        }", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.Wgpu.BufferUnmap(_buffer);", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.QueueBufferDisposal((IntPtr)_buffer)", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("using System.Buffers;", proGpuWgpuContext, StringComparison.Ordinal);
+        Assert.Contains("private readonly HashSet<IntPtr> _pendingSnapshotSeen = new();", proGpuWgpuContext, StringComparison.Ordinal);
+        Assert.Contains("private PooledResourcePointerSnapshot SnapshotPendingResourcePointers(List<IntPtr> pending)", proGpuWgpuContext, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<IntPtr>.Shared.Rent(pending.Count)", proGpuWgpuContext, StringComparison.Ordinal);
+        Assert.Contains("foreach (var bg in bindGroups.Span)", proGpuWgpuContext, StringComparison.Ordinal);
+        Assert.Contains("private readonly struct PooledResourcePointerSnapshot", proGpuWgpuContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("var snapshot = new List<IntPtr>(pending.Count)", proGpuWgpuContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("return snapshot.ToArray();", proGpuWgpuContext, StringComparison.Ordinal);
         Assert.Contains("public byte[] ReadPixels(uint mipLevel = 0)", proGpuTexture, StringComparison.Ordinal);
         Assert.Contains("var readbackBuffer = new GpuTextureReadbackBuffer(_context);", proGpuTexture, StringComparison.Ordinal);
         Assert.Contains("readbackBuffer.TryReadTextureRows(", proGpuTexture, StringComparison.Ordinal);

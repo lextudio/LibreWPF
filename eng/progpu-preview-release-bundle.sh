@@ -8,6 +8,7 @@ manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/progpu-w
 bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}"
 sidecar_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE_SHA256:-${bundle_output}.sha256}"
 release_readme_path="${PROGPU_WPF_PREVIEW_RELEASE_README:-${package_output}/README.md}"
+release_nuget_config_path="${PROGPU_WPF_PREVIEW_RELEASE_NUGET_CONFIG:-${package_output}/NuGet.config}"
 source "${repo_root}/eng/progpu-preview-package-list.sh"
 
 package_ids=("${progpu_preview_package_ids[@]}")
@@ -26,7 +27,8 @@ file_sha256() {
 bundle_dir="$(dirname "${bundle_output}")"
 sidecar_dir="$(dirname "${sidecar_output}")"
 readme_dir="$(dirname "${release_readme_path}")"
-mkdir -p "${bundle_dir}" "${sidecar_dir}" "${readme_dir}"
+nuget_config_dir="$(dirname "${release_nuget_config_path}")"
+mkdir -p "${bundle_dir}" "${sidecar_dir}" "${readme_dir}" "${nuget_config_dir}"
 rm -f "${bundle_output}" "${sidecar_output}"
 
 cat >"${release_readme_path}" <<README
@@ -47,7 +49,7 @@ Verify the archive with the adjacent checksum file:
 shasum -a 256 -c progpu-wpf-preview-${dev_package_version}.tar.gz.sha256
 \`\`\`
 
-Use the extracted directory as a local NuGet source, then switch an existing WPF project to the custom SDK:
+Use the extracted directory as a local NuGet source, or copy the bundled \`NuGet.config\` next to your solution and keep the extracted bundle beside it. Then switch an existing WPF project to the custom SDK:
 
 \`\`\`xml
 <Project Sdk="ProGPU.Wpf.Sdk/${dev_package_version}">
@@ -69,10 +71,23 @@ For repository validation, run:
 \`\`\`
 README
 
+cat >"${release_nuget_config_path}" <<NUGET
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="progpu-wpf-preview" value="." />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </packageSources>
+</configuration>
+NUGET
+
 archive_entries=()
 readme_name="$(basename "${release_readme_path}")"
+nuget_config_name="$(basename "${release_nuget_config_path}")"
 manifest_name="$(basename "${manifest_path}")"
 archive_entries+=("${readme_name}")
+archive_entries+=("${nuget_config_name}")
 archive_entries+=("${manifest_name}")
 
 if [[ ! -f "${manifest_path}" ]]; then
@@ -82,6 +97,11 @@ fi
 
 if [[ ! -f "${release_readme_path}" ]]; then
   echo "Missing preview release README ${release_readme_path}." >&2
+  exit 1
+fi
+
+if [[ ! -f "${release_nuget_config_path}" ]]; then
+  echo "Missing preview release NuGet config ${release_nuget_config_path}." >&2
   exit 1
 fi
 

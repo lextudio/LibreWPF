@@ -14,15 +14,6 @@ package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Rel
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
 bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}"
 
-xml_escape() {
-  local value="$1"
-  value="${value//&/&amp;}"
-  value="${value//\"/&quot;}"
-  value="${value//</&lt;}"
-  value="${value//>/&gt;}"
-  printf '%s' "${value}"
-}
-
 require_package_cache_entry() {
   local package_id="$1"
   local package_key
@@ -46,21 +37,10 @@ else
 fi
 
 feed_dir="${smoke_root}/feed"
-project_dir="${smoke_root}/BundleSdkSmoke"
-mkdir -p "${feed_dir}" "${project_dir}"
+mkdir -p "${feed_dir}"
 tar -xzf "${bundle_output}" -C "${feed_dir}"
-
-feed_dir_xml="$(xml_escape "${feed_dir}")"
-cat >"${project_dir}/NuGet.config" <<NUGET
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <clear />
-    <add key="preview-bundle" value="${feed_dir_xml}" />
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-  </packageSources>
-</configuration>
-NUGET
+project_dir="${feed_dir}/BundleSdkSmoke"
+mkdir -p "${project_dir}"
 
 cat >"${project_dir}/BundleSdkSmoke.csproj" <<PROJECT
 <Project Sdk="ProGPU.Wpf.Sdk/${dev_package_version}">

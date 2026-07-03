@@ -8,6 +8,7 @@ manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/progpu-w
 bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}"
 sidecar_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE_SHA256:-${bundle_output}.sha256}"
 release_readme_path="${PROGPU_WPF_PREVIEW_RELEASE_README:-${package_output}/README.md}"
+release_nuget_config_path="${PROGPU_WPF_PREVIEW_RELEASE_NUGET_CONFIG:-${package_output}/NuGet.config}"
 source "${repo_root}/eng/progpu-preview-package-list.sh"
 
 package_ids=("${progpu_preview_package_ids[@]}")
@@ -47,8 +48,10 @@ fi
 
 archive_entries=()
 readme_name="$(basename "${release_readme_path}")"
+nuget_config_name="$(basename "${release_nuget_config_path}")"
 manifest_name="$(basename "${manifest_path}")"
 archive_entries+=("${readme_name}")
+archive_entries+=("${nuget_config_name}")
 archive_entries+=("${manifest_name}")
 for package_id in "${package_ids[@]}"; do
   archive_entries+=("${package_id}.${dev_package_version}.nupkg")
@@ -74,6 +77,11 @@ if [[ -f "${release_readme_path}" ]] && ! cmp -s "${release_readme_path}" "${ext
   exit 1
 fi
 
+if [[ -f "${release_nuget_config_path}" ]] && ! cmp -s "${release_nuget_config_path}" "${extract_dir}/${nuget_config_name}"; then
+  echo "Preview release bundle NuGet config ${nuget_config_name} does not match ${release_nuget_config_path}." >&2
+  exit 1
+fi
+
 if [[ -f "${manifest_path}" ]] && ! cmp -s "${manifest_path}" "${extract_dir}/${manifest_name}"; then
   echo "Preview release bundle manifest ${manifest_name} does not match ${manifest_path}." >&2
   exit 1
@@ -84,6 +92,13 @@ if ! grep -q "ProGPU.Wpf.Sdk/${dev_package_version}" "${readme_file}" \
   || ! grep -q "shasum -a 256 -c progpu-wpf-preview-${dev_package_version}.tar.gz.sha256" "${readme_file}" \
   || ! grep -q "No ProGPU-specific source or XAML changes should be required" "${readme_file}"; then
   echo "Preview release bundle README is missing required SDK switch or verification guidance." >&2
+  exit 1
+fi
+
+nuget_config_file="${extract_dir}/${nuget_config_name}"
+if ! grep -q "<add key=\"progpu-wpf-preview\" value=\"\\.\" />" "${nuget_config_file}" \
+  || ! grep -q "<add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" />" "${nuget_config_file}"; then
+  echo "Preview release bundle NuGet config is missing required package sources." >&2
   exit 1
 fi
 

@@ -12673,6 +12673,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfPortableRectangleClipReader.TryGetRectangleClipBounds(geometry, out bounds)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(portableClip)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("nativeMediaGeometrySink.PushNativeGeometryClip(clipGeometry)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("private ref struct DecodePushStack", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("Span<bool> initialPushStack = stackalloc bool[InitialPushStackCapacity];", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("using var pushStack = new DecodePushStack(initialPushStack);", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<bool>.Shared.Rent(newSize)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Stack<bool>()", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Collections.Generic;", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("DecodeNativeDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodeTypedDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodeNativeDrawGeometryUsesLocalRectanglePrimitiveWithoutGenericGeometryFallback", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);

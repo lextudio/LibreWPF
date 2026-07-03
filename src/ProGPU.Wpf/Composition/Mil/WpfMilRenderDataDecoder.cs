@@ -1,6 +1,6 @@
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.Numerics;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
@@ -19,6 +19,66 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 public sealed class WpfMilRenderDataDecoder
 {
     private const int RecordHeaderSize = 8;
+    private const int InitialPushStackCapacity = 32;
+
+    private ref struct DecodePushStack
+    {
+        private Span<bool> _items;
+        private bool[]? _rentedItems;
+        private int _count;
+
+        public DecodePushStack(Span<bool> initialItems)
+        {
+            _items = initialItems;
+            _rentedItems = null;
+            _count = 0;
+        }
+
+        public readonly int Count => _count;
+
+        public void Push(bool value)
+        {
+            if (_count >= _items.Length)
+            {
+                Grow();
+            }
+
+            _items[_count++] = value;
+        }
+
+        public bool Pop()
+        {
+            return _items[--_count];
+        }
+
+        public void Dispose()
+        {
+            if (_rentedItems != null)
+            {
+                ArrayPool<bool>.Shared.Return(_rentedItems, clearArray: true);
+                _rentedItems = null;
+            }
+
+            _items = Span<bool>.Empty;
+            _count = 0;
+        }
+
+        private void Grow()
+        {
+            var newSize = _items.Length == 0 ? InitialPushStackCapacity : _items.Length * 2;
+            var rented = ArrayPool<bool>.Shared.Rent(newSize);
+            _items.Slice(0, _count).CopyTo(rented);
+
+            var previousRented = _rentedItems;
+            _items = rented;
+            _rentedItems = rented;
+
+            if (previousRented != null)
+            {
+                ArrayPool<bool>.Shared.Return(previousRented, clearArray: true);
+            }
+        }
+    }
 
     public WpfMilDecodeResult Decode(
         ReadOnlySpan<byte> renderData,
@@ -38,7 +98,8 @@ public sealed class WpfMilRenderDataDecoder
         ArgumentNullException.ThrowIfNull(sink);
         ArgumentNullException.ThrowIfNull(resources);
 
-        var pushStack = new Stack<bool>();
+        Span<bool> initialPushStack = stackalloc bool[InitialPushStackCapacity];
+        using var pushStack = new DecodePushStack(initialPushStack);
         var recordCount = 0;
         var appliedCount = 0;
         var skippedCount = 0;
@@ -370,7 +431,8 @@ public sealed class WpfMilRenderDataDecoder
         ArgumentNullException.ThrowIfNull(nativeSink);
         ArgumentNullException.ThrowIfNull(resources);
 
-        var pushStack = new Stack<bool>();
+        Span<bool> initialPushStack = stackalloc bool[InitialPushStackCapacity];
+        using var pushStack = new DecodePushStack(initialPushStack);
         var recordCount = 0;
         var appliedCount = 0;
         var skippedCount = 0;

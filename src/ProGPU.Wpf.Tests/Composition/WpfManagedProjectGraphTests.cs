@@ -9509,6 +9509,18 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Backend",
             "GpuBuffer.cs");
+        var proGpuSceneCompositorPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Compositor.cs");
+        var proGpuTextureBlendRenderTestsPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Tests",
+            "TextureBlendRenderTests.cs");
         var proGpuDirectXBindingsPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -9692,6 +9704,8 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuTextureReadbackBuffer = File.ReadAllText(proGpuTextureReadbackBufferPath);
         var proGpuTexture = File.ReadAllText(proGpuTexturePath);
         var proGpuBuffer = File.ReadAllText(proGpuBufferPath);
+        var proGpuSceneCompositor = File.ReadAllText(proGpuSceneCompositorPath);
+        var proGpuTextureBlendRenderTests = File.ReadAllText(proGpuTextureBlendRenderTestsPath);
         var proGpuDirectXBindings = File.ReadAllText(proGpuDirectXBindingsPath);
         var proGpuDirectXHlslTranslator = File.ReadAllText(proGpuDirectXHlslTranslatorPath);
         var proGpuDirectXSciChart = File.ReadAllText(proGpuDirectXSciChartPath);
@@ -9781,6 +9795,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("BufferRelease(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferDestroy(buffer)", proGpuBuffer, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferRelease(buffer)", proGpuBuffer, StringComparison.Ordinal);
+        Assert.Contains("QuadClipper.TryClipAxisAlignedQuad(", proGpuSceneCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("transform.M11 < 0.0f", proGpuSceneCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("transform.M22 < 0.0f", proGpuSceneCompositor, StringComparison.Ordinal);
+        Assert.Contains("MirroredClippedTextureCommandUploadsTrimmedQuadWithPreservedUv", proGpuTextureBlendRenderTests, StringComparison.Ordinal);
+        Assert.Contains("Matrix4x4.CreateScale(-1f, 1f, 1f)", proGpuTextureBlendRenderTests, StringComparison.Ordinal);
 
         Assert.Contains("name: ProGPU WPF SDK", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("submodules: recursive", sdkCiWorkflow, StringComparison.Ordinal);

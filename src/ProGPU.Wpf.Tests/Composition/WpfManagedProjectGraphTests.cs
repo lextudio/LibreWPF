@@ -9578,6 +9578,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Avalonia",
             "ProGpuHostControl.cs");
+        var proGpuAvaloniaSampleMainWindowPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Samples.Avalonia",
+            "MainWindow.axaml.cs");
         var proGpuTextureReadbackBufferPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -9788,6 +9794,7 @@ public sealed class WpfManagedProjectGraphTests
         var scichartRunScript = File.ReadAllText(scichartRunScriptPath);
         var proGpuDirectoryBuildProps = File.ReadAllText(proGpuDirectoryBuildPropsPath);
         var proGpuAvaloniaHostControl = File.ReadAllText(proGpuAvaloniaHostControlPath);
+        var proGpuAvaloniaSampleMainWindow = File.ReadAllText(proGpuAvaloniaSampleMainWindowPath);
         var proGpuTextureReadbackBuffer = File.ReadAllText(proGpuTextureReadbackBufferPath);
         var proGpuTexture = File.ReadAllText(proGpuTexturePath);
         var proGpuBuffer = File.ReadAllText(proGpuBufferPath);
@@ -9863,12 +9870,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("private GpuBuffer* _stagingBuffer;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferMapAsync(_stagingBuffer", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.Contains("private bool _renderDispatchQueued = false;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
+        Assert.Contains("public void RequestRender()", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.Contains("private void QueueRenderUpdate()", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.Contains("private async void ProcessQueuedRenderUpdate()", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.UIThread.Post(ProcessQueuedRenderUpdate, DispatcherPriority.Render);", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.Contains("if (change.Property == WinuiRootProperty)", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.DoesNotContain("private async void QueueRenderUpdate()", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.DoesNotContain("base.Render(context);\n        QueueRenderUpdate();", proGpuAvaloniaHostControl, StringComparison.Ordinal);
+        Assert.Contains("ProGpuHost.RequestRender();", proGpuAvaloniaSampleMainWindow, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuHost.InvalidateVisual();", proGpuAvaloniaSampleMainWindow, StringComparison.Ordinal);
         Assert.Contains("public unsafe sealed class GpuTextureReadbackBuffer", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("public static uint AlignBytesPerRow", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.PollDevice(wait: false)", proGpuTextureReadbackBuffer, StringComparison.Ordinal);

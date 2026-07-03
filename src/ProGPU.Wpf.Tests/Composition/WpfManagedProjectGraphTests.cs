@@ -397,6 +397,26 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Scene",
             "Compositor.cs");
+        var proGpuSeriesBufferPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Backend",
+            "GpuSeriesBuffer.cs");
+        var proGpuLineSeriesPipelinePath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Extensions",
+            "GpuLineSeriesExtensionPipeline.cs");
+        var proGpuScatterSeriesPipelinePath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Extensions",
+            "GpuScatterSeriesExtensionPipeline.cs");
         var proGpuHitTestCachePath = FindRepoPath(
             "external",
             "ProGPU",
@@ -470,6 +490,9 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuRetainedVisualDependencyRegistrar = File.ReadAllText(proGpuRetainedVisualDependencyRegistrarPath);
         var proGpuRetainedCompositionCommandSink = File.ReadAllText(proGpuRetainedCompositionCommandSinkPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
+        var proGpuSeriesBuffer = File.ReadAllText(proGpuSeriesBufferPath);
+        var proGpuLineSeriesPipeline = File.ReadAllText(proGpuLineSeriesPipelinePath);
+        var proGpuScatterSeriesPipeline = File.ReadAllText(proGpuScatterSeriesPipelinePath);
         var proGpuHitTestCache = File.ReadAllText(proGpuHitTestCachePath);
         var proGpuHitTesting = File.ReadAllText(proGpuHitTestingPath);
         var proGpuHitTestingTests = File.ReadAllText(proGpuHitTestingTestsPath);
@@ -1210,6 +1233,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("detached ??= new List<Visual>();", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("stale ??= new List<Visual>();", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_maskTexturePool.ToArray()", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("public void Upload(ReadOnlySpan<float> interleavedCoords, int pointsCount)", proGpuSeriesBuffer, StringComparison.Ordinal);
+        Assert.Contains("Buffer.Write(interleavedCoords)", proGpuSeriesBuffer, StringComparison.Ordinal);
+        Assert.Contains("tempBuffer.Upload(floatsSpan.Slice(0, pointsCount * 2), pointsCount)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("tempBuffer.Upload(floatsSpan.Slice(0, pointsCount * 3), pointsCount)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var array = ArrayPool<float>.Shared.Rent(pointsCount * 3)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<float>.Shared.Return(array)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("tempBuffer.Upload(floatsSpan.Slice(0, pointsCount * 2), pointsCount)", proGpuLineSeriesPipeline, StringComparison.Ordinal);
+        Assert.Contains("tempBuffer.Upload(floatsSpan.Slice(0, pointsCount * 3), pointsCount)", proGpuScatterSeriesPipeline, StringComparison.Ordinal);
+        Assert.Contains("var array = ArrayPool<float>.Shared.Rent(pointsCount * 3)", proGpuScatterSeriesPipeline, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<float>.Shared.Return(array)", proGpuScatterSeriesPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("var array = new float[pointsCount * 2];", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("var array = new float[pointsCount * 3];", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("var array = new float[pointsCount * 2];", proGpuLineSeriesPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("var array = new float[pointsCount * 3];", proGpuScatterSeriesPipeline, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);

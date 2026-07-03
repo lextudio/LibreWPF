@@ -794,6 +794,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PointerCoordinateExceedsLogicalClient(input.X, geometry.LogicalWidth)", proGpuHost, StringComparison.Ordinal);
         Assert.DoesNotContain("RenderSurfaceCoordinatesLookPhysical(geometry)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TRACE_INPUT", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private static readonly bool s_traceInput = IsTraceEnabled(TraceInputEnvironmentVariable);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("if (!s_traceInput)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceInputEvent(\"native\", e)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceInputEvent(\"wpf\", input)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryHitTestOwner(double x, double y, out object? owner)", proGpuHost, StringComparison.Ordinal);
@@ -852,6 +854,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GpuHitTestPointOverrideTreatsTransparentGpuOwnerAsHandledMissWithoutSingleOwnerRetry", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("Assert.Empty(source.HitTestEllipseBoundsOverride", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TRACE_RENDER_SURFACE", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private static readonly bool s_traceRenderSurface = IsTraceEnabled(TraceRenderSurfaceEnvironmentVariable);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("if (!s_traceRenderSurface)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private static bool IsTraceEnabled(string environmentVariable)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceRenderSurfaceGeometryIfRequested(geometry)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("RequestRenderAndWakeNativeLoop();", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal void RequestRenderAndWakeNativeLoop()", proGpuHost, StringComparison.Ordinal);

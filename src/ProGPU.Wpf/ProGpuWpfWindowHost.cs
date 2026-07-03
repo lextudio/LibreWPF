@@ -24,6 +24,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private const string TraceInputEnvironmentVariable = "PROGPU_WPF_TRACE_INPUT";
     private const int HitTestOwnerBufferCapacity = 64;
 
+    private static readonly bool s_traceRenderSurface = IsTraceEnabled(TraceRenderSurfaceEnvironmentVariable);
+    private static readonly bool s_traceInput = IsTraceEnabled(TraceInputEnvironmentVariable);
+
     private readonly ProGpuWpfWindowOptions _options;
     private IWindow? _window;
     private ProGpuWpfCompositionTarget? _target;
@@ -904,7 +907,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private static void TraceRenderSurfaceGeometryIfRequested(RenderSurfaceGeometry geometry)
     {
-        if (Environment.GetEnvironmentVariable(TraceRenderSurfaceEnvironmentVariable) != "1")
+        if (!s_traceRenderSurface)
         {
             return;
         }
@@ -1995,7 +1998,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private static void TraceInputEvent(string stage, WpfInputEventArgs input)
     {
-        if (Environment.GetEnvironmentVariable(TraceInputEnvironmentVariable) != "1")
+        if (!s_traceInput)
         {
             return;
         }
@@ -2012,6 +2015,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             $"x {input.X:0.###}, y {input.Y:0.###}, " +
             $"delta {input.DeltaX:0.###},{input.DeltaY:0.###}, " +
             $"button {input.Button}, modifiers {input.Modifiers}, handled {input.Handled}");
+    }
+
+    private static bool IsTraceEnabled(string environmentVariable)
+    {
+        return Environment.GetEnvironmentVariable(environmentVariable) == "1";
     }
 
     private WpfInputEventArgs NormalizeInputEventForCurrentRenderSurface(WpfInputEventArgs input)

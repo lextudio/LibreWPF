@@ -9940,6 +9940,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.DirectX",
             "ProGpuDirectXSciChart.cs");
+        var proGpuDirectXResourcesPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.DirectX",
+            "ProGpuDirectXResources.cs");
         var proGpuDirectXNativeDependencyInspectorPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -10114,6 +10120,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuDirectXBindings = File.ReadAllText(proGpuDirectXBindingsPath);
         var proGpuDirectXHlslTranslator = File.ReadAllText(proGpuDirectXHlslTranslatorPath);
         var proGpuDirectXSciChart = File.ReadAllText(proGpuDirectXSciChartPath);
+        var proGpuDirectXResources = File.ReadAllText(proGpuDirectXResourcesPath);
         var proGpuDirectXNativeDependencyInspector = File.ReadAllText(proGpuDirectXNativeDependencyInspectorPath);
         var proGpuDirectXNativeCompatibilityPlan = File.ReadAllText(proGpuDirectXNativeCompatibilityPlanPath);
         var proGpuDirectXNativeAbiPlan = File.ReadAllText(proGpuDirectXNativeAbiPlanPath);
@@ -10208,6 +10215,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("QueueTemporaryReadbackBufferDisposal(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.QueueBufferDisposal((IntPtr)buffer)", proGpuBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.CleanupPendingResources();", proGpuBuffer, StringComparison.Ordinal);
+        Assert.Contains("public void ReadBytes(Span<byte> destination, uint offsetBytes = 0)", proGpuBuffer, StringComparison.Ordinal);
+        Assert.Contains("ReadBytes(bytes, offsetBytes);", proGpuBuffer, StringComparison.Ordinal);
+        Assert.Contains("MapReadBuffer(BufferPtr, mappedRange.OffsetBytes, mappedRange.SizeBytes, mappedRange.LeadingBytes, destination", proGpuBuffer, StringComparison.Ordinal);
+        Assert.Contains("MapReadBuffer(readbackBuffer, 0, copyRange.SizeBytes, copyRange.LeadingBytes, destination", proGpuBuffer, StringComparison.Ordinal);
+        Assert.DoesNotContain("private byte[] MapReadBuffer", proGpuBuffer, StringComparison.Ordinal);
+        Assert.DoesNotContain("return mappedBytes.AsSpan", proGpuBuffer, StringComparison.Ordinal);
+        Assert.DoesNotContain("return readbackBytes.AsSpan", proGpuBuffer, StringComparison.Ordinal);
+        Assert.Contains("public void ReadBytes(Span<byte> destination, uint offsetBytes = 0)", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.Contains("_backendBuffer.ReadBytes(destination, offsetBytes);", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.Contains("_backendBuffer.ReadBytes(writeShadowSpan, offsetBytes);", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.Contains("internal void ReadWriteShadowBytes(Span<byte> destination, uint offsetBytes)", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.Contains("sourceIndexBuffer.ReadWriteShadowBytes(MemoryMarshal.AsBytes(result.AsSpan()), offsetBytes);", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("var bytes = _backendBuffer.ReadBytes(offsetBytes, sizeInBytes);", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.DoesNotContain("return MemoryMarshal.Cast<byte, uint>(bytes).ToArray();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("wgpuDevicePoll", proGpuBuffer, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferDestroy(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferRelease(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);

@@ -1,6 +1,5 @@
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Text;
 using System.Windows;
 using System.Windows.Media.ProGPU.Platform;
@@ -16,6 +15,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private readonly bool _ownsSource;
     private Func<double, double, object?>? _hitTestOverrideHandler;
     private Func<double, double, object?[]?>? _hitTestAllOverrideHandler;
+    private PortableHitTestAllBufferOverride? _hitTestAllBufferOverrideHandler;
     private Func<double, double, double, double, object?[]?>? _hitTestBoundsOverrideHandler;
     private Func<double, double, double, double, object?[]?>? _hitTestEllipseBoundsOverrideHandler;
     private bool _isDisposed;
@@ -134,6 +134,12 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             _source.HitTestAllOverride = null;
         }
 
+        if (_hitTestAllBufferOverrideHandler != null &&
+            ReferenceEquals(_source.HitTestAllBufferOverride, _hitTestAllBufferOverrideHandler))
+        {
+            _source.HitTestAllBufferOverride = null;
+        }
+
         if (_hitTestBoundsOverrideHandler != null &&
             ReferenceEquals(_source.HitTestBoundsOverride, _hitTestBoundsOverrideHandler))
         {
@@ -193,11 +199,13 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     {
         _hitTestOverrideHandler = TryHitTestOwner;
         _hitTestAllOverrideHandler = HitTestOwners;
+        _hitTestAllBufferOverrideHandler = HitTestOwners;
         _hitTestBoundsOverrideHandler = HitTestBoundsOwners;
         _hitTestEllipseBoundsOverrideHandler = HitTestEllipseBoundsOwners;
 
         _source.HitTestOverride = _hitTestOverrideHandler;
         _source.HitTestAllOverride = _hitTestAllOverrideHandler;
+        _source.HitTestAllBufferOverride = _hitTestAllBufferOverrideHandler;
         _source.HitTestBoundsOverride = _hitTestBoundsOverrideHandler;
         _source.HitTestEllipseBoundsOverride = _hitTestEllipseBoundsOverrideHandler;
     }
@@ -474,35 +482,61 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
     private object?[]? HitTestOwners(double rootX, double rootY)
     {
-        if (_host.TryHitTestOwners(rootX, rootY, out object?[] owners))
+        object?[] ownerBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
+        try
         {
-            return FilterTransparentPointerOverlays(owners);
-        }
+            if (!HitTestOwners(rootX, rootY, ownerBuffer, out int ownerCount))
+            {
+                return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;
+            }
 
-        return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;
+            if (ownerCount == 0)
+            {
+                return Array.Empty<object?>();
+            }
+
+            var owners = new object?[ownerCount];
+            ownerBuffer.AsSpan(0, ownerCount).CopyTo(owners);
+            return owners;
+        }
+        finally
+        {
+            ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true);
+        }
     }
 
-    private static object?[] FilterTransparentPointerOverlays(object?[] owners)
+    private bool HitTestOwners(double rootX, double rootY, Span<object?> owners, out int ownerCount)
     {
-        List<object?>? filteredOwners = null;
+        if (!_host.TryHitTestOwners(rootX, rootY, owners, out ownerCount))
+        {
+            ownerCount = 0;
+            return _host.HasGpuHitTestCache;
+        }
+
+        ownerCount = FilterTransparentPointerOverlays(owners[..ownerCount]);
+        return true;
+    }
+
+    private static int FilterTransparentPointerOverlays(Span<object?> owners)
+    {
+        int writeIndex = 0;
         for (int i = 0; i < owners.Length; i++)
         {
             object? owner = owners[i];
             if (owner != null && IsTransparentPointerOverlay(owner))
             {
-                filteredOwners ??= new List<object?>(owners.Length);
-                for (int j = 0; j < i; j++)
-                {
-                    filteredOwners.Add(owners[j]);
-                }
-
                 continue;
             }
 
-            filteredOwners?.Add(owner);
+            owners[writeIndex++] = owner;
         }
 
-        return filteredOwners?.ToArray() ?? owners;
+        for (int i = writeIndex; i < owners.Length; i++)
+        {
+            owners[i] = null;
+        }
+
+        return writeIndex;
     }
 
     private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)

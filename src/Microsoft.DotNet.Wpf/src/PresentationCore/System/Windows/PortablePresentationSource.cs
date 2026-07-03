@@ -3,6 +3,7 @@
 
 using MS.Internal;
 using ProGPU.Wpf.Interop;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Windows.Media;
 using System.Windows.Input;
@@ -22,10 +23,12 @@ namespace System.Windows
         private readonly PortableMouseInputProvider _mouseInputProvider;
         private readonly HwndSource _portableHwndSource;
         private readonly IntPtr _handle;
+        private const int HitTestOwnerBufferCapacity = 64;
         private Visual _rootVisual;
         private Size _clientSize;
         private Func<double, double, object> _hostHitTestOverride;
         private Func<double, double, object[]> _hostHitTestAllOverride;
+        private PortableHitTestAllBufferOverride _hostHitTestAllBufferOverride;
         private Func<double, double, double, double, object[]> _hostHitTestBoundsOverride;
         private Func<double, double, double, double, object[]> _hostHitTestEllipseBoundsOverride;
         private bool _hasClientSize;
@@ -69,6 +72,8 @@ namespace System.Windows
         internal Func<Point, object> HitTestOverride { get; set; }
 
         internal Func<Point, object[]> HitTestAllOverride { get; set; }
+
+        internal PortableHitTestAllBufferOverride HitTestAllBufferOverride { get; set; }
 
         internal Func<Point, Point, object[]> HitTestBoundsOverride { get; set; }
 
@@ -137,6 +142,16 @@ namespace System.Windows
             {
                 _hostHitTestAllOverride = value;
                 HitTestAllOverride = value == null ? null : (point) => value(point.X, point.Y);
+            }
+        }
+
+        PortableHitTestAllBufferOverride IPortablePresentationSourceHost.HitTestAllBufferOverride
+        {
+            get { return _hostHitTestAllBufferOverride; }
+            set
+            {
+                _hostHitTestAllBufferOverride = value;
+                HitTestAllBufferOverride = value == null ? null : (double x, double y, Span<object> results, out int resultCount) => value(x, y, results, out resultCount);
             }
         }
 
@@ -502,7 +517,7 @@ namespace System.Windows
         {
             result = HitTestResultBehavior.Continue;
             if (_isDisposed ||
-                HitTestAllOverride == null ||
+                (HitTestAllBufferOverride == null && HitTestAllOverride == null) ||
                 reference == null ||
                 resultCallback == null ||
                 _rootVisual == null)
@@ -515,50 +530,56 @@ namespace System.Windows
                 return false;
             }
 
-            object[] hitTestResults = HitTestAllOverride(rootPoint);
-            if (hitTestResults == null)
+            if (!TryGetHitTestAllResults(rootPoint, out object[] hitTestResults, out int hitTestResultCount, out bool shouldReturnHitTestResults))
             {
                 return false;
             }
 
-            Dictionary<Visual, HitTestFilterBehavior> filterResults = filterCallback == null
-                ? null
-                : new Dictionary<Visual, HitTestFilterBehavior>();
-
-            for (int i = 0; i < hitTestResults.Length; i++)
+            try
             {
-                if (hitTestResults[i] is not Visual visualHit ||
-                    !IsVisualDescendantOf(visualHit, reference))
-                {
-                    continue;
-                }
+                Dictionary<Visual, HitTestFilterBehavior> filterResults = filterCallback == null
+                    ? null
+                    : new Dictionary<Visual, HitTestFilterBehavior>();
 
-                if (!IsPointHitVisibleByFilter(
-                        reference,
-                        visualHit,
-                        filterCallback,
-                        filterResults,
-                        out bool stopFilter))
+                for (int i = 0; i < hitTestResultCount; i++)
                 {
-                    if (stopFilter)
+                    if (hitTestResults[i] is not Visual visualHit ||
+                        !IsVisualDescendantOf(visualHit, reference))
                     {
-                        result = HitTestResultBehavior.Stop;
-                        return true;
+                        continue;
                     }
 
-                    continue;
-                }
+                    if (!IsPointHitVisibleByFilter(
+                            reference,
+                            visualHit,
+                            filterCallback,
+                            filterResults,
+                            out bool stopFilter))
+                    {
+                        if (stopFilter)
+                        {
+                            result = HitTestResultBehavior.Stop;
+                            return true;
+                        }
 
-                if (!TryTransformPoint(_rootVisual, visualHit, rootPoint, out Point pointHit))
-                {
-                    continue;
-                }
+                        continue;
+                    }
 
-                result = resultCallback(new PointHitTestResult(visualHit, pointHit));
-                if (result == HitTestResultBehavior.Stop)
-                {
-                    return true;
+                    if (!TryTransformPoint(_rootVisual, visualHit, rootPoint, out Point pointHit))
+                    {
+                        continue;
+                    }
+
+                    result = resultCallback(new PointHitTestResult(visualHit, pointHit));
+                    if (result == HitTestResultBehavior.Stop)
+                    {
+                        return true;
+                    }
                 }
+            }
+            finally
+            {
+                ReturnHitTestAllResults(hitTestResults, shouldReturnHitTestResults);
             }
 
             return true;
@@ -747,7 +768,7 @@ namespace System.Windows
             candidate = null;
             hitTestResult = null;
             if (_isDisposed ||
-                HitTestAllOverride == null ||
+                (HitTestAllBufferOverride == null && HitTestAllOverride == null) ||
                 reference == null ||
                 _rootVisual == null)
             {
@@ -759,27 +780,83 @@ namespace System.Windows
                 return false;
             }
 
-            object[] hitTestResults = HitTestAllOverride(rootPoint);
-            if (hitTestResults == null)
+            if (!TryGetHitTestAllResults(rootPoint, out object[] hitTestResults, out int hitTestResultCount, out bool shouldReturnHitTestResults))
             {
                 return false;
             }
 
-            for (int i = 0; i < hitTestResults.Length; i++)
+            try
             {
-                if (hitTestResults[i] is not Visual visualHit ||
-                    !IsInputHitTestVisibleDescendantOf(visualHit, reference) ||
-                    !TryTransformPoint(_rootVisual, visualHit, rootPoint, out Point pointHit))
+                for (int i = 0; i < hitTestResultCount; i++)
                 {
-                    continue;
-                }
+                    if (hitTestResults[i] is not Visual visualHit ||
+                        !IsInputHitTestVisibleDescendantOf(visualHit, reference) ||
+                        !TryTransformPoint(_rootVisual, visualHit, rootPoint, out Point pointHit))
+                    {
+                        continue;
+                    }
 
-                candidate = visualHit;
-                hitTestResult = new PointHitTestResult(visualHit, pointHit);
-                return true;
+                    candidate = visualHit;
+                    hitTestResult = new PointHitTestResult(visualHit, pointHit);
+                    return true;
+                }
+            }
+            finally
+            {
+                ReturnHitTestAllResults(hitTestResults, shouldReturnHitTestResults);
             }
 
             return true;
+        }
+
+        private bool TryGetHitTestAllResults(Point rootPoint, out object[] hitTestResults, out int hitTestResultCount, out bool shouldReturnHitTestResults)
+        {
+            if (HitTestAllBufferOverride != null)
+            {
+                object[] rentedResults = ArrayPool<object>.Shared.Rent(HitTestOwnerBufferCapacity);
+                if (!HitTestAllBufferOverride(rootPoint.X, rootPoint.Y, rentedResults, out hitTestResultCount) ||
+                    hitTestResultCount < 0 ||
+                    hitTestResultCount > rentedResults.Length)
+                {
+                    ArrayPool<object>.Shared.Return(rentedResults, clearArray: true);
+                    hitTestResults = null;
+                    hitTestResultCount = 0;
+                    shouldReturnHitTestResults = false;
+                    return false;
+                }
+
+                hitTestResults = rentedResults;
+                shouldReturnHitTestResults = true;
+                return true;
+            }
+
+            if (HitTestAllOverride == null)
+            {
+                hitTestResults = null;
+                hitTestResultCount = 0;
+                shouldReturnHitTestResults = false;
+                return false;
+            }
+
+            hitTestResults = HitTestAllOverride(rootPoint);
+            if (hitTestResults == null)
+            {
+                hitTestResultCount = 0;
+                shouldReturnHitTestResults = false;
+                return false;
+            }
+
+            hitTestResultCount = hitTestResults.Length;
+            shouldReturnHitTestResults = false;
+            return true;
+        }
+
+        private static void ReturnHitTestAllResults(object[] hitTestResults, bool shouldReturnHitTestResults)
+        {
+            if (shouldReturnHitTestResults)
+            {
+                ArrayPool<object>.Shared.Return(hitTestResults, clearArray: true);
+            }
         }
 
         private static bool TryTransformPoint(Visual fromVisual, Visual toVisual, Point point, out Point transformedPoint)

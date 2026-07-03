@@ -809,6 +809,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_source.RenderRequested += OnSourceRenderRequested;", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_source.CursorRequested += OnSourceCursorRequested;", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_source.HitTestOverride = _hitTestOverrideHandler;", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_source.HitTestAllBufferOverride = _hitTestAllBufferOverrideHandler;", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.DoesNotContain("PropertyInfo", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.DoesNotContain("MethodInfo", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
@@ -820,10 +821,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableVisualOwnerKind.Window", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object? TryHitTestOwner(double rootX, double rootY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestOwners(double rootX, double rootY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private bool HitTestOwners(double rootX, double rootY, Span<object?> owners, out int ownerCount)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestEllipseBoundsOwners(double minX, double minY, double maxX, double maxY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryHitTestOwners(rootX, rootY, ownerBuffer, out int ownerCount)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("FilterTransparentPointerOverlays(owners[..ownerCount])", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryQueryHitTestBoundsCandidates(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryQueryHitTestEllipseCandidates(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
@@ -1296,6 +1299,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit)", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(hitTestResult, this)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal Func<Point, object[]> HitTestAllOverride { get; set; }", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal PortableHitTestAllBufferOverride HitTestAllBufferOverride { get; set; }", portableSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetHitTestAllResults(rootPoint, out object[] hitTestResults, out int hitTestResultCount, out bool shouldReturnHitTestResults)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<object>.Shared.Rent(HitTestOwnerBufferCapacity)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<object>.Shared.Return(hitTestResults, clearArray: true)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal Func<Point, Point, object[]> HitTestBoundsOverride { get; set; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal Func<Point, Point, object[]> HitTestEllipseBoundsOverride { get; set; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal bool TryInputHitTestOverride(UIElement reference, Point referencePoint, out DependencyObject candidate, out HitTestResult hitTestResult)", portableSource, StringComparison.Ordinal);
@@ -15171,11 +15178,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableCompositionTarget.cs"" />", project, StringComparison.Ordinal);
 
         Assert.Contains("public interface IPortablePresentationSourceHost", portableSourceHost, StringComparison.Ordinal);
+        Assert.Contains("public delegate bool PortableHitTestAllBufferOverride(double x, double y, Span<object> results, out int resultCount)", portableSourceHost, StringComparison.Ordinal);
         Assert.Contains("event EventHandler RenderRequested", portableSourceHost, StringComparison.Ordinal);
         Assert.Contains("object RootVisual { get; set; }", portableSourceHost, StringComparison.Ordinal);
         Assert.Contains("Func<double, double, object> HitTestOverride", portableSourceHost, StringComparison.Ordinal);
+        Assert.Contains("PortableHitTestAllBufferOverride HitTestAllBufferOverride", portableSourceHost, StringComparison.Ordinal);
+        Assert.Contains("public delegate bool PortableHitTestAllBufferOverride(double x, double y, System.Span<object> results, out int resultCount)", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("public partial interface IPortablePresentationSourceHost : System.IDisposable", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("System.Func<double, double, object> HitTestOverride", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.PortableHitTestAllBufferOverride HitTestAllBufferOverride", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("event System.EventHandler RenderRequested", presentationCoreRef, StringComparison.Ordinal);
         Assert.Contains("internal sealed class PortablePresentationSource : PresentationSource, IPortablePresentationSourceHost, IDisposable", portableSource, StringComparison.Ordinal);
         Assert.Contains("private readonly PortableCompositionTarget _compositionTarget", portableSource, StringComparison.Ordinal);
@@ -15198,6 +15209,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("object IPortablePresentationSourceHost.CompositionTarget", portableSource, StringComparison.Ordinal);
         Assert.Contains("get { return _isDisposed ? null : _compositionTarget; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("Func<double, double, object> IPortablePresentationSourceHost.HitTestOverride", portableSource, StringComparison.Ordinal);
+        Assert.Contains("PortableHitTestAllBufferOverride IPortablePresentationSourceHost.HitTestAllBufferOverride", portableSource, StringComparison.Ordinal);
         Assert.Contains("candidate is not PortableGeometryHitTestCandidate portableCandidate", portableSource, StringComparison.Ordinal);
         Assert.Contains("ToIntersectionDetail(portableCandidate.IntersectionDetail)", portableSource, StringComparison.Ordinal);
         Assert.DoesNotContain("candidate is GeometryHitTestResult", portableSource, StringComparison.Ordinal);

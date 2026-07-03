@@ -177,10 +177,13 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.NotNull(bridge);
         Assert.NotNull(source.HitTestOverride);
         Assert.NotNull(source.HitTestAllOverride);
+        Assert.NotNull(source.HitTestAllBufferOverride);
         Assert.NotNull(source.HitTestBoundsOverride);
         Assert.NotNull(source.HitTestEllipseBoundsOverride);
         Assert.Null(source.HitTestOverride(12, 24));
         Assert.Null(source.HitTestAllOverride(12, 24));
+        Assert.False(source.HitTestAllBufferOverride!(12, 24, new object?[4], out var bufferCount));
+        Assert.Equal(0, bufferCount);
         Assert.Null(source.HitTestBoundsOverride(0, 0, 12, 24));
         Assert.Null(source.HitTestEllipseBoundsOverride(0, 0, 12, 24));
 
@@ -188,6 +191,7 @@ public sealed class WpfPortablePresentationSourceBridgeTests
 
         Assert.Null(source.HitTestOverride);
         Assert.Null(source.HitTestAllOverride);
+        Assert.Null(source.HitTestAllBufferOverride);
         Assert.Null(source.HitTestBoundsOverride);
         Assert.Null(source.HitTestEllipseBoundsOverride);
     }
@@ -207,10 +211,13 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.NotNull(bridge);
         Assert.NotNull(source.HitTestOverride);
         Assert.NotNull(source.HitTestAllOverride);
+        Assert.NotNull(source.HitTestAllBufferOverride);
         Assert.NotNull(source.HitTestBoundsOverride);
         Assert.NotNull(source.HitTestEllipseBoundsOverride);
         Assert.Same(source, source.HitTestOverride(12, 24));
         Assert.Empty(source.HitTestAllOverride(12, 24)!);
+        Assert.True(source.HitTestAllBufferOverride!(12, 24, new object?[4], out var bufferCount));
+        Assert.Equal(0, bufferCount);
         Assert.Empty(source.HitTestBoundsOverride(0, 0, 12, 24)!);
         Assert.Empty(source.HitTestEllipseBoundsOverride(0, 0, 12, 24)!);
     }
@@ -243,6 +250,8 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.NotNull(source.HitTestOverride);
         Assert.Same(source, source.HitTestOverride(10, 10));
         Assert.Empty(source.HitTestAllOverride!(10, 10)!);
+        Assert.True(source.HitTestAllBufferOverride!(10, 10, new object?[4], out var bufferCount));
+        Assert.Equal(0, bufferCount);
     }
 
     [Fact]
@@ -275,10 +284,13 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.Equal(source.HandleValue, bridge.Handle);
         Assert.NotNull(source.HitTestOverrideValue);
         Assert.NotNull(source.HitTestAllOverrideValue);
+        Assert.NotNull(source.HitTestAllBufferOverrideValue);
         Assert.NotNull(source.HitTestBoundsOverrideValue);
         Assert.NotNull(source.HitTestEllipseBoundsOverrideValue);
         Assert.Null(source.HitTestOverrideValue!(12, 24));
         Assert.Null(source.HitTestAllOverrideValue!(12, 24));
+        Assert.False(source.HitTestAllBufferOverrideValue!(12, 24, new object?[4], out var bufferCount));
+        Assert.Equal(0, bufferCount);
         Assert.Null(source.HitTestBoundsOverrideValue!(0, 0, 12, 24));
         Assert.Null(source.HitTestEllipseBoundsOverrideValue!(0, 0, 12, 24));
 
@@ -297,6 +309,7 @@ public sealed class WpfPortablePresentationSourceBridgeTests
 
         Assert.Null(source.HitTestOverrideValue);
         Assert.Null(source.HitTestAllOverrideValue);
+        Assert.Null(source.HitTestAllBufferOverrideValue);
         Assert.Null(source.HitTestBoundsOverrideValue);
         Assert.Null(source.HitTestEllipseBoundsOverrideValue);
         Assert.False(source.IsDisposed);
@@ -341,6 +354,8 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         public Func<double, double, object?>? HitTestOverride { get; set; }
 
         public Func<double, double, object?[]?>? HitTestAllOverride { get; set; }
+
+        public PortableHitTestAllBufferOverride? HitTestAllBufferOverride { get; set; }
 
         public Func<double, double, double, double, object?[]?>? HitTestBoundsOverride { get; set; }
 
@@ -425,6 +440,7 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         private object? _requestedCursor;
         private Func<double, double, object?>? _hitTestOverride;
         private Func<double, double, object?[]?>? _hitTestAllOverride;
+        private PortableHitTestAllBufferOverride? _hitTestAllBufferOverride;
         private Func<double, double, double, double, object?[]?>? _hitTestBoundsOverride;
         private Func<double, double, double, double, object?[]?>? _hitTestEllipseBoundsOverride;
 
@@ -445,6 +461,8 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         public Func<double, double, object?>? HitTestOverrideValue => _hitTestOverride;
 
         public Func<double, double, object?[]?>? HitTestAllOverrideValue => _hitTestAllOverride;
+
+        public PortableHitTestAllBufferOverride? HitTestAllBufferOverrideValue => _hitTestAllBufferOverride;
 
         public Func<double, double, double, double, object?[]?>? HitTestBoundsOverrideValue => _hitTestBoundsOverride;
 
@@ -480,6 +498,12 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         {
             get => _hitTestAllOverride;
             set => _hitTestAllOverride = value;
+        }
+
+        PortableHitTestAllBufferOverride? IPortablePresentationSourceHost.HitTestAllBufferOverride
+        {
+            get => _hitTestAllBufferOverride;
+            set => _hitTestAllBufferOverride = value;
         }
 
         Func<double, double, double, double, object?[]?>? IPortablePresentationSourceHost.HitTestBoundsOverride

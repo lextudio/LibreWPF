@@ -1899,6 +1899,8 @@ public sealed class ProGpuWpfWindowHostTests
 
         public Func<double, double, object?[]?>? HitTestAllOverride { get; set; }
 
+        public PortableHitTestAllBufferOverride? HitTestAllBufferOverride { get; set; }
+
         public Func<double, double, double, double, object?[]?>? HitTestBoundsOverride { get; set; }
 
         public Func<double, double, double, double, object?[]?>? HitTestEllipseBoundsOverride { get; set; }

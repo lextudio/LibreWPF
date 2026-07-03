@@ -6791,6 +6791,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("mediaNativeClipSink.PushNativeClip(mediaClipBounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("if (geometry.IsRectangle)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PushRectangleClip(sink, tile.Bounds)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("private readonly record struct TileBrushReplayTiles(", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("public Enumerator GetEnumerator()", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("out TileBrushReplayTiles tileBounds", drawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("out IReadOnlyList<TileBrushReplayTile> tileBounds", drawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<TileBrushReplayTile>", drawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("new[] { new TileBrushReplayTile", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeClipSink.PushNativeClip(ToReplayRect(bounds))", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PortableTileBrushSourceAbsenceDoesNotFallBackToReflectedImageBrushShape", resolverTests, StringComparison.Ordinal);
         Assert.Contains("ReplayUsesNativeRectangleClipForPortableTileBrushFill", File.ReadAllText(FindRepoPath(

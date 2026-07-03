@@ -90,6 +90,81 @@ internal static class WpfDrawingReplay
         }
     }
 
+    private readonly record struct TileBrushReplayTiles(
+        Rect Viewport,
+        int StartColumn,
+        int EndColumn,
+        int StartRow,
+        int EndRow)
+    {
+        public Enumerator GetEnumerator()
+        {
+            return new Enumerator(Viewport, StartColumn, EndColumn, StartRow, EndRow);
+        }
+
+        public struct Enumerator
+        {
+            private readonly Rect _viewport;
+            private readonly int _startColumn;
+            private readonly int _endColumn;
+            private readonly int _endRow;
+            private int _column;
+            private int _row;
+            private bool _started;
+
+            public Enumerator(
+                Rect viewport,
+                int startColumn,
+                int endColumn,
+                int startRow,
+                int endRow)
+            {
+                _viewport = viewport;
+                _startColumn = startColumn;
+                _endColumn = endColumn;
+                _endRow = endRow;
+                _column = startColumn;
+                _row = startRow;
+                _started = false;
+                Current = default;
+            }
+
+            public TileBrushReplayTile Current { get; private set; }
+
+            public bool MoveNext()
+            {
+                if (!_started)
+                {
+                    _started = true;
+                }
+                else if (_column < _endColumn)
+                {
+                    _column++;
+                }
+                else
+                {
+                    if (_row >= _endRow)
+                    {
+                        return false;
+                    }
+
+                    _column = _startColumn;
+                    _row++;
+                }
+
+                Current = new TileBrushReplayTile(
+                    new Rect(
+                        _viewport.X + _column * _viewport.Width,
+                        _viewport.Y + _row * _viewport.Height,
+                        _viewport.Width,
+                        _viewport.Height),
+                    _column,
+                    _row);
+                return true;
+            }
+        }
+    }
+
     private readonly record struct TileBrushFillGeometry(
         object? Source,
         Rect Bounds,
@@ -1722,9 +1797,9 @@ internal static class WpfDrawingReplay
         Rect viewport,
         Rect fillBounds,
         SupportedTileMode tileMode,
-        out IReadOnlyList<TileBrushReplayTile> tileBounds)
+        out TileBrushReplayTiles tileBounds)
     {
-        tileBounds = Array.Empty<TileBrushReplayTile>();
+        tileBounds = default;
         if (!IsUsableRect(viewport, out viewport)
             || !IsUsableRect(fillBounds, out fillBounds))
         {
@@ -1733,7 +1808,7 @@ internal static class WpfDrawingReplay
 
         if (tileMode == SupportedTileMode.None)
         {
-            tileBounds = new[] { new TileBrushReplayTile(viewport, 0, 0) };
+            tileBounds = new TileBrushReplayTiles(viewport, 0, 0, 0, 0);
             return true;
         }
 
@@ -1753,23 +1828,7 @@ internal static class WpfDrawingReplay
             return false;
         }
 
-        var tiles = new List<TileBrushReplayTile>(columnCount * rowCount);
-        for (var y = startY; y <= endY; y++)
-        {
-            for (var x = startX; x <= endX; x++)
-            {
-                tiles.Add(new TileBrushReplayTile(
-                    new Rect(
-                        viewport.X + x * viewport.Width,
-                        viewport.Y + y * viewport.Height,
-                        viewport.Width,
-                        viewport.Height),
-                    x,
-                    y));
-            }
-        }
-
-        tileBounds = tiles;
+        tileBounds = new TileBrushReplayTiles(viewport, startX, endX, startY, endY);
         return true;
     }
 

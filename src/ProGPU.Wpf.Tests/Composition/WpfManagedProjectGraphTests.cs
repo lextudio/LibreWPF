@@ -5836,8 +5836,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MarkDirtyAndRefresh(_changedSources)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisitPortableDependency(ref state, visitor, TryGetPortableVisualChild(visualChildrenSource, i))", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("private static IEnumerable EnumerateCollection(object source)", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("return source is IEnumerable enumerable", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("if (source is IEnumerable collection)", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static IEnumerable EnumerateCollection(object source)", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnumerateCollection(source)", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("var changedSources = new List<object>();", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var changedSource in CollectVisualStateChanges", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var changedSource in CollectVisualChildrenChanges", trackerSource, StringComparison.Ordinal);

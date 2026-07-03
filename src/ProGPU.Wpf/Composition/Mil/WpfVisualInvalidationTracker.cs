@@ -330,9 +330,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 () => collectionChanged.CollectionChanged -= handler);
         }
 
-        foreach (var item in EnumerateCollection(source))
+        if (source is IEnumerable collection)
         {
-            SubscribeObject(item, visited);
+            foreach (var item in collection)
+            {
+                SubscribeObject(item, visited);
+            }
         }
 
         var dependencyState = new SubscribeDependencyState(this, visited);
@@ -403,15 +406,18 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
-        foreach (var item in EnumerateCollection(source))
+        if (source is IEnumerable collection)
         {
-            CaptureObjectVisualStateAndChildren(
-                item,
-                snapshots,
-                previousChildren,
-                currentChildrenSources,
-                changedSources,
-                visited);
+            foreach (var item in collection)
+            {
+                CaptureObjectVisualStateAndChildren(
+                    item,
+                    snapshots,
+                    previousChildren,
+                    currentChildrenSources,
+                    changedSources,
+                    visited);
+            }
         }
 
         var dependencyState = new CaptureVisualStateAndChildrenDependencyState(
@@ -435,9 +441,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         dependencies.Add(source);
 
-        foreach (var item in EnumerateCollection(source))
+        if (source is IEnumerable collection)
         {
-            CollectTrackedDependencies(item, dependencies, visited);
+            foreach (var item in collection)
+            {
+                CollectTrackedDependencies(item, dependencies, visited);
+            }
         }
 
         var dependencyState = new CollectTrackedDependencyState(dependencies, visited);
@@ -457,9 +466,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         sink.RegisterVisualDependency(source);
         var registered = true;
 
-        foreach (var item in EnumerateCollection(source))
+        if (source is IEnumerable collection)
         {
-            registered |= RegisterTrackedDependencies(sink, item, visited);
+            foreach (var item in collection)
+            {
+                registered |= RegisterTrackedDependencies(sink, item, visited);
+            }
         }
 
         var dependencyState = new RegisterTrackedDependencyState(sink, visited);
@@ -790,13 +802,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         return false;
-    }
-
-    private static IEnumerable EnumerateCollection(object source)
-    {
-        return source is IEnumerable enumerable
-            ? enumerable
-            : Array.Empty<object?>();
     }
 
     private static void VisitPortableDependencies<TState, TVisitor>(

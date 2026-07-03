@@ -10008,6 +10008,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("xmlns:progpu=\"clr-namespace:ProGPU.Avalonia;assembly=ProGPU.Avalonia\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.Contains("<progpu:ProGpuHostControl x:Name=\"Host\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.Contains("Host.WinuiRoot = new WinuiGrid", avaloniaPackageSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("Loaded += (_, _) => Host.RequestRender();", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.Contains("\\\"ProGPU.Avalonia/${dev_package_version}\\\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.Contains("\\\"ProGPU.WinUI/${dev_package_version}\\\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.DoesNotContain("<ProjectReference", avaloniaPackageSmokeScript, StringComparison.Ordinal);

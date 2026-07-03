@@ -175,6 +175,7 @@ public partial class MainWindow : Window
             Width = 64,
             Height = 64
         };
+        Loaded += (_, _) => Host.RequestRender();
     }
 }
 CS

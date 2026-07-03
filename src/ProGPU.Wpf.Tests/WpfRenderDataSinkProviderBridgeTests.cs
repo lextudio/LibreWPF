@@ -239,6 +239,25 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
     }
 
     [Fact]
+    public void RetainedVisualBranchMapFastPathsSingleSourceReplayTargets()
+    {
+        var source = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfRetainedVisualBranchMap.cs"));
+
+        var fastPathIndex = source.IndexOf("sourceCollection.Count == 1", StringComparison.Ordinal);
+        var multiSourceIndex = source.IndexOf("var dirtySources = new HashSet<object>", StringComparison.Ordinal);
+
+        Assert.True(fastPathIndex >= 0);
+        Assert.True(multiSourceIndex > fastPathIndex);
+        Assert.Contains("GetReplayTargetsForSingleSource(singleSource)", source, StringComparison.Ordinal);
+        Assert.Contains("new[] { new WpfRetainedVisualBranchReplayTarget(replaySource, visual) }", source, StringComparison.Ordinal);
+        Assert.Contains("SelectTopLevelReplayTargets(targets)", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CompositionTargetAndHostPollTrackedWpfSourceVersionsBeforeFrameSkip()
     {
         var targetSource = File.ReadAllText(FindRepoPath(

@@ -126,6 +126,20 @@ public sealed class WpfRetainedVisualBranchMap
     {
         ArgumentNullException.ThrowIfNull(sources);
 
+        if (sources is IReadOnlyCollection<object> sourceCollection)
+        {
+            if (sourceCollection.Count == 0)
+            {
+                return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+            }
+
+            if (sourceCollection.Count == 1 &&
+                TryGetSingleSource(sourceCollection, out var singleSource))
+            {
+                return GetReplayTargetsForSingleSource(singleSource);
+            }
+        }
+
         var dirtySources = new HashSet<object>(ReferenceEqualityComparer.Instance);
         foreach (var source in sources)
         {
@@ -165,6 +179,60 @@ public sealed class WpfRetainedVisualBranchMap
             return targets;
         }
 
+        return SelectTopLevelReplayTargets(targets);
+    }
+
+    private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForSingleSource(object source)
+    {
+        if (!_visualsBySource.TryGetValue(source, out var visuals))
+        {
+            return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+        }
+
+        if (visuals.Count == 1)
+        {
+            var visual = visuals[0];
+            return TryGetReplaySourceForVisual(visual, out var replaySource)
+                ? new[] { new WpfRetainedVisualBranchReplayTarget(replaySource, visual) }
+                : Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+        }
+
+        var targets = new List<WpfRetainedVisualBranchReplayTarget>(visuals.Count);
+        foreach (var visual in visuals)
+        {
+            if (!TryGetReplaySourceForVisual(visual, out var replaySource))
+            {
+                return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+            }
+
+            targets.Add(new WpfRetainedVisualBranchReplayTarget(replaySource, visual));
+        }
+
+        if (targets.Count <= 1)
+        {
+            return targets;
+        }
+
+        return SelectTopLevelReplayTargets(targets);
+    }
+
+    private static bool TryGetSingleSource(
+        IReadOnlyCollection<object> sources,
+        out object source)
+    {
+        foreach (var candidate in sources)
+        {
+            source = candidate;
+            return true;
+        }
+
+        source = null!;
+        return false;
+    }
+
+    private static IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SelectTopLevelReplayTargets(
+        List<WpfRetainedVisualBranchReplayTarget> targets)
+    {
         var topLevelTargets = new List<WpfRetainedVisualBranchReplayTarget>(targets.Count);
         foreach (var target in targets)
         {

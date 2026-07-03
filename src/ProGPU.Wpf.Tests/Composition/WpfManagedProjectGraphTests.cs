@@ -10193,6 +10193,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("require_package_cache_entry \"ProGPU.Wpf\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
         Assert.Contains("require_package_cache_entry \"ProGPU.Wpf.Sdk\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF preview release bundle SDK smoke succeeded.", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("avalonia_project_dir=\"${feed_dir}/BundleAvaloniaSmoke\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.Avalonia\" Version=\"${dev_package_version}\" />", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("xmlns:progpu=\"clr-namespace:ProGPU.Avalonia;assembly=ProGPU.Avalonia\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("<progpu:ProGpuHostControl x:Name=\"Host\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("Host.WinuiRoot = new WinuiGrid", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("Loaded += (_, _) => Host.RequestRender();", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("require_package_cache_entry \"ProGPU.Avalonia\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("require_package_cache_entry \"ProGPU.WinUI\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU Avalonia preview release bundle package smoke succeeded.", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", mvpProject, StringComparison.Ordinal);

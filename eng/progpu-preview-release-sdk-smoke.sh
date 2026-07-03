@@ -155,3 +155,134 @@ require_package_cache_entry "ProGPU.Wpf.Sdk"
 NUGET_PACKAGES="${smoke_root}/packages" \
 PROGPU_WPF_BUNDLE_SDK_SMOKE_VALIDATE=1 \
   "${dotnet}" run --project "${project_dir}/BundleSdkSmoke.csproj" --no-build -v:minimal
+
+avalonia_project_dir="${feed_dir}/BundleAvaloniaSmoke"
+mkdir -p "${avalonia_project_dir}"
+
+cat >"${avalonia_project_dir}/BundleAvaloniaSmoke.csproj" <<PROJECT
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.0.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.3" />
+    <PackageReference Include="ProGPU.Avalonia" Version="${dev_package_version}" />
+  </ItemGroup>
+</Project>
+PROJECT
+
+cat >"${avalonia_project_dir}/App.axaml" <<'XAML'
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="BundleAvaloniaSmoke.App">
+  <Application.Styles>
+    <FluentTheme />
+  </Application.Styles>
+</Application>
+XAML
+
+cat >"${avalonia_project_dir}/App.axaml.cs" <<'CS'
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+
+namespace BundleAvaloniaSmoke;
+
+public partial class App : Application
+{
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+    }
+
+    public override void OnFrameworkInitializationCompleted()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.MainWindow = new MainWindow();
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+}
+CS
+
+cat >"${avalonia_project_dir}/MainWindow.axaml" <<'XAML'
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:progpu="clr-namespace:ProGPU.Avalonia;assembly=ProGPU.Avalonia"
+        x:Class="BundleAvaloniaSmoke.MainWindow"
+        Title="ProGPU Avalonia Preview Bundle Smoke"
+        Width="640"
+        Height="360"
+        Background="#111318">
+  <Grid RowDefinitions="Auto,*">
+    <TextBlock Margin="12"
+               Text="ProGPU.Avalonia preview bundle smoke"
+               Foreground="White" />
+    <progpu:ProGpuHostControl x:Name="Host"
+                              Grid.Row="1"
+                              CornerRadius="4"
+                              EnableZeroCopy="False" />
+  </Grid>
+</Window>
+XAML
+
+cat >"${avalonia_project_dir}/MainWindow.axaml.cs" <<'CS'
+using Avalonia.Controls;
+using WinuiGrid = Microsoft.UI.Xaml.Controls.Grid;
+
+namespace BundleAvaloniaSmoke;
+
+public partial class MainWindow : Window
+{
+    public MainWindow()
+    {
+        InitializeComponent();
+        Host.WinuiRoot = new WinuiGrid
+        {
+            Width = 64,
+            Height = 64
+        };
+        Loaded += (_, _) => Host.RequestRender();
+    }
+}
+CS
+
+cat >"${avalonia_project_dir}/Program.cs" <<'CS'
+using System;
+using Avalonia;
+
+namespace BundleAvaloniaSmoke;
+
+internal static class Program
+{
+    [STAThread]
+    public static void Main(string[] args)
+    {
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    public static AppBuilder BuildAvaloniaApp()
+    {
+        return AppBuilder.Configure<App>()
+            .UsePlatformDetect()
+            .WithInterFont()
+            .LogToTrace();
+    }
+}
+CS
+
+NUGET_PACKAGES="${smoke_root}/packages" "${dotnet}" build "${avalonia_project_dir}/BundleAvaloniaSmoke.csproj" -v:minimal /p:UseSharedCompilation=false
+
+require_package_cache_entry "ProGPU.Avalonia"
+require_package_cache_entry "ProGPU.WinUI"
+
+echo "ProGPU Avalonia preview release bundle package smoke succeeded."

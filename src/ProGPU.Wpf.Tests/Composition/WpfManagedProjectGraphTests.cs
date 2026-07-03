@@ -1061,6 +1061,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CollectionsMarshal.AsSpan(_pathSegments)", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.DoesNotContain("_primitives.ToArray()", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.DoesNotContain("_pathSegments.ToArray()", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("List<int>? retained = null;", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("List<int>? child0 = null;", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("AddChildPrimitive(ref child0, ref child1, ref child2, ref child3, childIndex, primitiveIndex)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("CountNonEmpty(child0, child1, child2, child3)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("var retained = new List<int>();", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("var childPrimitiveLists = new List<int>[4];", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("childPrimitiveLists[i] = [];", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("if (pen?.HasDashPattern != true)", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("TryGetDashedStrokePath(command, commandPath, pen, out var strokePath, out var strokePen)", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("TryAddPathStrokePrimitive(strokePath, transform, id, zIndex, strokePen);", proGpuHitTestCache, StringComparison.Ordinal);

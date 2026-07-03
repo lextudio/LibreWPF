@@ -2153,6 +2153,11 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "WpfPortableWindowActivation.cs");
+        var processFileDialogServicePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "ProcessWpfFileDialogService.cs");
         var runtimeHarnessPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.RealXamlRuntimeHarness",
@@ -2174,6 +2179,7 @@ public sealed class WpfManagedProjectGraphTests
         var moduleInitializer = File.ReadAllText(moduleInitializerPath);
         var portableWpfServiceRegistry = File.ReadAllText(portableWpfServiceRegistryPath);
         var activation = File.ReadAllText(activationPath);
+        var processFileDialogService = File.ReadAllText(processFileDialogServicePath);
         var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
         var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
         var sdkRuntimeHarness = File.ReadAllText(sdkRuntimeHarnessPath);
@@ -2224,6 +2230,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CrossPlatformWpfPlatformServices.Instance.FileDialogs", activation, StringComparison.Ordinal);
         Assert.Contains("ShowPortableFileDialog(PortableFileDialogRequest request)", activation, StringComparison.Ordinal);
         Assert.Contains("ReadFileDialogPatterns(request.Filter)", activation, StringComparison.Ordinal);
+        Assert.Contains("private static IReadOnlyList<string> NormalizeFileTypePatterns", processFileDialogService, StringComparison.Ordinal);
+        Assert.Contains("var normalized = new List<string>(patterns.Count);", processFileDialogService, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Linq;", processFileDialogService, StringComparison.Ordinal);
+        Assert.DoesNotContain("NormalizeFileTypePatterns(patterns).ToArray()", processFileDialogService, StringComparison.Ordinal);
+        Assert.DoesNotContain("NormalizeFileTypePatterns(options.FileTypePatterns).ToArray()", processFileDialogService, StringComparison.Ordinal);
 
         Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", runtimeHarness, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableFileDialogs(presentationFramework)", runtimeHarness, StringComparison.Ordinal);

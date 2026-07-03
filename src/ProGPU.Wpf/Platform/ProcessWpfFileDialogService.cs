@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -192,8 +191,8 @@ public sealed class ProcessWpfFileDialogService : IWpfFileDialogService
 
     private static string CreateWindowsFilter(IReadOnlyList<string> patterns)
     {
-        var normalized = NormalizeFileTypePatterns(patterns).ToArray();
-        if (normalized.Length == 0)
+        var normalized = NormalizeFileTypePatterns(patterns);
+        if (normalized.Count == 0)
         {
             return "All Files (*.*)|*.*";
         }
@@ -218,13 +217,24 @@ public sealed class ProcessWpfFileDialogService : IWpfFileDialogService
 
     private static string CreateMacTypeClause(IReadOnlyList<string> patterns)
     {
-        var extensions = NormalizeFileTypePatterns(patterns)
-            .Select(pattern => pattern.TrimStart('*', '.'))
-            .Where(pattern => !string.IsNullOrWhiteSpace(pattern) && !pattern.Contains('*', StringComparison.Ordinal))
-            .Select(pattern => $"\"{EscapeAppleScriptString(pattern)}\"")
-            .ToArray();
+        var normalized = NormalizeFileTypePatterns(patterns);
+        if (normalized.Count == 0)
+        {
+            return string.Empty;
+        }
 
-        return extensions.Length == 0 ? string.Empty : $"of type {{{string.Join(", ", extensions)}}} ";
+        var extensions = new List<string>(normalized.Count);
+        foreach (var pattern in normalized)
+        {
+            var extension = pattern.TrimStart('*', '.');
+            if (!string.IsNullOrWhiteSpace(extension) &&
+                !extension.Contains('*', StringComparison.Ordinal))
+            {
+                extensions.Add($"\"{EscapeAppleScriptString(extension)}\"");
+            }
+        }
+
+        return extensions.Count == 0 ? string.Empty : $"of type {{{string.Join(", ", extensions)}}} ";
     }
 
     private static IReadOnlyList<ProcessStartInfo> CreateLinuxStartInfos(WpfFileDialogKind kind, WpfFileDialogOptions options)
@@ -255,8 +265,8 @@ public sealed class ProcessWpfFileDialogService : IWpfFileDialogService
             startInfo.ArgumentList.Add("--directory");
         }
 
-        var normalized = NormalizeFileTypePatterns(options.FileTypePatterns).ToArray();
-        if (normalized.Length > 0 && kind != WpfFileDialogKind.PickFolder)
+        var normalized = NormalizeFileTypePatterns(options.FileTypePatterns);
+        if (normalized.Count > 0 && kind != WpfFileDialogKind.PickFolder)
         {
             startInfo.ArgumentList.Add($"--file-filter=Selected Files | {string.Join(' ', normalized)}");
             startInfo.ArgumentList.Add("--file-filter=All Files | *");
@@ -297,8 +307,8 @@ public sealed class ProcessWpfFileDialogService : IWpfFileDialogService
 
     private static void AddKDialogFileFilter(ProcessStartInfo startInfo, IReadOnlyList<string> patterns)
     {
-        var normalized = NormalizeFileTypePatterns(patterns).ToArray();
-        if (normalized.Length == 0)
+        var normalized = NormalizeFileTypePatterns(patterns);
+        if (normalized.Count == 0)
         {
             return;
         }
@@ -317,13 +327,14 @@ public sealed class ProcessWpfFileDialogService : IWpfFileDialogService
         };
     }
 
-    private static IEnumerable<string> NormalizeFileTypePatterns(IReadOnlyList<string>? patterns)
+    private static IReadOnlyList<string> NormalizeFileTypePatterns(IReadOnlyList<string>? patterns)
     {
         if (patterns == null)
         {
-            yield break;
+            return Array.Empty<string>();
         }
 
+        var normalized = new List<string>(patterns.Count);
         foreach (var pattern in patterns)
         {
             if (string.IsNullOrWhiteSpace(pattern))
@@ -337,8 +348,10 @@ public sealed class ProcessWpfFileDialogService : IWpfFileDialogService
                 continue;
             }
 
-            yield return trimmed.StartsWith('.') ? $"*{trimmed}" : trimmed;
+            normalized.Add(trimmed.StartsWith('.') ? $"*{trimmed}" : trimmed);
         }
+
+        return normalized.Count == 0 ? Array.Empty<string>() : normalized;
     }
 
     private static string EscapePowerShellString(string value)

@@ -121,6 +121,22 @@ public sealed class ProcessWpfMessageBoxServiceTests
     }
 
     [Fact]
+    public void ShowReturnsExtraButtonResultFromNativeExitCode()
+    {
+        var service = new ProcessWpfMessageBoxService(
+            () => WpfMessageBoxPlatform.Linux,
+            (_, _) => ValueTask.FromResult(new WpfMessageBoxProcessResult(2, string.Empty, string.Empty)));
+
+        var result = service.Show(new WpfMessageBoxOptions
+        {
+            Button = "AbortRetryIgnore",
+            FallbackResult = "Abort"
+        });
+
+        Assert.Equal("Ignore", result);
+    }
+
+    [Fact]
     public void ShowFallsBackToKDialogWhenZenityCannotStart()
     {
         var calls = new List<string>();

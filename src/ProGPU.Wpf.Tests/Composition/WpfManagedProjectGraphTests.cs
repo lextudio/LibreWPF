@@ -1718,6 +1718,11 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "WpfPortableWindowActivation.cs");
+        var processMessageBoxServicePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "ProcessWpfMessageBoxService.cs");
         var runtimeHarnessPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.RealXamlRuntimeHarness",
@@ -1737,6 +1742,7 @@ public sealed class WpfManagedProjectGraphTests
         var portableWpfServiceRegistry = File.ReadAllText(portableWpfServiceRegistryPath);
         var project = File.ReadAllText(projectPath);
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
+        var processMessageBoxService = File.ReadAllText(processMessageBoxServicePath);
         var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
         var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
         var sdkRuntimeHarness = File.ReadAllText(sdkRuntimeHarnessPath);
@@ -1788,6 +1794,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ReadRequestString", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("ReadRequestValueName", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadRequestProperty", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("private static string CreateAppleScriptButtonList(IReadOnlyList<string> labels)", processMessageBoxService, StringComparison.Ordinal);
+        Assert.Contains("var resultByLabel = new Dictionary<string, string>(labels.Length, StringComparer.OrdinalIgnoreCase);", processMessageBoxService, StringComparison.Ordinal);
+        Assert.Contains("private static IReadOnlyList<string> CreateTail(IReadOnlyList<string> values)", processMessageBoxService, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Linq;", processMessageBoxService, StringComparison.Ordinal);
+        Assert.DoesNotContain("Labels.Skip(2).ToArray()", processMessageBoxService, StringComparison.Ordinal);
+        Assert.DoesNotContain("Results.Skip(2).ToArray()", processMessageBoxService, StringComparison.Ordinal);
+        Assert.DoesNotContain("labels.Select(", processMessageBoxService, StringComparison.Ordinal);
+        Assert.DoesNotContain(".ToDictionary(", processMessageBoxService, StringComparison.Ordinal);
 
         Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", runtimeHarness, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableMessageBox(presentationFramework, window)", runtimeHarness, StringComparison.Ordinal);

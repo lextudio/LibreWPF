@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -129,7 +129,7 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
     private static ProcessStartInfo CreateMacStartInfo(WpfMessageBoxOptions options)
     {
         var buttonSet = GetButtonSet(options.Button);
-        var buttons = string.Join(", ", buttonSet.Labels.Select(label => $"\"{EscapeAppleScriptString(label)}\""));
+        var buttons = CreateAppleScriptButtonList(buttonSet.Labels);
         var script = $"display dialog \"{EscapeAppleScriptString(options.MessageBoxText)}\" "
             + $"with title \"{EscapeAppleScriptString(options.Caption)}\" "
             + $"buttons {{{buttons}}} "
@@ -231,13 +231,10 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
 
     private static bool TryParseResultName(string output, ButtonSet buttonSet, out string result)
     {
-        foreach (var mapping in buttonSet.ResultByLabel)
+        if (buttonSet.ResultByLabel.TryGetValue(output, out var mappedResult))
         {
-            if (string.Equals(output, mapping.Key, StringComparison.OrdinalIgnoreCase))
-            {
-                result = mapping.Value;
-                return true;
-            }
+            result = mappedResult;
+            return true;
         }
 
         result = string.Empty;
@@ -373,6 +370,25 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
             .Replace("\"", "\\\"", StringComparison.Ordinal);
     }
 
+    private static string CreateAppleScriptButtonList(IReadOnlyList<string> labels)
+    {
+        var builder = new StringBuilder();
+        for (var i = 0; i < labels.Count; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder
+                .Append('"')
+                .Append(EscapeAppleScriptString(labels[i]))
+                .Append('"');
+        }
+
+        return builder.ToString();
+    }
+
     private static ProcessStartInfo CreateStartInfo(string fileName, params string[] arguments)
     {
         var startInfo = new ProcessStartInfo
@@ -421,10 +437,16 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
         private ButtonSet(
             IReadOnlyList<string> labels,
             IReadOnlyList<string> results,
+            IReadOnlyList<string> extraLabels,
+            IReadOnlyList<string> extraResults,
+            string? cancelLabel,
             IReadOnlyDictionary<string, string> resultByLabel)
         {
             Labels = labels;
             Results = results;
+            ExtraLabels = extraLabels;
+            ExtraResults = extraResults;
+            CancelLabel = cancelLabel;
             ResultByLabel = resultByLabel;
         }
 
@@ -438,27 +460,56 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
 
         public string SecondaryLabel => Labels.Count > 1 ? Labels[1] : Labels[0];
 
-        public string? CancelLabel => Labels.Contains("Cancel", StringComparer.Ordinal) ? "Cancel" : null;
+        public string? CancelLabel { get; }
 
-        public IReadOnlyList<string> ExtraLabels => Labels.Count > 2
-            ? Labels.Skip(2).ToArray()
-            : Array.Empty<string>();
+        public IReadOnlyList<string> ExtraLabels { get; }
 
         public string PrimaryResult => Results[0];
 
         public string SecondaryResult => Results.Count > 1 ? Results[1] : Results[0];
 
-        public IReadOnlyList<string> ExtraResults => Results.Count > 2
-            ? Results.Skip(2).ToArray()
-            : Array.Empty<string>();
+        public IReadOnlyList<string> ExtraResults { get; }
 
         public static ButtonSet Create(params string[] labels)
         {
-            var results = labels.Select(label => label == "TryAgain" ? "TryAgain" : label).ToArray();
-            var resultByLabel = labels
-                .Select((label, index) => new KeyValuePair<string, string>(label, results[index]))
-                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
-            return new ButtonSet(labels, results, resultByLabel);
+            var results = new string[labels.Length];
+            var resultByLabel = new Dictionary<string, string>(labels.Length, StringComparer.OrdinalIgnoreCase);
+            string? cancelLabel = null;
+            for (var i = 0; i < labels.Length; i++)
+            {
+                string label = labels[i];
+                string result = label == "TryAgain" ? "TryAgain" : label;
+                results[i] = result;
+                resultByLabel[label] = result;
+                if (string.Equals(label, "Cancel", StringComparison.Ordinal))
+                {
+                    cancelLabel = label;
+                }
+            }
+
+            return new ButtonSet(
+                labels,
+                results,
+                CreateTail(labels),
+                CreateTail(results),
+                cancelLabel,
+                resultByLabel);
+        }
+
+        private static IReadOnlyList<string> CreateTail(IReadOnlyList<string> values)
+        {
+            if (values.Count <= 2)
+            {
+                return Array.Empty<string>();
+            }
+
+            var tail = new string[values.Count - 2];
+            for (var i = 0; i < tail.Length; i++)
+            {
+                tail[i] = values[i + 2];
+            }
+
+            return tail;
         }
     }
 }

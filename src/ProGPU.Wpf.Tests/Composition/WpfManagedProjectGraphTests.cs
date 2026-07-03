@@ -1091,6 +1091,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public ProGpuHitTestIndex? LastGpuHitTestIndex => Compositor.LastHitTestIndex;", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public ProGpuHitTestDeviceIndex? LastGpuHitTestDeviceIndex => Compositor.LastHitTestDeviceIndex;", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public WpfGpuHitTestOwnerMap GpuHitTestOwnerMap { get; } = new();", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("using System.Buffers;", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.DoesNotContain("new ProGpuHitTestResult[", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("stackalloc ProGpuHitTestResult[resultCapacity]", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("RentHitTestResults(resultCapacity, out rentedResults)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("RentHitTestResults(expandedCapacity, out rentedExpandedResults)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<ProGpuHitTestResult>.Shared.Rent(resultCapacity)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<ProGpuHitTestResult>.Shared.Return(rentedResults)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestPoint(Vector2 logicalPoint, out ProGpuHitTestResult result)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("return Compositor.TryHitTestPoint(logicalPoint, out result);", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestOwner(Vector2 logicalPoint, out object? owner, out ProGpuHitTestResult result)", proGpuCompositionTarget, StringComparison.Ordinal);

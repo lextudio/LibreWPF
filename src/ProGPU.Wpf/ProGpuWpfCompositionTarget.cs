@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Numerics;
 using ProGPU.Wpf.Interop;
@@ -371,15 +372,23 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
                 resultCapacity: 1))
         {
             int expandedCapacity = GetExpandedHitTestResultCapacity(summary, currentCapacity: 1);
-            ProGpuHitTestResult[] expandedResults = new ProGpuHitTestResult[expandedCapacity];
-            if (Compositor.TryHitTestPointAll(logicalPoint, expandedResults, out int expandedHitCount, out var expandedSummary))
+            ProGpuHitTestResult[]? rentedExpandedResults = null;
+            try
             {
-                if (TryResolveFirstHitTestOwner(expandedResults, expandedHitCount, out owner, out result))
+                Span<ProGpuHitTestResult> expandedResults = RentHitTestResults(expandedCapacity, out rentedExpandedResults);
+                if (Compositor.TryHitTestPointAll(logicalPoint, expandedResults, out int expandedHitCount, out var expandedSummary))
                 {
-                    return true;
-                }
+                    if (TryResolveFirstHitTestOwner(expandedResults, expandedHitCount, out owner, out result))
+                    {
+                        return true;
+                    }
 
-                summary = expandedSummary;
+                    summary = expandedSummary;
+                }
+            }
+            finally
+            {
+                ReturnHitTestResults(rentedExpandedResults);
             }
         }
 
@@ -403,30 +412,46 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         }
 
         int resultCapacity = GetHitTestResultCapacity(owners.Length);
+        ProGpuHitTestResult[]? rentedResults = null;
         Span<ProGpuHitTestResult> results = resultCapacity <= HitTestStackResultLimit
             ? stackalloc ProGpuHitTestResult[resultCapacity]
-            : new ProGpuHitTestResult[resultCapacity];
-        if (!Compositor.TryHitTestPointAll(logicalPoint, results, out int hitCount, out summary))
+            : RentHitTestResults(resultCapacity, out rentedResults);
+        try
         {
-            return false;
-        }
-
-        ownerCount = CopyHitTestOwners(results, hitCount, owners);
-        if (ShouldRetryHitTestOwnerResolution(ownerCount, owners.Length, hitCount, summary, resultCapacity))
-        {
-            int expandedCapacity = GetExpandedHitTestResultCapacity(summary, resultCapacity);
-            if (expandedCapacity > resultCapacity)
+            if (!Compositor.TryHitTestPointAll(logicalPoint, results, out int hitCount, out summary))
             {
-                ProGpuHitTestResult[] expandedResults = new ProGpuHitTestResult[expandedCapacity];
-                if (Compositor.TryHitTestPointAll(logicalPoint, expandedResults, out int expandedHitCount, out var expandedSummary))
+                return false;
+            }
+
+            ownerCount = CopyHitTestOwners(results, hitCount, owners);
+            if (ShouldRetryHitTestOwnerResolution(ownerCount, owners.Length, hitCount, summary, resultCapacity))
+            {
+                int expandedCapacity = GetExpandedHitTestResultCapacity(summary, resultCapacity);
+                if (expandedCapacity > resultCapacity)
                 {
-                    ownerCount = CopyHitTestOwners(expandedResults, expandedHitCount, owners);
-                    summary = expandedSummary;
+                    ProGpuHitTestResult[]? rentedExpandedResults = null;
+                    try
+                    {
+                        Span<ProGpuHitTestResult> expandedResults = RentHitTestResults(expandedCapacity, out rentedExpandedResults);
+                        if (Compositor.TryHitTestPointAll(logicalPoint, expandedResults, out int expandedHitCount, out var expandedSummary))
+                        {
+                            ownerCount = CopyHitTestOwners(expandedResults, expandedHitCount, owners);
+                            summary = expandedSummary;
+                        }
+                    }
+                    finally
+                    {
+                        ReturnHitTestResults(rentedExpandedResults);
+                    }
                 }
             }
-        }
 
-        return true;
+            return true;
+        }
+        finally
+        {
+            ReturnHitTestResults(rentedResults);
+        }
     }
 
     public bool TryQueryHitTestBoundsOwners(
@@ -445,30 +470,46 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         }
 
         int resultCapacity = GetHitTestResultCapacity(owners.Length);
+        ProGpuHitTestResult[]? rentedResults = null;
         Span<ProGpuHitTestResult> results = resultCapacity <= HitTestStackResultLimit
             ? stackalloc ProGpuHitTestResult[resultCapacity]
-            : new ProGpuHitTestResult[resultCapacity];
-        if (!Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, results, out int hitCount, out summary))
+            : RentHitTestResults(resultCapacity, out rentedResults);
+        try
         {
-            return false;
-        }
-
-        ownerCount = CopyHitTestOwners(results, hitCount, owners);
-        if (ShouldRetryHitTestOwnerResolution(ownerCount, owners.Length, hitCount, summary, resultCapacity))
-        {
-            int expandedCapacity = GetExpandedHitTestResultCapacity(summary, resultCapacity);
-            if (expandedCapacity > resultCapacity)
+            if (!Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, results, out int hitCount, out summary))
             {
-                ProGpuHitTestResult[] expandedResults = new ProGpuHitTestResult[expandedCapacity];
-                if (Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, expandedResults, out int expandedHitCount, out var expandedSummary))
+                return false;
+            }
+
+            ownerCount = CopyHitTestOwners(results, hitCount, owners);
+            if (ShouldRetryHitTestOwnerResolution(ownerCount, owners.Length, hitCount, summary, resultCapacity))
+            {
+                int expandedCapacity = GetExpandedHitTestResultCapacity(summary, resultCapacity);
+                if (expandedCapacity > resultCapacity)
                 {
-                    ownerCount = CopyHitTestOwners(expandedResults, expandedHitCount, owners);
-                    summary = expandedSummary;
+                    ProGpuHitTestResult[]? rentedExpandedResults = null;
+                    try
+                    {
+                        Span<ProGpuHitTestResult> expandedResults = RentHitTestResults(expandedCapacity, out rentedExpandedResults);
+                        if (Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, expandedResults, out int expandedHitCount, out var expandedSummary))
+                        {
+                            ownerCount = CopyHitTestOwners(expandedResults, expandedHitCount, owners);
+                            summary = expandedSummary;
+                        }
+                    }
+                    finally
+                    {
+                        ReturnHitTestResults(rentedExpandedResults);
+                    }
                 }
             }
-        }
 
-        return true;
+            return true;
+        }
+        finally
+        {
+            ReturnHitTestResults(rentedResults);
+        }
     }
 
     public bool TryQueryHitTestBoundsCandidates(
@@ -487,30 +528,46 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         }
 
         int resultCapacity = GetHitTestResultCapacity(candidates.Length);
+        ProGpuHitTestResult[]? rentedResults = null;
         Span<ProGpuHitTestResult> results = resultCapacity <= HitTestStackResultLimit
             ? stackalloc ProGpuHitTestResult[resultCapacity]
-            : new ProGpuHitTestResult[resultCapacity];
-        if (!Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, results, out int hitCount, out summary))
+            : RentHitTestResults(resultCapacity, out rentedResults);
+        try
         {
-            return false;
-        }
-
-        candidateCount = CopyGeometryHitTestCandidates(results, hitCount, candidates);
-        if (ShouldRetryHitTestOwnerResolution(candidateCount, candidates.Length, hitCount, summary, resultCapacity))
-        {
-            int expandedCapacity = GetExpandedHitTestResultCapacity(summary, resultCapacity);
-            if (expandedCapacity > resultCapacity)
+            if (!Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, results, out int hitCount, out summary))
             {
-                ProGpuHitTestResult[] expandedResults = new ProGpuHitTestResult[expandedCapacity];
-                if (Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, expandedResults, out int expandedHitCount, out var expandedSummary))
+                return false;
+            }
+
+            candidateCount = CopyGeometryHitTestCandidates(results, hitCount, candidates);
+            if (ShouldRetryHitTestOwnerResolution(candidateCount, candidates.Length, hitCount, summary, resultCapacity))
+            {
+                int expandedCapacity = GetExpandedHitTestResultCapacity(summary, resultCapacity);
+                if (expandedCapacity > resultCapacity)
                 {
-                    candidateCount = CopyGeometryHitTestCandidates(expandedResults, expandedHitCount, candidates);
-                    summary = expandedSummary;
+                    ProGpuHitTestResult[]? rentedExpandedResults = null;
+                    try
+                    {
+                        Span<ProGpuHitTestResult> expandedResults = RentHitTestResults(expandedCapacity, out rentedExpandedResults);
+                        if (Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, expandedResults, out int expandedHitCount, out var expandedSummary))
+                        {
+                            candidateCount = CopyGeometryHitTestCandidates(expandedResults, expandedHitCount, candidates);
+                            summary = expandedSummary;
+                        }
+                    }
+                    finally
+                    {
+                        ReturnHitTestResults(rentedExpandedResults);
+                    }
                 }
             }
-        }
 
-        return true;
+            return true;
+        }
+        finally
+        {
+            ReturnHitTestResults(rentedResults);
+        }
     }
 
     public bool TryQueryHitTestEllipseCandidates(
@@ -529,30 +586,46 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         }
 
         int resultCapacity = GetHitTestResultCapacity(candidates.Length);
+        ProGpuHitTestResult[]? rentedResults = null;
         Span<ProGpuHitTestResult> results = resultCapacity <= HitTestStackResultLimit
             ? stackalloc ProGpuHitTestResult[resultCapacity]
-            : new ProGpuHitTestResult[resultCapacity];
-        if (!Compositor.TryQueryHitTestEllipseAll(logicalMin, logicalMax, results, out int hitCount, out summary))
+            : RentHitTestResults(resultCapacity, out rentedResults);
+        try
         {
-            return false;
-        }
-
-        candidateCount = CopyGeometryHitTestCandidates(results, hitCount, candidates);
-        if (ShouldRetryHitTestOwnerResolution(candidateCount, candidates.Length, hitCount, summary, resultCapacity))
-        {
-            int expandedCapacity = GetExpandedHitTestResultCapacity(summary, resultCapacity);
-            if (expandedCapacity > resultCapacity)
+            if (!Compositor.TryQueryHitTestEllipseAll(logicalMin, logicalMax, results, out int hitCount, out summary))
             {
-                ProGpuHitTestResult[] expandedResults = new ProGpuHitTestResult[expandedCapacity];
-                if (Compositor.TryQueryHitTestEllipseAll(logicalMin, logicalMax, expandedResults, out int expandedHitCount, out var expandedSummary))
+                return false;
+            }
+
+            candidateCount = CopyGeometryHitTestCandidates(results, hitCount, candidates);
+            if (ShouldRetryHitTestOwnerResolution(candidateCount, candidates.Length, hitCount, summary, resultCapacity))
+            {
+                int expandedCapacity = GetExpandedHitTestResultCapacity(summary, resultCapacity);
+                if (expandedCapacity > resultCapacity)
                 {
-                    candidateCount = CopyGeometryHitTestCandidates(expandedResults, expandedHitCount, candidates);
-                    summary = expandedSummary;
+                    ProGpuHitTestResult[]? rentedExpandedResults = null;
+                    try
+                    {
+                        Span<ProGpuHitTestResult> expandedResults = RentHitTestResults(expandedCapacity, out rentedExpandedResults);
+                        if (Compositor.TryQueryHitTestEllipseAll(logicalMin, logicalMax, expandedResults, out int expandedHitCount, out var expandedSummary))
+                        {
+                            candidateCount = CopyGeometryHitTestCandidates(expandedResults, expandedHitCount, candidates);
+                            summary = expandedSummary;
+                        }
+                    }
+                    finally
+                    {
+                        ReturnHitTestResults(rentedExpandedResults);
+                    }
                 }
             }
-        }
 
-        return true;
+            return true;
+        }
+        finally
+        {
+            ReturnHitTestResults(rentedResults);
+        }
     }
 
     private int CopyHitTestOwners(
@@ -640,6 +713,22 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         return resolvedCount < requestedCount &&
             summary.Hit > (uint)hitCount &&
             resultCapacity < ProGpuHitTestDeviceIndex.MaxHitResultCount;
+    }
+
+    private static Span<ProGpuHitTestResult> RentHitTestResults(
+        int resultCapacity,
+        out ProGpuHitTestResult[] rentedResults)
+    {
+        rentedResults = ArrayPool<ProGpuHitTestResult>.Shared.Rent(resultCapacity);
+        return rentedResults.AsSpan(0, resultCapacity);
+    }
+
+    private static void ReturnHitTestResults(ProGpuHitTestResult[]? rentedResults)
+    {
+        if (rentedResults != null)
+        {
+            ArrayPool<ProGpuHitTestResult>.Shared.Return(rentedResults);
+        }
     }
 
     private static uint ResolveLogicalRenderDimension(

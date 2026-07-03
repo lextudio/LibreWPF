@@ -30,6 +30,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private readonly Dictionary<object, VisualStateSnapshot> _visualStateSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<object, object?[]> _visualChildrenSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _dirtySources = new(ReferenceEqualityComparer.Instance);
+    private readonly List<object> _changedSources = new();
     private object? _root;
     private object? _lastDirtySource;
     private bool _isDirty;
@@ -115,18 +116,25 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             return true;
         }
 
-        var currentVisualStateSnapshots = CaptureVisualStateSnapshots(_root);
-        var changedSources = new List<object>();
-        CollectVisualStateChanges(_visualStateSnapshots, currentVisualStateSnapshots, changedSources);
-        CollectVisualChildrenChanges(_root, _visualChildrenSnapshots, changedSources);
-
-        if (changedSources.Count == 0)
+        _changedSources.Clear();
+        try
         {
-            return false;
-        }
+            var currentVisualStateSnapshots = CaptureVisualStateSnapshots(_root);
+            CollectVisualStateChanges(_visualStateSnapshots, currentVisualStateSnapshots, _changedSources);
+            CollectVisualChildrenChanges(_root, _visualChildrenSnapshots, _changedSources);
 
-        MarkDirtyAndRefresh(changedSources);
-        return true;
+            if (_changedSources.Count == 0)
+            {
+                return false;
+            }
+
+            MarkDirtyAndRefresh(_changedSources);
+            return true;
+        }
+        finally
+        {
+            _changedSources.Clear();
+        }
     }
 
     public void MarkDirty()
@@ -157,6 +165,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         _visualStateSnapshots.Clear();
         _visualChildrenSnapshots.Clear();
         _dirtySources.Clear();
+        _changedSources.Clear();
         _root = null;
         _lastDirtySource = null;
         _isDirty = false;

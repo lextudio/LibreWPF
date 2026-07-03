@@ -11077,6 +11077,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CreateAnchorRegistration", proGpuDirectXNativeResolver, StringComparison.Ordinal);
         Assert.Contains("RegisterAnchorTypes", proGpuDirectXNativeResolver, StringComparison.Ordinal);
         Assert.Contains("ResolveForAnchorType", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.Contains("Type anchorType", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.Contains("private readonly object _assembly", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("Dictionary<Assembly", proGpuDirectXNativeResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("HashSet<Assembly", proGpuDirectXNativeResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("public static ProGpuDirectXNativeResolverRegistration CreateRegistration", proGpuDirectXNativeResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("public static bool TryRegister", proGpuDirectXNativeResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("public IntPtr Resolve(string libraryName, Assembly assembly", proGpuDirectXNativeResolver, StringComparison.Ordinal);

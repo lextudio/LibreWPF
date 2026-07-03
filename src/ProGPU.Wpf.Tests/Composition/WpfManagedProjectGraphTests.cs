@@ -12909,6 +12909,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ArrayPool<bool>.Shared.Rent(newSize)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.DoesNotContain("new Stack<bool>()", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Collections.Generic;", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("private SmallValueStack<PushKind> _pushStack;", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("internal struct SmallValueStack<T> : IDisposable", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<T>.Shared.Rent", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("_pushStack.Dispose();", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly Stack<", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Stack<", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Collections.Generic;", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("DecodeNativeDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodeTypedDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodeNativeDrawGeometryUsesLocalRectanglePrimitiveWithoutGenericGeometryFallback", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);

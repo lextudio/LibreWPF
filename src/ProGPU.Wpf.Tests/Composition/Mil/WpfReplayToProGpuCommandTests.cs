@@ -27,6 +27,24 @@ namespace ProGPU.Wpf.Tests.Composition.Mil;
 public sealed class WpfReplayToProGpuCommandTests
 {
     [Fact]
+    public void SmallValueStackReusesPooledStorageAfterReturningToEmpty()
+    {
+        var stack = new ProGpuCompositionCommandSink.SmallValueStack<int>();
+
+        stack.Push(1);
+        stack.Push(2);
+        Assert.Equal(2, stack.Pop());
+        Assert.Equal(1, stack.Pop());
+
+        stack.Push(3);
+        stack.Push(4);
+
+        Assert.Equal(4, stack.Pop());
+        Assert.Equal(3, stack.Pop());
+        stack.Dispose();
+    }
+
+    [Fact]
     public void DecodeRectangleThroughProGpuSinkEmitsDrawRectCommand()
     {
         var brush = new FakeLinearGradientBrush(

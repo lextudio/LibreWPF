@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Buffers;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -55,14 +55,14 @@ public sealed class ProGpuCompositionCommandSink :
         TextHintingMode
     }
 
-    private readonly Stack<PushKind> _pushStack = new();
-    private readonly Stack<int> _hitTestOwnerStack = new();
-    private readonly Stack<GuidelineState> _guidelineStack = new();
-    private readonly Stack<Matrix4x4> _transformStack = new();
-    private readonly Stack<global::ProGPU.Scene.TextureSamplingMode> _bitmapScalingModeStack = new();
-    private readonly Stack<bool> _edgeModeStack = new();
-    private readonly Stack<global::ProGPU.Scene.TextRenderingMode> _textRenderingModeStack = new();
-    private readonly Stack<global::ProGPU.Scene.TextHintingMode> _textHintingModeStack = new();
+    private SmallValueStack<PushKind> _pushStack;
+    private SmallValueStack<int> _hitTestOwnerStack;
+    private SmallValueStack<GuidelineState> _guidelineStack;
+    private SmallValueStack<Matrix4x4> _transformStack;
+    private SmallValueStack<global::ProGPU.Scene.TextureSamplingMode> _bitmapScalingModeStack;
+    private SmallValueStack<bool> _edgeModeStack;
+    private SmallValueStack<global::ProGPU.Scene.TextRenderingMode> _textRenderingModeStack;
+    private SmallValueStack<global::ProGPU.Scene.TextHintingMode> _textHintingModeStack;
     private readonly global::ProGPU.Backend.WgpuContext? _context;
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
     private readonly Func<VectorPathGeometry, VectorPathGeometry?>? _pathOperationResolver;
@@ -1108,6 +1108,14 @@ public sealed class ProGpuCompositionCommandSink :
             CloseDrawingContext(_drawingContext);
         }
 
+        _pushStack.Dispose();
+        _hitTestOwnerStack.Dispose();
+        _guidelineStack.Dispose();
+        _transformStack.Dispose();
+        _bitmapScalingModeStack.Dispose();
+        _edgeModeStack.Dispose();
+        _textRenderingModeStack.Dispose();
+        _textHintingModeStack.Dispose();
         _isClosed = true;
     }
 
@@ -1133,6 +1141,159 @@ public sealed class ProGpuCompositionCommandSink :
         if (_isClosed)
         {
             throw new ObjectDisposedException(nameof(ProGpuCompositionCommandSink));
+        }
+    }
+
+    internal struct SmallValueStack<T> : IDisposable
+    {
+        private const int InitialArrayCapacity = 4;
+
+        private T _first;
+        private T[]? _items;
+        private int _count;
+
+        public readonly int Count => _count;
+
+        public void Push(T item)
+        {
+            if (_count == 0)
+            {
+                _first = item;
+                if (_items != null)
+                {
+                    _items[0] = item;
+                }
+
+                _count = 1;
+                return;
+            }
+
+            var items = EnsureArray(_count + 1);
+            items[_count] = item;
+            _count++;
+        }
+
+        public T Pop()
+        {
+            if (_count == 0)
+            {
+                throw new InvalidOperationException("Cannot pop an empty stack.");
+            }
+
+            _count--;
+            if (_items != null)
+            {
+                var item = _items[_count];
+                if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                {
+                    _items[_count] = default!;
+                    if (_count == 0)
+                    {
+                        _first = default!;
+                    }
+                }
+
+                return item;
+            }
+
+            var first = _first;
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            {
+                _first = default!;
+            }
+
+            return first;
+        }
+
+        public readonly T Peek()
+        {
+            if (_count == 0)
+            {
+                throw new InvalidOperationException("Cannot peek an empty stack.");
+            }
+
+            return _items != null
+                ? _items[_count - 1]
+                : _first;
+        }
+
+        public readonly Enumerator GetEnumerator()
+        {
+            return new Enumerator(_first, _items, _count);
+        }
+
+        public void Dispose()
+        {
+            if (_items != null)
+            {
+                ArrayPool<T>.Shared.Return(
+                    _items,
+                    RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+                _items = null;
+            }
+
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            {
+                _first = default!;
+            }
+
+            _count = 0;
+        }
+
+        private T[] EnsureArray(int capacity)
+        {
+            var items = _items;
+            if (items == null)
+            {
+                items = ArrayPool<T>.Shared.Rent(Math.Max(InitialArrayCapacity, capacity));
+                items[0] = _first;
+                _items = items;
+                return items;
+            }
+
+            if (capacity <= items.Length)
+            {
+                return items;
+            }
+
+            var larger = ArrayPool<T>.Shared.Rent(Math.Max(capacity, items.Length * 2));
+            Array.Copy(items, larger, _count);
+            ArrayPool<T>.Shared.Return(
+                items,
+                RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+            _items = larger;
+            return larger;
+        }
+
+        public struct Enumerator
+        {
+            private readonly T _first;
+            private readonly T[]? _items;
+            private int _index;
+
+            internal Enumerator(T first, T[]? items, int count)
+            {
+                _first = first;
+                _items = items;
+                _index = count;
+                Current = default!;
+            }
+
+            public T Current { get; private set; }
+
+            public bool MoveNext()
+            {
+                if (_index == 0)
+                {
+                    return false;
+                }
+
+                _index--;
+                Current = _items != null
+                    ? _items[_index]
+                    : _first;
+                return true;
+            }
         }
     }
 

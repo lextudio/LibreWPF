@@ -150,6 +150,9 @@ echo "Writing preview release bundle..."
 echo "Verifying preview release bundle..."
 "${repo_root}/eng/progpu-preview-release-verify.sh"
 
+echo "Running preview release bundle SDK smoke..."
+"${repo_root}/eng/progpu-preview-release-sdk-smoke.sh"
+
 echo "Cleaning package-mode SDK smoke outputs..."
 clean_sdk_smoke_outputs
 

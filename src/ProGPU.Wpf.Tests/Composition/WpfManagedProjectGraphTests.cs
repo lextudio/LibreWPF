@@ -9483,6 +9483,9 @@ public sealed class WpfManagedProjectGraphTests
         var previewReleaseVerifyScriptPath = FindRepoPath(
             "eng",
             "progpu-preview-release-verify.sh");
+        var previewReleaseSdkSmokeScriptPath = FindRepoPath(
+            "eng",
+            "progpu-preview-release-sdk-smoke.sh");
         var sdkCiWorkflowPath = FindRepoPath(
             ".github",
             "workflows",
@@ -9812,6 +9815,7 @@ public sealed class WpfManagedProjectGraphTests
         var previewPackageManifestScript = File.ReadAllText(previewPackageManifestScriptPath);
         var previewReleaseBundleScript = File.ReadAllText(previewReleaseBundleScriptPath);
         var previewReleaseVerifyScript = File.ReadAllText(previewReleaseVerifyScriptPath);
+        var previewReleaseSdkSmokeScript = File.ReadAllText(previewReleaseSdkSmokeScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
         var mvpProject = File.ReadAllText(mvpProjectPath);
         var mvpAppConfig = File.ReadAllText(mvpAppConfigPath);
@@ -10056,6 +10060,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"${repo_root}/eng/progpu-preview-release-bundle.sh\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Verifying preview release bundle", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/progpu-preview-release-verify.sh\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Running preview release bundle SDK smoke", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"${repo_root}/eng/progpu-preview-release-sdk-smoke.sh\"", sdkCiScript, StringComparison.Ordinal);
 
         Assert.Contains("NUGET_PACKAGES=\"${smoke_root}/packages\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.Contains("cat >\"${project_dir}/Directory.Build.props\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
@@ -10151,6 +10157,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Preview package ${expectedFile} size mismatch", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("Preview package ${expectedFile} SHA-256 mismatch.", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF preview release bundle verification succeeded", previewReleaseVerifyScript, StringComparison.Ordinal);
+
+        Assert.Contains("\"${repo_root}/eng/progpu-preview-release-verify.sh\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("tar -xzf \"${bundle_output}\" -C \"${feed_dir}\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("<add key=\"preview-bundle\" value=\"${feed_dir_xml}\" />", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("<add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" />", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/${dev_package_version}\">", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("<UseWPF>true</UseWPF>", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ProjectReference", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_BUNDLE_SDK_SMOKE_VALIDATE=1", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("require_package_cache_entry \"Microsoft.DotNet.Wpf.GitHub\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("require_package_cache_entry \"ProGPU.Wpf\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("require_package_cache_entry \"ProGPU.Wpf.Sdk\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF preview release bundle SDK smoke succeeded.", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", mvpProject, StringComparison.Ordinal);

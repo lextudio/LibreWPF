@@ -270,6 +270,9 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("SelectTopLevelReplayTargets(_scratchReplayTargets)", source, StringComparison.Ordinal);
         Assert.Contains("if (!IsCoveredByTargetAncestor(target.Visual, _scratchTargetVisuals))", source, StringComparison.Ordinal);
         Assert.Contains("private static bool IsCoveredByTargetAncestor(", source, StringComparison.Ordinal);
+        Assert.Contains("private bool RemoveVisualForSource(", source, StringComparison.Ordinal);
+        Assert.Contains("if (visuals.Count == 1)", source, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(visuals[0], visual)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var existing in visuals)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var dirtySources = new HashSet<object>", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var targets = new List<WpfRetainedVisualBranchReplayTarget>", source, StringComparison.Ordinal);

@@ -517,13 +517,9 @@ public sealed class WpfRetainedVisualBranchMap
             foreach (var source in sources)
             {
                 if (_visualsBySource.TryGetValue(source, out var visuals)
-                    && visuals.Remove(visual))
+                    && RemoveVisualForSource(source, visual, visuals))
                 {
                     VisualCount--;
-                    if (visuals.Count == 0)
-                    {
-                        _visualsBySource.Remove(source);
-                    }
                 }
             }
         }
@@ -539,6 +535,35 @@ public sealed class WpfRetainedVisualBranchMap
                 UnregisterVisualTreeCore(children[i]);
             }
         }
+    }
+
+    private bool RemoveVisualForSource(
+        object source,
+        ProGpuVisual visual,
+        List<ProGpuVisual> visuals)
+    {
+        if (visuals.Count == 1)
+        {
+            if (!ReferenceEquals(visuals[0], visual))
+            {
+                return false;
+            }
+
+            _visualsBySource.Remove(source);
+            return true;
+        }
+
+        if (!visuals.Remove(visual))
+        {
+            return false;
+        }
+
+        if (visuals.Count == 0)
+        {
+            _visualsBySource.Remove(source);
+        }
+
+        return true;
     }
 
     private void RegisterOwnerKind(

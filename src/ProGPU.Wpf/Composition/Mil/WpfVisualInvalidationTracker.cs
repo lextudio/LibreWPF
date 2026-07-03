@@ -675,20 +675,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return false;
     }
 
-    private static IReadOnlyList<object?> EnumerateCollection(object source)
+    private static IEnumerable EnumerateCollection(object source)
     {
-        if (source is not IEnumerable enumerable)
-        {
-            return Array.Empty<object?>();
-        }
-
-        var result = new List<object?>();
-        foreach (var item in enumerable)
-        {
-            result.Add(item);
-        }
-
-        return result;
+        return source is IEnumerable enumerable
+            ? enumerable
+            : Array.Empty<object?>();
     }
 
     private static IReadOnlyList<object?> EnumeratePortableDependencies(object source)

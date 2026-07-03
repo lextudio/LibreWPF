@@ -5608,6 +5608,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CollectVisualChildrenChanges(_root, _visualChildrenSnapshots)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("AddPortableDependency(ref dependencies, TryGetPortableVisualChild(visualChildrenSource, i))", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("private static IEnumerable EnumerateCollection(object source)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("return source is IEnumerable enumerable", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("var result = new List<object?>();", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("result.Add(item);", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("currentVisualChildrenSnapshots", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("CaptureVisualChildrenSnapshots(_root)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource", visualSource, StringComparison.Ordinal);

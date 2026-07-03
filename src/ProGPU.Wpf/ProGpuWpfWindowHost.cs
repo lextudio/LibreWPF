@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Threading;
 using ProGPU.Backend;
 using ProGPU.DirectX;
@@ -21,6 +22,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 {
     private const string TraceRenderSurfaceEnvironmentVariable = "PROGPU_WPF_TRACE_RENDER_SURFACE";
     private const string TraceInputEnvironmentVariable = "PROGPU_WPF_TRACE_INPUT";
+    private const int HitTestOwnerBufferCapacity = 64;
 
     private readonly ProGpuWpfWindowOptions _options;
     private IWindow? _window;
@@ -1698,19 +1700,26 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal bool TryHitTestOwners(double x, double y, out object?[] owners)
     {
         owners = Array.Empty<object?>();
-        object?[] ownerBuffer = new object?[64];
-        if (!TryHitTestOwners(x, y, ownerBuffer, out int ownerCount))
+        object?[] ownerBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
+        try
         {
-            return false;
-        }
+            if (!TryHitTestOwners(x, y, ownerBuffer, out int ownerCount))
+            {
+                return false;
+            }
 
-        if (ownerCount == 0)
-        {
+            if (ownerCount == 0)
+            {
+                return true;
+            }
+
+            owners = ownerBuffer.AsSpan(0, ownerCount).ToArray();
             return true;
         }
-
-        owners = ownerBuffer[..ownerCount];
-        return true;
+        finally
+        {
+            ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true);
+        }
     }
 
     internal bool TryHitTestOwners(double x, double y, Span<object?> owners, out int ownerCount)
@@ -1771,24 +1780,31 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         EnsureGpuHitTestCacheCurrent();
-        object?[] ownerBuffer = new object?[64];
-        if (!_target.TryQueryHitTestBoundsOwners(
-                new System.Numerics.Vector2((float)minX, (float)minY),
-                new System.Numerics.Vector2((float)maxX, (float)maxY),
-                ownerBuffer,
-                out int ownerCount,
-                out _))
+        object?[] ownerBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
+        try
         {
-            return false;
-        }
+            if (!_target.TryQueryHitTestBoundsOwners(
+                    new System.Numerics.Vector2((float)minX, (float)minY),
+                    new System.Numerics.Vector2((float)maxX, (float)maxY),
+                    ownerBuffer,
+                    out int ownerCount,
+                    out _))
+            {
+                return false;
+            }
 
-        if (ownerCount == 0)
-        {
+            if (ownerCount == 0)
+            {
+                return true;
+            }
+
+            owners = ownerBuffer.AsSpan(0, ownerCount).ToArray();
             return true;
         }
-
-        owners = ownerBuffer[..ownerCount];
-        return true;
+        finally
+        {
+            ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true);
+        }
     }
 
     internal bool TryGetGpuHitTestCacheSnapshot(out ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot snapshot)
@@ -1833,24 +1849,31 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         EnsureGpuHitTestCacheCurrent();
-        object?[] candidateBuffer = new object?[64];
-        if (!_target.TryQueryHitTestBoundsCandidates(
-                new System.Numerics.Vector2((float)minX, (float)minY),
-                new System.Numerics.Vector2((float)maxX, (float)maxY),
-                candidateBuffer,
-                out int candidateCount,
-                out _))
+        object?[] candidateBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
+        try
         {
-            return false;
-        }
+            if (!_target.TryQueryHitTestBoundsCandidates(
+                    new System.Numerics.Vector2((float)minX, (float)minY),
+                    new System.Numerics.Vector2((float)maxX, (float)maxY),
+                    candidateBuffer,
+                    out int candidateCount,
+                    out _))
+            {
+                return false;
+            }
 
-        if (candidateCount == 0)
-        {
+            if (candidateCount == 0)
+            {
+                return true;
+            }
+
+            candidates = candidateBuffer.AsSpan(0, candidateCount).ToArray();
             return true;
         }
-
-        candidates = candidateBuffer[..candidateCount];
-        return true;
+        finally
+        {
+            ArrayPool<object?>.Shared.Return(candidateBuffer, clearArray: true);
+        }
     }
 
     internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)
@@ -1874,24 +1897,31 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         EnsureGpuHitTestCacheCurrent();
-        object?[] candidateBuffer = new object?[64];
-        if (!_target.TryQueryHitTestEllipseCandidates(
-                new System.Numerics.Vector2((float)minX, (float)minY),
-                new System.Numerics.Vector2((float)maxX, (float)maxY),
-                candidateBuffer,
-                out int candidateCount,
-                out _))
+        object?[] candidateBuffer = ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
+        try
         {
-            return false;
-        }
+            if (!_target.TryQueryHitTestEllipseCandidates(
+                    new System.Numerics.Vector2((float)minX, (float)minY),
+                    new System.Numerics.Vector2((float)maxX, (float)maxY),
+                    candidateBuffer,
+                    out int candidateCount,
+                    out _))
+            {
+                return false;
+            }
 
-        if (candidateCount == 0)
-        {
+            if (candidateCount == 0)
+            {
+                return true;
+            }
+
+            candidates = candidateBuffer.AsSpan(0, candidateCount).ToArray();
             return true;
         }
-
-        candidates = candidateBuffer[..candidateCount];
-        return true;
+        finally
+        {
+            ArrayPool<object?>.Shared.Return(candidateBuffer, clearArray: true);
+        }
     }
 
     private void AttachInputService()

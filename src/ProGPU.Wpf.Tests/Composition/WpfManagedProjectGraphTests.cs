@@ -8301,6 +8301,12 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Scene",
             "Extensions",
             "WpfShaderEffectExtensionPipeline.cs"));
+        var renderPipelineCache = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Backend",
+            "RenderPipelineCache.cs"));
         var imageEffectPipeline = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -8357,7 +8363,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Span<int> activeRegisters = stackalloc int[WpfShaderEffectParams.MaxSamplerRegisterCount];", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("var activeRegisterCount = CollectActiveSamplerRegisters(p, activeRegisters);", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("var activeRegisterSpan = activeRegisters[..activeRegisterCount];", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("Span<VertexAttribute> attrs = stackalloc VertexAttribute[3];", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("Span<VertexBufferLayout> layouts = stackalloc VertexBufferLayout[1];", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("ArrayStride = (uint)Unsafe.SizeOf<VectorVertex>()", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("ReadOnlySpan<VertexBufferLayout> vertexBufferLayouts", renderPipelineCache, StringComparison.Ordinal);
+        Assert.Contains("private RenderPipeline* GetOrCreateRenderPipelineCore(", renderPipelineCache, StringComparison.Ordinal);
+        Assert.Contains("fixed (VertexBufferLayout* pLayouts = vertexBufferLayouts)", renderPipelineCache, StringComparison.Ordinal);
         Assert.DoesNotContain("return registers[..count].ToArray();", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("new VertexBufferLayout[]", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("Marshal.AllocHGlobal(Marshal.SizeOf<VertexAttribute>() * 3)", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("Marshal.FreeHGlobal((IntPtr)layouts[0].Attributes)", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("internal static class PooledRemovalBuffer", pooledRemovalBuffer, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<T>.Shared.Rent(Math.Max(1, capacity))", pooledRemovalBuffer, StringComparison.Ordinal);
         Assert.Contains("RuntimeHelpers.IsReferenceOrContainsReferences<T>()", pooledRemovalBuffer, StringComparison.Ordinal);

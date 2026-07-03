@@ -8159,6 +8159,20 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Scene",
             "Extensions",
             "WpfShaderEffectExtensionPipeline.cs"));
+        var imageEffectPipeline = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Extensions",
+            "ImageEffectExtensionPipeline.cs"));
+        var pooledRemovalBuffer = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Extensions",
+            "PooledRemovalBuffer.cs"));
         var visual = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -8190,6 +8204,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var activeRegisterCount = CollectActiveSamplerRegisters(p, activeRegisters);", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("var activeRegisterSpan = activeRegisters[..activeRegisterCount];", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("return registers[..count].ToArray();", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("internal static class PooledRemovalBuffer", pooledRemovalBuffer, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<T>.Shared.Rent(Math.Max(1, capacity))", pooledRemovalBuffer, StringComparison.Ordinal);
+        Assert.Contains("RuntimeHelpers.IsReferenceOrContainsReferences<T>()", pooledRemovalBuffer, StringComparison.Ordinal);
+        Assert.Contains("string[]? keysToRemove = null;", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("PooledRemovalBuffer.Add(ref keysToRemove", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("PooledRemovalBuffer.Return(keysToRemove, keysToRemoveCount)", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("List<string>? keysToRemove", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("keysToRemove ??= new List<string>();", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("Compositor.TextureCacheKey[]? keysToRemove = null;", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("PooledRemovalBuffer.Add(ref keysToRemove", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("PooledRemovalBuffer.Return(keysToRemove, keysToRemoveCount)", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("List<Compositor.TextureCacheKey>? keysToRemove", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("keysToRemove ??= new List<Compositor.TextureCacheKey>();", imageEffectPipeline, StringComparison.Ordinal);
         Assert.Contains("_failedShaderSourceKey", visual, StringComparison.Ordinal);
         Assert.Contains("ParseForInitializerExpressions", shaderToyTranspiler, StringComparison.Ordinal);
         Assert.Contains("new BlockStatement(initializers.Select", shaderToyTranspiler, StringComparison.Ordinal);

@@ -6527,8 +6527,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryCreatePortableShaderEffect(portableShaderEffect, imageSourceAdapter, out proGpuEffect)", effectMapper, StringComparison.Ordinal);
         Assert.Contains("portableSampler.Kind", effectMapper, StringComparison.Ordinal);
         Assert.Contains("TryCreateImageSourceShaderSampler(", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("TryGetReplacement(effect.EffectTypeFullName, out replacement)", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("var additionalSamplerCount = 0;", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("new WpfShaderEffectSampler[additionalSamplerCount]", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Collections.Generic", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnumerateShaderReplacementKeys", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("yield return", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("List<WpfShaderEffectSampler>", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("samplerList", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("samplerList.ToArray()", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("IsShaderEffectLike(effect)", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("TryCreateShaderEffect(", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith", effectMapper, StringComparison.Ordinal);

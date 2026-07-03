@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Numerics;
 using ProGPU.Scene;
 using PortableColor = ProGPU.Wpf.Interop.PortableColor;
@@ -139,49 +138,46 @@ internal static class WpfEffectMapper
     {
         replacement = null!;
 
-        foreach (var key in EnumerateShaderReplacementKeys(effect))
+        if (TryGetReplacement(effect.EffectTypeFullName, out replacement)
+            || TryGetReplacement(effect.EffectTypeName, out replacement))
         {
-            if (WpfShaderEffectRegistry.TryGet(key, out replacement))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static IEnumerable<string> EnumerateShaderReplacementKeys(PortableShaderEffect effect)
-    {
-        if (!string.IsNullOrWhiteSpace(effect.EffectTypeFullName))
-        {
-            yield return effect.EffectTypeFullName!;
-        }
-
-        if (!string.IsNullOrWhiteSpace(effect.EffectTypeName))
-        {
-            yield return effect.EffectTypeName!;
+            return true;
         }
 
         PortablePixelShader? pixelShader = effect.PixelShader;
         if (pixelShader == null)
         {
-            yield break;
+            return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(pixelShader.UriSource))
+        if (TryGetReplacement(pixelShader.UriSource, out replacement)
+            || TryGetReplacement(pixelShader.AbsoluteUri, out replacement))
         {
-            yield return pixelShader.UriSource!;
-        }
-
-        if (!string.IsNullOrWhiteSpace(pixelShader.AbsoluteUri))
-        {
-            yield return pixelShader.AbsoluteUri!;
+            return true;
         }
 
         if (pixelShader.Bytecode.Length > 0)
         {
-            yield return WpfShaderEffectRegistry.CreatePixelShaderBytecodeKey(pixelShader.Bytecode);
+            return WpfShaderEffectRegistry.TryGet(
+                WpfShaderEffectRegistry.CreatePixelShaderBytecodeKey(pixelShader.Bytecode),
+                out replacement);
         }
+
+        return false;
+    }
+
+    private static bool TryGetReplacement(
+        string? key,
+        out WpfShaderEffectReplacement replacement)
+    {
+        if (!string.IsNullOrWhiteSpace(key)
+            && WpfShaderEffectRegistry.TryGet(key, out replacement))
+        {
+            return true;
+        }
+
+        replacement = null!;
+        return false;
     }
 
     private static float[] CopyPortableFloatConstants(PortableShaderEffect effect)
@@ -209,7 +205,7 @@ internal static class WpfEffectMapper
         samplers = Array.Empty<WpfShaderEffectSampler>();
 
         var hasImplicitInput = false;
-        List<WpfShaderEffectSampler>? samplerList = null;
+        var additionalSamplerCount = 0;
 
         foreach (PortableShaderSampler portableSampler in effect.Samplers)
         {
@@ -233,38 +229,12 @@ internal static class WpfEffectMapper
             }
             else if (portableSampler.Kind == PortableShaderSamplerKind.ImageSource)
             {
-                if (TryCreateImageSourceShaderSampler(
-                        portableSampler.ImageSource,
-                        imageSourceAdapter,
-                        registerIndex,
-                        samplerSamplingMode,
-                        out var imageSampler))
-                {
-                    samplerList ??= new List<WpfShaderEffectSampler>();
-                    samplerList.Add(imageSampler);
-                }
-                else
-                {
-                    return false;
-                }
+                additionalSamplerCount++;
             }
             else if (portableSampler.Kind == PortableShaderSamplerKind.Brush
                 && portableSampler.Brush != null)
             {
-                if (TryCreateShaderSamplerBrush(
-                        portableSampler.Brush,
-                        imageSourceAdapter,
-                        registerIndex,
-                        samplerSamplingMode,
-                        out var shaderSampler))
-                {
-                    samplerList ??= new List<WpfShaderEffectSampler>();
-                    samplerList.Add(shaderSampler);
-                }
-                else
-                {
-                    return false;
-                }
+                additionalSamplerCount++;
             }
             else
             {
@@ -272,19 +242,59 @@ internal static class WpfEffectMapper
             }
         }
 
-        if (samplerList != null)
+        if (additionalSamplerCount == 0)
         {
-            foreach (var shaderSampler in samplerList)
+            return true;
+        }
+
+        var additionalSamplers = new WpfShaderEffectSampler[additionalSamplerCount];
+        var additionalSamplerIndex = 0;
+
+        foreach (PortableShaderSampler portableSampler in effect.Samplers)
+        {
+            var registerIndex = portableSampler.RegisterIndex;
+            if (portableSampler.Kind == PortableShaderSamplerKind.ImplicitInput)
             {
-                if (shaderSampler.RegisterIndex == sourceTextureRegisterIndex)
+                continue;
+            }
+
+            if (registerIndex == sourceTextureRegisterIndex)
+            {
+                return false;
+            }
+
+            var samplerSamplingMode = ConvertSamplingMode(portableSampler.SamplingMode);
+            if (portableSampler.Kind == PortableShaderSamplerKind.ImageSource)
+            {
+                if (!TryCreateImageSourceShaderSampler(
+                        portableSampler.ImageSource,
+                        imageSourceAdapter,
+                        registerIndex,
+                        samplerSamplingMode,
+                        out additionalSamplers[additionalSamplerIndex]))
                 {
                     return false;
                 }
-            }
 
-            samplers = samplerList.ToArray();
+                additionalSamplerIndex++;
+            }
+            else if (portableSampler.Kind == PortableShaderSamplerKind.Brush)
+            {
+                if (!TryCreateShaderSamplerBrush(
+                        portableSampler.Brush!,
+                        imageSourceAdapter,
+                        registerIndex,
+                        samplerSamplingMode,
+                        out additionalSamplers[additionalSamplerIndex]))
+                {
+                    return false;
+                }
+
+                additionalSamplerIndex++;
+            }
         }
 
+        samplers = additionalSamplers;
         return true;
     }
 

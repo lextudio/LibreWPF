@@ -8314,6 +8314,13 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Scene",
             "Extensions",
             "ImageEffectExtensionPipeline.cs"));
+        var shaderToyPipeline = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Extensions",
+            "ShaderToyExtensionPipeline.cs"));
         var pooledRemovalBuffer = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -8373,6 +8380,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("new VertexBufferLayout[]", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("Marshal.AllocHGlobal(Marshal.SizeOf<VertexAttribute>() * 3)", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("Marshal.FreeHGlobal((IntPtr)layouts[0].Attributes)", shaderPipeline, StringComparison.Ordinal);
+        AssertEffectPipelineLayoutUsesStack(imageEffectPipeline);
+        AssertEffectPipelineLayoutUsesStack(shaderToyPipeline);
         Assert.Contains("internal static class PooledRemovalBuffer", pooledRemovalBuffer, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<T>.Shared.Rent(Math.Max(1, capacity))", pooledRemovalBuffer, StringComparison.Ordinal);
         Assert.Contains("RuntimeHelpers.IsReferenceOrContainsReferences<T>()", pooledRemovalBuffer, StringComparison.Ordinal);
@@ -8417,6 +8426,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ShaderToyModVectorResultBroadcastsScalarAddition", compositorReviewTests, StringComparison.Ordinal);
         Assert.Contains("WpfShaderEffectShaderModuleCacheTracksSourceWithExplicitShaderKey", wpfShaderTests, StringComparison.Ordinal);
         Assert.Contains("WpfShaderEffectRetainedVisualRecoversAfterShaderSourceChange", wpfShaderTests, StringComparison.Ordinal);
+
+        static void AssertEffectPipelineLayoutUsesStack(string source)
+        {
+            Assert.Contains("Span<VertexAttribute> attrs = stackalloc VertexAttribute[3];", source, StringComparison.Ordinal);
+            Assert.Contains("Span<VertexBufferLayout> layouts = stackalloc VertexBufferLayout[1];", source, StringComparison.Ordinal);
+            Assert.Contains("ArrayStride = (uint)Unsafe.SizeOf<VectorVertex>()", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("new VertexBufferLayout[]", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("Marshal.AllocHGlobal(Marshal.SizeOf<VertexAttribute>() * 3)", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("Marshal.FreeHGlobal((IntPtr)layouts[0].Attributes)", source, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

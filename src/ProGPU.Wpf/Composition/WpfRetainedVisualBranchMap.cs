@@ -395,10 +395,12 @@ public sealed class WpfRetainedVisualBranchMap
                 continue;
             }
 
-            if (sourceOwners.Count != 1)
+            if (sourceOwners.Count == 1)
             {
-                replayTargetConflictCount++;
+                continue;
             }
+
+            replayTargetConflictCount++;
 
             var hasDirtySourceOwner = false;
             var hasCleanSourceOwner = false;
@@ -468,10 +470,12 @@ public sealed class WpfRetainedVisualBranchMap
                     continue;
                 }
 
-                if (sourceOwners.Count != 1)
+                if (sourceOwners.Count == 1)
                 {
-                    replayTargetConflictCount++;
+                    continue;
                 }
+
+                replayTargetConflictCount++;
 
                 var hasDirtySourceOwner = false;
                 foreach (var sourceOwner in sourceOwners)

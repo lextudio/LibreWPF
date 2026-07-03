@@ -323,6 +323,7 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("private readonly HashSet<ProGpuVisual> _scratchInvalidatedVisuals = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("_scratchInvalidatedVisuals.Clear();", source, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(candidate.Comparer, ReferenceEqualityComparer.Instance)", source, StringComparison.Ordinal);
+        Assert.Contains("if (sourceOwners.Count == 1)\n            {\n                continue;\n            }\n\n            replayTargetConflictCount++;", source, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(sourceOwner, source)", source, StringComparison.Ordinal);
         Assert.Contains("new WpfRetainedVisualBranchInvalidationResult(\n            1,\n            1,", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var visitedSources = new HashSet<object>", source, StringComparison.Ordinal);

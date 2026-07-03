@@ -271,9 +271,13 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("private readonly HashSet<ProGpuVisual> _scratchVisitedVisuals = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<ProGpuVisual> _scratchTargetVisuals = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchReplayTargets = new();", source, StringComparison.Ordinal);
+        Assert.Contains("private readonly Dictionary<object, VisualSet> _visualsBySource = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _sourcesByVisual = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _sourceOwnersByVisual = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _dependenciesByVisual = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
+        Assert.Contains("ref var visuals = ref CollectionsMarshal.GetValueRefOrAddDefault(_visualsBySource, source, out _);", source, StringComparison.Ordinal);
+        Assert.Contains("private struct VisualSet : IReadOnlyList<ProGpuVisual>", source, StringComparison.Ordinal);
+        Assert.Contains("public bool Remove(ProGpuVisual visual)", source, StringComparison.Ordinal);
         Assert.Contains("sources.Contains(source)", source, StringComparison.Ordinal);
         Assert.Contains("private readonly SingleReplayTargetList _scratchSingleReplayTarget = new();", source, StringComparison.Ordinal);
         Assert.Contains("private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> CreateSingleReplayTarget(", source, StringComparison.Ordinal);
@@ -287,9 +291,12 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("if (!IsCoveredByTargetAncestor(target.Visual, _scratchTargetVisuals))", source, StringComparison.Ordinal);
         Assert.Contains("private static bool IsCoveredByTargetAncestor(", source, StringComparison.Ordinal);
         Assert.Contains("private bool RemoveVisualForSource(", source, StringComparison.Ordinal);
-        Assert.Contains("if (visuals.Count == 1)", source, StringComparison.Ordinal);
-        Assert.Contains("ReferenceEquals(visuals[0], visual)", source, StringComparison.Ordinal);
+        Assert.Contains("if (!visuals.Remove(visual))", source, StringComparison.Ordinal);
+        Assert.Contains("_visualsBySource[source] = visuals;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Dictionary<object, List<ProGpuVisual>>", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Dictionary<ProGpuVisual, HashSet<object>>", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("visuals = new List<ProGpuVisual>();", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("_visualsBySource.Add(source, visuals);", source, StringComparison.Ordinal);
         Assert.DoesNotContain("new ReferenceOwnerSet()", source, StringComparison.Ordinal);
         Assert.DoesNotContain("sources = new HashSet<object>(ReferenceEqualityComparer.Instance)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("owners = new HashSet<object>(ReferenceEqualityComparer.Instance)", source, StringComparison.Ordinal);

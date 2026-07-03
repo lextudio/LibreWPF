@@ -10,7 +10,7 @@ namespace System.Windows.Media.ProGPU.Composition;
 
 public sealed class WpfRetainedVisualBranchMap
 {
-    private readonly Dictionary<object, List<ProGpuVisual>> _visualsBySource = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<object, VisualSet> _visualsBySource = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _sourcesByVisual = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _sourceOwnersByVisual = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _dependenciesByVisual = new(ReferenceEqualityComparer.Instance);
@@ -70,12 +70,6 @@ public sealed class WpfRetainedVisualBranchMap
             return;
         }
 
-        if (!_visualsBySource.TryGetValue(source, out var visuals))
-        {
-            visuals = new List<ProGpuVisual>();
-            _visualsBySource.Add(source, visuals);
-        }
-
         ref var sources = ref CollectionsMarshal.GetValueRefOrAddDefault(
             _sourcesByVisual,
             visual,
@@ -88,6 +82,7 @@ public sealed class WpfRetainedVisualBranchMap
             return;
         }
 
+        ref var visuals = ref CollectionsMarshal.GetValueRefOrAddDefault(_visualsBySource, source, out _);
         visuals.Add(visual);
         sources.Add(source);
         RegisterOwnerKind(source, visual, ownerKind);
@@ -100,7 +95,8 @@ public sealed class WpfRetainedVisualBranchMap
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        if (_visualsBySource.TryGetValue(source, out var mappedVisuals))
+        if (_visualsBySource.TryGetValue(source, out var mappedVisuals) &&
+            mappedVisuals.Count > 0)
         {
             visuals = mappedVisuals;
             return true;
@@ -119,12 +115,13 @@ public sealed class WpfRetainedVisualBranchMap
             return 0;
         }
 
-        foreach (var visual in visuals)
+        var count = visuals.Count;
+        for (var i = 0; i < count; i++)
         {
-            visual.Invalidate();
+            visuals[i].Invalidate();
         }
 
-        return visuals.Count;
+        return count;
     }
 
     public int InvalidateVisuals(IEnumerable<object> sources)
@@ -190,8 +187,10 @@ public sealed class WpfRetainedVisualBranchMap
                     return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
                 }
 
-                foreach (var visual in visuals)
+                var visualCount = visuals.Count;
+                for (var i = 0; i < visualCount; i++)
                 {
+                    var visual = visuals[i];
                     if (!TryGetReplaySourceForVisual(visual, out var replaySource))
                     {
                         return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
@@ -233,8 +232,10 @@ public sealed class WpfRetainedVisualBranchMap
         _scratchReplayTargets.Clear();
         try
         {
-            foreach (var visual in visuals)
+            var visualCount = visuals.Count;
+            for (var i = 0; i < visualCount; i++)
             {
+                var visual = visuals[i];
                 if (!TryGetReplaySourceForVisual(visual, out var replaySource))
                 {
                     return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
@@ -382,8 +383,10 @@ public sealed class WpfRetainedVisualBranchMap
         var sharedWithCleanSourceVisualCount = 0;
         var replayTargetConflictCount = 0;
 
-        foreach (var visual in visuals)
+        var visualCount = visuals.Count;
+        for (var i = 0; i < visualCount; i++)
         {
+            var visual = visuals[i];
             visual.Invalidate();
             invalidatedVisualCount++;
 
@@ -451,8 +454,10 @@ public sealed class WpfRetainedVisualBranchMap
 
                 mappedSourceCount++;
 
-                foreach (var visual in visuals)
+                var visualCount = visuals.Count;
+                for (var i = 0; i < visualCount; i++)
                 {
+                    var visual = visuals[i];
                     if (_scratchInvalidatedVisuals.Add(visual))
                     {
                         visual.Invalidate();
@@ -558,19 +563,8 @@ public sealed class WpfRetainedVisualBranchMap
     private bool RemoveVisualForSource(
         object source,
         ProGpuVisual visual,
-        List<ProGpuVisual> visuals)
+        VisualSet visuals)
     {
-        if (visuals.Count == 1)
-        {
-            if (!ReferenceEquals(visuals[0], visual))
-            {
-                return false;
-            }
-
-            _visualsBySource.Remove(source);
-            return true;
-        }
-
         if (!visuals.Remove(visual))
         {
             return false;
@@ -579,8 +573,10 @@ public sealed class WpfRetainedVisualBranchMap
         if (visuals.Count == 0)
         {
             _visualsBySource.Remove(source);
+            return true;
         }
 
+        _visualsBySource[source] = visuals;
         return true;
     }
 
@@ -668,6 +664,162 @@ public sealed class WpfRetainedVisualBranchMap
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+    }
+
+    private struct VisualSet : IReadOnlyList<ProGpuVisual>
+    {
+        private ProGpuVisual? _single;
+        private List<ProGpuVisual>? _many;
+
+        public int Count => _many?.Count ?? (_single == null ? 0 : 1);
+
+        public ProGpuVisual this[int index]
+        {
+            get
+            {
+                if (_many != null)
+                {
+                    return _many[index];
+                }
+
+                if (index != 0 || _single == null)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                }
+
+                return _single;
+            }
+        }
+
+        public void Add(ProGpuVisual visual)
+        {
+            ArgumentNullException.ThrowIfNull(visual);
+
+            if (_many != null)
+            {
+                _many.Add(visual);
+                return;
+            }
+
+            if (_single == null)
+            {
+                _single = visual;
+                return;
+            }
+
+            _many = new List<ProGpuVisual>
+            {
+                _single,
+                visual
+            };
+            _single = null;
+        }
+
+        public bool Remove(ProGpuVisual visual)
+        {
+            ArgumentNullException.ThrowIfNull(visual);
+
+            if (_many != null)
+            {
+                if (!_many.Remove(visual))
+                {
+                    return false;
+                }
+
+                if (_many.Count == 1)
+                {
+                    _single = _many[0];
+                    _many = null;
+                }
+
+                return true;
+            }
+
+            if (!ReferenceEquals(_single, visual))
+            {
+                return false;
+            }
+
+            _single = null;
+            return true;
+        }
+
+        public Enumerator GetEnumerator()
+        {
+            return new Enumerator(_single, _many);
+        }
+
+        IEnumerator<ProGpuVisual> IEnumerable<ProGpuVisual>.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        public struct Enumerator : IEnumerator<ProGpuVisual>
+        {
+            private readonly ProGpuVisual? _single;
+            private List<ProGpuVisual>.Enumerator _manyEnumerator;
+            private readonly bool _hasMany;
+            private bool _singleConsumed;
+
+            internal Enumerator(ProGpuVisual? single, List<ProGpuVisual>? many)
+            {
+                _single = single;
+                if (many != null)
+                {
+                    _manyEnumerator = many.GetEnumerator();
+                    _hasMany = true;
+                }
+                else
+                {
+                    _manyEnumerator = default;
+                    _hasMany = false;
+                }
+
+                _singleConsumed = false;
+                Current = null!;
+            }
+
+            public ProGpuVisual Current { get; private set; }
+
+            object System.Collections.IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                if (_hasMany)
+                {
+                    if (!_manyEnumerator.MoveNext())
+                    {
+                        return false;
+                    }
+
+                    Current = _manyEnumerator.Current;
+                    return true;
+                }
+
+                if (_singleConsumed || _single == null)
+                {
+                    return false;
+                }
+
+                Current = _single;
+                _singleConsumed = true;
+                return true;
+            }
+
+            public void Reset()
+            {
+                throw new NotSupportedException();
+            }
+
+            public void Dispose()
+            {
+            }
         }
     }
 

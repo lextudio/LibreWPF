@@ -12452,6 +12452,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeSink.DrawNativeRectangle(brush, pen, replayRectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeRoundedRectangle(brush, pen, replayRectangle, radiusX, radiusY)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeEllipse(brush, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void RegisterRetainedDependencies(object? dependency)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void RegisterRetainedDependencies(object? first, object? second)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void RegisterRetainedDependencies(object? first, object? second, object? third)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void CountUnsupportedStateIfAny(object? state)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void CountUnsupportedStateIfAny(object? first, object? second)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void CountUnsupportedStateIfAny(object? first, object? second, object? third)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("WpfRetainedVisualDependencyRegistrar.Register(_sink, dependencies);", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayLineGeometryDrawing(", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryReplayPolylineGeometryDrawing(", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("brushValue,", wpfDrawingReplay, StringComparison.Ordinal);
@@ -12540,6 +12547,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeSink.DrawNativeEllipse(mediaBrush, mediaPen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeImage(mediaImageSource, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeGlyphRun(mediaBrush, glyphRun)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void RegisterRetainedDependencies(object? dependency)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void RegisterRetainedDependencies(object? first, object? second)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void RegisterRetainedDependencies(object? first, object? second, object? third)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void CountUnsupportedStateIfAny(object? state)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void CountUnsupportedStateIfAny(object? first, object? second)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private void CountUnsupportedStateIfAny(object? first, object? second, object? third)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("WpfRetainedVisualDependencyRegistrar.Register(_sink, dependencies);", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawNativePortableGeometry(brush, pen, geometry, mediaBrush, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.DrawNativeGeometry(mediaBrush, mediaPen, portableGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);

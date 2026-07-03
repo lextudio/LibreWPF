@@ -898,20 +898,59 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         return new Rect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
     }
 
+    private void CountUnsupportedStateIfAny(object? state)
+    {
+        if (state != null)
+        {
+            _unsupportedCount++;
+        }
+    }
+
+    private void CountUnsupportedStateIfAny(object? first, object? second)
+    {
+        CountUnsupportedStateIfAny(first);
+        CountUnsupportedStateIfAny(second);
+    }
+
+    private void CountUnsupportedStateIfAny(object? first, object? second, object? third)
+    {
+        CountUnsupportedStateIfAny(first);
+        CountUnsupportedStateIfAny(second);
+        CountUnsupportedStateIfAny(third);
+    }
+
     private void CountUnsupportedStateIfAny(params object?[] unsupportedState)
     {
         foreach (var state in unsupportedState)
         {
-            if (state != null)
-            {
-                _unsupportedCount++;
-            }
+            CountUnsupportedStateIfAny(state);
         }
+    }
+
+    private void RegisterRetainedDependencies(object? dependency)
+    {
+        WpfRetainedVisualDependencyRegistrar.Register(_sink, dependency);
+    }
+
+    private void RegisterRetainedDependencies(object? first, object? second)
+    {
+        RegisterRetainedDependencies(first);
+        RegisterRetainedDependencies(second);
+    }
+
+    private void RegisterRetainedDependencies(object? first, object? second, object? third)
+    {
+        RegisterRetainedDependencies(first);
+        RegisterRetainedDependencies(second);
+        RegisterRetainedDependencies(third);
     }
 
     private void RegisterRetainedDependencies(params object?[] dependencies)
     {
-        WpfRetainedVisualDependencyRegistrar.Register(_sink, dependencies);
+        foreach (var dependency in dependencies)
+        {
+            RegisterRetainedDependencies(dependency);
+        }
     }
 
 }

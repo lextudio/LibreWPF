@@ -9886,7 +9886,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("transform.M11 < 0.0f", proGpuSceneCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("transform.M22 < 0.0f", proGpuSceneCompositor, StringComparison.Ordinal);
         Assert.Contains("MirroredClippedTextureCommandUploadsTrimmedQuadWithPreservedUv", proGpuTextureBlendRenderTests, StringComparison.Ordinal);
+        Assert.Contains("VerticallyMirroredClippedTextureCommandUploadsTrimmedQuadWithPreservedUv", proGpuTextureBlendRenderTests, StringComparison.Ordinal);
         Assert.Contains("Matrix4x4.CreateScale(-1f, 1f, 1f)", proGpuTextureBlendRenderTests, StringComparison.Ordinal);
+        Assert.Contains("Matrix4x4.CreateScale(1f, -1f, 1f)", proGpuTextureBlendRenderTests, StringComparison.Ordinal);
 
         Assert.Contains("name: ProGPU WPF SDK", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("submodules: recursive", sdkCiWorkflow, StringComparison.Ordinal);

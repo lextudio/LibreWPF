@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Threading;
 using ProGPU.Backend;
 using ProGPU.DirectX;
@@ -717,10 +718,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var forceFullWpfReplay = _forceFullWpfReplay;
             var shouldReplayWpfRootVisual = wpfRootVisual != null &&
                 (forceFullWpfReplay || _target.ShouldReplayVisualSubtree(wpfRootVisual));
+            var activeWpfImageSourceAdapter = _target.CreateFrameImageSourceAdapter(WpfImageSourceAdapter);
+            IReadOnlyList<WpfRetainedVisualBranchReplayTarget> dirtyBranchReplayTargets = Array.Empty<WpfRetainedVisualBranchReplayTarget>();
             var canReplayDirtyWpfBranches = wpfRootVisual != null &&
                 shouldReplayWpfRootVisual &&
                 !forceFullWpfReplay &&
-                _target.CanReplayDirtyRetainedVisualBranches(wpfRootVisual);
+                _target.TryPrepareDirtyRetainedVisualBranchReplayTargets(
+                    wpfRootVisual,
+                    activeWpfImageSourceAdapter,
+                    out dirtyBranchReplayTargets);
             var clearRetainedWpfVisualRoot = wpfRootVisual == null ||
                 (shouldReplayWpfRootVisual && !canReplayDirtyWpfBranches);
             var drawingFrame = _target.BeginDrawingFrame(
@@ -731,7 +737,6 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 logicalHeight,
                 dpiScaleX,
                 dpiScaleY);
-            var activeWpfImageSourceAdapter = _target.CreateFrameImageSourceAdapter(WpfImageSourceAdapter);
 
             using (IDisposable? renderDataSinkProviderRegistration = RegisterRenderDataSinkProvider(drawingFrame, activeWpfImageSourceAdapter))
             {
@@ -751,6 +756,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                             _target.TryReplayDirtyRetainedVisualBranches(
                                 wpfRootVisual,
                                 drawingFrame,
+                                dirtyBranchReplayTargets,
                                 WpfResourceResolver,
                                 activeWpfImageSourceAdapter,
                                 out var branchReplayResult))

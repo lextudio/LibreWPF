@@ -774,21 +774,30 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
                WpfInvalidationTracker.IsDirty;
     }
 
-    internal bool CanReplayDirtyRetainedVisualBranches(object rootVisual)
+    internal bool TryPrepareDirtyRetainedVisualBranchReplayTargets(
+        object rootVisual,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        out IReadOnlyList<WpfRetainedVisualBranchReplayTarget> targets)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(rootVisual);
 
-        return ReferenceEquals(WpfInvalidationTracker.Root, rootVisual) &&
-               WpfInvalidationTracker.IsDirty &&
-               LastRetainedBranchDirtySourceCount > 0 &&
-               !LastRetainedBranchInvalidationUsedFallback &&
-               TryGetDirtyRetainedVisualBranchReplayTargets(out _);
+        if (!ReferenceEquals(WpfInvalidationTracker.Root, rootVisual) ||
+            !WpfInvalidationTracker.IsDirty ||
+            LastRetainedBranchDirtySourceCount == 0 ||
+            LastRetainedBranchInvalidationUsedFallback)
+        {
+            targets = Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+            return false;
+        }
+
+        return TryGetDirtyRetainedVisualBranchReplayTargets(imageSourceAdapter, out targets);
     }
 
     internal bool TryReplayDirtyRetainedVisualBranches(
         object rootVisual,
         ProGpuWpfDrawingFrame drawingFrame,
+        IReadOnlyList<WpfRetainedVisualBranchReplayTarget> targets,
         IWpfMilResourceResolver? resources,
         IWpfImageSourceAdapter? imageSourceAdapter,
         out WpfVisualReplayResult result)
@@ -802,13 +811,12 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             !WpfInvalidationTracker.IsDirty ||
             LastRetainedBranchDirtySourceCount == 0 ||
             LastRetainedBranchInvalidationUsedFallback ||
-            !TryGetDirtyRetainedVisualBranchReplayTargets(out var targets))
+            targets.Count == 0)
         {
             return false;
         }
 
-        IWpfImageSourceAdapter? activeImageSourceAdapter = CreateFrameImageSourceAdapter(
-            imageSourceAdapter ?? WpfImageSourceAdapter);
+        IWpfImageSourceAdapter? activeImageSourceAdapter = imageSourceAdapter ?? WpfImageSourceAdapter;
         var replayResult = default(WpfVisualReplayResult);
         Viewport3DTextureCache.BeginFrame();
 
@@ -942,6 +950,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     }
 
     private bool TryGetDirtyRetainedVisualBranchReplayTargets(
+        IWpfImageSourceAdapter? imageSourceAdapter,
         out IReadOnlyList<WpfRetainedVisualBranchReplayTarget> targets)
     {
         targets = RetainedVisualBranchMap.GetReplayTargetsForSources(WpfInvalidationTracker.DirtySources);
@@ -955,7 +964,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             if (target.Visual is not ProGpuRetainedDrawingVisual branchVisual ||
                 !_visualTreeRenderer.CanReplaySubtreeIntoCurrentRetainedVisual(
                     target.Source,
-                    CreateFrameImageSourceAdapter(WpfImageSourceAdapter)))
+                    imageSourceAdapter))
             {
                 targets = Array.Empty<WpfRetainedVisualBranchReplayTarget>();
                 return false;

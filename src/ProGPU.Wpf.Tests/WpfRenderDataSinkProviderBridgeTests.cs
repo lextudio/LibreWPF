@@ -220,8 +220,13 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("public int LastRetainedBranchReplayTargetConflictCount { get; private set; }", source, StringComparison.Ordinal);
         Assert.Contains("RetainedVisualBranchMap.InvalidateVisualsForSources(WpfInvalidationTracker.DirtySources)", source, StringComparison.Ordinal);
         Assert.Contains("LastRetainedBranchInvalidationUsedFallback = !result.CanTargetAllDirtySources;", source, StringComparison.Ordinal);
-        Assert.Contains("internal bool CanReplayDirtyRetainedVisualBranches(object rootVisual)", source, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryPrepareDirtyRetainedVisualBranchReplayTargets(", source, StringComparison.Ordinal);
         Assert.Contains("internal bool TryReplayDirtyRetainedVisualBranches(", source, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<WpfRetainedVisualBranchReplayTarget> targets,", source, StringComparison.Ordinal);
+        Assert.Contains("return TryGetDirtyRetainedVisualBranchReplayTargets(imageSourceAdapter, out targets);", source, StringComparison.Ordinal);
+        Assert.Contains("IWpfImageSourceAdapter? activeImageSourceAdapter = imageSourceAdapter ?? WpfImageSourceAdapter;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("!TryGetDirtyRetainedVisualBranchReplayTargets(out var targets)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("CreateFrameImageSourceAdapter(WpfImageSourceAdapter)))", source, StringComparison.Ordinal);
         Assert.Contains("RetainedVisualBranchMap.GetReplayTargetsForSources(WpfInvalidationTracker.DirtySources)", source, StringComparison.Ordinal);
         Assert.Contains("RetainedWpfVisualRoot.Invalidate();", source, StringComparison.Ordinal);
         Assert.Contains("public WpfVisualReplayResult ReplayVisualSubtreeRetained(", source, StringComparison.Ordinal);
@@ -233,8 +238,10 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("target.LastRetainedBranchSharedWithCleanSourceVisualCount", hostSource, StringComparison.Ordinal);
         Assert.Contains("target.LastRetainedBranchReplayTargetConflictCount", hostSource, StringComparison.Ordinal);
         Assert.Contains("public long RetainedWpfBranchReplayCount { get; private set; }", hostSource, StringComparison.Ordinal);
-        Assert.Contains("_target.CanReplayDirtyRetainedVisualBranches(wpfRootVisual)", hostSource, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<WpfRetainedVisualBranchReplayTarget> dirtyBranchReplayTargets = Array.Empty<WpfRetainedVisualBranchReplayTarget>();", hostSource, StringComparison.Ordinal);
+        Assert.Contains("_target.TryPrepareDirtyRetainedVisualBranchReplayTargets(", hostSource, StringComparison.Ordinal);
         Assert.Contains("_target.TryReplayDirtyRetainedVisualBranches(", hostSource, StringComparison.Ordinal);
+        Assert.Contains("dirtyBranchReplayTargets,", hostSource, StringComparison.Ordinal);
         Assert.Contains("RetainedWpfBranchReplayCount++;", hostSource, StringComparison.Ordinal);
     }
 

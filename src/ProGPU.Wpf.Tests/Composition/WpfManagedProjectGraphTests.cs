@@ -8046,6 +8046,10 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("GetStableShaderSourceKey", shaderParams, StringComparison.Ordinal);
         Assert.Contains("_src_{p.GetStableShaderSourceKey()}", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("Span<int> activeRegisters = stackalloc int[WpfShaderEffectParams.MaxSamplerRegisterCount];", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("var activeRegisterCount = CollectActiveSamplerRegisters(p, activeRegisters);", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("var activeRegisterSpan = activeRegisters[..activeRegisterCount];", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("return registers[..count].ToArray();", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("_failedShaderSourceKey", visual, StringComparison.Ordinal);
         Assert.Contains("ParseForInitializerExpressions", shaderToyTranspiler, StringComparison.Ordinal);
         Assert.Contains("new BlockStatement(initializers.Select", shaderToyTranspiler, StringComparison.Ordinal);

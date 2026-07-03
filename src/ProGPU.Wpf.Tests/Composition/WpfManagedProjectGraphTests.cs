@@ -10124,11 +10124,18 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("bundle_output=\"${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}\"", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("sidecar_output=\"${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE_SHA256:-${bundle_output}.sha256}\"", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("release_readme_path=\"${PROGPU_WPF_PREVIEW_RELEASE_README:-${package_output}/README.md}\"", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("file_sha256()", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/progpu-preview-package-manifest.sh\"", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("source \"${repo_root}/eng/progpu-preview-package-list.sh\"", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("package_ids=(\"${progpu_preview_package_ids[@]}\")", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.DoesNotContain("package_ids=(\n  Microsoft.DotNet.Wpf.GitHub", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("cat >\"${release_readme_path}\" <<README", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("# ProGPU WPF Preview ${dev_package_version}", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("shasum -a 256 -c progpu-wpf-preview-${dev_package_version}.tar.gz.sha256", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/${dev_package_version}\">", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("No ProGPU-specific source or XAML changes should be required", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("archive_entries+=(\"${readme_name}\")", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("archive_entries+=(\"${manifest_name}\")", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("COPYFILE_DISABLE=1 tar -czf \"${bundle_output}\"", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("expected_entries=\"$(printf '%s\\n' \"${archive_entries[@]}\")\"", previewReleaseBundleScript, StringComparison.Ordinal);
@@ -10141,8 +10148,10 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("bundle_output=\"${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("sidecar_output=\"${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE_SHA256:-${bundle_output}.sha256}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("release_readme_path=\"${PROGPU_WPF_PREVIEW_RELEASE_README:-${package_output}/README.md}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("source \"${repo_root}/eng/progpu-preview-package-list.sh\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("package_ids=(\"${progpu_preview_package_ids[@]}\")", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("archive_entries+=(\"${readme_name}\")", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("bundle_sha256=\"$(file_sha256 \"${bundle_output}\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("sidecar_sha256=\"$(awk '{print $1}' \"${sidecar_output}\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("sidecar_file=\"$(awk '{print $2}' \"${sidecar_output}\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
@@ -10150,6 +10159,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Preview release bundle entries do not match the expected manifest/package set.", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("extract_dir=\"$(mktemp -d \"${TMPDIR:-/tmp}/progpu-wpf-preview-release-verify.XXXXXX\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("tar -xzf \"${bundle_output}\" -C \"${extract_dir}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("cmp -s \"${release_readme_path}\" \"${extract_dir}/${readme_name}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("Preview release bundle README is missing required SDK switch or verification guidance.", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("cmp -s \"${manifest_path}\" \"${extract_dir}/${manifest_name}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("const [extractDirectory, manifestName, devPackageVersion, ...packageIds] = process.argv.slice(2);", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("if (manifest.schemaVersion !== 2)", previewReleaseVerifyScript, StringComparison.Ordinal);

@@ -9341,6 +9341,9 @@ public sealed class WpfManagedProjectGraphTests
         var previewPackageManifestScriptPath = FindRepoPath(
             "eng",
             "progpu-preview-package-manifest.sh");
+        var previewReleaseBundleScriptPath = FindRepoPath(
+            "eng",
+            "progpu-preview-release-bundle.sh");
         var sdkCiWorkflowPath = FindRepoPath(
             ".github",
             "workflows",
@@ -9631,6 +9634,7 @@ public sealed class WpfManagedProjectGraphTests
         var avaloniaPackageSmokeScript = File.ReadAllText(avaloniaPackageSmokeScriptPath);
         var previewPackageAuditScript = File.ReadAllText(previewPackageAuditScriptPath);
         var previewPackageManifestScript = File.ReadAllText(previewPackageManifestScriptPath);
+        var previewReleaseBundleScript = File.ReadAllText(previewReleaseBundleScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
         var mvpProject = File.ReadAllText(mvpProjectPath);
         var mvpAppConfig = File.ReadAllText(mvpAppConfigPath);
@@ -9831,6 +9835,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"${repo_root}/eng/progpu-preview-package-audit.sh\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Writing preview package manifest", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/progpu-preview-package-manifest.sh\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Writing preview release bundle", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"${repo_root}/eng/progpu-preview-release-bundle.sh\"", sdkCiScript, StringComparison.Ordinal);
 
         Assert.Contains("NUGET_PACKAGES=\"${smoke_root}/packages\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
         Assert.Contains("cat >\"${project_dir}/Directory.Build.props\"", avaloniaPackageSmokeScript, StringComparison.Ordinal);
@@ -9870,6 +9876,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"sizeBytes\": %s", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"sha256\": \"%s\"", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF preview package manifest written", previewPackageManifestScript, StringComparison.Ordinal);
+
+        Assert.Contains("bundle_output=\"${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}\"", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("\"${repo_root}/eng/progpu-preview-package-manifest.sh\"", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("package_ids=(", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.DotNet.Wpf.GitHub", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Avalonia", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Sdk", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("archive_entries+=(\"${manifest_name}\")", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("COPYFILE_DISABLE=1 tar -czf \"${bundle_output}\"", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF preview release bundle written", previewReleaseBundleScript, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", mvpProject, StringComparison.Ordinal);

@@ -144,6 +144,9 @@ echo "Auditing preview package artifacts..."
 echo "Writing preview package manifest..."
 "${repo_root}/eng/progpu-preview-package-manifest.sh"
 
+echo "Writing preview release bundle..."
+"${repo_root}/eng/progpu-preview-release-bundle.sh"
+
 echo "Cleaning package-mode SDK smoke outputs..."
 clean_sdk_smoke_outputs
 

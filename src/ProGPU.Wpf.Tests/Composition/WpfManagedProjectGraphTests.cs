@@ -1121,6 +1121,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("stackalloc GpuHitTestResult[resultBufferElementCount]", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<GpuHitTestResult>.Shared.Rent(resultBufferElementCount)", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("deviceIndex.ResultListBuffer.Write(initialResults)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("private static T[] RentStackSnapshot<T>(Stack<T> stack, out int count)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("RentStackSnapshot(_clipStack", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("RentStackSnapshot(_clipScopeIsGeometryMask", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("RentStackSnapshot(_opacityStack", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("RentStackSnapshot(_blendModeStack", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("RentStackSnapshot(_maskStack", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("_clipStack.ToArray()", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("_clipScopeIsGeometryMask.ToArray()", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("_opacityStack.ToArray()", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("_blendModeStack.ToArray()", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("_maskStack.ToArray()", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);

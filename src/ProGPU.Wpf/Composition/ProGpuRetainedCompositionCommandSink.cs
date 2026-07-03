@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -52,8 +51,8 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         Cache
     }
 
-    private readonly Stack<ScopeKind> _scopeStack = new();
-    private readonly Stack<VisualScope> _visualScopes = new();
+    private ProGpuCompositionCommandSink.SmallValueStack<ScopeKind> _scopeStack;
+    private ProGpuCompositionCommandSink.SmallValueStack<VisualScope> _visualScopes;
     private readonly ProGpuWpfDrawingFrame _drawingFrame;
     private bool _isClosed;
 
@@ -543,6 +542,8 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             _visualScopes.Pop().Dispose();
         }
 
+        _scopeStack.Dispose();
+        _visualScopes.Dispose();
         _isClosed = true;
     }
 

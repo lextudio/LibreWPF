@@ -9565,6 +9565,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "ProGpuCompositionCommandSink.cs");
+        var proGpuRetainedCompositionCommandSinkPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "ProGpuRetainedCompositionCommandSink.cs");
         var wpfCompositionDrawingContextPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -10107,6 +10112,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuWpfAssemblyInfo = File.ReadAllText(proGpuWpfAssemblyInfoPath);
         var proGpuWpfTestsProject = File.ReadAllText(proGpuWpfTestsProjectPath);
         var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
+        var proGpuRetainedCompositionCommandSink = File.ReadAllText(proGpuRetainedCompositionCommandSinkPath);
         var wpfCompositionDrawingContext = File.ReadAllText(wpfCompositionDrawingContextPath);
         var wpfObjectRenderDataDrawingContext = File.ReadAllText(wpfObjectRenderDataDrawingContextPath);
         var wpfMediaLineGeometryReader = File.ReadAllText(wpfMediaLineGeometryReaderPath);
@@ -12916,6 +12922,40 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("private readonly Stack<", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("new Stack<", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Collections.Generic;", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains(
+            "private ProGpuCompositionCommandSink.SmallValueStack<ScopeKind> _scopeStack;",
+            proGpuRetainedCompositionCommandSink,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "private ProGpuCompositionCommandSink.SmallValueStack<VisualScope> _visualScopes;",
+            proGpuRetainedCompositionCommandSink,
+            StringComparison.Ordinal);
+        Assert.Contains("_scopeStack.Dispose();", proGpuRetainedCompositionCommandSink, StringComparison.Ordinal);
+        Assert.Contains("_visualScopes.Dispose();", proGpuRetainedCompositionCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly Stack<", proGpuRetainedCompositionCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Stack<", proGpuRetainedCompositionCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Collections.Generic;", proGpuRetainedCompositionCommandSink, StringComparison.Ordinal);
+        Assert.Contains(
+            "private ProGpuCompositionCommandSink.SmallValueStack<PushKind> _pushStack;",
+            wpfVisualTreeRenderer,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "private ProGpuCompositionCommandSink.SmallValueStack<System.Numerics.Matrix4x4> _transformStack;",
+            wpfVisualTreeRenderer,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "private ProGpuCompositionCommandSink.SmallValueStack<WpfReplayRect?> _clipStack;",
+            wpfVisualTreeRenderer,
+            StringComparison.Ordinal);
+        Assert.Contains("_pushStack.Dispose();", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.Contains("_transformStack.Dispose();", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.Contains("_clipStack.Dispose();", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly Stack<PushKind>", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly Stack<System.Numerics.Matrix4x4>", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly Stack<WpfReplayRect?>", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Stack<PushKind>", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Stack<System.Numerics.Matrix4x4>", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Stack<WpfReplayRect?>", wpfVisualTreeRenderer, StringComparison.Ordinal);
         Assert.Contains("DecodeNativeDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodeTypedDrawGeometryUsesPortableRawGeometryWithoutManagedResolution", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("DecodeNativeDrawGeometryUsesLocalRectanglePrimitiveWithoutGenericGeometryFallback", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);

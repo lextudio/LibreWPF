@@ -1934,9 +1934,9 @@ public sealed class WpfVisualTreeRenderer
             Transform
         }
 
-        private readonly Stack<PushKind> _pushStack = new();
-        private readonly Stack<System.Numerics.Matrix4x4> _transformStack = new();
-        private readonly Stack<WpfReplayRect?> _clipStack = new();
+        private ProGpuCompositionCommandSink.SmallValueStack<PushKind> _pushStack;
+        private ProGpuCompositionCommandSink.SmallValueStack<System.Numerics.Matrix4x4> _transformStack;
+        private ProGpuCompositionCommandSink.SmallValueStack<WpfReplayRect?> _clipStack;
         private WpfReplayRect _bounds;
         private bool _hasBounds;
 
@@ -2083,7 +2083,10 @@ public sealed class WpfVisualTreeRenderer
             if (WpfMediaGeometryBoundsReader.TryGetGeometryBounds(clipGeometry, out var geometryClipBounds))
             {
                 PushClipCore(geometryClipBounds);
+                return;
             }
+
+            _pushStack.Push(PushKind.NoOp);
         }
 
         public void PushNativeClip(WpfReplayRect bounds)
@@ -2190,10 +2193,14 @@ public sealed class WpfVisualTreeRenderer
 
         public void Close()
         {
+            _pushStack.Dispose();
+            _transformStack.Dispose();
+            _clipStack.Dispose();
         }
 
         public void Dispose()
         {
+            Close();
         }
 
         private void AddBounds(WpfReplayRect bounds)

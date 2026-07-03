@@ -1135,6 +1135,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RentListSnapshot(_textVerticesList", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("RentListSnapshot(_drawCalls", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("ReturnListSnapshot(savedVectorVertices", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private List<CompositorDrawCall> RentMaskDrawCallList(int capacity)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private void ReturnMaskRenderPassDrawCallLists()", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("ReturnMaskRenderPassDrawCallLists();", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("RentMaskDrawCallList(maskDrawCallCount)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_clipStack.ToArray()", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_clipScopeIsGeometryMask.ToArray()", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_opacityStack.ToArray()", proGpuCompositor, StringComparison.Ordinal);
@@ -1148,6 +1152,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var dxfSavedDrawCalls = _drawCalls.ToArray();", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var savedMaskRenderPasses = _maskRenderPasses.ToArray();", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var dxfSavedMaskRenderPasses = _maskRenderPasses.ToArray();", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("var maskDrawCalls = new List<CompositorDrawCall>();", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);

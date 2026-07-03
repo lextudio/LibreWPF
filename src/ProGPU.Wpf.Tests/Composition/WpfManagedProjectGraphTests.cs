@@ -10091,7 +10091,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("file_sha256()", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("shasum -a 256", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("sha256sum", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("git_commit()", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("git_has_tracked_changes()", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("git -C \"${git_root}\" rev-parse --verify HEAD", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("git -C \"${git_root}\" diff --quiet --ignore-submodules=dirty -- .", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("wpf_commit=\"$(git_commit \"${repo_root}\")\"", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("progpu_commit=\"$(git_commit \"${repo_root}/external/ProGPU\")\"", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"schemaVersion\": 1", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"source\": {", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"wpfCommit\": \"%s\"", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"progpuCommit\": \"%s\"", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"wpfHasTrackedChanges\": %s", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"progpuHasTrackedChanges\": %s", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"sizeBytes\": %s", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"sha256\": \"%s\"", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF preview package manifest written", previewPackageManifestScript, StringComparison.Ordinal);

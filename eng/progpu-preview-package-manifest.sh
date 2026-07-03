@@ -32,6 +32,21 @@ file_sha256() {
   fi
 }
 
+git_commit() {
+  local git_root="$1"
+  git -C "${git_root}" rev-parse --verify HEAD 2>/dev/null || printf 'unknown'
+}
+
+git_has_tracked_changes() {
+  local git_root="$1"
+  if git -C "${git_root}" diff --quiet --ignore-submodules=dirty -- . \
+    && git -C "${git_root}" diff --cached --quiet --ignore-submodules=dirty -- .; then
+    printf 'false'
+  else
+    printf 'true'
+  fi
+}
+
 json_escape() {
   local value="$1"
   value="${value//\\/\\\\}"
@@ -49,10 +64,21 @@ for package_id in "${package_ids[@]}"; do
   fi
 done
 
+wpf_commit="$(git_commit "${repo_root}")"
+progpu_commit="$(git_commit "${repo_root}/external/ProGPU")"
+wpf_has_tracked_changes="$(git_has_tracked_changes "${repo_root}")"
+progpu_has_tracked_changes="$(git_has_tracked_changes "${repo_root}/external/ProGPU")"
+
 {
   printf '{\n'
   printf '  "schemaVersion": 1,\n'
   printf '  "version": "%s",\n' "$(json_escape "${dev_package_version}")"
+  printf '  "source": {\n'
+  printf '    "wpfCommit": "%s",\n' "$(json_escape "${wpf_commit}")"
+  printf '    "progpuCommit": "%s",\n' "$(json_escape "${progpu_commit}")"
+  printf '    "wpfHasTrackedChanges": %s,\n' "${wpf_has_tracked_changes}"
+  printf '    "progpuHasTrackedChanges": %s\n' "${progpu_has_tracked_changes}"
+  printf '  },\n'
   printf '  "packageDirectory": ".",\n'
   printf '  "packages": [\n'
 

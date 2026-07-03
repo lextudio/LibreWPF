@@ -22,6 +22,11 @@ file_sha256() {
   fi
 }
 
+git_commit() {
+  local git_root="$1"
+  git -C "${git_root}" rev-parse --verify HEAD 2>/dev/null || printf 'unknown'
+}
+
 require_file() {
   local file="$1"
   if [[ ! -f "${file}" ]]; then
@@ -90,6 +95,7 @@ fi
 readme_file="${extract_dir}/${readme_name}"
 if ! grep -q "ProGPU.Wpf.Sdk/${dev_package_version}" "${readme_file}" \
   || ! grep -q "shasum -a 256 -c progpu-wpf-preview-${dev_package_version}.tar.gz.sha256" "${readme_file}" \
+  || ! grep -q "PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE=1 ./eng/progpu-preview-release-verify.sh" "${readme_file}" \
   || ! grep -q "No ProGPU-specific source or XAML changes should be required" "${readme_file}"; then
   echo "Preview release bundle README is missing required SDK switch or verification guidance." >&2
   exit 1
@@ -101,6 +107,11 @@ if ! grep -q "<add key=\"progpu-wpf-preview\" value=\"\\.\" />" "${nuget_config_
   echo "Preview release bundle NuGet config is missing required package sources." >&2
   exit 1
 fi
+
+export PROGPU_WPF_PREVIEW_RELEASE_CURRENT_WPF_COMMIT
+export PROGPU_WPF_PREVIEW_RELEASE_CURRENT_PROGPU_COMMIT
+PROGPU_WPF_PREVIEW_RELEASE_CURRENT_WPF_COMMIT="$(git_commit "${repo_root}")"
+PROGPU_WPF_PREVIEW_RELEASE_CURRENT_PROGPU_COMMIT="$(git_commit "${repo_root}/external/ProGPU")"
 
 node - "${extract_dir}" "${manifest_name}" "${dev_package_version}" "${package_ids[@]}" <<'NODE'
 const fs = require("fs");
@@ -126,6 +137,22 @@ if (manifest.version !== devPackageVersion) {
 
 if (!manifest.source || !manifest.source.wpfCommit || !manifest.source.progpuCommit) {
   fail("Preview manifest source provenance is missing WPF or ProGPU commit information.");
+}
+
+if (process.env.PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE === "1") {
+  if (manifest.source.wpfHasTrackedChanges !== false || manifest.source.progpuHasTrackedChanges !== false) {
+    fail("Preview manifest source provenance is dirty; regenerate the release bundle from clean WPF and ProGPU worktrees.");
+  }
+
+  const expectedWpfCommit = process.env.PROGPU_WPF_PREVIEW_RELEASE_CURRENT_WPF_COMMIT;
+  if (expectedWpfCommit && expectedWpfCommit !== "unknown" && manifest.source.wpfCommit !== expectedWpfCommit) {
+    fail(`Preview manifest WPF commit ${manifest.source.wpfCommit} does not match current checkout ${expectedWpfCommit}.`);
+  }
+
+  const expectedProGpuCommit = process.env.PROGPU_WPF_PREVIEW_RELEASE_CURRENT_PROGPU_COMMIT;
+  if (expectedProGpuCommit && expectedProGpuCommit !== "unknown" && manifest.source.progpuCommit !== expectedProGpuCommit) {
+    fail(`Preview manifest ProGPU commit ${manifest.source.progpuCommit} does not match current checkout ${expectedProGpuCommit}.`);
+  }
 }
 
 if (manifest.packageDirectory !== ".") {

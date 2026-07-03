@@ -67,6 +67,7 @@ For repository validation, run:
 
 \`\`\`bash
 ./eng/progpu-preview-release-verify.sh
+PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE=1 ./eng/progpu-preview-release-verify.sh
 ./eng/progpu-preview-release-sdk-smoke.sh
 \`\`\`
 README

@@ -10136,6 +10136,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<add key=\"progpu-wpf-preview\" value=\".\" />", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("# ProGPU WPF Preview ${dev_package_version}", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("shasum -a 256 -c progpu-wpf-preview-${dev_package_version}.tar.gz.sha256", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE=1 ./eng/progpu-preview-release-verify.sh", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/${dev_package_version}\">", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("No ProGPU-specific source or XAML changes should be required", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("archive_entries+=(\"${readme_name}\")", previewReleaseBundleScript, StringComparison.Ordinal);
@@ -10154,6 +10155,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("sidecar_output=\"${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE_SHA256:-${bundle_output}.sha256}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("release_readme_path=\"${PROGPU_WPF_PREVIEW_RELEASE_README:-${package_output}/README.md}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("release_nuget_config_path=\"${PROGPU_WPF_PREVIEW_RELEASE_NUGET_CONFIG:-${package_output}/NuGet.config}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("git_commit()", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("git -C \"${git_root}\" rev-parse --verify HEAD", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("source \"${repo_root}/eng/progpu-preview-package-list.sh\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("package_ids=(\"${progpu_preview_package_ids[@]}\")", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("archive_entries+=(\"${readme_name}\")", previewReleaseVerifyScript, StringComparison.Ordinal);
@@ -10168,12 +10171,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("cmp -s \"${release_readme_path}\" \"${extract_dir}/${readme_name}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("cmp -s \"${release_nuget_config_path}\" \"${extract_dir}/${nuget_config_name}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("Preview release bundle NuGet config is missing required package sources.", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE=1 ./eng/progpu-preview-release-verify.sh", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("Preview release bundle README is missing required SDK switch or verification guidance.", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("cmp -s \"${manifest_path}\" \"${extract_dir}/${manifest_name}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_PREVIEW_RELEASE_CURRENT_WPF_COMMIT=\"$(git_commit \"${repo_root}\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_PREVIEW_RELEASE_CURRENT_PROGPU_COMMIT=\"$(git_commit \"${repo_root}/external/ProGPU\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("const [extractDirectory, manifestName, devPackageVersion, ...packageIds] = process.argv.slice(2);", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("if (manifest.schemaVersion !== 2)", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("manifest.source.wpfCommit", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("manifest.source.progpuCommit", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("process.env.PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE === \"1\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("Preview manifest source provenance is dirty", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("does not match current checkout", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("path.join(extractDirectory, expectedFile)", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("crypto.createHash(\"sha256\")", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("Preview package ${expectedFile} size mismatch", previewReleaseVerifyScript, StringComparison.Ordinal);

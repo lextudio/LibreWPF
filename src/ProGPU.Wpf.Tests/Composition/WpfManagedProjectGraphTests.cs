@@ -10057,6 +10057,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("package_ids=(\n  Microsoft.DotNet.Wpf.GitHub", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("archive_entries+=(\"${manifest_name}\")", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("COPYFILE_DISABLE=1 tar -czf \"${bundle_output}\"", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("expected_entries=\"$(printf '%s\\n' \"${archive_entries[@]}\")\"", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("actual_entries=\"$(tar -tzf \"${bundle_output}\")\"", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("Preview release bundle entries do not match the expected manifest/package set.", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF preview release bundle written", previewReleaseBundleScript, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);

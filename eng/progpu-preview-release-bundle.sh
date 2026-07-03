@@ -40,4 +40,15 @@ done
   COPYFILE_DISABLE=1 tar -czf "${bundle_output}" "${archive_entries[@]}"
 )
 
+expected_entries="$(printf '%s\n' "${archive_entries[@]}")"
+actual_entries="$(tar -tzf "${bundle_output}")"
+if [[ "${actual_entries}" != "${expected_entries}" ]]; then
+  echo "Preview release bundle entries do not match the expected manifest/package set." >&2
+  echo "Expected entries:" >&2
+  printf '%s\n' "${archive_entries[@]}" >&2
+  echo "Actual entries:" >&2
+  tar -tzf "${bundle_output}" >&2
+  exit 1
+fi
+
 echo "ProGPU WPF preview release bundle written to ${bundle_output}."

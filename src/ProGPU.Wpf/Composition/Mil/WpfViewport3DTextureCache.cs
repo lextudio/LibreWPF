@@ -49,27 +49,29 @@ internal sealed class WpfViewport3DTextureCache : IDisposable
     {
         ThrowIfDisposed();
 
-        List<object>? unusedKeys = null;
-        foreach (var entry in _entries)
+        object[]? unusedKeys = null;
+        int unusedKeyCount = 0;
+        try
         {
-            if (entry.Value.LastUsedFrame == _frameId)
+            foreach (var entry in _entries)
             {
-                continue;
+                if (entry.Value.LastUsedFrame == _frameId)
+                {
+                    continue;
+                }
+
+                entry.Value.Dispose();
+                WpfPooledRemovalBuffer.Add(ref unusedKeys, ref unusedKeyCount, _entries.Count, entry.Key);
             }
 
-            entry.Value.Dispose();
-            unusedKeys ??= new List<object>();
-            unusedKeys.Add(entry.Key);
+            for (int i = 0; i < unusedKeyCount; i++)
+            {
+                _entries.Remove(unusedKeys![i]);
+            }
         }
-
-        if (unusedKeys == null)
+        finally
         {
-            return;
-        }
-
-        foreach (var key in unusedKeys)
-        {
-            _entries.Remove(key);
+            WpfPooledRemovalBuffer.Return(unusedKeys, unusedKeyCount);
         }
     }
 

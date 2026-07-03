@@ -6414,6 +6414,18 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.Interop",
             "PortableViewport3DScene.cs"));
+        var textureCacheSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfViewport3DTextureCache.cs"));
+        var pooledRemovalBufferSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfPooledRemovalBuffer.cs"));
         var presentationCoreProject = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -6443,6 +6455,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("using System.Reflection", exporterSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty", exporterSource, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", exporterSource, StringComparison.Ordinal);
+        Assert.Contains("internal static class WpfPooledRemovalBuffer", pooledRemovalBufferSource, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<T>.Shared.Rent(Math.Max(1, capacity))", pooledRemovalBufferSource, StringComparison.Ordinal);
+        Assert.Contains("object[]? unusedKeys = null;", textureCacheSource, StringComparison.Ordinal);
+        Assert.Contains("WpfPooledRemovalBuffer.Add(ref unusedKeys", textureCacheSource, StringComparison.Ordinal);
+        Assert.Contains("WpfPooledRemovalBuffer.Return(unusedKeys, unusedKeyCount)", textureCacheSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("List<object>? unusedKeys", textureCacheSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("unusedKeys ??= new List<object>();", textureCacheSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -12617,12 +12636,26 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetGpuTexture(bitmapSource", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("bitmapSource.GpuTexture", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("CanProvideGpuTexture(imageSource)", wpfResourceResolver, StringComparison.Ordinal);
+        var wpfPooledRemovalBuffer = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfPooledRemovalBuffer.cs"));
+        Assert.Contains("internal static class WpfPooledRemovalBuffer", wpfPooledRemovalBuffer, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<T>.Shared.Rent(Math.Max(1, capacity))", wpfPooledRemovalBuffer, StringComparison.Ordinal);
+        Assert.Contains("RuntimeHelpers.IsReferenceOrContainsReferences<T>()", wpfPooledRemovalBuffer, StringComparison.Ordinal);
         Assert.Contains("&& CanProvideGpuTexture(mediaImageSource)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("imageSource is IProGpuTextureSource", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("BitmapSourceTextureCacheKey", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("adapted.TryGet(context, cacheKey, out _)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains(".Set(context, cacheKey, adaptedTexture)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("replacedTexture?.Dispose();", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("WgpuContext[]? staleContexts = null;", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("WpfPooledRemovalBuffer.Add(ref staleContexts", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("WpfPooledRemovalBuffer.Return(staleContexts, staleContextCount)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("List<WgpuContext>? staleContexts", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("staleContexts ??= new List<WgpuContext>();", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("TryCreateBitmapSourceTextureCacheKey(portablePixels, out cacheKey)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("HashBytes(portablePixels.Pixels)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("ResolveGpuTextureProperty", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);

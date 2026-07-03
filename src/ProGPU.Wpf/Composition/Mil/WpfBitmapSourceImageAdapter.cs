@@ -262,24 +262,26 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 
         private void RemoveDisposedNoLock()
         {
-            List<WgpuContext>? staleContexts = null;
-            foreach (var entry in _texturesByContext)
+            WgpuContext[]? staleContexts = null;
+            int staleContextCount = 0;
+            try
             {
-                if (entry.Key.IsDisposed || entry.Value.Texture.IsDisposed)
+                foreach (var entry in _texturesByContext)
                 {
-                    staleContexts ??= new List<WgpuContext>();
-                    staleContexts.Add(entry.Key);
+                    if (entry.Key.IsDisposed || entry.Value.Texture.IsDisposed)
+                    {
+                        WpfPooledRemovalBuffer.Add(ref staleContexts, ref staleContextCount, _texturesByContext.Count, entry.Key);
+                    }
+                }
+
+                for (int i = 0; i < staleContextCount; i++)
+                {
+                    _texturesByContext.Remove(staleContexts![i]);
                 }
             }
-
-            if (staleContexts == null)
+            finally
             {
-                return;
-            }
-
-            foreach (var context in staleContexts)
-            {
-                _texturesByContext.Remove(context);
+                WpfPooledRemovalBuffer.Return(staleContexts, staleContextCount);
             }
         }
     }

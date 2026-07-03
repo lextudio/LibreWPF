@@ -141,6 +141,9 @@ pack_project "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" "ProGP
 echo "Auditing preview package artifacts..."
 "${repo_root}/eng/progpu-preview-package-audit.sh"
 
+echo "Writing preview package manifest..."
+"${repo_root}/eng/progpu-preview-package-manifest.sh"
+
 echo "Cleaning package-mode SDK smoke outputs..."
 clean_sdk_smoke_outputs
 

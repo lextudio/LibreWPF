@@ -78,6 +78,18 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void FileDialogPatternParserKeepsWpfFilterSemantics()
+    {
+        var patterns = WpfPortableWindowActivation.ReadFileDialogPatterns(
+            "Images| *.png ;*.jpg |Text|*.txt;; *.md |All files| *.* ");
+
+        Assert.Equal(new[] { "*.png", "*.jpg", "*.txt", "*.md", "*.*" }, patterns);
+        Assert.Empty(WpfPortableWindowActivation.ReadFileDialogPatterns(string.Empty));
+        Assert.Empty(WpfPortableWindowActivation.ReadFileDialogPatterns("Description only"));
+        Assert.Empty(WpfPortableWindowActivation.ReadFileDialogPatterns("Empty| ; ; |Description"));
+    }
+
+    [Fact]
     public void AttachUsesTypedMediaContextRenderInteropServiceOnly()
     {
         using var host = new ProGpuWpfWindowHost();

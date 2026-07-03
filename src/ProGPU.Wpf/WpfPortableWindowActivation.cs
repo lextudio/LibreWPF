@@ -1027,29 +1027,52 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
-    private static IReadOnlyList<string> ReadFileDialogPatterns(string filter)
+    internal static IReadOnlyList<string> ReadFileDialogPatterns(string filter)
     {
         if (string.IsNullOrEmpty(filter))
         {
             return Array.Empty<string>();
         }
 
-        string[] tokens = filter.Split('|');
-        var patterns = new List<string>();
-        for (int i = 1; i < tokens.Length; i += 2)
+        List<string>? patterns = null;
+        int segmentStart = 0;
+        int segmentIndex = 0;
+        for (int i = 0; i <= filter.Length; i++)
         {
-            foreach (string rawPattern in tokens[i].Split(';'))
+            if (i == filter.Length || filter[i] == '|')
             {
-                string pattern = rawPattern.Trim();
-                if (!string.IsNullOrEmpty(pattern))
+                if ((segmentIndex & 1) != 0)
                 {
-                    patterns.Add(pattern);
+                    AddFileDialogPatterns(filter.AsSpan(segmentStart, i - segmentStart), ref patterns);
                 }
+
+                segmentStart = i + 1;
+                segmentIndex++;
             }
         }
 
-        return patterns;
+        return patterns is null ? Array.Empty<string>() : patterns;
     }
+
+    private static void AddFileDialogPatterns(ReadOnlySpan<char> patternSegment, ref List<string>? patterns)
+    {
+        int patternStart = 0;
+        for (int i = 0; i <= patternSegment.Length; i++)
+        {
+            if (i == patternSegment.Length || patternSegment[i] == ';')
+            {
+                ReadOnlySpan<char> pattern = patternSegment.Slice(patternStart, i - patternStart).Trim();
+                if (!pattern.IsEmpty)
+                {
+                    patterns ??= new List<string>(4);
+                    patterns.Add(pattern.ToString());
+                }
+
+                patternStart = i + 1;
+            }
+        }
+    }
+
     private static bool TryMapWindowState(object? windowState, out ProGpuWpfWindowState mappedWindowState)
     {
         if (TryConvertEnumNumber(windowState, out var value) &&

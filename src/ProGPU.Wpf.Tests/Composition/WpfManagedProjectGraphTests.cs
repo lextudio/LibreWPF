@@ -2230,6 +2230,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CrossPlatformWpfPlatformServices.Instance.FileDialogs", activation, StringComparison.Ordinal);
         Assert.Contains("ShowPortableFileDialog(PortableFileDialogRequest request)", activation, StringComparison.Ordinal);
         Assert.Contains("ReadFileDialogPatterns(request.Filter)", activation, StringComparison.Ordinal);
+        Assert.Contains("internal static IReadOnlyList<string> ReadFileDialogPatterns(string filter)", activation, StringComparison.Ordinal);
+        Assert.Contains("AddFileDialogPatterns(filter.AsSpan(segmentStart, i - segmentStart), ref patterns)", activation, StringComparison.Ordinal);
+        Assert.DoesNotContain("filter.Split('|')", activation, StringComparison.Ordinal);
+        Assert.DoesNotContain("tokens[i].Split(';')", activation, StringComparison.Ordinal);
         Assert.Contains("private static IReadOnlyList<string> NormalizeFileTypePatterns", processFileDialogService, StringComparison.Ordinal);
         Assert.Contains("var normalized = new List<string>(patterns.Count);", processFileDialogService, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Linq;", processFileDialogService, StringComparison.Ordinal);

@@ -128,16 +128,23 @@ public sealed class WpfRetainedVisualBranchMap
 
     public int InvalidateVisuals(IEnumerable<object> sources)
     {
-        return InvalidateVisualsForSources(sources).InvalidatedVisualCount;
+        return InvalidateVisualsForSources(sources, singleSourceHint: null).InvalidatedVisualCount;
     }
 
     public IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForSources(IEnumerable<object> sources)
+    {
+        return GetReplayTargetsForSources(sources, singleSourceHint: null);
+    }
+
+    public IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForSources(
+        IEnumerable<object> sources,
+        object? singleSourceHint)
     {
         ArgumentNullException.ThrowIfNull(sources);
 
         if (TryGetReferenceEqualityHashSet(sources, out var referenceDirtySources))
         {
-            return GetReplayTargetsForReferenceSourceSet(referenceDirtySources);
+            return GetReplayTargetsForReferenceSourceSet(referenceDirtySources, singleSourceHint);
         }
 
         if (sources is IReadOnlyCollection<object> sourceCollection)
@@ -171,7 +178,8 @@ public sealed class WpfRetainedVisualBranchMap
     }
 
     private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForReferenceSourceSet(
-        HashSet<object> dirtySources)
+        HashSet<object> dirtySources,
+        object? singleSourceHint)
     {
         if (dirtySources.Count == 0)
         {
@@ -179,7 +187,7 @@ public sealed class WpfRetainedVisualBranchMap
         }
 
         if (dirtySources.Count == 1 &&
-            TryGetSingleSource(dirtySources, out var singleSource))
+            TryGetSingleSource(dirtySources, singleSourceHint, out var singleSource))
         {
             return GetReplayTargetsForSingleSource(singleSource);
         }
@@ -289,6 +297,20 @@ public sealed class WpfRetainedVisualBranchMap
 
     private static bool TryGetSingleSource(
         HashSet<object> sources,
+        object? singleSourceHint,
+        out object source)
+    {
+        if (singleSourceHint != null && sources.Contains(singleSourceHint))
+        {
+            source = singleSourceHint;
+            return true;
+        }
+
+        return TryGetSingleSource(sources, out source);
+    }
+
+    private static bool TryGetSingleSource(
+        HashSet<object> sources,
         out object source)
     {
         foreach (var candidate in sources)
@@ -370,11 +392,18 @@ public sealed class WpfRetainedVisualBranchMap
 
     public WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForSources(IEnumerable<object> sources)
     {
+        return InvalidateVisualsForSources(sources, singleSourceHint: null);
+    }
+
+    public WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForSources(
+        IEnumerable<object> sources,
+        object? singleSourceHint)
+    {
         ArgumentNullException.ThrowIfNull(sources);
 
         if (TryGetReferenceEqualityHashSet(sources, out var referenceVisitedSources))
         {
-            return InvalidateVisualsForReferenceSourceSet(referenceVisitedSources);
+            return InvalidateVisualsForReferenceSourceSet(referenceVisitedSources, singleSourceHint);
         }
 
         if (sources is IReadOnlyCollection<object> sourceCollection)
@@ -408,7 +437,8 @@ public sealed class WpfRetainedVisualBranchMap
     }
 
     private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForReferenceSourceSet(
-        HashSet<object> visitedSources)
+        HashSet<object> visitedSources,
+        object? singleSourceHint)
     {
         if (visitedSources.Count == 0)
         {
@@ -416,7 +446,7 @@ public sealed class WpfRetainedVisualBranchMap
         }
 
         if (visitedSources.Count == 1 &&
-            TryGetSingleSource(visitedSources, out var singleSource))
+            TryGetSingleSource(visitedSources, singleSourceHint, out var singleSource))
         {
             return InvalidateVisualsForSingleSource(singleSource);
         }

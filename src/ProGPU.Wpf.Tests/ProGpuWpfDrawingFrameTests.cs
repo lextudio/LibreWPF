@@ -766,6 +766,41 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void BranchMapUsesSingleReferenceDirtySourceHintForReplayAndInvalidation()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var source = new object();
+        var wrongHint = new object();
+        var visual = new ProGpuRetainedDrawingVisual
+        {
+            IsDirty = false
+        };
+        var dirtySources = new HashSet<object>(ReferenceEqualityComparer.Instance)
+        {
+            source
+        };
+        branchMap.Register(source, visual);
+
+        var result = branchMap.InvalidateVisualsForSources(dirtySources, source);
+        var hintedTargets = branchMap.GetReplayTargetsForSources(dirtySources, source);
+        var hintedTarget = Assert.Single(hintedTargets);
+        var fallbackTargets = branchMap.GetReplayTargetsForSources(dirtySources, wrongHint);
+        var fallbackTarget = Assert.Single(fallbackTargets);
+
+        Assert.Same(hintedTargets, fallbackTargets);
+        Assert.Equal(1, result.DirtySourceCount);
+        Assert.Equal(1, result.MappedSourceCount);
+        Assert.Equal(0, result.UnmappedSourceCount);
+        Assert.Equal(1, result.InvalidatedVisualCount);
+        Assert.True(result.CanTargetAllDirtySources);
+        Assert.True(visual.IsDirty);
+        Assert.Same(source, hintedTarget.Source);
+        Assert.Same(visual, hintedTarget.Visual);
+        Assert.Same(source, fallbackTarget.Source);
+        Assert.Same(visual, fallbackTarget.Visual);
+    }
+
+    [Fact]
     public void BranchMapReusesSingleReplayTargetList()
     {
         var branchMap = new WpfRetainedVisualBranchMap();

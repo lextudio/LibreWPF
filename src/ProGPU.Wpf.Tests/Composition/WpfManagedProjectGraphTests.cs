@@ -8800,6 +8800,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Span<int> activeRegisters = stackalloc int[WpfShaderEffectParams.MaxSamplerRegisterCount];", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("var activeRegisterCount = CollectActiveSamplerRegisters(p, activeRegisters);", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("var activeRegisterSpan = activeRegisters[..activeRegisterCount];", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < activeSamplerRegisters.Length; i++)", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < activeRegisters.Length; i++)", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("var sourceRegisters = sourceLayout.Registers;", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < sourceRegisters.Length; i++)", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("Span<VertexAttribute> attrs = stackalloc VertexAttribute[3];", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("Span<VertexBufferLayout> layouts = stackalloc VertexBufferLayout[1];", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("ArrayStride = (uint)Unsafe.SizeOf<VectorVertex>()", shaderPipeline, StringComparison.Ordinal);
@@ -8807,6 +8811,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private RenderPipeline* GetOrCreateRenderPipelineCore(", renderPipelineCache, StringComparison.Ordinal);
         Assert.Contains("fixed (VertexBufferLayout* pLayouts = vertexBufferLayouts)", renderPipelineCache, StringComparison.Ordinal);
         Assert.DoesNotContain("return registers[..count].ToArray();", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var register in activeSamplerRegisters)", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var register in activeRegisters)", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var register in sourceLayout.Registers)", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("new VertexBufferLayout[]", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("Marshal.AllocHGlobal(Marshal.SizeOf<VertexAttribute>() * 3)", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("Marshal.FreeHGlobal((IntPtr)layouts[0].Attributes)", shaderPipeline, StringComparison.Ordinal);

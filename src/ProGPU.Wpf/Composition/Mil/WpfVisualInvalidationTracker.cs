@@ -331,7 +331,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             _subscriptionsNeedRefresh = false;
             ClearSubscriptions();
             _visualStateSnapshots.Clear();
-            _visualChildrenSnapshots.Clear();
             SubscribeGraph(_root);
         }
         finally
@@ -343,13 +342,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private void SubscribeGraph(object root)
     {
         _subscriptionTraversalVisited.Clear();
+        _visualChildrenCurrentSources.Clear();
         try
         {
             SubscribeObject(root, _subscriptionTraversalVisited);
+            RemoveStaleVisualChildrenSnapshots(_visualChildrenSnapshots, _visualChildrenCurrentSources);
         }
         finally
         {
             _subscriptionTraversalVisited.Clear();
+            _visualChildrenCurrentSources.Clear();
         }
     }
 
@@ -392,7 +394,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private void CaptureVisualChildrenSnapshot(object source)
     {
-        if (TryReadPortableVisualChildrenSnapshot(source, out var snapshot))
+        if (TryReadPortableVisualChildrenSnapshot(
+                source,
+                _visualChildrenSnapshots,
+                _visualChildrenCurrentSources,
+                out var snapshot))
         {
             _visualChildrenSnapshots[source] = snapshot;
         }
@@ -690,12 +696,24 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return false;
     }
 
-    private static bool TryReadPortableVisualChildrenSnapshot(object source, out object?[] children)
+    private static bool TryReadPortableVisualChildrenSnapshot(
+        object source,
+        Dictionary<object, object?[]> previousSnapshots,
+        HashSet<object> currentSources,
+        out object?[] children)
     {
         children = Array.Empty<object?>();
         if (!TryGetPortableVisualChildrenSource(source, out var visualChildrenSource, out var count))
         {
             return false;
+        }
+
+        currentSources.Add(source);
+        if (previousSnapshots.TryGetValue(source, out var previousSnapshot) &&
+            VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot))
+        {
+            children = previousSnapshot;
+            return true;
         }
 
         if (count == 0)
@@ -710,6 +728,42 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         return true;
+    }
+
+    private static void RemoveStaleVisualChildrenSnapshots(
+        Dictionary<object, object?[]> snapshots,
+        HashSet<object> currentSources)
+    {
+        if (snapshots.Count == 0)
+        {
+            return;
+        }
+
+        object[]? staleSources = null;
+        var staleSourceCount = 0;
+        try
+        {
+            foreach (var snapshot in snapshots)
+            {
+                if (!currentSources.Contains(snapshot.Key))
+                {
+                    WpfPooledRemovalBuffer.Add(
+                        ref staleSources,
+                        ref staleSourceCount,
+                        snapshots.Count,
+                        snapshot.Key);
+                }
+            }
+
+            for (var i = 0; i < staleSourceCount; i++)
+            {
+                snapshots.Remove(staleSources![i]);
+            }
+        }
+        finally
+        {
+            WpfPooledRemovalBuffer.Return(staleSources, staleSourceCount);
+        }
     }
 
     private static bool TryGetPortableVisualChildrenSource(

@@ -5989,8 +5989,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RefreshSubscriptionsIfNeeded();", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private void RequestSubscriptionRefresh()", trackerSource, StringComparison.Ordinal);
         Assert.Contains("PortableVisualChildrenSubscriptionRefreshIsDeferredUntilDirtyConsumed", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.Contains("PortableVisualChildrenSubscriptionRefreshPrunesRemovedChildSnapshots", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("_changedSources.Clear();", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("TryReadPortableVisualChildrenSnapshot(source, out var snapshot)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("TryReadPortableVisualChildrenSnapshot(\n                source,\n                _visualChildrenSnapshots,\n                _visualChildrenCurrentSources,", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("previousSnapshots.TryGetValue(source, out var previousSnapshot)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("children = previousSnapshot;", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("RemoveStaleVisualChildrenSnapshots(_visualChildrenSnapshots, _visualChildrenCurrentSources);", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("private static void RemoveStaleVisualChildrenSnapshots(", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("WpfPooledRemovalBuffer.Add(", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "ClearSubscriptions();\n            _visualStateSnapshots.Clear();\n            _visualChildrenSnapshots.Clear();\n            SubscribeGraph(_root);",
+            trackerSource,
+            StringComparison.Ordinal);
         Assert.Contains("CaptureVisualStateSnapshotsAndCollectVisualChildrenChanges(", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CaptureObjectVisualStateAndChildren(", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources)", trackerSource, StringComparison.Ordinal);

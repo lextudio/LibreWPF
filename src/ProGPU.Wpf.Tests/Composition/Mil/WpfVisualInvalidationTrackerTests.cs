@@ -435,6 +435,31 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void PortableVisualChildrenSubscriptionRefreshPrunesRemovedChildSnapshots()
+    {
+        var root = new FakePortableVisualChildrenOnly();
+        var childGroup = new FakePortableVisualChildrenOnly();
+        var leaf = new FakeVisual();
+        childGroup.AddChild(leaf);
+        root.AddChild(childGroup);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        Assert.True(root.RemoveChild(childGroup));
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Contains(root, tracker.DirtySources);
+        Assert.Contains(childGroup, tracker.DirtySources);
+
+        tracker.ConsumeDirty();
+
+        Assert.False(tracker.DetectVersionChanges());
+        Assert.False(tracker.IsDirty);
+        Assert.DoesNotContain(childGroup, tracker.DirtySources);
+    }
+
+    [Fact]
     public void DetectVersionChangesRaisesInvalidatedAfterCompleteDirtySourceBatch()
     {
         var firstState = new PortableVisualState
@@ -988,6 +1013,11 @@ public sealed class WpfVisualInvalidationTrackerTests
         public void AddChild(object child)
         {
             _children.Add(child);
+        }
+
+        public bool RemoveChild(object child)
+        {
+            return _children.Remove(child);
         }
 
         public bool TryGetPortableVisualChildCount(out int count)

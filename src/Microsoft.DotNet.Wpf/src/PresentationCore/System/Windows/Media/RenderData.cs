@@ -110,6 +110,7 @@ namespace System.Windows.Media
             Marshal.Copy((IntPtr)pbRecord, this._buffer, _curOffset + sizeof(RecordHeader), cbRecordSize);
 
             _curOffset += totalSize;
+            InvalidatePortableRenderDataSnapshot();
         }
 
 
@@ -426,7 +427,9 @@ namespace System.Windows.Media
             }
             else
             {
-                return (uint)(_dependentResources.Add(o) + 1);
+                uint index = (uint)(_dependentResources.Add(o) + 1);
+                InvalidatePortableRenderDataSnapshot();
+                return index;
             }
         }
 
@@ -517,6 +520,12 @@ namespace System.Windows.Media
                 return false;
             }
 
+            if (_portableRenderDataSnapshot != null)
+            {
+                snapshot = _portableRenderDataSnapshot;
+                return true;
+            }
+
             byte[] renderData;
             if (_curOffset == 0)
             {
@@ -535,7 +544,13 @@ namespace System.Windows.Media
             }
 
             snapshot = new PortableRenderDataSnapshot(renderData, dependentResources);
+            _portableRenderDataSnapshot = snapshot;
             return true;
+        }
+
+        private void InvalidatePortableRenderDataSnapshot()
+        {
+            _portableRenderDataSnapshot = null;
         }
 
         private static object ExportPortableDependentResource(object resource)
@@ -572,6 +587,8 @@ namespace System.Windows.Media
         private int _bitmapEffectStackDepth;
         
         private FrugalStructList<Object> _dependentResources = new FrugalStructList<Object>();
+
+        private PortableRenderDataSnapshot _portableRenderDataSnapshot;
 
         // DUCE resource
         private DUCE.MultiChannelResource _duceResource = new DUCE.MultiChannelResource();

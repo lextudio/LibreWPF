@@ -19,7 +19,7 @@ namespace ProGPU.Wpf.Tests.Composition.Mil;
 public sealed class WpfRenderDataBridgeTests
 {
     [Fact]
-    public void ExtractCopiesActiveRenderDataBytesAndDependentResources()
+    public void ExtractUsesSourceTrimmedPortableRenderDataBytesAndDependentResources()
     {
         var brush = Brushes.Green;
         var record = CreateRectangleRecord(1, 0);
@@ -30,21 +30,23 @@ public sealed class WpfRenderDataBridgeTests
 
         Assert.Equal(record, snapshot.RenderData);
         Assert.NotSame(pooledBuffer, snapshot.RenderData);
+        Assert.Same(renderData.LastSnapshot!.RenderData, snapshot.RenderData);
+        Assert.Same(renderData.LastSnapshot.DependentResources, snapshot.DependentResources);
         Assert.Equal(new object?[] { brush }, snapshot.DependentResources);
     }
 
     [Fact]
-    public void ExtractUsesPortableRenderDataSnapshot()
+    public void ExtractUsesPortableRenderDataSnapshotWithoutBridgeCopies()
     {
         var brush = Brushes.Green;
         var record = CreateRectangleRecord(1, 0);
-        var portableBuffer = record.Concat(new byte[] { 0xAA, 0xBB, 0xCC, 0xDD }).ToArray();
-        var renderData = new TypedPortableRenderDataSource(portableBuffer, new object?[] { brush });
+        object?[] dependentResources = [brush];
+        var renderData = new TypedPortableRenderDataSource(record, dependentResources);
 
         var snapshot = WpfRenderDataBridge.Extract(renderData);
 
-        Assert.Equal(portableBuffer, snapshot.RenderData);
-        Assert.NotSame(portableBuffer, snapshot.RenderData);
+        Assert.Same(record, snapshot.RenderData);
+        Assert.Same(dependentResources, snapshot.DependentResources);
         Assert.Equal(new object?[] { brush }, snapshot.DependentResources);
         Assert.Equal(1, renderData.TypedSnapshotCount);
     }
@@ -175,11 +177,14 @@ public sealed class WpfRenderDataBridgeTests
             _dependentResources = dependentResources;
         }
 
+        public PortableRenderDataSnapshot? LastSnapshot { get; private set; }
+
         public bool TryGetPortableRenderDataSnapshot(out PortableRenderDataSnapshot snapshot)
         {
             snapshot = new PortableRenderDataSnapshot(
                 _buffer.AsSpan(0, _curOffset).ToArray(),
                 _dependentResources.Items);
+            LastSnapshot = snapshot;
             return true;
         }
     }

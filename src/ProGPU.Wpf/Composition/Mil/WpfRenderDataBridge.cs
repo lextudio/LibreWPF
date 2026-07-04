@@ -72,20 +72,10 @@ public sealed class WpfRenderDataBridge
 
         var renderData = portableSnapshot.RenderData.Length == 0
             ? Array.Empty<byte>()
-            : new byte[portableSnapshot.RenderData.Length];
-        if (renderData.Length != 0)
-        {
-            Buffer.BlockCopy(portableSnapshot.RenderData, 0, renderData, 0, renderData.Length);
-        }
-
-        var dependentResourceCount = portableSnapshot.DependentResources.Count;
-        var dependentResources = dependentResourceCount == 0
+            : portableSnapshot.RenderData;
+        var dependentResources = portableSnapshot.DependentResources.Count == 0
             ? Array.Empty<object?>()
-            : new object?[dependentResourceCount];
-        for (var i = 0; i < dependentResources.Length; i++)
-        {
-            dependentResources[i] = portableSnapshot.DependentResources[i];
-        }
+            : portableSnapshot.DependentResources;
 
         return new WpfRenderDataSnapshot(renderData, dependentResources);
     }

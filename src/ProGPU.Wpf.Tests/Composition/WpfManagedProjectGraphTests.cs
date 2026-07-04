@@ -9734,6 +9734,15 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfResourceResolver.cs");
+        var sourceGlyphRunPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "GlyphRun.cs");
         var proGpuPresentationCoreBrushPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -10180,6 +10189,7 @@ public sealed class WpfManagedProjectGraphTests
         var wpfMilRenderDataDecoderTests = File.ReadAllText(wpfMilRenderDataDecoderTestsPath);
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
         var wpfResourceResolver = File.ReadAllText(wpfResourceResolverPath);
+        var sourceGlyphRun = File.ReadAllText(sourceGlyphRunPath);
         var proGpuPresentationCoreBrush = File.ReadAllText(proGpuPresentationCoreBrushPath);
         var proGpuPresentationCoreGradientBrushes = File.ReadAllText(proGpuPresentationCoreGradientBrushesPath);
         var proGpuPresentationCoreProject = File.ReadAllText(proGpuPresentationCoreProjectPath);
@@ -12760,6 +12770,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using PortableGlyphRunSource = ProGPU.Wpf.Interop.IPortableGlyphRunSource;", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("using PortableNativeGlyphRun = ProGPU.Wpf.Interop.PortableNativeGlyphRun;", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("using PortableNativeGlyphRunSource = ProGPU.Wpf.Interop.IPortableNativeGlyphRunSource;", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("IPortableGlyphRunSource, IPortableNativeGlyphRunSource", sourceGlyphRun, StringComparison.Ordinal);
+        Assert.Contains("private PortableGlyphRun    _portableGlyphRunCache;", sourceGlyphRun, StringComparison.Ordinal);
+        Assert.Contains("private PortableNativeGlyphRun _portableNativeGlyphRunCache;", sourceGlyphRun, StringComparison.Ordinal);
+        Assert.Contains("if (IsInitialized && _portableGlyphRunCache != null)", sourceGlyphRun, StringComparison.Ordinal);
+        Assert.Contains("if (IsInitialized && _portableNativeGlyphRunCache != null)", sourceGlyphRun, StringComparison.Ordinal);
+        Assert.Contains("_portableGlyphRunCache = glyphRun;", sourceGlyphRun, StringComparison.Ordinal);
+        Assert.Contains("_portableNativeGlyphRunCache = glyphRun;", sourceGlyphRun, StringComparison.Ordinal);
         Assert.Contains("resource is PortableNativeGlyphRunSource nativeGlyphRunSource", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("nativeGlyphRunSource.TryGetPortableNativeGlyphRun(out var nativeGlyphRun)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("TryAdaptPortableNativeGlyphRun(nativeGlyphRun, out glyphRun)", wpfResourceResolver, StringComparison.Ordinal);

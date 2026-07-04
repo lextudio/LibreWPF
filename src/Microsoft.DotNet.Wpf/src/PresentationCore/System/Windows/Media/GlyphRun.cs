@@ -2452,6 +2452,12 @@ namespace System.Windows.Media
 
         bool IPortableGlyphRunSource.TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)
         {
+            if (IsInitialized && _portableGlyphRunCache != null)
+            {
+                glyphRun = _portableGlyphRunCache;
+                return true;
+            }
+
             glyphRun = new PortableGlyphRun();
             if (_glyphIndices == null
                 || _glyphIndices.Count == 0
@@ -2474,11 +2480,22 @@ namespace System.Windows.Media
                 IsItalic = (styleSimulations & StyleSimulations.ItalicSimulation) != 0
             };
 
+            if (IsInitialized)
+            {
+                _portableGlyphRunCache = glyphRun;
+            }
+
             return true;
         }
 
         bool IPortableNativeGlyphRunSource.TryGetPortableNativeGlyphRun(out PortableNativeGlyphRun glyphRun)
         {
+            if (IsInitialized && _portableNativeGlyphRunCache != null)
+            {
+                glyphRun = _portableNativeGlyphRunCache;
+                return true;
+            }
+
             glyphRun = new PortableNativeGlyphRun();
             if (_glyphIndices == null
                 || _glyphIndices.Count == 0
@@ -2499,6 +2516,11 @@ namespace System.Windows.Media
                 IsBold = (styleSimulations & StyleSimulations.BoldSimulation) != 0,
                 IsItalic = (styleSimulations & StyleSimulations.ItalicSimulation) != 0
             };
+
+            if (IsInitialized)
+            {
+                _portableNativeGlyphRunCache = glyphRun;
+            }
 
             return true;
         }
@@ -2626,6 +2648,8 @@ namespace System.Windows.Media
         private XmlLanguage         _language;
         private string              _deviceFontName;
         private object              _inkBoundingBox;    // Used when CacheInkBounds is on
+        private PortableGlyphRun    _portableGlyphRunCache;
+        private PortableNativeGlyphRun _portableNativeGlyphRunCache;
         private TextFormattingMode      _textFormattingMode;
         private float               _pixelsPerDip = MS.Internal.FontCache.Util.PixelsPerDip;
 

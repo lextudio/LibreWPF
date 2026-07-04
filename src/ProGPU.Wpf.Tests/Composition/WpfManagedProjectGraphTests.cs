@@ -13425,6 +13425,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("BindingFlags", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.Contains("using MediaSolidColorBrush = System.Windows.Media.SolidColorBrush;", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("var glyphBounds = CreateGlyphRunBounds(glyphRun);", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("var nativeBrush = ToNativeGlyphRunBrush(foregroundBrush, glyphBounds) ?? new VectorSolidColorBrush(Vector4.One);", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("Rect = ToNativeRect(glyphBounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("private VectorBrush? ToNativeGlyphRunBrush(MediaBrush foregroundBrush, WpfReplayRect glyphBounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("private static WpfReplayRect CreateGlyphRunBounds(MediaGlyphRun glyphRun)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("var nativeBrush = ToNativeGlyphRunBrush(foregroundBrush, glyphRun);", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("private VectorBrush? ToNativeGlyphRunBrush(MediaBrush foregroundBrush, in WpfNativeGlyphRun glyphRun)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("if (foregroundBrush is MediaSolidColorBrush)", proGpuWpfCommandSink, StringComparison.Ordinal);

@@ -2249,6 +2249,7 @@ public sealed class WpfReplayToProGpuCommandTests
 
         var command = Assert.Single(nativeContext.Commands);
         Assert.Equal(RenderCommandType.DrawGlyphRun, command.Type);
+        Assert.Equal(new global::ProGPU.Scene.Rect(0, -16, 16, 16), command.Rect);
         Assert.True(command.IsBold);
         Assert.True(command.IsItalic);
     }

@@ -590,6 +590,8 @@ public sealed class ProGpuCompositionCommandSink :
             return;
         }
 
+        var glyphBounds = CreateGlyphRunBounds(glyphRun);
+        var nativeBrush = ToNativeGlyphRunBrush(foregroundBrush, glyphBounds) ?? new VectorSolidColorBrush(Vector4.One);
         AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawGlyphRun,
@@ -597,11 +599,8 @@ public sealed class ProGpuCompositionCommandSink :
             GlyphPositions = glyphRun.GlyphPositions,
             Font = glyphRun.Font,
             FontSize = glyphRun.FontSize,
-            Brush = WpfResourceResolver.AdaptNativeBrush(
-                    foregroundBrush,
-                    new WpfReplayRect(glyphRun.Position.X, glyphRun.Position.Y, glyphRun.FontSize, glyphRun.FontSize),
-                    out _)
-                ?? new VectorSolidColorBrush(Vector4.One),
+            Brush = nativeBrush,
+            Rect = ToNativeRect(glyphBounds),
             Position = glyphRun.Position,
             Transform = glyphRun.Transform * _transformStack.Peek(),
             IsBold = glyphRun.IsBold,
@@ -1372,6 +1371,13 @@ public sealed class ProGpuCompositionCommandSink :
         return ToNativeBrush(foregroundBrush, CreateGlyphRunBounds(glyphRun));
     }
 
+    private VectorBrush? ToNativeGlyphRunBrush(MediaBrush foregroundBrush, WpfReplayRect glyphBounds)
+    {
+        return foregroundBrush is MediaSolidColorBrush
+            ? ToNativeBrush(foregroundBrush, default(WpfReplayRect))
+            : ToNativeBrush(foregroundBrush, glyphBounds);
+    }
+
     private static WpfReplayRect CreateLineBounds(WpfReplayPoint point0, WpfReplayPoint point1)
     {
         var x1 = Math.Min(point0.X, point1.X);
@@ -1379,6 +1385,35 @@ public sealed class ProGpuCompositionCommandSink :
         var x2 = Math.Max(point0.X, point1.X);
         var y2 = Math.Max(point0.Y, point1.Y);
         return new WpfReplayRect(x1, y1, x2 - x1, y2 - y1);
+    }
+
+    private static WpfReplayRect CreateGlyphRunBounds(MediaGlyphRun glyphRun)
+    {
+        if (glyphRun.GlyphPositions.Length == 0)
+        {
+            return new WpfReplayRect(glyphRun.Position.X, glyphRun.Position.Y - glyphRun.FontSize, glyphRun.FontSize, glyphRun.FontSize);
+        }
+
+        var minX = double.PositiveInfinity;
+        var minY = double.PositiveInfinity;
+        var maxX = double.NegativeInfinity;
+        var maxY = double.NegativeInfinity;
+        var originX = glyphRun.Position.X;
+        var originY = glyphRun.Position.Y;
+        var fontSize = glyphRun.FontSize;
+        var glyphPositions = glyphRun.GlyphPositions;
+        for (var i = 0; i < glyphPositions.Length; i++)
+        {
+            var position = glyphPositions[i];
+            var x = originX + position.X;
+            var y = originY + position.Y;
+            minX = Math.Min(minX, x);
+            minY = Math.Min(minY, y - fontSize);
+            maxX = Math.Max(maxX, x + fontSize);
+            maxY = Math.Max(maxY, y);
+        }
+
+        return new WpfReplayRect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY));
     }
 
     private static WpfReplayRect CreateGlyphRunBounds(WpfNativeGlyphRun glyphRun)

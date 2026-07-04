@@ -208,7 +208,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 return false;
             }
 
-            MarkDirtyAndRefresh(_changedSources);
+            MarkDirtyListAndRefresh(_changedSources);
             return true;
         }
         finally
@@ -275,6 +275,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         foreach (var source in sources)
         {
             MarkDirty(source);
+        }
+
+        RequestSubscriptionRefresh();
+    }
+
+    private void MarkDirtyListAndRefresh(IReadOnlyList<object> sources)
+    {
+        for (var i = 0; i < sources.Count; i++)
+        {
+            MarkDirty(sources[i]);
         }
 
         RequestSubscriptionRefresh();

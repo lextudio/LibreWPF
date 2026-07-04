@@ -68,6 +68,8 @@ Normal WPF managed code reuse remains the goal. Modify upstream WPF managed code
 
 Retained invalidation events should request a subscription refresh and coalesce the actual graph rebuild until the dirty pass is consumed. Do not clear and resubscribe the full WPF graph immediately for every Xceed/DataGrid property, collection, or portable invalidation event.
 
+Retained invalidation version-change batches should keep `_changedSources` on a list-owned indexed path. Do not pass `_changedSources` through the generic `IEnumerable<object>` dirty-marking overload or reintroduce enumerable dispatch for this Xceed/DataGrid retained replay path.
+
 Geometry bounds inference in WPF replay should use indexed loops over known list/array shapes. Do not reintroduce enumerator-based `foreach` traversal for direct line/polyline segment bounds in Xceed/DataGrid geometry replay paths.
 
 Retained invalidation graph traversal should branch on `source is IEnumerable collection` only when the source is actually enumerable. Do not route ordinary visual/resource nodes through `Array.Empty` enumerable helpers, and do not reintroduce `EnumerateCollection(...)` in subscription, version-polling, tracked-dependency, or dependency-registration traversal loops.

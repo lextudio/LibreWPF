@@ -32,6 +32,8 @@ Retained invalidation performance work follows the same typed-seam rule. Baselin
 
 Retained invalidation subscription refresh should also be coalesced. `WpfVisualInvalidationTracker` should request a refresh when typed invalidation, property, collection, or detected topology changes arrive, then rebuild subscriptions once when the dirty pass is consumed instead of clearing and resubscribing the full WPF graph for every Xceed/DataGrid event burst.
 
+Retained invalidation version-change batches should keep list-owned dirty marking. `_changedSources` is reused across detection passes and should flow through an indexed `IReadOnlyList<object>` helper instead of the generic `IEnumerable<object>` dirty-marking overload, avoiding interface-enumerator dispatch during Xceed/DataGrid retained replay invalidation.
+
 Geometry bounds inference should keep direct primitive replay on indexed list/array paths too. `WpfVisualTreeRenderer.TryGetLineSegmentBounds(...)` and similar replay helpers should index known `IReadOnlyList<T>`/array data instead of enumerating, so Xceed/DataGrid row, border, grid-line, and polyline geometry bounds do not allocate or dispatch through interface enumerators.
 
 This requirement does not reduce managed WPF reuse. The port should keep upstream WPF managers, controls, XAML, resources, themes, layout, binding, routed events, commands, and document systems active, while replacing only the Windows-only or MIL/native seams needed to run cross-platform through ProGPU.

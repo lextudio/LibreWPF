@@ -19,7 +19,12 @@ require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-v*"
 require_text ".github/workflows/progpu-wpf-release.yml" "refs/tags/librewpf-v"
 require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-packages-"
 require_text ".github/workflows/progpu-wpf-docs.yml" "librewpf-docs"
+require_text "README.md" "# LibreWPF ProGPU Port"
 require_text "docs/progpu-wpf-release.md" "LibreWPF.Sdk"
+require_text "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "<PackageName>LibreWPF.Transport"
+require_text "src/ProGPU.Wpf/ProGPU.Wpf.csproj" "<PackageId>LibreWPF.ProGPU</PackageId>"
+require_text "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "<PackageId>LibreWPF.Interop</PackageId>"
+require_text "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" "<PackageName>LibreWPF.Sdk"
 
 for package_id in "${progpu_preview_package_ids[@]}"; do
   require_text "README.md" "| \`${package_id}\` |"

@@ -1068,9 +1068,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             return;
         }
 
-        foreach (var child in drawingGroupState.Children)
+        var children = drawingGroupState.Children;
+        for (var i = 0; i < children.Length; i++)
         {
-            VisitPortableDependency(ref state, visitor, child);
+            VisitPortableDependency(ref state, visitor, children[i]);
         }
     }
 

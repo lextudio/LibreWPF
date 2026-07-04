@@ -5915,9 +5915,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("MarkDirty(sources[i]);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisitPortableDependency(ref state, visitor, TryGetPortableVisualChild(visualChildrenSource, i))", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("var children = drawingGroupState.Children;", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < children.Length; i++)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("VisitPortableDependency(ref state, visitor, children[i]);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("if (source is IEnumerable collection)", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static IEnumerable EnumerateCollection(object source)", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("EnumerateCollection(source)", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var child in drawingGroupState.Children)", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("var changedSources = new List<object>();", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var changedSource in CollectVisualStateChanges", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var changedSource in CollectVisualChildrenChanges", trackerSource, StringComparison.Ordinal);

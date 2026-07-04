@@ -880,6 +880,21 @@ public sealed class WpfVisualTreeRenderer
         var popCount = 0;
         var localVisualTransform = Matrix4x4.Identity;
         var canProjectScrollableClipToOuterSpace = true;
+        var visualStateBoundsInitialized = false;
+        var visualStateBoundsAvailable = false;
+        var visualStateBounds = default(WpfReplayRect);
+
+        bool TryGetVisualStateBounds(out WpfReplayRect bounds)
+        {
+            if (!visualStateBoundsInitialized)
+            {
+                visualStateBoundsAvailable = TryReadOpacityMaskBounds(visual, out visualStateBounds);
+                visualStateBoundsInitialized = true;
+            }
+
+            bounds = visualStateBounds;
+            return visualStateBoundsAvailable;
+        }
 
         if (TryReadVisualTransform(visual, out var transform))
         {
@@ -983,7 +998,7 @@ public sealed class WpfVisualTreeRenderer
         if (TryGetOpacityMask(visual, out var opacityMask) && opacityMask != null)
         {
             var mediaOpacityMask = WpfResourceResolver.AdaptBrush(opacityMask);
-            if (mediaOpacityMask != null && TryReadOpacityMaskBounds(visual, out var opacityMaskBounds))
+            if (mediaOpacityMask != null && TryGetVisualStateBounds(out var opacityMaskBounds))
             {
                 WpfPortableCommandSinkBridge.PushOpacityMask(sink, mediaOpacityMask, opacityMaskBounds);
                 popCount++;
@@ -1000,7 +1015,7 @@ public sealed class WpfVisualTreeRenderer
                 && WpfPortableCommandSinkBridge.TryPushVisualEffect(
                     sink,
                     proGpuEffect,
-                    TryReadOpacityMaskBounds(visual, out var effectBounds) ? effectBounds : null))
+                    TryGetVisualStateBounds(out var effectBounds) ? effectBounds : null))
             {
                 popCount++;
             }
@@ -1017,7 +1032,7 @@ public sealed class WpfVisualTreeRenderer
                 && WpfPortableCommandSinkBridge.TryPushVisualEffect(
                     sink,
                     proGpuBitmapEffect,
-                    TryReadOpacityMaskBounds(visual, out var bitmapEffectBounds) ? bitmapEffectBounds : null))
+                    TryGetVisualStateBounds(out var bitmapEffectBounds) ? bitmapEffectBounds : null))
             {
                 popCount++;
             }
@@ -1035,7 +1050,7 @@ public sealed class WpfVisualTreeRenderer
         {
             if (WpfPortableCommandSinkBridge.TryPushVisualCache(
                 sink,
-                TryReadOpacityMaskBounds(visual, out var cacheBounds) ? cacheBounds : null))
+                TryGetVisualStateBounds(out var cacheBounds) ? cacheBounds : null))
             {
                 popCount++;
             }

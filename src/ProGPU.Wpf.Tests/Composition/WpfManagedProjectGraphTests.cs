@@ -5997,6 +5997,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryReadPortableGeometryBounds(first, out var firstBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableGeometryBounds(second, out var secondBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("BoundsAccumulatingSink :\n        IWpfCompositionCommandSink,\n        IWpfNativePrimitiveCommandSink,\n        IWpfNativeTransformCommandSink,\n        IWpfNativeClipCommandSink,\n        IWpfNativeGeometryCommandSink", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("bool TryGetVisualStateBounds(out WpfReplayRect bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("visualStateBoundsAvailable = TryReadOpacityMaskBounds(visual, out visualStateBounds);", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetVisualStateBounds(out var opacityMaskBounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetVisualStateBounds(out var effectBounds) ? effectBounds : null", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetVisualStateBounds(out var bitmapEffectBounds) ? bitmapEffectBounds : null", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetVisualStateBounds(out var cacheBounds) ? cacheBounds : null", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadOpacityMaskBounds(visual, out var effectBounds)", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadOpacityMaskBounds(visual, out var bitmapEffectBounds)", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadOpacityMaskBounds(visual, out var cacheBounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRun)", rendererSource, StringComparison.Ordinal);

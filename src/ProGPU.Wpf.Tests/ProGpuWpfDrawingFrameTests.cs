@@ -735,6 +735,37 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void BranchMapConsumesSingleReferenceDirtySourceSetThroughSingleTargetPath()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var source = new object();
+        var visual = new ProGpuRetainedDrawingVisual
+        {
+            IsDirty = false
+        };
+        var dirtySources = new HashSet<object>(ReferenceEqualityComparer.Instance)
+        {
+            source
+        };
+        branchMap.Register(source, visual);
+
+        var result = branchMap.InvalidateVisualsForSources(dirtySources);
+        var firstTargets = branchMap.GetReplayTargetsForSources(dirtySources);
+        var secondTargets = branchMap.GetReplayTargetsForSources(dirtySources);
+        var target = Assert.Single(secondTargets);
+
+        Assert.Same(firstTargets, secondTargets);
+        Assert.Equal(1, result.DirtySourceCount);
+        Assert.Equal(1, result.MappedSourceCount);
+        Assert.Equal(0, result.UnmappedSourceCount);
+        Assert.Equal(1, result.InvalidatedVisualCount);
+        Assert.True(result.CanTargetAllDirtySources);
+        Assert.True(visual.IsDirty);
+        Assert.Same(source, target.Source);
+        Assert.Same(visual, target.Visual);
+    }
+
+    [Fact]
     public void BranchMapReusesSingleReplayTargetList()
     {
         var branchMap = new WpfRetainedVisualBranchMap();

@@ -135,6 +135,11 @@ public sealed class WpfRetainedVisualBranchMap
     {
         ArgumentNullException.ThrowIfNull(sources);
 
+        if (TryGetReferenceEqualityHashSet(sources, out var referenceDirtySources))
+        {
+            return GetReplayTargetsForReferenceSourceSet(referenceDirtySources);
+        }
+
         if (sources is IReadOnlyCollection<object> sourceCollection)
         {
             if (sourceCollection.Count == 0)
@@ -147,11 +152,6 @@ public sealed class WpfRetainedVisualBranchMap
             {
                 return GetReplayTargetsForSingleSource(singleSource);
             }
-        }
-
-        if (TryGetReferenceEqualityHashSet(sources, out var referenceDirtySources))
-        {
-            return GetReplayTargetsForDistinctSourceSet(referenceDirtySources);
         }
 
         _scratchDistinctSources.Clear();
@@ -168,6 +168,23 @@ public sealed class WpfRetainedVisualBranchMap
         {
             _scratchDistinctSources.Clear();
         }
+    }
+
+    private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForReferenceSourceSet(
+        HashSet<object> dirtySources)
+    {
+        if (dirtySources.Count == 0)
+        {
+            return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+        }
+
+        if (dirtySources.Count == 1 &&
+            TryGetSingleSource(dirtySources, out var singleSource))
+        {
+            return GetReplayTargetsForSingleSource(singleSource);
+        }
+
+        return GetReplayTargetsForDistinctSourceSet(dirtySources);
     }
 
     private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForDistinctSourceSet(
@@ -270,6 +287,20 @@ public sealed class WpfRetainedVisualBranchMap
         return false;
     }
 
+    private static bool TryGetSingleSource(
+        HashSet<object> sources,
+        out object source)
+    {
+        foreach (var candidate in sources)
+        {
+            source = candidate;
+            return true;
+        }
+
+        source = null!;
+        return false;
+    }
+
     private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> CreateSingleReplayTarget(
         object source,
         ProGpuVisual visual)
@@ -338,6 +369,11 @@ public sealed class WpfRetainedVisualBranchMap
     {
         ArgumentNullException.ThrowIfNull(sources);
 
+        if (TryGetReferenceEqualityHashSet(sources, out var referenceVisitedSources))
+        {
+            return InvalidateVisualsForReferenceSourceSet(referenceVisitedSources);
+        }
+
         if (sources is IReadOnlyCollection<object> sourceCollection)
         {
             if (sourceCollection.Count == 0)
@@ -350,11 +386,6 @@ public sealed class WpfRetainedVisualBranchMap
             {
                 return InvalidateVisualsForSingleSource(singleSource);
             }
-        }
-
-        if (TryGetReferenceEqualityHashSet(sources, out var referenceVisitedSources))
-        {
-            return InvalidateVisualsForDistinctSourceSet(referenceVisitedSources);
         }
 
         _scratchDistinctSources.Clear();
@@ -371,6 +402,23 @@ public sealed class WpfRetainedVisualBranchMap
         {
             _scratchDistinctSources.Clear();
         }
+    }
+
+    private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForReferenceSourceSet(
+        HashSet<object> visitedSources)
+    {
+        if (visitedSources.Count == 0)
+        {
+            return new WpfRetainedVisualBranchInvalidationResult(0, 0, 0);
+        }
+
+        if (visitedSources.Count == 1 &&
+            TryGetSingleSource(visitedSources, out var singleSource))
+        {
+            return InvalidateVisualsForSingleSource(singleSource);
+        }
+
+        return InvalidateVisualsForDistinctSourceSet(visitedSources);
     }
 
     private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForSingleSource(object source)

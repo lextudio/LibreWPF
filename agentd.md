@@ -69,3 +69,5 @@ Normal WPF managed code reuse remains the goal. Modify upstream WPF managed code
 Retained invalidation graph traversal should branch on `source is IEnumerable collection` only when the source is actually enumerable. Do not route ordinary visual/resource nodes through `Array.Empty` enumerable helpers, and do not reintroduce `EnumerateCollection(...)` in subscription, version-polling, tracked-dependency, or dependency-registration traversal loops.
 
 Retained dirty-branch replay target snapshots should use map-owned reusable single-target and multi-target list storage. Do not allocate `WpfRetainedVisualBranchReplayTarget[]` arrays for normal Xceed/DataGrid multi-branch scroll invalidations; copy scratch targets into reusable snapshot storage before clearing scratch lists.
+
+Reference-equality dirty-source sets from `WpfVisualInvalidationTracker` should hit direct `HashSet<object>` replay/invalidation helpers before generic `IReadOnlyCollection<object>` handling. Keep one-source tracker frames on concrete `HashSet<object>` enumeration and the single-target/single-invalidation fast paths instead of routing them through generic collection enumeration.

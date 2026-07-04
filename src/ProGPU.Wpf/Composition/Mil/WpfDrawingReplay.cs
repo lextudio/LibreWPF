@@ -1420,13 +1420,27 @@ internal static class WpfDrawingReplay
 
         var appliedAny = false;
         var unsupportedAny = unsupportedGroupState || unsupportedRenderOptions;
-        foreach (var child in ExtractChildren(drawingGroup, hasPortableDrawingGroupState, drawingGroupState))
+        if (TryGetDrawingGroupChildren(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var childrenSource,
+                out var children,
+                out var childCount))
         {
-            var childStatus = Replay(child, sink, imageSourceAdapter);
-            appliedAny |= childStatus == WpfDrawingReplayStatus.Applied
-                || childStatus == WpfDrawingReplayStatus.PartiallyApplied;
-            unsupportedAny |= childStatus == WpfDrawingReplayStatus.Unsupported
-                || childStatus == WpfDrawingReplayStatus.PartiallyApplied;
+            for (var i = 0; i < childCount; i++)
+            {
+                if (!TryGetDrawingGroupChild(childrenSource, children, i, out var child))
+                {
+                    continue;
+                }
+
+                var childStatus = Replay(child, sink, imageSourceAdapter);
+                appliedAny |= childStatus == WpfDrawingReplayStatus.Applied
+                    || childStatus == WpfDrawingReplayStatus.PartiallyApplied;
+                unsupportedAny |= childStatus == WpfDrawingReplayStatus.Unsupported
+                    || childStatus == WpfDrawingReplayStatus.PartiallyApplied;
+            }
         }
 
         for (var i = 0; i < popCount; i++)
@@ -3148,15 +3162,25 @@ internal static class WpfDrawingReplay
         var hasBounds = false;
         bounds = default;
 
-        foreach (var child in ExtractChildren(drawingGroup, hasPortableDrawingGroupState, drawingGroupState))
+        if (TryGetDrawingGroupChildren(
+                drawingGroup,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out var childrenSource,
+                out var children,
+                out var childCount))
         {
-            if (!TryGetDrawingBounds(child, imageSourceAdapter, out var childBounds))
+            for (var i = 0; i < childCount; i++)
             {
-                continue;
-            }
+                if (!TryGetDrawingGroupChild(childrenSource, children, i, out var child)
+                    || !TryGetDrawingBounds(child, imageSourceAdapter, out var childBounds))
+                {
+                    continue;
+                }
 
-            bounds = hasBounds ? UnionBounds(bounds, childBounds) : childBounds;
-            hasBounds = true;
+                bounds = hasBounds ? UnionBounds(bounds, childBounds) : childBounds;
+                hasBounds = true;
+            }
         }
 
         if (!hasBounds)
@@ -3350,108 +3374,76 @@ internal static class WpfDrawingReplay
         return new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
-    private static PortableDrawingGroupChildrenEnumerable ExtractChildren(
+    private static bool TryGetDrawingGroupChildren(
         object drawingGroup,
         bool hasPortableDrawingGroupState,
-        PortableDrawingGroupState? drawingGroupState)
+        PortableDrawingGroupState? drawingGroupState,
+        out PortableDrawingGroupChildrenSource? childrenSource,
+        out object[]? children,
+        out int count)
     {
-        if (drawingGroup is PortableDrawingGroupChildrenSource childrenSource
-            && childrenSource.TryGetPortableDrawingGroupChildCount(out var count)
-            && count > 0)
+        if (drawingGroup is PortableDrawingGroupChildrenSource source
+            && source.TryGetPortableDrawingGroupChildCount(out var sourceCount)
+            && sourceCount > 0)
         {
-            return new PortableDrawingGroupChildrenEnumerable(childrenSource, count);
+            childrenSource = source;
+            children = null;
+            count = sourceCount;
+            return true;
         }
 
         if (hasPortableDrawingGroupState)
         {
-            return new PortableDrawingGroupChildrenEnumerable(drawingGroupState!.Children);
-        }
-
-        return default;
-    }
-
-    private readonly struct PortableDrawingGroupChildrenEnumerable
-    {
-        private readonly PortableDrawingGroupChildrenSource? _source;
-        private readonly object[]? _children;
-        private readonly int _count;
-
-        public PortableDrawingGroupChildrenEnumerable(PortableDrawingGroupChildrenSource source, int count)
-        {
-            _source = source;
-            _children = null;
-            _count = count;
-        }
-
-        public PortableDrawingGroupChildrenEnumerable(object[]? children)
-        {
-            _source = null;
-            _children = children;
-            _count = children?.Length ?? 0;
-        }
-
-        public PortableDrawingGroupChildrenEnumerator GetEnumerator()
-        {
-            return new PortableDrawingGroupChildrenEnumerator(_source, _children, _count);
-        }
-    }
-
-    private struct PortableDrawingGroupChildrenEnumerator
-    {
-        private readonly PortableDrawingGroupChildrenSource? _source;
-        private readonly object[]? _children;
-        private readonly int _count;
-        private int _index;
-        private object? _current;
-
-        public PortableDrawingGroupChildrenEnumerator(
-            PortableDrawingGroupChildrenSource? source,
-            object[]? children,
-            int count)
-        {
-            _source = source;
-            _children = children;
-            _count = count;
-            _index = 0;
-            _current = null;
-        }
-
-        public object Current => _current!;
-
-        public bool MoveNext()
-        {
-            while (_index < _count)
+            children = drawingGroupState!.Children;
+            if (children != null && children.Length > 0)
             {
-                var index = _index++;
-                object? child;
-                if (_source != null)
-                {
-                    if (!_source.TryGetPortableDrawingGroupChild(index, out var sourceChild))
-                    {
-                        continue;
-                    }
+                childrenSource = null;
+                count = children.Length;
+                return true;
+            }
+        }
 
-                    child = sourceChild;
-                }
-                else if (_children != null && index < _children.Length)
-                {
-                    child = _children[index];
-                }
-                else
-                {
-                    continue;
-                }
+        childrenSource = null;
+        children = null;
+        count = 0;
+        return false;
+    }
 
-                if (child != null)
-                {
-                    _current = child;
-                    return true;
-                }
+    private static bool TryGetDrawingGroupChild(
+        PortableDrawingGroupChildrenSource? childrenSource,
+        object[]? children,
+        int index,
+        out object child)
+    {
+        object? candidate;
+        if (childrenSource != null)
+        {
+            if (!childrenSource.TryGetPortableDrawingGroupChild(index, out var sourceChild))
+            {
+                child = null!;
+                return false;
             }
 
-            _current = null;
+            candidate = sourceChild;
+        }
+        else if (children != null && (uint)index < (uint)children.Length)
+        {
+            candidate = children[index];
+        }
+        else
+        {
+            child = null!;
             return false;
         }
+
+        if (candidate == null)
+        {
+            child = null!;
+            return false;
+        }
+
+        child = candidate;
+        return true;
     }
 
     private static bool TryReadPortableRect(PortableRect portableRect, out Rect rectangle)

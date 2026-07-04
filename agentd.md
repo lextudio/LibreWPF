@@ -94,6 +94,8 @@ WPF visual-state replay should cache per-visual bounds inside `PushVisualState`.
 
 WPF drawing-group replay should do the same for scope bounds inside `TryReplayDrawingGroup`. Opacity masks, shader effects, bitmap effects, and cache scopes should share one lazy `TryGetDrawingGroupScopeBounds(...)` result instead of separate effect/cache/mask helpers that each infer child content bounds.
 
+WPF drawing-group child replay and drawing-group content-bounds inference should index `IPortableDrawingGroupChildrenSource`/`PortableDrawingGroupState.Children` directly. Do not reintroduce `ExtractChildren(drawingGroup, ...)` foreach traversal or `PortableDrawingGroupChildrenEnumerable`/`PortableDrawingGroupChildrenEnumerator` wrappers in `WpfDrawingReplay`; large Xceed/DataGrid drawing trees should avoid child enumerator dispatch while preserving the typed source-built WPF drawing-group seam.
+
 Render-data dependent-resource snapshots and MIL resource token setup should stay indexed and allocation-light. Use `Array.Empty<object?>()` for zero dependent resources, pass `IReadOnlyList<object?>` through render replay, retained dependency registration, invalidation dependency visiting, and resolver/registry construction, and avoid `IEnumerable<object?>`/`foreach` dependent-resource traversal on Xceed/DataGrid cell render-data hot paths.
 
 MIL render-data decode should avoid tiny per-record helper arrays and segment enumerators. Keep unsupported-animation-handle counting on fixed-arity overloads instead of `params int[]`, and replay primitive polyline segments through indexed `IReadOnlyList<WpfReplayLineSegment>` loops instead of `foreach`.

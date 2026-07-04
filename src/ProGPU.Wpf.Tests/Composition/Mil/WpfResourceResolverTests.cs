@@ -2968,6 +2968,57 @@ public sealed class WpfResourceResolverTests
     }
 
     [Fact]
+    public void AdaptNativeGlyphRunCachesPortableNativeGlyphRunFont()
+    {
+        var glyphRun = new PortableNativeGlyphRun
+        {
+            GlyphIndices = new ushort[] { 11 },
+            GlyphPositions = [new Vector2(2, 3)],
+            BaselineOrigin = new Vector2(5, 7),
+            FontRenderingEmSize = 16,
+            FontFamilyNames = new[] { "Arial" }
+        };
+
+        Assert.Null(glyphRun.NativeFont);
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var first));
+        var cachedFont = Assert.IsType<TtfFont>(glyphRun.NativeFont);
+        Assert.Same(cachedFont, first.Font);
+
+        glyphRun.FontUri = "/missing/fonts/ProGPU-Missing-Font.ttf";
+        glyphRun.FontFamilyNames = new[] { "ProGPU Missing Font After Cache" };
+
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var second));
+        Assert.Same(cachedFont, second.Font);
+    }
+
+    [Fact]
+    public void AdaptGlyphRunCachesPortableGlyphRunFont()
+    {
+        var glyphRun = new PortableGlyphRun
+        {
+            GlyphIndices = new ushort[] { 12 },
+            AdvanceWidths = new[] { 8.0 },
+            GlyphOffsets = [new PortablePoint(1, 2)],
+            BaselineOrigin = new PortablePoint(5, 7),
+            FontRenderingEmSize = 14,
+            FontFamilyNames = new[] { "Arial" }
+        };
+
+        Assert.Null(glyphRun.NativeFont);
+        var first = WpfResourceResolver.AdaptGlyphRun(glyphRun);
+        Assert.NotNull(first);
+        var cachedFont = Assert.IsType<TtfFont>(glyphRun.NativeFont);
+        Assert.Same(cachedFont, first.Font);
+
+        glyphRun.FontUri = "/missing/fonts/ProGPU-Missing-Font.ttf";
+        glyphRun.FontFamilyNames = new[] { "ProGPU Missing Font After Cache" };
+
+        var second = WpfResourceResolver.AdaptGlyphRun(glyphRun);
+        Assert.NotNull(second);
+        Assert.Same(cachedFont, second.Font);
+    }
+
+    [Fact]
     public void AdaptGlyphRunSkipsUnavailablePortableGlyphRunWithoutReflectionFallback()
     {
         var glyphRun = new UnavailablePortableGlyphRun();

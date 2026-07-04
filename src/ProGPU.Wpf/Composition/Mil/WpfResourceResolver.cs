@@ -1467,21 +1467,33 @@ public sealed class WpfResourceResolver :
 
     private static TtfFont? TryResolvePortableGlyphRunFont(PortableGlyphRun glyphRun)
     {
-        return TryResolvePortableGlyphRunFont(
+        var resolvedFont = TryResolvePortableGlyphRunFontCore(
             glyphRun.NativeFont,
             glyphRun.FontUri,
             glyphRun.FontFamilyNames);
+        if (resolvedFont != null)
+        {
+            glyphRun.NativeFont = resolvedFont;
+        }
+
+        return resolvedFont;
     }
 
     private static TtfFont? TryResolvePortableGlyphRunFont(PortableNativeGlyphRun glyphRun)
     {
-        return TryResolvePortableGlyphRunFont(
+        var resolvedFont = TryResolvePortableGlyphRunFontCore(
             glyphRun.NativeFont,
             glyphRun.FontUri,
             glyphRun.FontFamilyNames);
+        if (resolvedFont != null)
+        {
+            glyphRun.NativeFont = resolvedFont;
+        }
+
+        return resolvedFont;
     }
 
-    private static TtfFont? TryResolvePortableGlyphRunFont(object? nativeFont, string? fontUri, string[] fontFamilyNames)
+    private static TtfFont? TryResolvePortableGlyphRunFontCore(object? nativeFont, string? fontUri, string[] fontFamilyNames)
     {
         if (nativeFont is TtfFont font)
         {

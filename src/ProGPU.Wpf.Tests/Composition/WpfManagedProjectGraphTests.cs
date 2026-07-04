@@ -12789,6 +12789,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DecodeGlyphRunAdaptsPortableGlyphRunWithoutReflectionFallback", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeGlyphRunPrefersPortableNativeGlyphRunWithoutPortableRoundTrip", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptGlyphRunAdaptsPortableNativeGlyphRunDtoWithoutPositionCopy", wpfResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("TryResolvePortableGlyphRunFontCore", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("glyphRun.NativeFont = resolvedFont;", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativeGlyphRunCachesPortableNativeGlyphRunFont", wpfResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("AdaptGlyphRunCachesPortableGlyphRunFont", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodeGlyphRunPrefersPortableFontUri", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodeGlyphRunPreservesPortableStyleSimulations", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodeDrawDrawingReplaysPortableGlyphRunDrawing", wpfResourceResolverTests, StringComparison.Ordinal);

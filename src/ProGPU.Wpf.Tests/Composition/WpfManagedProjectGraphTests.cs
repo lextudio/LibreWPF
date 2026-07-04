@@ -13101,6 +13101,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("mediaGlyphRun.GlyphPositions", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeBrush", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativePen", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("ConditionalWeakTable<MediaBrush, NativeSolidBrushCache>", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("ConditionalWeakTable<MediaPen, NativeSimplePenCache>", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("TryGetCachedNativeSolidBrush(resource, out var nativeSolidBrush)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("TryGetCachedNativeSimplePen(resource, out var nativeSimplePen)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativeBrushCachesSolidColorBrushUntilStateChanges", wpfResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativePenCachesSimpleSolidPenUntilStateChanges", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("resource is PortableGeometryPathSource portableGeometry", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("portableGeometry.TryGetPortableGeometryPath(out var portablePath)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptPortableGeometryPath(portablePath)", wpfResourceResolver, StringComparison.Ordinal);

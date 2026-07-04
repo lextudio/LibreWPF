@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Windows.Media.ProGPU.Composition;
 using ProGPU.Text;
 using MediaBrush = System.Windows.Media.Brush;
@@ -138,6 +139,8 @@ public sealed class WpfResourceResolver :
 
     private const int MaxSupportedGradientStops = 65536;
     private static readonly ConcurrentDictionary<string, TtfFont> s_fontFileCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConditionalWeakTable<MediaBrush, NativeSolidBrushCache> s_nativeSolidBrushCache = new();
+    private static readonly ConditionalWeakTable<MediaPen, NativeSimplePenCache> s_nativeSimplePenCache = new();
 
     private readonly IReadOnlyList<object?>? _dependentResources;
     private Dictionary<uint, object>? _resources;
@@ -337,6 +340,11 @@ public sealed class WpfResourceResolver :
             return null;
         }
 
+        if (TryGetCachedNativeSolidBrush(resource, out var nativeSolidBrush))
+        {
+            return nativeSolidBrush;
+        }
+
         if (resource is PortableBrushSource portableBrushSource)
         {
             return portableBrushSource.TryGetPortableBrush(out var portableBrush)
@@ -358,6 +366,11 @@ public sealed class WpfResourceResolver :
             return null;
         }
 
+        if (TryGetCachedNativeSimplePen(resource, out var nativeSimplePen))
+        {
+            return nativeSimplePen;
+        }
+
         if (resource is PortablePenSource portablePenSource)
         {
             return portablePenSource.TryGetPortablePen(out var portablePen)
@@ -366,6 +379,123 @@ public sealed class WpfResourceResolver :
         }
 
         return null;
+    }
+
+    private static bool TryGetCachedNativeSolidBrush(
+        object? resource,
+        out global::ProGPU.Vector.SolidColorBrush nativeBrush)
+    {
+        if (resource is SolidColorBrush solidBrush)
+        {
+            nativeBrush = s_nativeSolidBrushCache
+                .GetValue(solidBrush, static _ => new NativeSolidBrushCache())
+                .GetOrCreate(solidBrush);
+            return true;
+        }
+
+        nativeBrush = null!;
+        return false;
+    }
+
+    private static bool TryGetCachedNativeSimplePen(
+        object resource,
+        out global::ProGPU.Vector.Pen nativePen)
+    {
+        if (resource is MediaPen pen &&
+            IsSimplePenDashStyle(pen.DashStyle) &&
+            TryGetCachedNativeSolidBrush(pen.Brush, out var nativeBrush))
+        {
+            nativePen = s_nativeSimplePenCache
+                .GetValue(pen, static _ => new NativeSimplePenCache())
+                .GetOrCreate(pen, nativeBrush);
+            return true;
+        }
+
+        nativePen = null!;
+        return false;
+    }
+
+    private static bool IsSimplePenDashStyle(DashStyle? dashStyle)
+    {
+        return dashStyle == null;
+    }
+
+    private sealed class NativeSolidBrushCache
+    {
+        private Color _color;
+        private double _opacity = double.NaN;
+        private global::ProGPU.Vector.SolidColorBrush? _nativeBrush;
+
+        public global::ProGPU.Vector.SolidColorBrush GetOrCreate(SolidColorBrush brush)
+        {
+            var color = brush.Color;
+            var opacity = ClampOpacity(brush.Opacity);
+            if (_nativeBrush != null &&
+                color.Equals(_color) &&
+                opacity.Equals(_opacity))
+            {
+                return _nativeBrush;
+            }
+
+            _color = color;
+            _opacity = opacity;
+            _nativeBrush = new global::ProGPU.Vector.SolidColorBrush(ToVectorColor(color, opacity));
+            return _nativeBrush;
+        }
+    }
+
+    private sealed class NativeSimplePenCache
+    {
+        private global::ProGPU.Vector.SolidColorBrush? _brush;
+        private double _thickness = double.NaN;
+        private MediaPenLineCap _startLineCap;
+        private MediaPenLineCap _endLineCap;
+        private MediaPenLineCap _dashCap;
+        private PenLineJoin _lineJoin;
+        private double _miterLimit = double.NaN;
+        private global::ProGPU.Vector.Pen? _nativePen;
+
+        public global::ProGPU.Vector.Pen GetOrCreate(
+            MediaPen pen,
+            global::ProGPU.Vector.SolidColorBrush brush)
+        {
+            var thickness = pen.Thickness;
+            var startLineCap = pen.StartLineCap;
+            var endLineCap = pen.EndLineCap;
+            var dashCap = pen.DashCap;
+            var lineJoin = pen.LineJoin;
+            var miterLimit = ReadMiterLimit(pen.MiterLimit);
+            if (_nativePen != null &&
+                ReferenceEquals(brush, _brush) &&
+                thickness.Equals(_thickness) &&
+                startLineCap == _startLineCap &&
+                endLineCap == _endLineCap &&
+                dashCap == _dashCap &&
+                lineJoin == _lineJoin &&
+                miterLimit.Equals(_miterLimit))
+            {
+                return _nativePen;
+            }
+
+            _brush = brush;
+            _thickness = thickness;
+            _startLineCap = startLineCap;
+            _endLineCap = endLineCap;
+            _dashCap = dashCap;
+            _lineJoin = lineJoin;
+            _miterLimit = miterLimit;
+            _nativePen = new global::ProGPU.Vector.Pen(
+                brush,
+                (float)Math.Max(0, thickness),
+                ToVectorLineJoin(lineJoin),
+                (float)miterLimit,
+                ToVectorLineCap(startLineCap),
+                ToVectorLineCap(endLineCap),
+                ToVectorLineCap(dashCap),
+                Array.Empty<double>(),
+                0);
+            return _nativePen;
+        }
     }
 
     private static bool IsUsable(WpfReplayRect bounds)
@@ -942,6 +1072,15 @@ public sealed class WpfResourceResolver :
             color.A / 255f);
     }
 
+    private static Vector4 ToVectorColor(Color color, double opacity)
+    {
+        return new Vector4(
+            color.R / 255f,
+            color.G / 255f,
+            color.B / 255f,
+            (float)(color.A / 255.0 * ClampOpacity(opacity)));
+    }
+
     private static MediaPen? AdaptPortablePen(PortablePen pen)
     {
         var brush = AdaptPortableBrush(pen.Brush);
@@ -1079,12 +1218,33 @@ public sealed class WpfResourceResolver :
         };
     }
 
+    private static global::ProGPU.Vector.PenLineCap ToVectorLineCap(MediaPenLineCap lineCap)
+    {
+        return lineCap switch
+        {
+            MediaPenLineCap.Square => global::ProGPU.Vector.PenLineCap.Square,
+            MediaPenLineCap.Round => global::ProGPU.Vector.PenLineCap.Round,
+            MediaPenLineCap.Triangle => global::ProGPU.Vector.PenLineCap.Triangle,
+            _ => global::ProGPU.Vector.PenLineCap.Flat
+        };
+    }
+
     private static global::ProGPU.Vector.PenLineJoin ToVectorLineJoin(PortablePenLineJoin lineJoin)
     {
         return lineJoin switch
         {
             PortablePenLineJoin.Bevel => global::ProGPU.Vector.PenLineJoin.Bevel,
             PortablePenLineJoin.Round => global::ProGPU.Vector.PenLineJoin.Round,
+            _ => global::ProGPU.Vector.PenLineJoin.Miter
+        };
+    }
+
+    private static global::ProGPU.Vector.PenLineJoin ToVectorLineJoin(PenLineJoin lineJoin)
+    {
+        return lineJoin switch
+        {
+            PenLineJoin.Bevel => global::ProGPU.Vector.PenLineJoin.Bevel,
+            PenLineJoin.Round => global::ProGPU.Vector.PenLineJoin.Round,
             _ => global::ProGPU.Vector.PenLineJoin.Miter
         };
     }

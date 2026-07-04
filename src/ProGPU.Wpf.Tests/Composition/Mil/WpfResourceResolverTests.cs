@@ -331,6 +331,101 @@ public sealed class WpfResourceResolverTests
     }
 
     [Fact]
+    public void AdaptNativeBrushCachesSolidColorBrushUntilStateChanges()
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(128, 10, 20, 30))
+        {
+            Opacity = 0.5
+        };
+
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var unsupportedStateCount);
+        var cachedBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(100, 100, 20, 20),
+            out var cachedUnsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Equal(0, cachedUnsupportedStateCount);
+        Assert.Same(nativeBrush, cachedBrush);
+        var solidBrush = Assert.IsType<ProGPU.Vector.SolidColorBrush>(nativeBrush);
+        Assert.Equal(10 / 255f, solidBrush.Color.X, precision: 6);
+        Assert.Equal(20 / 255f, solidBrush.Color.Y, precision: 6);
+        Assert.Equal(30 / 255f, solidBrush.Color.Z, precision: 6);
+        Assert.Equal(64 / 255f, solidBrush.Color.W, precision: 6);
+
+        brush.Color = Color.FromArgb(255, 40, 50, 60);
+        brush.Opacity = 1.0;
+        var refreshedBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var refreshedUnsupportedStateCount);
+
+        Assert.Equal(0, refreshedUnsupportedStateCount);
+        Assert.NotSame(nativeBrush, refreshedBrush);
+        var refreshedSolidBrush = Assert.IsType<ProGPU.Vector.SolidColorBrush>(refreshedBrush);
+        Assert.Equal(40 / 255f, refreshedSolidBrush.Color.X, precision: 6);
+        Assert.Equal(1f, refreshedSolidBrush.Color.W, precision: 6);
+    }
+
+    [Fact]
+    public void AdaptNativePenCachesSimpleSolidPenUntilStateChanges()
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(255, 1, 2, 3));
+        var pen = new MediaPen(brush, 2)
+        {
+            StartLineCap = PenLineCap.Square,
+            EndLineCap = PenLineCap.Round,
+            DashCap = PenLineCap.Triangle,
+            LineJoin = PenLineJoin.Bevel,
+            MiterLimit = 3
+        };
+
+        var nativePen = WpfResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var unsupportedStateCount);
+        var cachedPen = WpfResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(100, 100, 20, 20),
+            out var cachedUnsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Equal(0, cachedUnsupportedStateCount);
+        Assert.Same(nativePen, cachedPen);
+        Assert.NotNull(nativePen);
+        Assert.Equal(2, nativePen!.Thickness);
+        Assert.Equal(ProGPU.Vector.PenLineCap.Square, nativePen.StartLineCap);
+        Assert.Equal(ProGPU.Vector.PenLineCap.Round, nativePen.EndLineCap);
+        Assert.Equal(ProGPU.Vector.PenLineCap.Triangle, nativePen.DashCap);
+        Assert.Equal(ProGPU.Vector.PenLineJoin.Bevel, nativePen.LineJoin);
+        Assert.Equal(3, nativePen.MiterLimit);
+
+        pen.Thickness = 4;
+        var refreshedPen = WpfResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var refreshedUnsupportedStateCount);
+
+        Assert.Equal(0, refreshedUnsupportedStateCount);
+        Assert.NotSame(nativePen, refreshedPen);
+        Assert.Equal(4, refreshedPen!.Thickness);
+
+        brush.Color = Color.FromArgb(255, 10, 20, 30);
+        var brushRefreshedPen = WpfResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var brushRefreshedUnsupportedStateCount);
+
+        Assert.Equal(0, brushRefreshedUnsupportedStateCount);
+        Assert.NotSame(refreshedPen, brushRefreshedPen);
+        var nativeBrush = Assert.IsType<ProGPU.Vector.SolidColorBrush>(brushRefreshedPen!.Brush);
+        Assert.Equal(10 / 255f, nativeBrush.Color.X, precision: 6);
+    }
+
+    [Fact]
     public void PortableBrushSourceAbsenceDoesNotFallBackToReflectedBrushShape()
     {
         var brush = new FakeUnavailablePortableSolidColorBrush();

@@ -190,14 +190,16 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             unsubscribe();
         }
 
-        foreach (var mouse in inputContext.Mice)
+        var mice = inputContext.Mice;
+        for (var i = 0; i < mice.Count; i++)
         {
-            AttachMouse(mouse);
+            AttachMouse(mice[i]);
         }
 
-        foreach (var keyboard in inputContext.Keyboards)
+        var keyboards = inputContext.Keyboards;
+        for (var i = 0; i < keyboards.Count; i++)
         {
-            AttachKeyboard(keyboard);
+            AttachKeyboard(keyboards[i]);
         }
 
         void ConnectionChanged(SilkInput.IInputDevice device, bool connected)
@@ -357,8 +359,10 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
     {
         var modifiers = WpfInputModifiers.None;
 
-        foreach (var keyboard in inputContext.Keyboards)
+        var keyboards = inputContext.Keyboards;
+        for (var i = 0; i < keyboards.Count; i++)
         {
+            var keyboard = keyboards[i];
             if (IsKeyPressed(keyboard, SilkInput.Key.ShiftLeft) || IsKeyPressed(keyboard, SilkInput.Key.ShiftRight))
             {
                 modifiers |= WpfInputModifiers.Shift;

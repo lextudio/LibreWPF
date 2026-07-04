@@ -12221,8 +12221,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetInputContext(object window", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("var mouseSubscriptions = new Dictionary<SilkInput.IMouse, Action>();", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("var keyboardSubscriptions = new Dictionary<SilkInput.IKeyboard, Action>();", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("var mice = inputContext.Mice;", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < mice.Count; i++)", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("var keyboards = inputContext.Keyboards;", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < keyboards.Count; i++)", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("DisposeSubscriptions(_mouseSubscriptions);", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("DisposeSubscriptions(_keyboardSubscriptions);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var mouse in inputContext.Mice)", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var keyboard in inputContext.Keyboards)", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("var subscriptions = new List<Action>();", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("subscriptions.Remove(unsubscribe);", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("List<Action> _unsubscribe", proGpuWpfInputService, StringComparison.Ordinal);

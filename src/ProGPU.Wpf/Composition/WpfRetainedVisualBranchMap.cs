@@ -674,6 +674,17 @@ public sealed class WpfRetainedVisualBranchMap
         ProGpuVisual visual,
         VisualSet visuals)
     {
+        if (visuals.Count == 1)
+        {
+            if (!ReferenceEquals(visuals[0], visual))
+            {
+                return false;
+            }
+
+            _visualsBySource.Remove(source);
+            return true;
+        }
+
         if (!visuals.Remove(visual))
         {
             return false;

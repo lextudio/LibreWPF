@@ -333,6 +333,9 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("if (!IsCoveredByTargetAncestor(target.Visual, _scratchTargetVisuals))", source, StringComparison.Ordinal);
         Assert.Contains("private static bool IsCoveredByTargetAncestor(", source, StringComparison.Ordinal);
         Assert.Contains("private bool RemoveVisualForSource(", source, StringComparison.Ordinal);
+        Assert.Contains("if (visuals.Count == 1)", source, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(visuals[0], visual)", source, StringComparison.Ordinal);
+        Assert.Contains("_visualsBySource.Remove(source);", source, StringComparison.Ordinal);
         Assert.Contains("if (!visuals.Remove(visual))", source, StringComparison.Ordinal);
         Assert.Contains("_visualsBySource[source] = visuals;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Dictionary<object, List<ProGpuVisual>>", source, StringComparison.Ordinal);

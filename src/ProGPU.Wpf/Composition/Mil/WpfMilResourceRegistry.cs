@@ -13,20 +13,18 @@ public sealed class WpfMilResourceRegistry : IWpfMilResourceResolver, IWpfGuidel
 {
     private readonly Dictionary<uint, object> _resources = new();
 
-    public static WpfMilResourceRegistry FromDependentResources(IEnumerable<object?> dependentResources)
+    public static WpfMilResourceRegistry FromDependentResources(IReadOnlyList<object?> dependentResources)
     {
         ArgumentNullException.ThrowIfNull(dependentResources);
 
         var registry = new WpfMilResourceRegistry();
-        uint token = 1;
-        foreach (var resource in dependentResources)
+        for (var i = 0; i < dependentResources.Count; i++)
         {
+            var resource = dependentResources[i];
             if (resource != null)
             {
-                registry.Register(token, resource);
+                registry.Register((uint)i + 1, resource);
             }
-
-            token++;
         }
 
         return registry;

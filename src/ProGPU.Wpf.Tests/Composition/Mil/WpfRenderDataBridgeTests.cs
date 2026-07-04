@@ -50,6 +50,18 @@ public sealed class WpfRenderDataBridgeTests
     }
 
     [Fact]
+    public void ExtractUsesSharedEmptyDependentResources()
+    {
+        var record = CreateRectangleRecord(0, 0);
+        var renderData = new TypedPortableRenderDataSource(record, Array.Empty<object?>());
+
+        var snapshot = WpfRenderDataBridge.Extract(renderData);
+
+        Assert.Equal(record, snapshot.RenderData);
+        Assert.Same(Array.Empty<object?>(), snapshot.DependentResources);
+    }
+
+    [Fact]
     public void ExtractRejectsNonPortableRenderDataFieldShape()
     {
         var brush = Brushes.Green;

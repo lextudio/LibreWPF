@@ -957,6 +957,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source is PortableDrawingContentSource drawingContentSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableRenderDataSource renderDataSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("renderDataSnapshot.DependentResources", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < renderDataSnapshot.DependentResources.Count; i++)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("renderDataSnapshot.DependentResources[i]", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var dependency in renderDataSnapshot.DependentResources)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("internal static bool RegisterTrackedDependencies(", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("private static HashSet<object>? s_registerTrackedDependenciesVisited;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("private static HashSet<object>? s_enumerateTrackedDependenciesVisited;", proGpuInvalidationTracker, StringComparison.Ordinal);
@@ -5737,6 +5740,18 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfRenderDataBridge.cs"));
+        var resourceResolverSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfResourceResolver.cs"));
+        var resourceRegistrySource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfMilResourceRegistry.cs"));
         var interopSource = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -5761,6 +5776,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("renderData is PortableRenderDataSource portableSource", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryGetPortableRenderDataSnapshot(out var portableSnapshot)", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("return CreateSnapshot(portableSnapshot);", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("var dependentResourceCount = portableSnapshot.DependentResources.Count;", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("dependentResourceCount == 0\n            ? Array.Empty<object?>()", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < dependentResources.Length; i++)", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("new object?[portableSnapshot.DependentResources.Count]", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<object?> dependentResources", resourceResolverSource, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < dependentResources.Count; i++)", resourceResolverSource, StringComparison.Ordinal);
+        Assert.Contains("resolver.Register((uint)i + 1, resource);", resourceResolverSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var resource in dependentResources)", resourceResolverSource, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<object?> dependentResources", resourceRegistrySource, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < dependentResources.Count; i++)", resourceRegistrySource, StringComparison.Ordinal);
+        Assert.Contains("registry.Register((uint)i + 1, resource);", resourceRegistrySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var resource in dependentResources)", resourceRegistrySource, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection;", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetFieldValue", bridgeSource, StringComparison.Ordinal);
@@ -5809,7 +5836,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExtractPortableVisualChildren(visualChildrenSource)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private readonly struct PortableVisualChildrenEnumerable", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public PortableVisualChildrenEnumerator GetEnumerator()", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private static void RegisterRetainedVisualDependencies(\n        IReadOnlyList<object?> dependencies,", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < dependencies.Count; i++)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("WpfRetainedVisualDependencyRegistrar.Register(sink, dependencies[i]);", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("IReadOnlyList<object> ExtractChildren", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IEnumerable<object?> dependencies", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var dependency in dependencies)", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("var result = new List<object>(count);", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("result.Add(child);", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RegisterRetainedVisualPropertyDirectDependency(visual, \"Children\"", rendererSource, StringComparison.Ordinal);

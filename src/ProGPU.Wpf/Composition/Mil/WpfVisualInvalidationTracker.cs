@@ -820,9 +820,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         if (source is PortableRenderDataSource renderDataSource
             && renderDataSource.TryGetPortableRenderDataSnapshot(out var renderDataSnapshot))
         {
-            foreach (var dependency in renderDataSnapshot.DependentResources)
+            for (var i = 0; i < renderDataSnapshot.DependentResources.Count; i++)
             {
-                VisitPortableDependency(ref state, visitor, dependency);
+                VisitPortableDependency(ref state, visitor, renderDataSnapshot.DependentResources[i]);
             }
         }
 

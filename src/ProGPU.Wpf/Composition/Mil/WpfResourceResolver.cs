@@ -156,21 +156,19 @@ public sealed class WpfResourceResolver :
     }
 
     public static WpfResourceResolver FromDependentResources(
-        IEnumerable<object?> dependentResources,
+        IReadOnlyList<object?> dependentResources,
         IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
         ArgumentNullException.ThrowIfNull(dependentResources);
 
         var resolver = new WpfResourceResolver(imageSourceAdapter);
-        uint token = 1;
-        foreach (var resource in dependentResources)
+        for (var i = 0; i < dependentResources.Count; i++)
         {
+            var resource = dependentResources[i];
             if (resource != null)
             {
-                resolver.Register(token, resource);
+                resolver.Register((uint)i + 1, resource);
             }
-
-            token++;
         }
 
         return resolver;

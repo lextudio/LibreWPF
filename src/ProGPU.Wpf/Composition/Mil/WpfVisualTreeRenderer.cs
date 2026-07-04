@@ -333,12 +333,12 @@ public sealed class WpfVisualTreeRenderer
     }
 
     private static void RegisterRetainedVisualDependencies(
-        IEnumerable<object?> dependencies,
+        IReadOnlyList<object?> dependencies,
         IWpfCompositionCommandSink sink)
     {
-        foreach (var dependency in dependencies)
+        for (var i = 0; i < dependencies.Count; i++)
         {
-            WpfRetainedVisualDependencyRegistrar.Register(sink, dependency);
+            WpfRetainedVisualDependencyRegistrar.Register(sink, dependencies[i]);
         }
     }
 

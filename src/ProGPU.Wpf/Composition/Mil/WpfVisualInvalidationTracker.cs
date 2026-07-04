@@ -1012,8 +1012,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             && shaderEffectSource.TryGetPortableShaderEffect(out var shaderEffect))
         {
             VisitPortableDependency(ref state, visitor, shaderEffect.PixelShader);
-            foreach (var sampler in shaderEffect.Samplers)
+            var samplers = shaderEffect.Samplers;
+            for (var i = 0; i < samplers.Length; i++)
             {
+                var sampler = samplers[i];
                 if (sampler.Kind == PortableShaderSamplerKind.Brush)
                 {
                     VisitPortableDependency(ref state, visitor, sampler.Brush);

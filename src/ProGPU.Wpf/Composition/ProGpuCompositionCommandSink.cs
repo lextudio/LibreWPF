@@ -1647,8 +1647,9 @@ public sealed class ProGpuCompositionCommandSink :
             double translate,
             out double snappedCoordinate)
         {
-            foreach (var guideline in guidelines)
+            for (var i = 0; i < guidelines.Length; i++)
             {
+                var guideline = guidelines[i];
                 if (AreClose(coordinate, guideline))
                 {
                     snappedCoordinate = SnapCoordinate(guideline, scale, translate);

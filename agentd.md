@@ -78,6 +78,8 @@ Portable path geometry traversal should stay indexed over `PortableGeometryPath.
 
 WPF command-sink guideline snapping should walk `_guidelineStack` through `SmallValueStack<T>.PeekAtDepth(...)` with indexed loops. Do not reintroduce `foreach (var guideline in _guidelineStack)` in the text/grid guideline snapping hot path.
 
+WPF shader-effect sampler hot paths should index the source-built `PortableShaderEffect.Samplers` arrays directly. Keep `WpfEffectMapper` validation/adaptation and `WpfVisualInvalidationTracker` dependency visiting on cached local sampler arrays with `for` loops, not `foreach`; command-sink guideline arrays should use the same indexed-loop shape.
+
 Retained invalidation graph traversal should branch on `source is IEnumerable collection` only when the source is actually enumerable. Do not route ordinary visual/resource nodes through `Array.Empty` enumerable helpers, and do not reintroduce `EnumerateCollection(...)` in subscription, version-polling, tracked-dependency, or dependency-registration traversal loops.
 
 Retained dirty-branch replay target snapshots should use map-owned reusable single-target and multi-target list storage. Do not allocate `WpfRetainedVisualBranchReplayTarget[]` arrays for normal Xceed/DataGrid multi-branch scroll invalidations; copy scratch targets into reusable snapshot storage before clearing scratch lists.

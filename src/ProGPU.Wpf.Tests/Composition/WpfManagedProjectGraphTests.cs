@@ -1015,7 +1015,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source is PortableShaderEffectSource shaderEffectSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("VisitPortableDrawingGroupChildren(ref state, visitor, source, drawingGroupState)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("tileBrush.Content", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("var samplers = shaderEffect.Samplers;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < samplers.Length; i++)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("var sampler = samplers[i];", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("sampler.Kind == PortableShaderSamplerKind.Brush", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var sampler in shaderEffect.Samplers)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_content\"", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("\"_drawingContent\"", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("s_versionFieldNames", proGpuInvalidationTracker, StringComparison.Ordinal);
@@ -6847,6 +6851,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryCreateImageSourceShaderSampler(", effectMapper, StringComparison.Ordinal);
         Assert.Contains("TryGetReplacement(effect.EffectTypeFullName, out replacement)", effectMapper, StringComparison.Ordinal);
         Assert.Contains("var additionalSamplerCount = 0;", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("var portableSamplers = effect.Samplers;", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < portableSamplers.Length; i++)", effectMapper, StringComparison.Ordinal);
+        Assert.Contains("var portableSampler = portableSamplers[i];", effectMapper, StringComparison.Ordinal);
         Assert.Contains("new WpfShaderEffectSampler[additionalSamplerCount]", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Collections.Generic", effectMapper, StringComparison.Ordinal);
@@ -6854,6 +6861,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("EnumerateShaderReplacementKeys", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("yield return", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("List<WpfShaderEffectSampler>", effectMapper, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (PortableShaderSampler portableSampler in effect.Samplers)", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("samplerList", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("samplerList.ToArray()", effectMapper, StringComparison.Ordinal);
         Assert.DoesNotContain("IsShaderEffectLike(effect)", effectMapper, StringComparison.Ordinal);
@@ -13061,6 +13069,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (var depth = 0; depth < guidelineCount; depth++)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("var guideline = _guidelineStack.PeekAtDepth(depth);", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var guideline in _guidelineStack)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < guidelines.Length; i++)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("var guideline = guidelines[i];", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var guideline in guidelines)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("private readonly byte _inlineYCount;", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("inlineYCount: 1", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("private bool TrySnapInlineY(", proGpuWpfCommandSink, StringComparison.Ordinal);

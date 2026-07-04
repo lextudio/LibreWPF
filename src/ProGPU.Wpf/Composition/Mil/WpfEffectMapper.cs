@@ -206,9 +206,11 @@ internal static class WpfEffectMapper
 
         var hasImplicitInput = false;
         var additionalSamplerCount = 0;
+        var portableSamplers = effect.Samplers;
 
-        foreach (PortableShaderSampler portableSampler in effect.Samplers)
+        for (var i = 0; i < portableSamplers.Length; i++)
         {
+            var portableSampler = portableSamplers[i];
             var registerIndex = portableSampler.RegisterIndex;
             if ((uint)registerIndex >= WpfShaderEffectParams.MaxSamplerRegisterCount)
             {
@@ -250,8 +252,9 @@ internal static class WpfEffectMapper
         var additionalSamplers = new WpfShaderEffectSampler[additionalSamplerCount];
         var additionalSamplerIndex = 0;
 
-        foreach (PortableShaderSampler portableSampler in effect.Samplers)
+        for (var i = 0; i < portableSamplers.Length; i++)
         {
+            var portableSampler = portableSamplers[i];
             var registerIndex = portableSampler.RegisterIndex;
             if (portableSampler.Kind == PortableShaderSamplerKind.ImplicitInput)
             {

@@ -2317,12 +2317,19 @@ public sealed class WpfVisualTreeRenderer
             }
             else
             {
-                foreach (var position in glyphRun.GlyphPositions)
+                var originX = glyphRun.Position.X;
+                var originY = glyphRun.Position.Y;
+                var fontSize = glyphRun.FontSize;
+                var glyphPositions = glyphRun.GlyphPositions;
+                for (var i = 0; i < glyphPositions.Length; i++)
                 {
-                    minX = Math.Min(minX, glyphRun.Position.X + position.X);
-                    minY = Math.Min(minY, glyphRun.Position.Y + position.Y - glyphRun.FontSize);
-                    maxX = Math.Max(maxX, glyphRun.Position.X + position.X + glyphRun.FontSize);
-                    maxY = Math.Max(maxY, glyphRun.Position.Y + position.Y);
+                    var position = glyphPositions[i];
+                    var x = originX + position.X;
+                    var y = originY + position.Y;
+                    minX = Math.Min(minX, x);
+                    minY = Math.Min(minY, y - fontSize);
+                    maxX = Math.Max(maxX, x + fontSize);
+                    maxY = Math.Max(maxY, y);
                 }
             }
 
@@ -2352,12 +2359,19 @@ public sealed class WpfVisualTreeRenderer
             }
             else
             {
-                foreach (var position in glyphRun.GlyphPositions)
+                var originX = glyphRun.Position.X;
+                var originY = glyphRun.Position.Y;
+                var fontSize = glyphRun.FontSize;
+                var glyphPositions = glyphRun.GlyphPositions;
+                for (var i = 0; i < glyphPositions.Length; i++)
                 {
-                    minX = Math.Min(minX, glyphRun.Position.X + position.X);
-                    minY = Math.Min(minY, glyphRun.Position.Y + position.Y - glyphRun.FontSize);
-                    maxX = Math.Max(maxX, glyphRun.Position.X + position.X + glyphRun.FontSize);
-                    maxY = Math.Max(maxY, glyphRun.Position.Y + position.Y);
+                    var position = glyphPositions[i];
+                    var x = originX + position.X;
+                    var y = originY + position.Y;
+                    minX = Math.Min(minX, x);
+                    minY = Math.Min(minY, y - fontSize);
+                    maxX = Math.Max(maxX, x + fontSize);
+                    maxY = Math.Max(maxY, y);
                 }
             }
 

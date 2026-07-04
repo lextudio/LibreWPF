@@ -1349,13 +1349,18 @@ public sealed class ProGpuCompositionCommandSink :
         var minY = double.PositiveInfinity;
         var maxX = double.NegativeInfinity;
         var maxY = double.NegativeInfinity;
-        foreach (var position in glyphRun.GlyphPositions)
+        var originX = glyphRun.Position.X;
+        var originY = glyphRun.Position.Y;
+        var fontSize = glyphRun.FontSize;
+        var glyphPositions = glyphRun.GlyphPositions;
+        for (var i = 0; i < glyphPositions.Length; i++)
         {
-            var x = glyphRun.Position.X + position.X;
-            var y = glyphRun.Position.Y + position.Y;
+            var position = glyphPositions[i];
+            var x = originX + position.X;
+            var y = originY + position.Y;
             minX = Math.Min(minX, x);
-            minY = Math.Min(minY, y - glyphRun.FontSize);
-            maxX = Math.Max(maxX, x + glyphRun.FontSize);
+            minY = Math.Min(minY, y - fontSize);
+            maxX = Math.Max(maxX, x + fontSize);
             maxY = Math.Max(maxY, y);
         }
 

@@ -5975,6 +5975,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRun)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("var glyphPositions = glyphRun.GlyphPositions;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < glyphPositions.Length; i++)", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var position in glyphRun.GlyphPositions)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public void PushNativeTransform(System.Numerics.Matrix4x4 transform)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public void PushNativeClip(WpfReplayRect bounds)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)", rendererSource, StringComparison.Ordinal);
@@ -6408,6 +6411,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetGlyphRunDrawingGlyphRun(", replaySource, StringComparison.Ordinal);
         Assert.Contains("sink is IWpfNativePrimitiveCommandSink nativeSink", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeGlyphRun(foregroundBrush, glyphRunValue!)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("var glyphPositions = glyphRun.GlyphPositions;", replaySource, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < glyphPositions.Length; i++)", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var position in glyphRun.GlyphPositions)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(drawing, \"ImageDrawing\")", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(drawing, \"GlyphRunDrawing\")", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPropertyValue(drawing, \"ImageSource\", out imageSource)", replaySource, StringComparison.Ordinal);
@@ -13004,6 +13010,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("BindingFlags", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.Contains("CreateGlyphRunBounds", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("var glyphPositions = glyphRun.GlyphPositions;", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < glyphPositions.Length; i++)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var position in glyphRun.GlyphPositions)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfPen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryReadDashStyle(pen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("nativeDashArray", proGpuWpfCommandSink, StringComparison.Ordinal);

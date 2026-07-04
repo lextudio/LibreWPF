@@ -108,6 +108,26 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void TypedRectangleThroughProGpuSinkReusesCachedNativePen()
+    {
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+        var pen = new Pen(Brushes.Black, 2);
+
+        sink.DrawRectangle(null, pen, new System.Windows.Rect(0, 0, 10, 10));
+        sink.DrawRectangle(null, pen, new System.Windows.Rect(20, 0, 10, 10));
+
+        Assert.Equal(2, nativeContext.Commands.Count);
+        Assert.Same(nativeContext.Commands[0].Pen, nativeContext.Commands[1].Pen);
+
+        pen.Thickness = 3;
+        sink.DrawRectangle(null, pen, new System.Windows.Rect(40, 0, 10, 10));
+
+        Assert.Equal(3, nativeContext.Commands.Count);
+        Assert.NotSame(nativeContext.Commands[0].Pen, nativeContext.Commands[2].Pen);
+    }
+
+    [Fact]
     public void DecodeRectangleThroughProGpuSinkKeepsAbsoluteGradientMapping()
     {
         var brush = new FakeLinearGradientBrush(

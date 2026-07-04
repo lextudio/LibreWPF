@@ -20,7 +20,6 @@ using VectorPen = ProGPU.Vector.Pen;
 using VectorPathGeometry = ProGPU.Vector.PathGeometry;
 using VectorBrush = ProGPU.Vector.Brush;
 using VectorPenLineCap = ProGPU.Vector.PenLineCap;
-using VectorPenLineJoin = ProGPU.Vector.PenLineJoin;
 using VectorSolidColorBrush = ProGPU.Vector.SolidColorBrush;
 using NativePathGeometrySource = ProGPU.Scene.INativePathGeometrySource;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
@@ -1682,73 +1681,8 @@ public sealed class ProGpuCompositionCommandSink :
 
     private VectorPen? ToNativePen(MediaPen? pen, Rect bounds)
     {
-        if (pen?.Brush == null)
-        {
-            return null;
-        }
-
-        var brush = ToNativeBrush(pen.Brush, bounds);
-        if (brush == null)
-        {
-            return null;
-        }
-
-        var nativeDashArray = TryReadDashStyle(pen, out var dashArray, out var dashOffset)
-            ? dashArray
-            : null;
-        return new VectorPen(
-            brush,
-            (float)pen.Thickness,
-            ToNativeLineJoin(pen.LineJoin),
-            (float)Math.Max(1.0, pen.MiterLimit),
-            ToNativeLineCap(pen.StartLineCap),
-            ToNativeLineCap(pen.EndLineCap),
-            ToNativeLineCap(pen.DashCap),
-            nativeDashArray,
-            dashOffset);
-    }
-
-    private static bool TryReadDashStyle(MediaPen pen, out double[] dashArray, out double dashOffset)
-    {
-        dashArray = Array.Empty<double>();
-        dashOffset = 0.0;
-
-        if (pen.DashStyle?.Dashes is not { Length: > 0 } dashes)
-        {
-            return false;
-        }
-
-        var dashScale = pen.Thickness;
-        if (!double.IsFinite(dashScale) || dashScale < 0.0)
-        {
-            dashScale = 0.0;
-        }
-
-        var scaledDashes = new double[dashes.Length];
-        for (var i = 0; i < dashes.Length; i++)
-        {
-            var dash = dashes[i];
-            if (!double.IsFinite(dash) || dash < 0.0)
-            {
-                return false;
-            }
-
-            scaledDashes[i] = dash * dashScale;
-        }
-
-        dashArray = scaledDashes;
-        dashOffset = double.IsFinite(pen.DashStyle.Offset) ? pen.DashStyle.Offset : 0.0;
-        return true;
-    }
-
-    private static VectorPenLineJoin ToNativeLineJoin(PenLineJoin lineJoin)
-    {
-        return lineJoin switch
-        {
-            PenLineJoin.Bevel => VectorPenLineJoin.Bevel,
-            PenLineJoin.Round => VectorPenLineJoin.Round,
-            _ => VectorPenLineJoin.Miter
-        };
+        var replayBounds = new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+        return ToNativePen(pen, replayBounds);
     }
 
     private static VectorPenLineCap ToNativeLineCap(MediaPenLineCap lineCap)

@@ -5880,6 +5880,11 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfVisualInvalidationTracker.cs"));
+        var proGpuRetainedVisualBranchMap = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfRetainedVisualBranchMap.cs"));
         var proGpuInvalidationTrackerTests = File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf.Tests",
@@ -5979,6 +5984,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("currentVisualChildrenSnapshots", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("CaptureVisualChildrenSnapshots(_root)", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("MarkDirty(source);\n        RefreshSubscriptions();", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("private const int InlineCapacity = 4;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("private ProGpuVisual? _fourth;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("private object? _fourth;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("new List<ProGpuVisual>(InlineCapacity + 1)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("new HashSet<object>(InlineCapacity + 1, ReferenceEqualityComparer.Instance)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.DoesNotContain("private ProGpuVisual? _single;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.DoesNotContain("private object? _single;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.DoesNotContain("new HashSet<object>(ReferenceEqualityComparer.Instance)\n            {", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualChildrenSource.TryGetPortableVisualChildCount(out int count)", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualChildrenSource.TryGetPortableVisualChild(int index, out object child)", visualSource, StringComparison.Ordinal);

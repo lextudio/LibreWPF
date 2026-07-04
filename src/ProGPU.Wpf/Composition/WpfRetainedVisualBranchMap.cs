@@ -811,10 +811,16 @@ public sealed class WpfRetainedVisualBranchMap
 
     private struct VisualSet : IReadOnlyList<ProGpuVisual>
     {
-        private ProGpuVisual? _single;
+        private const int InlineCapacity = 4;
+
+        private ProGpuVisual? _first;
+        private ProGpuVisual? _second;
+        private ProGpuVisual? _third;
+        private ProGpuVisual? _fourth;
+        private int _inlineCount;
         private List<ProGpuVisual>? _many;
 
-        public int Count => _many?.Count ?? (_single == null ? 0 : 1);
+        public int Count => _many?.Count ?? _inlineCount;
 
         public ProGpuVisual this[int index]
         {
@@ -825,12 +831,18 @@ public sealed class WpfRetainedVisualBranchMap
                     return _many[index];
                 }
 
-                if (index != 0 || _single == null)
+                if ((uint)index >= (uint)_inlineCount)
                 {
                     throw new ArgumentOutOfRangeException(nameof(index));
                 }
 
-                return _single;
+                return index switch
+                {
+                    0 => _first!,
+                    1 => _second!,
+                    2 => _third!,
+                    _ => _fourth!
+                };
             }
         }
 
@@ -844,18 +856,16 @@ public sealed class WpfRetainedVisualBranchMap
                 return;
             }
 
-            if (_single == null)
+            if (_inlineCount < InlineCapacity)
             {
-                _single = visual;
+                SetInline(_inlineCount++, visual);
                 return;
             }
 
-            _many = new List<ProGpuVisual>
-            {
-                _single,
-                visual
-            };
-            _single = null;
+            _many = new List<ProGpuVisual>(InlineCapacity + 1);
+            AddInlineTo(_many);
+            _many.Add(visual);
+            ClearInline();
         }
 
         public bool Remove(ProGpuVisual visual)
@@ -869,27 +879,99 @@ public sealed class WpfRetainedVisualBranchMap
                     return false;
                 }
 
-                if (_many.Count == 1)
+                if (_many.Count <= InlineCapacity)
                 {
-                    _single = _many[0];
+                    SetInlineFrom(_many);
                     _many = null;
                 }
 
                 return true;
             }
 
-            if (!ReferenceEquals(_single, visual))
+            for (var i = 0; i < _inlineCount; i++)
             {
-                return false;
+                if (!ReferenceEquals(GetInline(i), visual))
+                {
+                    continue;
+                }
+
+                RemoveInlineAt(i);
+                return true;
             }
 
-            _single = null;
-            return true;
+            return false;
+        }
+
+        private readonly ProGpuVisual? GetInline(int index)
+        {
+            return index switch
+            {
+                0 => _first,
+                1 => _second,
+                2 => _third,
+                _ => _fourth
+            };
+        }
+
+        private void SetInline(int index, ProGpuVisual? visual)
+        {
+            switch (index)
+            {
+                case 0:
+                    _first = visual;
+                    break;
+                case 1:
+                    _second = visual;
+                    break;
+                case 2:
+                    _third = visual;
+                    break;
+                default:
+                    _fourth = visual;
+                    break;
+            }
+        }
+
+        private void RemoveInlineAt(int index)
+        {
+            for (var i = index; i < _inlineCount - 1; i++)
+            {
+                SetInline(i, GetInline(i + 1));
+            }
+
+            _inlineCount--;
+            SetInline(_inlineCount, null);
+        }
+
+        private readonly void AddInlineTo(List<ProGpuVisual> visuals)
+        {
+            for (var i = 0; i < _inlineCount; i++)
+            {
+                visuals.Add(GetInline(i)!);
+            }
+        }
+
+        private void SetInlineFrom(List<ProGpuVisual> visuals)
+        {
+            ClearInline();
+            for (var i = 0; i < visuals.Count; i++)
+            {
+                SetInline(_inlineCount++, visuals[i]);
+            }
+        }
+
+        private void ClearInline()
+        {
+            _first = null;
+            _second = null;
+            _third = null;
+            _fourth = null;
+            _inlineCount = 0;
         }
 
         public Enumerator GetEnumerator()
         {
-            return new Enumerator(_single, _many);
+            return new Enumerator(_first, _second, _third, _fourth, _inlineCount, _many);
         }
 
         IEnumerator<ProGpuVisual> IEnumerable<ProGpuVisual>.GetEnumerator()
@@ -904,14 +986,28 @@ public sealed class WpfRetainedVisualBranchMap
 
         public struct Enumerator : IEnumerator<ProGpuVisual>
         {
-            private readonly ProGpuVisual? _single;
+            private readonly ProGpuVisual? _first;
+            private readonly ProGpuVisual? _second;
+            private readonly ProGpuVisual? _third;
+            private readonly ProGpuVisual? _fourth;
+            private readonly int _inlineCount;
             private List<ProGpuVisual>.Enumerator _manyEnumerator;
             private readonly bool _hasMany;
-            private bool _singleConsumed;
+            private int _inlineIndex;
 
-            internal Enumerator(ProGpuVisual? single, List<ProGpuVisual>? many)
+            internal Enumerator(
+                ProGpuVisual? first,
+                ProGpuVisual? second,
+                ProGpuVisual? third,
+                ProGpuVisual? fourth,
+                int inlineCount,
+                List<ProGpuVisual>? many)
             {
-                _single = single;
+                _first = first;
+                _second = second;
+                _third = third;
+                _fourth = fourth;
+                _inlineCount = inlineCount;
                 if (many != null)
                 {
                     _manyEnumerator = many.GetEnumerator();
@@ -923,7 +1019,7 @@ public sealed class WpfRetainedVisualBranchMap
                     _hasMany = false;
                 }
 
-                _singleConsumed = false;
+                _inlineIndex = 0;
                 Current = null!;
             }
 
@@ -944,13 +1040,19 @@ public sealed class WpfRetainedVisualBranchMap
                     return true;
                 }
 
-                if (_singleConsumed || _single == null)
+                if (_inlineIndex >= _inlineCount)
                 {
                     return false;
                 }
 
-                Current = _single;
-                _singleConsumed = true;
+                Current = _inlineIndex switch
+                {
+                    0 => _first!,
+                    1 => _second!,
+                    2 => _third!,
+                    _ => _fourth!
+                };
+                _inlineIndex++;
                 return true;
             }
 
@@ -967,10 +1069,16 @@ public sealed class WpfRetainedVisualBranchMap
 
     private struct ReferenceOwnerSet
     {
-        private object? _single;
+        private const int InlineCapacity = 4;
+
+        private object? _first;
+        private object? _second;
+        private object? _third;
+        private object? _fourth;
+        private int _inlineCount;
         private HashSet<object>? _many;
 
-        public int Count => _many?.Count ?? (_single == null ? 0 : 1);
+        public int Count => _many?.Count ?? _inlineCount;
 
         public bool Add(object source)
         {
@@ -981,23 +1089,21 @@ public sealed class WpfRetainedVisualBranchMap
                 return _many.Add(source);
             }
 
-            if (_single == null)
-            {
-                _single = source;
-                return true;
-            }
-
-            if (ReferenceEquals(_single, source))
+            if (ContainsInline(source))
             {
                 return false;
             }
 
-            _many = new HashSet<object>(ReferenceEqualityComparer.Instance)
+            if (_inlineCount < InlineCapacity)
             {
-                _single,
-                source
-            };
-            _single = null;
+                SetInline(_inlineCount++, source);
+                return true;
+            }
+
+            _many = new HashSet<object>(InlineCapacity + 1, ReferenceEqualityComparer.Instance);
+            AddInlineTo(_many);
+            _many.Add(source);
+            ClearInline();
             return true;
         }
 
@@ -1010,14 +1116,14 @@ public sealed class WpfRetainedVisualBranchMap
                 return _many.Contains(source);
             }
 
-            return ReferenceEquals(_single, source);
+            return ContainsInline(source);
         }
 
         public bool TryGetSingle(out object source)
         {
-            if (_many == null && _single != null)
+            if (_many == null && _inlineCount == 1)
             {
-                source = _single;
+                source = _first!;
                 return true;
             }
 
@@ -1041,13 +1147,22 @@ public sealed class WpfRetainedVisualBranchMap
                 return;
             }
 
-            if (_single == null)
+            for (var i = 0; i < _inlineCount; i++)
             {
-                return;
-            }
+                if (ReferenceEquals(GetInline(i), dirtySource))
+                {
+                    hasDirtySourceOwner = true;
+                }
+                else
+                {
+                    hasCleanSourceOwner = true;
+                }
 
-            hasDirtySourceOwner = ReferenceEquals(_single, dirtySource);
-            hasCleanSourceOwner = !hasDirtySourceOwner;
+                if (hasDirtySourceOwner && hasCleanSourceOwner)
+                {
+                    return;
+                }
+            }
         }
 
         public void ClassifyAgainst(
@@ -1081,30 +1196,113 @@ public sealed class WpfRetainedVisualBranchMap
                 return;
             }
 
-            if (_single == null)
+            for (var i = 0; i < _inlineCount; i++)
             {
-                return;
+                if (dirtySources.Contains(GetInline(i)!))
+                {
+                    hasDirtySourceOwner = true;
+                }
+                else
+                {
+                    hasCleanSourceOwner = true;
+                }
+
+                if (hasDirtySourceOwner && hasCleanSourceOwner)
+                {
+                    return;
+                }
+            }
+        }
+
+        private readonly object? GetInline(int index)
+        {
+            return index switch
+            {
+                0 => _first,
+                1 => _second,
+                2 => _third,
+                _ => _fourth
+            };
+        }
+
+        private void SetInline(int index, object? source)
+        {
+            switch (index)
+            {
+                case 0:
+                    _first = source;
+                    break;
+                case 1:
+                    _second = source;
+                    break;
+                case 2:
+                    _third = source;
+                    break;
+                default:
+                    _fourth = source;
+                    break;
+            }
+        }
+
+        private readonly bool ContainsInline(object source)
+        {
+            for (var i = 0; i < _inlineCount; i++)
+            {
+                if (ReferenceEquals(GetInline(i), source))
+                {
+                    return true;
+                }
             }
 
-            hasDirtySourceOwner = dirtySources.Contains(_single);
-            hasCleanSourceOwner = !hasDirtySourceOwner;
+            return false;
+        }
+
+        private readonly void AddInlineTo(HashSet<object> owners)
+        {
+            for (var i = 0; i < _inlineCount; i++)
+            {
+                owners.Add(GetInline(i)!);
+            }
+        }
+
+        private void ClearInline()
+        {
+            _first = null;
+            _second = null;
+            _third = null;
+            _fourth = null;
+            _inlineCount = 0;
         }
 
         public Enumerator GetEnumerator()
         {
-            return new Enumerator(_single, _many);
+            return new Enumerator(_first, _second, _third, _fourth, _inlineCount, _many);
         }
 
         public struct Enumerator
         {
-            private readonly object? _single;
+            private readonly object? _first;
+            private readonly object? _second;
+            private readonly object? _third;
+            private readonly object? _fourth;
+            private readonly int _inlineCount;
             private HashSet<object>.Enumerator _manyEnumerator;
             private readonly bool _hasMany;
-            private bool _singleConsumed;
+            private int _inlineIndex;
 
-            internal Enumerator(object? single, HashSet<object>? many)
+            internal Enumerator(
+                object? first,
+                object? second,
+                object? third,
+                object? fourth,
+                int inlineCount,
+                HashSet<object>? many)
             {
-                _single = single;
+                _first = first;
+                _second = second;
+                _third = third;
+                _fourth = fourth;
+                _inlineCount = inlineCount;
                 if (many != null)
                 {
                     _manyEnumerator = many.GetEnumerator();
@@ -1116,7 +1314,7 @@ public sealed class WpfRetainedVisualBranchMap
                     _hasMany = false;
                 }
 
-                _singleConsumed = false;
+                _inlineIndex = 0;
                 Current = null!;
             }
 
@@ -1135,13 +1333,19 @@ public sealed class WpfRetainedVisualBranchMap
                     return true;
                 }
 
-                if (_singleConsumed || _single == null)
+                if (_inlineIndex >= _inlineCount)
                 {
                     return false;
                 }
 
-                Current = _single;
-                _singleConsumed = true;
+                Current = _inlineIndex switch
+                {
+                    0 => _first!,
+                    1 => _second!,
+                    2 => _third!,
+                    _ => _fourth!
+                };
+                _inlineIndex++;
                 return true;
             }
         }

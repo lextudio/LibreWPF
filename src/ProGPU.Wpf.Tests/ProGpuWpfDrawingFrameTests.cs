@@ -945,6 +945,59 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void BranchMapHandlesInlineAndPromotedOwnerSets()
+    {
+        var sourceToVisualsMap = new WpfRetainedVisualBranchMap();
+        var source = new object();
+        var visuals = new ProGpuRetainedDrawingVisual[5];
+        for (var i = 0; i < visuals.Length; i++)
+        {
+            visuals[i] = new ProGpuRetainedDrawingVisual
+            {
+                IsDirty = false
+            };
+            sourceToVisualsMap.Register(source, visuals[i]);
+        }
+
+        var multiVisualResult = sourceToVisualsMap.InvalidateVisualsForSources(new[] { source });
+        var multiVisualTargets = sourceToVisualsMap.GetReplayTargetsForSources(new[] { source });
+
+        Assert.Equal(1, multiVisualResult.DirtySourceCount);
+        Assert.Equal(1, multiVisualResult.MappedSourceCount);
+        Assert.Equal(5, multiVisualResult.InvalidatedVisualCount);
+        Assert.True(multiVisualResult.CanTargetAllDirtySources);
+        Assert.Equal(5, multiVisualTargets.Count);
+        for (var i = 0; i < visuals.Length; i++)
+        {
+            Assert.True(visuals[i].IsDirty);
+            Assert.Contains(multiVisualTargets, target => ReferenceEquals(target.Source, source) && ReferenceEquals(target.Visual, visuals[i]));
+        }
+
+        var ownersToVisualMap = new WpfRetainedVisualBranchMap();
+        var owners = new object[5];
+        var sharedVisual = new ProGpuRetainedDrawingVisual
+        {
+            IsDirty = false
+        };
+        for (var i = 0; i < owners.Length; i++)
+        {
+            owners[i] = new object();
+            ownersToVisualMap.Register(owners[i], sharedVisual);
+        }
+
+        var sharedOwnerResult = ownersToVisualMap.InvalidateVisualsForSources(new[] { owners[0] });
+
+        Assert.Equal(1, sharedOwnerResult.DirtySourceCount);
+        Assert.Equal(1, sharedOwnerResult.MappedSourceCount);
+        Assert.Equal(1, sharedOwnerResult.InvalidatedVisualCount);
+        Assert.Equal(1, sharedOwnerResult.SharedWithCleanSourceVisualCount);
+        Assert.Equal(1, sharedOwnerResult.ReplayTargetConflictCount);
+        Assert.False(sharedOwnerResult.CanTargetAllDirtySources);
+        Assert.True(sharedVisual.IsDirty);
+        Assert.Empty(ownersToVisualMap.GetReplayTargetsForSources(new[] { owners[0] }));
+    }
+
+    [Fact]
     public void BranchMapReturnsTopLevelReplayTargetsForDirtySources()
     {
         var branchMap = new WpfRetainedVisualBranchMap();

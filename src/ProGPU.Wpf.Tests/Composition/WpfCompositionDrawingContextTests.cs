@@ -272,6 +272,39 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void LineGeometryRefreshesPrimitiveLinePointCacheWhenShapeChanges()
+    {
+        var geometry = new LineGeometry(new Point(1, 2), new Point(30, 40));
+
+        Assert.True(WpfMediaLineGeometryReader.TryGetLinePoints(geometry, out var firstStart, out var firstEnd));
+        geometry.EndPoint = new Point(50, 60);
+        Assert.True(WpfMediaLineGeometryReader.TryGetLinePoints(geometry, out var secondStart, out var secondEnd));
+
+        Assert.Equal(new Point(1, 2), firstStart);
+        Assert.Equal(new Point(30, 40), firstEnd);
+        Assert.Equal(new Point(1, 2), secondStart);
+        Assert.Equal(new Point(50, 60), secondEnd);
+    }
+
+    [Fact]
+    public void LineGeometryRefreshesPrimitiveLinePointCacheWhenTransformChanges()
+    {
+        var geometry = new LineGeometry(new Point(1, 2), new Point(30, 40))
+        {
+            Transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 10 })
+        };
+
+        Assert.True(WpfMediaLineGeometryReader.TryGetLinePoints(geometry, out var firstStart, out var firstEnd));
+        geometry.Transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 20 });
+        Assert.True(WpfMediaLineGeometryReader.TryGetLinePoints(geometry, out var secondStart, out var secondEnd));
+
+        Assert.Equal(new Point(11, 2), firstStart);
+        Assert.Equal(new Point(40, 40), firstEnd);
+        Assert.Equal(new Point(21, 2), secondStart);
+        Assert.Equal(new Point(50, 40), secondEnd);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextDrawsLocalPolylinePathGeometryAsNativeLinesWithoutGenericGeometry()
     {
         var sink = new NativeRecordingSink();

@@ -19,29 +19,71 @@ internal static class WpfMediaLineGeometryReader
         out Point startPoint,
         out Point endPoint)
     {
-        if (!TryGetGeometryTransform(geometry, out var transform))
+        if (s_primitiveCache.TryGetValue(geometry, out var cache)
+            && cache.TryGetLinePoints(geometry, out startPoint, out endPoint))
         {
+            return true;
+        }
+
+        if (!TryComputeLinePoints(geometry, out var primitive, out startPoint, out endPoint))
+        {
+            return false;
+        }
+
+        s_primitiveCache.GetOrCreateValue(geometry).SetLinePoints(primitive);
+        return true;
+    }
+
+    private static bool TryComputeLinePoints(
+        MediaGeometry geometry,
+        out LinePrimitive primitive,
+        out Point startPoint,
+        out Point endPoint)
+    {
+        if (!TryReadLinePrimitiveFingerprint(geometry, out var fingerprint)
+            || !TryTransformPoint(fingerprint.StartPoint, fingerprint.Transform, out startPoint)
+            || !TryTransformPoint(fingerprint.EndPoint, fingerprint.Transform, out endPoint))
+        {
+            primitive = default;
             startPoint = default;
             endPoint = default;
             return false;
         }
 
-        if (geometry is MediaLineGeometry lineGeometry
-            && IsUsablePoint(lineGeometry.StartPoint, out startPoint)
-            && IsUsablePoint(lineGeometry.EndPoint, out endPoint)
-            && TryTransformPoint(startPoint, transform, out startPoint)
-            && TryTransformPoint(endPoint, transform, out endPoint))
+        primitive = new LinePrimitive(
+            fingerprint.StartPoint,
+            fingerprint.EndPoint,
+            fingerprint.Transform,
+            new WpfReplayLineSegment(
+                new WpfReplayPoint(startPoint.X, startPoint.Y),
+                new WpfReplayPoint(endPoint.X, endPoint.Y)));
+        return true;
+    }
+
+    private static bool TryReadLinePrimitiveFingerprint(
+        MediaGeometry geometry,
+        out LinePrimitiveFingerprint fingerprint)
+    {
+        if (!TryGetGeometryTransform(geometry, out var transform))
         {
+            fingerprint = default;
+            return false;
+        }
+
+        if (geometry is MediaLineGeometry lineGeometry
+            && IsUsablePoint(lineGeometry.StartPoint, out var startPoint)
+            && IsUsablePoint(lineGeometry.EndPoint, out var endPoint))
+        {
+            fingerprint = new LinePrimitiveFingerprint(startPoint, endPoint, transform);
             return true;
         }
 
         if (geometry is MediaPathGeometry pathGeometry)
         {
-            return TryGetPathLinePoints(pathGeometry, transform, out startPoint, out endPoint);
+            return TryReadPathLinePrimitiveFingerprint(pathGeometry, transform, out fingerprint);
         }
 
-        startPoint = default;
-        endPoint = default;
+        fingerprint = default;
         return false;
     }
 
@@ -75,39 +117,34 @@ internal static class WpfMediaLineGeometryReader
         return true;
     }
 
-    private static bool TryGetPathLinePoints(
+    private static bool TryReadPathLinePrimitiveFingerprint(
         MediaPathGeometry pathGeometry,
         Matrix4x4 transform,
-        out Point startPoint,
-        out Point endPoint)
+        out LinePrimitiveFingerprint fingerprint)
     {
         if (pathGeometry.Figures.Count != 1)
         {
-            startPoint = default;
-            endPoint = default;
+            fingerprint = default;
             return false;
         }
 
         var figure = pathGeometry.Figures[0];
         if (figure.IsClosed || figure.Segments.Count != 1)
         {
-            startPoint = default;
-            endPoint = default;
+            fingerprint = default;
             return false;
         }
 
         if (figure.Segments[0] is MediaLineSegment lineSegment
             && lineSegment.IsStroked
-            && IsUsablePoint(figure.StartPoint, out startPoint)
-            && IsUsablePoint(lineSegment.Point, out endPoint)
-            && TryTransformPoint(startPoint, transform, out startPoint)
-            && TryTransformPoint(endPoint, transform, out endPoint))
+            && IsUsablePoint(figure.StartPoint, out var startPoint)
+            && IsUsablePoint(lineSegment.Point, out var endPoint))
         {
+            fingerprint = new LinePrimitiveFingerprint(startPoint, endPoint, transform);
             return true;
         }
 
-        startPoint = default;
-        endPoint = default;
+        fingerprint = default;
         return false;
     }
 
@@ -220,13 +257,50 @@ internal static class WpfMediaLineGeometryReader
             && left.Y == right.Y;
     }
 
+    private static bool SameTransform(Matrix4x4 left, Matrix4x4 right)
+    {
+        return left.Equals(right);
+    }
+
     private sealed class GeometryPrimitiveCache
     {
+        private bool _hasLineSegment;
+        private Point _lineStartPoint;
+        private Point _lineEndPoint;
+        private Matrix4x4 _lineTransform;
+        private WpfReplayLineSegment _lineSegment;
         private WpfReplayLineSegment[]? _polylineSegments;
+
+        public void SetLinePoints(LinePrimitive primitive)
+        {
+            _hasLineSegment = true;
+            _lineStartPoint = primitive.StartPoint;
+            _lineEndPoint = primitive.EndPoint;
+            _lineTransform = primitive.Transform;
+            _lineSegment = primitive.Segment;
+        }
 
         public void SetPolylineSegments(WpfReplayLineSegment[] segments)
         {
             _polylineSegments = segments;
+        }
+
+        public bool TryGetLinePoints(
+            MediaGeometry geometry,
+            out Point startPoint,
+            out Point endPoint)
+        {
+            if (!_hasLineSegment
+                || !TryValidateLinePoints(geometry, this))
+            {
+                startPoint = default;
+                endPoint = default;
+                return false;
+            }
+
+            startPoint = new Point(_lineSegment.StartPoint.X, _lineSegment.StartPoint.Y);
+            endPoint = new Point(_lineSegment.EndPoint.X, _lineSegment.EndPoint.Y);
+            return true;
         }
 
         public bool TryGetPolylineSegments(
@@ -242,6 +316,20 @@ internal static class WpfMediaLineGeometryReader
 
             segments = cached;
             return true;
+        }
+
+        private static bool TryValidateLinePoints(
+            MediaGeometry geometry,
+            GeometryPrimitiveCache cache)
+        {
+            if (!TryReadLinePrimitiveFingerprint(geometry, out var fingerprint))
+            {
+                return false;
+            }
+
+            return SamePoint(cache._lineStartPoint, fingerprint.StartPoint)
+                && SamePoint(cache._lineEndPoint, fingerprint.EndPoint)
+                && SameTransform(cache._lineTransform, fingerprint.Transform);
         }
 
         private static bool TryValidatePolylineSegments(
@@ -308,6 +396,17 @@ internal static class WpfMediaLineGeometryReader
             return cachedIndex == cached.Length;
         }
     }
+
+    private readonly record struct LinePrimitive(
+        Point StartPoint,
+        Point EndPoint,
+        Matrix4x4 Transform,
+        WpfReplayLineSegment Segment);
+
+    private readonly record struct LinePrimitiveFingerprint(
+        Point StartPoint,
+        Point EndPoint,
+        Matrix4x4 Transform);
 }
 
 internal readonly record struct WpfReplayLineSegment(

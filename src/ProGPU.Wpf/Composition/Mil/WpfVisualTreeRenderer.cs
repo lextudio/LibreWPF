@@ -2400,8 +2400,9 @@ public sealed class WpfVisualTreeRenderer
             var top = double.PositiveInfinity;
             var right = double.NegativeInfinity;
             var bottom = double.NegativeInfinity;
-            foreach (var segment in segments)
+            for (var i = 0; i < segments.Count; i++)
             {
+                var segment = segments[i];
                 IncludePoint(segment.StartPoint);
                 IncludePoint(segment.EndPoint);
             }

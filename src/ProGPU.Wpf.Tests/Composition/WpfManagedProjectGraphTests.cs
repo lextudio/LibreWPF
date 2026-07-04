@@ -6311,6 +6311,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetDirectEllipseGeometry(geometry, out var center, out var radiusX, out var radiusY)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetDirectPolylineGeometry(geometry, out var segments)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetLineSegmentBounds(segments, out bounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < segments.Count; i++)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("var segment = segments[i];", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var segment in segments)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetDirectLineGeometryBounds(geometry, out bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetDirectLineGeometryBounds(object? geometry, out Rect bounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("geometry is Rect rect", replaySource, StringComparison.Ordinal);

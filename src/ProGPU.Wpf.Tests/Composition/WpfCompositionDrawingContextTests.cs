@@ -394,6 +394,25 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void PolylinePathGeometryRefreshesPrimitiveSegmentCacheWhenTransformChanges()
+    {
+        var geometry = CreatePolylinePathGeometry(
+            new Point(1, 2),
+            new Point(30, 40),
+            new Point(50, 60));
+        geometry.Transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 10 });
+
+        Assert.True(WpfMediaLineGeometryReader.TryGetPolylineSegments(geometry, out var first));
+        geometry.Transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 20 });
+        Assert.True(WpfMediaLineGeometryReader.TryGetPolylineSegments(geometry, out var second));
+
+        Assert.NotSame(first, second);
+        Assert.Equal(new WpfReplayPoint(11, 2), first[0].StartPoint);
+        Assert.Equal(new WpfReplayPoint(21, 2), second[0].StartPoint);
+        Assert.Equal(new WpfReplayPoint(70, 60), second[1].EndPoint);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextDrawsTransformedLineGeometryAsNativeLine()
     {
         var sink = new NativeRecordingSink();

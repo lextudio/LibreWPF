@@ -80,6 +80,19 @@ internal readonly struct WpfNativeGlyphRun
         Transform = transform;
         IsBold = isBold;
         IsItalic = isItalic;
+
+        if (TryCreateLocalBounds(glyphPositions, fontSize, position, out var localBounds))
+        {
+            HasBounds = true;
+            LocalBounds = localBounds;
+            TransformedBounds = TransformBounds(localBounds, transform);
+        }
+        else
+        {
+            HasBounds = false;
+            LocalBounds = default;
+            TransformedBounds = default;
+        }
     }
 
     public ushort[] GlyphIndices { get; }
@@ -97,6 +110,100 @@ internal readonly struct WpfNativeGlyphRun
     public bool IsBold { get; }
 
     public bool IsItalic { get; }
+
+    public bool HasBounds { get; }
+
+    public WpfReplayRect LocalBounds { get; }
+
+    public WpfReplayRect TransformedBounds { get; }
+
+    private static bool TryCreateLocalBounds(
+        Vector2[] glyphPositions,
+        float fontSize,
+        Vector2 position,
+        out WpfReplayRect bounds)
+    {
+        bounds = default;
+        if (!float.IsFinite(fontSize) ||
+            fontSize <= 0f ||
+            !float.IsFinite(position.X) ||
+            !float.IsFinite(position.Y))
+        {
+            return false;
+        }
+
+        var minX = (double)position.X;
+        var minY = position.Y - (double)fontSize;
+        var maxX = (double)position.X;
+        var maxY = (double)position.Y;
+
+        if (glyphPositions.Length == 0)
+        {
+            maxX += fontSize;
+        }
+        else
+        {
+            var originX = position.X;
+            var originY = position.Y;
+            for (var i = 0; i < glyphPositions.Length; i++)
+            {
+                var glyphPosition = glyphPositions[i];
+                if (!float.IsFinite(glyphPosition.X) || !float.IsFinite(glyphPosition.Y))
+                {
+                    return false;
+                }
+
+                var x = originX + (double)glyphPosition.X;
+                var y = originY + (double)glyphPosition.Y;
+                minX = Math.Min(minX, x);
+                minY = Math.Min(minY, y - fontSize);
+                maxX = Math.Max(maxX, x + fontSize);
+                maxY = Math.Max(maxY, y);
+            }
+        }
+
+        var width = Math.Max(0, maxX - minX);
+        var height = Math.Max(0, maxY - minY);
+        if (width <= 0 || height <= 0)
+        {
+            return false;
+        }
+
+        bounds = new WpfReplayRect(minX, minY, width, height);
+        return true;
+    }
+
+    private static WpfReplayRect TransformBounds(WpfReplayRect bounds, Matrix4x4 transform)
+    {
+        if (transform.IsIdentity)
+        {
+            return bounds;
+        }
+
+        var left = (float)bounds.X;
+        var top = (float)bounds.Y;
+        var right = (float)(bounds.X + bounds.Width);
+        var bottom = (float)(bounds.Y + bounds.Height);
+
+        var p0 = Vector2.Transform(new Vector2(left, top), transform);
+        var p1 = Vector2.Transform(new Vector2(right, top), transform);
+        var p2 = Vector2.Transform(new Vector2(right, bottom), transform);
+        var p3 = Vector2.Transform(new Vector2(left, bottom), transform);
+
+        var min = Vector2.Min(Vector2.Min(p0, p1), Vector2.Min(p2, p3));
+        var max = Vector2.Max(Vector2.Max(p0, p1), Vector2.Max(p2, p3));
+        if (!float.IsFinite(min.X) ||
+            !float.IsFinite(min.Y) ||
+            !float.IsFinite(max.X) ||
+            !float.IsFinite(max.Y) ||
+            max.X <= min.X ||
+            max.Y <= min.Y)
+        {
+            return bounds;
+        }
+
+        return new WpfReplayRect(min.X, min.Y, max.X - min.X, max.Y - min.Y);
+    }
 }
 
 public sealed class WpfResourceResolver :

@@ -3229,6 +3229,10 @@ internal static class WpfDrawingReplay
     private static bool TryGetGlyphRunBounds(WpfNativeGlyphRun glyphRun, out Rect bounds)
     {
         bounds = default;
+        if (glyphRun.HasBounds)
+        {
+            return IsUsableRect(ToRect(glyphRun.TransformedBounds), out bounds);
+        }
 
         if (glyphRun.FontSize <= 0)
         {

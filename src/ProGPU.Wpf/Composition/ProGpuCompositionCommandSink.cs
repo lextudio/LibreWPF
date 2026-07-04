@@ -862,6 +862,7 @@ public sealed class ProGpuCompositionCommandSink :
             Font = glyphRun.Font,
             FontSize = glyphRun.FontSize,
             Brush = nativeBrush,
+            Rect = glyphRun.HasBounds ? ToNativeRect(glyphRun.LocalBounds) : default,
             Position = glyphRun.Position,
             Transform = glyphRun.Transform * _transformStack.Peek(),
             IsBold = glyphRun.IsBold,
@@ -1363,6 +1364,11 @@ public sealed class ProGpuCompositionCommandSink :
             return ToNativeBrush(foregroundBrush, default(WpfReplayRect));
         }
 
+        if (glyphRun.HasBounds)
+        {
+            return ToNativeBrush(foregroundBrush, glyphRun.LocalBounds);
+        }
+
         return ToNativeBrush(foregroundBrush, CreateGlyphRunBounds(glyphRun));
     }
 
@@ -1377,6 +1383,11 @@ public sealed class ProGpuCompositionCommandSink :
 
     private static WpfReplayRect CreateGlyphRunBounds(WpfNativeGlyphRun glyphRun)
     {
+        if (glyphRun.HasBounds)
+        {
+            return glyphRun.LocalBounds;
+        }
+
         if (glyphRun.GlyphPositions.Length == 0)
         {
             return new WpfReplayRect(glyphRun.Position.X, glyphRun.Position.Y - glyphRun.FontSize, glyphRun.FontSize, glyphRun.FontSize);

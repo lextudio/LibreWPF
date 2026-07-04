@@ -2254,6 +2254,35 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void DrawNativeGlyphRunThroughProGpuSinkStoresCachedHitTestBounds()
+    {
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+        var glyphRun = new PortableGlyphRun
+        {
+            GlyphIndices = new ushort[] { 7, 8 },
+            GlyphPositions =
+            [
+                new PortablePoint(0, 0),
+                new PortablePoint(9, 2)
+            ],
+            BaselineOrigin = new PortablePoint(3, 20),
+            FontRenderingEmSize = 16,
+            FontFamilyNames = new[] { "Arial" },
+            HasTransform = true,
+            Transform = new PortableMatrix3x2(1, 0, 0, 1, 5, 6)
+        };
+
+        ((IWpfNativePrimitiveCommandSink)sink).DrawNativeGlyphRun(Brushes.Black, glyphRun);
+
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawGlyphRun, command.Type);
+        Assert.Equal(new global::ProGPU.Scene.Rect(3, 4, 25, 18), command.Rect);
+        Assert.Equal(5, command.Transform.M41);
+        Assert.Equal(6, command.Transform.M42);
+    }
+
+    [Fact]
     public void DrawTextThroughProGpuSinkStoresTransform()
     {
         var nativeContext = new ProGpuDrawingContext();

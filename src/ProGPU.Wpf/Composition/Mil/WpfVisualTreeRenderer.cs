@@ -2322,6 +2322,11 @@ public sealed class WpfVisualTreeRenderer
         private static bool TryGetGlyphRunBounds(WpfNativeGlyphRun glyphRun, out WpfReplayRect bounds)
         {
             bounds = default;
+            if (glyphRun.HasBounds)
+            {
+                bounds = glyphRun.TransformedBounds;
+                return IsUsableBounds(bounds);
+            }
 
             if (glyphRun.FontSize <= 0)
             {

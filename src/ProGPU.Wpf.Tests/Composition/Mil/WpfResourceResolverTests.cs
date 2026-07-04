@@ -3205,6 +3205,15 @@ public sealed class WpfResourceResolverTests
         Assert.Equal(new Vector2(1, 2), adapted.GlyphPositions[0]);
         Assert.Equal(6, adapted.Transform.M41);
         Assert.Equal(7, adapted.Transform.M42);
+        Assert.True(adapted.HasBounds);
+        Assert.Equal(3, adapted.LocalBounds.X);
+        Assert.Equal(-10, adapted.LocalBounds.Y);
+        Assert.Equal(15, adapted.LocalBounds.Width);
+        Assert.Equal(16, adapted.LocalBounds.Height);
+        Assert.Equal(9, adapted.TransformedBounds.X);
+        Assert.Equal(-3, adapted.TransformedBounds.Y);
+        Assert.Equal(15, adapted.TransformedBounds.Width);
+        Assert.Equal(16, adapted.TransformedBounds.Height);
         Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
     }
 

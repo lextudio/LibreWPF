@@ -1182,7 +1182,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetDashedStrokePath(command, commandPath, pen, out var strokePath, out var strokePen)", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("TryAddPathStrokePrimitive(strokePath, transform, id, zIndex, strokePen);", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("AddPathStrokePrimitive(path, transform, id, zIndex, pen);", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("if (!command.Rect.IsEmpty)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("AddBounds(command.Rect, transform, id, zIndex);", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("RenderCommandCacheUsesDashedPathSegmentsForStrokeHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("RenderCommandCacheUsesGlyphRunCommandBoundsWhenAvailable", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("RenderCommandCacheFeedsGpuCombinedPathFillHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllReturnsIntersectingBroadPhaseHitsInDescendingZOrder", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllClassifiesRectBoundsIntersectionDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -13078,6 +13081,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DrawNativeGlyphRun", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("TryResolveRawResource", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("TryAdaptNativeGlyphRun", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("public bool HasBounds { get; }", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("public WpfReplayRect LocalBounds { get; }", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("public WpfReplayRect TransformedBounds { get; }", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("TryCreateLocalBounds(glyphPositions, fontSize, position, out var localBounds)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("TransformedBounds = TransformBounds(localBounds, transform);", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("using PortableGlyphRunSource = ProGPU.Wpf.Interop.IPortableGlyphRunSource;", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("using PortableNativeGlyphRun = ProGPU.Wpf.Interop.PortableNativeGlyphRun;", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("using PortableNativeGlyphRunSource = ProGPU.Wpf.Interop.IPortableNativeGlyphRunSource;", wpfResourceResolver, StringComparison.Ordinal);
@@ -13104,6 +13112,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("glyphRun.NativeFont = resolvedFont;", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeGlyphRunCachesPortableNativeGlyphRunFont", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptGlyphRunCachesPortableGlyphRunFont", wpfResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("Assert.True(adapted.HasBounds);", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodeGlyphRunPrefersPortableFontUri", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodeGlyphRunPreservesPortableStyleSimulations", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("DecodeDrawDrawingReplaysPortableGlyphRunDrawing", wpfResourceResolverTests, StringComparison.Ordinal);
@@ -13420,11 +13429,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private VectorBrush? ToNativeGlyphRunBrush(MediaBrush foregroundBrush, in WpfNativeGlyphRun glyphRun)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("if (foregroundBrush is MediaSolidColorBrush)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("return ToNativeBrush(foregroundBrush, default(WpfReplayRect));", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("Rect = glyphRun.HasBounds ? ToNativeRect(glyphRun.LocalBounds) : default", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("return ToNativeBrush(foregroundBrush, glyphRun.LocalBounds);", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("return glyphRun.LocalBounds;", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("var nativeBrush = ToNativeBrush(foregroundBrush, CreateGlyphRunBounds(glyphRun));", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("CreateGlyphRunBounds", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("var glyphPositions = glyphRun.GlyphPositions;", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < glyphPositions.Length; i++)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var position in glyphRun.GlyphPositions)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("bounds = glyphRun.TransformedBounds;", wpfVisualTreeRenderer, StringComparison.Ordinal);
+        Assert.Contains("return IsUsableRect(ToRect(glyphRun.TransformedBounds), out bounds);", wpfDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("s_nativePortableNativeGlyphRunCache", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("s_nativePortableGlyphRunCache", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("private sealed class NativePortableNativeGlyphRunCache", wpfResourceResolver, StringComparison.Ordinal);

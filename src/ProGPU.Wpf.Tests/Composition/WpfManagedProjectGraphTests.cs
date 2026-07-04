@@ -1133,8 +1133,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SetLastHitTestIndex(_hitTestCacheBuilder.BuildIndex());", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CollectionsMarshal.AsSpan(_primitives)", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("CollectionsMarshal.AsSpan(_pathSegments)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("private SmallValueStack<ClipState> _clipStack;", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("private SmallValueStack<float> _opacityStack;", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("private struct SmallValueStack<T>", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("RuntimeHelpers.IsReferenceOrContainsReferences<T>()", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.DoesNotContain("_primitives.ToArray()", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.DoesNotContain("_pathSegments.ToArray()", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly Stack<ClipState> _clipStack", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly Stack<float> _opacityStack", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Stack<ClipState>", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Stack<float>", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("PrimitiveIndexBucket retained = default;", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("PrimitiveIndexBucket child0 = default;", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("AddChildPrimitive(ref child0, ref child1, ref child2, ref child3, childIndex, primitiveIndex)", proGpuHitTesting, StringComparison.Ordinal);

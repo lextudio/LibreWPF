@@ -15,6 +15,10 @@ require_text() {
 
 require_text ".github/workflows/progpu-wpf-sdk.yml" "./eng/progpu-wpf-sdk-ci.sh"
 require_text ".github/workflows/progpu-wpf-release.yml" "NUGET_API_KEY"
+require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-v*"
+require_text ".github/workflows/progpu-wpf-release.yml" "refs/tags/librewpf-v"
+require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-packages-"
+require_text ".github/workflows/progpu-wpf-docs.yml" "librewpf-docs"
 require_text "docs/progpu-wpf-release.md" "LibreWPF.Sdk"
 
 for package_id in "${progpu_preview_package_ids[@]}"; do

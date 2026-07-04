@@ -45,7 +45,7 @@ jobs:
       - name: Upload docs snapshot
         uses: actions/upload-artifact@v4
         with:
-          name: progpu-wpf-docs
+          name: librewpf-docs
           path: |
             README.md
             docs/**

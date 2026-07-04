@@ -13004,6 +13004,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal struct SmallValueStack<T> : IDisposable", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<T>.Shared.Rent", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("_pushStack.Dispose();", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("private readonly byte _inlineYCount;", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("inlineYCount: 1", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("private bool TrySnapInlineY(", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("new[] { coordinate }", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("new[] { leadingCoordinate, leadingCoordinate + offsetToDrivenCoordinate }", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("private readonly Stack<", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("new Stack<", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Collections.Generic;", proGpuWpfCommandSink, StringComparison.Ordinal);

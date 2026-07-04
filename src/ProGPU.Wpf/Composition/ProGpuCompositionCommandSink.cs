@@ -1520,19 +1520,28 @@ public sealed class ProGpuCompositionCommandSink :
         private readonly bool _preserveDrivenYOffset;
         private readonly double _leadingY;
         private readonly double _offsetToDrivenY;
+        private readonly byte _inlineYCount;
+        private readonly double _inlineY0;
+        private readonly double _inlineY1;
 
         private GuidelineState(
             double[] guidelinesX,
             double[] guidelinesY,
             bool preserveDrivenYOffset,
             double leadingY,
-            double offsetToDrivenY)
+            double offsetToDrivenY,
+            byte inlineYCount = 0,
+            double inlineY0 = 0,
+            double inlineY1 = 0)
         {
             _guidelinesX = guidelinesX;
             _guidelinesY = guidelinesY;
             _preserveDrivenYOffset = preserveDrivenYOffset;
             _leadingY = leadingY;
             _offsetToDrivenY = offsetToDrivenY;
+            _inlineYCount = inlineYCount;
+            _inlineY0 = inlineY0;
+            _inlineY1 = inlineY1;
         }
 
         public static GuidelineState FromGuidelineSet(double[] guidelinesX, double[] guidelinesY)
@@ -1542,14 +1551,21 @@ public sealed class ProGpuCompositionCommandSink :
 
         public static GuidelineState FromGuidelineY1(double coordinate)
         {
-            return new GuidelineState(Array.Empty<double>(), new[] { coordinate }, preserveDrivenYOffset: false, leadingY: 0, offsetToDrivenY: 0);
+            return new GuidelineState(
+                Array.Empty<double>(),
+                Array.Empty<double>(),
+                preserveDrivenYOffset: false,
+                leadingY: 0,
+                offsetToDrivenY: 0,
+                inlineYCount: 1,
+                inlineY0: coordinate);
         }
 
         public static GuidelineState FromGuidelineY2(double leadingCoordinate, double offsetToDrivenCoordinate)
         {
             return new GuidelineState(
                 Array.Empty<double>(),
-                new[] { leadingCoordinate, leadingCoordinate + offsetToDrivenCoordinate },
+                Array.Empty<double>(),
                 preserveDrivenYOffset: true,
                 leadingCoordinate,
                 offsetToDrivenCoordinate);
@@ -1582,7 +1598,30 @@ public sealed class ProGpuCompositionCommandSink :
                 return false;
             }
 
+            if (_inlineYCount != 0)
+            {
+                return TrySnapInlineY(y, scaleY, translateY, out snappedY);
+            }
+
             return TrySnapCoordinate(_guidelinesY, y, scaleY, translateY, out snappedY);
+        }
+
+        private bool TrySnapInlineY(double y, double scaleY, double translateY, out double snappedY)
+        {
+            if (AreClose(y, _inlineY0))
+            {
+                snappedY = SnapCoordinate(_inlineY0, scaleY, translateY);
+                return true;
+            }
+
+            if (_inlineYCount > 1 && AreClose(y, _inlineY1))
+            {
+                snappedY = SnapCoordinate(_inlineY1, scaleY, translateY);
+                return true;
+            }
+
+            snappedY = y;
+            return false;
         }
 
         private static bool TrySnapCoordinate(

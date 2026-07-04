@@ -1258,6 +1258,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("_maskTexturePool.ToArray()", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public void Upload(ReadOnlySpan<float> interleavedCoords, int pointsCount)", proGpuSeriesBuffer, StringComparison.Ordinal);
         Assert.Contains("Buffer.Write(interleavedCoords)", proGpuSeriesBuffer, StringComparison.Ordinal);
+        Assert.Contains("cachedBuffer.Upload(cachedBuffer.CachedInterleaved.AsSpan(0, requiredLength), pointsCount)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("cachedBuffer.Upload(cachedBuffer.CachedInterleaved.AsSpan(0, requiredLength), pointsCount)", proGpuLineSeriesPipeline, StringComparison.Ordinal);
+        Assert.Contains("cachedBuffer.Upload(cachedBuffer.CachedInterleaved.AsSpan(0, requiredLength), pointsCount)", proGpuScatterSeriesPipeline, StringComparison.Ordinal);
         Assert.Contains("tempBuffer.Upload(floatsSpan.Slice(0, pointsCount * 2), pointsCount)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("tempBuffer.Upload(floatsSpan.Slice(0, pointsCount * 3), pointsCount)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var array = ArrayPool<float>.Shared.Rent(pointsCount * 3)", proGpuCompositor, StringComparison.Ordinal);
@@ -1270,6 +1273,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var array = new float[pointsCount * 3];", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var array = new float[pointsCount * 2];", proGpuLineSeriesPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("var array = new float[pointsCount * 3];", proGpuScatterSeriesPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("cachedBuffer.Upload(cachedBuffer.CachedInterleaved, pointsCount)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("cachedBuffer.Upload(cachedBuffer.CachedInterleaved, pointsCount)", proGpuLineSeriesPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("cachedBuffer.Upload(cachedBuffer.CachedInterleaved, pointsCount)", proGpuScatterSeriesPipeline, StringComparison.Ordinal);
         Assert.Contains("cmd.Edges3D is { } edges", proGpuAcisPipeline, StringComparison.Ordinal);
         Assert.Contains("ReadOnlySpan<Line3D>.Empty", proGpuAcisPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("cmd.Edges3D ?? new List<Line3D>()", proGpuAcisPipeline, StringComparison.Ordinal);

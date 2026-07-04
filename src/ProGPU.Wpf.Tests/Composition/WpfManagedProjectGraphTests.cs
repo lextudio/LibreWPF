@@ -1105,10 +1105,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CountNonEmpty(child0, child1, child2, child3)", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("int child0NodeIndex = AddChildNodeSlot(child0);", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("FillChildNode(child0NodeIndex, 0, child0, min, max, center, depth);", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("var builder = new Builder(primitives, maxDepth, maxPrimitivesPerNode);", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("builder.AddRootNode(min, max);", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("new RootPrimitiveIndices(_primitives.Length)", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("new ListPrimitiveIndices(childPrimitives)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("private ref struct Builder", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("private readonly ReadOnlySpan<GpuHitTestPrimitive> _primitives;", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("CopySpan(primitives)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("CopySpan(pathSegments)", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("private readonly struct RootPrimitiveIndices", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("var primitiveArray = primitives.ToArray();", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("var pathSegmentArray = pathSegments.ToArray();", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("new Builder(primitiveArray", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("var all = new List<int>(primitiveArray.Length);", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("builder.AddNode(min, max, all, depth: 0);", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("var retained = new List<int>();", proGpuHitTesting, StringComparison.Ordinal);

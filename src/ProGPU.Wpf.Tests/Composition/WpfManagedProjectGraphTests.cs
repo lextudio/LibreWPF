@@ -5947,6 +5947,10 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfVisualInvalidationTrackerTests.cs"));
+        var proGpuDrawingFrameTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "ProGpuWpfDrawingFrameTests.cs"));
         var interopSource = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -6055,6 +6059,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private object? _fourth;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("new List<ProGpuVisual>(InlineCapacity + 1)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("new HashSet<object>(InlineCapacity + 1, ReferenceEqualityComparer.Instance)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("private static void ClassifyPromotedOwnersAgainstDirtySources(", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("if (dirtySources.Count < sourceOwners.Count)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("foreach (var dirtySource in dirtySources)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("BranchMapClassifiesPromotedOwnerSetsByScanningSmallerDirtyBatch", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.DoesNotContain("private ProGpuVisual? _single;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.DoesNotContain("private object? _single;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.DoesNotContain("new HashSet<object>(ReferenceEqualityComparer.Instance)\n            {", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);

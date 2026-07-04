@@ -998,6 +998,40 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void BranchMapClassifiesPromotedOwnerSetsByScanningSmallerDirtyBatch()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var owners = new object[6];
+        var sharedVisual = new ProGpuRetainedDrawingVisual
+        {
+            IsDirty = false
+        };
+        for (var i = 0; i < owners.Length; i++)
+        {
+            owners[i] = new object();
+            branchMap.Register(owners[i], sharedVisual);
+        }
+
+        var dirtySources = new HashSet<object>(ReferenceEqualityComparer.Instance)
+        {
+            owners[1],
+            owners[3]
+        };
+
+        var result = branchMap.InvalidateVisualsForSources(dirtySources);
+
+        Assert.Equal(2, result.DirtySourceCount);
+        Assert.Equal(2, result.MappedSourceCount);
+        Assert.Equal(0, result.UnmappedSourceCount);
+        Assert.Equal(1, result.InvalidatedVisualCount);
+        Assert.Equal(1, result.SharedWithCleanSourceVisualCount);
+        Assert.Equal(1, result.ReplayTargetConflictCount);
+        Assert.False(result.CanTargetAllDirtySources);
+        Assert.True(sharedVisual.IsDirty);
+        Assert.Empty(branchMap.GetReplayTargetsForSources(dirtySources));
+    }
+
+    [Fact]
     public void BranchMapReturnsTopLevelReplayTargetsForDirtySources()
     {
         var branchMap = new WpfRetainedVisualBranchMap();

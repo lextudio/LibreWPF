@@ -1187,19 +1187,48 @@ public sealed class WpfRetainedVisualBranchMap
             hasCleanSourceOwner = false;
             if (_many != null)
             {
-                foreach (var sourceOwner in _many)
+                ClassifyPromotedOwnersAgainstDirtySources(
+                    _many,
+                    dirtySources,
+                    out hasDirtySourceOwner,
+                    out hasCleanSourceOwner);
+                return;
+            }
+
+            for (var i = 0; i < _inlineCount; i++)
+            {
+                if (dirtySources.Contains(GetInline(i)!))
                 {
-                    if (dirtySources.Contains(sourceOwner))
+                    hasDirtySourceOwner = true;
+                }
+                else
+                {
+                    hasCleanSourceOwner = true;
+                }
+
+                if (hasDirtySourceOwner && hasCleanSourceOwner)
+                {
+                    return;
+                }
+            }
+        }
+
+        private static void ClassifyPromotedOwnersAgainstDirtySources(
+            HashSet<object> sourceOwners,
+            HashSet<object> dirtySources,
+            out bool hasDirtySourceOwner,
+            out bool hasCleanSourceOwner)
+        {
+            hasDirtySourceOwner = false;
+            hasCleanSourceOwner = false;
+            if (dirtySources.Count < sourceOwners.Count)
+            {
+                hasCleanSourceOwner = true;
+                foreach (var dirtySource in dirtySources)
+                {
+                    if (sourceOwners.Contains(dirtySource))
                     {
                         hasDirtySourceOwner = true;
-                    }
-                    else
-                    {
-                        hasCleanSourceOwner = true;
-                    }
-
-                    if (hasDirtySourceOwner && hasCleanSourceOwner)
-                    {
                         return;
                     }
                 }
@@ -1207,9 +1236,9 @@ public sealed class WpfRetainedVisualBranchMap
                 return;
             }
 
-            for (var i = 0; i < _inlineCount; i++)
+            foreach (var sourceOwner in sourceOwners)
             {
-                if (dirtySources.Contains(GetInline(i)!))
+                if (dirtySources.Contains(sourceOwner))
                 {
                     hasDirtySourceOwner = true;
                 }

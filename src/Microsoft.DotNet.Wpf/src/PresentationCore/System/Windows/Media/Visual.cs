@@ -2639,27 +2639,75 @@ namespace System.Windows.Media
                 HasTextHintingMode = textHintingMode != TextHintingMode.Auto,
                 TextHintingMode = textHintingMode,
                 HasSnappingGuidelinesX = guidelinesX != null,
-                SnappingGuidelinesX = CopyPortableVisualGuidelines(guidelinesX),
+                SnappingGuidelinesX = GetPortableVisualGuidelines(guidelinesX, isXAxis: true),
                 HasSnappingGuidelinesY = guidelinesY != null,
-                SnappingGuidelinesY = CopyPortableVisualGuidelines(guidelinesY)
+                SnappingGuidelinesY = GetPortableVisualGuidelines(guidelinesY, isXAxis: false)
             };
             return true;
         }
 
-        private static double[] CopyPortableVisualGuidelines(DoubleCollection guidelines)
+        private double[] GetPortableVisualGuidelines(DoubleCollection guidelines, bool isXAxis)
         {
             if (guidelines == null || guidelines.Count == 0)
             {
                 return global::System.Array.Empty<double>();
             }
 
-            double[] values = new double[guidelines.Count];
-            for (int i = 0; i < values.Length; i++)
+            PortableVisualGuidelineCache cache = PortableVisualGuidelineCacheField.GetValue(this);
+            if (cache == null)
             {
-                values[i] = guidelines[i];
+                cache = new PortableVisualGuidelineCache();
+                PortableVisualGuidelineCacheField.SetValue(this, cache);
             }
 
-            return values;
+            return isXAxis ? cache.GetX(guidelines) : cache.GetY(guidelines);
+        }
+
+        private sealed class PortableVisualGuidelineCache
+        {
+            private DoubleCollection _guidelinesX;
+            private DoubleCollection _guidelinesY;
+            private double[] _valuesX;
+            private double[] _valuesY;
+
+            public PortableVisualGuidelineCache()
+            {
+                _valuesX = global::System.Array.Empty<double>();
+                _valuesY = global::System.Array.Empty<double>();
+            }
+
+            public double[] GetX(DoubleCollection guidelines)
+            {
+                if (_guidelinesX != guidelines)
+                {
+                    _guidelinesX = guidelines;
+                    _valuesX = CopyPortableVisualGuidelines(guidelines);
+                }
+
+                return _valuesX;
+            }
+
+            public double[] GetY(DoubleCollection guidelines)
+            {
+                if (_guidelinesY != guidelines)
+                {
+                    _guidelinesY = guidelines;
+                    _valuesY = CopyPortableVisualGuidelines(guidelines);
+                }
+
+                return _valuesY;
+            }
+
+            private static double[] CopyPortableVisualGuidelines(DoubleCollection guidelines)
+            {
+                double[] values = new double[guidelines.Count];
+                for (int i = 0; i < values.Length; i++)
+                {
+                    values[i] = guidelines[i];
+                }
+
+                return values;
+            }
         }
 
         /// <summary>
@@ -4992,6 +5040,8 @@ namespace System.Windows.Media
 
         internal void GuidelinesChanged(object sender, EventArgs args)
         {
+            PortableVisualGuidelineCacheField.ClearValue(this);
+
             SetFlagsOnAllChannels(
                 true,
                 VisualProxyFlags.IsGuidelineCollectionDirty);
@@ -5482,6 +5532,7 @@ namespace System.Windows.Media
 
         private static readonly UncommonField<DoubleCollection> GuidelinesXField = new UncommonField<DoubleCollection>();
         private static readonly UncommonField<DoubleCollection> GuidelinesYField = new UncommonField<DoubleCollection>();
+        private static readonly UncommonField<PortableVisualGuidelineCache> PortableVisualGuidelineCacheField = new UncommonField<PortableVisualGuidelineCache>();
 
         private static readonly UncommonField<AncestorChangedEventHandler> AncestorChangedEventField
             = new UncommonField<AncestorChangedEventHandler>();

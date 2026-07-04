@@ -6336,6 +6336,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("VisualBitmapScalingMode", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualTextRenderingMode", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualXSnappingGuidelines", visualSource, StringComparison.Ordinal);
+        Assert.Contains("SnappingGuidelinesX = GetPortableVisualGuidelines(guidelinesX, isXAxis: true)", visualSource, StringComparison.Ordinal);
+        Assert.Contains("SnappingGuidelinesY = GetPortableVisualGuidelines(guidelinesY, isXAxis: false)", visualSource, StringComparison.Ordinal);
+        Assert.Contains("private double[] GetPortableVisualGuidelines(DoubleCollection guidelines, bool isXAxis)", visualSource, StringComparison.Ordinal);
+        Assert.Contains("private sealed class PortableVisualGuidelineCache", visualSource, StringComparison.Ordinal);
+        Assert.Contains("cache.GetX(guidelines)", visualSource, StringComparison.Ordinal);
+        Assert.Contains("cache.GetY(guidelines)", visualSource, StringComparison.Ordinal);
+        Assert.Contains("PortableVisualGuidelineCacheField.ClearValue(this);", visualSource, StringComparison.Ordinal);
+        Assert.Contains("private static readonly UncommonField<PortableVisualGuidelineCache> PortableVisualGuidelineCacheField", visualSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SnappingGuidelinesX = CopyPortableVisualGuidelines(guidelinesX)", visualSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("SnappingGuidelinesY = CopyPortableVisualGuidelines(guidelinesY)", visualSource, StringComparison.Ordinal);
         Assert.Contains("interface IPortableVisualStateSource", interopSource, StringComparison.Ordinal);
         Assert.Contains("public bool HasEffect", interopSource, StringComparison.Ordinal);
         Assert.Contains("public bool HasCacheMode", interopSource, StringComparison.Ordinal);

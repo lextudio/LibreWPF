@@ -300,7 +300,11 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("CollectionsMarshal.GetValueRefOrAddDefault(", source, StringComparison.Ordinal);
         Assert.Contains("private struct ReferenceOwnerSet", source, StringComparison.Ordinal);
         Assert.Contains("!sourceOwners.TryGetSingle(out replaySource)", source, StringComparison.Ordinal);
+        Assert.Contains("public void ClassifyAgainst(\n            object dirtySource,", source, StringComparison.Ordinal);
+        Assert.Contains("public void ClassifyAgainst(\n            HashSet<object> dirtySources,", source, StringComparison.Ordinal);
         Assert.Contains("SelectTopLevelReplayTargets(_scratchReplayTargets)", source, StringComparison.Ordinal);
+        Assert.Contains("var targetCount = targets.Count;", source, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < targetCount; i++)", source, StringComparison.Ordinal);
         Assert.Contains("if (!IsCoveredByTargetAncestor(target.Visual, _scratchTargetVisuals))", source, StringComparison.Ordinal);
         Assert.Contains("private static bool IsCoveredByTargetAncestor(", source, StringComparison.Ordinal);
         Assert.Contains("private bool RemoveVisualForSource(", source, StringComparison.Ordinal);
@@ -321,6 +325,7 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.DoesNotContain("var topLevelTargets = new List<WpfRetainedVisualBranchReplayTarget>", source, StringComparison.Ordinal);
         Assert.DoesNotContain("new[] { new WpfRetainedVisualBranchReplayTarget", source, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var candidateAncestor in targets)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var target in targets)", source, StringComparison.Ordinal);
 
         var compositionTargetSource = File.ReadAllText(FindRepoPath(
             "src",
@@ -360,10 +365,14 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("_scratchInvalidatedVisuals.Clear();", source, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(candidate.Comparer, ReferenceEqualityComparer.Instance)", source, StringComparison.Ordinal);
         Assert.Contains("if (sourceOwners.Count == 1)\n            {\n                continue;\n            }\n\n            replayTargetConflictCount++;", source, StringComparison.Ordinal);
-        Assert.Contains("ReferenceEquals(sourceOwner, source)", source, StringComparison.Ordinal);
+        Assert.Contains("sourceOwners.ClassifyAgainst(\n                source,", source, StringComparison.Ordinal);
+        Assert.Contains("sourceOwners.ClassifyAgainst(\n                    visitedSources,", source, StringComparison.Ordinal);
+        Assert.Contains("hasDirtySourceOwner = _many.Contains(dirtySource);", source, StringComparison.Ordinal);
+        Assert.Contains("hasCleanSourceOwner = _many.Count > (hasDirtySourceOwner ? 1 : 0);", source, StringComparison.Ordinal);
         Assert.Contains("new WpfRetainedVisualBranchInvalidationResult(\n            1,\n            1,", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var visitedSources = new HashSet<object>", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var invalidatedVisuals = new HashSet<ProGpuVisual>", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var sourceOwner in sourceOwners)", source, StringComparison.Ordinal);
 
         var trackerSource = File.ReadAllText(FindRepoPath(
             "src",

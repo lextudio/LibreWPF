@@ -334,13 +334,16 @@ public sealed class WpfRetainedVisualBranchMap
         _scratchTargetVisuals.Clear();
         try
         {
-            foreach (var target in targets)
+            var targetCount = targets.Count;
+            for (var i = 0; i < targetCount; i++)
             {
+                var target = targets[i];
                 _scratchTargetVisuals.Add(target.Visual);
             }
 
-            foreach (var target in targets)
+            for (var i = 0; i < targetCount; i++)
             {
+                var target = targets[i];
                 if (!IsCoveredByTargetAncestor(target.Visual, _scratchTargetVisuals))
                 {
                     _scratchTopLevelReplayTargets.Add(target);
@@ -452,19 +455,10 @@ public sealed class WpfRetainedVisualBranchMap
 
             replayTargetConflictCount++;
 
-            var hasDirtySourceOwner = false;
-            var hasCleanSourceOwner = false;
-            foreach (var sourceOwner in sourceOwners)
-            {
-                if (ReferenceEquals(sourceOwner, source))
-                {
-                    hasDirtySourceOwner = true;
-                }
-                else
-                {
-                    hasCleanSourceOwner = true;
-                }
-            }
+            sourceOwners.ClassifyAgainst(
+                source,
+                out var hasDirtySourceOwner,
+                out var hasCleanSourceOwner);
 
             if (hasDirtySourceOwner && hasCleanSourceOwner)
             {
@@ -529,28 +523,18 @@ public sealed class WpfRetainedVisualBranchMap
 
                 replayTargetConflictCount++;
 
-                var hasDirtySourceOwner = false;
-                foreach (var sourceOwner in sourceOwners)
-                {
-                    if (visitedSources.Contains(sourceOwner))
-                    {
-                        hasDirtySourceOwner = true;
-                        break;
-                    }
-                }
-
+                sourceOwners.ClassifyAgainst(
+                    visitedSources,
+                    out var hasDirtySourceOwner,
+                    out var hasCleanSourceOwner);
                 if (!hasDirtySourceOwner)
                 {
                     continue;
                 }
 
-                foreach (var sourceOwner in sourceOwners)
+                if (hasCleanSourceOwner)
                 {
-                    if (!visitedSources.Contains(sourceOwner))
-                    {
-                        sharedWithCleanSourceVisualCount++;
-                        break;
-                    }
+                    sharedWithCleanSourceVisualCount++;
                 }
             }
 
@@ -963,6 +947,71 @@ public sealed class WpfRetainedVisualBranchMap
 
             source = null!;
             return false;
+        }
+
+        public void ClassifyAgainst(
+            object dirtySource,
+            out bool hasDirtySourceOwner,
+            out bool hasCleanSourceOwner)
+        {
+            ArgumentNullException.ThrowIfNull(dirtySource);
+
+            hasDirtySourceOwner = false;
+            hasCleanSourceOwner = false;
+            if (_many != null)
+            {
+                hasDirtySourceOwner = _many.Contains(dirtySource);
+                hasCleanSourceOwner = _many.Count > (hasDirtySourceOwner ? 1 : 0);
+                return;
+            }
+
+            if (_single == null)
+            {
+                return;
+            }
+
+            hasDirtySourceOwner = ReferenceEquals(_single, dirtySource);
+            hasCleanSourceOwner = !hasDirtySourceOwner;
+        }
+
+        public void ClassifyAgainst(
+            HashSet<object> dirtySources,
+            out bool hasDirtySourceOwner,
+            out bool hasCleanSourceOwner)
+        {
+            ArgumentNullException.ThrowIfNull(dirtySources);
+
+            hasDirtySourceOwner = false;
+            hasCleanSourceOwner = false;
+            if (_many != null)
+            {
+                foreach (var sourceOwner in _many)
+                {
+                    if (dirtySources.Contains(sourceOwner))
+                    {
+                        hasDirtySourceOwner = true;
+                    }
+                    else
+                    {
+                        hasCleanSourceOwner = true;
+                    }
+
+                    if (hasDirtySourceOwner && hasCleanSourceOwner)
+                    {
+                        return;
+                    }
+                }
+
+                return;
+            }
+
+            if (_single == null)
+            {
+                return;
+            }
+
+            hasDirtySourceOwner = dirtySources.Contains(_single);
+            hasCleanSourceOwner = !hasDirtySourceOwner;
         }
 
         public Enumerator GetEnumerator()

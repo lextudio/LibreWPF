@@ -19,6 +19,10 @@ The ProGPU test-project build used by the LibreWPF package/release lane had accu
 ## Validation
 
 - `DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build external/ProGPU/src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal -m:1`
+- `DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build external/ProGPU/src/ProGPU.Tests/ProGPU.Tests.csproj --configuration Release --no-restore --verbosity minimal -m:1`
 - `DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet vstest external/ProGPU/src/ProGPU.Tests.Headless/bin/Debug/net10.0/ProGPU.Tests.Headless.dll`
+- `PROGPU_PACKAGE_VERSION=11.0.0-dev DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 ./eng/progpu-pack.sh`
 - `git -C external/ProGPU diff --check`
 - `git diff --check`
+
+The Release build completed with `0 Warning(s), 0 Error(s)`. The package script emitted the expected ProGPU runtime packages plus `LibreWPF.Interop.11.0.0-dev.nupkg` into `external/ProGPU/artifacts/packages/Release`.

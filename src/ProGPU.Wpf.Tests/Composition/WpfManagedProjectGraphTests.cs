@@ -1292,9 +1292,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AddRemovalItem(ref stale", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private void DisposeMaskTexturePool()", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var pooledMaskTextures = RentListSnapshot(_maskTexturePool", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("_opacityStack.Push(_activeOpacity);", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("_activeOpacity = _opacityStack.Pop();", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_clipStack.ToArray()", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_clipScopeIsGeometryMask.ToArray()", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_opacityStack.ToArray()", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var opacity in _opacityStack)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_blendModeStack.ToArray()", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_maskStack.ToArray()", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var savedVectorVertices = _vectorVerticesList.ToArray();", proGpuCompositor, StringComparison.Ordinal);

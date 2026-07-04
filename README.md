@@ -1,4 +1,71 @@
-﻿# Windows Presentation Foundation (WPF)
+# WPF ProGPU Port
+
+This branch ports WPF onto the ProGPU/Silk.NET platform while reusing as much managed WPF code as possible. The goal is a custom SDK package, `ProGPU.Wpf.Sdk`, so an existing WPF app can switch the project SDK and keep normal WPF source and XAML unchanged.
+
+Current focus areas:
+
+- Reuse WPF managed code for application model, dependency properties, layout, controls, data binding, documents, XAML, resources, themes, and the XAML compiler.
+- Replace Windows-only MIL/D3D rendering with ProGPU WebGPU composition, shaders, DirectX-compatible shims, GPU hit testing, and Silk.NET windowing/input.
+- Package the runtime as a preview SDK and NuGet set that can be consumed from a local feed or NuGet.org.
+- Keep third-party validation active through basic WPF apps, Xceed Toolkit/AvalonDock, Xceed paid Toolkit/DataGrid, SciChart MVP, ProGPU Avalonia package smoke, and no-source-change SDK smoke tests.
+
+## SDK Switch
+
+After adding the preview feed, existing WPF projects should only need the SDK change:
+
+```xml
+<Project Sdk="ProGPU.Wpf.Sdk/11.0.0-dev">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+</Project>
+```
+
+Windows-only interop and unsupported native/DirectX APIs remain the expected exceptions while the portable platform layer is completed.
+
+## NuGet Packages
+
+The preview package set is defined in `eng/progpu-preview-package-list.sh` and validated by the release workflow.
+
+| Package | Purpose | Source |
+| --- | --- | --- |
+| `Microsoft.DotNet.Wpf.GitHub` | Ported managed WPF transport assemblies, refs, themes, XAML build tasks, and runtime metadata. | `packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj` |
+| `ProGPU.Backend` | WebGPU device, swapchain, Silk.NET windowing, and platform backend services. | `external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj` |
+| `ProGPU.DirectX` | DirectX-compatible facade for SciChart and future D3D-style interop on ProGPU/WebGPU. | `external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj` |
+| `ProGPU.Transpiler` | Shader/source transformation helpers used by generated GPU pipelines. | `external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj` |
+| `ProGPU.Compute` | Compute pipeline helpers for GPU effects, indexes, and acceleration structures. | `external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj` |
+| `ProGPU.Vector` | Vector paths, geometry, brushes, pens, and rasterization data models. | `external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj` |
+| `ProGPU.Text` | Text layout, glyph metrics, and GPU-ready text rendering helpers. | `external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj` |
+| `ProGPU.Scene` | Scene graph, compositor commands, retained visuals, effects, and presentation primitives. | `external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj` |
+| `ProGPU.Layout` | Measure/arrange layout substrate shared by ProGPU UI adapters. | `external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj` |
+| `ProGPU.Virtualization` | Virtualization helpers for large retained visual and item surfaces. | `external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj` |
+| `ProGPU.WinUI` | WinUI-shaped controls and app model implemented on ProGPU. | `external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj` |
+| `ProGPU.Avalonia` | Avalonia integration and compositor backend adapter used by package smoke validation. | `external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj` |
+| `ProGPU.Wpf.Interop` | Shared WPF interop contracts consumed by the WPF bridge and ProGPU runtime. | `external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj` |
+| `ProGPU.Wpf` | WPF-to-ProGPU host, retained/source replay bridge, Silk.NET input/windowing, and compositor adapter. | `src/ProGPU.Wpf/ProGPU.Wpf.csproj` |
+| `ProGPU.Wpf.Sdk` | Custom MSBuild SDK that redirects WPF apps to the ProGPU/Silk.NET platform. | `packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj` |
+
+## Build And Release
+
+```bash
+PROGPU_WPF_DEV_PACKAGE_VERSION=11.0.0-dev ./eng/progpu-wpf-sdk-ci.sh
+```
+
+The SDK CI script builds ProGPU runtime packages, managed WPF transport assemblies, `ProGPU.Wpf`, and `ProGPU.Wpf.Sdk`, then audits the packages, writes the preview manifest, creates and verifies the release bundle, and runs package-mode SDK smoke tests.
+
+GitHub workflows:
+
+- `ProGPU WPF Build` runs the SDK package/no-source-change smoke on macOS.
+- `ProGPU WPF Docs` verifies README and release docs against the preview package list.
+- `ProGPU WPF Release` builds preview packages/bundle artifacts and can publish to NuGet.org with `NUGET_API_KEY`.
+
+See [docs/progpu-wpf-release.md](docs/progpu-wpf-release.md) and the ongoing porting reports in [reports/](reports/).
+
+## Original Upstream README
+
+# Windows Presentation Foundation (WPF)
 [![.NET Foundation](https://img.shields.io/badge/.NET%20Foundation-blueviolet.svg)](https://www.dotnetfoundation.org/)
 [![Build Status](https://dnceng.visualstudio.com/public/_apis/build/status/dotnet/wpf/dotnet-wpf%20CI)](https://dnceng.visualstudio.com/public/_build/latest?definitionId=270)
 [![codecov](https://codecov.io/gh/dotnet/wpf/branch/main/graph/badge.svg?flag=production)](https://codecov.io/gh/dotnet/wpf)
@@ -80,4 +147,3 @@ Also see info about related [Microsoft .NET Core and ASP.NET Core Bug Bounty Pro
 .NET Core WPF is a [.NET Foundation](https://www.dotnetfoundation.org/projects) project.
 
 See the [.NET home repo](https://github.com/Microsoft/dotnet) to find other .NET-related projects.
-

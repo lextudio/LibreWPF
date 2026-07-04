@@ -1,4 +1,4 @@
-name: ProGPU WPF SDK
+name: ProGPU WPF Build
 
 on:
   pull_request:
@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - progpu-rendering-port
+  workflow_dispatch:
 
 permissions:
   contents: read

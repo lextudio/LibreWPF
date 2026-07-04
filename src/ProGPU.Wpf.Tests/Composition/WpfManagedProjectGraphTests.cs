@@ -10226,6 +10226,22 @@ public sealed class WpfManagedProjectGraphTests
             ".github",
             "workflows",
             "progpu-wpf-sdk.yml");
+        var docsWorkflowPath = FindRepoPath(
+            ".github",
+            "workflows",
+            "progpu-wpf-docs.yml");
+        var releaseWorkflowPath = FindRepoPath(
+            ".github",
+            "workflows",
+            "progpu-wpf-release.yml");
+        var wpfReadmePath = FindRepoPath(
+            "README.md");
+        var releaseDocsPath = FindRepoPath(
+            "docs",
+            "progpu-wpf-release.md");
+        var docsVerifierScriptPath = FindRepoPath(
+            "eng",
+            "progpu-wpf-verify-docs.sh");
         var mvpProjectPath = FindRepoPath(
             "samples",
             "ProGPU.Wpf.MvpApp",
@@ -10600,6 +10616,11 @@ public sealed class WpfManagedProjectGraphTests
         var scichartRealMvp = File.ReadAllText(scichartRealMvpPath);
         var scichartReadme = File.ReadAllText(scichartReadmePath);
         var scichartRunScript = File.ReadAllText(scichartRunScriptPath);
+        var docsWorkflow = File.ReadAllText(docsWorkflowPath);
+        var releaseWorkflow = File.ReadAllText(releaseWorkflowPath);
+        var wpfReadme = File.ReadAllText(wpfReadmePath);
+        var releaseDocs = File.ReadAllText(releaseDocsPath);
+        var docsVerifierScript = File.ReadAllText(docsVerifierScriptPath);
         var proGpuDirectoryBuildProps = File.ReadAllText(proGpuDirectoryBuildPropsPath);
         var proGpuAvaloniaHostControl = File.ReadAllText(proGpuAvaloniaHostControlPath);
         var proGpuAvaloniaSampleMainWindow = File.ReadAllText(proGpuAvaloniaSampleMainWindowPath);
@@ -10754,10 +10775,24 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Matrix4x4.CreateScale(-1f, 1f, 1f)", proGpuTextureBlendRenderTests, StringComparison.Ordinal);
         Assert.Contains("Matrix4x4.CreateScale(1f, -1f, 1f)", proGpuTextureBlendRenderTests, StringComparison.Ordinal);
 
-        Assert.Contains("name: ProGPU WPF SDK", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("name: ProGPU WPF Build", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("submodules: recursive", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("global-json-file: global.json", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("./eng/progpu-wpf-sdk-ci.sh", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("name: ProGPU WPF Docs", docsWorkflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/progpu-wpf-verify-docs.sh", docsWorkflow, StringComparison.Ordinal);
+        Assert.Contains("README.md", docsWorkflow, StringComparison.Ordinal);
+        Assert.Contains("docs/**", docsWorkflow, StringComparison.Ordinal);
+        Assert.Contains("name: ProGPU WPF Release", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_DEV_PACKAGE_VERSION", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/progpu-wpf-sdk-ci.sh", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("NUGET_API_KEY", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("artifacts/packages/Release/NonShipping/*.nupkg", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Sdk/11.0.0-dev", wpfReadme, StringComparison.Ordinal);
+        Assert.Contains("## Original Upstream README", wpfReadme, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Sdk", releaseDocs, StringComparison.Ordinal);
+        Assert.Contains("NUGET_API_KEY", releaseDocs, StringComparison.Ordinal);
+        Assert.Contains("eng/progpu-preview-package-list.sh", docsVerifierScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj", sdkCiScript, StringComparison.Ordinal);

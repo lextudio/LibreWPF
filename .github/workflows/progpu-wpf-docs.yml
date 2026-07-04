@@ -1,0 +1,52 @@
+name: ProGPU WPF Docs
+
+on:
+  pull_request:
+    branches:
+      - progpu-rendering-port
+      - main
+    paths:
+      - README.md
+      - docs/**
+      - reports/**
+      - eng/progpu-preview-package-list.sh
+      - eng/progpu-wpf-verify-docs.sh
+      - .github/workflows/progpu-wpf-*.yml
+  push:
+    branches:
+      - progpu-rendering-port
+    paths:
+      - README.md
+      - docs/**
+      - reports/**
+      - eng/progpu-preview-package-list.sh
+      - eng/progpu-wpf-verify-docs.sh
+      - .github/workflows/progpu-wpf-*.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-docs:
+    name: Verify release documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Verify package docs
+        run: ./eng/progpu-wpf-verify-docs.sh
+
+      - name: Upload docs snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: progpu-wpf-docs
+          path: |
+            README.md
+            docs/**
+            reports/**

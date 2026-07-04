@@ -21,6 +21,7 @@ public sealed class WpfRetainedVisualBranchMap
     private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchReplayTargets = new();
     private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchTopLevelReplayTargets = new();
     private readonly SingleReplayTargetList _scratchSingleReplayTarget = new();
+    private readonly ReplayTargetList _scratchReplayTargetSnapshot = new();
 
     public int SourceCount => _visualsBySource.Count;
 
@@ -45,6 +46,7 @@ public sealed class WpfRetainedVisualBranchMap
         _scratchReplayTargets.Clear();
         _scratchTopLevelReplayTargets.Clear();
         _scratchSingleReplayTarget.Clear();
+        _scratchReplayTargetSnapshot.Clear();
         VisualCount = 0;
         LastSource = null;
         LastVisual = null;
@@ -290,9 +292,8 @@ public sealed class WpfRetainedVisualBranchMap
             return _scratchSingleReplayTarget;
         }
 
-        var snapshot = new WpfRetainedVisualBranchReplayTarget[targets.Count];
-        targets.CopyTo(snapshot);
-        return snapshot;
+        _scratchReplayTargetSnapshot.Set(targets);
+        return _scratchReplayTargetSnapshot;
     }
 
     private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SelectTopLevelReplayTargets(
@@ -659,6 +660,39 @@ public sealed class WpfRetainedVisualBranchMap
             {
                 yield return _target;
             }
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
+
+    private sealed class ReplayTargetList : IReadOnlyList<WpfRetainedVisualBranchReplayTarget>
+    {
+        private readonly List<WpfRetainedVisualBranchReplayTarget> _targets = new();
+
+        public int Count => _targets.Count;
+
+        public WpfRetainedVisualBranchReplayTarget this[int index] => _targets[index];
+
+        public void Set(List<WpfRetainedVisualBranchReplayTarget> targets)
+        {
+            _targets.Clear();
+            for (var i = 0; i < targets.Count; i++)
+            {
+                _targets.Add(targets[i]);
+            }
+        }
+
+        public void Clear()
+        {
+            _targets.Clear();
+        }
+
+        public IEnumerator<WpfRetainedVisualBranchReplayTarget> GetEnumerator()
+        {
+            return _targets.GetEnumerator();
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()

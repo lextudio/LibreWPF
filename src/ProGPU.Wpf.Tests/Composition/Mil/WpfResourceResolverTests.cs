@@ -371,6 +371,144 @@ public sealed class WpfResourceResolverTests
     }
 
     [Fact]
+    public void AdaptNativeBrushCachesAbsoluteLinearGradientBrushUntilStateChanges()
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(1, 2),
+            EndPoint = new Point(9, 10),
+            MappingMode = BrushMappingMode.Absolute,
+            SpreadMethod = GradientSpreadMethod.Repeat,
+            ColorInterpolationMode = ColorInterpolationMode.ScRgbLinearInterpolation,
+            Opacity = 0.75
+        };
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(255, 10, 20, 30), 0));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(128, 40, 50, 60), 1));
+
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var unsupportedStateCount);
+        var cachedBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(100, 100, 20, 20),
+            out var cachedUnsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Equal(0, cachedUnsupportedStateCount);
+        Assert.Same(nativeBrush, cachedBrush);
+        var linearBrush = Assert.IsType<ProGpuLinearGradientBrush>(nativeBrush);
+        Assert.Equal(1, linearBrush.StartPoint.X);
+        Assert.Equal(10, linearBrush.EndPoint.Y);
+        Assert.Equal(0.75f, linearBrush.Opacity, precision: 6);
+        Assert.Equal(ProGPU.Vector.GradientSpreadMethod.Repeat, linearBrush.SpreadMethod);
+        Assert.Equal(ProGPU.Vector.GradientColorInterpolationMode.ScRgbLinearInterpolation, linearBrush.ColorInterpolationMode);
+        Assert.Equal(2, linearBrush.Stops.Length);
+        Assert.Equal(10 / 255f, linearBrush.Stops[0].Color.X, precision: 6);
+        Assert.Equal(128 / 255f, linearBrush.Stops[1].Color.W, precision: 6);
+
+        brush.GradientStops[0].Color = Color.FromArgb(255, 70, 80, 90);
+        var refreshedBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var refreshedUnsupportedStateCount);
+
+        Assert.Equal(0, refreshedUnsupportedStateCount);
+        Assert.NotSame(nativeBrush, refreshedBrush);
+        var refreshedLinearBrush = Assert.IsType<ProGpuLinearGradientBrush>(refreshedBrush);
+        Assert.Equal(70 / 255f, refreshedLinearBrush.Stops[0].Color.X, precision: 6);
+    }
+
+    [Fact]
+    public void AdaptNativeBrushCachesRelativeLinearGradientStopsAcrossMappedBounds()
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 1),
+            MappingMode = BrushMappingMode.RelativeToBoundingBox
+        };
+        brush.GradientStops.Add(new GradientStop(Colors.Red, 0));
+        brush.GradientStops.Add(new GradientStop(Colors.Blue, 1));
+
+        var firstBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(10, 20, 100, 50),
+            out var firstUnsupportedStateCount);
+        var secondBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(30, 40, 200, 60),
+            out var secondUnsupportedStateCount);
+
+        Assert.Equal(0, firstUnsupportedStateCount);
+        Assert.Equal(0, secondUnsupportedStateCount);
+        var firstLinearBrush = Assert.IsType<ProGpuLinearGradientBrush>(firstBrush);
+        var secondLinearBrush = Assert.IsType<ProGpuLinearGradientBrush>(secondBrush);
+        Assert.NotSame(firstLinearBrush, secondLinearBrush);
+        Assert.Same(firstLinearBrush.Stops, secondLinearBrush.Stops);
+        Assert.Equal(10, firstLinearBrush.StartPoint.X);
+        Assert.Equal(20, firstLinearBrush.StartPoint.Y);
+        Assert.Equal(230, secondLinearBrush.EndPoint.X);
+        Assert.Equal(100, secondLinearBrush.EndPoint.Y);
+
+        brush.GradientStops[1].Offset = 0.5;
+        var refreshedBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(10, 20, 100, 50),
+            out var refreshedUnsupportedStateCount);
+
+        Assert.Equal(0, refreshedUnsupportedStateCount);
+        var refreshedLinearBrush = Assert.IsType<ProGpuLinearGradientBrush>(refreshedBrush);
+        Assert.NotSame(firstLinearBrush.Stops, refreshedLinearBrush.Stops);
+        Assert.Equal(0.5f, refreshedLinearBrush.Stops[1].Offset, precision: 6);
+    }
+
+    [Fact]
+    public void AdaptNativeBrushCachesAbsoluteRadialGradientBrushUntilStateChanges()
+    {
+        var brush = new RadialGradientBrush
+        {
+            Center = new Point(4, 5),
+            GradientOrigin = new Point(6, 7),
+            RadiusX = 8,
+            RadiusY = 9,
+            MappingMode = BrushMappingMode.Absolute,
+            SpreadMethod = GradientSpreadMethod.Reflect
+        };
+        brush.GradientStops.Add(new GradientStop(Colors.White, 0));
+        brush.GradientStops.Add(new GradientStop(Colors.Black, 1));
+
+        var nativeBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var unsupportedStateCount);
+        var cachedBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(100, 100, 20, 20),
+            out var cachedUnsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Equal(0, cachedUnsupportedStateCount);
+        Assert.Same(nativeBrush, cachedBrush);
+        var radialBrush = Assert.IsType<ProGpuRadialGradientBrush>(nativeBrush);
+        Assert.Equal(4, radialBrush.Center.X);
+        Assert.Equal(7, radialBrush.GradientOrigin.Y);
+        Assert.Equal(8, radialBrush.RadiusX);
+        Assert.Equal(9, radialBrush.RadiusY);
+        Assert.Equal(ProGPU.Vector.GradientSpreadMethod.Reflect, radialBrush.SpreadMethod);
+
+        brush.RadiusX = 10;
+        var refreshedBrush = WpfResourceResolver.AdaptNativeBrush(
+            brush,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var refreshedUnsupportedStateCount);
+
+        Assert.Equal(0, refreshedUnsupportedStateCount);
+        Assert.NotSame(nativeBrush, refreshedBrush);
+        Assert.Equal(10, Assert.IsType<ProGpuRadialGradientBrush>(refreshedBrush).RadiusX);
+    }
+
+    [Fact]
     public void AdaptNativePenCachesSimpleSolidPenUntilStateChanges()
     {
         var brush = new SolidColorBrush(Color.FromArgb(255, 1, 2, 3));

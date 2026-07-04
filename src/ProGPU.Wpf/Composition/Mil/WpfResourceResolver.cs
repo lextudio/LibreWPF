@@ -140,6 +140,8 @@ public sealed class WpfResourceResolver :
     private const int MaxSupportedGradientStops = 65536;
     private static readonly ConcurrentDictionary<string, TtfFont> s_fontFileCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConditionalWeakTable<MediaBrush, NativeSolidBrushCache> s_nativeSolidBrushCache = new();
+    private static readonly ConditionalWeakTable<MediaLinearGradientBrush, NativeLinearGradientBrushCache> s_nativeLinearGradientBrushCache = new();
+    private static readonly ConditionalWeakTable<MediaRadialGradientBrush, NativeRadialGradientBrushCache> s_nativeRadialGradientBrushCache = new();
     private static readonly ConditionalWeakTable<MediaPen, NativeSimplePenCache> s_nativeSimplePenCache = new();
 
     private readonly IReadOnlyList<object?>? _dependentResources;
@@ -345,6 +347,11 @@ public sealed class WpfResourceResolver :
             return nativeSolidBrush;
         }
 
+        if (TryGetCachedNativeGradientBrush(resource, bounds, out var nativeGradientBrush, out unsupportedStateCount))
+        {
+            return nativeGradientBrush;
+        }
+
         if (resource is PortableBrushSource portableBrushSource)
         {
             return portableBrushSource.TryGetPortableBrush(out var portableBrush)
@@ -397,6 +404,33 @@ public sealed class WpfResourceResolver :
         return false;
     }
 
+    private static bool TryGetCachedNativeGradientBrush(
+        object resource,
+        WpfReplayRect bounds,
+        out global::ProGPU.Vector.Brush nativeBrush,
+        out int unsupportedStateCount)
+    {
+        if (resource is MediaLinearGradientBrush linearGradientBrush &&
+            s_nativeLinearGradientBrushCache
+                .GetValue(linearGradientBrush, static _ => new NativeLinearGradientBrushCache())
+                .TryGetOrCreate(linearGradientBrush, bounds, out nativeBrush, out unsupportedStateCount))
+        {
+            return true;
+        }
+
+        if (resource is MediaRadialGradientBrush radialGradientBrush &&
+            s_nativeRadialGradientBrushCache
+                .GetValue(radialGradientBrush, static _ => new NativeRadialGradientBrushCache())
+                .TryGetOrCreate(radialGradientBrush, bounds, out nativeBrush, out unsupportedStateCount))
+        {
+            return true;
+        }
+
+        nativeBrush = null!;
+        unsupportedStateCount = 0;
+        return false;
+    }
+
     private static bool TryGetCachedNativeSimplePen(
         object resource,
         out global::ProGPU.Vector.Pen nativePen)
@@ -441,6 +475,204 @@ public sealed class WpfResourceResolver :
             _opacity = opacity;
             _nativeBrush = new global::ProGPU.Vector.SolidColorBrush(ToVectorColor(color, opacity));
             return _nativeBrush;
+        }
+    }
+
+    private sealed class NativeLinearGradientBrushCache
+    {
+        private WpfPoint _startPoint;
+        private WpfPoint _endPoint;
+        private double _opacity = double.NaN;
+        private MediaBrushMappingMode _mappingMode;
+        private MediaGradientSpreadMethod _spreadMethod;
+        private MediaColorInterpolationMode _colorInterpolationMode;
+        private bool _hasTransform;
+        private bool _hasRelativeTransform;
+        private Matrix4x4 _transform;
+        private Matrix4x4 _relativeTransform;
+        private Color[]? _stopColors;
+        private double[]? _stopOffsets;
+        private int _unsupportedGradientStateCount;
+        private global::ProGPU.Vector.LinearGradientBrush? _nativeBrush;
+
+        public bool TryGetOrCreate(
+            MediaLinearGradientBrush brush,
+            WpfReplayRect bounds,
+            out global::ProGPU.Vector.Brush nativeBrush,
+            out int unsupportedStateCount)
+        {
+            nativeBrush = null!;
+            unsupportedStateCount = 0;
+            var stops = brush.GradientStops;
+            if (stops == null ||
+                stops.Count == 0 ||
+                !TryReadOptionalBrushTransform(brush.Transform, out bool hasTransform, out Matrix4x4 transform) ||
+                !TryReadOptionalBrushTransform(brush.RelativeTransform, out bool hasRelativeTransform, out Matrix4x4 relativeTransform))
+            {
+                return false;
+            }
+
+            var startPoint = brush.StartPoint;
+            var endPoint = brush.EndPoint;
+            var opacity = ClampOpacity(brush.Opacity);
+            var mappingMode = brush.MappingMode;
+            var spreadMethod = brush.SpreadMethod;
+            var colorInterpolationMode = brush.ColorInterpolationMode;
+            if (_nativeBrush == null ||
+                !startPoint.Equals(_startPoint) ||
+                !endPoint.Equals(_endPoint) ||
+                !opacity.Equals(_opacity) ||
+                mappingMode != _mappingMode ||
+                spreadMethod != _spreadMethod ||
+                colorInterpolationMode != _colorInterpolationMode ||
+                hasTransform != _hasTransform ||
+                hasRelativeTransform != _hasRelativeTransform ||
+                !transform.Equals(_transform) ||
+                !relativeTransform.Equals(_relativeTransform) ||
+                !GradientStopsMatch(stops, _stopColors, _stopOffsets))
+            {
+                if (!TryCreateNativeGradientStops(stops, out var nativeStops, out var stopColors, out var stopOffsets, out bool stopsTruncated))
+                {
+                    return false;
+                }
+
+                _startPoint = startPoint;
+                _endPoint = endPoint;
+                _opacity = opacity;
+                _mappingMode = mappingMode;
+                _spreadMethod = spreadMethod;
+                _colorInterpolationMode = colorInterpolationMode;
+                _hasTransform = hasTransform;
+                _hasRelativeTransform = hasRelativeTransform;
+                _transform = transform;
+                _relativeTransform = relativeTransform;
+                _stopColors = stopColors;
+                _stopOffsets = stopOffsets;
+                _unsupportedGradientStateCount = CountUnsupportedGradientState(stopsTruncated, unsupportedColorInterpolationMode: false);
+                _nativeBrush = new global::ProGPU.Vector.LinearGradientBrush(
+                    new Vector2((float)startPoint.X, (float)startPoint.Y),
+                    new Vector2((float)endPoint.X, (float)endPoint.Y),
+                    nativeStops)
+                {
+                    Opacity = (float)opacity,
+                    SpreadMethod = ToVectorGradientSpreadMethod(spreadMethod),
+                    ColorInterpolationMode = ToVectorGradientColorInterpolationMode(colorInterpolationMode)
+                };
+            }
+
+            nativeBrush = AdaptMappedNativeBrush(
+                _nativeBrush,
+                ToProGpuBrushMappingMode(_mappingMode),
+                _hasTransform ? _transform : null,
+                _hasRelativeTransform ? _relativeTransform : null,
+                _unsupportedGradientStateCount,
+                bounds,
+                out unsupportedStateCount);
+            return true;
+        }
+    }
+
+    private sealed class NativeRadialGradientBrushCache
+    {
+        private WpfPoint _center;
+        private WpfPoint _gradientOrigin;
+        private double _radiusX = double.NaN;
+        private double _radiusY = double.NaN;
+        private double _opacity = double.NaN;
+        private MediaBrushMappingMode _mappingMode;
+        private MediaGradientSpreadMethod _spreadMethod;
+        private MediaColorInterpolationMode _colorInterpolationMode;
+        private bool _hasTransform;
+        private bool _hasRelativeTransform;
+        private Matrix4x4 _transform;
+        private Matrix4x4 _relativeTransform;
+        private Color[]? _stopColors;
+        private double[]? _stopOffsets;
+        private int _unsupportedGradientStateCount;
+        private global::ProGPU.Vector.RadialGradientBrush? _nativeBrush;
+
+        public bool TryGetOrCreate(
+            MediaRadialGradientBrush brush,
+            WpfReplayRect bounds,
+            out global::ProGPU.Vector.Brush nativeBrush,
+            out int unsupportedStateCount)
+        {
+            nativeBrush = null!;
+            unsupportedStateCount = 0;
+            var stops = brush.GradientStops;
+            if (stops == null ||
+                stops.Count == 0 ||
+                !TryReadOptionalBrushTransform(brush.Transform, out bool hasTransform, out Matrix4x4 transform) ||
+                !TryReadOptionalBrushTransform(brush.RelativeTransform, out bool hasRelativeTransform, out Matrix4x4 relativeTransform))
+            {
+                return false;
+            }
+
+            var center = brush.Center;
+            var gradientOrigin = brush.GradientOrigin;
+            var radiusX = brush.RadiusX;
+            var radiusY = brush.RadiusY;
+            var opacity = ClampOpacity(brush.Opacity);
+            var mappingMode = brush.MappingMode;
+            var spreadMethod = brush.SpreadMethod;
+            var colorInterpolationMode = brush.ColorInterpolationMode;
+            if (_nativeBrush == null ||
+                !center.Equals(_center) ||
+                !gradientOrigin.Equals(_gradientOrigin) ||
+                !radiusX.Equals(_radiusX) ||
+                !radiusY.Equals(_radiusY) ||
+                !opacity.Equals(_opacity) ||
+                mappingMode != _mappingMode ||
+                spreadMethod != _spreadMethod ||
+                colorInterpolationMode != _colorInterpolationMode ||
+                hasTransform != _hasTransform ||
+                hasRelativeTransform != _hasRelativeTransform ||
+                !transform.Equals(_transform) ||
+                !relativeTransform.Equals(_relativeTransform) ||
+                !GradientStopsMatch(stops, _stopColors, _stopOffsets))
+            {
+                if (!TryCreateNativeGradientStops(stops, out var nativeStops, out var stopColors, out var stopOffsets, out bool stopsTruncated))
+                {
+                    return false;
+                }
+
+                _center = center;
+                _gradientOrigin = gradientOrigin;
+                _radiusX = radiusX;
+                _radiusY = radiusY;
+                _opacity = opacity;
+                _mappingMode = mappingMode;
+                _spreadMethod = spreadMethod;
+                _colorInterpolationMode = colorInterpolationMode;
+                _hasTransform = hasTransform;
+                _hasRelativeTransform = hasRelativeTransform;
+                _transform = transform;
+                _relativeTransform = relativeTransform;
+                _stopColors = stopColors;
+                _stopOffsets = stopOffsets;
+                _unsupportedGradientStateCount = CountUnsupportedGradientState(stopsTruncated, unsupportedColorInterpolationMode: false);
+                _nativeBrush = new global::ProGPU.Vector.RadialGradientBrush(
+                    new Vector2((float)center.X, (float)center.Y),
+                    new Vector2((float)gradientOrigin.X, (float)gradientOrigin.Y),
+                    (float)radiusX,
+                    (float)radiusY,
+                    nativeStops)
+                {
+                    Opacity = (float)opacity,
+                    SpreadMethod = ToVectorGradientSpreadMethod(spreadMethod),
+                    ColorInterpolationMode = ToVectorGradientColorInterpolationMode(colorInterpolationMode)
+                };
+            }
+
+            nativeBrush = AdaptMappedNativeBrush(
+                _nativeBrush,
+                ToProGpuBrushMappingMode(_mappingMode),
+                _hasTransform ? _transform : null,
+                _hasRelativeTransform ? _relativeTransform : null,
+                _unsupportedGradientStateCount,
+                bounds,
+                out unsupportedStateCount);
+            return true;
         }
     }
 
@@ -751,6 +983,11 @@ public sealed class WpfResourceResolver :
             height,
             hasUsableBounds,
             out Matrix4x4 effectiveTransform);
+        if (mappingMode == ProGpuBrushMappingMode.Absolute && !hasTransform)
+        {
+            return brush;
+        }
+
         bool hasCoordinateTransform = TryGetCoordinateBrushTransform(
             effectiveTransform,
             hasTransform,
@@ -780,6 +1017,96 @@ public sealed class WpfResourceResolver :
                 hasCoordinateTransform),
             _ => brush
         };
+    }
+
+    private static bool TryReadOptionalBrushTransform(
+        MediaTransform? transform,
+        out bool hasTransform,
+        out Matrix4x4 matrix)
+    {
+        hasTransform = false;
+        matrix = Matrix4x4.Identity;
+        if (transform == null || ReferenceEquals(transform, MediaTransform.Identity))
+        {
+            return true;
+        }
+
+        if (!TryAdaptTransformMatrix(transform, out matrix))
+        {
+            return false;
+        }
+
+        hasTransform = !IsIdentityMatrix(matrix);
+        if (!hasTransform)
+        {
+            matrix = Matrix4x4.Identity;
+        }
+
+        return true;
+    }
+
+    private static bool TryCreateNativeGradientStops(
+        MediaGradientStopCollection stops,
+        out global::ProGPU.Vector.GradientStop[] nativeStops,
+        out Color[] stopColors,
+        out double[] stopOffsets,
+        out bool truncated)
+    {
+        nativeStops = Array.Empty<global::ProGPU.Vector.GradientStop>();
+        stopColors = Array.Empty<Color>();
+        stopOffsets = Array.Empty<double>();
+        truncated = false;
+        if (stops.Count == 0)
+        {
+            return false;
+        }
+
+        truncated = stops.Count > MaxSupportedGradientStops;
+        var count = truncated ? MaxSupportedGradientStops : stops.Count;
+        nativeStops = new global::ProGPU.Vector.GradientStop[count];
+        stopColors = new Color[count];
+        stopOffsets = new double[count];
+        for (var i = 0; i < count; i++)
+        {
+            var stop = stops[i];
+            var color = stop.Color;
+            var offset = stop.Offset;
+            stopColors[i] = color;
+            stopOffsets[i] = offset;
+            nativeStops[i] = new global::ProGPU.Vector.GradientStop(
+                ToVectorColor(color),
+                (float)offset);
+        }
+
+        return true;
+    }
+
+    private static bool GradientStopsMatch(
+        MediaGradientStopCollection stops,
+        Color[]? colors,
+        double[]? offsets)
+    {
+        if (colors == null || offsets == null)
+        {
+            return false;
+        }
+
+        var count = Math.Min(stops.Count, MaxSupportedGradientStops);
+        if (colors.Length != count || offsets.Length != count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < count; i++)
+        {
+            var stop = stops[i];
+            if (!stop.Color.Equals(colors[i]) || !stop.Offset.Equals(offsets[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool HasUnsupportedBrushTransformForBounds(
@@ -1039,6 +1366,13 @@ public sealed class WpfResourceResolver :
             : ProGpuBrushMappingMode.RelativeToBoundingBox;
     }
 
+    private static ProGpuBrushMappingMode ToProGpuBrushMappingMode(MediaBrushMappingMode mappingMode)
+    {
+        return mappingMode == MediaBrushMappingMode.Absolute
+            ? ProGpuBrushMappingMode.Absolute
+            : ProGpuBrushMappingMode.RelativeToBoundingBox;
+    }
+
     private static global::ProGPU.Vector.GradientSpreadMethod ToVectorGradientSpreadMethod(
         PortableGradientSpreadMethod spreadMethod)
     {
@@ -1046,6 +1380,17 @@ public sealed class WpfResourceResolver :
         {
             PortableGradientSpreadMethod.Reflect => global::ProGPU.Vector.GradientSpreadMethod.Reflect,
             PortableGradientSpreadMethod.Repeat => global::ProGPU.Vector.GradientSpreadMethod.Repeat,
+            _ => global::ProGPU.Vector.GradientSpreadMethod.Pad
+        };
+    }
+
+    private static global::ProGPU.Vector.GradientSpreadMethod ToVectorGradientSpreadMethod(
+        MediaGradientSpreadMethod spreadMethod)
+    {
+        return spreadMethod switch
+        {
+            MediaGradientSpreadMethod.Reflect => global::ProGPU.Vector.GradientSpreadMethod.Reflect,
+            MediaGradientSpreadMethod.Repeat => global::ProGPU.Vector.GradientSpreadMethod.Repeat,
             _ => global::ProGPU.Vector.GradientSpreadMethod.Pad
         };
     }
@@ -1058,12 +1403,29 @@ public sealed class WpfResourceResolver :
             : global::ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation;
     }
 
+    private static global::ProGPU.Vector.GradientColorInterpolationMode ToVectorGradientColorInterpolationMode(
+        MediaColorInterpolationMode colorInterpolationMode)
+    {
+        return colorInterpolationMode == MediaColorInterpolationMode.ScRgbLinearInterpolation
+            ? global::ProGPU.Vector.GradientColorInterpolationMode.ScRgbLinearInterpolation
+            : global::ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation;
+    }
+
     private static Matrix4x4? ToOptionalMatrix4x4(bool hasMatrix, PortableMatrix3x2 matrix)
     {
         return hasMatrix ? ToMatrix4x4(ToWpfMatrix2D(matrix)) : null;
     }
 
     private static Vector4 ToVectorColor(PortableColor color)
+    {
+        return new Vector4(
+            color.R / 255f,
+            color.G / 255f,
+            color.B / 255f,
+            color.A / 255f);
+    }
+
+    private static Vector4 ToVectorColor(Color color)
     {
         return new Vector4(
             color.R / 255f,

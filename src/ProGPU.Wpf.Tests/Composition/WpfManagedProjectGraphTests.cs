@@ -13102,10 +13102,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AdaptNativeBrush", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativePen", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("ConditionalWeakTable<MediaBrush, NativeSolidBrushCache>", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("ConditionalWeakTable<MediaLinearGradientBrush, NativeLinearGradientBrushCache>", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("ConditionalWeakTable<MediaRadialGradientBrush, NativeRadialGradientBrushCache>", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("ConditionalWeakTable<MediaPen, NativeSimplePenCache>", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("TryGetCachedNativeSolidBrush(resource, out var nativeSolidBrush)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("TryGetCachedNativeGradientBrush(resource, bounds, out var nativeGradientBrush, out unsupportedStateCount)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("TryGetCachedNativeSimplePen(resource, out var nativeSimplePen)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeBrushCachesSolidColorBrushUntilStateChanges", wpfResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativeBrushCachesAbsoluteLinearGradientBrushUntilStateChanges", wpfResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativeBrushCachesRelativeLinearGradientStopsAcrossMappedBounds", wpfResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativeBrushCachesAbsoluteRadialGradientBrushUntilStateChanges", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("AdaptNativePenCachesSimpleSolidPenUntilStateChanges", wpfResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("resource is PortableGeometryPathSource portableGeometry", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("portableGeometry.TryGetPortableGeometryPath(out var portablePath)", wpfResourceResolver, StringComparison.Ordinal);

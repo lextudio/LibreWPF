@@ -1596,13 +1596,13 @@ public sealed class WpfResourceResolver :
         else
         {
             var portableFigures = portablePath.Figures;
-            var figures = new List<PathFigure>(portableFigures.Length);
+            var figures = new PathFigureCollection(portableFigures.Length);
 
             for (var figureIndex = 0; figureIndex < portableFigures.Length; figureIndex++)
             {
                 var portableFigure = portableFigures[figureIndex];
                 var portableSegments = portableFigure.Segments;
-                var segments = new List<PathSegment>(portableSegments.Length);
+                var segments = new PathSegmentCollection(portableSegments.Length);
                 for (var segmentIndex = 0; segmentIndex < portableSegments.Length; segmentIndex++)
                 {
                     var segment = portableSegments[segmentIndex];
@@ -1611,7 +1611,7 @@ public sealed class WpfResourceResolver :
 
                 var figure = new PathFigure
                 {
-                    Segments = new PathSegmentCollection(segments),
+                    Segments = segments,
                     StartPoint = ToPoint(portableFigure.StartPoint),
                     IsClosed = portableFigure.IsClosed,
                     IsFilled = portableFigure.IsFilled
@@ -1622,7 +1622,7 @@ public sealed class WpfResourceResolver :
 
             geometry = new PathGeometry
             {
-                Figures = new PathFigureCollection(figures),
+                Figures = figures,
                 FillRule = ToMediaFillRule(portablePath.FillRule)
             };
         }
@@ -1714,25 +1714,27 @@ public sealed class WpfResourceResolver :
 
     private static PathGeometry CreateRectanglePath(double x, double y, double width, double height)
     {
-        var segments = new[]
+        var segments = new PathSegmentCollection(capacity: 3)
         {
             new LineSegment(new Point(x + width, y), isStroked: true),
             new LineSegment(new Point(x + width, y + height), isStroked: true),
             new LineSegment(new Point(x, y + height), isStroked: true)
         };
 
+        var figures = new PathFigureCollection(capacity: 1)
+        {
+            new PathFigure
+            {
+                Segments = segments,
+                StartPoint = new Point(x, y),
+                IsClosed = true,
+                IsFilled = true
+            }
+        };
+
         var geometry = new PathGeometry
         {
-            Figures = new PathFigureCollection(new[]
-            {
-                new PathFigure
-                {
-                    Segments = new PathSegmentCollection(segments),
-                    StartPoint = new Point(x, y),
-                    IsClosed = true,
-                    IsFilled = true
-                }
-            })
+            Figures = figures
         };
 
         return geometry;

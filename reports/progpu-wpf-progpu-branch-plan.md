@@ -46,7 +46,7 @@ Primitive helper data computed while replaying local WPF geometry should be reus
 
 Guideline snapping should keep the command-sink stack path indexed as well. `ProGpuCompositionCommandSink.SmallValueStack<T>` should expose top-down access for hot stack scans, and Xceed/DataGrid text/grid guideline snapping should use indexed `PeekAtDepth(...)` loops instead of enumerating `_guidelineStack`.
 
-Shader-effect sampler traversal should stay indexed over the source-built `PortableShaderEffect.Samplers` arrays. `WpfEffectMapper` should cache `effect.Samplers` into a local and index it during validation/adaptation, `WpfVisualInvalidationTracker` should do the same while visiting sampler brush/image dependencies, and command-sink guideline arrays should use indexed loops too.
+Shader-effect sampler traversal should stay indexed over source-built and ProGPU-native sampler arrays. `WpfEffectMapper` should cache `effect.Samplers` into a local and index it during validation/adaptation, `WpfVisualInvalidationTracker` should do the same while visiting sampler brush/image dependencies, `WpfShaderEffectParams` should index its native `Samplers` array during texture queries/cache-key work, and command-sink guideline arrays should use indexed loops too.
 
 DrawingGroup child traversal should stay indexed too. `WpfDrawingReplay` should read source-built `IPortableDrawingGroupChildrenSource` counts once, index children through `TryGetPortableDrawingGroupChild(...)`, and use the same indexed helper for `PortableDrawingGroupState.Children` fallback arrays during replay and content-bounds inference; do not reintroduce `ExtractChildren(drawingGroup, ...)` foreach wrappers.
 

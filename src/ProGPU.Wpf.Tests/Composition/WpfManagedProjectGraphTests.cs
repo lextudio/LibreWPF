@@ -8561,6 +8561,10 @@ public sealed class WpfManagedProjectGraphTests
             "WpfShaderEffectRenderTests.cs"));
 
         Assert.Contains("GetStableShaderSourceKey", shaderParams, StringComparison.Ordinal);
+        Assert.Contains("var samplers = Samplers;", shaderParams, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < samplers.Length; i++)", shaderParams, StringComparison.Ordinal);
+        Assert.Contains("var sampler = samplers[i];", shaderParams, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var sampler in Samplers)", shaderParams, StringComparison.Ordinal);
         Assert.Contains("_src_{p.GetStableShaderSourceKey()}", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("Span<int> activeRegisters = stackalloc int[WpfShaderEffectParams.MaxSamplerRegisterCount];", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("var activeRegisterCount = CollectActiveSamplerRegisters(p, activeRegisters);", shaderPipeline, StringComparison.Ordinal);

@@ -10063,6 +10063,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Platform",
             "SilkNetWpfInputService.cs");
+        var proGpuWpfCursorServicePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "SilkNetWpfCursorService.cs");
         var wpfCompositionDrawingContextTestsPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.Tests",
@@ -10558,6 +10563,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuWpfDrawingFrame = File.ReadAllText(proGpuWpfDrawingFramePath);
         var proGpuWpfWindowHost = File.ReadAllText(proGpuWpfWindowHostPath);
         var proGpuWpfInputService = File.ReadAllText(proGpuWpfInputServicePath);
+        var proGpuWpfCursorService = File.ReadAllText(proGpuWpfCursorServicePath);
         var wpfCompositionDrawingContextTests = File.ReadAllText(wpfCompositionDrawingContextTestsPath);
         var wpfResourceResolverTests = File.ReadAllText(wpfResourceResolverTestsPath);
         var wpfMilRenderDataDecoderTests = File.ReadAllText(wpfMilRenderDataDecoderTestsPath);
@@ -12232,6 +12238,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var subscriptions = new List<Action>();", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("subscriptions.Remove(unsubscribe);", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("List<Action> _unsubscribe", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("var mice = inputContext.Mice;", proGpuWpfCursorService, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < mice.Count; i++)", proGpuWpfCursorService, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var mouse in inputContext.Mice)", proGpuWpfCursorService, StringComparison.Ordinal);
         Assert.Contains("inputContextProvider.TryGetInputContext(_window", proGpuWpfWindowHost, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, WpfInputEventKind.MouseDown", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, WpfInputEventKind.TextInput", mvpMainWindowCodeBehind, StringComparison.Ordinal);

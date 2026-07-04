@@ -31,8 +31,10 @@ public sealed class SilkNetWpfCursorService : IWpfCursorService
         var silkCursor = TranslateCursor(cursor);
         var applied = false;
 
-        foreach (var mouse in inputContext.Mice)
+        var mice = inputContext.Mice;
+        for (var i = 0; i < mice.Count; i++)
         {
+            var mouse = mice[i];
             try
             {
                 if (!mouse.Cursor.IsSupported(silkCursor))

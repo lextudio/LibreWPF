@@ -433,6 +433,53 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void DetectVersionChangesRaisesInvalidatedAfterCompleteDirtySourceBatch()
+    {
+        var firstState = new PortableVisualState
+        {
+            HasOpacity = true,
+            Opacity = 1.0
+        };
+        var secondState = new PortableVisualState
+        {
+            HasOpacity = true,
+            Opacity = 1.0
+        };
+        var firstChild = new FakePortableStateVisual(firstState);
+        var secondChild = new FakePortableStateVisual(secondState);
+        var root = new FakePortableVisualChildrenOnly();
+        root.AddChild(firstChild);
+        root.AddChild(secondChild);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        var invalidationCount = 0;
+        var observedDirtySourceCount = 0;
+        var observedFirstChildDirty = false;
+        var observedSecondChildDirty = false;
+        tracker.Invalidated += (_, _) =>
+        {
+            invalidationCount++;
+            observedDirtySourceCount = tracker.DirtySourceCount;
+            observedFirstChildDirty = tracker.DirtySources.Contains(firstChild);
+            observedSecondChildDirty = tracker.DirtySources.Contains(secondChild);
+        };
+
+        firstState.Opacity = 0.5;
+        secondState.Opacity = 0.25;
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.Equal(1, invalidationCount);
+        Assert.Equal(2, observedDirtySourceCount);
+        Assert.True(observedFirstChildDirty);
+        Assert.True(observedSecondChildDirty);
+        Assert.Equal(2, tracker.DirtySourceCount);
+        Assert.Contains(firstChild, tracker.DirtySources);
+        Assert.Contains(secondChild, tracker.DirtySources);
+    }
+
+    [Fact]
     public void DrawingForegroundBrushChangeMarksTrackerDirty()
     {
         var brush = new FakeResource();

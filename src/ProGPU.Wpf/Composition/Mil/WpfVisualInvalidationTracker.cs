@@ -227,6 +227,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     public void MarkDirty(object? source)
     {
+        var shouldRaiseInvalidated = MarkDirtyCore(source);
+        RaiseInvalidatedIfNeeded(shouldRaiseInvalidated);
+    }
+
+    private bool MarkDirtyCore(object? source)
+    {
         if (source != null)
         {
             _dirtySources.Add(source);
@@ -235,11 +241,19 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         if (_isDirty)
         {
-            return;
+            return false;
         }
 
         _isDirty = true;
-        Invalidated?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    private void RaiseInvalidatedIfNeeded(bool shouldRaiseInvalidated)
+    {
+        if (shouldRaiseInvalidated)
+        {
+            Invalidated?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public void Detach()
@@ -272,21 +286,25 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private void MarkDirtyAndRefresh(IEnumerable<object> sources)
     {
+        var shouldRaiseInvalidated = false;
         foreach (var source in sources)
         {
-            MarkDirty(source);
+            shouldRaiseInvalidated |= MarkDirtyCore(source);
         }
 
+        RaiseInvalidatedIfNeeded(shouldRaiseInvalidated);
         RequestSubscriptionRefresh();
     }
 
     private void MarkDirtyListAndRefresh(IReadOnlyList<object> sources)
     {
+        var shouldRaiseInvalidated = false;
         for (var i = 0; i < sources.Count; i++)
         {
-            MarkDirty(sources[i]);
+            shouldRaiseInvalidated |= MarkDirtyCore(sources[i]);
         }
 
+        RaiseInvalidatedIfNeeded(shouldRaiseInvalidated);
         RequestSubscriptionRefresh();
     }
 

@@ -70,7 +70,7 @@ Normal WPF managed code reuse remains the goal. Modify upstream WPF managed code
 
 Retained invalidation events should request a subscription refresh and coalesce the actual graph rebuild until the dirty pass is consumed. Do not clear and resubscribe the full WPF graph immediately for every Xceed/DataGrid property, collection, or portable invalidation event.
 
-Retained invalidation version-change batches should keep `_changedSources` on a list-owned indexed path. Do not pass `_changedSources` through the generic `IEnumerable<object>` dirty-marking overload or reintroduce enumerable dispatch for this Xceed/DataGrid retained replay path.
+Retained invalidation version-change batches should keep `_changedSources` on a list-owned indexed path. Bulk-add every changed source to the dirty-source set before raising `Invalidated`, so the composition target sees the complete dirty batch when it prepares retained replay targets. Do not call the public per-source `MarkDirty(...)` helper from the indexed batch loop, do not pass `_changedSources` through the generic `IEnumerable<object>` dirty-marking overload, and do not reintroduce enumerable dispatch for this Xceed/DataGrid retained replay path.
 
 Retained invalidation state comparison should keep `_visualStateSnapshots`, `_currentVisualStateSnapshots`, and `_visualChildrenSnapshots` on concrete `Dictionary<...>` helper signatures. Do not widen these hot version-change comparison helpers back to `IReadOnlyDictionary<...>` or other interface-typed dictionary traversal.
 

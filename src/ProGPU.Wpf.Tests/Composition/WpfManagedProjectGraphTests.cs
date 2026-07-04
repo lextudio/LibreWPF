@@ -5892,8 +5892,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MarkDirtyListAndRefresh(_changedSources)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private void MarkDirtyListAndRefresh(IReadOnlyList<object> sources)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < sources.Count; i++)", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("MarkDirty(sources[i]);", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("private bool MarkDirtyCore(object? source)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("private void RaiseInvalidatedIfNeeded(bool shouldRaiseInvalidated)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("shouldRaiseInvalidated |= MarkDirtyCore(sources[i]);", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("RaiseInvalidatedIfNeeded(shouldRaiseInvalidated);", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("DetectVersionChangesRaisesInvalidatedAfterCompleteDirtySourceBatch", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.DoesNotContain("MarkDirtyAndRefresh(_changedSources)", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("MarkDirty(sources[i]);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisitPortableDependency(ref state, visitor, TryGetPortableVisualChild(visualChildrenSource, i))", trackerSource, StringComparison.Ordinal);
         Assert.Contains("if (source is IEnumerable collection)", trackerSource, StringComparison.Ordinal);

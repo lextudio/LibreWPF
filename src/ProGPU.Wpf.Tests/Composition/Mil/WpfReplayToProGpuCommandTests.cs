@@ -1011,6 +1011,50 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void PortablePathThroughProGpuSinkReusesCachedNativePathWhenUnchanged()
+    {
+        var geometry = CreatePortableRectangleGeometry(new FakeRect(2, 3, 40, 50));
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+
+        sink.DrawNativeGeometry(Brushes.Blue, null, geometry);
+        sink.DrawNativeGeometry(Brushes.Blue, null, geometry);
+
+        Assert.Equal(2, nativeContext.Commands.Count);
+        var firstCommand = nativeContext.Commands[0];
+        var secondCommand = nativeContext.Commands[1];
+        Assert.Equal(RenderCommandType.DrawPath, firstCommand.Type);
+        Assert.Equal(RenderCommandType.DrawPath, secondCommand.Type);
+        Assert.NotNull(firstCommand.Path);
+        Assert.Same(firstCommand.Path, secondCommand.Path);
+    }
+
+    [Fact]
+    public void MutablePortablePathThroughProGpuSinkRefreshesCachedNativePathWhenShapeChanges()
+    {
+        var geometry = CreatePortableRectangleGeometry(new FakeRect(2, 3, 40, 50));
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+
+        sink.DrawNativeGeometry(Brushes.Blue, null, geometry);
+        geometry.Figures[0].Segments =
+        [
+            .. geometry.Figures[0].Segments,
+            PortablePathSegment.Line(new PortablePoint(2, 53), isSmoothJoin: false, isStroked: false)
+        ];
+        sink.DrawNativeGeometry(Brushes.Blue, null, geometry);
+
+        Assert.Equal(2, nativeContext.Commands.Count);
+        var firstCommand = nativeContext.Commands[0];
+        var secondCommand = nativeContext.Commands[1];
+        Assert.Equal(RenderCommandType.DrawPath, firstCommand.Type);
+        Assert.Equal(RenderCommandType.DrawPath, secondCommand.Type);
+        Assert.NotNull(firstCommand.Path);
+        Assert.NotSame(firstCommand.Path, secondCommand.Path);
+        Assert.Equal(4, Assert.Single(secondCommand.Path!.Figures).Segments.Count);
+    }
+
+    [Fact]
     public void DecodePortablePathThroughProGpuSinkMapsRelativeGradientFromNativePathBounds()
     {
         var brush = new FakeLinearGradientBrush(

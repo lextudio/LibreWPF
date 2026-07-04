@@ -2965,7 +2965,10 @@ public sealed class WpfVisualTreeRendererTests
         Assert.Equal(WpfDrawingReplayStatus.Applied, status);
         var nativeGlyphRun = Assert.Single(sink.NativeGlyphRuns);
         Assert.Same(Brushes.Green, nativeGlyphRun.ForegroundBrush);
-        Assert.Same(glyphRun, nativeGlyphRun.GlyphRun);
+        var adaptedGlyphRun = Assert.IsType<WpfNativeGlyphRun>(nativeGlyphRun.GlyphRun);
+        Assert.Equal(new ushort[] { 7 }, adaptedGlyphRun.GlyphIndices);
+        Assert.Equal(14, adaptedGlyphRun.FontSize);
+        Assert.Equal(new Vector2(2, 3), adaptedGlyphRun.Position);
         Assert.Empty(sink.GlyphRuns);
         Assert.Equal(0, drawing.ReflectedStateProbeCount);
         Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);

@@ -13295,6 +13295,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(portablePath, out var portableBounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("bounds = portableBounds;", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathGeometryConverter.GetBoundsOrEmpty(path)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("ConditionalWeakTable<PortableGeometryPath, PortablePathConversionCache>", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
+        Assert.Contains("TryReadPortablePathKey(portablePath, transform, out var cacheKey)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
+        Assert.Contains("cache.TryGet(cacheKey, out path, out bounds)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
+        Assert.Contains("s_pathCache.GetOrCreateValue(portablePath).Set(cacheKey, path, bounds)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
+        Assert.Contains("AddPortableSegmentHash(ref hash, segments[segmentIndex])", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
         Assert.Contains("private static VectorPathGeometry Convert(PortableGeometryPath portablePath)", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
         Assert.Contains("portablePath.Kind == PortableGeometryPathKind.Combined", wpfPortablePathGeometryConverter, StringComparison.Ordinal);
         Assert.Contains("PathA = portablePath.PathA != null", wpfPortablePathGeometryConverter, StringComparison.Ordinal);

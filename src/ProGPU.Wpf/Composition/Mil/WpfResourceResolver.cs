@@ -42,6 +42,7 @@ using PortablePenLineJoin = ProGPU.Wpf.Interop.PortablePenLineJoin;
 using PortablePenSource = ProGPU.Wpf.Interop.IPortablePenSource;
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortableTransformMatrixSource = ProGPU.Wpf.Interop.IPortableTransformMatrixSource;
+using PortableDashStyleSource = ProGPU.Wpf.Interop.IPortableDashStyleSource;
 using MediaBrushMappingMode = System.Windows.Media.BrushMappingMode;
 using MediaColorInterpolationMode = System.Windows.Media.ColorInterpolationMode;
 using MediaGradientSpreadMethod = System.Windows.Media.GradientSpreadMethod;
@@ -142,7 +143,7 @@ public sealed class WpfResourceResolver :
     private static readonly ConditionalWeakTable<MediaBrush, NativeSolidBrushCache> s_nativeSolidBrushCache = new();
     private static readonly ConditionalWeakTable<MediaLinearGradientBrush, NativeLinearGradientBrushCache> s_nativeLinearGradientBrushCache = new();
     private static readonly ConditionalWeakTable<MediaRadialGradientBrush, NativeRadialGradientBrushCache> s_nativeRadialGradientBrushCache = new();
-    private static readonly ConditionalWeakTable<MediaPen, NativeSimplePenCache> s_nativeSimplePenCache = new();
+    private static readonly ConditionalWeakTable<MediaPen, NativeSolidPenCache> s_nativeSolidPenCache = new();
 
     private readonly IReadOnlyList<object?>? _dependentResources;
     private Dictionary<uint, object>? _resources;
@@ -373,9 +374,9 @@ public sealed class WpfResourceResolver :
             return null;
         }
 
-        if (TryGetCachedNativeSimplePen(resource, out var nativeSimplePen))
+        if (TryGetCachedNativeSolidPen(resource, out var nativeSolidPen))
         {
-            return nativeSimplePen;
+            return nativeSolidPen;
         }
 
         if (resource is PortablePenSource portablePenSource)
@@ -431,27 +432,20 @@ public sealed class WpfResourceResolver :
         return false;
     }
 
-    private static bool TryGetCachedNativeSimplePen(
+    private static bool TryGetCachedNativeSolidPen(
         object resource,
         out global::ProGPU.Vector.Pen nativePen)
     {
         if (resource is MediaPen pen &&
-            IsSimplePenDashStyle(pen.DashStyle) &&
             TryGetCachedNativeSolidBrush(pen.Brush, out var nativeBrush))
         {
-            nativePen = s_nativeSimplePenCache
-                .GetValue(pen, static _ => new NativeSimplePenCache())
-                .GetOrCreate(pen, nativeBrush);
-            return true;
+            return s_nativeSolidPenCache
+                .GetValue(pen, static _ => new NativeSolidPenCache())
+                .TryGetOrCreate(pen, nativeBrush, out nativePen);
         }
 
         nativePen = null!;
         return false;
-    }
-
-    private static bool IsSimplePenDashStyle(DashStyle? dashStyle)
-    {
-        return dashStyle == null;
     }
 
     private sealed class NativeSolidBrushCache
@@ -676,7 +670,7 @@ public sealed class WpfResourceResolver :
         }
     }
 
-    private sealed class NativeSimplePenCache
+    private sealed class NativeSolidPenCache
     {
         private global::ProGPU.Vector.SolidColorBrush? _brush;
         private double _thickness = double.NaN;
@@ -685,12 +679,25 @@ public sealed class WpfResourceResolver :
         private MediaPenLineCap _dashCap;
         private PenLineJoin _lineJoin;
         private double _miterLimit = double.NaN;
+        private double[] _dashArray = Array.Empty<double>();
+        private double _dashOffset = double.NaN;
         private global::ProGPU.Vector.Pen? _nativePen;
 
-        public global::ProGPU.Vector.Pen GetOrCreate(
+        public bool TryGetOrCreate(
             MediaPen pen,
-            global::ProGPU.Vector.SolidColorBrush brush)
+            global::ProGPU.Vector.SolidColorBrush brush,
+            out global::ProGPU.Vector.Pen nativePen)
         {
+            nativePen = null!;
+            if (!TryReadDashState(
+                    pen.DashStyle,
+                    out var dashStyleSource,
+                    out var dashCount,
+                    out var dashOffset))
+            {
+                return false;
+            }
+
             var thickness = pen.Thickness;
             var startLineCap = pen.StartLineCap;
             var endLineCap = pen.EndLineCap;
@@ -704,11 +711,15 @@ public sealed class WpfResourceResolver :
                 endLineCap == _endLineCap &&
                 dashCap == _dashCap &&
                 lineJoin == _lineJoin &&
-                miterLimit.Equals(_miterLimit))
+                miterLimit.Equals(_miterLimit) &&
+                dashOffset.Equals(_dashOffset) &&
+                DashArraysMatch(dashStyleSource, dashCount, _dashArray))
             {
-                return _nativePen;
+                nativePen = _nativePen;
+                return true;
             }
 
+            var dashArray = CreateDashArray(dashStyleSource, dashCount);
             _brush = brush;
             _thickness = thickness;
             _startLineCap = startLineCap;
@@ -716,6 +727,8 @@ public sealed class WpfResourceResolver :
             _dashCap = dashCap;
             _lineJoin = lineJoin;
             _miterLimit = miterLimit;
+            _dashArray = dashArray;
+            _dashOffset = dashOffset;
             _nativePen = new global::ProGPU.Vector.Pen(
                 brush,
                 (float)Math.Max(0, thickness),
@@ -724,9 +737,103 @@ public sealed class WpfResourceResolver :
                 ToVectorLineCap(startLineCap),
                 ToVectorLineCap(endLineCap),
                 ToVectorLineCap(dashCap),
-                Array.Empty<double>(),
-                0);
-            return _nativePen;
+                dashArray,
+                dashOffset);
+            nativePen = _nativePen;
+            return true;
+        }
+
+        private static bool TryReadDashState(
+            DashStyle? dashStyle,
+            out PortableDashStyleSource? dashStyleSource,
+            out int dashCount,
+            out double dashOffset)
+        {
+            dashStyleSource = null;
+            dashCount = 0;
+            dashOffset = 0.0;
+            if (dashStyle == null)
+            {
+                return true;
+            }
+
+            if (dashStyle is not PortableDashStyleSource portableDashStyle)
+            {
+                return false;
+            }
+
+            dashStyleSource = portableDashStyle;
+            dashCount = Math.Max(0, portableDashStyle.PortableDashCount);
+            if (dashCount == 0)
+            {
+                return true;
+            }
+
+            var hasPositiveEntry = false;
+            for (var i = 0; i < dashCount; i++)
+            {
+                var dash = portableDashStyle.GetPortableDash(i);
+                if (!double.IsFinite(dash) || dash < 0.0)
+                {
+                    return false;
+                }
+
+                hasPositiveEntry |= dash > 0.0;
+            }
+
+            if (!hasPositiveEntry)
+            {
+                return false;
+            }
+
+            dashOffset = double.IsFinite(portableDashStyle.PortableDashOffset)
+                ? portableDashStyle.PortableDashOffset
+                : 0.0;
+            return true;
+        }
+
+        private static double[] CreateDashArray(
+            PortableDashStyleSource? dashStyleSource,
+            int dashCount)
+        {
+            if (dashStyleSource == null || dashCount == 0)
+            {
+                return Array.Empty<double>();
+            }
+
+            var dashArray = new double[dashCount];
+            for (var i = 0; i < dashArray.Length; i++)
+            {
+                dashArray[i] = dashStyleSource.GetPortableDash(i);
+            }
+
+            return dashArray;
+        }
+
+        private static bool DashArraysMatch(
+            PortableDashStyleSource? dashStyleSource,
+            int dashCount,
+            double[] right)
+        {
+            if (dashCount != right.Length)
+            {
+                return false;
+            }
+
+            if (dashStyleSource == null)
+            {
+                return dashCount == 0;
+            }
+
+            for (var i = 0; i < dashCount; i++)
+            {
+                if (!dashStyleSource.GetPortableDash(i).Equals(right[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 

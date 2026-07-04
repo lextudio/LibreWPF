@@ -564,6 +564,58 @@ public sealed class WpfResourceResolverTests
     }
 
     [Fact]
+    public void AdaptNativePenCachesDashedSolidPenUntilDashStateChanges()
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(255, 1, 2, 3));
+        var dashStyle = new DashStyle(new[] { 1.0, 2.0 }, 0.5);
+        var pen = new MediaPen(brush, 3)
+        {
+            DashStyle = dashStyle,
+            DashCap = PenLineCap.Round
+        };
+
+        var nativePen = WpfResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var unsupportedStateCount);
+        var cachedPen = WpfResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(100, 100, 20, 20),
+            out var cachedUnsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.Equal(0, cachedUnsupportedStateCount);
+        Assert.Same(nativePen, cachedPen);
+        Assert.NotNull(nativePen);
+        Assert.Equal(3, nativePen!.Thickness);
+        Assert.Equal(ProGPU.Vector.PenLineCap.Round, nativePen.DashCap);
+        Assert.Equal(new[] { 1.0, 2.0 }, nativePen.DashArray);
+        Assert.Equal(0.5, nativePen.DashOffset);
+
+        dashStyle.Offset = 1.25;
+        var offsetRefreshedPen = WpfResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var offsetUnsupportedStateCount);
+
+        Assert.Equal(0, offsetUnsupportedStateCount);
+        Assert.NotSame(nativePen, offsetRefreshedPen);
+        Assert.Equal(new[] { 1.0, 2.0 }, offsetRefreshedPen!.DashArray);
+        Assert.Equal(1.25, offsetRefreshedPen.DashOffset);
+
+        dashStyle.Dashes = new[] { 1.0, 3.0 };
+        var dashRefreshedPen = WpfResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var dashUnsupportedStateCount);
+
+        Assert.Equal(0, dashUnsupportedStateCount);
+        Assert.NotSame(offsetRefreshedPen, dashRefreshedPen);
+        Assert.Equal(new[] { 1.0, 3.0 }, dashRefreshedPen!.DashArray);
+        Assert.Equal(1.25, dashRefreshedPen.DashOffset);
+    }
+
+    [Fact]
     public void PortableBrushSourceAbsenceDoesNotFallBackToReflectedBrushShape()
     {
         var brush = new FakeUnavailablePortableSolidColorBrush();

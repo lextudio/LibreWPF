@@ -70,6 +70,8 @@ Retained invalidation events should request a subscription refresh and coalesce 
 
 Retained invalidation version-change batches should keep `_changedSources` on a list-owned indexed path. Do not pass `_changedSources` through the generic `IEnumerable<object>` dirty-marking overload or reintroduce enumerable dispatch for this Xceed/DataGrid retained replay path.
 
+Retained invalidation state comparison should keep `_visualStateSnapshots`, `_currentVisualStateSnapshots`, and `_visualChildrenSnapshots` on concrete `Dictionary<...>` helper signatures. Do not widen these hot version-change comparison helpers back to `IReadOnlyDictionary<...>` or other interface-typed dictionary traversal.
+
 Geometry bounds inference in WPF replay should use indexed loops over known list/array shapes. Do not reintroduce enumerator-based `foreach` traversal for direct line/polyline segment bounds in Xceed/DataGrid geometry replay paths.
 
 Retained invalidation graph traversal should branch on `source is IEnumerable collection` only when the source is actually enumerable. Do not route ordinary visual/resource nodes through `Array.Empty` enumerable helpers, and do not reintroduce `EnumerateCollection(...)` in subscription, version-polling, tracked-dependency, or dependency-registration traversal loops.

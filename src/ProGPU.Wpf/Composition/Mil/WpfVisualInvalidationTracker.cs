@@ -397,7 +397,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private static void CaptureVisualStateSnapshotsAndCollectVisualChildrenChanges(
         object root,
         Dictionary<object, VisualStateSnapshot> snapshots,
-        IReadOnlyDictionary<object, object?[]> previousChildren,
+        Dictionary<object, object?[]> previousChildren,
         HashSet<object> currentChildrenSources,
         List<object> changedSources,
         HashSet<object> visited)
@@ -417,7 +417,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private static void CaptureObjectVisualStateAndChildren(
         object? source,
         Dictionary<object, VisualStateSnapshot> snapshots,
-        IReadOnlyDictionary<object, object?[]> previousChildren,
+        Dictionary<object, object?[]> previousChildren,
         HashSet<object> currentChildrenSources,
         List<object> changedSources,
         HashSet<object> visited)
@@ -518,8 +518,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     }
 
     private static void CollectVisualStateChanges(
-        IReadOnlyDictionary<object, VisualStateSnapshot> previous,
-        IReadOnlyDictionary<object, VisualStateSnapshot> current,
+        Dictionary<object, VisualStateSnapshot> previous,
+        Dictionary<object, VisualStateSnapshot> current,
         List<object> changedSources)
     {
         foreach (var snapshot in current)
@@ -541,7 +541,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     }
 
     private static void CollectRemovedVisualChildrenSources(
-        IReadOnlyDictionary<object, object?[]> previous,
+        Dictionary<object, object?[]> previous,
         HashSet<object> currentSources,
         List<object> changedSources)
     {
@@ -1096,7 +1096,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     {
         public CaptureVisualStateAndChildrenDependencyState(
             Dictionary<object, VisualStateSnapshot> snapshots,
-            IReadOnlyDictionary<object, object?[]> previousChildren,
+            Dictionary<object, object?[]> previousChildren,
             HashSet<object> currentChildrenSources,
             List<object> changedSources,
             HashSet<object> visited)
@@ -1110,7 +1110,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         public Dictionary<object, VisualStateSnapshot> Snapshots { get; }
 
-        public IReadOnlyDictionary<object, object?[]> PreviousChildren { get; }
+        public Dictionary<object, object?[]> PreviousChildren { get; }
 
         public HashSet<object> CurrentChildrenSources { get; }
 

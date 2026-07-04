@@ -5875,6 +5875,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CaptureVisualStateSnapshotsAndCollectVisualChildrenChanges(", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CaptureObjectVisualStateAndChildren(", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("Dictionary<object, object?[]> previousChildren,", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("private static void CollectVisualStateChanges(\n        Dictionary<object, VisualStateSnapshot> previous,\n        Dictionary<object, VisualStateSnapshot> current,", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("private static void CollectRemovedVisualChildrenSources(\n        Dictionary<object, object?[]> previous,", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("public Dictionary<object, object?[]> PreviousChildren { get; }", trackerSource, StringComparison.Ordinal);
         Assert.Contains("_visualChildrenSnapshots,\n                _visualChildrenCurrentSources,\n                _changedSources,\n                _visualStateTraversalVisited)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CollectRemovedVisualChildrenSources(", trackerSource, StringComparison.Ordinal);
         Assert.Contains("MarkDirtyListAndRefresh(_changedSources)", trackerSource, StringComparison.Ordinal);
@@ -5891,6 +5895,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var changedSource in CollectVisualStateChanges", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var changedSource in CollectVisualChildrenChanges", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static List<object> CollectVisualStateChanges", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IReadOnlyDictionary<object, VisualStateSnapshot> previous", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IReadOnlyDictionary<object, VisualStateSnapshot> current", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IReadOnlyDictionary<object, object?[]> previousChildren", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("IReadOnlyDictionary<object, object?[]> previous,", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static List<object> CollectVisualChildrenChanges", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static void CollectVisualChildrenChanges(", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("CollectVisualChildrenDependencyState", trackerSource, StringComparison.Ordinal);

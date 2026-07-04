@@ -5845,13 +5845,17 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;", rendererSource, StringComparison.Ordinal);
         Assert.Contains("visual is PortableVisualChildrenSource visualChildrenSource", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("ExtractPortableVisualChildren(visualChildrenSource)", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("private readonly struct PortableVisualChildrenEnumerable", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("public PortableVisualChildrenEnumerator GetEnumerator()", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryGetPortableVisualChildren(", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("visualChildrenSource.TryGetPortableVisualChildCount(out count)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < childCount; i++)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("childrenSource.TryGetPortableVisualChild(i, out var child)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private static void RegisterRetainedVisualDependencies(\n        IReadOnlyList<object?> dependencies,", rendererSource, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < dependencies.Count; i++)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("WpfRetainedVisualDependencyRegistrar.Register(sink, dependencies[i]);", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var child in ExtractChildren(visual))", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("IReadOnlyList<object> ExtractChildren", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortableVisualChildrenEnumerable", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortableVisualChildrenEnumerator", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("IEnumerable<object?> dependencies", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dependency in dependencies)", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("var result = new List<object>(count);", rendererSource, StringComparison.Ordinal);

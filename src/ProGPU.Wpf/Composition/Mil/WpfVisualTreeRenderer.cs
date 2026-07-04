@@ -125,11 +125,7 @@ public sealed class WpfVisualTreeRenderer
                     var childScopeMode = hitTestOwnerPushed
                         ? RetainedOwnerScopeMode.LightweightOnly
                         : RetainedOwnerScopeMode.None;
-                    foreach (var child in ExtractChildren(visual))
-                    {
-                        stats.ChildEdgeCount++;
-                        ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, childScopeMode);
-                    }
+                    ReplayVisualChildren(visual, sink, resources, imageSourceAdapter, stats, childScopeMode);
                 }
             }
             finally
@@ -189,17 +185,13 @@ public sealed class WpfVisualTreeRenderer
             {
                 ReplayVisualContent(visual, sink, resources, imageSourceAdapter, stats);
 
-                foreach (var child in ExtractChildren(visual))
-                {
-                    stats.ChildEdgeCount++;
-                    ReplaySubtreeCore(
-                        child,
-                        sink,
-                        resources,
-                        imageSourceAdapter,
-                        stats,
-                        RetainedOwnerScopeMode.Full);
-                }
+                ReplayVisualChildren(
+                    visual,
+                    sink,
+                    resources,
+                    imageSourceAdapter,
+                    stats,
+                    RetainedOwnerScopeMode.Full);
             }
         }
         finally
@@ -247,17 +239,13 @@ public sealed class WpfVisualTreeRenderer
                 {
                     ReplayVisualContent(visual, sink, resources, imageSourceAdapter, stats);
 
-                    foreach (var child in ExtractChildren(visual))
-                    {
-                        stats.ChildEdgeCount++;
-                        ReplaySubtreeCore(
-                            child,
-                            sink,
-                            resources,
-                            imageSourceAdapter,
-                            stats,
-                            RetainedOwnerScopeMode.Full);
-                    }
+                    ReplayVisualChildren(
+                        visual,
+                        sink,
+                        resources,
+                        imageSourceAdapter,
+                        stats,
+                        RetainedOwnerScopeMode.Full);
                 }
             }
             finally
@@ -275,6 +263,31 @@ public sealed class WpfVisualTreeRenderer
             {
                 stats.UnsupportedVisualStateCount++;
             }
+        }
+    }
+
+    private void ReplayVisualChildren(
+        object visual,
+        IWpfCompositionCommandSink sink,
+        IWpfMilResourceResolver? resources,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        ReplayStats stats,
+        RetainedOwnerScopeMode retainedOwnerScopeMode)
+    {
+        if (!TryGetPortableVisualChildren(visual, out var childrenSource, out var childCount))
+        {
+            return;
+        }
+
+        for (var i = 0; i < childCount; i++)
+        {
+            if (!childrenSource.TryGetPortableVisualChild(i, out var child) || child == null)
+            {
+                continue;
+            }
+
+            stats.ChildEdgeCount++;
+            ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, retainedOwnerScopeMode);
         }
     }
 
@@ -1200,80 +1213,22 @@ public sealed class WpfVisualTreeRenderer
         return false;
     }
 
-    private static PortableVisualChildrenEnumerable ExtractChildren(object visual)
+    private static bool TryGetPortableVisualChildren(
+        object visual,
+        out PortableVisualChildrenSource childrenSource,
+        out int count)
     {
-        if (visual is PortableVisualChildrenSource visualChildrenSource)
+        if (visual is PortableVisualChildrenSource visualChildrenSource
+            && visualChildrenSource.TryGetPortableVisualChildCount(out count)
+            && count > 0)
         {
-            return ExtractPortableVisualChildren(visualChildrenSource);
+            childrenSource = visualChildrenSource;
+            return true;
         }
 
-        return default;
-    }
-
-    private static PortableVisualChildrenEnumerable ExtractPortableVisualChildren(PortableVisualChildrenSource visualChildrenSource)
-    {
-        if (!visualChildrenSource.TryGetPortableVisualChildCount(out var count) || count <= 0)
-        {
-            return default;
-        }
-
-        return new PortableVisualChildrenEnumerable(visualChildrenSource, count);
-    }
-
-    private readonly struct PortableVisualChildrenEnumerable
-    {
-        private readonly PortableVisualChildrenSource? _source;
-        private readonly int _count;
-
-        public PortableVisualChildrenEnumerable(PortableVisualChildrenSource source, int count)
-        {
-            _source = source;
-            _count = count;
-        }
-
-        public PortableVisualChildrenEnumerator GetEnumerator()
-        {
-            return new PortableVisualChildrenEnumerator(_source, _count);
-        }
-    }
-
-    private struct PortableVisualChildrenEnumerator
-    {
-        private readonly PortableVisualChildrenSource? _source;
-        private readonly int _count;
-        private int _index;
-        private object? _current;
-
-        public PortableVisualChildrenEnumerator(PortableVisualChildrenSource? source, int count)
-        {
-            _source = source;
-            _count = count;
-            _index = 0;
-            _current = null;
-        }
-
-        public object Current => _current!;
-
-        public bool MoveNext()
-        {
-            if (_source == null)
-            {
-                return false;
-            }
-
-            while (_index < _count)
-            {
-                var index = _index++;
-                if (_source.TryGetPortableVisualChild(index, out var child) && child != null)
-                {
-                    _current = child;
-                    return true;
-                }
-            }
-
-            _current = null;
-            return false;
-        }
+        childrenSource = null!;
+        count = 0;
+        return false;
     }
 
     private static bool TryGetPortableVisualState(object visual, out PortableVisualState state)
@@ -1512,8 +1467,18 @@ public sealed class WpfVisualTreeRenderer
             }
         }
 
-        foreach (var child in ExtractChildren(visual))
+        if (!TryGetPortableVisualChildren(visual, out var childrenSource, out var childCount))
         {
+            return hasBounds && IsUsableBounds(bounds);
+        }
+
+        for (var i = 0; i < childCount; i++)
+        {
+            if (!childrenSource.TryGetPortableVisualChild(i, out var child) || child == null)
+            {
+                continue;
+            }
+
             if (!TryReadOpacityMaskBounds(child, out var childBounds))
             {
                 continue;

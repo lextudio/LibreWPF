@@ -13384,10 +13384,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private ref struct DecodePushStack", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("Span<bool> initialPushStack = stackalloc bool[InitialPushStackCapacity];", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("using var pushStack = new DecodePushStack(initialPushStack);", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("var diagnostics = sink as IWpfCompositionCommandSinkDiagnostics;", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("var nativeTransformSink = sink as IWpfNativeTransformCommandSink;", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("GetUnsupportedStateCount(diagnostics)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("nativeTransformSink != null", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<bool>.Shared.Rent(newSize)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("private static int CountUnsupportedAnimationHandles(ReadOnlySpan<byte> payload, int offset)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("private static int CountUnsupportedAnimationHandles(ReadOnlySpan<byte> payload, int offset0, int offset1)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("private static int CountUnsupportedAnimationHandles(ReadOnlySpan<byte> payload, int offset0, int offset1, int offset2)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetUnsupportedStateCount(sink)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.DoesNotContain("sink is IWpfNativeTransformCommandSink nativeTransformSink", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.DoesNotContain("params int[] offsets", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var offset in offsets)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < segments.Count; i++)", wpfMilRenderDataDecoder, StringComparison.Ordinal);

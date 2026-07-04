@@ -100,6 +100,8 @@ public sealed class WpfMilRenderDataDecoder
 
         Span<bool> initialPushStack = stackalloc bool[InitialPushStackCapacity];
         using var pushStack = new DecodePushStack(initialPushStack);
+        var diagnostics = sink as IWpfCompositionCommandSinkDiagnostics;
+        var nativeTransformSink = sink as IWpfNativeTransformCommandSink;
         var recordCount = 0;
         var appliedCount = 0;
         var skippedCount = 0;
@@ -128,7 +130,7 @@ public sealed class WpfMilRenderDataDecoder
 
             var payload = renderData.Slice(offset + RecordHeaderSize, recordSize - RecordHeaderSize);
             recordCount++;
-            var unsupportedStateBefore = GetUnsupportedStateCount(sink);
+            var unsupportedStateBefore = GetUnsupportedStateCount(diagnostics);
 
             switch (commandId)
             {
@@ -326,7 +328,7 @@ public sealed class WpfMilRenderDataDecoder
                         pushStack.Push(true);
                         appliedCount++;
                     }
-                    else if (sink is IWpfNativeTransformCommandSink nativeTransformSink
+                    else if (nativeTransformSink != null
                         && TryResolveNativeTransform(resources, transformToken, out var nativeTransform))
                     {
                         nativeTransformSink.PushNativeTransform(nativeTransform);
@@ -400,7 +402,7 @@ public sealed class WpfMilRenderDataDecoder
                     break;
             }
 
-            var unsupportedStateDelta = GetUnsupportedStateCount(sink) - unsupportedStateBefore;
+            var unsupportedStateDelta = GetUnsupportedStateCount(diagnostics) - unsupportedStateBefore;
             if (unsupportedStateDelta > 0)
             {
                 unsupportedCount += unsupportedStateDelta;
@@ -433,6 +435,8 @@ public sealed class WpfMilRenderDataDecoder
 
         Span<bool> initialPushStack = stackalloc bool[InitialPushStackCapacity];
         using var pushStack = new DecodePushStack(initialPushStack);
+        var diagnostics = sink as IWpfCompositionCommandSinkDiagnostics;
+        var nativeTransformSink = sink as IWpfNativeTransformCommandSink;
         var recordCount = 0;
         var appliedCount = 0;
         var skippedCount = 0;
@@ -461,7 +465,7 @@ public sealed class WpfMilRenderDataDecoder
 
             var payload = renderData.Slice(offset + RecordHeaderSize, recordSize - RecordHeaderSize);
             recordCount++;
-            var unsupportedStateBefore = GetUnsupportedStateCount(sink);
+            var unsupportedStateBefore = GetUnsupportedStateCount(diagnostics);
 
             switch (commandId)
             {
@@ -659,7 +663,7 @@ public sealed class WpfMilRenderDataDecoder
                         pushStack.Push(true);
                         appliedCount++;
                     }
-                    else if (sink is IWpfNativeTransformCommandSink nativeTransformSink
+                    else if (nativeTransformSink != null
                         && TryResolveNativeTransform(resources, transformToken, out var nativeTransform))
                     {
                         nativeTransformSink.PushNativeTransform(nativeTransform);
@@ -733,7 +737,7 @@ public sealed class WpfMilRenderDataDecoder
                     break;
             }
 
-            var unsupportedStateDelta = GetUnsupportedStateCount(sink) - unsupportedStateBefore;
+            var unsupportedStateDelta = GetUnsupportedStateCount(diagnostics) - unsupportedStateBefore;
             if (unsupportedStateDelta > 0)
             {
                 unsupportedCount += unsupportedStateDelta;
@@ -754,11 +758,9 @@ public sealed class WpfMilRenderDataDecoder
         return new WpfMilDecodeResult(recordCount, appliedCount, skippedCount, unsupportedCount);
     }
 
-    private static int GetUnsupportedStateCount(IWpfCompositionCommandSink sink)
+    private static int GetUnsupportedStateCount(IWpfCompositionCommandSinkDiagnostics? diagnostics)
     {
-        return sink is IWpfCompositionCommandSinkDiagnostics diagnostics
-            ? diagnostics.UnsupportedStateCount
-            : 0;
+        return diagnostics?.UnsupportedStateCount ?? 0;
     }
 
     private static bool IsPushCommand(WpfMilCommandId commandId)

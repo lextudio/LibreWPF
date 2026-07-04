@@ -45,6 +45,34 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void SmallValueStackPeekAtDepthReadsTopFirstWithoutPopping()
+    {
+        var stack = new ProGpuCompositionCommandSink.SmallValueStack<int>();
+
+        stack.Push(1);
+        Assert.Equal(1, stack.PeekAtDepth(0));
+
+        stack.Push(2);
+        stack.Push(3);
+        stack.Push(4);
+        stack.Push(5);
+
+        Assert.Equal(5, stack.PeekAtDepth(0));
+        Assert.Equal(4, stack.PeekAtDepth(1));
+        Assert.Equal(3, stack.PeekAtDepth(2));
+        Assert.Equal(2, stack.PeekAtDepth(3));
+        Assert.Equal(1, stack.PeekAtDepth(4));
+        Assert.Throws<ArgumentOutOfRangeException>(() => stack.PeekAtDepth(5));
+
+        Assert.Equal(5, stack.Pop());
+        Assert.Equal(4, stack.Pop());
+        Assert.Equal(3, stack.Pop());
+        Assert.Equal(2, stack.Pop());
+        Assert.Equal(1, stack.Pop());
+        stack.Dispose();
+    }
+
+    [Fact]
     public void DecodeRectangleThroughProGpuSinkEmitsDrawRectCommand()
     {
         var brush = new FakeLinearGradientBrush(

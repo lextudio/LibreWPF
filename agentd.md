@@ -74,6 +74,8 @@ Retained invalidation state comparison should keep `_visualStateSnapshots`, `_cu
 
 Geometry bounds inference in WPF replay should use indexed loops over known list/array shapes. Do not reintroduce enumerator-based `foreach` traversal for direct line/polyline segment bounds in Xceed/DataGrid geometry replay paths.
 
+WPF command-sink guideline snapping should walk `_guidelineStack` through `SmallValueStack<T>.PeekAtDepth(...)` with indexed loops. Do not reintroduce `foreach (var guideline in _guidelineStack)` in the text/grid guideline snapping hot path.
+
 Retained invalidation graph traversal should branch on `source is IEnumerable collection` only when the source is actually enumerable. Do not route ordinary visual/resource nodes through `Array.Empty` enumerable helpers, and do not reintroduce `EnumerateCollection(...)` in subscription, version-polling, tracked-dependency, or dependency-registration traversal loops.
 
 Retained dirty-branch replay target snapshots should use map-owned reusable single-target and multi-target list storage. Do not allocate `WpfRetainedVisualBranchReplayTarget[]` arrays for normal Xceed/DataGrid multi-branch scroll invalidations; copy scratch targets into reusable snapshot storage before clearing scratch lists.

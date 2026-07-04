@@ -13030,6 +13030,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal struct SmallValueStack<T> : IDisposable", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<T>.Shared.Rent", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("_pushStack.Dispose();", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("public readonly T PeekAtDepth(int depth)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("return _items != null\n                ? _items[_count - depth - 1]\n                : _first;", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("var guidelineCount = _guidelineStack.Count;", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("for (var depth = 0; depth < guidelineCount; depth++)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("var guideline = _guidelineStack.PeekAtDepth(depth);", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var guideline in _guidelineStack)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("private readonly byte _inlineYCount;", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("inlineYCount: 1", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("private bool TrySnapInlineY(", proGpuWpfCommandSink, StringComparison.Ordinal);

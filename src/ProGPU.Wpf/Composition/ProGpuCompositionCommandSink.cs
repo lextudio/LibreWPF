@@ -1217,6 +1217,18 @@ public sealed class ProGpuCompositionCommandSink :
                 : _first;
         }
 
+        public readonly T PeekAtDepth(int depth)
+        {
+            if ((uint)depth >= (uint)_count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(depth));
+            }
+
+            return _items != null
+                ? _items[_count - depth - 1]
+                : _first;
+        }
+
         public readonly Enumerator GetEnumerator()
         {
             return new Enumerator(_first, _items, _count);
@@ -1411,8 +1423,10 @@ public sealed class ProGpuCompositionCommandSink :
             return false;
         }
 
-        foreach (var guideline in _guidelineStack)
+        var guidelineCount = _guidelineStack.Count;
+        for (var depth = 0; depth < guidelineCount; depth++)
         {
+            var guideline = _guidelineStack.PeekAtDepth(depth);
             if (guideline.TrySnapX(x, scaleX, translateX, out snappedX))
             {
                 return true;
@@ -1436,8 +1450,10 @@ public sealed class ProGpuCompositionCommandSink :
             return false;
         }
 
-        foreach (var guideline in _guidelineStack)
+        var guidelineCount = _guidelineStack.Count;
+        for (var depth = 0; depth < guidelineCount; depth++)
         {
+            var guideline = _guidelineStack.PeekAtDepth(depth);
             if (guideline.TrySnapY(y, scaleY, translateY, out snappedY))
             {
                 return true;

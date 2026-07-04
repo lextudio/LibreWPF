@@ -490,6 +490,8 @@ Preview SDK release validation is part of the architecture boundary too. The cus
 
 Retained invalidation snapshot ownership is split by lifetime. The tracker owns stable visual-child topology arrays only in its retained baseline snapshots captured during subscription/refresh, while normal `DetectVersionChanges(...)` polling streams current `IPortableVisualChildrenSource` children directly into comparison and dependency traversal. This avoids rebuilding a full current child-snapshot dictionary for every version probe on large Xceed/AvalonDock/DataGrid trees, preserves typed source-built WPF child enumeration, and keeps removed-source detection through a lightweight current-source set. Pooled arrays must not escape into retained snapshots; new performance work should either stream live topology or allocate only for tracker-owned baseline state.
 
+Retained invalidation subscription refresh should store unsubscribe handles in typed records instead of closure-wrapped actions. Portable invalidation sources that return `IDisposable` handles can be disposed through a direct helper, while event callback unsubscribe actions stay supported through the same exception-tolerant path. This keeps large Xceed/AvalonDock/DataGrid retained dependency graphs from allocating an extra lambda per subscription every time the graph refreshes.
+
 ## Win32 Abstraction Strategy
 
 Win32 usage should be split into three groups:

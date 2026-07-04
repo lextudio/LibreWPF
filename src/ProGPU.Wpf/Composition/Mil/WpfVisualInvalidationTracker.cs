@@ -32,7 +32,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     [ThreadStatic]
     private static HashSet<object>? s_enumerateTrackedDependenciesVisited;
 
-    private readonly List<Action> _unsubscribeActions = new();
+    private readonly List<InvalidationSubscription> _subscriptions = new();
     private readonly Dictionary<object, VisualStateSnapshot> _visualStateSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<object, object?[]> _visualChildrenSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _dirtySources = new(ReferenceEqualityComparer.Instance);
@@ -53,7 +53,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     public bool IsDirty => _isDirty;
 
-    public int SubscriptionCount => _unsubscribeActions.Count;
+    public int SubscriptionCount => _subscriptions.Count;
 
     public int VisualStateSnapshotCount => _visualStateSnapshots.Count;
 
@@ -845,7 +845,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             EventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
             if (invalidationSource.TrySubscribeInvalidated(handler, out var subscription))
             {
-                _unsubscribeActions.Add(() => TryRunInvalidationSubscriptionAction(subscription.Dispose));
+                _subscriptions.Add(InvalidationSubscription.ForDisposable(subscription));
             }
         }
 
@@ -865,7 +865,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             return false;
         }
 
-        _unsubscribeActions.Add(() => TryRunInvalidationSubscriptionAction(unsubscribe));
+        _subscriptions.Add(InvalidationSubscription.ForAction(unsubscribe));
         return true;
     }
 
@@ -874,6 +874,29 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         try
         {
             action();
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (ArgumentException)
+        {
+        }
+        catch (MethodAccessException)
+        {
+        }
+        catch (NotSupportedException)
+        {
+        }
+
+        return false;
+    }
+
+    private static bool TryDisposeInvalidationSubscription(IDisposable subscription)
+    {
+        try
+        {
+            subscription.Dispose();
             return true;
         }
         catch (InvalidOperationException)
@@ -1888,12 +1911,49 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private void ClearSubscriptions()
     {
-        for (var i = _unsubscribeActions.Count - 1; i >= 0; i--)
+        for (var i = _subscriptions.Count - 1; i >= 0; i--)
         {
-            _unsubscribeActions[i]();
+            _subscriptions[i].Dispose();
         }
 
-        _unsubscribeActions.Clear();
+        _subscriptions.Clear();
     }
 
+    private readonly struct InvalidationSubscription
+    {
+        private readonly IDisposable? _disposable;
+        private readonly Action? _action;
+
+        private InvalidationSubscription(IDisposable? disposable, Action? action)
+        {
+            _disposable = disposable;
+            _action = action;
+        }
+
+        public static InvalidationSubscription ForDisposable(IDisposable disposable)
+        {
+            ArgumentNullException.ThrowIfNull(disposable);
+            return new InvalidationSubscription(disposable, null);
+        }
+
+        public static InvalidationSubscription ForAction(Action action)
+        {
+            ArgumentNullException.ThrowIfNull(action);
+            return new InvalidationSubscription(null, action);
+        }
+
+        public void Dispose()
+        {
+            if (_disposable != null)
+            {
+                TryDisposeInvalidationSubscription(_disposable);
+                return;
+            }
+
+            if (_action != null)
+            {
+                TryRunInvalidationSubscriptionAction(_action);
+            }
+        }
+    }
 }

@@ -954,6 +954,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_retainedWpfVisualRoot.Scale = Vector3.One", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("TrySubscribeInvalidationCallback(", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("TryRunInvalidationSubscriptionAction", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("private readonly List<InvalidationSubscription> _subscriptions = new();", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("_subscriptions.Add(InvalidationSubscription.ForDisposable(subscription));", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("_subscriptions.Add(InvalidationSubscription.ForAction(unsubscribe));", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("private readonly struct InvalidationSubscription", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("TryDisposeInvalidationSubscription(_disposable);", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly List<Action> _unsubscribeActions", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("_unsubscribeActions.Add(() => TryRunInvalidationSubscriptionAction(subscription.Dispose));", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("_unsubscribeActions.Add(() => TryRunInvalidationSubscriptionAction(unsubscribe));", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableInvalidationSource = ProGPU.Wpf.Interop.IPortableInvalidationSource;", proGpuInvalidationTracker, StringComparison.Ordinal);

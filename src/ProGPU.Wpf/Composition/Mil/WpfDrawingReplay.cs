@@ -97,71 +97,29 @@ internal static class WpfDrawingReplay
         int StartRow,
         int EndRow)
     {
-        public Enumerator GetEnumerator()
+        public int Count
         {
-            return new Enumerator(Viewport, StartColumn, EndColumn, StartRow, EndRow);
+            get
+            {
+                return (EndColumn - StartColumn + 1) * (EndRow - StartRow + 1);
+            }
         }
 
-        public struct Enumerator
+        public TileBrushReplayTile GetAt(int index)
         {
-            private readonly Rect _viewport;
-            private readonly int _startColumn;
-            private readonly int _endColumn;
-            private readonly int _endRow;
-            private int _column;
-            private int _row;
-            private bool _started;
+            var columnCount = EndColumn - StartColumn + 1;
+            var rowOffset = index / columnCount;
+            var column = StartColumn + index - rowOffset * columnCount;
+            var row = StartRow + rowOffset;
 
-            public Enumerator(
-                Rect viewport,
-                int startColumn,
-                int endColumn,
-                int startRow,
-                int endRow)
-            {
-                _viewport = viewport;
-                _startColumn = startColumn;
-                _endColumn = endColumn;
-                _endRow = endRow;
-                _column = startColumn;
-                _row = startRow;
-                _started = false;
-                Current = default;
-            }
-
-            public TileBrushReplayTile Current { get; private set; }
-
-            public bool MoveNext()
-            {
-                if (!_started)
-                {
-                    _started = true;
-                }
-                else if (_column < _endColumn)
-                {
-                    _column++;
-                }
-                else
-                {
-                    if (_row >= _endRow)
-                    {
-                        return false;
-                    }
-
-                    _column = _startColumn;
-                    _row++;
-                }
-
-                Current = new TileBrushReplayTile(
-                    new Rect(
-                        _viewport.X + _column * _viewport.Width,
-                        _viewport.Y + _row * _viewport.Height,
-                        _viewport.Width,
-                        _viewport.Height),
-                    _column,
-                    _row);
-                return true;
-            }
+            return new TileBrushReplayTile(
+                new Rect(
+                    Viewport.X + column * Viewport.Width,
+                    Viewport.Y + row * Viewport.Height,
+                    Viewport.Width,
+                    Viewport.Height),
+                column,
+                row);
         }
     }
 
@@ -865,8 +823,10 @@ internal static class WpfDrawingReplay
             popCount++;
         }
 
-        foreach (var tile in tileBounds)
+        var tileCount = tileBounds.Count;
+        for (var tileIndex = 0; tileIndex < tileCount; tileIndex++)
         {
+            var tile = tileBounds.GetAt(tileIndex);
             if (!TryGetStretchedTile(tile, imageStretchSourceBounds, stretch, alignmentX, alignmentY, out var stretchedTile, out var needsTileClip))
             {
                 continue;
@@ -959,8 +919,10 @@ internal static class WpfDrawingReplay
 
         var appliedAny = false;
         var unsupportedAny = false;
-        foreach (var tile in tileBounds)
+        var tileCount = tileBounds.Count;
+        for (var tileIndex = 0; tileIndex < tileCount; tileIndex++)
         {
+            var tile = tileBounds.GetAt(tileIndex);
             if (!TryGetStretchedTile(tile, sourceBounds, stretch, alignmentX, alignmentY, out var stretchedTile, out var needsTileClip)
                 || !TryCreateBoundsMappingTransform(sourceBounds, stretchedTile, tileMode, out var transform))
             {
@@ -1062,8 +1024,10 @@ internal static class WpfDrawingReplay
         WpfVisualTreeRenderer? visualBrushRenderer = null;
         IWpfImageSourceAdapter? visualBrushImageSourceAdapter = null;
         var visualBrushImageSourceAdapterInitialized = false;
-        foreach (var tile in tileBounds)
+        var tileCount = tileBounds.Count;
+        for (var tileIndex = 0; tileIndex < tileCount; tileIndex++)
         {
+            var tile = tileBounds.GetAt(tileIndex);
             if (!TryGetStretchedTile(tile, sourceBounds, stretch, alignmentX, alignmentY, out var stretchedTile, out var needsTileClip)
                 || !TryCreateBoundsMappingTransform(sourceBounds, stretchedTile, tileMode, out var transform))
             {

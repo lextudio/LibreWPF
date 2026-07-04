@@ -6971,7 +6971,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("if (geometry.IsRectangle)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PushRectangleClip(sink, tile.Bounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("private readonly record struct TileBrushReplayTiles(", drawingReplay, StringComparison.Ordinal);
-        Assert.Contains("public Enumerator GetEnumerator()", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("public int Count", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("public TileBrushReplayTile GetAt(int index)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("var tileCount = tileBounds.Count;", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("for (var tileIndex = 0; tileIndex < tileCount; tileIndex++)", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("var tile = tileBounds.GetAt(tileIndex);", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("out TileBrushReplayTiles tileBounds", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfVisualTreeRenderer? visualBrushRenderer = null;", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("visualBrushRenderer ??= new WpfVisualTreeRenderer();", drawingReplay, StringComparison.Ordinal);
@@ -6987,6 +6991,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("out IReadOnlyList<TileBrushReplayTile> tileBounds", drawingReplay, StringComparison.Ordinal);
         Assert.DoesNotContain("new List<TileBrushReplayTile>", drawingReplay, StringComparison.Ordinal);
         Assert.DoesNotContain("new[] { new TileBrushReplayTile", drawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("public Enumerator GetEnumerator()", drawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("public struct Enumerator", drawingReplay, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var tile in tileBounds)", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("nativeClipSink.PushNativeClip(ToReplayRect(bounds))", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("PortableTileBrushSourceAbsenceDoesNotFallBackToReflectedImageBrushShape", resolverTests, StringComparison.Ordinal);
         Assert.Contains("ReplayUsesNativeRectangleClipForPortableTileBrushFill", File.ReadAllText(FindRepoPath(

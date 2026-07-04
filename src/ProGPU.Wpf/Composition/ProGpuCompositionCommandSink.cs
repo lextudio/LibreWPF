@@ -13,6 +13,7 @@ using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaPenLineCap = System.Windows.Media.PenLineCap;
+using MediaSolidColorBrush = System.Windows.Media.SolidColorBrush;
 using MediaTransform = System.Windows.Media.Transform;
 using VectorLineSegment = ProGPU.Vector.LineSegment;
 using VectorPen = ProGPU.Vector.Pen;
@@ -833,7 +834,7 @@ public sealed class ProGpuCompositionCommandSink :
             return;
         }
 
-        var nativeBrush = ToNativeBrush(foregroundBrush, CreateGlyphRunBounds(glyphRun));
+        var nativeBrush = ToNativeGlyphRunBrush(foregroundBrush, glyphRun);
         if (nativeBrush == null)
         {
             return;
@@ -1339,6 +1340,16 @@ public sealed class ProGpuCompositionCommandSink :
         var nativePen = WpfResourceResolver.AdaptNativePen(pen, bounds, out var unsupportedStateCount);
         UnsupportedStateCount += unsupportedStateCount;
         return nativePen;
+    }
+
+    private VectorBrush? ToNativeGlyphRunBrush(MediaBrush foregroundBrush, in WpfNativeGlyphRun glyphRun)
+    {
+        if (foregroundBrush is MediaSolidColorBrush)
+        {
+            return ToNativeBrush(foregroundBrush, default(WpfReplayRect));
+        }
+
+        return ToNativeBrush(foregroundBrush, CreateGlyphRunBounds(glyphRun));
     }
 
     private static WpfReplayRect CreateLineBounds(WpfReplayPoint point0, WpfReplayPoint point1)

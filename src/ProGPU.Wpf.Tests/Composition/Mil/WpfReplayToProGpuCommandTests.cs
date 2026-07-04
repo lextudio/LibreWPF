@@ -128,6 +128,23 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void ProGpuSinkSkipsNullMaterialPrimitiveCommands()
+    {
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+        var nativePrimitiveSink = (IWpfNativePrimitiveCommandSink)sink;
+
+        sink.DrawRectangle(null, null, new System.Windows.Rect(0, 0, 10, 10));
+        sink.DrawRoundedRectangle(null, null, new System.Windows.Rect(20, 0, 10, 10), 2, 2);
+        sink.DrawEllipse(null, null, new System.Windows.Point(40, 5), 5, 5);
+        nativePrimitiveSink.DrawNativeRectangle(null, null, new WpfReplayRect(0, 20, 10, 10));
+        nativePrimitiveSink.DrawNativeRoundedRectangle(null, null, new WpfReplayRect(20, 20, 10, 10), 2, 2);
+        nativePrimitiveSink.DrawNativeEllipse(null, null, new WpfReplayPoint(40, 25), 5, 5);
+
+        Assert.Empty(nativeContext.Commands);
+    }
+
+    [Fact]
     public void DecodeRectangleThroughProGpuSinkKeepsAbsoluteGradientMapping()
     {
         var brush = new FakeLinearGradientBrush(

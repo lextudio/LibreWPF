@@ -365,6 +365,11 @@ public sealed class ProGpuCompositionCommandSink :
 
     private void AddNativeRect(VectorBrush? brush, VectorPen? pen, Rect rectangle)
     {
+        if (brush == null && pen == null)
+        {
+            return;
+        }
+
         AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawRect,
@@ -388,6 +393,11 @@ public sealed class ProGpuCompositionCommandSink :
 
     private void AddNativeRoundedRect(VectorBrush? brush, VectorPen? pen, Rect rectangle, double radiusX, double radiusY)
     {
+        if (brush == null && pen == null)
+        {
+            return;
+        }
+
         AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawRoundedRect,
@@ -417,6 +427,11 @@ public sealed class ProGpuCompositionCommandSink :
 
     private void AddNativeEllipse(VectorBrush? brush, VectorPen? pen, Point center, double radiusX, double radiusY)
     {
+        if (brush == null && pen == null)
+        {
+            return;
+        }
+
         AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawEllipse,
@@ -491,6 +506,11 @@ public sealed class ProGpuCompositionCommandSink :
 
     private void AddNativePath(VectorBrush? brush, VectorPen? pen, VectorPathGeometry path)
     {
+        if (brush == null && pen == null)
+        {
+            return;
+        }
+
         AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawPath,
@@ -748,11 +768,18 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
+        var nativeBrush = ToNativeBrush(brush, rectangle);
+        var nativePen = ToNativePen(pen, rectangle);
+        if (nativeBrush == null && nativePen == null)
+        {
+            return;
+        }
+
         AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawRect,
-            Brush = ToNativeBrush(brush, rectangle),
-            Pen = ToNativePen(pen, rectangle),
+            Brush = nativeBrush,
+            Pen = nativePen,
             Rect = ToNativeRect(rectangle),
             Transform = _transformStack.Peek(),
             IsEdgeAliased = _edgeModeStack.Peek()
@@ -763,11 +790,18 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
+        var nativeBrush = ToNativeBrush(brush, rectangle);
+        var nativePen = ToNativePen(pen, rectangle);
+        if (nativeBrush == null && nativePen == null)
+        {
+            return;
+        }
+
         AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawRoundedRect,
-            Brush = ToNativeBrush(brush, rectangle),
-            Pen = ToNativePen(pen, rectangle),
+            Brush = nativeBrush,
+            Pen = nativePen,
             Rect = ToNativeRect(rectangle),
             RadiusX = (float)radiusX,
             RadiusY = (float)radiusY,
@@ -781,11 +815,18 @@ public sealed class ProGpuCompositionCommandSink :
         ThrowIfClosed();
 
         var bounds = new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2);
+        var nativeBrush = ToNativeBrush(brush, bounds);
+        var nativePen = ToNativePen(pen, bounds);
+        if (nativeBrush == null && nativePen == null)
+        {
+            return;
+        }
+
         AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawEllipse,
-            Brush = ToNativeBrush(brush, bounds),
-            Pen = ToNativePen(pen, bounds),
+            Brush = nativeBrush,
+            Pen = nativePen,
             Position2 = new Vector2((float)center.X, (float)center.Y),
             RadiusX = (float)radiusX,
             RadiusY = (float)radiusY,
@@ -1344,6 +1385,11 @@ public sealed class ProGpuCompositionCommandSink :
 
     private VectorBrush? ToNativeBrush(MediaBrush? brush, WpfReplayRect bounds)
     {
+        if (brush == null)
+        {
+            return null;
+        }
+
         var nativeBrush = WpfResourceResolver.AdaptNativeBrush(brush, bounds, out var unsupportedStateCount);
         UnsupportedStateCount += unsupportedStateCount;
         return nativeBrush;
@@ -1351,6 +1397,11 @@ public sealed class ProGpuCompositionCommandSink :
 
     private VectorPen? ToNativePen(MediaPen? pen, WpfReplayRect bounds)
     {
+        if (pen == null)
+        {
+            return null;
+        }
+
         var nativePen = WpfResourceResolver.AdaptNativePen(pen, bounds, out var unsupportedStateCount);
         UnsupportedStateCount += unsupportedStateCount;
         return nativePen;
@@ -1597,6 +1648,11 @@ public sealed class ProGpuCompositionCommandSink :
 
     private VectorBrush? ToNativeBrush(MediaBrush? brush, Rect bounds)
     {
+        if (brush == null)
+        {
+            return null;
+        }
+
         return AdaptNativeBrush(brush, bounds, count => UnsupportedStateCount += count);
     }
 
@@ -1742,6 +1798,11 @@ public sealed class ProGpuCompositionCommandSink :
 
     private VectorPen? ToNativePen(MediaPen? pen, Rect bounds)
     {
+        if (pen == null)
+        {
+            return null;
+        }
+
         var replayBounds = new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
         return ToNativePen(pen, replayBounds);
     }

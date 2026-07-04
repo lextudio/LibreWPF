@@ -13278,8 +13278,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryCreatePortableRadialGradientMediaBrush(brush, out var radialBrush)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("ApplyPortableBrushTransforms(brush, mediaBrush)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("var bounds = new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2);", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("Brush = ToNativeBrush(brush, bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("Pen = ToNativePen(pen, bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("if (brush == null && pen == null)\n        {\n            return;\n        }", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("private VectorBrush? ToNativeBrush(MediaBrush? brush, WpfReplayRect bounds)\n    {\n        if (brush == null)\n        {\n            return null;\n        }", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("private VectorPen? ToNativePen(MediaPen? pen, WpfReplayRect bounds)\n    {\n        if (pen == null)\n        {\n            return null;\n        }", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("var nativeBrush = ToNativeBrush(brush, bounds);", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("var nativePen = ToNativePen(pen, bounds);", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("Brush = nativeBrush", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("Pen = nativePen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuNativeBrush", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("new ProGpuPortableBrush", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptBrushReturnsTypedLinearGradientShimWithPortableTransformContract", wpfResourceResolverTests, StringComparison.Ordinal);
@@ -13505,6 +13510,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReferenceEquals(portableGlyphRun.AdvanceWidths, _advanceWidths)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfPen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("private VectorPen? ToNativePen(MediaPen? pen, Rect bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("private VectorBrush? ToNativeBrush(MediaBrush? brush, Rect bounds)\n    {\n        if (brush == null)\n        {\n            return null;\n        }", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("if (pen == null)\n        {\n            return null;\n        }\n\n        var replayBounds = new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("var replayBounds = new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("return ToNativePen(pen, replayBounds);", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadDashStyle(pen", proGpuWpfCommandSink, StringComparison.Ordinal);

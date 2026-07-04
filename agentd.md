@@ -92,6 +92,8 @@ Retained dirty-branch replay target selection should build directly into map-own
 
 Reference-equality dirty-source sets from `WpfVisualInvalidationTracker` should hit direct `HashSet<object>` replay/invalidation helpers before generic `IReadOnlyCollection<object>` handling. Keep one-source tracker frames on the `LastDirtySource` hint plus concrete `HashSet<object>.Contains(...)` and the single-target/single-invalidation fast paths, falling back to set enumeration only when the hint is absent or stale instead of routing them through generic collection enumeration.
 
+ProGPU WPF primitive command sinks should skip null-material primitives before enqueueing native draw commands. Keep null brush/pen conversion on local fast paths so Xceed/DataGrid fill-only, line-only, and no-op chrome records do not call the resolver or add empty draw commands.
+
 Retained branch-map shared-owner checks should stay centralized on `ReferenceOwnerSet.ClassifyAgainst(...)`: use the O(1) hash/count path for a single dirty source and one tight early-exit pass for multi-source dirty sets. Do not reintroduce ad hoc `foreach (var sourceOwner in sourceOwners)` loops in invalidation, and keep top-level replay target filtering indexed over the scratch target list.
 
 WPF visual-state replay should cache per-visual bounds inside `PushVisualState`. Opacity masks, shader effects, bitmap effects, and cache scopes may all need the same retained bounds, so use a single lazy `TryGetVisualStateBounds(...)` helper instead of calling `TryReadOpacityMaskBounds(visual, ...)` separately for each scope.

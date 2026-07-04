@@ -409,6 +409,30 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void PortableVisualChildrenSubscriptionRefreshIsDeferredUntilDirtyConsumed()
+    {
+        var root = new FakePortableVisualChildrenOnly();
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+        var initialSubscriptionCount = tracker.SubscriptionCount;
+
+        var child = new FakeVisual();
+        root.AddChild(child);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Equal(initialSubscriptionCount, tracker.SubscriptionCount);
+
+        tracker.ConsumeDirty();
+
+        Assert.True(tracker.SubscriptionCount > initialSubscriptionCount);
+        child.RaisePropertyChanged(nameof(FakeVisual.Opacity));
+        Assert.True(tracker.IsDirty);
+        Assert.Same(child, tracker.LastDirtySource);
+    }
+
+    [Fact]
     public void DrawingForegroundBrushChangeMarksTrackerDirty()
     {
         var brush = new FakeResource();

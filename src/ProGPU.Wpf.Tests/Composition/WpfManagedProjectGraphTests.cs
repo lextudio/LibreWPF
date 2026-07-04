@@ -5826,6 +5826,12 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfVisualInvalidationTracker.cs"));
+        var proGpuInvalidationTrackerTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualInvalidationTrackerTests.cs"));
         var interopSource = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -5860,6 +5866,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private readonly HashSet<object> _visualStateTraversalVisited = new(ReferenceEqualityComparer.Instance);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<object> _visualChildrenCurrentSources = new(ReferenceEqualityComparer.Instance);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<object> _subscriptionTraversalVisited = new(ReferenceEqualityComparer.Instance);", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("private bool _subscriptionsNeedRefresh;", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("RefreshSubscriptionsIfNeeded();", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("private void RequestSubscriptionRefresh()", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("PortableVisualChildrenSubscriptionRefreshIsDeferredUntilDirtyConsumed", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("_changedSources.Clear();", trackerSource, StringComparison.Ordinal);
         Assert.Contains("TryReadPortableVisualChildrenSnapshot(source, out var snapshot)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CaptureVisualStateSnapshotsAndCollectVisualChildrenChanges(", trackerSource, StringComparison.Ordinal);
@@ -5888,6 +5898,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("result.Add(item);", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("currentVisualChildrenSnapshots", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("CaptureVisualChildrenSnapshots(_root)", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("MarkDirty(source);\n        RefreshSubscriptions();", trackerSource, StringComparison.Ordinal);
         Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualChildrenSource.TryGetPortableVisualChildCount(out int count)", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualChildrenSource.TryGetPortableVisualChild(int index, out object child)", visualSource, StringComparison.Ordinal);

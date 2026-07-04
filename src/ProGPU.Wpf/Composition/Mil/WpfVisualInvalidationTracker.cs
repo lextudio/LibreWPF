@@ -45,6 +45,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private object? _lastDirtySource;
     private bool _isDirty;
     private bool _isRefreshing;
+    private bool _subscriptionsNeedRefresh;
 
     public event EventHandler? Invalidated;
 
@@ -167,6 +168,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         _isDirty = false;
         _dirtySources.Clear();
         _lastDirtySource = null;
+        RefreshSubscriptionsIfNeeded();
         return wasDirty;
     }
 
@@ -254,6 +256,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         _root = null;
         _lastDirtySource = null;
         _isDirty = false;
+        _subscriptionsNeedRefresh = false;
     }
 
     public void Dispose()
@@ -264,7 +267,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private void MarkDirtyAndRefresh(object? source)
     {
         MarkDirty(source);
-        RefreshSubscriptions();
+        RequestSubscriptionRefresh();
     }
 
     private void MarkDirtyAndRefresh(IEnumerable<object> sources)
@@ -274,12 +277,34 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             MarkDirty(source);
         }
 
-        RefreshSubscriptions();
+        RequestSubscriptionRefresh();
+    }
+
+    private void RequestSubscriptionRefresh()
+    {
+        if (_root != null)
+        {
+            _subscriptionsNeedRefresh = true;
+        }
+    }
+
+    private void RefreshSubscriptionsIfNeeded()
+    {
+        if (_subscriptionsNeedRefresh)
+        {
+            RefreshSubscriptions();
+        }
     }
 
     private void RefreshSubscriptions()
     {
-        if (_root == null || _isRefreshing)
+        if (_root == null)
+        {
+            _subscriptionsNeedRefresh = false;
+            return;
+        }
+
+        if (_isRefreshing)
         {
             return;
         }
@@ -287,6 +312,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         _isRefreshing = true;
         try
         {
+            _subscriptionsNeedRefresh = false;
             ClearSubscriptions();
             _visualStateSnapshots.Clear();
             _visualChildrenSnapshots.Clear();

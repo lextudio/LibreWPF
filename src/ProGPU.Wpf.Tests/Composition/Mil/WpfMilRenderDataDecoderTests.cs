@@ -396,12 +396,21 @@ public sealed class WpfMilRenderDataDecoderTests
     {
         var brush = Brushes.Blue;
         var pen = new Pen(Brushes.Black, 1);
-        var registry = WpfMilResourceRegistry.FromDependentResources(new object?[] { brush, pen });
+        var overrideBrush = Brushes.Green;
+        var guidelineSet = new object();
+        var registry = WpfMilResourceRegistry.FromDependentResources(new object?[] { brush, null, pen });
 
         Assert.Same(brush, registry.ResolveBrush(1));
-        Assert.Same(pen, registry.ResolvePen(2));
+        Assert.Null(registry.ResolveBrush(2));
+        Assert.Same(pen, registry.ResolvePen(3));
         Assert.Null(registry.ResolveBrush(0));
         Assert.Null(registry.ResolvePen(1));
+
+        registry.Register(1, overrideBrush);
+        registry.Register(4, guidelineSet);
+
+        Assert.Same(overrideBrush, registry.ResolveBrush(1));
+        Assert.Same(guidelineSet, registry.ResolveGuidelineSet(4));
     }
 
     private static byte[] CreateRecord(WpfMilCommandId commandId, byte[] payload)

@@ -11,23 +11,23 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 
 public sealed class WpfMilResourceRegistry : IWpfMilResourceResolver, IWpfGuidelineSetResourceResolver
 {
-    private readonly Dictionary<uint, object> _resources = new();
+    private readonly IReadOnlyList<object?>? _dependentResources;
+    private Dictionary<uint, object>? _resources;
+
+    public WpfMilResourceRegistry()
+    {
+    }
+
+    private WpfMilResourceRegistry(IReadOnlyList<object?> dependentResources)
+    {
+        _dependentResources = dependentResources;
+    }
 
     public static WpfMilResourceRegistry FromDependentResources(IReadOnlyList<object?> dependentResources)
     {
         ArgumentNullException.ThrowIfNull(dependentResources);
 
-        var registry = new WpfMilResourceRegistry();
-        for (var i = 0; i < dependentResources.Count; i++)
-        {
-            var resource = dependentResources[i];
-            if (resource != null)
-            {
-                registry.Register((uint)i + 1, resource);
-            }
-        }
-
-        return registry;
+        return new WpfMilResourceRegistry(dependentResources);
     }
 
     public void Register(uint resourceToken, object resource)
@@ -38,7 +38,7 @@ public sealed class WpfMilResourceRegistry : IWpfMilResourceResolver, IWpfGuidel
         }
 
         ArgumentNullException.ThrowIfNull(resource);
-        _resources[resourceToken] = resource;
+        (_resources ??= new Dictionary<uint, object>())[resourceToken] = resource;
     }
 
     public MediaBrush? ResolveBrush(uint resourceToken)
@@ -73,20 +73,41 @@ public sealed class WpfMilResourceRegistry : IWpfMilResourceResolver, IWpfGuidel
 
     public object? ResolveGuidelineSet(uint resourceToken)
     {
-        return resourceToken != 0 && _resources.TryGetValue(resourceToken, out var resource)
-            ? resource
-            : null;
+        return TryResolveResource(resourceToken, out var resource) ? resource : null;
     }
 
     private T? Resolve<T>(uint resourceToken) where T : class
     {
-        if (resourceToken == 0)
-        {
-            return null;
-        }
-
-        return _resources.TryGetValue(resourceToken, out var resource)
+        return TryResolveResource(resourceToken, out var resource)
             ? resource as T
             : null;
+    }
+
+    private bool TryResolveResource(uint resourceToken, out object? resource)
+    {
+        if (resourceToken == 0)
+        {
+            resource = null;
+            return false;
+        }
+
+        if (_resources != null && _resources.TryGetValue(resourceToken, out var registeredResource))
+        {
+            resource = registeredResource;
+            return true;
+        }
+
+        if (_dependentResources != null)
+        {
+            var index = resourceToken - 1;
+            if (index < (uint)_dependentResources.Count)
+            {
+                resource = _dependentResources[(int)index];
+                return resource != null;
+            }
+        }
+
+        resource = null;
+        return false;
     }
 }

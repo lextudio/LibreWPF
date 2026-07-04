@@ -5908,9 +5908,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var resolver = new WpfResourceResolver(imageSourceAdapter);\n        for (var i = 0; i < dependentResources.Count; i++)", resourceResolverSource, StringComparison.Ordinal);
         Assert.DoesNotContain("resolver.Register((uint)i + 1, resource);", resourceResolverSource, StringComparison.Ordinal);
         Assert.Contains("IReadOnlyList<object?> dependentResources", resourceRegistrySource, StringComparison.Ordinal);
-        Assert.Contains("for (var i = 0; i < dependentResources.Count; i++)", resourceRegistrySource, StringComparison.Ordinal);
-        Assert.Contains("registry.Register((uint)i + 1, resource);", resourceRegistrySource, StringComparison.Ordinal);
+        Assert.Contains("private readonly IReadOnlyList<object?>? _dependentResources;", resourceRegistrySource, StringComparison.Ordinal);
+        Assert.Contains("return new WpfMilResourceRegistry(dependentResources);", resourceRegistrySource, StringComparison.Ordinal);
+        Assert.Contains("(_resources ??= new Dictionary<uint, object>())[resourceToken] = resource;", resourceRegistrySource, StringComparison.Ordinal);
+        Assert.Contains("TryResolveResource(resourceToken, out var resource)", resourceRegistrySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("var registry = new WpfMilResourceRegistry();\n        for (var i = 0; i < dependentResources.Count; i++)", resourceRegistrySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("registry.Register((uint)i + 1, resource);", resourceRegistrySource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var resource in dependentResources)", resourceRegistrySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly Dictionary<uint, object> _resources = new();", resourceRegistrySource, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection;", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("GetFieldValue", bridgeSource, StringComparison.Ordinal);

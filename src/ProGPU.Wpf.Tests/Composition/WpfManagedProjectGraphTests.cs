@@ -5830,9 +5830,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("for (var i = 0; i < dependentResources.Length; i++)", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("new object?[portableSnapshot.DependentResources.Count]", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("IReadOnlyList<object?> dependentResources", resourceResolverSource, StringComparison.Ordinal);
-        Assert.Contains("for (var i = 0; i < dependentResources.Count; i++)", resourceResolverSource, StringComparison.Ordinal);
-        Assert.Contains("resolver.Register((uint)i + 1, resource);", resourceResolverSource, StringComparison.Ordinal);
+        Assert.Contains("private readonly IReadOnlyList<object?>? _dependentResources;", resourceResolverSource, StringComparison.Ordinal);
+        Assert.Contains("return new WpfResourceResolver(dependentResources, imageSourceAdapter);", resourceResolverSource, StringComparison.Ordinal);
+        Assert.Contains("(_resources ??= new Dictionary<uint, object>())[resourceToken] = resource;", resourceResolverSource, StringComparison.Ordinal);
+        Assert.Contains("ref Dictionary<uint, T?>? cache", resourceResolverSource, StringComparison.Ordinal);
+        Assert.Contains("TryResolveResource(resourceToken, out var resource)", resourceResolverSource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var resource in dependentResources)", resourceResolverSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly Dictionary<uint, object> _resources = new();", resourceResolverSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly Dictionary<uint, MediaBrush?> _brushes = new();", resourceResolverSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("var resolver = new WpfResourceResolver(imageSourceAdapter);\n        for (var i = 0; i < dependentResources.Count; i++)", resourceResolverSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("resolver.Register((uint)i + 1, resource);", resourceResolverSource, StringComparison.Ordinal);
         Assert.Contains("IReadOnlyList<object?> dependentResources", resourceRegistrySource, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < dependentResources.Count; i++)", resourceRegistrySource, StringComparison.Ordinal);
         Assert.Contains("registry.Register((uint)i + 1, resource);", resourceRegistrySource, StringComparison.Ordinal);

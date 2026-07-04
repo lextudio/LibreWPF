@@ -27,6 +27,21 @@ namespace ProGPU.Wpf.Tests.Composition.Mil;
 public sealed class WpfResourceResolverTests
 {
     [Fact]
+    public void FromDependentResourcesIndexesReadOnlyListWithoutEnumerating()
+    {
+        var brush = Brushes.Green;
+        var pen = new MediaPen(Brushes.Black, 2);
+        var resources = new ThrowingEnumerableResourceList(brush, pen);
+
+        var resolver = WpfResourceResolver.FromDependentResources(resources);
+
+        Assert.Same(brush, resolver.ResolveBrush(1));
+        Assert.Same(pen, resolver.ResolvePen(2));
+        Assert.Null(resolver.ResolveBrush(3));
+        Assert.Equal(0, resources.EnumerationCount);
+    }
+
+    [Fact]
     public void DecodeRectangleAdaptsPortableBrushAndPenFixtures()
     {
         var brush = new FakeSolidColorBrush(new FakeColor(128, 10, 20, 30), opacity: 0.5);
@@ -5463,6 +5478,33 @@ public sealed class WpfResourceResolverTests
         public int Count => _items.Length;
 
         public object? this[int index] => _items[index];
+    }
+
+    private sealed class ThrowingEnumerableResourceList : IReadOnlyList<object?>
+    {
+        private readonly object?[] _items;
+
+        public ThrowingEnumerableResourceList(params object?[] items)
+        {
+            _items = items;
+        }
+
+        public int EnumerationCount { get; private set; }
+
+        public int Count => _items.Length;
+
+        public object? this[int index] => _items[index];
+
+        public IEnumerator<object?> GetEnumerator()
+        {
+            EnumerationCount++;
+            throw new InvalidOperationException("Dependent resources should be resolved by token index.");
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
     }
 
     private sealed class FakeBitmapSource

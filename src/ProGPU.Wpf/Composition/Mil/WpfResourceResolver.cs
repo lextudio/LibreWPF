@@ -139,13 +139,14 @@ public sealed class WpfResourceResolver :
     private const int MaxSupportedGradientStops = 65536;
     private static readonly ConcurrentDictionary<string, TtfFont> s_fontFileCache = new(StringComparer.OrdinalIgnoreCase);
 
-    private readonly Dictionary<uint, object> _resources = new();
-    private readonly Dictionary<uint, MediaBrush?> _brushes = new();
-    private readonly Dictionary<uint, MediaPen?> _pens = new();
-    private readonly Dictionary<uint, MediaGeometry?> _geometries = new();
-    private readonly Dictionary<uint, MediaImageSource?> _imageSources = new();
-    private readonly Dictionary<uint, MediaGlyphRun?> _glyphRuns = new();
-    private readonly Dictionary<uint, MediaTransform?> _transforms = new();
+    private readonly IReadOnlyList<object?>? _dependentResources;
+    private Dictionary<uint, object>? _resources;
+    private Dictionary<uint, MediaBrush?>? _brushes;
+    private Dictionary<uint, MediaPen?>? _pens;
+    private Dictionary<uint, MediaGeometry?>? _geometries;
+    private Dictionary<uint, MediaImageSource?>? _imageSources;
+    private Dictionary<uint, MediaGlyphRun?>? _glyphRuns;
+    private Dictionary<uint, MediaTransform?>? _transforms;
     private readonly IWpfImageSourceAdapter? _imageSourceAdapter;
 
     public WpfResourceResolver()
@@ -157,23 +158,20 @@ public sealed class WpfResourceResolver :
         _imageSourceAdapter = imageSourceAdapter;
     }
 
+    private WpfResourceResolver(
+        IReadOnlyList<object?> dependentResources,
+        IWpfImageSourceAdapter? imageSourceAdapter)
+    {
+        _dependentResources = dependentResources;
+        _imageSourceAdapter = imageSourceAdapter;
+    }
+
     public static WpfResourceResolver FromDependentResources(
         IReadOnlyList<object?> dependentResources,
         IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
         ArgumentNullException.ThrowIfNull(dependentResources);
-
-        var resolver = new WpfResourceResolver(imageSourceAdapter);
-        for (var i = 0; i < dependentResources.Count; i++)
-        {
-            var resource = dependentResources[i];
-            if (resource != null)
-            {
-                resolver.Register((uint)i + 1, resource);
-            }
-        }
-
-        return resolver;
+        return new WpfResourceResolver(dependentResources, imageSourceAdapter);
     }
 
     public void Register(uint resourceToken, object resource)
@@ -184,50 +182,49 @@ public sealed class WpfResourceResolver :
         }
 
         ArgumentNullException.ThrowIfNull(resource);
-        _resources[resourceToken] = resource;
+        (_resources ??= new Dictionary<uint, object>())[resourceToken] = resource;
     }
 
     public MediaBrush? ResolveBrush(uint resourceToken)
     {
-        return Resolve(resourceToken, _brushes, AdaptBrush);
+        return Resolve(resourceToken, ref _brushes, AdaptBrush);
     }
 
     public MediaPen? ResolvePen(uint resourceToken)
     {
-        return Resolve(resourceToken, _pens, AdaptPen);
+        return Resolve(resourceToken, ref _pens, AdaptPen);
     }
 
     public MediaGeometry? ResolveGeometry(uint resourceToken)
     {
-        return Resolve(resourceToken, _geometries, AdaptGeometry);
+        return Resolve(resourceToken, ref _geometries, AdaptGeometry);
     }
 
     public MediaImageSource? ResolveImageSource(uint resourceToken)
     {
-        return Resolve(resourceToken, _imageSources, AdaptImageSource);
+        return Resolve(resourceToken, ref _imageSources, AdaptImageSource);
     }
 
     public MediaGlyphRun? ResolveGlyphRun(uint resourceToken)
     {
-        return Resolve(resourceToken, _glyphRuns, AdaptGlyphRun);
+        return Resolve(resourceToken, ref _glyphRuns, AdaptGlyphRun);
     }
 
     public MediaTransform? ResolveTransform(uint resourceToken)
     {
-        return Resolve(resourceToken, _transforms, AdaptTransform);
+        return Resolve(resourceToken, ref _transforms, AdaptTransform);
     }
 
     public object? ResolveGuidelineSet(uint resourceToken)
     {
-        return resourceToken != 0 && _resources.TryGetValue(resourceToken, out var resource)
-            ? resource
-            : null;
+        return TryResolveResource(resourceToken, out var resource) ? resource : null;
     }
 
     bool IWpfRawMilResourceResolver.TryResolveRawResource(uint resourceToken, out object resource)
     {
-        if (resourceToken != 0 && _resources.TryGetValue(resourceToken, out resource!))
+        if (TryResolveResource(resourceToken, out var resolved) && resolved != null)
         {
+            resource = resolved;
             return true;
         }
 
@@ -246,7 +243,7 @@ public sealed class WpfResourceResolver :
     {
         ArgumentNullException.ThrowIfNull(sink);
 
-        if (resourceToken == 0 || !_resources.TryGetValue(resourceToken, out var drawing))
+        if (!TryResolveResource(resourceToken, out var drawing) || drawing == null)
         {
             return WpfDrawingReplayStatus.Skipped;
         }
@@ -254,7 +251,10 @@ public sealed class WpfResourceResolver :
         return WpfDrawingReplay.Replay(drawing, sink, AdaptImageSource);
     }
 
-    private T? Resolve<T>(uint resourceToken, Dictionary<uint, T?> cache, Func<object, T?> adapter)
+    private T? Resolve<T>(
+        uint resourceToken,
+        ref Dictionary<uint, T?>? cache,
+        Func<object, T?> adapter)
         where T : class
     {
         if (resourceToken == 0)
@@ -262,17 +262,46 @@ public sealed class WpfResourceResolver :
             return null;
         }
 
-        if (cache.TryGetValue(resourceToken, out var cached))
+        if (cache != null && cache.TryGetValue(resourceToken, out var cached))
         {
             return cached;
         }
 
-        var resolved = _resources.TryGetValue(resourceToken, out var resource)
+        var resolved = TryResolveResource(resourceToken, out var resource) && resource != null
             ? adapter(resource)
             : null;
 
+        cache ??= new Dictionary<uint, T?>();
         cache[resourceToken] = resolved;
         return resolved;
+    }
+
+    private bool TryResolveResource(uint resourceToken, out object? resource)
+    {
+        if (resourceToken == 0)
+        {
+            resource = null;
+            return false;
+        }
+
+        if (_resources != null && _resources.TryGetValue(resourceToken, out var registeredResource))
+        {
+            resource = registeredResource;
+            return true;
+        }
+
+        if (_dependentResources != null)
+        {
+            var index = resourceToken - 1;
+            if (index < (uint)_dependentResources.Count)
+            {
+                resource = _dependentResources[(int)index];
+                return resource != null;
+            }
+        }
+
+        resource = null;
+        return false;
     }
 
     public static MediaBrush? AdaptBrush(object? resource)

@@ -1566,13 +1566,17 @@ public sealed class WpfResourceResolver :
         }
         else
         {
-            var figures = new List<PathFigure>(portablePath.Figures.Length);
+            var portableFigures = portablePath.Figures;
+            var figures = new List<PathFigure>(portableFigures.Length);
 
-            foreach (var portableFigure in portablePath.Figures)
+            for (var figureIndex = 0; figureIndex < portableFigures.Length; figureIndex++)
             {
-                var segments = new List<PathSegment>(portableFigure.Segments.Length);
-                foreach (var segment in portableFigure.Segments)
+                var portableFigure = portableFigures[figureIndex];
+                var portableSegments = portableFigure.Segments;
+                var segments = new List<PathSegment>(portableSegments.Length);
+                for (var segmentIndex = 0; segmentIndex < portableSegments.Length; segmentIndex++)
                 {
+                    var segment = portableSegments[segmentIndex];
                     segments.Add(CreatePortablePathSegment(segment));
                 }
 

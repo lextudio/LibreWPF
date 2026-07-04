@@ -47,8 +47,10 @@ internal static class WpfPortablePathBoundsReader
         var right = 0.0;
         var bottom = 0.0;
 
-        foreach (var figure in geometry.Figures)
+        var figures = geometry.Figures;
+        for (var figureIndex = 0; figureIndex < figures.Length; figureIndex++)
         {
+            var figure = figures[figureIndex];
             if (figure.Segments.Length == 0)
             {
                 return false;
@@ -60,8 +62,10 @@ internal static class WpfPortablePathBoundsReader
             }
 
             var current = figure.StartPoint;
-            foreach (var segment in figure.Segments)
+            var segments = figure.Segments;
+            for (var segmentIndex = 0; segmentIndex < segments.Length; segmentIndex++)
             {
+                var segment = segments[segmentIndex];
                 if (!segment.IsStroked && !figure.IsFilled)
                 {
                     return false;

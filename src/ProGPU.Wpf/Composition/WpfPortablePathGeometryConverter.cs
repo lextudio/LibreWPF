@@ -92,8 +92,10 @@ internal static class WpfPortablePathGeometryConverter
                 FillRule = ToNativeFillRule(portablePath.FillRule)
             };
 
-            foreach (var portableFigure in portablePath.Figures)
+            var portableFigures = portablePath.Figures;
+            for (var figureIndex = 0; figureIndex < portableFigures.Length; figureIndex++)
             {
+                var portableFigure = portableFigures[figureIndex];
                 var figure = new VectorPathFigure
                 {
                     StartPoint = ToVector2(portableFigure.StartPoint),
@@ -101,8 +103,10 @@ internal static class WpfPortablePathGeometryConverter
                     IsFilled = portableFigure.IsFilled
                 };
 
-                foreach (var segment in portableFigure.Segments)
+                var segments = portableFigure.Segments;
+                for (var segmentIndex = 0; segmentIndex < segments.Length; segmentIndex++)
                 {
+                    var segment = segments[segmentIndex];
                     AddPortableSegment(figure, segment);
                 }
 

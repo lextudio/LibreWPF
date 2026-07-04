@@ -13344,6 +13344,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryTransformPoint(nextPoint, transform, out nextPoint)", wpfMediaLineGeometryReader, StringComparison.Ordinal);
         Assert.Contains("geometry is MediaLineGeometry lineGeometry", wpfMediaLineGeometryReader, StringComparison.Ordinal);
         Assert.Contains("geometry is MediaPathGeometry pathGeometry", wpfMediaLineGeometryReader, StringComparison.Ordinal);
+        Assert.Contains("ConditionalWeakTable<MediaGeometry, GeometryPrimitiveCache>", wpfMediaLineGeometryReader, StringComparison.Ordinal);
+        Assert.Contains("cache.TryGetPolylineSegments(geometry, out segments)", wpfMediaLineGeometryReader, StringComparison.Ordinal);
+        Assert.Contains("s_primitiveCache.GetOrCreateValue(geometry).SetPolylineSegments(segmentArray)", wpfMediaLineGeometryReader, StringComparison.Ordinal);
+        Assert.Contains("TryValidatePolylineSegments(geometry, cached)", wpfMediaLineGeometryReader, StringComparison.Ordinal);
+        Assert.Contains("SamePoint(cached[cachedIndex].StartPoint, currentPoint)", wpfMediaLineGeometryReader, StringComparison.Ordinal);
         Assert.Contains("figure.IsClosed || figure.Segments.Count != 1", wpfMediaLineGeometryReader, StringComparison.Ordinal);
         Assert.Contains("figure.Segments[0] is MediaLineSegment lineSegment", wpfMediaLineGeometryReader, StringComparison.Ordinal);
         Assert.Contains("lineSegment.IsStroked", wpfMediaLineGeometryReader, StringComparison.Ordinal);
@@ -13563,6 +13568,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObjectRenderDataDrawingContextDrawsTransformedLineGeometryAsNativeLine", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalPolylinePathGeometryAsNativeLinesWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsClosedPolylinePathGeometryAsNativeLinesWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("PolylinePathGeometryReusesPrimitiveSegmentCacheWhenShapeIsUnchanged", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("PolylinePathGeometryRefreshesPrimitiveSegmentCacheWhenShapeChanges", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalRectanglePathGeometryAsNativeRectangleWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsUnfilledRectanglePathGeometryAsNativeRectangleStrokeWithoutGenericGeometry", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextDrawsLocalRoundedRectangleGeometryAsNativeRoundedRectangle", wpfCompositionDrawingContextTests, StringComparison.Ordinal);

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaGeometry = System.Windows.Media.Geometry;
@@ -11,6 +12,8 @@ namespace System.Windows.Media.ProGPU.Composition;
 
 internal static class WpfMediaLineGeometryReader
 {
+    private static readonly ConditionalWeakTable<MediaGeometry, GeometryPrimitiveCache> s_primitiveCache = new();
+
     public static bool TryGetLinePoints(
         MediaGeometry geometry,
         out Point startPoint,
@@ -46,6 +49,12 @@ internal static class WpfMediaLineGeometryReader
         MediaGeometry geometry,
         out IReadOnlyList<WpfReplayLineSegment> segments)
     {
+        if (s_primitiveCache.TryGetValue(geometry, out var cache)
+            && cache.TryGetPolylineSegments(geometry, out segments))
+        {
+            return true;
+        }
+
         if (!TryGetGeometryTransform(geometry, out var transform)
             || geometry is not MediaPathGeometry pathGeometry)
         {
@@ -53,7 +62,17 @@ internal static class WpfMediaLineGeometryReader
             return false;
         }
 
-        return TryGetPathPolylineSegments(pathGeometry, transform, out segments);
+        if (!TryGetPathPolylineSegments(pathGeometry, transform, out segments))
+        {
+            return false;
+        }
+
+        if (segments is WpfReplayLineSegment[] segmentArray)
+        {
+            s_primitiveCache.GetOrCreateValue(geometry).SetPolylineSegments(segmentArray);
+        }
+
+        return true;
     }
 
     private static bool TryGetPathLinePoints(
@@ -193,6 +212,101 @@ internal static class WpfMediaLineGeometryReader
     {
         return left.X == right.X
             && left.Y == right.Y;
+    }
+
+    private static bool SamePoint(WpfReplayPoint left, Point right)
+    {
+        return left.X == right.X
+            && left.Y == right.Y;
+    }
+
+    private sealed class GeometryPrimitiveCache
+    {
+        private WpfReplayLineSegment[]? _polylineSegments;
+
+        public void SetPolylineSegments(WpfReplayLineSegment[] segments)
+        {
+            _polylineSegments = segments;
+        }
+
+        public bool TryGetPolylineSegments(
+            MediaGeometry geometry,
+            out IReadOnlyList<WpfReplayLineSegment> segments)
+        {
+            var cached = _polylineSegments;
+            if (cached == null || !TryValidatePolylineSegments(geometry, cached))
+            {
+                segments = Array.Empty<WpfReplayLineSegment>();
+                return false;
+            }
+
+            segments = cached;
+            return true;
+        }
+
+        private static bool TryValidatePolylineSegments(
+            MediaGeometry geometry,
+            WpfReplayLineSegment[] cached)
+        {
+            if (!TryGetGeometryTransform(geometry, out var transform)
+                || geometry is not MediaPathGeometry pathGeometry
+                || pathGeometry.Figures.Count != 1)
+            {
+                return false;
+            }
+
+            var figure = pathGeometry.Figures[0];
+            var segmentCount = figure.Segments.Count;
+            if (segmentCount < 2)
+            {
+                return false;
+            }
+
+            if (figure.IsClosed
+                && WpfMediaRectangleClipReader.TryGetRectangleStrokeBounds(pathGeometry, out _))
+            {
+                return false;
+            }
+
+            if (!IsUsablePoint(figure.StartPoint, out var startPoint)
+                || !TryTransformPoint(startPoint, transform, out startPoint))
+            {
+                return false;
+            }
+
+            var currentPoint = startPoint;
+            var cachedIndex = 0;
+            for (var i = 0; i < segmentCount; i++)
+            {
+                if (figure.Segments[i] is not MediaLineSegment lineSegment
+                    || !lineSegment.IsStroked
+                    || !IsUsablePoint(lineSegment.Point, out var nextPoint)
+                    || !TryTransformPoint(nextPoint, transform, out nextPoint)
+                    || cachedIndex >= cached.Length
+                    || !SamePoint(cached[cachedIndex].StartPoint, currentPoint)
+                    || !SamePoint(cached[cachedIndex].EndPoint, nextPoint))
+                {
+                    return false;
+                }
+
+                cachedIndex++;
+                currentPoint = nextPoint;
+            }
+
+            if (figure.IsClosed && !SamePoint(currentPoint, startPoint))
+            {
+                if (cachedIndex >= cached.Length
+                    || !SamePoint(cached[cachedIndex].StartPoint, currentPoint)
+                    || !SamePoint(cached[cachedIndex].EndPoint, startPoint))
+                {
+                    return false;
+                }
+
+                cachedIndex++;
+            }
+
+            return cachedIndex == cached.Length;
+        }
     }
 }
 

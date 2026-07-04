@@ -137,7 +137,13 @@ public sealed class WpfCompositionDrawingContextTests
         Assert.Equal((Brushes.Green, pen, new WpfReplayRect(9, 10, 11, 12), 2d, 3d), sink.NativeRoundedRectangles.Single());
         Assert.Equal((Brushes.Blue, null, new WpfReplayPoint(13, 14), 15d, 16d), sink.NativeEllipses.Single());
         Assert.Equal((image, new WpfReplayRect(17, 18, 19, 20)), sink.NativeImages.Single());
-        Assert.Equal((Brushes.Black, glyphRun), sink.NativeGlyphRuns.Single());
+        var nativeGlyphRun = sink.NativeGlyphRuns.Single();
+        Assert.Same(Brushes.Black, nativeGlyphRun.ForegroundBrush);
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(nativeGlyphRun.GlyphRunResource, out var adaptedGlyphRun));
+        Assert.Equal(new ushort[] { 4 }, adaptedGlyphRun.GlyphIndices);
+        Assert.Equal(new Vector2(0, 0), adaptedGlyphRun.GlyphPositions[0]);
+        Assert.Equal(21, adaptedGlyphRun.Position.X);
+        Assert.Equal(22, adaptedGlyphRun.Position.Y);
         Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
         Assert.Equal(new WpfCompositionDrawingContextResult(6, 6, 0), context.Result);
     }

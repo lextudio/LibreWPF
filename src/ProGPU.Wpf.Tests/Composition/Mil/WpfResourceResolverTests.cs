@@ -3238,8 +3238,47 @@ public sealed class WpfResourceResolverTests
         Assert.Equal(7, adapted.Transform.M42);
         Assert.True(adapted.IsBold);
         Assert.True(adapted.IsItalic);
+        Assert.Equal(1, glyphRun.PortableNativeGlyphRunProbeCount);
         Assert.Equal(0, glyphRun.PortableGlyphRunProbeCount);
         Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
+    }
+
+    [Fact]
+    public void AdaptNativeGlyphRunAcceptsAlreadyAdaptedNativeGlyphRunWithoutSourceProbe()
+    {
+        var positions = new[]
+        {
+            new Vector2(2, 3),
+            new Vector2(7, -1)
+        };
+        var glyphRun = new FakePortableNativeGlyphRunSource(new PortableNativeGlyphRun
+        {
+            GlyphIndices = new ushort[] { 3, 4 },
+            GlyphPositions = positions,
+            BaselineOrigin = new Vector2(10, 20),
+            FontRenderingEmSize = 12.5,
+            FontFamilyNames = new[] { "Arial" },
+            HasTransform = true,
+            Transform = Matrix4x4.CreateTranslation(6, 7, 0),
+            IsBold = true,
+            IsItalic = true
+        });
+
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var adapted));
+        object boxedAdaptedGlyphRun = adapted;
+
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(boxedAdaptedGlyphRun, out var reused));
+        Assert.Equal(1, glyphRun.PortableNativeGlyphRunProbeCount);
+        Assert.Equal(0, glyphRun.PortableGlyphRunProbeCount);
+        Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
+        Assert.Equal(new ushort[] { 3, 4 }, reused.GlyphIndices);
+        Assert.Same(positions, reused.GlyphPositions);
+        Assert.Equal(12.5f, reused.FontSize);
+        Assert.Equal(new Vector2(10, 20), reused.Position);
+        Assert.Equal(6, reused.Transform.M41);
+        Assert.Equal(7, reused.Transform.M42);
+        Assert.True(reused.IsBold);
+        Assert.True(reused.IsItalic);
     }
 
     [Fact]
@@ -5958,6 +5997,8 @@ public sealed class WpfResourceResolverTests
 
         public int PortableGlyphRunProbeCount { get; private set; }
 
+        public int PortableNativeGlyphRunProbeCount { get; private set; }
+
         public int ReflectedGlyphRunProbeCount { get; private set; }
 
         public object? GlyphIndices => ThrowReflectedGlyphRunProbe();
@@ -5976,6 +6017,7 @@ public sealed class WpfResourceResolverTests
 
         public bool TryGetPortableNativeGlyphRun(out PortableNativeGlyphRun glyphRun)
         {
+            PortableNativeGlyphRunProbeCount++;
             glyphRun = _glyphRun;
             return true;
         }

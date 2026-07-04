@@ -1860,10 +1860,16 @@ public sealed class WpfResourceResolver :
             return false;
         }
 
+        if (resource is WpfNativeGlyphRun nativeGlyphRun)
+        {
+            glyphRun = nativeGlyphRun;
+            return true;
+        }
+
         if (resource is PortableNativeGlyphRunSource nativeGlyphRunSource)
         {
-            return nativeGlyphRunSource.TryGetPortableNativeGlyphRun(out var nativeGlyphRun)
-                && TryAdaptPortableNativeGlyphRun(nativeGlyphRun, out glyphRun);
+            return nativeGlyphRunSource.TryGetPortableNativeGlyphRun(out var portableNativeGlyphRun)
+                && TryAdaptPortableNativeGlyphRun(portableNativeGlyphRun, out glyphRun);
         }
 
         if (resource is PortableNativeGlyphRun nativeGlyphRunDto)

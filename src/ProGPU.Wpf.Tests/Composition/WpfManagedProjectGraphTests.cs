@@ -6618,7 +6618,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetImageDrawingImageSource(drawing, hasPortableImageDrawingState, imageDrawingState", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryGetGlyphRunDrawingGlyphRun(", replaySource, StringComparison.Ordinal);
         Assert.Contains("sink is IWpfNativePrimitiveCommandSink nativeSink", replaySource, StringComparison.Ordinal);
-        Assert.Contains("nativeSink.DrawNativeGlyphRun(foregroundBrush, glyphRunValue!)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out var nativeGlyphRun)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeGlyphRun(foregroundBrush, nativeGlyphRun)", replaySource, StringComparison.Ordinal);
         Assert.Contains("var glyphPositions = glyphRun.GlyphPositions;", replaySource, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < glyphPositions.Length; i++)", replaySource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var position in glyphRun.GlyphPositions)", replaySource, StringComparison.Ordinal);
@@ -13088,8 +13089,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_portableGlyphRunCache = glyphRun;", sourceGlyphRun, StringComparison.Ordinal);
         Assert.Contains("_portableNativeGlyphRunCache = glyphRun;", sourceGlyphRun, StringComparison.Ordinal);
         Assert.Contains("resource is PortableNativeGlyphRunSource nativeGlyphRunSource", wpfResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("nativeGlyphRunSource.TryGetPortableNativeGlyphRun(out var nativeGlyphRun)", wpfResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("TryAdaptPortableNativeGlyphRun(nativeGlyphRun, out glyphRun)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("nativeGlyphRunSource.TryGetPortableNativeGlyphRun(out var portableNativeGlyphRun)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("TryAdaptPortableNativeGlyphRun(portableNativeGlyphRun, out glyphRun)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptPortableNativeGlyphRun(nativeGlyphRun)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("CreatePortableNativeGlyphPositions(portableGlyphRun)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("resource is PortableGlyphRunSource portableGlyphRunSource", wpfResourceResolver, StringComparison.Ordinal);
@@ -13680,7 +13681,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DrawNativePrimitiveRectangle(nativeSink, mediaBrush, mediaPen, rectangle, radiusX, radiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeEllipse(mediaBrush, mediaPen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeImage(mediaImageSource, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
-        Assert.Contains("nativeSink.DrawNativeGlyphRun(mediaBrush, glyphRun)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var nativeGlyphRun)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeGlyphRun(mediaBrush, nativeGlyphRun)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private void RegisterRetainedDependencies(object? dependency)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private void RegisterRetainedDependencies(object? first, object? second)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private void RegisterRetainedDependencies(object? first, object? second, object? third)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
@@ -13694,7 +13696,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("CountUnsupportedStateIfAny(params object?[] unsupportedState)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.DoesNotContain("CountUnsupportedIfPresent(params object?[] unsupportedState)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.DoesNotContain("WpfRetainedVisualDependencyRegistrar.Register(_sink, dependencies);", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
-        Assert.Contains("WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var nativeGlyphRun)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryDrawNativePortableGeometry(brush, pen, geometry, mediaBrush, mediaPen)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.DrawNativeGeometry(mediaBrush, mediaPen, portableGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.DrawNativeGeometry(mediaBrush, mediaPen, mediaGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);

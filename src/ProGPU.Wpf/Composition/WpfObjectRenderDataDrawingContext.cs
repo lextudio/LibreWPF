@@ -1074,14 +1074,14 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         MediaBrush mediaBrush,
         IWpfNativePrimitiveCommandSink nativeSink)
     {
-        if (!WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _))
+        if (!WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var nativeGlyphRun))
         {
             CountUnsupportedIfPresent(foregroundBrush, glyphRun);
             return;
         }
 
         RegisterRetainedDependencies(foregroundBrush, glyphRun);
-        nativeSink.DrawNativeGlyphRun(mediaBrush, glyphRun);
+        nativeSink.DrawNativeGlyphRun(mediaBrush, nativeGlyphRun);
         CountApplied();
     }
 

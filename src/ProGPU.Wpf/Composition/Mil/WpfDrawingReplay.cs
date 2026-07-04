@@ -2167,9 +2167,9 @@ internal static class WpfDrawingReplay
             out var foregroundBrushValue);
         var foregroundBrush = WpfResourceResolver.AdaptBrush(foregroundBrushValue);
         if (sink is IWpfNativePrimitiveCommandSink nativeSink
-            && WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out _))
+            && WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out var nativeGlyphRun))
         {
-            nativeSink.DrawNativeGlyphRun(foregroundBrush, glyphRunValue!);
+            nativeSink.DrawNativeGlyphRun(foregroundBrush, nativeGlyphRun);
             return WpfDrawingReplayStatus.Applied;
         }
 

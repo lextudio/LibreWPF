@@ -13415,8 +13415,22 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(clipGeometry)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfPortableRectangleClipReader", wpfPortableRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("geometry.Kind != PortableGeometryPathKind.Path", wpfPortableRectangleClipReader, StringComparison.Ordinal);
-        Assert.Contains("segment.Kind != PortablePathSegmentKind.Line", wpfPortableRectangleClipReader, StringComparison.Ordinal);
-        Assert.Contains("sameX == sameY", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("var point0 = figure.StartPoint", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("var segment0 = figure.Segments[0]", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("segment0.Kind != PortablePathSegmentKind.Line", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("TryCreateRectangleClipFromPolygon(point0, point1, point2, point3, out bounds)", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("TryMarkRectangleCorner(point0, left, top, right, bottom", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("IsAxisAlignedRectangleEdge(point3, point0)", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("hasTopLeft && hasTopRight && hasBottomRight && hasBottomLeft", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.DoesNotContain("var points = new PortablePoint[4]", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.DoesNotContain("PortablePoint[] points", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.DoesNotContain("points[(i + 1) % points.Length]", wpfPortableRectangleClipReader, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeKeepsRetracedPortablePathClipOutOfRetainedRectangleState", File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeRendererTests.cs")), StringComparison.Ordinal);
         Assert.Contains("TryGetAxisAlignedGeometryTransform(geometry, out var transform)", wpfMediaRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("TryTransformAxisAlignedBounds(bounds, transform, out bounds)", wpfMediaRectangleClipReader, StringComparison.Ordinal);
         Assert.Contains("internal static class WpfPortablePathBoundsReader", wpfPortablePathBoundsReader, StringComparison.Ordinal);

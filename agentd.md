@@ -78,6 +78,8 @@ Geometry bounds inference in WPF replay should use indexed loops over known list
 
 Local media rectangle path classification is a clip/primitive hot path for Xceed/DataGrid scrolling. `WpfMediaRectangleClipReader` should keep exact rectangle-path detection on direct point locals plus explicit corner/edge checks; do not reintroduce `Point[4]` allocation or array-index wraparound traversal just to classify a four-corner rectangle path.
 
+Portable rectangle path classification should follow the same shape. `WpfPortableRectangleClipReader` feeds retained visual/layout clips, portable geometry bounds, DrawingGroup clips, generated/object clips, and MIL decode, so keep it on direct `PortablePoint` locals with explicit unique-corner and edge checks; do not allocate `PortablePoint[4]` or accept retraced/repeated-corner paths as broad rectangle clips.
+
 Portable path geometry traversal should stay indexed over `PortableGeometryPath.Figures` and `PortablePathFigure.Segments`. Do not reintroduce `foreach` in `WpfPortablePathBoundsReader`, `WpfPortablePathGeometryConverter`, or the portable geometry adaptation path in `WpfResourceResolver`; those array-backed loops sit on retained replay, native clip, tile-brush, and DataGrid grid-line geometry paths.
 
 WPF command-sink guideline snapping should walk `_guidelineStack` through `SmallValueStack<T>.PeekAtDepth(...)` with indexed loops. Do not reintroduce `foreach (var guideline in _guidelineStack)` in the text/grid guideline snapping hot path.

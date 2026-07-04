@@ -1644,6 +1644,29 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeKeepsRetracedPortablePathClipOutOfRetainedRectangleState()
+    {
+        var root = new FakePortableVisualStateVisual(new PortableVisualState
+        {
+            HasClip = true,
+            Clip = new PortableRetracedRectangleClipGeometry(0, 0, 100, 50)
+        });
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new NativeGeometryTestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushNativeGeometryClip", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Empty(sink.RetainedVisualStates);
+        Assert.Empty(sink.Clips);
+        var clip = Assert.Single(sink.NativeGeometryClips);
+        Assert.Equal(PortableGeometryPathKind.Path, clip.Kind);
+        Assert.Equal(new PortableRect(0, 0, 100, 50), clip.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreeUsesNativeMediaGeometryClipForLocalNonRectangleVisualClip()
     {
         var clip = CreateTrianglePathGeometry();
@@ -5781,6 +5804,42 @@ public sealed class WpfVisualTreeRendererTests
                         [
                             PortablePathSegment.Line(new PortablePoint(x + width, y), isSmoothJoin: false, isStroked: true),
                             PortablePathSegment.Line(new PortablePoint(x + (width * 0.5), y + height), isSmoothJoin: false, isStroked: true)
+                        ]
+                    }
+                ]
+            };
+        }
+
+        public bool TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            path = _path;
+            return true;
+        }
+    }
+
+    private sealed class PortableRetracedRectangleClipGeometry : PortableGeometryPathSource
+    {
+        private readonly PortableGeometryPath _path;
+
+        public PortableRetracedRectangleClipGeometry(double x, double y, double width, double height)
+        {
+            _path = new PortableGeometryPath
+            {
+                Kind = PortableGeometryPathKind.Path,
+                Bounds = new PortableRect(x, y, width, height),
+                Transform = PortableMatrix3x2.Identity,
+                Figures =
+                [
+                    new PortablePathFigure
+                    {
+                        StartPoint = new PortablePoint(x, y),
+                        IsClosed = true,
+                        IsFilled = true,
+                        Segments =
+                        [
+                            PortablePathSegment.Line(new PortablePoint(x + width, y), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(x, y), isSmoothJoin: false, isStroked: true),
+                            PortablePathSegment.Line(new PortablePoint(x, y + height), isSmoothJoin: false, isStroked: true)
                         ]
                     }
                 ]

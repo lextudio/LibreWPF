@@ -27,48 +27,46 @@ internal static class WpfPortableRectangleClipReader
             return false;
         }
 
-        var points = new PortablePoint[4];
-        points[0] = figure.StartPoint;
-        for (var i = 0; i < 3; i++)
+        var point0 = figure.StartPoint;
+        var segment0 = figure.Segments[0];
+        var segment1 = figure.Segments[1];
+        var segment2 = figure.Segments[2];
+        if (segment0.Kind != PortablePathSegmentKind.Line
+            || segment1.Kind != PortablePathSegmentKind.Line
+            || segment2.Kind != PortablePathSegmentKind.Line)
         {
-            var segment = figure.Segments[i];
-            if (segment.Kind != PortablePathSegmentKind.Line)
-            {
-                return false;
-            }
-
-            points[i + 1] = segment.Point1;
+            return false;
         }
 
+        var point1 = segment0.Point1;
+        var point2 = segment1.Point1;
+        var point3 = segment2.Point1;
         if (segmentCount == 4)
         {
             var segment = figure.Segments[3];
             if (segment.Kind != PortablePathSegmentKind.Line
-                || !NearlyEqual(segment.Point1.X, points[0].X)
-                || !NearlyEqual(segment.Point1.Y, points[0].Y))
+                || !NearlyEqual(segment.Point1.X, point0.X)
+                || !NearlyEqual(segment.Point1.Y, point0.Y))
             {
                 return false;
             }
         }
 
-        return TryCreateRectangleClipFromPolygon(points, out bounds);
+        return TryCreateRectangleClipFromPolygon(point0, point1, point2, point3, out bounds);
     }
 
-    private static bool TryCreateRectangleClipFromPolygon(PortablePoint[] points, out WpfReplayRect bounds)
+    private static bool TryCreateRectangleClipFromPolygon(
+        PortablePoint point0,
+        PortablePoint point1,
+        PortablePoint point2,
+        PortablePoint point3,
+        out WpfReplayRect bounds)
     {
         bounds = default;
-        var left = points[0].X;
-        var top = points[0].Y;
-        var right = points[0].X;
-        var bottom = points[0].Y;
-        for (var i = 1; i < points.Length; i++)
-        {
-            var point = points[i];
-            left = Math.Min(left, point.X);
-            top = Math.Min(top, point.Y);
-            right = Math.Max(right, point.X);
-            bottom = Math.Max(bottom, point.Y);
-        }
+        var left = Math.Min(Math.Min(point0.X, point1.X), Math.Min(point2.X, point3.X));
+        var top = Math.Min(Math.Min(point0.Y, point1.Y), Math.Min(point2.Y, point3.Y));
+        var right = Math.Max(Math.Max(point0.X, point1.X), Math.Max(point2.X, point3.X));
+        var bottom = Math.Max(Math.Max(point0.Y, point1.Y), Math.Max(point2.Y, point3.Y));
 
         var width = right - left;
         var height = bottom - top;
@@ -82,27 +80,105 @@ internal static class WpfPortableRectangleClipReader
             return false;
         }
 
-        for (var i = 0; i < points.Length; i++)
+        var hasTopLeft = false;
+        var hasTopRight = false;
+        var hasBottomRight = false;
+        var hasBottomLeft = false;
+        if (!TryMarkRectangleCorner(point0, left, top, right, bottom, ref hasTopLeft, ref hasTopRight, ref hasBottomRight, ref hasBottomLeft)
+            || !TryMarkRectangleCorner(point1, left, top, right, bottom, ref hasTopLeft, ref hasTopRight, ref hasBottomRight, ref hasBottomLeft)
+            || !TryMarkRectangleCorner(point2, left, top, right, bottom, ref hasTopLeft, ref hasTopRight, ref hasBottomRight, ref hasBottomLeft)
+            || !TryMarkRectangleCorner(point3, left, top, right, bottom, ref hasTopLeft, ref hasTopRight, ref hasBottomRight, ref hasBottomLeft)
+            || !IsAxisAlignedRectangleEdge(point0, point1)
+            || !IsAxisAlignedRectangleEdge(point1, point2)
+            || !IsAxisAlignedRectangleEdge(point2, point3)
+            || !IsAxisAlignedRectangleEdge(point3, point0))
         {
-            var point = points[i];
-            var isOnVerticalEdge = NearlyEqual(point.X, left) || NearlyEqual(point.X, right);
-            var isOnHorizontalEdge = NearlyEqual(point.Y, top) || NearlyEqual(point.Y, bottom);
-            if (!isOnVerticalEdge || !isOnHorizontalEdge)
-            {
-                return false;
-            }
-
-            var next = points[(i + 1) % points.Length];
-            var sameX = NearlyEqual(point.X, next.X);
-            var sameY = NearlyEqual(point.Y, next.Y);
-            if (sameX == sameY)
-            {
-                return false;
-            }
+            return false;
         }
 
-        bounds = new WpfReplayRect(left, top, width, height);
-        return true;
+        if (hasTopLeft && hasTopRight && hasBottomRight && hasBottomLeft)
+        {
+            bounds = new WpfReplayRect(left, top, width, height);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryMarkRectangleCorner(
+        PortablePoint point,
+        double left,
+        double top,
+        double right,
+        double bottom,
+        ref bool hasTopLeft,
+        ref bool hasTopRight,
+        ref bool hasBottomRight,
+        ref bool hasBottomLeft)
+    {
+        var isLeft = NearlyEqual(point.X, left);
+        var isRight = NearlyEqual(point.X, right);
+        var isTop = NearlyEqual(point.Y, top);
+        var isBottom = NearlyEqual(point.Y, bottom);
+        var isOnVerticalEdge = isLeft || isRight;
+        var isOnHorizontalEdge = isTop || isBottom;
+        if (!isOnVerticalEdge || !isOnHorizontalEdge)
+        {
+            return false;
+        }
+
+        if (isLeft && isTop)
+        {
+            if (hasTopLeft)
+            {
+                return false;
+            }
+
+            hasTopLeft = true;
+            return true;
+        }
+
+        if (isRight && isTop)
+        {
+            if (hasTopRight)
+            {
+                return false;
+            }
+
+            hasTopRight = true;
+            return true;
+        }
+
+        if (isRight && isBottom)
+        {
+            if (hasBottomRight)
+            {
+                return false;
+            }
+
+            hasBottomRight = true;
+            return true;
+        }
+
+        if (isLeft && isBottom)
+        {
+            if (hasBottomLeft)
+            {
+                return false;
+            }
+
+            hasBottomLeft = true;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsAxisAlignedRectangleEdge(PortablePoint point, PortablePoint next)
+    {
+        var sameX = NearlyEqual(point.X, next.X);
+        var sameY = NearlyEqual(point.Y, next.Y);
+        return sameX != sameY;
     }
 
     private static bool NearlyEqual(double left, double right)

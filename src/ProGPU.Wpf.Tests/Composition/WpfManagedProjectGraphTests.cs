@@ -6293,6 +6293,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetVisualBitmapScalingMode(visual, out var bitmapScalingMode)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("TryGetVisualTextRenderingMode(visual, out var textRenderingMode)", rendererSource, StringComparison.Ordinal);
         Assert.Contains("!visualState.HasSnappingGuidelinesX && !visualState.HasSnappingGuidelinesY", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("ConditionalWeakTable<object, VisualGuidelineSetCache>", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("s_visualGuidelineSetCache.GetOrCreateValue(visual).GetOrCreate(visualState)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private sealed class VisualGuidelineSetCache", rendererSource, StringComparison.Ordinal);
         Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource", visualSource, StringComparison.Ordinal);
         Assert.Contains("IPortableVisualStateSource.TryGetPortableVisualState(out PortableVisualState state)", visualSource, StringComparison.Ordinal);
         Assert.Contains("VisualOffset", visualSource, StringComparison.Ordinal);
@@ -6314,6 +6317,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CanReplaySubtreeTreatsAbsentPortableVisualStateValuesAsAuthoritative", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeDoesNotReflectAbsentPortableVisualStateDependencies", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeAppliesPortableVisualGuidelinesWithoutReflection", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeReusesPortableVisualGuidelineSetWrapperUntilArraysChange", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeAppliesPortableVisualRenderingHintsWithoutReflection", rendererTests, StringComparison.Ordinal);
     }
 

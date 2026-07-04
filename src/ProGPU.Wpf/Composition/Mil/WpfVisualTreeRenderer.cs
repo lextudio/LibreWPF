@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
 using ProGPU.Wpf.Interop;
@@ -29,6 +30,7 @@ public sealed class WpfVisualTreeRenderer
     private const string TraceRetainedVisualsEnvironmentVariable = "PROGPU_WPF_TRACE_RETAINED_VISUALS";
 
     private static readonly bool s_traceRetainedVisuals = IsRetainedVisualTraceEnabled();
+    private static readonly ConditionalWeakTable<object, VisualGuidelineSetCache> s_visualGuidelineSetCache = new();
 
     private enum RetainedOwnerScopeMode
     {
@@ -1203,9 +1205,7 @@ public sealed class WpfVisualTreeRenderer
                 return false;
             }
 
-            guidelineSet = new VisualGuidelineSet(
-                visualState.HasSnappingGuidelinesX ? visualState.SnappingGuidelinesX ?? Array.Empty<double>() : Array.Empty<double>(),
-                visualState.HasSnappingGuidelinesY ? visualState.SnappingGuidelinesY ?? Array.Empty<double>() : Array.Empty<double>());
+            guidelineSet = s_visualGuidelineSetCache.GetOrCreateValue(visual).GetOrCreate(visualState);
             return true;
         }
 
@@ -2470,6 +2470,38 @@ public sealed class WpfVisualTreeRenderer
                 _guidelinesX,
                 _guidelinesY);
             return true;
+        }
+    }
+
+    private sealed class VisualGuidelineSetCache
+    {
+        private bool _hasGuidelinesX;
+        private bool _hasGuidelinesY;
+        private double[]? _guidelinesX;
+        private double[]? _guidelinesY;
+        private VisualGuidelineSet? _guidelineSet;
+
+        public VisualGuidelineSet GetOrCreate(PortableVisualState visualState)
+        {
+            var hasGuidelinesX = visualState.HasSnappingGuidelinesX;
+            var hasGuidelinesY = visualState.HasSnappingGuidelinesY;
+            var guidelinesX = hasGuidelinesX ? visualState.SnappingGuidelinesX ?? Array.Empty<double>() : Array.Empty<double>();
+            var guidelinesY = hasGuidelinesY ? visualState.SnappingGuidelinesY ?? Array.Empty<double>() : Array.Empty<double>();
+
+            if (_guidelineSet == null
+                || _hasGuidelinesX != hasGuidelinesX
+                || _hasGuidelinesY != hasGuidelinesY
+                || !ReferenceEquals(_guidelinesX, guidelinesX)
+                || !ReferenceEquals(_guidelinesY, guidelinesY))
+            {
+                _hasGuidelinesX = hasGuidelinesX;
+                _hasGuidelinesY = hasGuidelinesY;
+                _guidelinesX = guidelinesX;
+                _guidelinesY = guidelinesY;
+                _guidelineSet = new VisualGuidelineSet(guidelinesX, guidelinesY);
+            }
+
+            return _guidelineSet;
         }
     }
 

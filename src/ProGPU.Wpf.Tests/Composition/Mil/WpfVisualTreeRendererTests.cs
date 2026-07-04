@@ -1996,6 +1996,48 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeReusesPortableVisualGuidelineSetWrapperUntilArraysChange()
+    {
+        var guidelinesX = new[] { 10d };
+        var guidelinesY = new[] { 20d };
+        var root = new MutablePortableVisualStateDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasSnappingGuidelinesX = true,
+                SnappingGuidelinesX = guidelinesX,
+                HasSnappingGuidelinesY = true,
+                SnappingGuidelinesY = guidelinesY
+            });
+        var renderer = new WpfVisualTreeRenderer();
+
+        var firstSink = new TestSink();
+        renderer.ReplaySubtree(root, firstSink);
+        var firstGuidelineSet = Assert.Single(firstSink.GuidelineSets);
+
+        var secondSink = new TestSink();
+        renderer.ReplaySubtree(root, secondSink);
+        Assert.Same(firstGuidelineSet, Assert.Single(secondSink.GuidelineSets));
+
+        guidelinesX[0] = 11d;
+        var mutatedValueSink = new TestSink();
+        renderer.ReplaySubtree(root, mutatedValueSink);
+        Assert.Same(firstGuidelineSet, Assert.Single(mutatedValueSink.GuidelineSets));
+
+        root.State = new PortableVisualState
+        {
+            HasSnappingGuidelinesX = true,
+            SnappingGuidelinesX = new[] { 12d },
+            HasSnappingGuidelinesY = true,
+            SnappingGuidelinesY = guidelinesY
+        };
+
+        var changedArraySink = new TestSink();
+        renderer.ReplaySubtree(root, changedArraySink);
+        Assert.NotSame(firstGuidelineSet, Assert.Single(changedArraySink.GuidelineSets));
+    }
+
+    [Fact]
     public void ReplaySubtreeAppliesScrollableAreaClipAsRectangleClip()
     {
         var root = new FakePortableVisualStateVisual(CreatePortableScrollableAreaClipState(2, 3, 40, 50));
@@ -4594,6 +4636,34 @@ public sealed class WpfVisualTreeRendererTests
         }
     }
 
+    private sealed class MutablePortableVisualStateDrawingVisual :
+        FakeVisual,
+        PortableVisualStateSource,
+        PortableDrawingContentSource
+    {
+        private readonly object? _content;
+
+        public MutablePortableVisualStateDrawingVisual(object? content, PortableVisualState state)
+        {
+            _content = content;
+            State = state;
+        }
+
+        public PortableVisualState State { get; set; }
+
+        public bool TryGetPortableVisualState(out PortableVisualState state)
+        {
+            state = State;
+            return true;
+        }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _content;
+            return true;
+        }
+    }
+
     private sealed class ThrowingPortableVisualStateDrawingVisual :
         PortableVisualStateSource,
         PortableDrawingContentSource
@@ -6240,6 +6310,8 @@ public sealed class WpfVisualTreeRendererTests
 
         public List<(MediaBrush? OpacityMask, Rect Bounds)> OpacityMasks { get; } = new();
 
+        public List<object> GuidelineSets { get; } = new();
+
         public List<object?> BitmapScalingModes { get; } = new();
 
         public List<object?> EdgeModes { get; } = new();
@@ -6381,6 +6453,7 @@ public sealed class WpfVisualTreeRendererTests
         {
             Operations.Add("PushGuidelineSetObject");
             Assert.NotNull(guidelines);
+            GuidelineSets.Add(guidelines);
         }
 
         public void PushBitmapScalingMode(object? bitmapScalingMode)

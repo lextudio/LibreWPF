@@ -1302,6 +1302,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("cachedBuffer.Upload(cachedBuffer.CachedInterleaved, pointsCount)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("cachedBuffer.Upload(cachedBuffer.CachedInterleaved, pointsCount)", proGpuLineSeriesPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("cachedBuffer.Upload(cachedBuffer.CachedInterleaved, pointsCount)", proGpuScatterSeriesPipeline, StringComparison.Ordinal);
+        Assert.Contains("private static void AddDashedLineFigures(", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("DashPattern.Advance(\n                intervals,", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("pattern.TryCreateLineSegments(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("cmd.Edges3D is { } edges", proGpuAcisPipeline, StringComparison.Ordinal);
         Assert.Contains("ReadOnlySpan<Line3D>.Empty", proGpuAcisPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("cmd.Edges3D ?? new List<Line3D>()", proGpuAcisPipeline, StringComparison.Ordinal);

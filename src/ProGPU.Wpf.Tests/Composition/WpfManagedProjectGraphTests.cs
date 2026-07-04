@@ -436,6 +436,24 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Vector",
             "GpuHitTesting.cs");
+        var proGpuDashPatternPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Vector",
+            "DashPattern.cs");
+        var proGpuBezierSegmentGeometryPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Vector",
+            "BezierSegmentGeometry.cs");
+        var proGpuArcSegmentGeometryPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Vector",
+            "ArcSegmentGeometry.cs");
         var proGpuHitTestingTestsPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -503,6 +521,9 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuScatterSeriesPipeline = File.ReadAllText(proGpuScatterSeriesPipelinePath);
         var proGpuHitTestCache = File.ReadAllText(proGpuHitTestCachePath);
         var proGpuHitTesting = File.ReadAllText(proGpuHitTestingPath);
+        var proGpuDashPattern = File.ReadAllText(proGpuDashPatternPath);
+        var proGpuBezierSegmentGeometry = File.ReadAllText(proGpuBezierSegmentGeometryPath);
+        var proGpuArcSegmentGeometry = File.ReadAllText(proGpuArcSegmentGeometryPath);
         var proGpuHitTestingTests = File.ReadAllText(proGpuHitTestingTestsPath);
         var proGpuCompositorReviewTests = File.ReadAllText(proGpuCompositorReviewTestsPath);
         var proGpuDrawingFrameTests = File.ReadAllText(proGpuDrawingFrameTestsPath);
@@ -1305,6 +1326,27 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static void AddDashedLineFigures(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("DashPattern.Advance(\n                intervals,", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("pattern.TryCreateLineSegments(", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private static int CountLineSegments(", proGpuDashPattern, StringComparison.Ordinal);
+        Assert.Contains("private static void FillLineSegments(", proGpuDashPattern, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Collections.Generic;", proGpuDashPattern, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<LineDashSegment>", proGpuDashPattern, StringComparison.Ordinal);
+        Assert.DoesNotContain("segments.ToArray()", proGpuDashPattern, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryPrepareDashSegments(", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.Contains("private static int CountDashParameterSpans(", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.Contains("private static int FillQuadraticBezierDashSegments(", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.Contains("private static int FillCubicBezierDashSegments(", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Collections.Generic;", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<DashParameterSpan>", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<QuadraticBezierDashSegment>", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<CubicBezierDashSegment>", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly struct DashParameterSpan", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("parameterSpans = spans.ToArray()", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("segments.ToArray()", proGpuBezierSegmentGeometry, StringComparison.Ordinal);
+        Assert.Contains("private static int CountArcDashSpans(", proGpuArcSegmentGeometry, StringComparison.Ordinal);
+        Assert.Contains("private static int FillArcDashSegments(", proGpuArcSegmentGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Collections.Generic;", proGpuArcSegmentGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<ArcDashSegment>", proGpuArcSegmentGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("dashSegments = segments.ToArray()", proGpuArcSegmentGeometry, StringComparison.Ordinal);
         Assert.Contains("cmd.Edges3D is { } edges", proGpuAcisPipeline, StringComparison.Ordinal);
         Assert.Contains("ReadOnlySpan<Line3D>.Empty", proGpuAcisPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("cmd.Edges3D ?? new List<Line3D>()", proGpuAcisPipeline, StringComparison.Ordinal);

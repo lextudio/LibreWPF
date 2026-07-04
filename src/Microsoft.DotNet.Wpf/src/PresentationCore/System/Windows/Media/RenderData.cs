@@ -540,6 +540,13 @@ namespace System.Windows.Media
 
         private static object ExportPortableDependentResource(object resource)
         {
+            if (resource is IPortableNativeGlyphRunSource nativeGlyphRunSource)
+            {
+                return nativeGlyphRunSource.TryGetPortableNativeGlyphRun(out PortableNativeGlyphRun glyphRun)
+                    ? glyphRun
+                    : null;
+            }
+
             if (resource is IPortableGlyphRunSource glyphRunSource)
             {
                 return glyphRunSource.TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)

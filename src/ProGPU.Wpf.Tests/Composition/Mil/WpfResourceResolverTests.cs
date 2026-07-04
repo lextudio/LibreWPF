@@ -2909,6 +2909,65 @@ public sealed class WpfResourceResolverTests
     }
 
     [Fact]
+    public void AdaptNativeGlyphRunPrefersPortableNativeGlyphRunWithoutPortableRoundTrip()
+    {
+        var positions = new[]
+        {
+            new Vector2(2, 3),
+            new Vector2(7, -1)
+        };
+        var glyphRun = new FakePortableNativeGlyphRunSource(new PortableNativeGlyphRun
+        {
+            GlyphIndices = new ushort[] { 3, 4 },
+            GlyphPositions = positions,
+            BaselineOrigin = new Vector2(10, 20),
+            FontRenderingEmSize = 12.5,
+            FontFamilyNames = new[] { "Arial" },
+            HasTransform = true,
+            Transform = Matrix4x4.CreateTranslation(6, 7, 0),
+            IsBold = true,
+            IsItalic = true
+        });
+
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var adapted));
+        Assert.Equal(new ushort[] { 3, 4 }, adapted.GlyphIndices);
+        Assert.Same(positions, adapted.GlyphPositions);
+        Assert.Equal(12.5f, adapted.FontSize);
+        Assert.Equal(new Vector2(10, 20), adapted.Position);
+        Assert.Equal(6, adapted.Transform.M41);
+        Assert.Equal(7, adapted.Transform.M42);
+        Assert.True(adapted.IsBold);
+        Assert.True(adapted.IsItalic);
+        Assert.Equal(0, glyphRun.PortableGlyphRunProbeCount);
+        Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
+    }
+
+    [Fact]
+    public void AdaptGlyphRunAdaptsPortableNativeGlyphRunDtoWithoutPositionCopy()
+    {
+        var positions = new[]
+        {
+            new Vector2(1, 2),
+            new Vector2(5, 6)
+        };
+        var glyphRun = new PortableNativeGlyphRun
+        {
+            GlyphIndices = new ushort[] { 8, 9 },
+            GlyphPositions = positions,
+            BaselineOrigin = new Vector2(3, 4),
+            FontRenderingEmSize = 18,
+            FontFamilyNames = new[] { "Arial" }
+        };
+
+        var adapted = WpfResourceResolver.AdaptGlyphRun(glyphRun);
+
+        Assert.NotNull(adapted);
+        Assert.Equal(new ushort[] { 8, 9 }, adapted.GlyphIndices);
+        Assert.Same(positions, adapted.GlyphPositions);
+        Assert.Equal(new Vector2(3, 4), adapted.Position);
+    }
+
+    [Fact]
     public void AdaptGlyphRunSkipsUnavailablePortableGlyphRunWithoutReflectionFallback()
     {
         var glyphRun = new UnavailablePortableGlyphRun();
@@ -5501,6 +5560,53 @@ public sealed class WpfResourceResolverTests
         {
             glyphRun = _glyphRun;
             return true;
+        }
+
+        private object? ThrowReflectedGlyphRunProbe([System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+        {
+            ReflectedGlyphRunProbeCount++;
+            throw new InvalidOperationException($"Reflected glyph-run property '{propertyName}' should not be read.");
+        }
+    }
+
+    private sealed class FakePortableNativeGlyphRunSource : IPortableNativeGlyphRunSource, IPortableGlyphRunSource
+    {
+        private readonly PortableNativeGlyphRun _glyphRun;
+
+        public FakePortableNativeGlyphRunSource(PortableNativeGlyphRun glyphRun)
+        {
+            _glyphRun = glyphRun;
+        }
+
+        public int PortableGlyphRunProbeCount { get; private set; }
+
+        public int ReflectedGlyphRunProbeCount { get; private set; }
+
+        public object? GlyphIndices => ThrowReflectedGlyphRunProbe();
+
+        public object? AdvanceWidths => ThrowReflectedGlyphRunProbe();
+
+        public object? GlyphOffsets => ThrowReflectedGlyphRunProbe();
+
+        public object? BaselineOrigin => ThrowReflectedGlyphRunProbe();
+
+        public object? FontRenderingEmSize => ThrowReflectedGlyphRunProbe();
+
+        public object? GlyphTypeface => ThrowReflectedGlyphRunProbe();
+
+        public object? Font => ThrowReflectedGlyphRunProbe();
+
+        public bool TryGetPortableNativeGlyphRun(out PortableNativeGlyphRun glyphRun)
+        {
+            glyphRun = _glyphRun;
+            return true;
+        }
+
+        public bool TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)
+        {
+            PortableGlyphRunProbeCount++;
+            glyphRun = null!;
+            return false;
         }
 
         private object? ThrowReflectedGlyphRunProbe([System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)

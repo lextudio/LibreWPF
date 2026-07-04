@@ -27,6 +27,8 @@ using PortableGeometryPathKind = ProGPU.Wpf.Interop.PortableGeometryPathKind;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
 using PortableGlyphRun = ProGPU.Wpf.Interop.PortableGlyphRun;
 using PortableGlyphRunSource = ProGPU.Wpf.Interop.IPortableGlyphRunSource;
+using PortableNativeGlyphRun = ProGPU.Wpf.Interop.PortableNativeGlyphRun;
+using PortableNativeGlyphRunSource = ProGPU.Wpf.Interop.IPortableNativeGlyphRunSource;
 using PortablePathSegment = ProGPU.Wpf.Interop.PortablePathSegment;
 using PortablePathSegmentKind = ProGPU.Wpf.Interop.PortablePathSegmentKind;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
@@ -1199,6 +1201,17 @@ public sealed class WpfResourceResolver :
             return false;
         }
 
+        if (resource is PortableNativeGlyphRunSource nativeGlyphRunSource)
+        {
+            return nativeGlyphRunSource.TryGetPortableNativeGlyphRun(out var nativeGlyphRun)
+                && TryAdaptPortableNativeGlyphRun(nativeGlyphRun, out glyphRun);
+        }
+
+        if (resource is PortableNativeGlyphRun nativeGlyphRunDto)
+        {
+            return TryAdaptPortableNativeGlyphRun(nativeGlyphRunDto, out glyphRun);
+        }
+
         if (resource is PortableGlyphRunSource portableGlyphRunSource)
         {
             return portableGlyphRunSource.TryGetPortableGlyphRun(out var portableGlyphRun)
@@ -1220,6 +1233,18 @@ public sealed class WpfResourceResolver :
             return null;
         }
 
+        if (resource is PortableNativeGlyphRunSource nativeGlyphRunSource)
+        {
+            return nativeGlyphRunSource.TryGetPortableNativeGlyphRun(out var nativeGlyphRun)
+                ? AdaptPortableNativeGlyphRun(nativeGlyphRun)
+                : null;
+        }
+
+        if (resource is PortableNativeGlyphRun nativeGlyphRunDto)
+        {
+            return AdaptPortableNativeGlyphRun(nativeGlyphRunDto);
+        }
+
         if (resource is PortableGlyphRunSource portableGlyphRunSource)
         {
             return portableGlyphRunSource.TryGetPortableGlyphRun(out var portableGlyphRun)
@@ -1238,6 +1263,37 @@ public sealed class WpfResourceResolver :
         }
 
         return null;
+    }
+
+    private static bool TryAdaptPortableNativeGlyphRun(PortableNativeGlyphRun portableGlyphRun, out WpfNativeGlyphRun glyphRun)
+    {
+        glyphRun = default;
+        if (!TryValidatePortableNativeGlyphRun(portableGlyphRun, out var font))
+        {
+            return false;
+        }
+
+        var transform = Matrix4x4.Identity;
+        if (portableGlyphRun.HasTransform)
+        {
+            if (!TryReadMatrix4x4(portableGlyphRun.Transform, out var matrix))
+            {
+                return false;
+            }
+
+            transform = ToMatrix4x4(matrix);
+        }
+
+        glyphRun = new WpfNativeGlyphRun(
+            portableGlyphRun.GlyphIndices,
+            CreatePortableNativeGlyphPositions(portableGlyphRun),
+            font,
+            (float)portableGlyphRun.FontRenderingEmSize,
+            portableGlyphRun.BaselineOrigin,
+            transform,
+            portableGlyphRun.IsBold,
+            portableGlyphRun.IsItalic);
+        return true;
     }
 
     private static bool TryAdaptPortableNativeGlyphRun(PortableGlyphRun portableGlyphRun, out WpfNativeGlyphRun glyphRun)
@@ -1272,6 +1328,37 @@ public sealed class WpfResourceResolver :
         return true;
     }
 
+    private static MediaGlyphRun? AdaptPortableNativeGlyphRun(PortableNativeGlyphRun portableGlyphRun)
+    {
+        if (!TryValidatePortableNativeGlyphRun(portableGlyphRun, out var font))
+        {
+            return null;
+        }
+
+        var transform = Matrix4x4.Identity;
+        if (portableGlyphRun.HasTransform)
+        {
+            if (!TryReadMatrix4x4(portableGlyphRun.Transform, out var matrix))
+            {
+                return null;
+            }
+
+            transform = ToMatrix4x4(matrix);
+        }
+
+        return new MediaGlyphRun(
+            font,
+            (float)portableGlyphRun.FontRenderingEmSize,
+            portableGlyphRun.GlyphIndices,
+            CreatePortableNativeGlyphPositions(portableGlyphRun))
+        {
+            Position = portableGlyphRun.BaselineOrigin,
+            Transform = transform,
+            IsBold = portableGlyphRun.IsBold,
+            IsItalic = portableGlyphRun.IsItalic
+        };
+    }
+
     private static MediaGlyphRun? AdaptPortableGlyphRun(PortableGlyphRun portableGlyphRun)
     {
         if (!TryValidatePortableGlyphRun(portableGlyphRun, out var font))
@@ -1304,6 +1391,21 @@ public sealed class WpfResourceResolver :
         };
     }
 
+    private static bool TryValidatePortableNativeGlyphRun(PortableNativeGlyphRun portableGlyphRun, out TtfFont font)
+    {
+        font = null!;
+        if (portableGlyphRun.GlyphIndices.Length == 0
+            || portableGlyphRun.GlyphPositions.Length < portableGlyphRun.GlyphIndices.Length
+            || portableGlyphRun.FontRenderingEmSize <= 0
+            || TryResolvePortableGlyphRunFont(portableGlyphRun) is not { } resolvedFont)
+        {
+            return false;
+        }
+
+        font = resolvedFont;
+        return true;
+    }
+
     private static bool TryValidatePortableGlyphRun(PortableGlyphRun portableGlyphRun, out TtfFont font)
     {
         font = null!;
@@ -1316,6 +1418,19 @@ public sealed class WpfResourceResolver :
 
         font = resolvedFont;
         return true;
+    }
+
+    private static Vector2[] CreatePortableNativeGlyphPositions(PortableNativeGlyphRun portableGlyphRun)
+    {
+        var glyphCount = portableGlyphRun.GlyphIndices.Length;
+        if (portableGlyphRun.GlyphPositions.Length == glyphCount)
+        {
+            return portableGlyphRun.GlyphPositions;
+        }
+
+        var positions = new Vector2[glyphCount];
+        Array.Copy(portableGlyphRun.GlyphPositions, positions, glyphCount);
+        return positions;
     }
 
     private static Vector2[] CreatePortableGlyphPositions(PortableGlyphRun portableGlyphRun)
@@ -1352,19 +1467,36 @@ public sealed class WpfResourceResolver :
 
     private static TtfFont? TryResolvePortableGlyphRunFont(PortableGlyphRun glyphRun)
     {
-        if (glyphRun.NativeFont is TtfFont font)
+        return TryResolvePortableGlyphRunFont(
+            glyphRun.NativeFont,
+            glyphRun.FontUri,
+            glyphRun.FontFamilyNames);
+    }
+
+    private static TtfFont? TryResolvePortableGlyphRunFont(PortableNativeGlyphRun glyphRun)
+    {
+        return TryResolvePortableGlyphRunFont(
+            glyphRun.NativeFont,
+            glyphRun.FontUri,
+            glyphRun.FontFamilyNames);
+    }
+
+    private static TtfFont? TryResolvePortableGlyphRunFont(object? nativeFont, string? fontUri, string[] fontFamilyNames)
+    {
+        if (nativeFont is TtfFont font)
         {
             return font;
         }
 
-        if (!string.IsNullOrWhiteSpace(glyphRun.FontUri)
-            && TryResolveFontFileValue(glyphRun.FontUri) is { } fontFromUri)
+        if (!string.IsNullOrWhiteSpace(fontUri)
+            && TryResolveFontFileValue(fontUri) is { } fontFromUri)
         {
             return fontFromUri;
         }
 
-        foreach (var familyName in glyphRun.FontFamilyNames)
+        for (var i = 0; i < fontFamilyNames.Length; i++)
         {
+            var familyName = fontFamilyNames[i];
             if (string.IsNullOrWhiteSpace(familyName))
             {
                 continue;

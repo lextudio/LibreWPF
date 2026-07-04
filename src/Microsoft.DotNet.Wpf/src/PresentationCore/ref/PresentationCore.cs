@@ -6337,7 +6337,7 @@ namespace System.Windows.Media
         public System.Windows.Media.IntersectionDetail IntersectionDetail { get { throw null; } }
         public new System.Windows.Media.Visual VisualHit { get { throw null; } }
     }
-    public partial class GlyphRun : System.ComponentModel.ISupportInitialize, ProGPU.Wpf.Interop.IPortableGlyphRunSource
+    public partial class GlyphRun : System.ComponentModel.ISupportInitialize, ProGPU.Wpf.Interop.IPortableGlyphRunSource, ProGPU.Wpf.Interop.IPortableNativeGlyphRunSource
     {
         [System.ObsoleteAttribute("Use the PixelsPerDip override", false)]
         public GlyphRun() { }
@@ -6374,6 +6374,7 @@ namespace System.Windows.Media
         public bool IsSideways { get { throw null; } set { } }
         public System.Windows.Markup.XmlLanguage Language { get { throw null; } set { } }
         public float PixelsPerDip { get { throw null; } set { } }
+        bool ProGPU.Wpf.Interop.IPortableNativeGlyphRunSource.TryGetPortableNativeGlyphRun(out ProGPU.Wpf.Interop.PortableNativeGlyphRun glyphRun) { throw null; }
         bool ProGPU.Wpf.Interop.IPortableGlyphRunSource.TryGetPortableGlyphRun(out ProGPU.Wpf.Interop.PortableGlyphRun glyphRun) { throw null; }
         public System.Windows.Media.Geometry BuildGeometry() { throw null; }
         public System.Windows.Rect ComputeAlignmentBox() { throw null; }

@@ -15,6 +15,7 @@
 
 using System.Collections;
 using System.ComponentModel;
+using System.Numerics;
 using System.Windows.Media.Converters;
 using System.Windows.Media.Composition;
 using System.Windows.Media.TextFormatting;
@@ -34,7 +35,7 @@ namespace System.Windows.Media
     /// <remarks>
     ///  Consider adding [XmlLangProperty("Language")] 
     /// </remarks>
-    public class GlyphRun : DUCE.IResource, ISupportInitialize, IPortableGlyphRunSource
+    public class GlyphRun : DUCE.IResource, ISupportInitialize, IPortableGlyphRunSource, IPortableNativeGlyphRunSource
     {
         //------------------------------------------------------
         //
@@ -2476,6 +2477,32 @@ namespace System.Windows.Media
             return true;
         }
 
+        bool IPortableNativeGlyphRunSource.TryGetPortableNativeGlyphRun(out PortableNativeGlyphRun glyphRun)
+        {
+            glyphRun = new PortableNativeGlyphRun();
+            if (_glyphIndices == null
+                || _glyphIndices.Count == 0
+                || _renderingEmSize <= 0)
+            {
+                return false;
+            }
+
+            StyleSimulations styleSimulations = _glyphTypeface?.StyleSimulations ?? StyleSimulations.None;
+            glyphRun = new PortableNativeGlyphRun
+            {
+                GlyphIndices = CopyUShorts(_glyphIndices),
+                GlyphPositions = CreateNativeGlyphPositions(_glyphIndices.Count, _advanceWidths, _glyphOffsets),
+                BaselineOrigin = new Vector2((float)_baselineOrigin.X, (float)_baselineOrigin.Y),
+                FontRenderingEmSize = _renderingEmSize,
+                FontUri = _glyphTypeface?.FontUri?.OriginalString,
+                FontFamilyNames = CopyFamilyNames(_glyphTypeface?.FamilyNames),
+                IsBold = (styleSimulations & StyleSimulations.BoldSimulation) != 0,
+                IsItalic = (styleSimulations & StyleSimulations.ItalicSimulation) != 0
+            };
+
+            return true;
+        }
+
         private static ushort[] CopyUShorts(IList<ushort> source)
         {
             if (source == null || source.Count == 0)
@@ -2519,6 +2546,34 @@ namespace System.Windows.Media
             for (int i = 0; i < result.Length; i++)
             {
                 result[i] = ToPortablePoint(source[i]);
+            }
+
+            return result;
+        }
+
+        private static Vector2[] CreateNativeGlyphPositions(
+            int glyphCount,
+            IList<double> advanceWidths,
+            IList<Point> glyphOffsets)
+        {
+            if (glyphCount == 0)
+            {
+                return Array.Empty<Vector2>();
+            }
+
+            Vector2[] result = new Vector2[glyphCount];
+            double x = 0;
+            int advanceWidthCount = advanceWidths?.Count ?? 0;
+            int glyphOffsetCount = glyphOffsets?.Count ?? 0;
+            for (int i = 0; i < result.Length; i++)
+            {
+                Point offset = i < glyphOffsetCount ? glyphOffsets[i] : default;
+                result[i] = new Vector2((float)(x + offset.X), (float)offset.Y);
+
+                if (i < advanceWidthCount)
+                {
+                    x += advanceWidths[i];
+                }
             }
 
             return result;

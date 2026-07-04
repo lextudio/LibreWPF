@@ -1120,8 +1120,9 @@ public sealed class WpfResourceResolver :
         }
 
         var hasPositiveEntry = false;
-        foreach (var value in values)
+        for (var i = 0; i < values.Length; i++)
         {
+            var value = values[i];
             if (!double.IsFinite(value) || value < 0)
             {
                 return false;

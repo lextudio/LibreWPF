@@ -6711,6 +6711,10 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("viewportVisual is not IPortableViewport3DSceneSource portableSceneSource", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("TryCreateReplayDataFromPortableScene", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("var meshes = scene.Meshes;", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("for (var meshIndex = 0; meshIndex < meshes.Length; meshIndex++)", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("var mesh = meshes[meshIndex];", bridgeSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var mesh in scene.Meshes)", bridgeSource, StringComparison.Ordinal);
         Assert.Contains("visual is not IPortableViewport3DSceneSource", rendererSource, StringComparison.Ordinal);
         Assert.DoesNotContain("TypeNameEndsWith(viewportVisual, \"Viewport3DVisual\")", bridgeSource, StringComparison.Ordinal);
         Assert.DoesNotContain("&& !TypeNameEndsWith(visual, \"Viewport3DVisual\")", rendererSource, StringComparison.Ordinal);
@@ -13293,6 +13297,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGpuWpfPen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryReadDashStyle(pen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("nativeDashArray", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < values.Length; i++)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("var value = values[i];", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var value in values)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("TryGetGpuTexture(bitmapSource", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("bitmapSource.GpuTexture", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("CanProvideGpuTexture(imageSource)", wpfResourceResolver, StringComparison.Ordinal);
@@ -13318,6 +13325,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("staleContexts ??= new List<WgpuContext>();", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("TryCreateBitmapSourceTextureCacheKey(portablePixels, out cacheKey)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("HashBytes(portablePixels.Pixels)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < palette.Length; i++)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("var color = palette[i];", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < bytes.Length; i++)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("hash = AddHashByte(hash, bytes[i]);", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var color in palette)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var value in bytes)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("ResolveGpuTextureProperty", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("\"GpuTexture\",", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableBitmapSourcePixels", portableBitmapSourcePixels, StringComparison.Ordinal);

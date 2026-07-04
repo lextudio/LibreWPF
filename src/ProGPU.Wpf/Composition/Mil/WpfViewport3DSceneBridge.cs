@@ -79,8 +79,10 @@ public static class WpfViewport3DSceneBridge
             payload.DepthTexture = textures.DepthTexture;
         }
 
-        foreach (var mesh in scene.Meshes)
+        var meshes = scene.Meshes;
+        for (var meshIndex = 0; meshIndex < meshes.Length; meshIndex++)
         {
+            var mesh = meshes[meshIndex];
             if (mesh == null
                 || mesh.Positions.Length == 0
                 || mesh.Indices.Length == 0)

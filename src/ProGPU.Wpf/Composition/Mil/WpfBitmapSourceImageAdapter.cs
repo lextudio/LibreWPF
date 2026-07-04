@@ -449,8 +449,9 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
     private static ulong HashPalette(ReadOnlySpan<PortablePbgra32Color> palette)
     {
         ulong hash = 14695981039346656037UL;
-        foreach (var color in palette)
+        for (var i = 0; i < palette.Length; i++)
         {
+            var color = palette[i];
             hash = AddHashByte(hash, color.B);
             hash = AddHashByte(hash, color.G);
             hash = AddHashByte(hash, color.R);
@@ -463,9 +464,9 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
     private static ulong HashBytes(ReadOnlySpan<byte> bytes)
     {
         ulong hash = 14695981039346656037UL;
-        foreach (var value in bytes)
+        for (var i = 0; i < bytes.Length; i++)
         {
-            hash = AddHashByte(hash, value);
+            hash = AddHashByte(hash, bytes[i]);
         }
 
         return hash;

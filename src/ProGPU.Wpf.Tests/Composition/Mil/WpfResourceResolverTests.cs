@@ -3209,6 +3209,34 @@ public sealed class WpfResourceResolverTests
     }
 
     [Fact]
+    public void AdaptNativeGlyphRunReusesCachedPortableGlyphRunPositions()
+    {
+        var glyphRun = new PortableGlyphRun
+        {
+            GlyphIndices = new ushort[] { 5, 6 },
+            AdvanceWidths = new[] { 9.0, 4.0 },
+            GlyphOffsets = [new PortablePoint(1, 2), new PortablePoint(3, 4)],
+            BaselineOrigin = new PortablePoint(3, 4),
+            FontRenderingEmSize = 14,
+            FontFamilyNames = new[] { "Arial" }
+        };
+
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var first));
+        Assert.Equal(new Vector2(1, 2), first.GlyphPositions[0]);
+        Assert.Equal(new Vector2(12, 4), first.GlyphPositions[1]);
+
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var second));
+        Assert.Same(first.GlyphPositions, second.GlyphPositions);
+        Assert.Same(first.Font, second.Font);
+
+        glyphRun.AdvanceWidths = new[] { 17.0, 4.0 };
+
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var rebuilt));
+        Assert.NotSame(first.GlyphPositions, rebuilt.GlyphPositions);
+        Assert.Equal(new Vector2(20, 4), rebuilt.GlyphPositions[1]);
+    }
+
+    [Fact]
     public void AdaptNativeGlyphRunPrefersPortableNativeGlyphRunWithoutPortableRoundTrip()
     {
         var positions = new[]
@@ -3241,6 +3269,39 @@ public sealed class WpfResourceResolverTests
         Assert.Equal(1, glyphRun.PortableNativeGlyphRunProbeCount);
         Assert.Equal(0, glyphRun.PortableGlyphRunProbeCount);
         Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
+    }
+
+    [Fact]
+    public void AdaptNativeGlyphRunReusesCachedPortableNativeGlyphRunWrapper()
+    {
+        var sourcePositions = new[]
+        {
+            new Vector2(2, 3),
+            new Vector2(7, -1),
+            new Vector2(11, 13)
+        };
+        var glyphRun = new PortableNativeGlyphRun
+        {
+            GlyphIndices = new ushort[] { 3, 4 },
+            GlyphPositions = sourcePositions,
+            BaselineOrigin = new Vector2(10, 20),
+            FontRenderingEmSize = 12.5,
+            FontFamilyNames = new[] { "Arial" }
+        };
+
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var first));
+        Assert.NotSame(sourcePositions, first.GlyphPositions);
+        Assert.Equal(2, first.GlyphPositions.Length);
+
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var second));
+        Assert.Same(first.GlyphPositions, second.GlyphPositions);
+        Assert.Same(first.Font, second.Font);
+
+        glyphRun.GlyphPositions = [new Vector2(19, 23), new Vector2(29, 31)];
+
+        Assert.True(WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var rebuilt));
+        Assert.NotSame(first.GlyphPositions, rebuilt.GlyphPositions);
+        Assert.Equal(new Vector2(19, 23), rebuilt.GlyphPositions[0]);
     }
 
     [Fact]

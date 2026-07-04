@@ -144,6 +144,8 @@ public sealed class WpfResourceResolver :
     private static readonly ConditionalWeakTable<MediaLinearGradientBrush, NativeLinearGradientBrushCache> s_nativeLinearGradientBrushCache = new();
     private static readonly ConditionalWeakTable<MediaRadialGradientBrush, NativeRadialGradientBrushCache> s_nativeRadialGradientBrushCache = new();
     private static readonly ConditionalWeakTable<MediaPen, NativeSolidPenCache> s_nativeSolidPenCache = new();
+    private static readonly ConditionalWeakTable<PortableNativeGlyphRun, NativePortableNativeGlyphRunCache> s_nativePortableNativeGlyphRunCache = new();
+    private static readonly ConditionalWeakTable<PortableGlyphRun, NativePortableGlyphRunCache> s_nativePortableGlyphRunCache = new();
 
     private readonly IReadOnlyList<object?>? _dependentResources;
     private Dictionary<uint, object>? _resources;
@@ -1932,65 +1934,181 @@ public sealed class WpfResourceResolver :
 
     private static bool TryAdaptPortableNativeGlyphRun(PortableNativeGlyphRun portableGlyphRun, out WpfNativeGlyphRun glyphRun)
     {
-        glyphRun = default;
-        if (!TryValidatePortableNativeGlyphRun(portableGlyphRun, out var font))
-        {
-            return false;
-        }
-
-        var transform = Matrix4x4.Identity;
-        if (portableGlyphRun.HasTransform)
-        {
-            if (!TryReadMatrix4x4(portableGlyphRun.Transform, out var matrix))
-            {
-                return false;
-            }
-
-            transform = ToMatrix4x4(matrix);
-        }
-
-        glyphRun = new WpfNativeGlyphRun(
-            portableGlyphRun.GlyphIndices,
-            CreatePortableNativeGlyphPositions(portableGlyphRun),
-            font,
-            (float)portableGlyphRun.FontRenderingEmSize,
-            portableGlyphRun.BaselineOrigin,
-            transform,
-            portableGlyphRun.IsBold,
-            portableGlyphRun.IsItalic);
-        return true;
+        return s_nativePortableNativeGlyphRunCache
+            .GetValue(portableGlyphRun, static _ => new NativePortableNativeGlyphRunCache())
+            .TryGetOrCreate(portableGlyphRun, out glyphRun);
     }
 
     private static bool TryAdaptPortableNativeGlyphRun(PortableGlyphRun portableGlyphRun, out WpfNativeGlyphRun glyphRun)
     {
-        glyphRun = default;
-        if (!TryValidatePortableGlyphRun(portableGlyphRun, out var font))
-        {
-            return false;
-        }
+        return s_nativePortableGlyphRunCache
+            .GetValue(portableGlyphRun, static _ => new NativePortableGlyphRunCache())
+            .TryGetOrCreate(portableGlyphRun, out glyphRun);
+    }
 
-        var transform = Matrix4x4.Identity;
-        if (portableGlyphRun.HasTransform)
+    private sealed class NativePortableNativeGlyphRunCache
+    {
+        private bool _hasGlyphRun;
+        private ushort[]? _glyphIndices;
+        private Vector2[]? _glyphPositions;
+        private Vector2 _baselineOrigin;
+        private double _fontRenderingEmSize = double.NaN;
+        private object? _nativeFont;
+        private string? _fontUri;
+        private string[]? _fontFamilyNames;
+        private bool _isBold;
+        private bool _isItalic;
+        private bool _hasTransform;
+        private Matrix4x4 _transform;
+        private WpfNativeGlyphRun _glyphRun;
+
+        public bool TryGetOrCreate(PortableNativeGlyphRun portableGlyphRun, out WpfNativeGlyphRun glyphRun)
         {
-            var matrix = ToWpfMatrix2D(portableGlyphRun.Transform);
-            if (!TryUseFiniteMatrix(matrix, out matrix))
+            if (_hasGlyphRun
+                && ReferenceEquals(portableGlyphRun.GlyphIndices, _glyphIndices)
+                && ReferenceEquals(portableGlyphRun.GlyphPositions, _glyphPositions)
+                && portableGlyphRun.BaselineOrigin.Equals(_baselineOrigin)
+                && portableGlyphRun.FontRenderingEmSize.Equals(_fontRenderingEmSize)
+                && ReferenceEquals(portableGlyphRun.NativeFont, _nativeFont)
+                && string.Equals(portableGlyphRun.FontUri, _fontUri, StringComparison.Ordinal)
+                && ReferenceEquals(portableGlyphRun.FontFamilyNames, _fontFamilyNames)
+                && portableGlyphRun.IsBold == _isBold
+                && portableGlyphRun.IsItalic == _isItalic
+                && portableGlyphRun.HasTransform == _hasTransform
+                && (!portableGlyphRun.HasTransform || portableGlyphRun.Transform.Equals(_transform)))
+            {
+                glyphRun = _glyphRun;
+                return true;
+            }
+
+            glyphRun = default;
+            if (!TryValidatePortableNativeGlyphRun(portableGlyphRun, out var font))
             {
                 return false;
             }
 
-            transform = ToMatrix4x4(matrix);
-        }
+            var transform = Matrix4x4.Identity;
+            if (portableGlyphRun.HasTransform)
+            {
+                if (!TryReadMatrix4x4(portableGlyphRun.Transform, out var matrix))
+                {
+                    return false;
+                }
 
-        glyphRun = new WpfNativeGlyphRun(
-            portableGlyphRun.GlyphIndices,
-            CreatePortableGlyphPositions(portableGlyphRun),
-            font,
-            (float)portableGlyphRun.FontRenderingEmSize,
-            ToVector2(portableGlyphRun.BaselineOrigin),
-            transform,
-            portableGlyphRun.IsBold,
-            portableGlyphRun.IsItalic);
-        return true;
+                transform = ToMatrix4x4(matrix);
+            }
+
+            glyphRun = new WpfNativeGlyphRun(
+                portableGlyphRun.GlyphIndices,
+                CreatePortableNativeGlyphPositions(portableGlyphRun),
+                font,
+                (float)portableGlyphRun.FontRenderingEmSize,
+                portableGlyphRun.BaselineOrigin,
+                transform,
+                portableGlyphRun.IsBold,
+                portableGlyphRun.IsItalic);
+
+            _hasGlyphRun = true;
+            _glyphIndices = portableGlyphRun.GlyphIndices;
+            _glyphPositions = portableGlyphRun.GlyphPositions;
+            _baselineOrigin = portableGlyphRun.BaselineOrigin;
+            _fontRenderingEmSize = portableGlyphRun.FontRenderingEmSize;
+            _nativeFont = portableGlyphRun.NativeFont;
+            _fontUri = portableGlyphRun.FontUri;
+            _fontFamilyNames = portableGlyphRun.FontFamilyNames;
+            _isBold = portableGlyphRun.IsBold;
+            _isItalic = portableGlyphRun.IsItalic;
+            _hasTransform = portableGlyphRun.HasTransform;
+            _transform = portableGlyphRun.Transform;
+            _glyphRun = glyphRun;
+            return true;
+        }
+    }
+
+    private sealed class NativePortableGlyphRunCache
+    {
+        private bool _hasGlyphRun;
+        private ushort[]? _glyphIndices;
+        private PortablePoint[]? _glyphPositions;
+        private double[]? _advanceWidths;
+        private PortablePoint[]? _glyphOffsets;
+        private PortablePoint _baselineOrigin;
+        private double _fontRenderingEmSize = double.NaN;
+        private object? _nativeFont;
+        private string? _fontUri;
+        private string[]? _fontFamilyNames;
+        private bool _isBold;
+        private bool _isItalic;
+        private bool _hasTransform;
+        private PortableMatrix3x2 _transform;
+        private WpfNativeGlyphRun _glyphRun;
+
+        public bool TryGetOrCreate(PortableGlyphRun portableGlyphRun, out WpfNativeGlyphRun glyphRun)
+        {
+            if (_hasGlyphRun
+                && ReferenceEquals(portableGlyphRun.GlyphIndices, _glyphIndices)
+                && ReferenceEquals(portableGlyphRun.GlyphPositions, _glyphPositions)
+                && ReferenceEquals(portableGlyphRun.AdvanceWidths, _advanceWidths)
+                && ReferenceEquals(portableGlyphRun.GlyphOffsets, _glyphOffsets)
+                && PortablePointEquals(portableGlyphRun.BaselineOrigin, _baselineOrigin)
+                && portableGlyphRun.FontRenderingEmSize.Equals(_fontRenderingEmSize)
+                && ReferenceEquals(portableGlyphRun.NativeFont, _nativeFont)
+                && string.Equals(portableGlyphRun.FontUri, _fontUri, StringComparison.Ordinal)
+                && ReferenceEquals(portableGlyphRun.FontFamilyNames, _fontFamilyNames)
+                && portableGlyphRun.IsBold == _isBold
+                && portableGlyphRun.IsItalic == _isItalic
+                && portableGlyphRun.HasTransform == _hasTransform
+                && (!portableGlyphRun.HasTransform || PortableMatrixEquals(portableGlyphRun.Transform, _transform)))
+            {
+                glyphRun = _glyphRun;
+                return true;
+            }
+
+            glyphRun = default;
+            if (!TryValidatePortableGlyphRun(portableGlyphRun, out var font))
+            {
+                return false;
+            }
+
+            var transform = Matrix4x4.Identity;
+            if (portableGlyphRun.HasTransform)
+            {
+                var matrix = ToWpfMatrix2D(portableGlyphRun.Transform);
+                if (!TryUseFiniteMatrix(matrix, out matrix))
+                {
+                    return false;
+                }
+
+                transform = ToMatrix4x4(matrix);
+            }
+
+            glyphRun = new WpfNativeGlyphRun(
+                portableGlyphRun.GlyphIndices,
+                CreatePortableGlyphPositions(portableGlyphRun),
+                font,
+                (float)portableGlyphRun.FontRenderingEmSize,
+                ToVector2(portableGlyphRun.BaselineOrigin),
+                transform,
+                portableGlyphRun.IsBold,
+                portableGlyphRun.IsItalic);
+
+            _hasGlyphRun = true;
+            _glyphIndices = portableGlyphRun.GlyphIndices;
+            _glyphPositions = portableGlyphRun.GlyphPositions;
+            _advanceWidths = portableGlyphRun.AdvanceWidths;
+            _glyphOffsets = portableGlyphRun.GlyphOffsets;
+            _baselineOrigin = portableGlyphRun.BaselineOrigin;
+            _fontRenderingEmSize = portableGlyphRun.FontRenderingEmSize;
+            _nativeFont = portableGlyphRun.NativeFont;
+            _fontUri = portableGlyphRun.FontUri;
+            _fontFamilyNames = portableGlyphRun.FontFamilyNames;
+            _isBold = portableGlyphRun.IsBold;
+            _isItalic = portableGlyphRun.IsItalic;
+            _hasTransform = portableGlyphRun.HasTransform;
+            _transform = portableGlyphRun.Transform;
+            _glyphRun = glyphRun;
+            return true;
+        }
     }
 
     private static MediaGlyphRun? AdaptPortableNativeGlyphRun(PortableNativeGlyphRun portableGlyphRun)
@@ -2395,6 +2513,21 @@ public sealed class WpfResourceResolver :
     private static Vector2 ToVector2(PortablePoint point)
     {
         return new Vector2((float)point.X, (float)point.Y);
+    }
+
+    private static bool PortablePointEquals(PortablePoint left, PortablePoint right)
+    {
+        return left.X.Equals(right.X) && left.Y.Equals(right.Y);
+    }
+
+    private static bool PortableMatrixEquals(PortableMatrix3x2 left, PortableMatrix3x2 right)
+    {
+        return left.M11.Equals(right.M11)
+            && left.M12.Equals(right.M12)
+            && left.M21.Equals(right.M21)
+            && left.M22.Equals(right.M22)
+            && left.OffsetX.Equals(right.OffsetX)
+            && left.OffsetY.Equals(right.OffsetY);
     }
 
     private static Point ToPoint(PortablePoint point)

@@ -13410,6 +13410,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var glyphPositions = glyphRun.GlyphPositions;", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < glyphPositions.Length; i++)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var position in glyphRun.GlyphPositions)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("s_nativePortableNativeGlyphRunCache", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("s_nativePortableGlyphRunCache", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("private sealed class NativePortableNativeGlyphRunCache", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("private sealed class NativePortableGlyphRunCache", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains(".TryGetOrCreate(portableGlyphRun, out glyphRun)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(portableGlyphRun.GlyphPositions, _glyphPositions)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(portableGlyphRun.AdvanceWidths, _advanceWidths)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfPen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryReadDashStyle(pen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("nativeDashArray", proGpuWpfCommandSink, StringComparison.Ordinal);

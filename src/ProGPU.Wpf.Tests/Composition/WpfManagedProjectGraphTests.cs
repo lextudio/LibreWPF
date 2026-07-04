@@ -960,6 +960,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (var i = 0; i < renderDataSnapshot.DependentResources.Count; i++)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("renderDataSnapshot.DependentResources[i]", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dependency in renderDataSnapshot.DependentResources)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("private static void VisitCollectionItems<TState, TVisitor>", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("collection is IList list", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < list.Count; i++)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("visitor.Visit(ref state, list[i]);", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("collection is IReadOnlyList<object?> objectList", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("private interface ICollectionItemVisitor<TState>", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains(
+            "foreach (var item in collection)\n        {\n            visitor.Visit(ref state, item);\n        }",
+            proGpuInvalidationTracker,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var item in collection)\n            {\n                SubscribeObject", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var item in collection)\n            {\n                CaptureObjectVisualStateAndChildren", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var item in collection)\n            {\n                CollectTrackedDependencies", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var item in collection)\n            {\n                registered |= RegisterTrackedDependencies", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("internal static bool RegisterTrackedDependencies(", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("private static HashSet<object>? s_registerTrackedDependenciesVisited;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("private static HashSet<object>? s_enumerateTrackedDependenciesVisited;", proGpuInvalidationTracker, StringComparison.Ordinal);
@@ -973,6 +987,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var trackedDependency in WpfVisualInvalidationTracker.EnumerateTrackedDependencies(dependency))", proGpuRetainedVisualDependencyRegistrar, StringComparison.Ordinal);
         Assert.DoesNotContain("Register(IWpfCompositionCommandSink sink, params object?[] dependencies)", proGpuRetainedVisualDependencyRegistrar, StringComparison.Ordinal);
         Assert.Contains("EnumerateTrackedDependenciesUsesPortableDrawingAndRenderDataSources", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.Contains("ListLikeTrackedDependencyTraversalUsesIndexerWithoutEnumerator", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("PortableDrawingRenderDataDependencyChangeMarksTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("EnumerateTrackedDependenciesIgnoresNonPortablePrivateDrawingContentGraph", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("NonPortablePrivateDrawingContentChangeDoesNotMarkTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);

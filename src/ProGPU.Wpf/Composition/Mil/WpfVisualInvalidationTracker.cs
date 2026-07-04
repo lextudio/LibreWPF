@@ -386,10 +386,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         if (source is IEnumerable collection)
         {
-            foreach (var item in collection)
-            {
-                SubscribeObject(item, visited);
-            }
+            var collectionState = new SubscribeDependencyState(this, visited);
+            VisitCollectionItems(collection, ref collectionState, default(SubscribeDependencyVisitor));
         }
 
         var dependencyState = new SubscribeDependencyState(this, visited);
@@ -462,16 +460,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         if (source is IEnumerable collection)
         {
-            foreach (var item in collection)
-            {
-                CaptureObjectVisualStateAndChildren(
-                    item,
-                    snapshots,
-                    previousChildren,
-                    currentChildrenSources,
-                    changedSources,
-                    visited);
-            }
+            var collectionState = new CaptureVisualStateAndChildrenDependencyState(
+                snapshots,
+                previousChildren,
+                currentChildrenSources,
+                changedSources,
+                visited);
+            VisitCollectionItems(collection, ref collectionState, default(CaptureVisualStateAndChildrenDependencyVisitor));
         }
 
         var dependencyState = new CaptureVisualStateAndChildrenDependencyState(
@@ -497,10 +492,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         if (source is IEnumerable collection)
         {
-            foreach (var item in collection)
-            {
-                CollectTrackedDependencies(item, dependencies, visited);
-            }
+            var collectionState = new CollectTrackedDependencyState(dependencies, visited);
+            VisitCollectionItems(collection, ref collectionState, default(CollectTrackedDependencyVisitor));
         }
 
         var dependencyState = new CollectTrackedDependencyState(dependencies, visited);
@@ -522,10 +515,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         if (source is IEnumerable collection)
         {
-            foreach (var item in collection)
-            {
-                registered |= RegisterTrackedDependencies(sink, item, visited);
-            }
+            var collectionState = new RegisterTrackedDependencyState(sink, visited);
+            VisitCollectionItems(collection, ref collectionState, default(RegisterTrackedDependencyVisitor));
+            registered |= collectionState.Registered;
         }
 
         var dependencyState = new RegisterTrackedDependencyState(sink, visited);
@@ -1087,9 +1079,46 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
     }
 
+    private static void VisitCollectionItems<TState, TVisitor>(
+        IEnumerable collection,
+        ref TState state,
+        TVisitor visitor)
+        where TVisitor : struct, ICollectionItemVisitor<TState>
+    {
+        if (collection is IList list)
+        {
+            for (var i = 0; i < list.Count; i++)
+            {
+                visitor.Visit(ref state, list[i]);
+            }
+
+            return;
+        }
+
+        if (collection is IReadOnlyList<object?> objectList)
+        {
+            for (var i = 0; i < objectList.Count; i++)
+            {
+                visitor.Visit(ref state, objectList[i]);
+            }
+
+            return;
+        }
+
+        foreach (var item in collection)
+        {
+            visitor.Visit(ref state, item);
+        }
+    }
+
     private interface IPortableDependencyVisitor<TState>
     {
         void Visit(ref TState state, object? dependency);
+    }
+
+    private interface ICollectionItemVisitor<TState>
+    {
+        void Visit(ref TState state, object? item);
     }
 
     private readonly struct SubscribeDependencyState
@@ -1105,7 +1134,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         public HashSet<object> Visited { get; }
     }
 
-    private readonly struct SubscribeDependencyVisitor : IPortableDependencyVisitor<SubscribeDependencyState>
+    private readonly struct SubscribeDependencyVisitor :
+        IPortableDependencyVisitor<SubscribeDependencyState>,
+        ICollectionItemVisitor<SubscribeDependencyState>
     {
         public void Visit(ref SubscribeDependencyState state, object? dependency)
         {
@@ -1140,7 +1171,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         public HashSet<object> Visited { get; }
     }
 
-    private readonly struct CaptureVisualStateAndChildrenDependencyVisitor : IPortableDependencyVisitor<CaptureVisualStateAndChildrenDependencyState>
+    private readonly struct CaptureVisualStateAndChildrenDependencyVisitor :
+        IPortableDependencyVisitor<CaptureVisualStateAndChildrenDependencyState>,
+        ICollectionItemVisitor<CaptureVisualStateAndChildrenDependencyState>
     {
         public void Visit(ref CaptureVisualStateAndChildrenDependencyState state, object? dependency)
         {
@@ -1167,7 +1200,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         public HashSet<object> Visited { get; }
     }
 
-    private readonly struct CollectTrackedDependencyVisitor : IPortableDependencyVisitor<CollectTrackedDependencyState>
+    private readonly struct CollectTrackedDependencyVisitor :
+        IPortableDependencyVisitor<CollectTrackedDependencyState>,
+        ICollectionItemVisitor<CollectTrackedDependencyState>
     {
         public void Visit(ref CollectTrackedDependencyState state, object? dependency)
         {
@@ -1191,7 +1226,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         public bool Registered { get; set; }
     }
 
-    private readonly struct RegisterTrackedDependencyVisitor : IPortableDependencyVisitor<RegisterTrackedDependencyState>
+    private readonly struct RegisterTrackedDependencyVisitor :
+        IPortableDependencyVisitor<RegisterTrackedDependencyState>,
+        ICollectionItemVisitor<RegisterTrackedDependencyState>
     {
         public void Visit(ref RegisterTrackedDependencyState state, object? dependency)
         {

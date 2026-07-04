@@ -1,7 +1,9 @@
+using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using Xunit;
 using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
@@ -604,6 +606,32 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void ListLikeTrackedDependencyTraversalUsesIndexerWithoutEnumerator()
+    {
+        var brush = new FakeResource();
+        var root = new ThrowingEnumeratorList(brush);
+        using var tracker = new WpfVisualInvalidationTracker();
+
+        var exception = Record.Exception(() => tracker.Attach(root));
+        Assert.Null(exception);
+        tracker.ConsumeDirty();
+
+        exception = Record.Exception(() => tracker.DetectVersionChanges());
+        Assert.Null(exception);
+
+        var dependencies = WpfVisualInvalidationTracker.EnumerateTrackedDependencies(root);
+        var sink = new TestRetainedBranchSink();
+
+        Assert.True(WpfVisualInvalidationTracker.RegisterTrackedDependencies(sink, root));
+        Assert.Contains(root, dependencies);
+        Assert.Contains(brush, dependencies);
+        Assert.Contains(root, sink.VisualDependencies);
+        Assert.Contains(brush, sink.VisualDependencies);
+        Assert.Equal(0, root.EnumeratorRequestCount);
+        Assert.True(root.IndexerReadCount > 0);
+    }
+
+    [Fact]
     public void NonPortablePrivateDrawingContentChangeDoesNotMarkTrackerDirty()
     {
         var brush = new FakeResource();
@@ -1165,6 +1193,109 @@ public sealed class WpfVisualInvalidationTrackerTests
             CollectionChanged?.Invoke(
                 this,
                 new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item));
+        }
+    }
+
+    private sealed class ThrowingEnumeratorList : IList
+    {
+        private readonly object?[] _items;
+
+        public ThrowingEnumeratorList(params object?[] items)
+        {
+            _items = items;
+        }
+
+        public int EnumeratorRequestCount { get; private set; }
+
+        public int IndexerReadCount { get; private set; }
+
+        public int Count => _items.Length;
+
+        public bool IsFixedSize => true;
+
+        public bool IsReadOnly => true;
+
+        public bool IsSynchronized => false;
+
+        public object SyncRoot => this;
+
+        public object? this[int index]
+        {
+            get
+            {
+                IndexerReadCount++;
+                return _items[index];
+            }
+            set => throw new NotSupportedException();
+        }
+
+        public int Add(object? value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void Clear()
+        {
+            throw new NotSupportedException();
+        }
+
+        public bool Contains(object? value)
+        {
+            return Array.IndexOf(_items, value) >= 0;
+        }
+
+        public void CopyTo(Array array, int index)
+        {
+            _items.CopyTo(array, index);
+        }
+
+        public IEnumerator GetEnumerator()
+        {
+            EnumeratorRequestCount++;
+            throw new InvalidOperationException("List-like invalidation traversal should use indexed access.");
+        }
+
+        public int IndexOf(object? value)
+        {
+            return Array.IndexOf(_items, value);
+        }
+
+        public void Insert(int index, object? value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void Remove(object? value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void RemoveAt(int index)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class TestRetainedBranchSink : IWpfRetainedVisualBranchSink
+    {
+        public List<object> VisualDependencies { get; } = new();
+
+        public void RegisterVisualOwner(object sourceVisual)
+        {
+        }
+
+        public void RegisterVisualDependency(object dependency)
+        {
+            VisualDependencies.Add(dependency);
+        }
+
+        public bool PushVisualOwner(object sourceVisual)
+        {
+            return true;
+        }
+
+        public void PopVisualOwner()
+        {
         }
     }
 }

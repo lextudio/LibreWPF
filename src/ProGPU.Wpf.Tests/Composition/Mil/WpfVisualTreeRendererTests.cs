@@ -2038,6 +2038,48 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeCachesPortableVisualAndLayoutStateDuringReplayPass()
+    {
+        var root = new CountingPortableVisualStateAndLayoutDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(3, 4),
+                HasClip = true,
+                Clip = new PortableRectangleClipGeometry(1, 2, 40, 50),
+                HasScrollableAreaClip = true,
+                ScrollableAreaClip = new PortableRect(0, 0, 80, 70),
+                HasOpacity = true,
+                Opacity = 0.8,
+                HasSnappingGuidelinesX = true,
+                SnappingGuidelinesX = new[] { 10d },
+                HasSnappingGuidelinesY = true,
+                SnappingGuidelinesY = new[] { 20d }
+            },
+            new PortableVisualLayoutState
+            {
+                HasRenderSize = true,
+                RenderSize = new PortableSize(100, 90),
+                HasLayoutClip = true,
+                LayoutClip = new PortableRectangleClipGeometry(0, 0, 60, 55)
+            });
+        var renderer = new WpfVisualTreeRenderer();
+
+        var firstResult = renderer.ReplaySubtree(root, new TestSink());
+
+        Assert.Equal(1, root.VisualStateQueryCount);
+        Assert.Equal(1, root.VisualLayoutStateQueryCount);
+        Assert.Equal(0, firstResult.UnsupportedVisualStateCount);
+
+        var secondResult = renderer.ReplaySubtree(root, new TestSink());
+
+        Assert.Equal(2, root.VisualStateQueryCount);
+        Assert.Equal(2, root.VisualLayoutStateQueryCount);
+        Assert.Equal(0, secondResult.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeAppliesScrollableAreaClipAsRectangleClip()
     {
         var root = new FakePortableVisualStateVisual(CreatePortableScrollableAreaClipState(2, 3, 40, 50));
@@ -5164,6 +5206,50 @@ public sealed class WpfVisualTreeRendererTests
 
         public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
         {
+            state = _layoutState;
+            return true;
+        }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            content = _content;
+            return true;
+        }
+    }
+
+    private sealed class CountingPortableVisualStateAndLayoutDrawingVisual :
+        PortableVisualStateSource,
+        PortableVisualLayoutStateSource,
+        PortableDrawingContentSource
+    {
+        private readonly object? _content;
+        private readonly PortableVisualState _visualState;
+        private readonly PortableVisualLayoutState _layoutState;
+
+        public CountingPortableVisualStateAndLayoutDrawingVisual(
+            object? content,
+            PortableVisualState visualState,
+            PortableVisualLayoutState layoutState)
+        {
+            _content = content;
+            _visualState = visualState;
+            _layoutState = layoutState;
+        }
+
+        public int VisualStateQueryCount { get; private set; }
+
+        public int VisualLayoutStateQueryCount { get; private set; }
+
+        public bool TryGetPortableVisualState(out PortableVisualState state)
+        {
+            VisualStateQueryCount++;
+            state = _visualState;
+            return true;
+        }
+
+        public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
+        {
+            VisualLayoutStateQueryCount++;
             state = _layoutState;
             return true;
         }

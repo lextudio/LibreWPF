@@ -8457,6 +8457,80 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ProGpuActiveContextFallbacksAvoidActiveContextSnapshots()
+    {
+        var adapter = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfBitmapSourceImageAdapter.cs"));
+        var wgpuContext = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Backend",
+            "WgpuContext.cs"));
+        var gpuHitTesting = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Vector",
+            "GpuHitTesting.cs"));
+        var pathOps = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Vector",
+            "PathOpGeometrySolver.cs"));
+        var presentationCoreGpuProvider = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "PresentationCore",
+            "GpuProvider.cs"));
+        var systemDrawingGpuProvider = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "System.Drawing.Common",
+            "GpuProvider.cs"));
+        var skiaSharp = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "SkiaSharp",
+            "SkiaSharp.cs"));
+        var avaloniaHost = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Avalonia",
+            "ProGpuHostControl.cs"));
+
+        Assert.Contains("using System.Diagnostics.CodeAnalysis;", wgpuContext, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetFirstActiveContext([NotNullWhen(true)] out WgpuContext? context)", wgpuContext, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < _activeContexts.Count; i++)", wgpuContext, StringComparison.Ordinal);
+        Assert.Contains("var active = _activeContexts[i];", wgpuContext, StringComparison.Ordinal);
+        Assert.Contains("return _activeContexts.ToArray();", wgpuContext, StringComparison.Ordinal);
+
+        Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var active)", adapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var active in WgpuContext.ActiveContexts)", adapter, StringComparison.Ordinal);
+        Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var activeContext)", gpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("var activeContexts = WgpuContext.ActiveContexts;", gpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var activeContext)", pathOps, StringComparison.Ordinal);
+        Assert.DoesNotContain("var active = WgpuContext.ActiveContexts;", pathOps, StringComparison.Ordinal);
+        Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var active)", presentationCoreGpuProvider, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var active in WgpuContext.ActiveContexts)", presentationCoreGpuProvider, StringComparison.Ordinal);
+        Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var active)", systemDrawingGpuProvider, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var active in WgpuContext.ActiveContexts)", systemDrawingGpuProvider, StringComparison.Ordinal);
+        Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var ctx)", skiaSharp, StringComparison.Ordinal);
+        Assert.DoesNotContain("var active = WgpuContext.ActiveContexts;", skiaSharp, StringComparison.Ordinal);
+        Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var context);", avaloniaHost, StringComparison.Ordinal);
+        Assert.DoesNotContain("var active = WgpuContext.ActiveContexts;", avaloniaHost, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ProGpuShaderReviewRegressionsStayInNativeBackend()
     {
         var shaderParams = File.ReadAllText(FindRepoPath(

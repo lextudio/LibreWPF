@@ -141,12 +141,9 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             return current;
         }
 
-        foreach (var active in WgpuContext.ActiveContexts)
+        if (WgpuContext.TryGetFirstActiveContext(out var active))
         {
-            if (!active.IsDisposed)
-            {
-                return active;
-            }
+            return active;
         }
 
         return null;
@@ -160,12 +157,9 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             return current;
         }
 
-        foreach (var active in WgpuContext.ActiveContexts)
+        if (WgpuContext.TryGetFirstActiveContext(out var active))
         {
-            if (!active.IsDisposed)
-            {
-                return active;
-            }
+            return active;
         }
 
         var context = new WgpuContext();

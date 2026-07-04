@@ -305,8 +305,8 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("private readonly HashSet<object> _scratchDistinctSources = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<ProGpuVisual> _scratchVisitedVisuals = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<ProGpuVisual> _scratchTargetVisuals = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
-        Assert.Contains("private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchReplayTargets = new();", source, StringComparison.Ordinal);
-        Assert.Contains("private readonly ReplayTargetList _scratchReplayTargetSnapshot = new();", source, StringComparison.Ordinal);
+        Assert.Contains("private readonly ReplayTargetList _scratchReplayTargets = new();", source, StringComparison.Ordinal);
+        Assert.Contains("private readonly ReplayTargetList _scratchTopLevelReplayTargets = new();", source, StringComparison.Ordinal);
         Assert.Contains("private readonly Dictionary<object, VisualSet> _visualsBySource = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _sourcesByVisual = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly Dictionary<ProGpuVisual, ReferenceOwnerSet> _sourceOwnersByVisual = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
@@ -317,10 +317,14 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("sources.Contains(source)", source, StringComparison.Ordinal);
         Assert.Contains("private readonly SingleReplayTargetList _scratchSingleReplayTarget = new();", source, StringComparison.Ordinal);
         Assert.Contains("private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> CreateSingleReplayTarget(", source, StringComparison.Ordinal);
-        Assert.Contains("private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SnapshotReplayTargets(", source, StringComparison.Ordinal);
+        Assert.Contains("private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> ReturnReplayTargets(", source, StringComparison.Ordinal);
         Assert.Contains("private sealed class SingleReplayTargetList : IReadOnlyList<WpfRetainedVisualBranchReplayTarget>", source, StringComparison.Ordinal);
         Assert.Contains("private sealed class ReplayTargetList : IReadOnlyList<WpfRetainedVisualBranchReplayTarget>", source, StringComparison.Ordinal);
-        Assert.Contains("_scratchReplayTargetSnapshot.Set(targets);", source, StringComparison.Ordinal);
+        Assert.Contains("public void Add(WpfRetainedVisualBranchReplayTarget target)", source, StringComparison.Ordinal);
+        Assert.Contains("return targets;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("_scratchReplayTargetSnapshot", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("SnapshotReplayTargets(", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Set(List<WpfRetainedVisualBranchReplayTarget> targets)", source, StringComparison.Ordinal);
         Assert.Contains("using System.Runtime.InteropServices;", source, StringComparison.Ordinal);
         Assert.Contains("CollectionsMarshal.GetValueRefOrAddDefault(", source, StringComparison.Ordinal);
         Assert.Contains("private struct ReferenceOwnerSet", source, StringComparison.Ordinal);

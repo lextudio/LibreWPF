@@ -6077,7 +6077,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new HashSet<object>(InlineCapacity + 1, ReferenceEqualityComparer.Instance)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("private static void ClassifyPromotedOwnersAgainstDirtySources(", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("if (dirtySources.Count < sourceOwners.Count)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
-        Assert.Contains("foreach (var dirtySource in dirtySources)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("var dirtySourceEnumerator = dirtySources.GetEnumerator();", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("while (dirtySourceEnumerator.MoveNext())", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("var sourceOwnerEnumerator = sourceOwners.GetEnumerator();", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("while (sourceOwnerEnumerator.MoveNext())", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var dirtySource in dirtySources)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var sourceOwner in sourceOwners)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("BranchMapClassifiesPromotedOwnerSetsByScanningSmallerDirtyBatch", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.DoesNotContain("private ProGpuVisual? _single;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.DoesNotContain("private object? _single;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);

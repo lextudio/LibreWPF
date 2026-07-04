@@ -18,10 +18,9 @@ public sealed class WpfRetainedVisualBranchMap
     private readonly HashSet<ProGpuVisual> _scratchVisitedVisuals = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<ProGpuVisual> _scratchInvalidatedVisuals = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<ProGpuVisual> _scratchTargetVisuals = new(ReferenceEqualityComparer.Instance);
-    private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchReplayTargets = new();
-    private readonly List<WpfRetainedVisualBranchReplayTarget> _scratchTopLevelReplayTargets = new();
+    private readonly ReplayTargetList _scratchReplayTargets = new();
+    private readonly ReplayTargetList _scratchTopLevelReplayTargets = new();
     private readonly SingleReplayTargetList _scratchSingleReplayTarget = new();
-    private readonly ReplayTargetList _scratchReplayTargetSnapshot = new();
 
     public int SourceCount => _visualsBySource.Count;
 
@@ -46,7 +45,6 @@ public sealed class WpfRetainedVisualBranchMap
         _scratchReplayTargets.Clear();
         _scratchTopLevelReplayTargets.Clear();
         _scratchSingleReplayTarget.Clear();
-        _scratchReplayTargetSnapshot.Clear();
         VisualCount = 0;
         LastSource = null;
         LastVisual = null;
@@ -200,6 +198,7 @@ public sealed class WpfRetainedVisualBranchMap
         }
 
         _scratchReplayTargets.Clear();
+        _scratchTopLevelReplayTargets.Clear();
         _scratchVisitedVisuals.Clear();
         try
         {
@@ -207,6 +206,7 @@ public sealed class WpfRetainedVisualBranchMap
             {
                 if (!_visualsBySource.TryGetValue(source, out var visuals))
                 {
+                    _scratchReplayTargets.Clear();
                     return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
                 }
 
@@ -216,6 +216,7 @@ public sealed class WpfRetainedVisualBranchMap
                     var visual = visuals[i];
                     if (!TryGetReplaySourceForVisual(visual, out var replaySource))
                     {
+                        _scratchReplayTargets.Clear();
                         return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
                     }
 
@@ -227,12 +228,11 @@ public sealed class WpfRetainedVisualBranchMap
             }
 
             return _scratchReplayTargets.Count <= 1
-                ? SnapshotReplayTargets(_scratchReplayTargets)
+                ? ReturnReplayTargets(_scratchReplayTargets)
                 : SelectTopLevelReplayTargets(_scratchReplayTargets);
         }
         finally
         {
-            _scratchReplayTargets.Clear();
             _scratchVisitedVisuals.Clear();
         }
     }
@@ -253,28 +253,23 @@ public sealed class WpfRetainedVisualBranchMap
         }
 
         _scratchReplayTargets.Clear();
-        try
+        _scratchTopLevelReplayTargets.Clear();
+        var visualCount = visuals.Count;
+        for (var i = 0; i < visualCount; i++)
         {
-            var visualCount = visuals.Count;
-            for (var i = 0; i < visualCount; i++)
+            var visual = visuals[i];
+            if (!TryGetReplaySourceForVisual(visual, out var replaySource))
             {
-                var visual = visuals[i];
-                if (!TryGetReplaySourceForVisual(visual, out var replaySource))
-                {
-                    return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
-                }
-
-                _scratchReplayTargets.Add(new WpfRetainedVisualBranchReplayTarget(replaySource, visual));
+                _scratchReplayTargets.Clear();
+                return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
             }
 
-            return _scratchReplayTargets.Count <= 1
-                ? SnapshotReplayTargets(_scratchReplayTargets)
-                : SelectTopLevelReplayTargets(_scratchReplayTargets);
+            _scratchReplayTargets.Add(new WpfRetainedVisualBranchReplayTarget(replaySource, visual));
         }
-        finally
-        {
-            _scratchReplayTargets.Clear();
-        }
+
+        return _scratchReplayTargets.Count <= 1
+            ? ReturnReplayTargets(_scratchReplayTargets)
+            : SelectTopLevelReplayTargets(_scratchReplayTargets);
     }
 
     private static bool TryGetSingleSource(
@@ -381,8 +376,8 @@ public sealed class WpfRetainedVisualBranchMap
         return _scratchSingleReplayTarget;
     }
 
-    private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SnapshotReplayTargets(
-        List<WpfRetainedVisualBranchReplayTarget> targets)
+    private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> ReturnReplayTargets(
+        ReplayTargetList targets)
     {
         if (targets.Count == 0)
         {
@@ -392,15 +387,15 @@ public sealed class WpfRetainedVisualBranchMap
         if (targets.Count == 1)
         {
             _scratchSingleReplayTarget.Set(targets[0]);
+            targets.Clear();
             return _scratchSingleReplayTarget;
         }
 
-        _scratchReplayTargetSnapshot.Set(targets);
-        return _scratchReplayTargetSnapshot;
+        return targets;
     }
 
     private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> SelectTopLevelReplayTargets(
-        List<WpfRetainedVisualBranchReplayTarget> targets)
+        ReplayTargetList targets)
     {
         _scratchTopLevelReplayTargets.Clear();
         _scratchTargetVisuals.Clear();
@@ -422,11 +417,12 @@ public sealed class WpfRetainedVisualBranchMap
                 }
             }
 
-            return SnapshotReplayTargets(_scratchTopLevelReplayTargets);
+            var result = ReturnReplayTargets(_scratchTopLevelReplayTargets);
+            _scratchReplayTargets.Clear();
+            return result;
         }
         finally
         {
-            _scratchTopLevelReplayTargets.Clear();
             _scratchTargetVisuals.Clear();
         }
     }
@@ -795,13 +791,9 @@ public sealed class WpfRetainedVisualBranchMap
 
         public WpfRetainedVisualBranchReplayTarget this[int index] => _targets[index];
 
-        public void Set(List<WpfRetainedVisualBranchReplayTarget> targets)
+        public void Add(WpfRetainedVisualBranchReplayTarget target)
         {
-            _targets.Clear();
-            for (var i = 0; i < targets.Count; i++)
-            {
-                _targets.Add(targets[i]);
-            }
+            _targets.Add(target);
         }
 
         public void Clear()
@@ -1224,8 +1216,10 @@ public sealed class WpfRetainedVisualBranchMap
             if (dirtySources.Count < sourceOwners.Count)
             {
                 hasCleanSourceOwner = true;
-                foreach (var dirtySource in dirtySources)
+                var dirtySourceEnumerator = dirtySources.GetEnumerator();
+                while (dirtySourceEnumerator.MoveNext())
                 {
+                    var dirtySource = dirtySourceEnumerator.Current;
                     if (sourceOwners.Contains(dirtySource))
                     {
                         hasDirtySourceOwner = true;
@@ -1236,8 +1230,10 @@ public sealed class WpfRetainedVisualBranchMap
                 return;
             }
 
-            foreach (var sourceOwner in sourceOwners)
+            var sourceOwnerEnumerator = sourceOwners.GetEnumerator();
+            while (sourceOwnerEnumerator.MoveNext())
             {
+                var sourceOwner = sourceOwnerEnumerator.Current;
                 if (dirtySources.Contains(sourceOwner))
                 {
                     hasDirtySourceOwner = true;

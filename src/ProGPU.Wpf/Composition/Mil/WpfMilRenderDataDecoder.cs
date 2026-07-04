@@ -766,18 +766,22 @@ public sealed class WpfMilRenderDataDecoder
         return commandId is WpfMilCommandId.PushEffect;
     }
 
-    private static int CountUnsupportedAnimationHandles(ReadOnlySpan<byte> payload, params int[] offsets)
+    private static int CountUnsupportedAnimationHandles(ReadOnlySpan<byte> payload, int offset)
     {
-        var count = 0;
-        foreach (var offset in offsets)
-        {
-            if (ReadUInt32(payload, offset) != 0)
-            {
-                count++;
-            }
-        }
+        return ReadUInt32(payload, offset) != 0 ? 1 : 0;
+    }
 
-        return count;
+    private static int CountUnsupportedAnimationHandles(ReadOnlySpan<byte> payload, int offset0, int offset1)
+    {
+        return CountUnsupportedAnimationHandles(payload, offset0)
+            + CountUnsupportedAnimationHandles(payload, offset1);
+    }
+
+    private static int CountUnsupportedAnimationHandles(ReadOnlySpan<byte> payload, int offset0, int offset1, int offset2)
+    {
+        return CountUnsupportedAnimationHandles(payload, offset0)
+            + CountUnsupportedAnimationHandles(payload, offset1)
+            + CountUnsupportedAnimationHandles(payload, offset2);
     }
 
     private static MediaBrush? ResolveOptionalBrush(IWpfMilResourceResolver resources, uint resourceToken)
@@ -1000,15 +1004,17 @@ public sealed class WpfMilRenderDataDecoder
 
         if (sink is IWpfNativePrimitiveCommandSink nativeSink)
         {
-            foreach (var segment in segments)
+            for (var i = 0; i < segments.Count; i++)
             {
+                var segment = segments[i];
                 nativeSink.DrawNativeLine(pen, segment.StartPoint, segment.EndPoint);
             }
         }
         else
         {
-            foreach (var segment in segments)
+            for (var i = 0; i < segments.Count; i++)
             {
+                var segment = segments[i];
                 sink.DrawLine(
                     pen,
                     new Point(segment.StartPoint.X, segment.StartPoint.Y),

@@ -86,4 +86,6 @@ Reference-equality dirty-source sets from `WpfVisualInvalidationTracker` should 
 
 Render-data dependent-resource snapshots and MIL resource token setup should stay indexed and allocation-light. Use `Array.Empty<object?>()` for zero dependent resources, pass `IReadOnlyList<object?>` through render replay, retained dependency registration, invalidation dependency visiting, and resolver/registry construction, and avoid `IEnumerable<object?>`/`foreach` dependent-resource traversal on Xceed/DataGrid cell render-data hot paths.
 
+MIL render-data decode should avoid tiny per-record helper arrays and segment enumerators. Keep unsupported-animation-handle counting on fixed-arity overloads instead of `params int[]`, and replay primitive polyline segments through indexed `IReadOnlyList<WpfReplayLineSegment>` loops instead of `foreach`.
+
 Glyph-run bounds inference is a text-heavy Xceed/DataGrid replay hot path. Cache glyph origin, font size, and `GlyphPositions` arrays, prefer exact-sized cached `PortableNativeGlyphRun.GlyphPositions` arrays without copying, then use indexed loops in ProGPU command sinks, retained visual bounds accumulation, and drawing replay bounds inference. Do not reintroduce `foreach (var position in glyphRun.GlyphPositions)` in these paths.

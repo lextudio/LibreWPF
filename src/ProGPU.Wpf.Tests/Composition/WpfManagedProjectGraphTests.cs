@@ -13024,6 +13024,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Span<bool> initialPushStack = stackalloc bool[InitialPushStackCapacity];", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("using var pushStack = new DecodePushStack(initialPushStack);", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<bool>.Shared.Rent(newSize)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("private static int CountUnsupportedAnimationHandles(ReadOnlySpan<byte> payload, int offset)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("private static int CountUnsupportedAnimationHandles(ReadOnlySpan<byte> payload, int offset0, int offset1)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("private static int CountUnsupportedAnimationHandles(ReadOnlySpan<byte> payload, int offset0, int offset1, int offset2)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.DoesNotContain("params int[] offsets", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var offset in offsets)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < segments.Count; i++)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("var segment = segments[i];", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var segment in segments)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.DoesNotContain("new Stack<bool>()", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Collections.Generic;", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("private SmallValueStack<PushKind> _pushStack;", proGpuWpfCommandSink, StringComparison.Ordinal);

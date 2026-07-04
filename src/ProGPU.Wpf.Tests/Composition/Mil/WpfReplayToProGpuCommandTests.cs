@@ -971,6 +971,46 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void RepeatedMediaGeometryThroughProGpuSinkReusesCachedNativePathWhenUnchanged()
+    {
+        var geometry = CreateArcPathGeometry();
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+
+        sink.DrawGeometry(Brushes.Blue, null, geometry);
+        sink.DrawGeometry(Brushes.Blue, null, geometry);
+
+        Assert.Equal(2, nativeContext.Commands.Count);
+        var firstCommand = nativeContext.Commands[0];
+        var secondCommand = nativeContext.Commands[1];
+        Assert.Equal(RenderCommandType.DrawPath, firstCommand.Type);
+        Assert.Equal(RenderCommandType.DrawPath, secondCommand.Type);
+        Assert.NotNull(firstCommand.Path);
+        Assert.Same(firstCommand.Path, secondCommand.Path);
+    }
+
+    [Fact]
+    public void MutableMediaGeometryThroughProGpuSinkRefreshesCachedNativePathWhenShapeChanges()
+    {
+        var geometry = CreateArcPathGeometry();
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+
+        sink.DrawGeometry(Brushes.Blue, null, geometry);
+        geometry.Figures[0].Segments.Add(new LineSegment(new Point(50, 60), isStroked: true));
+        sink.DrawGeometry(Brushes.Blue, null, geometry);
+
+        Assert.Equal(2, nativeContext.Commands.Count);
+        var firstCommand = nativeContext.Commands[0];
+        var secondCommand = nativeContext.Commands[1];
+        Assert.Equal(RenderCommandType.DrawPath, firstCommand.Type);
+        Assert.Equal(RenderCommandType.DrawPath, secondCommand.Type);
+        Assert.NotNull(firstCommand.Path);
+        Assert.NotSame(firstCommand.Path, secondCommand.Path);
+        Assert.Equal(2, Assert.Single(secondCommand.Path!.Figures).Segments.Count);
+    }
+
+    [Fact]
     public void DecodePortablePathThroughProGpuSinkMapsRelativeGradientFromNativePathBounds()
     {
         var brush = new FakeLinearGradientBrush(

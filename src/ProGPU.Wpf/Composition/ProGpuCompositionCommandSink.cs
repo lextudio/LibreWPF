@@ -5,14 +5,25 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaBrush = System.Windows.Media.Brush;
+using MediaArcSegment = System.Windows.Media.ArcSegment;
+using MediaBezierSegment = System.Windows.Media.BezierSegment;
+using MediaCombinedGeometry = System.Windows.Media.CombinedGeometry;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaFormattedText = System.Windows.Media.FormattedText;
 using MediaGeometry = System.Windows.Media.Geometry;
+using MediaGeometryGroup = System.Windows.Media.GeometryGroup;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaLineGeometry = System.Windows.Media.LineGeometry;
+using MediaLineSegment = System.Windows.Media.LineSegment;
+using MediaPathGeometry = System.Windows.Media.PathGeometry;
+using MediaPathSegment = System.Windows.Media.PathSegment;
+using MediaQuadraticBezierSegment = System.Windows.Media.QuadraticBezierSegment;
 using MediaPen = System.Windows.Media.Pen;
 using MediaPenLineCap = System.Windows.Media.PenLineCap;
+using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaSolidColorBrush = System.Windows.Media.SolidColorBrush;
 using MediaTransform = System.Windows.Media.Transform;
 using VectorLineSegment = ProGPU.Vector.LineSegment;
@@ -38,6 +49,9 @@ public sealed class ProGpuCompositionCommandSink :
     IWpfHitTestOwnerScopeCommandSink
 {
     private const float TransformEpsilon = 0.0001f;
+    private const ulong NativeGeometryPathKeyOffset = 1469598103934665603UL;
+    private const ulong NativeGeometryPathKeyPrime = 1099511628211UL;
+    private static readonly ConditionalWeakTable<MediaGeometry, NativeGeometryPathCache> s_nativeGeometryPathCache = new();
 
     private enum PushKind
     {
@@ -767,11 +781,12 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
+        var bounds = new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2);
         AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawEllipse,
-            Brush = ToNativeBrush(brush, new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2)),
-            Pen = ToNativePen(pen, new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2)),
+            Brush = ToNativeBrush(brush, bounds),
+            Pen = ToNativePen(pen, bounds),
             Position2 = new Vector2((float)center.X, (float)center.Y),
             RadiusX = (float)radiusX,
             RadiusY = (float)radiusY,
@@ -1715,6 +1730,21 @@ public sealed class ProGpuCompositionCommandSink :
         out WpfReplayRect bounds,
         bool allowEmpty = false)
     {
+        if (TryGetCachedNativeGeometryPath(geometry, transform, out path, out bounds))
+        {
+            return allowEmpty || path.IsCombined || path.Figures.Count > 0;
+        }
+
+        return TryConvertGeometryToNativePathCore(geometry, transform, out path, out bounds, allowEmpty);
+    }
+
+    private static bool TryConvertGeometryToNativePathCore(
+        MediaGeometry geometry,
+        Matrix4x4 transform,
+        out VectorPathGeometry path,
+        out WpfReplayRect bounds,
+        bool allowEmpty)
+    {
         if (geometry is PortableGeometryPathSource portableGeometry
             && portableGeometry.TryGetPortableGeometryPath(out var portablePath)
             && TryConvertPortableGeometryPath(portablePath, transform, out path, out bounds))
@@ -1758,6 +1788,336 @@ public sealed class ProGpuCompositionCommandSink :
         }
 
         return true;
+    }
+
+    private static bool TryGetCachedNativeGeometryPath(
+        MediaGeometry geometry,
+        Matrix4x4 transform,
+        out VectorPathGeometry path,
+        out WpfReplayRect bounds)
+    {
+        if (!transform.IsIdentity || !TryReadNativeGeometryPathKey(geometry, out var key))
+        {
+            path = null!;
+            bounds = default;
+            return false;
+        }
+
+        return s_nativeGeometryPathCache.GetOrCreateValue(geometry).TryGetOrCreate(geometry, key, out path, out bounds);
+    }
+
+    private static bool TryReadNativeGeometryPathKey(MediaGeometry geometry, out NativeGeometryPathKey key)
+    {
+        var hash = NativeGeometryPathKeyOffset;
+        var figureCount = 0;
+        var segmentCount = 0;
+        var geometryCount = 0;
+        if (!AddNativeGeometryPathKey(geometry, ref hash, ref figureCount, ref segmentCount, ref geometryCount, depth: 0))
+        {
+            key = default;
+            return false;
+        }
+
+        key = new NativeGeometryPathKey(hash, figureCount, segmentCount, geometryCount);
+        return true;
+    }
+
+    private static bool AddNativeGeometryPathKey(
+        MediaGeometry geometry,
+        ref ulong hash,
+        ref int figureCount,
+        ref int segmentCount,
+        ref int geometryCount,
+        int depth)
+    {
+        if (depth > 32)
+        {
+            return false;
+        }
+
+        geometryCount++;
+        if (!AddGeometryTransformKey(geometry.Transform, ref hash))
+        {
+            return false;
+        }
+
+        switch (geometry)
+        {
+            case MediaPathGeometry pathGeometry:
+                AddHash(ref hash, 1);
+                return AddNativePathGeometryKey(pathGeometry, ref hash, ref figureCount, ref segmentCount);
+            case MediaLineGeometry lineGeometry:
+                AddHash(ref hash, 2);
+                AddPointHash(ref hash, lineGeometry.StartPoint);
+                AddPointHash(ref hash, lineGeometry.EndPoint);
+                figureCount++;
+                segmentCount++;
+                return true;
+            case MediaRectangleGeometry rectangleGeometry:
+                AddHash(ref hash, 3);
+                AddRectHash(ref hash, rectangleGeometry.Rect);
+                AddHash(ref hash, rectangleGeometry.RadiusX);
+                AddHash(ref hash, rectangleGeometry.RadiusY);
+                figureCount++;
+                segmentCount += 4;
+                return true;
+            case MediaEllipseGeometry ellipseGeometry:
+                AddHash(ref hash, 4);
+                AddPointHash(ref hash, ellipseGeometry.Center);
+                AddHash(ref hash, ellipseGeometry.RadiusX);
+                AddHash(ref hash, ellipseGeometry.RadiusY);
+                figureCount++;
+                segmentCount += 4;
+                return true;
+            case MediaGeometryGroup geometryGroup:
+                AddHash(ref hash, 5);
+                AddHash(ref hash, (int)geometryGroup.FillRule);
+                var children = geometryGroup.Children;
+                AddHash(ref hash, children.Count);
+                for (var i = 0; i < children.Count; i++)
+                {
+                    var child = children[i];
+                    if (child == null)
+                    {
+                        AddHash(ref hash, 0);
+                        continue;
+                    }
+
+                    if (!AddNativeGeometryPathKey(child, ref hash, ref figureCount, ref segmentCount, ref geometryCount, depth + 1))
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            case MediaCombinedGeometry combinedGeometry:
+                AddHash(ref hash, 6);
+                AddHash(ref hash, (int)combinedGeometry.GeometryCombineMode);
+                if (!AddOptionalNativeGeometryPathKey(combinedGeometry.Geometry1, ref hash, ref figureCount, ref segmentCount, ref geometryCount, depth + 1))
+                {
+                    return false;
+                }
+
+                return AddOptionalNativeGeometryPathKey(combinedGeometry.Geometry2, ref hash, ref figureCount, ref segmentCount, ref geometryCount, depth + 1);
+            default:
+                return false;
+        }
+    }
+
+    private static bool AddOptionalNativeGeometryPathKey(
+        MediaGeometry? geometry,
+        ref ulong hash,
+        ref int figureCount,
+        ref int segmentCount,
+        ref int geometryCount,
+        int depth)
+    {
+        if (geometry == null)
+        {
+            AddHash(ref hash, 0);
+            return true;
+        }
+
+        return AddNativeGeometryPathKey(geometry, ref hash, ref figureCount, ref segmentCount, ref geometryCount, depth);
+    }
+
+    private static bool AddNativePathGeometryKey(
+        MediaPathGeometry pathGeometry,
+        ref ulong hash,
+        ref int figureCount,
+        ref int segmentCount)
+    {
+        AddHash(ref hash, (int)pathGeometry.FillRule);
+        var figures = pathGeometry.Figures;
+        if (figures == null)
+        {
+            return false;
+        }
+
+        figureCount += figures.Count;
+        AddHash(ref hash, figures.Count);
+        for (var figureIndex = 0; figureIndex < figures.Count; figureIndex++)
+        {
+            var figure = figures[figureIndex];
+            if (figure == null || figure.Segments == null)
+            {
+                return false;
+            }
+
+            AddPointHash(ref hash, figure.StartPoint);
+            AddHash(ref hash, figure.IsClosed ? 1 : 0);
+            AddHash(ref hash, figure.IsFilled ? 1 : 0);
+
+            var segments = figure.Segments;
+            segmentCount += segments.Count;
+            AddHash(ref hash, segments.Count);
+            for (var segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
+            {
+                if (!AddNativePathSegmentKey(segments[segmentIndex], ref hash))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static bool AddNativePathSegmentKey(object? segment, ref ulong hash)
+    {
+        switch (segment)
+        {
+            case MediaLineSegment lineSegment:
+                AddHash(ref hash, 1);
+                AddPointHash(ref hash, lineSegment.Point);
+                AddPathSegmentFlagsHash(ref hash, lineSegment);
+                return true;
+            case MediaQuadraticBezierSegment quadraticBezierSegment:
+                AddHash(ref hash, 2);
+                AddPointHash(ref hash, quadraticBezierSegment.Point1);
+                AddPointHash(ref hash, quadraticBezierSegment.Point2);
+                AddPathSegmentFlagsHash(ref hash, quadraticBezierSegment);
+                return true;
+            case MediaBezierSegment bezierSegment:
+                AddHash(ref hash, 3);
+                AddPointHash(ref hash, bezierSegment.Point1);
+                AddPointHash(ref hash, bezierSegment.Point2);
+                AddPointHash(ref hash, bezierSegment.Point3);
+                AddPathSegmentFlagsHash(ref hash, bezierSegment);
+                return true;
+            case MediaArcSegment arcSegment:
+                AddHash(ref hash, 4);
+                AddPointHash(ref hash, arcSegment.Point);
+                AddSizeHash(ref hash, arcSegment.Size);
+                AddHash(ref hash, arcSegment.RotationAngle);
+                AddHash(ref hash, arcSegment.IsLargeArc ? 1 : 0);
+                AddHash(ref hash, (int)arcSegment.SweepDirection);
+                AddPathSegmentFlagsHash(ref hash, arcSegment);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static bool AddGeometryTransformKey(MediaTransform? transform, ref ulong hash)
+    {
+        if (transform == null)
+        {
+            AddMatrixHash(ref hash, Matrix4x4.Identity);
+            return true;
+        }
+
+        if (!WpfResourceResolver.TryAdaptTransformMatrix(transform, out var matrix))
+        {
+            return false;
+        }
+
+        AddMatrixHash(ref hash, matrix);
+        return true;
+    }
+
+    private static void AddPathSegmentFlagsHash(ref ulong hash, MediaPathSegment segment)
+    {
+        AddHash(ref hash, segment.IsSmoothJoin ? 1 : 0);
+        AddHash(ref hash, segment.IsStroked ? 1 : 0);
+    }
+
+    private static void AddPointHash(ref ulong hash, Point point)
+    {
+        AddHash(ref hash, point.X);
+        AddHash(ref hash, point.Y);
+    }
+
+    private static void AddSizeHash(ref ulong hash, Size size)
+    {
+        AddHash(ref hash, size.Width);
+        AddHash(ref hash, size.Height);
+    }
+
+    private static void AddRectHash(ref ulong hash, Rect rect)
+    {
+        AddHash(ref hash, rect.X);
+        AddHash(ref hash, rect.Y);
+        AddHash(ref hash, rect.Width);
+        AddHash(ref hash, rect.Height);
+    }
+
+    private static void AddMatrixHash(ref ulong hash, Matrix4x4 matrix)
+    {
+        AddHash(ref hash, matrix.M11);
+        AddHash(ref hash, matrix.M12);
+        AddHash(ref hash, matrix.M13);
+        AddHash(ref hash, matrix.M14);
+        AddHash(ref hash, matrix.M21);
+        AddHash(ref hash, matrix.M22);
+        AddHash(ref hash, matrix.M23);
+        AddHash(ref hash, matrix.M24);
+        AddHash(ref hash, matrix.M31);
+        AddHash(ref hash, matrix.M32);
+        AddHash(ref hash, matrix.M33);
+        AddHash(ref hash, matrix.M34);
+        AddHash(ref hash, matrix.M41);
+        AddHash(ref hash, matrix.M42);
+        AddHash(ref hash, matrix.M43);
+        AddHash(ref hash, matrix.M44);
+    }
+
+    private static void AddHash(ref ulong hash, double value)
+    {
+        AddHash(ref hash, unchecked((ulong)BitConverter.DoubleToInt64Bits(value)));
+    }
+
+    private static void AddHash(ref ulong hash, float value)
+    {
+        AddHash(ref hash, BitConverter.SingleToUInt32Bits(value));
+    }
+
+    private static void AddHash(ref ulong hash, int value)
+    {
+        AddHash(ref hash, unchecked((uint)value));
+    }
+
+    private static void AddHash(ref ulong hash, ulong value)
+    {
+        hash ^= value;
+        hash *= NativeGeometryPathKeyPrime;
+    }
+
+    private readonly record struct NativeGeometryPathKey(
+        ulong Hash,
+        int FigureCount,
+        int SegmentCount,
+        int GeometryCount);
+
+    private sealed class NativeGeometryPathCache
+    {
+        private bool _hasPath;
+        private NativeGeometryPathKey _key;
+        private VectorPathGeometry? _path;
+        private WpfReplayRect _bounds;
+
+        public bool TryGetOrCreate(MediaGeometry geometry, NativeGeometryPathKey key, out VectorPathGeometry path, out WpfReplayRect bounds)
+        {
+            if (_hasPath && _key == key)
+            {
+                path = _path!;
+                bounds = _bounds;
+                return true;
+            }
+
+            if (!TryConvertGeometryToNativePathCore(geometry, Matrix4x4.Identity, out path, out bounds, allowEmpty: true))
+            {
+                path = null!;
+                bounds = default;
+                return false;
+            }
+
+            _key = key;
+            _path = path;
+            _bounds = bounds;
+            _hasPath = true;
+            return true;
+        }
     }
 
 }

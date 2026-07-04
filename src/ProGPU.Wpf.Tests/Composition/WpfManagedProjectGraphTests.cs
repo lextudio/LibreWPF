@@ -13231,6 +13231,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryCreatePortableLinearGradientMediaBrush(brush, out var linearBrush)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("TryCreatePortableRadialGradientMediaBrush(brush, out var radialBrush)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("ApplyPortableBrushTransforms(brush, mediaBrush)", wpfResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("var bounds = new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2);", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("Brush = ToNativeBrush(brush, bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("Pen = ToNativePen(pen, bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuNativeBrush", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("new ProGpuPortableBrush", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptBrushReturnsTypedLinearGradientShimWithPortableTransformContract", wpfResourceResolverTests, StringComparison.Ordinal);
@@ -13282,6 +13285,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PushNativeGeometryClip(PortableGeometryPath clipGeometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("PushNativeGeometryClip(MediaGeometry clipGeometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryConvertGeometryToNativePath(clipGeometry, _transformStack.Peek()", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("ConditionalWeakTable<MediaGeometry, NativeGeometryPathCache>", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("TryGetCachedNativeGeometryPath(geometry, transform, out path, out bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("!transform.IsIdentity || !TryReadNativeGeometryPathKey(geometry, out var key)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("AddNativePathGeometryKey(pathGeometry, ref hash, ref figureCount, ref segmentCount)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("AddPathSegmentFlagsHash(ref hash, lineSegment)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("TryConvertGeometryToNativePathCore(geometry, Matrix4x4.Identity, out path, out bounds, allowEmpty: true)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathGeometryConverter.TryConvert(portablePath, transform, out path, out bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("WpfPortablePathBoundsReader.TryGetPathBounds(portablePath, out var portableBounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("bounds = portableBounds;", proGpuWpfCommandSink, StringComparison.Ordinal);
@@ -13312,6 +13321,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("geometry.GetType().GetMethod(", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("drawMethod.Invoke(", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry.Draw(recordingContext", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("dynamic segment", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryDrawNativeGeometry(resources, sink, nativeBrush, nativePen, nativeGeometryToken)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("TryDrawPrimitiveGeometry(sink, nativeBrush, nativePen, geometry)", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("DrawMediaGeometry(sink, nativeBrush, nativePen, geometry)", wpfMilRenderDataDecoder, StringComparison.Ordinal);

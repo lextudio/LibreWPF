@@ -6914,6 +6914,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private readonly record struct TileBrushReplayTiles(", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("public Enumerator GetEnumerator()", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("out TileBrushReplayTiles tileBounds", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("WpfVisualTreeRenderer? visualBrushRenderer = null;", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("visualBrushRenderer ??= new WpfVisualTreeRenderer();", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("var visualBrushImageSourceAdapterInitialized = false;", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("imageSourceAdapter: visualBrushImageSourceAdapter", drawingReplay, StringComparison.Ordinal);
+        Assert.Contains("ReplayReusesVisualBrushRendererForTiledPortableVisualBrushFill", File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeRendererTests.cs")), StringComparison.Ordinal);
+        Assert.DoesNotContain("new WpfVisualTreeRenderer().ReplaySubtree", drawingReplay, StringComparison.Ordinal);
         Assert.DoesNotContain("out IReadOnlyList<TileBrushReplayTile> tileBounds", drawingReplay, StringComparison.Ordinal);
         Assert.DoesNotContain("new List<TileBrushReplayTile>", drawingReplay, StringComparison.Ordinal);
         Assert.DoesNotContain("new[] { new TileBrushReplayTile", drawingReplay, StringComparison.Ordinal);

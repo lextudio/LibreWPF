@@ -2731,6 +2731,34 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplayReusesVisualBrushRendererForTiledPortableVisualBrushFill()
+    {
+        var visual = new FakeDrawingVisual(CreateRenderData(Brushes.Red))
+        {
+            Bounds = new PortableRect(0, 0, 10, 12)
+        };
+        var tileBrush = new FakeVisualTileBrush(
+            visual,
+            viewport: new PortableRect(0, 0, 0.5, 1),
+            tileMode: PortableTileMode.Tile);
+        var drawing = new ThrowingPortableGeometryDrawing(new PortableGeometryDrawingState
+        {
+            HasGeometry = true,
+            Geometry = new PortableRectangleClipGeometry(0, 0, 20, 12),
+            HasBrush = true,
+            Brush = tileBrush
+        });
+        var sink = new NativeGeometryTestSink();
+
+        var status = WpfDrawingReplay.Replay(drawing, sink);
+
+        Assert.Equal(WpfDrawingReplayStatus.Applied, status);
+        Assert.Equal(2, sink.DrawRectangles.Count);
+        Assert.All(sink.DrawRectangles, draw => Assert.Same(Brushes.Red, draw.Brush));
+        Assert.Equal(0, drawing.ReflectedStateProbeCount);
+    }
+
+    [Fact]
     public void ReplayAppliesPortableGeometryDrawingStateWithoutTypeNameShape()
     {
         var drawing = new PortableGeometryStateHost(new PortableGeometryDrawingState
@@ -5535,6 +5563,47 @@ public sealed class WpfVisualTreeRendererTests
                 viewportUnits: PortableBrushMappingMode.RelativeToBoundingBox,
                 viewboxUnits: PortableBrushMappingMode.RelativeToBoundingBox,
                 tileMode: PortableTileMode.None,
+                stretch: PortableStretch.Fill,
+                alignmentX: PortableAlignmentX.Center,
+                alignmentY: PortableAlignmentY.Center,
+                hasTransform: false,
+                transform: PortableMatrix3x2.Identity,
+                hasRelativeTransform: false,
+                relativeTransform: PortableMatrix3x2.Identity);
+            return true;
+        }
+    }
+
+    private sealed class FakeVisualTileBrush : PortableTileBrushSource
+    {
+        private readonly object? _visual;
+        private readonly PortableRect _viewport;
+        private readonly PortableTileMode _tileMode;
+
+        public FakeVisualTileBrush(object? visual, PortableRect viewport, PortableTileMode tileMode)
+        {
+            _visual = visual;
+            _viewport = viewport;
+            _tileMode = tileMode;
+        }
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            if (_visual == null)
+            {
+                brush = null!;
+                return false;
+            }
+
+            brush = new PortableTileBrush(
+                PortableTileBrushKind.Visual,
+                _visual,
+                opacity: 1,
+                viewport: _viewport,
+                viewbox: new PortableRect(0, 0, 1, 1),
+                viewportUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+                viewboxUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+                tileMode: _tileMode,
                 stretch: PortableStretch.Fill,
                 alignmentX: PortableAlignmentX.Center,
                 alignmentY: PortableAlignmentY.Center,

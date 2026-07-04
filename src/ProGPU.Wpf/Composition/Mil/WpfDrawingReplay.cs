@@ -1059,6 +1059,9 @@ internal static class WpfDrawingReplay
 
         var appliedAny = false;
         var unsupportedAny = false;
+        WpfVisualTreeRenderer? visualBrushRenderer = null;
+        IWpfImageSourceAdapter? visualBrushImageSourceAdapter = null;
+        var visualBrushImageSourceAdapterInitialized = false;
         foreach (var tile in tileBounds)
         {
             if (!TryGetStretchedTile(tile, sourceBounds, stretch, alignmentX, alignmentY, out var stretchedTile, out var needsTileClip)
@@ -1083,11 +1086,18 @@ internal static class WpfDrawingReplay
                 tilePopCount++;
             }
 
-            var result = new WpfVisualTreeRenderer().ReplaySubtree(
+            visualBrushRenderer ??= new WpfVisualTreeRenderer();
+            if (!visualBrushImageSourceAdapterInitialized)
+            {
+                visualBrushImageSourceAdapter = CreateImageSourceAdapter(imageSourceAdapter);
+                visualBrushImageSourceAdapterInitialized = true;
+            }
+
+            var result = visualBrushRenderer.ReplaySubtree(
                 visualValue,
                 sink,
                 resources: null,
-                imageSourceAdapter: CreateImageSourceAdapter(imageSourceAdapter));
+                imageSourceAdapter: visualBrushImageSourceAdapter);
             var tileStatus = ToDrawingReplayStatus(result);
             appliedAny |= tileStatus == WpfDrawingReplayStatus.Applied
                 || tileStatus == WpfDrawingReplayStatus.PartiallyApplied;

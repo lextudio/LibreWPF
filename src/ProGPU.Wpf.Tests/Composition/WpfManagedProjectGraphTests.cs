@@ -6223,6 +6223,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(sink, nativeTransform)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryPushNativeDrawingGroupClip(sink, clipValue)", replaySource, StringComparison.Ordinal);
         Assert.Contains("TryPushNativeMediaGeometryClip(sink, clip)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("bool TryGetDrawingGroupScopeBounds(out Rect bounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingGroupScopeBounds(out var resolvedEffectBounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingGroupScopeBounds(out opacityMaskBounds)", replaySource, StringComparison.Ordinal);
+        Assert.Contains("TryGetDrawingGroupScopeBounds(out var cacheBounds)", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryResolveDrawingGroupEffect(", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryResolveOpacityMask(", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetDrawingGroupEffectBounds(", replaySource, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetDrawingGroupCacheBounds(", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeClipSink.PushNativeClip(clipBounds)", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(nativeClip)", replaySource, StringComparison.Ordinal);
         Assert.Contains("nativeGeometrySink.PushNativeGeometryClip(clipGeometry)", replaySource, StringComparison.Ordinal);

@@ -1136,28 +1136,85 @@ internal static class WpfDrawingReplay
             return WpfDrawingReplayStatus.Skipped;
         }
 
-        if (!TryResolveDrawingGroupEffect(
+        var drawingGroupScopeBoundsInitialized = false;
+        var drawingGroupScopeBoundsAvailable = false;
+        var drawingGroupScopeBounds = default(Rect);
+
+        bool TryGetDrawingGroupScopeBounds(out Rect bounds)
+        {
+            if (!drawingGroupScopeBoundsInitialized)
+            {
+                drawingGroupScopeBoundsAvailable =
+                    TryGetDrawingGroupBounds(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out drawingGroupScopeBounds)
+                    || TryInferDrawingGroupContentBounds(
+                        drawingGroup,
+                        hasPortableDrawingGroupState,
+                        drawingGroupState,
+                        imageSourceAdapter,
+                        out drawingGroupScopeBounds);
+                drawingGroupScopeBoundsInitialized = true;
+            }
+
+            bounds = drawingGroupScopeBounds;
+            return drawingGroupScopeBoundsAvailable;
+        }
+
+        global::ProGPU.Scene.EffectBase? effect = null;
+        Rect? effectBounds = null;
+        var hasEffect = false;
+        if (TryGetDrawingGroupEffect(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var effectValue))
+        {
+            hasEffect = true;
+            if (!WpfEffectMapper.TryCreateProGpuEffect(
+                    effectValue,
+                    out var proGpuEffect,
+                    CreateImageSourceAdapter(imageSourceAdapter))
+                || !TryGetDrawingGroupScopeBounds(out var resolvedEffectBounds))
+            {
+                return WpfDrawingReplayStatus.Unsupported;
+            }
+
+            effect = proGpuEffect;
+            effectBounds = resolvedEffectBounds;
+        }
+        else if (TryGetDrawingGroupBitmapEffect(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var bitmapEffect))
+        {
+            hasEffect = true;
+            TryGetDrawingGroupBitmapEffectInput(
                 drawingGroup,
                 hasPortableDrawingGroupState,
                 drawingGroupState,
-                imageSourceAdapter,
-                out var effect,
-                out var effectBounds,
-                out var hasEffect))
+                out var bitmapEffectInput);
+            if (!WpfEffectMapper.TryCreateProGpuPushEffect(
+                    bitmapEffect,
+                    bitmapEffectInput,
+                    out var proGpuEffect,
+                    CreateImageSourceAdapter(imageSourceAdapter))
+                || !TryGetDrawingGroupScopeBounds(out var resolvedEffectBounds))
+            {
+                return WpfDrawingReplayStatus.Unsupported;
+            }
+
+            effect = proGpuEffect;
+            effectBounds = resolvedEffectBounds;
+        }
+        else if (HasDrawingGroupBitmapEffectInput(drawingGroup, hasPortableDrawingGroupState, drawingGroupState))
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
 
-        var hasOpacityMask = TryResolveOpacityMask(
-            drawingGroup,
-            hasPortableDrawingGroupState,
-            drawingGroupState,
-            imageSourceAdapter,
-            out var opacityMask,
-            out var opacityMaskBounds);
-        if (!hasOpacityMask && HasDrawingGroupOpacityMask(drawingGroup, hasPortableDrawingGroupState, drawingGroupState))
+        MediaBrush? opacityMask = null;
+        var opacityMaskBounds = default(Rect);
+        var hasOpacityMask = false;
+        if (TryGetDrawingGroupOpacityMask(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var maskValue))
         {
-            return WpfDrawingReplayStatus.Unsupported;
+            opacityMask = WpfResourceResolver.AdaptBrush(maskValue);
+            if (opacityMask == null || !TryGetDrawingGroupScopeBounds(out opacityMaskBounds))
+            {
+                return WpfDrawingReplayStatus.Unsupported;
+            }
+
+            hasOpacityMask = true;
         }
 
         var popCount = 0;
@@ -1238,12 +1295,7 @@ internal static class WpfDrawingReplay
         var unsupportedGroupState = false;
         if (HasDrawingGroupCacheMode(drawingGroup, hasPortableDrawingGroupState, drawingGroupState))
         {
-            if (TryGetDrawingGroupCacheBounds(
-                    drawingGroup,
-                    hasPortableDrawingGroupState,
-                    drawingGroupState,
-                    imageSourceAdapter,
-                    out var cacheBounds)
+            if (TryGetDrawingGroupScopeBounds(out var cacheBounds)
                 && WpfPortableCommandSinkBridge.TryPushDrawingCache(sink, ToReplayRect(cacheBounds)))
             {
                 popCount++;
@@ -2177,108 +2229,6 @@ internal static class WpfDrawingReplay
             && !WpfTextRenderingModeMapper.IsSupportedTextHintingMode(textHintingMode);
     }
 
-    private static bool TryResolveDrawingGroupEffect(
-        object drawingGroup,
-        bool hasPortableDrawingGroupState,
-        PortableDrawingGroupState? drawingGroupState,
-        Func<object?, MediaImageSource?>? imageSourceAdapter,
-        out global::ProGPU.Scene.EffectBase? effect,
-        out Rect? bounds,
-        out bool hasEffect)
-    {
-        effect = null;
-        bounds = null;
-        hasEffect = false;
-
-        if (TryGetDrawingGroupEffect(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var effectValue))
-        {
-            hasEffect = true;
-            if (!WpfEffectMapper.TryCreateProGpuEffect(
-                    effectValue,
-                    out var proGpuEffect,
-                    CreateImageSourceAdapter(imageSourceAdapter))
-                || !TryGetDrawingGroupEffectBounds(
-                    drawingGroup,
-                    hasPortableDrawingGroupState,
-                    drawingGroupState,
-                    imageSourceAdapter,
-                    out bounds))
-            {
-                return false;
-            }
-
-            effect = proGpuEffect;
-            return true;
-        }
-
-        if (TryGetDrawingGroupBitmapEffect(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var bitmapEffect))
-        {
-            hasEffect = true;
-            TryGetDrawingGroupBitmapEffectInput(
-                drawingGroup,
-                hasPortableDrawingGroupState,
-                drawingGroupState,
-                out var bitmapEffectInput);
-            if (!WpfEffectMapper.TryCreateProGpuPushEffect(
-                    bitmapEffect,
-                    bitmapEffectInput,
-                    out var proGpuEffect,
-                    CreateImageSourceAdapter(imageSourceAdapter))
-                || !TryGetDrawingGroupEffectBounds(
-                    drawingGroup,
-                    hasPortableDrawingGroupState,
-                    drawingGroupState,
-                    imageSourceAdapter,
-                    out bounds))
-            {
-                return false;
-            }
-
-            effect = proGpuEffect;
-            return true;
-        }
-
-        return !HasDrawingGroupBitmapEffectInput(drawingGroup, hasPortableDrawingGroupState, drawingGroupState);
-    }
-
-    private static bool TryGetDrawingGroupEffectBounds(
-        object drawingGroup,
-        bool hasPortableDrawingGroupState,
-        PortableDrawingGroupState? drawingGroupState,
-        Func<object?, MediaImageSource?>? imageSourceAdapter,
-        out Rect? bounds)
-    {
-        bounds = null;
-        if (TryGetDrawingGroupBounds(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var explicitBounds)
-            || TryInferDrawingGroupContentBounds(
-                drawingGroup,
-                hasPortableDrawingGroupState,
-                drawingGroupState,
-                imageSourceAdapter,
-                out explicitBounds))
-        {
-            bounds = explicitBounds;
-            return true;
-        }
-
-        return false;
-    }
-
-    private static bool TryGetDrawingGroupCacheBounds(
-        object drawingGroup,
-        bool hasPortableDrawingGroupState,
-        PortableDrawingGroupState? drawingGroupState,
-        Func<object?, MediaImageSource?>? imageSourceAdapter,
-        out Rect? bounds)
-    {
-        return TryGetDrawingGroupEffectBounds(
-            drawingGroup,
-            hasPortableDrawingGroupState,
-            drawingGroupState,
-            imageSourceAdapter,
-            out bounds);
-    }
-
     private static bool TryGetPortableDrawingGroupState(
         object drawingGroup,
         out PortableDrawingGroupState? state)
@@ -2957,37 +2907,6 @@ internal static class WpfDrawingReplay
 
         textHintingMode = null;
         return false;
-    }
-
-    private static bool TryResolveOpacityMask(
-        object drawingGroup,
-        bool hasPortableDrawingGroupState,
-        PortableDrawingGroupState? drawingGroupState,
-        Func<object?, MediaImageSource?>? imageSourceAdapter,
-        out MediaBrush? opacityMask,
-        out Rect bounds)
-    {
-        opacityMask = null;
-        bounds = default;
-
-        if (!TryGetDrawingGroupOpacityMask(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out var maskValue))
-        {
-            return false;
-        }
-
-        opacityMask = WpfResourceResolver.AdaptBrush(maskValue);
-        if (opacityMask == null)
-        {
-            return false;
-        }
-
-        return TryGetDrawingGroupBounds(drawingGroup, hasPortableDrawingGroupState, drawingGroupState, out bounds)
-            || TryInferDrawingGroupContentBounds(
-                drawingGroup,
-                hasPortableDrawingGroupState,
-                drawingGroupState,
-                imageSourceAdapter,
-                out bounds);
     }
 
     internal static bool TryGetDrawingBounds(

@@ -12175,6 +12175,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public void DrawPixelsVertically(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("DrawInstanced(6, submittedInstanceCount)", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("SciChart Instanced Sprite Pipeline", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("using System.Runtime.InteropServices;", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("var instanceSpan = CollectionsMarshal.AsSpan(instanceData);", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("var vertexSpan = CollectionsMarshal.AsSpan(vertexData);", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("instanceBuffer.Write(instanceSpan);", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("vertexBuffer.Write(vertexSpan);", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("var instanceArray = instanceData.ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("var vertexArray = vertexData.ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawLineList(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawLineStrip(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawTriangleStrip(", proGpuDirectXSciChart, StringComparison.Ordinal);

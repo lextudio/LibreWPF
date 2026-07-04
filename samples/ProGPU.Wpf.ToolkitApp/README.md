@@ -2,7 +2,7 @@
 
 This sample exercises the public Xceed `Extended.Wpf.Toolkit` package through the custom ProGPU WPF SDK. The app project keeps the normal WPF migration shape:
 
-- `Project Sdk="ProGPU.Wpf.Sdk/11.0.0-dev"`
+- `Project Sdk="LibreWPF.Sdk/11.0.0-dev"`
 - `TargetFramework=net11.0-windows`
 - `UseWPF=true`
 - one `PackageReference` to `Extended.Wpf.Toolkit`

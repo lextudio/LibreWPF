@@ -1,4 +1,4 @@
-name: ProGPU WPF Docs
+name: LibreWPF Docs
 
 on:
   pull_request:

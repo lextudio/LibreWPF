@@ -123,7 +123,7 @@ internal static class Program
             "artifacts",
             "packaging",
             "Release",
-            "Microsoft.DotNet.Wpf.GitHub",
+            "LibreWPF.Transport",
             "lib",
             "net11.0");
         string debugPackagedWpfRoot = Path.Combine(
@@ -131,7 +131,7 @@ internal static class Program
             "artifacts",
             "packaging",
             "Debug",
-            "Microsoft.DotNet.Wpf.GitHub.Debug",
+            "LibreWPF.Transport.Debug",
             "lib",
             "net11.0");
         string wpfRoot = Directory.Exists(releasePackagedWpfRoot)
@@ -165,7 +165,7 @@ internal static class Program
 
             ValidateLocalPackageAssemblyMatchesFile(
                 packageFeed,
-                assemblyName,
+                GetPackageIdForRuntimeAssembly(assemblyName),
                 assemblyName,
                 "net10.0",
                 repositoryAssemblyPath,
@@ -190,12 +190,22 @@ internal static class Program
 
             ValidateLocalPackageAssemblyMatchesFile(
                 packageFeed,
-                "Microsoft.DotNet.Wpf.GitHub",
+                "LibreWPF.Transport",
                 assemblyName,
                 "net11.0",
                 repositoryAssemblyPath,
                 $"repository WPF transport {assemblyName}.dll");
         }
+    }
+
+    private static string GetPackageIdForRuntimeAssembly(string assemblyName)
+    {
+        return assemblyName switch
+        {
+            "ProGPU.Wpf" => "LibreWPF.ProGPU",
+            "ProGPU.Wpf.Interop" => "LibreWPF.Interop",
+            _ => assemblyName
+        };
     }
 
     private static void ValidateLocalPackageAssemblyMatchesFile(
@@ -261,8 +271,8 @@ internal static class Program
                 $"SDK switch output runtime asset '{assemblyName}.dll'");
         }
 
-        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
-        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.Wpf.Interop", "ProGPU.Wpf.Interop", "net10.0");
+        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "LibreWPF.ProGPU", "ProGPU.Wpf", "net10.0");
+        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "LibreWPF.Interop", "ProGPU.Wpf.Interop", "net10.0");
         RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.DirectX", "ProGPU.DirectX", "net10.0");
         RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
         foreach (string assemblyName in RequiredWpfRuntimeAssemblies)
@@ -270,7 +280,7 @@ internal static class Program
             RequireOutputAssemblyMatchesLocalPackage(
                 appOutputRoot,
                 packageFeed,
-                "Microsoft.DotNet.Wpf.GitHub",
+                "LibreWPF.Transport",
                 assemblyName,
                 "net11.0");
         }

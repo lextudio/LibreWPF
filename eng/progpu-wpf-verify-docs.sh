@@ -15,11 +15,11 @@ require_text() {
 
 require_text ".github/workflows/progpu-wpf-sdk.yml" "./eng/progpu-wpf-sdk-ci.sh"
 require_text ".github/workflows/progpu-wpf-release.yml" "NUGET_API_KEY"
-require_text "docs/progpu-wpf-release.md" "ProGPU.Wpf.Sdk"
+require_text "docs/progpu-wpf-release.md" "LibreWPF.Sdk"
 
 for package_id in "${progpu_preview_package_ids[@]}"; do
   require_text "README.md" "| \`${package_id}\` |"
   require_text "docs/progpu-wpf-release.md" "\`${package_id}\`"
 done
 
-echo "ProGPU WPF documentation/package table verification succeeded."
+echo "LibreWPF documentation/package table verification succeeded."

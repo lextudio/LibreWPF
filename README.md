@@ -1,6 +1,6 @@
-# WPF ProGPU Port
+# LibreWPF ProGPU Port
 
-This branch ports WPF onto the ProGPU/Silk.NET platform while reusing as much managed WPF code as possible. The goal is a custom SDK package, `ProGPU.Wpf.Sdk`, so an existing WPF app can switch the project SDK and keep normal WPF source and XAML unchanged.
+This branch ports WPF onto the ProGPU/Silk.NET platform while reusing as much managed WPF code as possible. The public package brand is LibreWPF, with the custom SDK package `LibreWPF.Sdk`, so an existing WPF app can switch the project SDK and keep normal WPF source and XAML unchanged.
 
 Current focus areas:
 
@@ -14,7 +14,7 @@ Current focus areas:
 After adding the preview feed, existing WPF projects should only need the SDK change:
 
 ```xml
-<Project Sdk="ProGPU.Wpf.Sdk/11.0.0-dev">
+<Project Sdk="LibreWPF.Sdk/11.0.0-dev">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net11.0-windows</TargetFramework>
@@ -31,7 +31,7 @@ The preview package set is defined in `eng/progpu-preview-package-list.sh` and v
 
 | Package | Purpose | Source |
 | --- | --- | --- |
-| `Microsoft.DotNet.Wpf.GitHub` | Ported managed WPF transport assemblies, refs, themes, XAML build tasks, and runtime metadata. | `packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj` |
+| `LibreWPF.Transport` | Ported managed WPF transport assemblies, refs, themes, XAML build tasks, and runtime metadata. | `packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj` |
 | `ProGPU.Backend` | WebGPU device, swapchain, Silk.NET windowing, and platform backend services. | `external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj` |
 | `ProGPU.DirectX` | DirectX-compatible facade for SciChart and future D3D-style interop on ProGPU/WebGPU. | `external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj` |
 | `ProGPU.Transpiler` | Shader/source transformation helpers used by generated GPU pipelines. | `external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj` |
@@ -43,9 +43,9 @@ The preview package set is defined in `eng/progpu-preview-package-list.sh` and v
 | `ProGPU.Virtualization` | Virtualization helpers for large retained visual and item surfaces. | `external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj` |
 | `ProGPU.WinUI` | WinUI-shaped controls and app model implemented on ProGPU. | `external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj` |
 | `ProGPU.Avalonia` | Avalonia integration and compositor backend adapter used by package smoke validation. | `external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj` |
-| `ProGPU.Wpf.Interop` | Shared WPF interop contracts consumed by the WPF bridge and ProGPU runtime. | `external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj` |
-| `ProGPU.Wpf` | WPF-to-ProGPU host, retained/source replay bridge, Silk.NET input/windowing, and compositor adapter. | `src/ProGPU.Wpf/ProGPU.Wpf.csproj` |
-| `ProGPU.Wpf.Sdk` | Custom MSBuild SDK that redirects WPF apps to the ProGPU/Silk.NET platform. | `packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj` |
+| `LibreWPF.Interop` | Shared WPF interop contracts consumed by the WPF bridge and ProGPU runtime. | `external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj` |
+| `LibreWPF.ProGPU` | WPF-to-ProGPU host, retained/source replay bridge, Silk.NET input/windowing, and compositor adapter. | `src/ProGPU.Wpf/ProGPU.Wpf.csproj` |
+| `LibreWPF.Sdk` | Custom MSBuild SDK that redirects WPF apps to the ProGPU/Silk.NET platform. | `packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj` |
 
 ## Build And Release
 
@@ -53,13 +53,13 @@ The preview package set is defined in `eng/progpu-preview-package-list.sh` and v
 PROGPU_WPF_DEV_PACKAGE_VERSION=11.0.0-dev ./eng/progpu-wpf-sdk-ci.sh
 ```
 
-The SDK CI script builds ProGPU runtime packages, managed WPF transport assemblies, `ProGPU.Wpf`, and `ProGPU.Wpf.Sdk`, then audits the packages, writes the preview manifest, creates and verifies the release bundle, and runs package-mode SDK smoke tests.
+The SDK CI script builds ProGPU runtime packages, managed WPF transport assemblies, `LibreWPF.ProGPU`, and `LibreWPF.Sdk`, then audits the packages, writes the preview manifest, creates and verifies the release bundle, and runs package-mode SDK smoke tests.
 
 GitHub workflows:
 
-- `ProGPU WPF Build` runs the SDK package/no-source-change smoke on macOS.
-- `ProGPU WPF Docs` verifies README and release docs against the preview package list.
-- `ProGPU WPF Release` builds preview packages/bundle artifacts and can publish to NuGet.org with `NUGET_API_KEY`.
+- `LibreWPF Build` runs the SDK package/no-source-change smoke on macOS.
+- `LibreWPF Docs` verifies README and release docs against the preview package list.
+- `LibreWPF Release` builds preview packages/bundle artifacts and can publish to NuGet.org with `NUGET_API_KEY`.
 
 See [docs/progpu-wpf-release.md](docs/progpu-wpf-release.md) and the ongoing porting reports in [reports/](reports/).
 

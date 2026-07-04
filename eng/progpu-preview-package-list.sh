@@ -12,12 +12,12 @@ progpu_preview_runtime_package_ids=(
   ProGPU.Virtualization
   ProGPU.WinUI
   ProGPU.Avalonia
-  ProGPU.Wpf.Interop
+  LibreWPF.Interop
 )
 
 progpu_preview_package_ids=(
-  Microsoft.DotNet.Wpf.GitHub
+  LibreWPF.Transport
   "${progpu_preview_runtime_package_ids[@]}"
-  ProGPU.Wpf
-  ProGPU.Wpf.Sdk
+  LibreWPF.ProGPU
+  LibreWPF.Sdk
 )

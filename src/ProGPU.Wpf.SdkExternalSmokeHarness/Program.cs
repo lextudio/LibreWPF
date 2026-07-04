@@ -90,27 +90,27 @@ internal static class Program
 
     private static readonly PackageAssemblyExpectation[] s_packageAssemblyExpectations =
     [
-        new("Microsoft.DotNet.Wpf.GitHub", "WindowsBase", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "System.Xaml", "net11.0", "Ecma"),
-        new("Microsoft.DotNet.Wpf.GitHub", "PresentationCore", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "PresentationUI", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "ReachFramework", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "System.Printing", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "UIAutomationTypes", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "UIAutomationProvider", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Input.Manipulations", "net11.0", "Ecma"),
-        new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Primitives", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Aero", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Aero2", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.AeroLite", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Classic", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Fluent", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Luna", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Royale", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Controls.Ribbon", "net11.0", "Ecma"),
-        new("ProGPU.Wpf", "ProGPU.Wpf", "net10.0", "ProGPU"),
-        new("ProGPU.Wpf.Interop", "ProGPU.Wpf.Interop", "net10.0", "ProGPU"),
+        new("LibreWPF.Transport", "WindowsBase", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "System.Xaml", "net11.0", "Ecma"),
+        new("LibreWPF.Transport", "PresentationCore", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationUI", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "ReachFramework", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "System.Printing", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "UIAutomationTypes", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "UIAutomationProvider", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "System.Windows.Input.Manipulations", "net11.0", "Ecma"),
+        new("LibreWPF.Transport", "System.Windows.Primitives", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Aero", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Aero2", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.AeroLite", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Classic", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Fluent", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Luna", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Royale", "net11.0", "WPF"),
+        new("LibreWPF.Transport", "System.Windows.Controls.Ribbon", "net11.0", "Ecma"),
+        new("LibreWPF.ProGPU", "ProGPU.Wpf", "net10.0", "ProGPU"),
+        new("LibreWPF.Interop", "ProGPU.Wpf.Interop", "net10.0", "ProGPU"),
         new("ProGPU.Backend", "ProGPU.Backend", "net10.0", "ProGPU"),
         new("ProGPU.DirectX", "ProGPU.DirectX", "net10.0", "ProGPU"),
         new("ProGPU.Scene", "ProGPU.Scene", "net10.0", "ProGPU"),
@@ -241,12 +241,12 @@ internal static class Program
 
     private static void ValidateSdkPackageLayout(string packageFeed)
     {
-        string packagePath = Path.Combine(packageFeed, $"ProGPU.Wpf.Sdk.{SdkVersion}.nupkg");
+        string packagePath = Path.Combine(packageFeed, $"LibreWPF.Sdk.{SdkVersion}.nupkg");
         RequireFile(packagePath, "ProGPU WPF SDK package");
 
         using ZipArchive package = ZipFile.OpenRead(packagePath);
 
-        string nuspec = ReadPackageEntry(package, "ProGPU.Wpf.Sdk.nuspec", "SDK nuspec");
+        string nuspec = ReadPackageEntry(package, "LibreWPF.Sdk.nuspec", "SDK nuspec");
         string sdkProps = ReadPackageEntry(package, "Sdk/Sdk.props", "SDK root props import");
         string sdkTargets = ReadPackageEntry(package, "Sdk/Sdk.targets", "SDK root targets import");
         string portableProps = ReadPackageEntry(package, "targets/ProGPU.Wpf.Sdk.props", "portable SDK props");
@@ -254,7 +254,7 @@ internal static class Program
         string portableBootstrap = ReadPackageEntry(package, "targets/ProGPU.Wpf.Sdk.PortableBootstrap.cs", "portable SDK bootstrap");
         _ = ReadPackageEntry(package, "README.md", "SDK readme");
 
-        AssertContains(nuspec, "<id>ProGPU.Wpf.Sdk</id>", "SDK nuspec package id");
+        AssertContains(nuspec, "<id>LibreWPF.Sdk</id>", "SDK nuspec package id");
         AssertContains(nuspec, $"<version>{SdkVersion}</version>", "SDK nuspec version");
         AssertContains(nuspec, "<packageType name=\"MSBuildSdk\" />", "SDK nuspec package type");
         AssertContains(nuspec, "<dependencies>", "SDK nuspec dependency group");
@@ -280,8 +280,8 @@ internal static class Program
         AssertContains(portableTargets, "<Resource Include=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource include");
         AssertContains(portableTargets, "<None Remove=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource None removal");
         AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" />", "SDK managed WPF transport package reference");
-        AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Wpf\" Version=\"$(ProGpuWpfPackageVersion)\" />", "SDK ProGPU WPF package reference");
-        AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Wpf.Interop\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU WPF interop package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"LibreWPF.ProGPU\" Version=\"$(ProGpuWpfPackageVersion)\" />", "SDK ProGPU WPF package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"LibreWPF.Interop\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU WPF interop package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.DirectX\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU DirectX package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Compute\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU compute package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Transpiler\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU transpiler package reference");
@@ -359,12 +359,22 @@ internal static class Program
 
             ValidateLocalPackageAssemblyMatchesFile(
                 packageFeed,
-                assemblyName,
+                GetPackageIdForRuntimeAssembly(assemblyName),
                 assemblyName,
                 "net10.0",
                 repositoryAssemblyPath,
                 $"repository Release {assemblyName}.dll");
         }
+    }
+
+    private static string GetPackageIdForRuntimeAssembly(string assemblyName)
+    {
+        return assemblyName switch
+        {
+            "ProGPU.Wpf" => "LibreWPF.ProGPU",
+            "ProGPU.Wpf.Interop" => "LibreWPF.Interop",
+            _ => assemblyName
+        };
     }
 
     private static void ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(string repoRoot, string packageFeed)
@@ -379,7 +389,7 @@ internal static class Program
 
             ValidateLocalPackageAssemblyMatchesFile(
                 packageFeed,
-                "Microsoft.DotNet.Wpf.GitHub",
+                "LibreWPF.Transport",
                 assemblyName,
                 "net11.0",
                 repositoryAssemblyPath,
@@ -448,7 +458,7 @@ internal static class Program
             "artifacts",
             "packaging",
             "Release",
-            "Microsoft.DotNet.Wpf.GitHub",
+            "LibreWPF.Transport",
             "lib",
             "net11.0",
             assemblySimpleName + ".dll");
@@ -462,7 +472,7 @@ internal static class Program
             "artifacts",
             "packaging",
             "Debug",
-            "Microsoft.DotNet.Wpf.GitHub.Debug",
+            "LibreWPF.Transport.Debug",
             "lib",
             "net11.0",
             assemblySimpleName + ".dll");
@@ -17400,7 +17410,7 @@ internal static class Program
         string libraryProject = File.ReadAllText(Path.Combine(workRoot, LibraryAssemblyName, LibraryAssemblyName + ".csproj"));
         string localizationProject = File.ReadAllText(Path.Combine(workRoot, LocalizationAssemblyName, LocalizationAssemblyName + ".csproj"));
 
-        AssertContains(appProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external app SDK");
+        AssertContains(appProject, $"<Project Sdk=\"LibreWPF.Sdk/{SdkVersion}\">", "external app SDK");
         AssertDoesNotContain(appProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external app original SDK");
         AssertDoesNotContain(appProject, $"<Project Sdk=\"{OriginalWindowsDesktopWpfSdk}\">", "external app original WindowsDesktop SDK");
         AssertContains(appProject, $"<AssemblyName>{AppOutputAssemblyName}</AssemblyName>", "external app custom assembly name");
@@ -17420,7 +17430,7 @@ internal static class Program
         AssertContains(appProject, "<Content Include=\"Assets/ExternalContent.txt\">", "external app content item");
         AssertContains(appProject, "<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>", "external app content output metadata");
         AssertContains(appProject, "<TargetPath>Assets/ExternalContent.txt</TargetPath>", "external app content target path metadata");
-        AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
+        AssertContains(libraryProject, $"<Project Sdk=\"LibreWPF.Sdk/{SdkVersion}\">", "external library SDK");
         AssertDoesNotContain(libraryProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external library original SDK");
         AssertContains(libraryProject, $"<AssemblyName>{LibraryOutputAssemblyName}</AssemblyName>", "external library custom assembly name");
         AssertContains(libraryProject, $"<TargetFrameworks>{ExternalAppTargetFramework}</TargetFrameworks>", "external library Windows target frameworks");
@@ -17431,7 +17441,7 @@ internal static class Program
         AssertContains(libraryProject, "<Compile Include=\"Properties/AssemblyInfo.cs\" />", "external library explicit ThemeInfo code item");
         AssertContains(libraryProject, "<Page Include=\"ExternalPanel.xaml\" />", "external library explicit user-control page item");
         AssertContains(libraryProject, "<Page Include=\"Themes/Generic.xaml\" />", "external library explicit generic theme page item");
-        AssertContains(localizationProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external localization SDK");
+        AssertContains(localizationProject, $"<Project Sdk=\"LibreWPF.Sdk/{SdkVersion}\">", "external localization SDK");
         AssertDoesNotContain(localizationProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external localization original SDK");
         AssertContains(localizationProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external localization Windows target framework");
         AssertContains(localizationProject, "<UseWPF>true</UseWPF>", "external localization WPF property");
@@ -17474,7 +17484,7 @@ internal static class Program
         string project = File.ReadAllText(projectPath);
         string libraryProject = File.ReadAllText(libraryProjectPath);
 
-        AssertContains(project, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external default-item app SDK");
+        AssertContains(project, $"<Project Sdk=\"LibreWPF.Sdk/{SdkVersion}\">", "external default-item app SDK");
         AssertDoesNotContain(project, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external default-item app original SDK");
         AssertDoesNotContain(project, $"<Project Sdk=\"{OriginalWindowsDesktopWpfSdk}\">", "external default-item app original WindowsDesktop SDK");
         AssertDoesNotContain(project, "<AssemblyName>", "external default-item app custom assembly name");
@@ -17491,7 +17501,7 @@ internal static class Program
         AssertDoesNotContain(project, "ProGpuWpfManagedReferenceRoot", "external default-item app managed artifact root");
         AssertDoesNotContain(project, "ProGpuReferenceRoot", "external default-item app ProGPU artifact root");
 
-        AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external default-item library SDK");
+        AssertContains(libraryProject, $"<Project Sdk=\"LibreWPF.Sdk/{SdkVersion}\">", "external default-item library SDK");
         AssertDoesNotContain(libraryProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external default-item library original SDK");
         AssertDoesNotContain(libraryProject, "<AssemblyName>", "external default-item library custom assembly name");
         AssertContains(libraryProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external default-item library Windows target framework");
@@ -17584,7 +17594,7 @@ internal static class Program
     private static string SwitchWpfSdkOnly(string normalWpfProject, string originalSdkName, string description)
     {
         string originalSdk = $"<Project Sdk=\"{originalSdkName}\">";
-        string proGpuSdk = $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">";
+        string proGpuSdk = $"<Project Sdk=\"LibreWPF.Sdk/{SdkVersion}\">";
 
         AssertContains(normalWpfProject, originalSdk, $"{description} original WPF SDK");
         string switchedProject = normalWpfProject.Replace(originalSdk, proGpuSdk, StringComparison.Ordinal);
@@ -17662,8 +17672,8 @@ internal static class Program
         RequireFile(Path.Combine(outputRoot, "Xceed.Wpf.AvalonDock.Themes.Metro.dll"), "external SDK output AvalonDock Metro theme asset");
         RequireFile(Path.Combine(outputRoot, "Xceed.Wpf.AvalonDock.Themes.VS2010.dll"), "external SDK output AvalonDock VS2010 theme asset");
 
-        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
-        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Wpf.Interop", "ProGPU.Wpf.Interop", "net10.0");
+        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "LibreWPF.ProGPU", "ProGPU.Wpf", "net10.0");
+        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "LibreWPF.Interop", "ProGPU.Wpf.Interop", "net10.0");
         ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.DirectX", "ProGPU.DirectX", "net10.0");
         ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies)
@@ -17671,7 +17681,7 @@ internal static class Program
             ValidateOutputAssemblyMatchesLocalPackage(
                 outputRoot,
                 packageFeed,
-                "Microsoft.DotNet.Wpf.GitHub",
+                "LibreWPF.Transport",
                 assemblyName,
                 "net11.0");
         }
@@ -17680,9 +17690,9 @@ internal static class Program
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("glfw"), "external SDK output native GLFW runtime asset");
 
         string depsJson = File.ReadAllText(Path.Combine(outputRoot, AppOutputAssemblyName + ".deps.json"));
-        AssertContains(depsJson, "Microsoft.DotNet.Wpf.GitHub", "external SDK WPF transport package dependency");
-        AssertContains(depsJson, "ProGPU.Wpf", "external SDK ProGPU WPF package dependency");
-        AssertContains(depsJson, "ProGPU.Wpf.Interop", "external SDK ProGPU WPF interop package dependency");
+        AssertContains(depsJson, "LibreWPF.Transport", "external SDK WPF transport package dependency");
+        AssertContains(depsJson, "LibreWPF.ProGPU", "external SDK ProGPU WPF package dependency");
+        AssertContains(depsJson, "LibreWPF.Interop", "external SDK ProGPU WPF interop package dependency");
         AssertContains(depsJson, "ProGPU.DirectX", "external SDK ProGPU DirectX package dependency");
         AssertContains(depsJson, "ProGPU.Compute", "external SDK ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK ProGPU transpiler package dependency");
@@ -17719,9 +17729,9 @@ internal static class Program
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("glfw"), "external SDK default-item output native GLFW runtime asset");
 
         string depsJson = File.ReadAllText(Path.Combine(outputRoot, DefaultItemsAssemblyName + ".deps.json"));
-        AssertContains(depsJson, "Microsoft.DotNet.Wpf.GitHub", "external SDK default-item WPF transport package dependency");
-        AssertContains(depsJson, "ProGPU.Wpf", "external SDK default-item ProGPU WPF package dependency");
-        AssertContains(depsJson, "ProGPU.Wpf.Interop", "external SDK default-item ProGPU WPF interop package dependency");
+        AssertContains(depsJson, "LibreWPF.Transport", "external SDK default-item WPF transport package dependency");
+        AssertContains(depsJson, "LibreWPF.ProGPU", "external SDK default-item ProGPU WPF package dependency");
+        AssertContains(depsJson, "LibreWPF.Interop", "external SDK default-item ProGPU WPF interop package dependency");
         AssertContains(depsJson, "ProGPU.DirectX", "external SDK default-item ProGPU DirectX package dependency");
         AssertContains(depsJson, "ProGPU.Compute", "external SDK default-item ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK default-item ProGPU transpiler package dependency");

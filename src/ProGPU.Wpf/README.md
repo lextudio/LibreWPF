@@ -1,6 +1,6 @@
-# ProGPU.Wpf
+# LibreWPF.ProGPU
 
-This project is the cross-platform rendering port lane for WPF.
+This package is the LibreWPF cross-platform rendering port lane for WPF. The assembly and source project remain `ProGPU.Wpf`; the public NuGet package ID is `LibreWPF.ProGPU`.
 
 It intentionally does not modify the existing `PresentationCore` DUCE/MIL path yet. Instead, it provides:
 

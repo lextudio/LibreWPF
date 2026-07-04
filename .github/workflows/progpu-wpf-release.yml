@@ -1,4 +1,4 @@
-name: ProGPU WPF Release
+name: LibreWPF Release
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ on:
         default: false
   push:
     tags:
-      - progpu-wpf-v*
+      - librewpf-v*
 
 permissions:
   contents: write

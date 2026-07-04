@@ -535,6 +535,49 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void DecodeIdentityScopesThroughProGpuSinkDoNotEmitPushPopCommands()
+    {
+        var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 0, 0));
+        var resolver = WpfResourceResolver.FromDependentResources(new object?[] { transform, Brushes.Red });
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+
+        var opacityPayload = new byte[8];
+        WriteDouble(opacityPayload, 0, 1);
+        var transformPayload = new byte[8];
+        WriteUInt32(transformPayload, 0, 1);
+        var rectanglePayload = new byte[40];
+        WriteRect(rectanglePayload, 0, 2, 3, 40, 50);
+        WriteUInt32(rectanglePayload, 32, 2);
+        var renderData = CreateRecord(WpfMilCommandId.PushOpacity, opacityPayload)
+            .Concat(CreateRecord(WpfMilCommandId.PushTransform, transformPayload))
+            .Concat(CreateRecord(WpfMilCommandId.DrawRectangle, rectanglePayload))
+            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
+            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
+            .ToArray();
+
+        var result = new WpfMilRenderDataDecoder().Decode(renderData, sink, resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(5, 5, 0, 0), result);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawRect, command.Type);
+        Assert.Equal(Matrix4x4.Identity, command.Transform);
+    }
+
+    [Fact]
+    public void NativeIdentityTransformThroughProGpuSinkDoesNotEmitPushPopCommands()
+    {
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+        var nativeTransformSink = (IWpfNativeTransformCommandSink)sink;
+
+        nativeTransformSink.PushNativeTransform(Matrix4x4.Identity);
+        sink.Pop();
+
+        Assert.Empty(nativeContext.Commands);
+    }
+
+    [Fact]
     public void DecodeTransformedLineThroughProGpuSinkStoresTransform()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 5, 6));

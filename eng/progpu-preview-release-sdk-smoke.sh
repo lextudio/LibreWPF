@@ -12,7 +12,7 @@ export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
-bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}"
+bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/librewpf-preview-${dev_package_version}.tar.gz}"
 
 require_package_cache_entry() {
   local package_id="$1"
@@ -43,7 +43,7 @@ project_dir="${feed_dir}/BundleSdkSmoke"
 mkdir -p "${project_dir}"
 
 cat >"${project_dir}/BundleSdkSmoke.csproj" <<PROJECT
-<Project Sdk="ProGPU.Wpf.Sdk/${dev_package_version}">
+<Project Sdk="LibreWPF.Sdk/${dev_package_version}">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net11.0-windows</TargetFramework>
@@ -101,7 +101,7 @@ public partial class App : Application
                 throw new InvalidOperationException("Application resource lookup did not return the expected brush.");
             }
 
-            Console.WriteLine("ProGPU WPF preview release bundle SDK smoke succeeded.");
+            Console.WriteLine("LibreWPF preview release bundle SDK smoke succeeded.");
             Shutdown(0);
             return;
         }
@@ -116,7 +116,7 @@ cat >"${project_dir}/MainWindow.xaml" <<'XAML'
     x:Class="BundleSdkSmoke.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="ProGPU WPF Preview Bundle SDK Smoke"
+    Title="LibreWPF Preview Bundle SDK Smoke"
     Width="360"
     Height="220">
     <StackPanel x:Name="RootPanel" Margin="16">
@@ -148,9 +148,9 @@ CS
 
 NUGET_PACKAGES="${smoke_root}/packages" "${dotnet}" build "${project_dir}/BundleSdkSmoke.csproj" -v:minimal
 
-require_package_cache_entry "Microsoft.DotNet.Wpf.GitHub"
-require_package_cache_entry "ProGPU.Wpf"
-require_package_cache_entry "ProGPU.Wpf.Sdk"
+require_package_cache_entry "LibreWPF.Transport"
+require_package_cache_entry "LibreWPF.ProGPU"
+require_package_cache_entry "LibreWPF.Sdk"
 
 NUGET_PACKAGES="${smoke_root}/packages" \
 PROGPU_WPF_BUNDLE_SDK_SMOKE_VALIDATE=1 \

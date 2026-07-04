@@ -60,7 +60,7 @@ if [[ "${PROGPU_WPF_XCEED_PAID_VALIDATE:-0}" == "1" || \
 fi
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-sdk_package="${package_output}/ProGPU.Wpf.Sdk.11.0.0-dev.nupkg"
+sdk_package="${package_output}/LibreWPF.Sdk.11.0.0-dev.nupkg"
 xceed_project="${repo_root}/samples/ProGPU.Wpf.XceedPaidApp/ProGPU.Wpf.XceedPaidApp.csproj"
 xceed_output="${repo_root}/artifacts/bin/ProGPU.Wpf.XceedPaidApp/Debug/net11.0-windows"
 

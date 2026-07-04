@@ -2,7 +2,7 @@
 
 This sample exercises the commercial Xceed Toolkit Plus and Xceed DataGrid packages through the custom `ProGPU.Wpf.Sdk` project shape. The app project stays a normal SDK-switched WPF app:
 
-- `Project Sdk="ProGPU.Wpf.Sdk/11.0.0-dev"`
+- `Project Sdk="LibreWPF.Sdk/11.0.0-dev"`
 - `UseWPF`
 - normal compiled `App.xaml` / `MainWindow.xaml`
 - normal Xceed package references

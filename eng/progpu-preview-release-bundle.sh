@@ -4,8 +4,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
-manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/progpu-wpf-preview-packages-${dev_package_version}.json}"
-bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}"
+manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/librewpf-preview-packages-${dev_package_version}.json}"
+bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/librewpf-preview-${dev_package_version}.tar.gz}"
 sidecar_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE_SHA256:-${bundle_output}.sha256}"
 release_readme_path="${PROGPU_WPF_PREVIEW_RELEASE_README:-${package_output}/README.md}"
 release_nuget_config_path="${PROGPU_WPF_PREVIEW_RELEASE_NUGET_CONFIG:-${package_output}/NuGet.config}"
@@ -32,27 +32,27 @@ mkdir -p "${bundle_dir}" "${sidecar_dir}" "${readme_dir}" "${nuget_config_dir}"
 rm -f "${bundle_output}" "${sidecar_output}"
 
 cat >"${release_readme_path}" <<README
-# ProGPU WPF Preview ${dev_package_version}
+# LibreWPF Preview ${dev_package_version}
 
-This preview bundle contains the package set for running WPF applications on the ProGPU/Silk.NET platform through the custom \`ProGPU.Wpf.Sdk\`.
+This preview bundle contains the package set for running WPF applications on the ProGPU/Silk.NET platform through the custom \`LibreWPF.Sdk\`.
 
 ## Contents
 
-- \`progpu-wpf-preview-packages-${dev_package_version}.json\` records the exact package list, source commits, package sizes, and SHA-256 hashes.
-- \`Microsoft.DotNet.Wpf.GitHub.${dev_package_version}.nupkg\` contains the ported managed WPF transport assemblies.
-- \`ProGPU.Wpf.Sdk.${dev_package_version}.nupkg\` is the custom MSBuild SDK package.
-- \`ProGPU.Wpf.${dev_package_version}.nupkg\` and the \`ProGPU.*.${dev_package_version}.nupkg\` packages contain the bridge, compositor, rendering, DirectX, WinUI, Avalonia, and Silk.NET-backed runtime dependencies.
+- \`librewpf-preview-packages-${dev_package_version}.json\` records the exact package list, source commits, package sizes, and SHA-256 hashes.
+- \`LibreWPF.Transport.${dev_package_version}.nupkg\` contains the ported managed WPF transport assemblies.
+- \`LibreWPF.Sdk.${dev_package_version}.nupkg\` is the custom MSBuild SDK package.
+- \`LibreWPF.ProGPU.${dev_package_version}.nupkg\`, \`LibreWPF.Interop.${dev_package_version}.nupkg\`, and the \`ProGPU.*.${dev_package_version}.nupkg\` packages contain the bridge, compositor, rendering, DirectX, WinUI, Avalonia, and Silk.NET-backed runtime dependencies.
 
 Verify the archive with the adjacent checksum file:
 
 \`\`\`bash
-shasum -a 256 -c progpu-wpf-preview-${dev_package_version}.tar.gz.sha256
+shasum -a 256 -c librewpf-preview-${dev_package_version}.tar.gz.sha256
 \`\`\`
 
 Use the extracted directory as a local NuGet source, or copy the bundled \`NuGet.config\` next to your solution and keep the extracted bundle beside it. Then switch an existing WPF project to the custom SDK:
 
 \`\`\`xml
-<Project Sdk="ProGPU.Wpf.Sdk/${dev_package_version}">
+<Project Sdk="LibreWPF.Sdk/${dev_package_version}">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net11.0-windows</TargetFramework>
@@ -77,7 +77,7 @@ cat >"${release_nuget_config_path}" <<NUGET
 <configuration>
   <packageSources>
     <clear />
-    <add key="progpu-wpf-preview" value="." />
+    <add key="librewpf-preview" value="." />
     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
 </configuration>
@@ -135,5 +135,5 @@ fi
 bundle_sha256="$(file_sha256 "${bundle_output}")"
 printf '%s  %s\n' "${bundle_sha256}" "$(basename "${bundle_output}")" >"${sidecar_output}"
 
-echo "ProGPU WPF preview release bundle written to ${bundle_output}."
-echo "ProGPU WPF preview release bundle SHA-256 written to ${sidecar_output}."
+echo "LibreWPF preview release bundle written to ${bundle_output}."
+echo "LibreWPF preview release bundle SHA-256 written to ${sidecar_output}."

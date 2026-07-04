@@ -11,7 +11,7 @@ export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
 export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-sdk_package="${package_output}/ProGPU.Wpf.Sdk.11.0.0-dev.nupkg"
+sdk_package="${package_output}/LibreWPF.Sdk.11.0.0-dev.nupkg"
 hello_project="${repo_root}/samples/ProGPU.Wpf.HelloApp/ProGPU.Wpf.HelloApp.csproj"
 hello_output="${repo_root}/artifacts/bin/ProGPU.Wpf.HelloApp/Debug/net11.0-windows"
 

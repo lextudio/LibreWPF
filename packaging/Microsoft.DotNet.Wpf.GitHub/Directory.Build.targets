@@ -12,8 +12,8 @@
 
   <!-- 
     Inspect the following NuSpecs and validate the assembly versions
-        * .\artifacts\packages\Release\NonShipping\Microsoft.DotNet.Wpf.GitHub.<version>.nuspec produced by Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj
-        * .\artifacts\packages\Release\NonShipping\runtime.<arch>.Microsoft.DotNet.Wpf.GitHub.<version>.nuspec produced by Microsoft.DotNet.Wpf.GitHub.csproj
+        * .\artifacts\packages\Release\NonShipping\LibreWPF.Transport.<version>.nuspec produced by LibreWPF.Transport.ArchNeutral.csproj
+        * .\artifacts\packages\Release\NonShipping\runtime.<arch>.LibreWPF.Transport.<version>.nuspec produced by LibreWPF.Transport.csproj
     -->
   <Target Name="ValidateTransportPackage"
           AfterTargets="GenerateNuspec"
@@ -26,7 +26,7 @@
     <PropertyGroup>
       <_NuspecFilePath>@(_NuspecFile)</_NuspecFilePath>
       <!--
-          When we build Microsoft.DotNet.Wpf.GitHub.csproj GenerateNuspec task creates an arch-specific NuSpec, and
+          When we build LibreWPF.Transport.csproj GenerateNuspec task creates an arch-specific NuSpec, and
           NuSpec declared in NuGetPackOutput does not exist.
           Look for the arch-specific NuSpec
        -->
@@ -45,7 +45,7 @@
   <Target Name="ValidateManagedWpfTransportPayload"
           BeforeTargets="GenerateNuspec"
           DependsOnTargets="CreateContentFolder"
-          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('Microsoft.DotNet.Wpf.GitHub'))">
+          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('LibreWPF.Transport'))">
     <PropertyGroup>
       <_ManagedWpfTransportRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)</_ManagedWpfTransportRoot>
     </PropertyGroup>
@@ -99,7 +99,7 @@
 
   <Target Name="AddManagedWpfTransportSystemPrintingPayload"
           BeforeTargets="CreateContentFolder"
-          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('Microsoft.DotNet.Wpf.GitHub'))">
+          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('LibreWPF.Transport'))">
     <PropertyGroup>
       <_ManagedWpfTransportLibRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\$(TargetFramework)</_ManagedWpfTransportLibRoot>
       <_ManagedWpfTransportRefRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\ref\$(TargetFramework)</_ManagedWpfTransportRefRoot>
@@ -136,7 +136,7 @@
 
   <Target Name="AddManagedWpfTransportPrivateWinFormsPayload"
           BeforeTargets="CreateContentFolder"
-          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('Microsoft.DotNet.Wpf.GitHub'))">
+          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('LibreWPF.Transport'))">
     <PropertyGroup>
       <_ManagedWpfTransportLibRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\$(TargetFramework)</_ManagedWpfTransportLibRoot>
       <_PrivateWinFormsLibRoot>$(PkgMicrosoft_Private_Winforms)\lib\$(TargetFramework)</_PrivateWinFormsLibRoot>

@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
-manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/progpu-wpf-preview-packages-${dev_package_version}.json}"
+manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/librewpf-preview-packages-${dev_package_version}.json}"
 source "${repo_root}/eng/progpu-preview-package-list.sh"
 
 package_ids=("${progpu_preview_package_ids[@]}")
@@ -108,4 +108,4 @@ progpu_has_tracked_changes="$(git_has_tracked_changes "${repo_root}/external/Pro
   printf '}\n'
 } >"${manifest_path}"
 
-echo "ProGPU WPF preview package manifest written to ${manifest_path}."
+echo "LibreWPF preview package manifest written to ${manifest_path}."

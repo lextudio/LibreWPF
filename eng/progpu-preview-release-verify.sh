@@ -4,8 +4,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
-manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/progpu-wpf-preview-packages-${dev_package_version}.json}"
-bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/progpu-wpf-preview-${dev_package_version}.tar.gz}"
+manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/librewpf-preview-packages-${dev_package_version}.json}"
+bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/librewpf-preview-${dev_package_version}.tar.gz}"
 sidecar_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE_SHA256:-${bundle_output}.sha256}"
 release_readme_path="${PROGPU_WPF_PREVIEW_RELEASE_README:-${package_output}/README.md}"
 release_nuget_config_path="${PROGPU_WPF_PREVIEW_RELEASE_NUGET_CONFIG:-${package_output}/NuGet.config}"
@@ -93,8 +93,8 @@ if [[ -f "${manifest_path}" ]] && ! cmp -s "${manifest_path}" "${extract_dir}/${
 fi
 
 readme_file="${extract_dir}/${readme_name}"
-if ! grep -q "ProGPU.Wpf.Sdk/${dev_package_version}" "${readme_file}" \
-  || ! grep -q "shasum -a 256 -c progpu-wpf-preview-${dev_package_version}.tar.gz.sha256" "${readme_file}" \
+if ! grep -q "LibreWPF.Sdk/${dev_package_version}" "${readme_file}" \
+  || ! grep -q "shasum -a 256 -c librewpf-preview-${dev_package_version}.tar.gz.sha256" "${readme_file}" \
   || ! grep -q "PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE=1 ./eng/progpu-preview-release-verify.sh" "${readme_file}" \
   || ! grep -q "No ProGPU-specific source or XAML changes should be required" "${readme_file}"; then
   echo "Preview release bundle README is missing required SDK switch or verification guidance." >&2
@@ -102,7 +102,7 @@ if ! grep -q "ProGPU.Wpf.Sdk/${dev_package_version}" "${readme_file}" \
 fi
 
 nuget_config_file="${extract_dir}/${nuget_config_name}"
-if ! grep -q "<add key=\"progpu-wpf-preview\" value=\"\\.\" />" "${nuget_config_file}" \
+if ! grep -q "<add key=\"librewpf-preview\" value=\"\\.\" />" "${nuget_config_file}" \
   || ! grep -q "<add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" />" "${nuget_config_file}"; then
   echo "Preview release bundle NuGet config is missing required package sources." >&2
   exit 1
@@ -200,4 +200,4 @@ if (expectedIds.size !== 0) {
 }
 NODE
 
-echo "ProGPU WPF preview release bundle verification succeeded for ${bundle_output}."
+echo "LibreWPF preview release bundle verification succeeded for ${bundle_output}."

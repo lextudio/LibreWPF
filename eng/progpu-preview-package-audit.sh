@@ -11,6 +11,21 @@ package_path() {
   echo "${package_output}/${package_id}.${dev_package_version}.nupkg"
 }
 
+package_assembly_name() {
+  local package_id="$1"
+  case "${package_id}" in
+    LibreWPF.Interop)
+      echo "ProGPU.Wpf.Interop"
+      ;;
+    LibreWPF.ProGPU)
+      echo "ProGPU.Wpf"
+      ;;
+    *)
+      echo "${package_id}"
+      ;;
+  esac
+}
+
 require_package() {
   local package_id="$1"
   local package_file
@@ -55,17 +70,17 @@ for package_id in "${all_packages[@]}"; do
 done
 
 for package_id in "${runtime_packages[@]}"; do
-  require_entry "${package_id}" "lib/net10.0/${package_id}.dll"
+  require_entry "${package_id}" "lib/net10.0/$(package_assembly_name "${package_id}").dll"
 done
 
-require_entry ProGPU.Wpf "lib/net10.0/ProGPU.Wpf.dll"
-require_nuspec_contains ProGPU.Wpf "dependency id=\"ProGPU.Backend\" version=\"${dev_package_version}\""
-require_nuspec_contains ProGPU.Wpf "dependency id=\"ProGPU.DirectX\" version=\"${dev_package_version}\""
-require_nuspec_contains ProGPU.Wpf "dependency id=\"ProGPU.Scene\" version=\"${dev_package_version}\""
-require_nuspec_contains ProGPU.Wpf "dependency id=\"ProGPU.Wpf.Interop\" version=\"${dev_package_version}\""
-require_nuspec_contains ProGPU.Wpf "dependency id=\"Silk.NET.Input\" version=\"2.23.0\""
-require_nuspec_contains ProGPU.Wpf "dependency id=\"Silk.NET.WebGPU\" version=\"2.23.0\""
-require_nuspec_contains ProGPU.Wpf "dependency id=\"Silk.NET.Windowing\" version=\"2.23.0\""
+require_entry LibreWPF.ProGPU "lib/net10.0/ProGPU.Wpf.dll"
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Backend\" version=\"${dev_package_version}\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.DirectX\" version=\"${dev_package_version}\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Scene\" version=\"${dev_package_version}\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"LibreWPF.Interop\" version=\"${dev_package_version}\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.Input\" version=\"2.23.0\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.WebGPU\" version=\"2.23.0\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.Windowing\" version=\"2.23.0\""
 
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Backend\" version=\"${dev_package_version}\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Layout\" version=\"${dev_package_version}\""
@@ -74,13 +89,13 @@ require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.WinUI\" version=
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"Avalonia\" version=\"12.0.3\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"Silk.NET.WebGPU\" version=\"2.23.0\""
 
-require_nuspec_contains ProGPU.Wpf.Sdk "<packageType name=\"MSBuildSdk\" />"
-require_entry ProGPU.Wpf.Sdk "Sdk/Sdk.props"
-require_entry ProGPU.Wpf.Sdk "Sdk/Sdk.targets"
-require_entry ProGPU.Wpf.Sdk "targets/ProGPU.Wpf.Sdk.props"
-require_entry ProGPU.Wpf.Sdk "targets/ProGPU.Wpf.Sdk.targets"
-require_entry ProGPU.Wpf.Sdk "targets/ProGPU.Wpf.Sdk.PortableBootstrap.cs"
-require_entry ProGPU.Wpf.Sdk "targets/ProGPU.Wpf.Sdk.Win32Compat.c"
+require_nuspec_contains LibreWPF.Sdk "<packageType name=\"MSBuildSdk\" />"
+require_entry LibreWPF.Sdk "Sdk/Sdk.props"
+require_entry LibreWPF.Sdk "Sdk/Sdk.targets"
+require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.props"
+require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.targets"
+require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.PortableBootstrap.cs"
+require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.Win32Compat.c"
 
 transport_entries=(
   lib/net11.0/WindowsBase.dll
@@ -102,10 +117,10 @@ transport_entries=(
 )
 
 for entry in "${transport_entries[@]}"; do
-  require_entry Microsoft.DotNet.Wpf.GitHub "${entry}"
+  require_entry LibreWPF.Transport "${entry}"
 done
 
-require_entry Microsoft.DotNet.Wpf.GitHub "runtime.json"
-require_nuspec_contains Microsoft.DotNet.Wpf.GitHub "<group targetFramework=\"net11.0\" />"
+require_entry LibreWPF.Transport "runtime.json"
+require_nuspec_contains LibreWPF.Transport "<group targetFramework=\"net11.0\" />"
 
-echo "ProGPU WPF preview package audit succeeded for ${dev_package_version}."
+echo "LibreWPF preview package audit succeeded for ${dev_package_version}."

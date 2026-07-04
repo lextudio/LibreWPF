@@ -84,7 +84,7 @@ clean_sdk_smoke_outputs() {
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.SciChartMvpApp"
 }
 
-echo "Packing ProGPU packages for ProGPU.Wpf.Sdk feed..."
+echo "Packing ProGPU packages for LibreWPF.Sdk feed..."
 pack_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj" "ProGPU.Backend"
 pack_project "external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj" "ProGPU.DirectX"
 pack_project "external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj" "ProGPU.Transpiler"
@@ -96,7 +96,7 @@ pack_project "external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj" "ProGPU.La
 pack_project "external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj" "ProGPU.Virtualization"
 pack_project "external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj" "ProGPU.WinUI"
 pack_project "external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj" "ProGPU.Avalonia"
-pack_project "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "ProGPU.Wpf.Interop"
+pack_project "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "LibreWPF.Interop"
 
 echo "Running ProGPU Avalonia package consumer smoke..."
 "${repo_root}/eng/progpu-avalonia-package-smoke.sh"
@@ -133,10 +133,10 @@ run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.RealApplicationRunHarness/
 echo "Running real WPF Fluent theme runtime harness..."
 run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj" -c Release -v:minimal
 
-echo "Packing WPF transport, ProGPU bridge, and custom SDK..."
-pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "Microsoft.DotNet.Wpf.GitHub"
-pack_project "src/ProGPU.Wpf/ProGPU.Wpf.csproj" "ProGPU.Wpf"
-pack_project "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" "ProGPU.Wpf.Sdk"
+echo "Packing LibreWPF transport, ProGPU bridge, and custom SDK..."
+pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "LibreWPF.Transport"
+pack_project "src/ProGPU.Wpf/ProGPU.Wpf.csproj" "LibreWPF.ProGPU"
+pack_project "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" "LibreWPF.Sdk"
 
 echo "Auditing preview package artifacts..."
 "${repo_root}/eng/progpu-preview-package-audit.sh"

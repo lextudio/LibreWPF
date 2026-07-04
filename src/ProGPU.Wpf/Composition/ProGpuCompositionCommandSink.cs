@@ -695,6 +695,12 @@ public sealed class ProGpuCompositionCommandSink :
     public void PushOpacity(double opacity)
     {
         ThrowIfClosed();
+        if (IsIdentityOpacity(opacity))
+        {
+            _pushStack.Push(PushKind.NoOp);
+            return;
+        }
+
         NativeContext.PushOpacity((float)opacity);
         _pushStack.Push(PushKind.Opacity);
     }
@@ -728,9 +734,14 @@ public sealed class ProGpuCompositionCommandSink :
     public void PushTransform(MediaTransform transform)
     {
         ThrowIfClosed();
-        var nativeTransform = WpfResourceResolver.TryAdaptTransformMatrix(transform, out var adaptedTransform)
-            ? adaptedTransform
-            : Matrix4x4.Identity;
+        var hasNativeTransform = WpfResourceResolver.TryAdaptTransformMatrix(transform, out var adaptedTransform);
+        if (hasNativeTransform && IsIdentityTransform(adaptedTransform))
+        {
+            _pushStack.Push(PushKind.NoOp);
+            return;
+        }
+
+        var nativeTransform = hasNativeTransform ? adaptedTransform : Matrix4x4.Identity;
         _transformStack.Push(nativeTransform * _transformStack.Peek());
         _drawingContext?.PushTransform(transform);
         _pushStack.Push(PushKind.Transform);
@@ -739,6 +750,12 @@ public sealed class ProGpuCompositionCommandSink :
     public void PushNativeTransform(Matrix4x4 transform)
     {
         ThrowIfClosed();
+        if (IsIdentityTransform(transform))
+        {
+            _pushStack.Push(PushKind.NoOp);
+            return;
+        }
+
         _transformStack.Push(transform * _transformStack.Peek());
         _pushStack.Push(PushKind.Transform);
     }
@@ -1625,6 +1642,31 @@ public sealed class ProGpuCompositionCommandSink :
     private static bool AreClose(double left, double right, double epsilon)
     {
         return Math.Abs(left - right) <= epsilon;
+    }
+
+    private static bool IsIdentityOpacity(double opacity)
+    {
+        return double.IsFinite(opacity) && AreClose(opacity, 1);
+    }
+
+    private static bool IsIdentityTransform(Matrix4x4 transform)
+    {
+        return AreClose(transform.M11, 1)
+            && AreClose(transform.M12, 0)
+            && AreClose(transform.M13, 0)
+            && AreClose(transform.M14, 0)
+            && AreClose(transform.M21, 0)
+            && AreClose(transform.M22, 1)
+            && AreClose(transform.M23, 0)
+            && AreClose(transform.M24, 0)
+            && AreClose(transform.M31, 0)
+            && AreClose(transform.M32, 0)
+            && AreClose(transform.M33, 1)
+            && AreClose(transform.M34, 0)
+            && AreClose(transform.M41, 0)
+            && AreClose(transform.M42, 0)
+            && AreClose(transform.M43, 0)
+            && AreClose(transform.M44, 1);
     }
 
     internal static VectorBrush? AdaptNativeBrush(

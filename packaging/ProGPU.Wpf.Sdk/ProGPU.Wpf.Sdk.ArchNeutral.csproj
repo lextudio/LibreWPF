@@ -7,10 +7,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageName>$(MSBuildProjectName.Replace('.ArchNeutral',''))$(TransportPackageNameSuffix)</PackageName>
+    <PackageName>LibreWPF.Sdk$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
-    <PackageDescription>ProGPU/Silk.NET SDK for portable WPF applications</PackageDescription>
-    <PackageTags>wpf;progpu;silk.net;msbuild-sdk</PackageTags>
+    <PackageDescription>LibreWPF MSBuild SDK for running WPF applications on ProGPU/Silk.NET.</PackageDescription>
+    <PackageTags>librewpf;wpf;progpu;silk.net;msbuild-sdk</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 

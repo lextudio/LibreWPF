@@ -158,7 +158,7 @@ public partial class App : Application
         ValidateRetainedOwnerBranchPreservesLogicalMarkerOrigin(proGpuWpf, proGpuBackend, silkNetWebGpu);
         RequireProperty(hostType, "DirectXDevice", directXDeviceType);
 
-        ValidateRuntimeAssetMatchesLocalPackage(proGpuWpf, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
+        ValidateRuntimeAssetMatchesLocalPackage(proGpuWpf, "LibreWPF.ProGPU", "ProGPU.Wpf", "net10.0");
         ValidateRuntimeAssetMatchesLocalPackage(proGpuDirectX, "ProGPU.DirectX", "ProGPU.DirectX", "net10.0");
         ValidateRuntimeAssetMatchesLocalPackage(proGpuScene, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
         ValidateRuntimeAssetMatchesLocalPackage(proGpuBackend, "ProGPU.Backend", "ProGPU.Backend", "net10.0");

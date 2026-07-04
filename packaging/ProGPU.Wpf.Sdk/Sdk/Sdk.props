@@ -23,7 +23,7 @@
     <ProGpuWpfReferenceMode Condition="'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')">LocalArtifacts</ProGpuWpfReferenceMode>
     <ProGpuWpfReferenceMode Condition="'$(ProGpuWpfReferenceMode)' == ''">Package</ProGpuWpfReferenceMode>
     <ProGpuWpfPackageVersion Condition="'$(ProGpuWpfPackageVersion)' == ''">$(ProGpuWpfSdkVersion)</ProGpuWpfPackageVersion>
-    <ProGpuWpfManagedPackageId Condition="'$(ProGpuWpfManagedPackageId)' == ''">Microsoft.DotNet.Wpf.GitHub</ProGpuWpfManagedPackageId>
+    <ProGpuWpfManagedPackageId Condition="'$(ProGpuWpfManagedPackageId)' == ''">LibreWPF.Transport</ProGpuWpfManagedPackageId>
     <ProGpuWpfManagedPackageVersion Condition="'$(ProGpuWpfManagedPackageVersion)' == ''">$(ProGpuWpfPackageVersion)</ProGpuWpfManagedPackageVersion>
     <ProGpuPackageVersion Condition="'$(ProGpuPackageVersion)' == ''">$(ProGpuWpfSdkVersion)</ProGpuPackageVersion>
     <ProGpuWpfClearMutablePackageOutputs Condition="'$(ProGpuWpfClearMutablePackageOutputs)' == '' And ('$([System.String]::Copy(`$(ProGpuWpfPackageVersion)`).Contains(`-dev`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuWpfManagedPackageVersion)`).Contains(`-dev`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuPackageVersion)`).Contains(`-dev`))' == 'True')">true</ProGpuWpfClearMutablePackageOutputs>

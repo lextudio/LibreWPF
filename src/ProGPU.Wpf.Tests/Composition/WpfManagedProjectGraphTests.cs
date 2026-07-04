@@ -13448,6 +13448,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DecodeRoundedRectangleClipUsesNativeMediaGeometryClipWithoutBroadNativeClip", wpfMilRenderDataDecoderTests, StringComparison.Ordinal);
         Assert.Contains("guidelines is not IPortableGuidelineSetSource guidelineSource", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.Contains("collection is not IList<double> typedValues", wpfGuidelineSetReader, StringComparison.Ordinal);
+        Assert.Contains("if (WpfGuidelineSetReader.TryReadDynamicGuidelineSet(guidelines, out var guidelinesX, out var guidelinesY))", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("if (WpfGuidelineSetReader.TryReadDynamicGuidelineSet(guidelines, out var guidelinesX, out var guidelinesY))", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("guidelinesY[1] - guidelinesY[0]", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("guidelinesY[1] - guidelinesY[0]", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("Assert.Equal(1, guidelines.QueryCount);", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDynamicGuidelineYPair(guidelines", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDynamicGuidelineY1(guidelines", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDynamicGuidelineYPair(guidelines", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadDynamicGuidelineY1(guidelines", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Reflection", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(", wpfGuidelineSetReader, StringComparison.Ordinal);

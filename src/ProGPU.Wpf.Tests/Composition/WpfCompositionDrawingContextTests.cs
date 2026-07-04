@@ -2158,12 +2158,14 @@ public sealed class WpfCompositionDrawingContextTests
     [Fact]
     public void DynamicGuidelineSetWithOneYGuidelineUsesGuidelineY1Scope()
     {
-        var sink = new RecordingSink();
+        var sink = new GuidelineOnlySink();
         using var context = new WpfCompositionDrawingContext(sink);
+        var guidelines = new FakeGuidelineSet(Array.Empty<double>(), new[] { 12.5 });
 
-        context.PushGuidelineSet(new FakeGuidelineSet(Array.Empty<double>(), new[] { 12.5 }));
+        context.PushGuidelineSet(guidelines);
 
         Assert.Equal(new[] { "PushGuidelineY1" }, sink.Operations);
+        Assert.Equal(1, guidelines.QueryCount);
         Assert.Equal(1, context.StackDepth);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
@@ -2171,13 +2173,15 @@ public sealed class WpfCompositionDrawingContextTests
     [Fact]
     public void DynamicGuidelineSetWithTwoYGuidelinesUsesGuidelineY2Scope()
     {
-        var sink = new RecordingSink();
+        var sink = new GuidelineOnlySink();
         using var context = new WpfCompositionDrawingContext(sink);
+        var guidelines = new FakeGuidelineSet(Array.Empty<double>(), new[] { 10.0, 12.25 });
 
-        context.PushGuidelineSet(new FakeGuidelineSet(Array.Empty<double>(), new[] { 10.0, 12.25 }));
+        context.PushGuidelineSet(guidelines);
 
         Assert.Equal(new[] { "PushGuidelineY2" }, sink.Operations);
         Assert.Equal((10.0, 2.25), sink.GuidelineY2Values.Single());
+        Assert.Equal(1, guidelines.QueryCount);
         Assert.Equal(1, context.StackDepth);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
@@ -2185,12 +2189,14 @@ public sealed class WpfCompositionDrawingContextTests
     [Fact]
     public void DynamicGuidelineSetThatCannotUseFastPathStillPushesGuidelineSetScope()
     {
-        var sink = new RecordingSink();
+        var sink = new GuidelineOnlySink();
         using var context = new WpfCompositionDrawingContext(sink);
+        var guidelines = new FakeGuidelineSet(new[] { 1.0 }, new[] { 2.0 });
 
-        context.PushGuidelineSet(new FakeGuidelineSet(new[] { 1.0 }, new[] { 2.0 }));
+        context.PushGuidelineSet(guidelines);
 
         Assert.Equal(new[] { "PushGuidelineSet" }, sink.Operations);
+        Assert.Equal(1, guidelines.QueryCount);
         Assert.Equal(1, context.StackDepth);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
@@ -2926,11 +2932,85 @@ public sealed class WpfCompositionDrawingContextTests
                 guidelinesY);
         }
 
+        public int QueryCount { get; private set; }
+
         public bool TryGetPortableGuidelineSet(out PortableGuidelineSet guidelineSet)
         {
+            QueryCount++;
             guidelineSet = _guidelineSet;
             return true;
         }
+    }
+
+    private sealed class GuidelineOnlySink : IWpfCompositionCommandSink
+    {
+        public List<string> Operations { get; } = new();
+
+        public List<(double LeadingCoordinate, double OffsetToDrivenCoordinate)> GuidelineY2Values { get; } = new();
+
+        public MediaDrawingContext? DrawingContext => null;
+
+        public void DrawLine(MediaPen? pen, Point point0, Point point1) { }
+
+        public void DrawRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle) { }
+
+        public void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY) { }
+
+        public void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY) { }
+
+        public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry) { }
+
+        public void DrawImage(MediaImageSource imageSource, Rect rectangle) { }
+
+        public void DrawText(FormattedText formattedText, Point origin) { }
+
+        public void DrawGlyphRun(MediaBrush? foregroundBrush, MediaGlyphRun glyphRun) { }
+
+        public void PushClip(MediaGeometry clipGeometry) { }
+
+        public void PushOpacity(double opacity) { }
+
+        public void PushOpacityMask(MediaBrush? opacityMask, Rect bounds) { }
+
+        public void PushTransform(MediaTransform transform) { }
+
+        public void PushNoOpScope()
+        {
+            Operations.Add("PushNoOpScope");
+        }
+
+        public void PushGuidelineSet()
+        {
+            Operations.Add("PushGuidelineSet");
+        }
+
+        public void PushGuidelineSet(object? guidelines)
+        {
+            Operations.Add("PushGuidelineSet");
+        }
+
+        public void PushGuidelineY1(double coordinate)
+        {
+            Operations.Add("PushGuidelineY1");
+        }
+
+        public void PushGuidelineY2(double leadingCoordinate, double offsetToDrivenCoordinate)
+        {
+            Operations.Add("PushGuidelineY2");
+            GuidelineY2Values.Add((leadingCoordinate, offsetToDrivenCoordinate));
+        }
+
+        public void Pop()
+        {
+            Operations.Add("Pop");
+        }
+
+        public void Close()
+        {
+            Operations.Add("Close");
+        }
+
+        public void Dispose() { }
     }
 
     private class RecordingSink :

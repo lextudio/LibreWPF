@@ -5927,6 +5927,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RaiseInvalidatedIfNeeded(shouldRaiseInvalidated);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("DetectVersionChangesRaisesInvalidatedAfterCompleteDirtySourceBatch", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.DoesNotContain("MarkDirtyAndRefresh(_changedSources)", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("private void MarkDirtyAndRefresh(IEnumerable<object> sources)", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("MarkDirty(sources[i]);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("VisitPortableDependency(ref state, visitor, TryGetPortableVisualChild(visualChildrenSource, i))", trackerSource, StringComparison.Ordinal);

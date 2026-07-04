@@ -288,6 +288,15 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForReferenceSourceSet(", source, StringComparison.Ordinal);
         Assert.Contains("private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForDistinctSourceSet(", source, StringComparison.Ordinal);
         Assert.Contains("private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForReferenceSourceSet(", source, StringComparison.Ordinal);
+        Assert.Contains("AddDistinctSources(sources, _scratchDistinctSources);", source, StringComparison.Ordinal);
+        Assert.Contains("private static void AddDistinctSources(", source, StringComparison.Ordinal);
+        Assert.Contains("sources is IList<object> list", source, StringComparison.Ordinal);
+        Assert.Contains("distinctSources.Add(list[i]);", source, StringComparison.Ordinal);
+        Assert.Contains("sources is IReadOnlyList<object> readOnlyList", source, StringComparison.Ordinal);
+        Assert.Contains("distinctSources.Add(readOnlyList[i]);", source, StringComparison.Ordinal);
+        Assert.Contains("source = list[0];", source, StringComparison.Ordinal);
+        Assert.Contains("source = readOnlyList[0];", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var source in sources)\n            {\n                _scratchDistinctSources.Add(source);\n            }", source, StringComparison.Ordinal);
         Assert.Contains("TryGetSingleSource(dirtySources, singleSourceHint, out var singleSource)", source, StringComparison.Ordinal);
         Assert.Contains("TryGetSingleSource(visitedSources, singleSourceHint, out var singleSource)", source, StringComparison.Ordinal);
         Assert.Contains("private static bool TryGetSingleSource(\n        HashSet<object> sources,", source, StringComparison.Ordinal);

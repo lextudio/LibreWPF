@@ -284,18 +284,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         RequestSubscriptionRefresh();
     }
 
-    private void MarkDirtyAndRefresh(IEnumerable<object> sources)
-    {
-        var shouldRaiseInvalidated = false;
-        foreach (var source in sources)
-        {
-            shouldRaiseInvalidated |= MarkDirtyCore(source);
-        }
-
-        RaiseInvalidatedIfNeeded(shouldRaiseInvalidated);
-        RequestSubscriptionRefresh();
-    }
-
     private void MarkDirtyListAndRefresh(IReadOnlyList<object> sources)
     {
         var shouldRaiseInvalidated = false;

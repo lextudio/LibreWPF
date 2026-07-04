@@ -164,11 +164,7 @@ public sealed class WpfRetainedVisualBranchMap
         _scratchDistinctSources.Clear();
         try
         {
-            foreach (var source in sources)
-            {
-                _scratchDistinctSources.Add(source);
-            }
-
+            AddDistinctSources(sources, _scratchDistinctSources);
             return GetReplayTargetsForDistinctSourceSet(_scratchDistinctSources);
         }
         finally
@@ -285,6 +281,30 @@ public sealed class WpfRetainedVisualBranchMap
         IReadOnlyCollection<object> sources,
         out object source)
     {
+        if (sources is IList<object> list)
+        {
+            if (list.Count == 0)
+            {
+                source = null!;
+                return false;
+            }
+
+            source = list[0];
+            return true;
+        }
+
+        if (sources is IReadOnlyList<object> readOnlyList)
+        {
+            if (readOnlyList.Count == 0)
+            {
+                source = null!;
+                return false;
+            }
+
+            source = readOnlyList[0];
+            return true;
+        }
+
         foreach (var candidate in sources)
         {
             source = candidate;
@@ -321,6 +341,36 @@ public sealed class WpfRetainedVisualBranchMap
 
         source = null!;
         return false;
+    }
+
+    private static void AddDistinctSources(
+        IEnumerable<object> sources,
+        HashSet<object> distinctSources)
+    {
+        if (sources is IList<object> list)
+        {
+            for (var i = 0; i < list.Count; i++)
+            {
+                distinctSources.Add(list[i]);
+            }
+
+            return;
+        }
+
+        if (sources is IReadOnlyList<object> readOnlyList)
+        {
+            for (var i = 0; i < readOnlyList.Count; i++)
+            {
+                distinctSources.Add(readOnlyList[i]);
+            }
+
+            return;
+        }
+
+        foreach (var source in sources)
+        {
+            distinctSources.Add(source);
+        }
     }
 
     private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> CreateSingleReplayTarget(
@@ -423,11 +473,7 @@ public sealed class WpfRetainedVisualBranchMap
         _scratchDistinctSources.Clear();
         try
         {
-            foreach (var source in sources)
-            {
-                _scratchDistinctSources.Add(source);
-            }
-
+            AddDistinctSources(sources, _scratchDistinctSources);
             return InvalidateVisualsForDistinctSourceSet(_scratchDistinctSources);
         }
         finally

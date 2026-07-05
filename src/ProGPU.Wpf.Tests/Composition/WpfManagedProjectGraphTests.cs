@@ -10836,6 +10836,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InsertSortedUniqueInputSlot(inputSlots, ref inputSlotCount", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("private static void InsertSortedUniqueInputSlot(Span<uint> slots, ref int slotCount, uint inputSlot)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("for (var shift = slotCount; shift > i; shift--)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("private static IReadOnlyList<DxReflectedShaderBindingRequirement> CombineReflectedBindingRequirements(\n        ProGpuDirectXShader vertexShader,\n        ProGpuDirectXShader? pixelShader)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("CopyReflectedBindingRequirements(vertexRequirements, requirements, ref write);", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("CopyReflectedBindingRequirements(pixelRequirements, requirements, ref write);", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("Array.Sort(requirements, CompareReflectedBindingRequirements);", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("private static int CompareReflectedBindingRequirements(", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("return vertexShader.ReflectedBindingRequirementsSupported &&", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("public void ReadPixels(Span<byte> destination)", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("private void ReadBackendSubresourceIntoWriteShadow", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("texture.ReadPixels(\n            _writeShadow.AsSpan(", proGpuDirectXResources, StringComparison.Ordinal);
@@ -10855,6 +10861,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain(".Select(element => element.InputSlot)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain(".Distinct()", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain(".OrderBy(slot => slot)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain("params ProGpuDirectXShader?[] shaders", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain(".SelectMany(shader => shader!.ReflectedBindingRequirements)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain(".OrderBy(requirement => requirement.NativeBinding)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain(".ThenBy(requirement => requirement.Stage)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain(".ThenBy(requirement => requirement.Kind)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain(".ThenBy(requirement => requirement.Slot)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain("shaders.All(shader => shader is null || shader.ReflectedBindingRequirementsSupported)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Where(shader => shader is { ReflectedBindingRequirementsSupported: false })", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain("return MemoryMarshal.Cast<byte, uint>(bytes).ToArray();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("wgpuDevicePoll", proGpuBuffer, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferDestroy(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);

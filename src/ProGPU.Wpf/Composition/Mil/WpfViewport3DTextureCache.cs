@@ -53,8 +53,10 @@ internal sealed class WpfViewport3DTextureCache : IDisposable
         int unusedKeyCount = 0;
         try
         {
-            foreach (var entry in _entries)
+            var entryEnumerator = _entries.GetEnumerator();
+            while (entryEnumerator.MoveNext())
             {
+                var entry = entryEnumerator.Current;
                 if (entry.Value.LastUsedFrame == _frameId)
                 {
                     continue;
@@ -79,8 +81,10 @@ internal sealed class WpfViewport3DTextureCache : IDisposable
     {
         ThrowIfDisposed();
 
-        foreach (var entry in _entries.Values)
+        var entryEnumerator = _entries.Values.GetEnumerator();
+        while (entryEnumerator.MoveNext())
         {
+            var entry = entryEnumerator.Current;
             entry.Dispose();
         }
 
@@ -94,8 +98,10 @@ internal sealed class WpfViewport3DTextureCache : IDisposable
             return;
         }
 
-        foreach (var entry in _entries.Values)
+        var entryEnumerator = _entries.Values.GetEnumerator();
+        while (entryEnumerator.MoveNext())
         {
+            var entry = entryEnumerator.Current;
             entry.Dispose();
         }
 

@@ -6924,8 +6924,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("object[]? unusedKeys = null;", textureCacheSource, StringComparison.Ordinal);
         Assert.Contains("WpfPooledRemovalBuffer.Add(ref unusedKeys", textureCacheSource, StringComparison.Ordinal);
         Assert.Contains("WpfPooledRemovalBuffer.Return(unusedKeys, unusedKeyCount)", textureCacheSource, StringComparison.Ordinal);
+        Assert.Contains("var entryEnumerator = _entries.GetEnumerator();", textureCacheSource, StringComparison.Ordinal);
+        Assert.Contains("while (entryEnumerator.MoveNext())", textureCacheSource, StringComparison.Ordinal);
+        Assert.Contains("var entryEnumerator = _entries.Values.GetEnumerator();", textureCacheSource, StringComparison.Ordinal);
         Assert.DoesNotContain("List<object>? unusedKeys", textureCacheSource, StringComparison.Ordinal);
         Assert.DoesNotContain("unusedKeys ??= new List<object>();", textureCacheSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var entry in _entries)", textureCacheSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var entry in _entries.Values)", textureCacheSource, StringComparison.Ordinal);
     }
 
     [Fact]

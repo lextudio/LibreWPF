@@ -11275,6 +11275,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_backendBuffer.ReadBytes(destination, offsetBytes);", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("_backendBuffer.ReadBytes(writeShadowSpan, offsetBytes);", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("internal void ReadWriteShadowBytes(Span<byte> destination, uint offsetBytes)", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.Contains("for (var sliceIndex = 0; sliceIndex < _backendArraySliceTextures.Length; sliceIndex++)", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.Contains("_backendArraySliceTextures[sliceIndex].Resize(width, height);", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.Contains("_backendArraySliceTextures[sliceIndex].Dispose();", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("private const int WireframeSourceIndexStackByteLimit = 16 * 1024;", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("private static uint[] CreateWireframeLineIndicesFromIndexBuffer(", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("Span<byte> sourceBytes = sizeInBytes <= WireframeSourceIndexStackByteLimit", proGpuDirectXDeviceContext, StringComparison.Ordinal);
@@ -11376,6 +11379,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("texture.ReadPixels(\n            _writeShadow.AsSpan(", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("depthOrArrayLayers: 1", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.DoesNotContain("var bytes = _backendBuffer.ReadBytes(offsetBytes, sizeInBytes);", proGpuDirectXResources, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var texture in _backendArraySliceTextures)", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.DoesNotContain("var pixels = texture.ReadPixels(subresourceInfo.MipLevel);", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.DoesNotContain("pixels.AsSpan(sourceOffset", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.DoesNotContain("private static uint[] ReadSourceIndices(", proGpuDirectXDeviceContext, StringComparison.Ordinal);

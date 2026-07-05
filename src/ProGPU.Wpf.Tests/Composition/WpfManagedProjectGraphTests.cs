@@ -10836,6 +10836,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InsertSortedUniqueInputSlot(inputSlots, ref inputSlotCount", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("private static void InsertSortedUniqueInputSlot(Span<uint> slots, ref int slotCount, uint inputSlot)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("for (var shift = slotCount; shift > i; shift--)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("SHA256.HashData(descriptor.Bytecode.Span)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < Elements.Count; i++)\n        {\n            var element = Elements[i];", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < elements.Count; i++)\n        {\n            var element = elements[i];", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("var builder = new StringBuilder(elements.Count * 64);", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("for (var index = 0; index < elements.Count; index++)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("builder.Append('|');", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains(".Append(element.InstanceDataStepRate)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("return builder.ToString();", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("private static IReadOnlyList<DxReflectedShaderBindingRequirement> CombineReflectedBindingRequirements(\n        ProGpuDirectXShader vertexShader,\n        ProGpuDirectXShader? pixelShader)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("CopyReflectedBindingRequirements(vertexRequirements, requirements, ref write);", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("CopyReflectedBindingRequirements(pixelRequirements, requirements, ref write);", proGpuDirectXPipelines, StringComparison.Ordinal);
@@ -10859,6 +10867,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain(".OrderBy(entry => entry.NativeBinding)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain(".OrderBy(pair => pair.Key)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain(".Select(element => element.InputSlot)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain("descriptor.Bytecode.ToArray()", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var element in Elements)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var element in elements)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain("elements.Select(\n                (e, index)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain(".Distinct()", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain(".OrderBy(slot => slot)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain("params ProGpuDirectXShader?[] shaders", proGpuDirectXPipelines, StringComparison.Ordinal);

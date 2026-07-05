@@ -9015,6 +9015,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("List<Compositor.TextureCacheKey>? keysToRemove", imageEffectPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("keysToRemove ??= new List<Compositor.TextureCacheKey>();", imageEffectPipeline, StringComparison.Ordinal);
         Assert.Contains("PathInfo[]? activePaths = null;", pathAtlas, StringComparison.Ordinal);
+        Assert.Contains("var pathEnumerator = _paths.GetEnumerator();", pathAtlas, StringComparison.Ordinal);
+        Assert.Contains("while (pathEnumerator.MoveNext())", pathAtlas, StringComparison.Ordinal);
+        Assert.Contains("var kvp = pathEnumerator.Current;", pathAtlas, StringComparison.Ordinal);
         Assert.Contains("PooledRemovalBuffer.Add(ref activePaths", pathAtlas, StringComparison.Ordinal);
         Assert.Contains("PooledRemovalBuffer.Return(activePaths, activePathCount)", pathAtlas, StringComparison.Ordinal);
         Assert.DoesNotContain("var activePaths = new List<PathInfo>();", pathAtlas, StringComparison.Ordinal);
@@ -9031,6 +9034,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PooledRemovalBuffer.Return(layoutsToRelease, layoutToReleaseCount)", pathAtlas, StringComparison.Ordinal);
         Assert.DoesNotContain("var bindGroupsToRelease = new List<nint>();", pathAtlas, StringComparison.Ordinal);
         Assert.DoesNotContain("var layoutsToRelease = new List<nint>();", pathAtlas, StringComparison.Ordinal);
+        Assert.Contains("for (int i = 0; i < _pendingPaths.Count; i++)", pathAtlas, StringComparison.Ordinal);
+        Assert.Contains("var info = _pendingPaths[i];", pathAtlas, StringComparison.Ordinal);
+        Assert.Contains("for (int i = 0; i < _tempBuffers.Count; i++)", pathAtlas, StringComparison.Ordinal);
+        Assert.Contains("_tempBuffers[i].Dispose();", pathAtlas, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var kvp in _paths)", pathAtlas, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var info in _pendingPaths)", pathAtlas, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var buffer in _tempBuffers)", pathAtlas, StringComparison.Ordinal);
         Assert.Contains("var figures = path.Figures;", pathAtlas, StringComparison.Ordinal);
         Assert.Contains("for (int figureIndex = 0; figureIndex < figures.Count; figureIndex++)", pathAtlas, StringComparison.Ordinal);
         Assert.Contains("for (int segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)", pathAtlas, StringComparison.Ordinal);

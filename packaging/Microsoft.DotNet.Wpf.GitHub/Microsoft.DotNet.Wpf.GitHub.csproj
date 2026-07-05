@@ -8,7 +8,7 @@
   <PropertyGroup>
     <PackageName>$(MSBuildProjectName.Replace('.ArchNeutral',''))$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
-    <PackageDescription>WPF Transport Package from dotnet/wpf repository</PackageDescription>
+    <PackageDescription>LibreWPF transport package for the portable managed presentation assemblies from the ProGPU port.</PackageDescription>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 

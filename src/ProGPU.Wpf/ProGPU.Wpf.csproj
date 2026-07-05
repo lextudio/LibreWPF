@@ -3,8 +3,8 @@
     <AssemblyName>ProGPU.Wpf</AssemblyName>
     <RootNamespace>System.Windows.Media.ProGPU</RootNamespace>
     <PackageId>LibreWPF.ProGPU</PackageId>
-    <Description>LibreWPF cross-platform ProGPU rendering host and adapter lane for managed WPF rendering.</Description>
-    <PackageTags>librewpf;progpu;webgpu;silk.net;wpf;rendering</PackageTags>
+    <Description>LibreWPF cross-platform ProGPU rendering host and adapter lane for managed presentation rendering.</Description>
+    <PackageTags>librewpf;progpu;webgpu;silk.net;rendering</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\external\ProGPU\eng\ProGPU.snk</AssemblyOriginatorKeyFile>

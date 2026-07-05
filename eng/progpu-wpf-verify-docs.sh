@@ -22,9 +22,23 @@ require_text ".github/workflows/progpu-wpf-docs.yml" "librewpf-docs"
 require_text "README.md" "# LibreWPF ProGPU Port"
 require_text "docs/progpu-wpf-release.md" "LibreWPF.Sdk"
 require_text "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "<PackageName>LibreWPF.Transport"
+require_text "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.csproj" "<PackageDescription>LibreWPF transport package"
 require_text "src/ProGPU.Wpf/ProGPU.Wpf.csproj" "<PackageId>LibreWPF.ProGPU</PackageId>"
+require_text "src/ProGPU.Wpf/ProGPU.Wpf.csproj" "<Description>LibreWPF cross-platform ProGPU rendering host"
 require_text "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "<PackageId>LibreWPF.Interop</PackageId>"
+require_text "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "<PackageDescription>LibreWPF portable interop contracts"
 require_text "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" "<PackageName>LibreWPF.Sdk"
+require_text "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" "<PackageDescription>LibreWPF MSBuild SDK"
+
+if grep -Fq "<PackageTags>librewpf;wpf;" "${repo_root}/packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj"; then
+  echo "LibreWPF.Sdk package tags should not use WPF as a public package-brand tag." >&2
+  exit 1
+fi
+
+if grep -Fq "<PackageTags>librewpf;progpu;webgpu;silk.net;wpf;" "${repo_root}/src/ProGPU.Wpf/ProGPU.Wpf.csproj"; then
+  echo "LibreWPF.ProGPU package tags should not use WPF as a public package-brand tag." >&2
+  exit 1
+fi
 
 for package_id in "${progpu_preview_package_ids[@]}"; do
   require_text "README.md" "| \`${package_id}\` |"

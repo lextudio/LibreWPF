@@ -10666,9 +10666,9 @@ public sealed class WpfManagedProjectGraphTests
         ];
         const string ribbonAssembly = "System.Windows.Controls.Ribbon";
 
-        Assert.Contains("LibreWPF MSBuild SDK for running WPF applications on ProGPU/Silk.NET.", sdkProject.ToString(), StringComparison.Ordinal);
+        Assert.Contains("LibreWPF MSBuild SDK for running existing desktop XAML applications on ProGPU/Silk.NET.", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("<PackageName>LibreWPF.Sdk$(TransportPackageNameSuffix)</PackageName>", sdkProject.ToString(), StringComparison.Ordinal);
-        Assert.Contains("librewpf;wpf;progpu;silk.net;msbuild-sdk", sdkProject.ToString(), StringComparison.Ordinal);
+        Assert.Contains("librewpf;progpu;silk.net;msbuild-sdk", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("PackageReadmeFile", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("Sdk\\*", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("targets\\*", sdkProject.ToString(), StringComparison.Ordinal);

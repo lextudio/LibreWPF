@@ -8,8 +8,8 @@
   <PropertyGroup>
     <PackageName>LibreWPF.Transport$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
-    <PackageDescription>LibreWPF transport package with ported managed WPF assemblies, references, themes, XAML build tasks, and runtime metadata.</PackageDescription>
-    <PackageTags>librewpf;progpu;wpf;xaml;themes;transport</PackageTags>
+    <PackageDescription>LibreWPF transport package with portable managed presentation assemblies, references, themes, XAML build tasks, and runtime metadata.</PackageDescription>
+    <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>
   </PropertyGroup>

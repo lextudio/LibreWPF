@@ -1189,11 +1189,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private readonly ReadOnlySpan<GpuHitTestPrimitive> _primitives;", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("CopySpan(primitives)", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("CopySpan(pathSegments)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("CopyList(builder.Nodes)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("CopyList(builder.PrimitiveIndices)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("private static T[] CopyList<T>(List<T> values)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("array[i] = values[i];", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("FindContainingChild(primitive.BoundsMin, primitive.BoundsMax, min, max, center)", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("for (int i = 0; i < 4; i++)\n            {\n                var child = GetChildBounds(i, nodeMin, nodeMax, center);", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("private readonly struct RootPrimitiveIndices", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("var primitiveArray = primitives.ToArray();", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("var pathSegmentArray = pathSegments.ToArray();", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("builder.Nodes.ToArray()", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("builder.PrimitiveIndices.ToArray()", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("new Builder(primitiveArray", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("var all = new List<int>(primitiveArray.Length);", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("builder.AddNode(min, max, all, depth: 0);", proGpuHitTesting, StringComparison.Ordinal);

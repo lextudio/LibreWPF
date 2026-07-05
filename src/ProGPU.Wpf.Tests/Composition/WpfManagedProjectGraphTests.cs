@@ -8937,6 +8937,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Vector",
             "PathOpGeometrySolver.cs"));
+        var computeAccelerator = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Compute",
+            "ComputeAccelerator.cs"));
         var visual = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -9124,6 +9130,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var segment in figure.Segments)", pathOps, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var seg in figure.Segments)", pathOps, StringComparison.Ordinal);
         Assert.DoesNotContain("return (records, segments.ToArray());", pathOps, StringComparison.Ordinal);
+        Assert.Contains("Span<nint> bindGroupsToRelease = stackalloc nint[iterations * 2];", computeAccelerator, StringComparison.Ordinal);
+        Assert.Contains("var bindGroupToReleaseCount = 0;", computeAccelerator, StringComparison.Ordinal);
+        Assert.Contains("RunBlurPass(encoder, _blurHorizPipeline, blurHLayout, hInput, temp, width, height, bindGroupsToRelease, ref bindGroupToReleaseCount);", computeAccelerator, StringComparison.Ordinal);
+        Assert.Contains("RunShadowHPass(encoder, _shadowBlurHorizPipeline, shadowHLayout, source, temp, paramsBuffer, width, height, bindGroupsToRelease, ref bindGroupToReleaseCount);", computeAccelerator, StringComparison.Ordinal);
+        Assert.Contains("private static void TrackBindGroupForRelease(Span<nint> bindGroupsToRelease, ref int count, BindGroup* bindGroup)", computeAccelerator, StringComparison.Ordinal);
+        Assert.Contains("bindGroupsToRelease[count++] = (nint)bindGroup;", computeAccelerator, StringComparison.Ordinal);
+        Assert.Contains("private void ReleaseBindGroups(ReadOnlySpan<nint> bindGroupsToRelease)", computeAccelerator, StringComparison.Ordinal);
+        Assert.Contains("for (int i = 0; i < bindGroupsToRelease.Length; i++)", computeAccelerator, StringComparison.Ordinal);
+        Assert.Contains("ReleaseBindGroups(bindGroupsToRelease[..bindGroupToReleaseCount]);", computeAccelerator, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Collections.Generic;", computeAccelerator, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<nint>()", computeAccelerator, StringComparison.Ordinal);
+        Assert.DoesNotContain("bindGroupsToRelease.Add", computeAccelerator, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var bgPtr in bindGroupsToRelease)", computeAccelerator, StringComparison.Ordinal);
         Assert.Contains("new(StringComparer.OrdinalIgnoreCase)", visual, StringComparison.Ordinal);
         Assert.Contains("var activeAnimationEnumerator = _activeAnimations.GetEnumerator();", visual, StringComparison.Ordinal);
         Assert.Contains("while (activeAnimationEnumerator.MoveNext())", visual, StringComparison.Ordinal);

@@ -368,10 +368,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         if (source is INotifyCollectionChanged collectionChanged)
         {
-            NotifyCollectionChangedEventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
-            TrySubscribeInvalidationCallback(
-                () => collectionChanged.CollectionChanged += handler,
-                () => collectionChanged.CollectionChanged -= handler);
+            var handlerTarget = new CollectionChangedInvalidationHandler(this, source);
+            NotifyCollectionChangedEventHandler handler = handlerTarget.OnCollectionChanged;
+            if (TrySubscribeCollectionChanged(collectionChanged, handler))
+            {
+                _subscriptions.Add(InvalidationSubscription.ForCollectionChanged(collectionChanged, handler));
+            }
         }
 
         if (source is IEnumerable collection)
@@ -842,7 +844,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     {
         if (source is PortableInvalidationSource invalidationSource)
         {
-            EventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
+            var handlerTarget = new SourceInvalidationHandler(this, source);
+            EventHandler handler = handlerTarget.OnInvalidated;
             if (invalidationSource.TrySubscribeInvalidated(handler, out var subscription))
             {
                 _subscriptions.Add(InvalidationSubscription.ForDisposable(subscription));
@@ -851,45 +854,73 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         if (source is INotifyPropertyChanged propertyChanged)
         {
-            PropertyChangedEventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
-            TrySubscribeInvalidationCallback(
-                () => propertyChanged.PropertyChanged += handler,
-                () => propertyChanged.PropertyChanged -= handler);
+            var handlerTarget = new PropertyChangedInvalidationHandler(this, source);
+            PropertyChangedEventHandler handler = handlerTarget.OnPropertyChanged;
+            if (TrySubscribePropertyChanged(propertyChanged, handler))
+            {
+                _subscriptions.Add(InvalidationSubscription.ForPropertyChanged(propertyChanged, handler));
+            }
         }
     }
 
-    private bool TrySubscribeInvalidationCallback(Action subscribe, Action unsubscribe)
-    {
-        if (!TryRunInvalidationSubscriptionAction(subscribe))
-        {
-            return false;
-        }
-
-        _subscriptions.Add(InvalidationSubscription.ForAction(unsubscribe));
-        return true;
-    }
-
-    private static bool TryRunInvalidationSubscriptionAction(Action action)
+    private static bool TrySubscribePropertyChanged(
+        INotifyPropertyChanged source,
+        PropertyChangedEventHandler handler)
     {
         try
         {
-            action();
+            source.PropertyChanged += handler;
             return true;
         }
-        catch (InvalidOperationException)
+        catch (Exception exception) when (IsExpectedInvalidationSubscriptionException(exception))
         {
+            return false;
         }
-        catch (ArgumentException)
-        {
-        }
-        catch (MethodAccessException)
-        {
-        }
-        catch (NotSupportedException)
-        {
-        }
+    }
 
-        return false;
+    private static bool TryUnsubscribePropertyChanged(
+        INotifyPropertyChanged source,
+        PropertyChangedEventHandler handler)
+    {
+        try
+        {
+            source.PropertyChanged -= handler;
+            return true;
+        }
+        catch (Exception exception) when (IsExpectedInvalidationSubscriptionException(exception))
+        {
+            return false;
+        }
+    }
+
+    private static bool TrySubscribeCollectionChanged(
+        INotifyCollectionChanged source,
+        NotifyCollectionChangedEventHandler handler)
+    {
+        try
+        {
+            source.CollectionChanged += handler;
+            return true;
+        }
+        catch (Exception exception) when (IsExpectedInvalidationSubscriptionException(exception))
+        {
+            return false;
+        }
+    }
+
+    private static bool TryUnsubscribeCollectionChanged(
+        INotifyCollectionChanged source,
+        NotifyCollectionChangedEventHandler handler)
+    {
+        try
+        {
+            source.CollectionChanged -= handler;
+            return true;
+        }
+        catch (Exception exception) when (IsExpectedInvalidationSubscriptionException(exception))
+        {
+            return false;
+        }
     }
 
     private static bool TryDisposeInvalidationSubscription(IDisposable subscription)
@@ -913,6 +944,14 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         return false;
+    }
+
+    private static bool IsExpectedInvalidationSubscriptionException(Exception exception)
+    {
+        return exception is InvalidOperationException
+            or ArgumentException
+            or MethodAccessException
+            or NotSupportedException;
     }
 
     private static void VisitPortableDependencies<TState, TVisitor>(
@@ -1922,24 +1961,47 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private readonly struct InvalidationSubscription
     {
         private readonly IDisposable? _disposable;
-        private readonly Action? _action;
+        private readonly INotifyPropertyChanged? _propertyChanged;
+        private readonly PropertyChangedEventHandler? _propertyChangedHandler;
+        private readonly INotifyCollectionChanged? _collectionChanged;
+        private readonly NotifyCollectionChangedEventHandler? _collectionChangedHandler;
 
-        private InvalidationSubscription(IDisposable? disposable, Action? action)
+        private InvalidationSubscription(
+            IDisposable? disposable,
+            INotifyPropertyChanged? propertyChanged,
+            PropertyChangedEventHandler? propertyChangedHandler,
+            INotifyCollectionChanged? collectionChanged,
+            NotifyCollectionChangedEventHandler? collectionChangedHandler)
         {
             _disposable = disposable;
-            _action = action;
+            _propertyChanged = propertyChanged;
+            _propertyChangedHandler = propertyChangedHandler;
+            _collectionChanged = collectionChanged;
+            _collectionChangedHandler = collectionChangedHandler;
         }
 
         public static InvalidationSubscription ForDisposable(IDisposable disposable)
         {
             ArgumentNullException.ThrowIfNull(disposable);
-            return new InvalidationSubscription(disposable, null);
+            return new InvalidationSubscription(disposable, null, null, null, null);
         }
 
-        public static InvalidationSubscription ForAction(Action action)
+        public static InvalidationSubscription ForPropertyChanged(
+            INotifyPropertyChanged source,
+            PropertyChangedEventHandler handler)
         {
-            ArgumentNullException.ThrowIfNull(action);
-            return new InvalidationSubscription(null, action);
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(handler);
+            return new InvalidationSubscription(null, source, handler, null, null);
+        }
+
+        public static InvalidationSubscription ForCollectionChanged(
+            INotifyCollectionChanged source,
+            NotifyCollectionChangedEventHandler handler)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(handler);
+            return new InvalidationSubscription(null, null, null, source, handler);
         }
 
         public void Dispose()
@@ -1950,10 +2012,67 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 return;
             }
 
-            if (_action != null)
+            if (_propertyChanged != null && _propertyChangedHandler != null)
             {
-                TryRunInvalidationSubscriptionAction(_action);
+                TryUnsubscribePropertyChanged(_propertyChanged, _propertyChangedHandler);
+                return;
             }
+
+            if (_collectionChanged != null && _collectionChangedHandler != null)
+            {
+                TryUnsubscribeCollectionChanged(_collectionChanged, _collectionChangedHandler);
+            }
+        }
+    }
+
+    private sealed class SourceInvalidationHandler
+    {
+        private readonly WpfVisualInvalidationTracker _tracker;
+        private readonly object _source;
+
+        public SourceInvalidationHandler(WpfVisualInvalidationTracker tracker, object source)
+        {
+            _tracker = tracker;
+            _source = source;
+        }
+
+        public void OnInvalidated(object? sender, EventArgs e)
+        {
+            _tracker.MarkDirtyAndRefresh(_source);
+        }
+    }
+
+    private sealed class PropertyChangedInvalidationHandler
+    {
+        private readonly WpfVisualInvalidationTracker _tracker;
+        private readonly object _source;
+
+        public PropertyChangedInvalidationHandler(WpfVisualInvalidationTracker tracker, object source)
+        {
+            _tracker = tracker;
+            _source = source;
+        }
+
+        public void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            _tracker.MarkDirtyAndRefresh(_source);
+        }
+    }
+
+    private sealed class CollectionChangedInvalidationHandler
+    {
+        private readonly WpfVisualInvalidationTracker _tracker;
+        private readonly object _source;
+
+        public CollectionChangedInvalidationHandler(WpfVisualInvalidationTracker tracker, object source)
+        {
+            _tracker = tracker;
+            _source = source;
+        }
+
+        public void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            _tracker.MarkDirtyAndRefresh(_source);
         }
     }
 }

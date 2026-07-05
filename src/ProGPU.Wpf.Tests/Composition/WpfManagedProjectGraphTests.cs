@@ -1316,6 +1316,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void ReturnMaskRenderPassDrawCallLists()", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("ReturnMaskRenderPassDrawCallLists();", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("RentMaskDrawCallList(maskDrawCallCount)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var maskPassCount = _maskRenderPasses.Count;\n        for (var maskPassIndex = 0; maskPassIndex < maskPassCount; maskPassIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var maskPass = _maskRenderPasses[maskPassIndex];", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var maskDrawCalls = maskPass.DrawCalls;\n            var maskDrawCallCount = maskDrawCalls.Count;", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var dc = maskDrawCalls[drawCallIndex];", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var staticDrawCallList = RentDrawCallList(commands.Count)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var staticDrawCallList = RentDrawCallList(context.Commands.Count)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("ReturnDrawCallList(staticDrawCalls)", proGpuCompositor, StringComparison.Ordinal);
@@ -1338,6 +1342,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var cmd in commands)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var cmd in context.Commands)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var record in staticBuffer.TextRecords)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var maskPass in _maskRenderPasses)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var dc in maskPass.DrawCalls)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_maskDrawCallListPool", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static void AddRemovalItem<T>(ref T[]? buffer, ref int count, int capacity, T item)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static void ReturnRemovalBuffer<T>(T[]? buffer, int count)", proGpuCompositor, StringComparison.Ordinal);

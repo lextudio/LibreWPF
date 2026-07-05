@@ -9071,6 +9071,13 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Scene",
             "Extensions",
             "Mesh3DExtensionPipeline.cs"));
+        var scatterSeriesPipeline = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Extensions",
+            "GpuScatterSeriesExtensionPipeline.cs"));
         var pooledRemovalBuffer = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -9246,6 +9253,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var figure in cmd.Path.Figures)", hatchPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var segment in figure.Segments)", hatchPipeline, StringComparison.Ordinal);
         AssertEffectPipelineLayoutUsesStack(mesh3DPipeline, 2, "GpuVertex3D");
+        AssertEffectPipelineLayoutUsesStack(scatterSeriesPipeline, 2, "Vector3");
         Assert.Contains("internal static class PooledRemovalBuffer", pooledRemovalBuffer, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<T>.Shared.Rent(Math.Max(1, capacity))", pooledRemovalBuffer, StringComparison.Ordinal);
         Assert.Contains("RuntimeHelpers.IsReferenceOrContainsReferences<T>()", pooledRemovalBuffer, StringComparison.Ordinal);
@@ -9375,6 +9383,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Span<VertexBufferLayout> vertexLayouts = stackalloc VertexBufferLayout[1];", compositor, StringComparison.Ordinal);
         Assert.Contains("ArrayStride = (uint)Unsafe.SizeOf<VectorVertex>()", compositor, StringComparison.Ordinal);
         Assert.Contains("ArrayStride = (uint)Unsafe.SizeOf<GlyphInstance>()", compositor, StringComparison.Ordinal);
+        Assert.Contains("ArrayStride = (uint)Unsafe.SizeOf<Vector3>()", compositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var vertexAttribs = new VertexAttribute[]", compositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var textVertexAttribs = new VertexAttribute[]", compositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var scatterAttribs = new VertexAttribute[]", compositor, StringComparison.Ordinal);
@@ -9388,7 +9397,9 @@ public sealed class WpfManagedProjectGraphTests
             Assert.Contains($"Span<VertexAttribute> attrs = stackalloc VertexAttribute[{attributeCount}];", source, StringComparison.Ordinal);
             Assert.Contains("Span<VertexBufferLayout> layouts = stackalloc VertexBufferLayout[1];", source, StringComparison.Ordinal);
             Assert.Contains($"ArrayStride = (uint)Unsafe.SizeOf<{vertexType}>()", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("new VertexAttribute[]", source, StringComparison.Ordinal);
             Assert.DoesNotContain("new VertexBufferLayout[]", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("new[] {", source, StringComparison.Ordinal);
             Assert.DoesNotContain("Marshal.AllocHGlobal(Marshal.SizeOf<VertexAttribute>()", source, StringComparison.Ordinal);
             Assert.DoesNotContain("Marshal.FreeHGlobal((IntPtr)layouts[0].Attributes)", source, StringComparison.Ordinal);
         }

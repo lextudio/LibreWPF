@@ -8955,6 +8955,12 @@ public sealed class WpfManagedProjectGraphTests
         AssertEffectPipelineLayoutUsesStack(customGridPipeline, 8, "VectorVertex");
         AssertEffectPipelineLayoutUsesStack(acisSolidPipeline, 8, "VectorVertex");
         AssertEffectPipelineLayoutUsesStack(hatchPipeline, 8, "VectorVertex");
+        Assert.Contains("var pathFigures = cmd.Path.Figures;", hatchPipeline, StringComparison.Ordinal);
+        Assert.Contains("for (int figureIndex = 0; figureIndex < pathFigures.Count; figureIndex++)", hatchPipeline, StringComparison.Ordinal);
+        Assert.Contains("var figureSegments = figure.Segments;", hatchPipeline, StringComparison.Ordinal);
+        Assert.Contains("for (int segmentIndex = 0; segmentIndex < figureSegments.Count; segmentIndex++)", hatchPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var figure in cmd.Path.Figures)", hatchPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var segment in figure.Segments)", hatchPipeline, StringComparison.Ordinal);
         AssertEffectPipelineLayoutUsesStack(mesh3DPipeline, 2, "GpuVertex3D");
         Assert.Contains("internal static class PooledRemovalBuffer", pooledRemovalBuffer, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<T>.Shared.Rent(Math.Max(1, capacity))", pooledRemovalBuffer, StringComparison.Ordinal);

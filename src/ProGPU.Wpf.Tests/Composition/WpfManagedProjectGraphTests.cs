@@ -10888,6 +10888,10 @@ public sealed class WpfManagedProjectGraphTests
             "external",
             "ProGPU",
             "Directory.Build.props");
+        var proGpuGitmodulesPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            ".gitmodules");
         var proGpuPackScriptPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -11162,6 +11166,7 @@ public sealed class WpfManagedProjectGraphTests
         var releaseDocs = File.ReadAllText(releaseDocsPath);
         var docsVerifierScript = File.ReadAllText(docsVerifierScriptPath);
         var proGpuDirectoryBuildProps = File.ReadAllText(proGpuDirectoryBuildPropsPath);
+        var proGpuGitmodules = File.ReadAllText(proGpuGitmodulesPath);
         var proGpuPackScript = File.ReadAllText(proGpuPackScriptPath);
         var proGpuBuildWorkflow = File.ReadAllText(proGpuBuildWorkflowPath);
         var proGpuAvaloniaHostControl = File.ReadAllText(proGpuAvaloniaHostControlPath);
@@ -11246,6 +11251,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProGPUStrongNameKeyFile>$(MSBuildThisFileDirectory)eng/ProGPU.snk</ProGPUStrongNameKeyFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<AssemblyOriginatorKeyFile Condition=\"'$(AssemblyOriginatorKeyFile)' == ''\">$(ProGPUStrongNameKeyFile)</AssemblyOriginatorKeyFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<None Include=\"$(MSBuildThisFileDirectory)README.md\" Pack=\"true\" PackagePath=\"\\\" Visible=\"false\" />", proGpuDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("url = https://github.com/wieslawsoltes/microsoft-ui-xaml.git", proGpuGitmodules, StringComparison.Ordinal);
+        Assert.DoesNotContain("/Users/wieslawsoltes/GitHub", proGpuGitmodules, StringComparison.Ordinal);
+        Assert.DoesNotContain("url = ../", proGpuGitmodules, StringComparison.Ordinal);
         Assert.DoesNotContain("35MSSharedLib1024.snk", proGpuWindowsBaseProject, StringComparison.Ordinal);
         Assert.DoesNotContain("35MSSharedLib1024.snk", proGpuPresentationCoreProject, StringComparison.Ordinal);
         Assert.DoesNotContain("WpfMicrosoftSharedKeyFile", proGpuWindowsBaseProject, StringComparison.Ordinal);

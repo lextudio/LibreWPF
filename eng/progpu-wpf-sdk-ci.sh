@@ -115,6 +115,7 @@ echo "Running ProGPU Avalonia package consumer smoke..."
 "${repo_root}/eng/progpu-avalonia-package-smoke.sh"
 
 echo "Building managed WPF transport payload..."
+build_project "src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/System.Xaml/System.Xaml.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/UIAutomation/UIAutomationTypes/UIAutomationTypes.csproj"

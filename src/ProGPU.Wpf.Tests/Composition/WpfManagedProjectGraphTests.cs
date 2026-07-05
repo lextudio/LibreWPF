@@ -11590,6 +11590,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Building managed WPF transport payload", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj", sdkCiScript, StringComparison.Ordinal);

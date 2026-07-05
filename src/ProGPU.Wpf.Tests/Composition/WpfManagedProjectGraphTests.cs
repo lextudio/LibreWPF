@@ -1376,6 +1376,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("UpdateTextBuffer((ReadOnlySpan<GlyphInstance>)textVertices);", proGpuDxfStaticBuffer, StringComparison.Ordinal);
         Assert.Contains("uint requiredBytes = checked((uint)textVertexCount * (uint)Marshal.SizeOf<GlyphInstance>());", proGpuDxfStaticBuffer, StringComparison.Ordinal);
         Assert.Contains("_textVertexBufferBack.Write(textVertices);", proGpuDxfStaticBuffer, StringComparison.Ordinal);
+        Assert.Contains("var extensionStateEnumerator = _extensionStates.Values.GetEnumerator();", proGpuDxfStaticBuffer, StringComparison.Ordinal);
+        Assert.Contains("while (extensionStateEnumerator.MoveNext())", proGpuDxfStaticBuffer, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var state in _extensionStates.Values)", proGpuDxfStaticBuffer, StringComparison.Ordinal);
         Assert.Contains("var layoutGlyphs = layout.Glyphs;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var layoutGlyphCount = layoutGlyphs.Count;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("for (int glyphIndex = 0; glyphIndex < layoutGlyphCount; glyphIndex++)", proGpuCompositor, StringComparison.Ordinal);

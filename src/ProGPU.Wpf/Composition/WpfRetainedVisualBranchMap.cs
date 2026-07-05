@@ -171,6 +171,15 @@ public sealed class WpfRetainedVisualBranchMap
         }
     }
 
+    internal IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForReferenceSources(
+        HashSet<object> sources,
+        object? singleSourceHint)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+
+        return GetReplayTargetsForReferenceSourceSet(sources, singleSourceHint);
+    }
+
     private IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForReferenceSourceSet(
         HashSet<object> dirtySources,
         object? singleSourceHint)
@@ -482,6 +491,15 @@ public sealed class WpfRetainedVisualBranchMap
         {
             _scratchDistinctSources.Clear();
         }
+    }
+
+    internal WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForReferenceSources(
+        HashSet<object> sources,
+        object? singleSourceHint)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+
+        return InvalidateVisualsForReferenceSourceSet(sources, singleSourceHint);
     }
 
     private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForReferenceSourceSet(

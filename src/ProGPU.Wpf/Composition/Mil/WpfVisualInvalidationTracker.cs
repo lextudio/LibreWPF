@@ -63,6 +63,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     public IReadOnlyCollection<object> DirtySources => _dirtySources;
 
+    internal HashSet<object> DirtySourceSet => _dirtySources;
+
     internal static IReadOnlyList<object> EnumerateTrackedDependencies(object? source)
     {
         if (source == null)

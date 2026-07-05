@@ -909,8 +909,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     private void InvalidateRetainedWpfBranchesForDirtySources()
     {
-        var result = RetainedVisualBranchMap.InvalidateVisualsForSources(
-            WpfInvalidationTracker.DirtySources,
+        var result = RetainedVisualBranchMap.InvalidateVisualsForReferenceSources(
+            WpfInvalidationTracker.DirtySourceSet,
             WpfInvalidationTracker.LastDirtySource);
         LastRetainedBranchInvalidationCount = result.InvalidatedVisualCount;
         LastRetainedBranchDirtySourceCount = result.DirtySourceCount;
@@ -956,8 +956,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         IWpfImageSourceAdapter? imageSourceAdapter,
         out IReadOnlyList<WpfRetainedVisualBranchReplayTarget> targets)
     {
-        targets = RetainedVisualBranchMap.GetReplayTargetsForSources(
-            WpfInvalidationTracker.DirtySources,
+        targets = RetainedVisualBranchMap.GetReplayTargetsForReferenceSources(
+            WpfInvalidationTracker.DirtySourceSet,
             WpfInvalidationTracker.LastDirtySource);
         if (targets.Count == 0)
         {

@@ -6187,6 +6187,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (var i = 0; i < sources.Count; i++)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private bool MarkDirtyCore(object? source)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private void RaiseInvalidatedIfNeeded(bool shouldRaiseInvalidated)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("internal HashSet<object> DirtySourceSet => _dirtySources;", trackerSource, StringComparison.Ordinal);
         Assert.Contains("shouldRaiseInvalidated |= MarkDirtyCore(sources[i]);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("RaiseInvalidatedIfNeeded(shouldRaiseInvalidated);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("DetectVersionChangesRaisesInvalidatedAfterCompleteDirtySourceBatch", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
@@ -6230,6 +6231,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private object? _fourth;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("new List<ProGpuVisual>(InlineCapacity + 1)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("new HashSet<object>(InlineCapacity + 1, ReferenceEqualityComparer.Instance)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("internal IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForReferenceSources(", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("return GetReplayTargetsForReferenceSourceSet(sources, singleSourceHint);", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("internal WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForReferenceSources(", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.Contains("return InvalidateVisualsForReferenceSourceSet(sources, singleSourceHint);", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("private static void ClassifyPromotedOwnersAgainstDirtySources(", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("if (dirtySources.Count < sourceOwners.Count)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("var dirtySourceEnumerator = dirtySources.GetEnumerator();", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);

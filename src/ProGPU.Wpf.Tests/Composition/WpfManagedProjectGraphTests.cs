@@ -10489,6 +10489,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.DirectX",
             "ProGpuDirectXSciChart.cs");
+        var proGpuDirectXPipelinesPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.DirectX",
+            "ProGpuDirectXPipelines.cs");
         var proGpuDirectXResourcesPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -10678,6 +10684,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuDirectXBindings = File.ReadAllText(proGpuDirectXBindingsPath);
         var proGpuDirectXHlslTranslator = File.ReadAllText(proGpuDirectXHlslTranslatorPath);
         var proGpuDirectXSciChart = File.ReadAllText(proGpuDirectXSciChartPath);
+        var proGpuDirectXPipelines = File.ReadAllText(proGpuDirectXPipelinesPath);
         var proGpuDirectXResources = File.ReadAllText(proGpuDirectXResourcesPath);
         var proGpuDirectXNativeDependencyInspector = File.ReadAllText(proGpuDirectXNativeDependencyInspectorPath);
         var proGpuDirectXNativeCompatibilityPlan = File.ReadAllText(proGpuDirectXNativeCompatibilityPlanPath);
@@ -10822,6 +10829,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CopySortedVertexBufferSlots(vertexBuffers, sortedSlots);", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("private static void CopySortedVertexBufferSlots<TValue>(", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("slots.Sort();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("private const int BackendInputSlotStackLimit = 16;", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("Span<uint> inputSlots = elementCount <= BackendInputSlotStackLimit", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("stackalloc uint[elementCount]", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<uint>.Shared.Rent(elementCount)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("InsertSortedUniqueInputSlot(inputSlots, ref inputSlotCount", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("private static void InsertSortedUniqueInputSlot(Span<uint> slots, ref int slotCount, uint inputSlot)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("for (var shift = slotCount; shift > i; shift--)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("public void ReadPixels(Span<byte> destination)", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("private void ReadBackendSubresourceIntoWriteShadow", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("texture.ReadPixels(\n            _writeShadow.AsSpan(", proGpuDirectXResources, StringComparison.Ordinal);
@@ -10838,6 +10852,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var stage in EnumerateStages(stages))", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain(".OrderBy(entry => entry.NativeBinding)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain(".OrderBy(pair => pair.Key)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Select(element => element.InputSlot)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Distinct()", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain(".OrderBy(slot => slot)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain("return MemoryMarshal.Cast<byte, uint>(bytes).ToArray();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("wgpuDevicePoll", proGpuBuffer, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferDestroy(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);

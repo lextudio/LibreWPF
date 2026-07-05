@@ -7505,6 +7505,12 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "Geometry.cs"));
+        var polygonGeometryBounds = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Vector",
+            "PolygonGeometryBounds.cs"));
         var lineGeometry = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -8324,6 +8330,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return GetProGpuPolygonBounds(", geometry, StringComparison.Ordinal);
         Assert.Contains("private static unsafe Rect GetProGpuPolygonBounds", geometry, StringComparison.Ordinal);
         Assert.Contains("ProGpuPolygonGeometryBounds.TryGetBounds(", geometry, StringComparison.Ordinal);
+        Assert.Contains("for (int pointIndex = 0; pointIndex < points.Length; pointIndex++)", polygonGeometryBounds, StringComparison.Ordinal);
+        Assert.Contains("Vector2 point = points[pointIndex];", polygonGeometryBounds, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (Vector2 point in points)", polygonGeometryBounds, StringComparison.Ordinal);
         Assert.DoesNotContain("GetManagedStrokeScale", geometry, StringComparison.Ordinal);
         Assert.DoesNotContain("TransformManagedPoint", geometry, StringComparison.Ordinal);
         Assert.Contains("PROGPU_VECTOR_INTERNAL", presentationCoreProject, StringComparison.Ordinal);

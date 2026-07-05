@@ -8743,6 +8743,39 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ProGpuPathGeometryHitTestingUsesIndexedTraversal()
+    {
+        var pathGeometryHitTesting = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Vector",
+            "PathGeometryHitTesting.cs"));
+
+        Assert.Contains("var figures = geometry.Figures;", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("var polygons = new List<Vector2[]>(Math.Max(1, figures.Count));", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("for (int figureIndex = 0; figureIndex < figures.Count; figureIndex++)", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("PathFigure figure = figures[figureIndex];", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("for (int pointIndex = 0; pointIndex < polygon.Length; pointIndex++)", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("Vector2 candidate = polygon[pointIndex];", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("for (int polygonIndex = 0; polygonIndex < polygons.Count; polygonIndex++)", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("Vector2[] polygon = polygons[polygonIndex];", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("var segments = figure.Segments;", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("var points = new List<Vector2>(EstimateFigurePointCapacity(segments));", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("for (int segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("PathSegment segment = segments[segmentIndex];", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("private static int EstimateFigurePointCapacity(List<PathSegment> segments)", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("private static Vector2[] CopyPoints(List<Vector2> points)", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.Contains("result[pointIndex] = points[pointIndex];", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (PathFigure figure in geometry.Figures)", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (Vector2 candidate in polygon)", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (Vector2[] polygon in polygons)", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (PathSegment segment in figure.Segments)", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("polygon = points.ToArray();", pathGeometryHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("points[^1]", pathGeometryHitTesting, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PortableTextFormatterKeepsCollapsedSimpleTextOnManagedPath()
     {
         var simpleTextLine = File.ReadAllText(FindRepoPath(

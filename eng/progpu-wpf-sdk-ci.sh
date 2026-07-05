@@ -14,6 +14,17 @@ package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Rel
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
 mkdir -p "${package_output}"
 
+clean_preview_package_output() {
+  rm -f \
+    "${package_output}"/*.nupkg \
+    "${package_output}"/*.snupkg \
+    "${package_output}"/*-preview-*.tar.gz \
+    "${package_output}"/*-preview-*.tar.gz.sha256 \
+    "${package_output}"/*-preview-packages-*.json \
+    "${package_output}/README.md" \
+    "${package_output}/NuGet.config"
+}
+
 pack_project() {
   local project="$1"
   local package_id="$2"
@@ -83,6 +94,8 @@ clean_sdk_smoke_outputs() {
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.XceedPaidApp" \
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.SciChartMvpApp"
 }
+
+clean_preview_package_output
 
 echo "Packing ProGPU packages for LibreWPF.Sdk feed..."
 pack_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj" "ProGPU.Backend"

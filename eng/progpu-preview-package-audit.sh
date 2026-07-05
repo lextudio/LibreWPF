@@ -26,6 +26,18 @@ package_assembly_name() {
   esac
 }
 
+is_expected_package_artifact() {
+  local file_name="$1"
+  local package_id
+  for package_id in "${all_packages[@]}"; do
+    if [[ "${file_name}" == "${package_id}.${dev_package_version}.nupkg" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 require_package() {
   local package_id="$1"
   local package_file
@@ -62,6 +74,19 @@ require_nuspec_contains() {
 
 runtime_packages=("${progpu_preview_runtime_package_ids[@]}")
 all_packages=("${progpu_preview_package_ids[@]}")
+
+unexpected_package_found=0
+while IFS= read -r -d '' artifact; do
+  file_name="$(basename "${artifact}")"
+  if ! is_expected_package_artifact "${file_name}"; then
+    echo "Unexpected preview package artifact in output: ${artifact}" >&2
+    unexpected_package_found=1
+  fi
+done < <(find "${package_output}" -maxdepth 1 -type f \( -name "*.nupkg" -o -name "*.snupkg" \) -print0)
+
+if [[ "${unexpected_package_found}" -ne 0 ]]; then
+  exit 1
+fi
 
 for package_id in "${all_packages[@]}"; do
   require_package "${package_id}"

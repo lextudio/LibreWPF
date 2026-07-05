@@ -22,6 +22,25 @@ file_sha256() {
   fi
 }
 
+is_expected_release_artifact() {
+  local file_name="$1"
+  local package_id
+
+  case "${file_name}" in
+    "$(basename "${release_readme_path}")"|"$(basename "${release_nuget_config_path}")"|"$(basename "${manifest_path}")"|"$(basename "${bundle_output}")"|"$(basename "${sidecar_output}")")
+      return 0
+      ;;
+  esac
+
+  for package_id in "${package_ids[@]}"; do
+    if [[ "${file_name}" == "${package_id}.${dev_package_version}.nupkg" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 git_commit() {
   local git_root="$1"
   git -C "${git_root}" rev-parse --verify HEAD 2>/dev/null || printf 'unknown'
@@ -37,6 +56,19 @@ require_file() {
 
 require_file "${bundle_output}"
 require_file "${sidecar_output}"
+
+unexpected_release_artifact_found=0
+while IFS= read -r -d '' artifact; do
+  file_name="$(basename "${artifact}")"
+  if ! is_expected_release_artifact "${file_name}"; then
+    echo "Unexpected preview release artifact in output: ${artifact}" >&2
+    unexpected_release_artifact_found=1
+  fi
+done < <(find "${package_output}" -maxdepth 1 -type f \( -name "*.nupkg" -o -name "*.snupkg" -o -name "*.json" -o -name "*.tar.gz" -o -name "*.sha256" -o -name "README.md" -o -name "NuGet.config" \) -print0)
+
+if [[ "${unexpected_release_artifact_found}" -ne 0 ]]; then
+  exit 1
+fi
 
 bundle_sha256="$(file_sha256 "${bundle_output}")"
 sidecar_sha256="$(awk '{print $1}' "${sidecar_output}")"

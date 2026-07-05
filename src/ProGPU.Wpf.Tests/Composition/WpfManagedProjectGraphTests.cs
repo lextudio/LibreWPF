@@ -9254,10 +9254,21 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("List<string>? keysToRemove", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("keysToRemove ??= new List<string>();", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("Compositor.TextureCacheKey[]? keysToRemove = null;", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("var textureBindGroupEnumerator = _textureBindGroups.GetEnumerator();", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("while (textureBindGroupEnumerator.MoveNext())", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("var kvp = textureBindGroupEnumerator.Current;", imageEffectPipeline, StringComparison.Ordinal);
         Assert.Contains("PooledRemovalBuffer.Add(ref keysToRemove", imageEffectPipeline, StringComparison.Ordinal);
         Assert.Contains("PooledRemovalBuffer.Return(keysToRemove, keysToRemoveCount)", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("for (int i = 0; i < _pool.Count; i++)", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("var resource = _pool[i];", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("var textureBindGroupValueEnumerator = _textureBindGroups.Values.GetEnumerator();", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("while (textureBindGroupValueEnumerator.MoveNext())", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.Contains("var cached = textureBindGroupValueEnumerator.Current;", imageEffectPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("List<Compositor.TextureCacheKey>? keysToRemove", imageEffectPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("keysToRemove ??= new List<Compositor.TextureCacheKey>();", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var kvp in _textureBindGroups)", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var resource in _pool)", imageEffectPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var cached in _textureBindGroups.Values)", imageEffectPipeline, StringComparison.Ordinal);
         Assert.Contains("PathInfo[]? activePaths = null;", pathAtlas, StringComparison.Ordinal);
         Assert.Contains("var pathEnumerator = _paths.GetEnumerator();", pathAtlas, StringComparison.Ordinal);
         Assert.Contains("while (pathEnumerator.MoveNext())", pathAtlas, StringComparison.Ordinal);
@@ -10867,6 +10878,11 @@ public sealed class WpfManagedProjectGraphTests
             "external",
             "ProGPU",
             "Directory.Build.props");
+        var proGpuPackScriptPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "eng",
+            "progpu-pack.sh");
         var proGpuAvaloniaHostControlPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -11129,6 +11145,7 @@ public sealed class WpfManagedProjectGraphTests
         var releaseDocs = File.ReadAllText(releaseDocsPath);
         var docsVerifierScript = File.ReadAllText(docsVerifierScriptPath);
         var proGpuDirectoryBuildProps = File.ReadAllText(proGpuDirectoryBuildPropsPath);
+        var proGpuPackScript = File.ReadAllText(proGpuPackScriptPath);
         var proGpuAvaloniaHostControl = File.ReadAllText(proGpuAvaloniaHostControlPath);
         var proGpuAvaloniaSampleMainWindow = File.ReadAllText(proGpuAvaloniaSampleMainWindowPath);
         var proGpuTextureReadbackBuffer = File.ReadAllText(proGpuTextureReadbackBufferPath);
@@ -11209,6 +11226,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReadmeFile Condition=\"'$(PackageReadmeFile)' == '' And Exists('$(MSBuildThisFileDirectory)README.md')\">README.md</PackageReadmeFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<PackageDescription Condition=\"'$(PackageDescription)' == ''\">$(Description)</PackageDescription>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<None Include=\"$(MSBuildThisFileDirectory)README.md\" Pack=\"true\" PackagePath=\"\\\" Visible=\"false\" />", proGpuDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("\"${package_output}\"/*.${package_version}.nupkg", proGpuPackScript, StringComparison.Ordinal);
+        Assert.Contains("\"${package_output}\"/*.${package_version}.snupkg", proGpuPackScript, StringComparison.Ordinal);
+        Assert.Contains("is_expected_package_artifact()", proGpuPackScript, StringComparison.Ordinal);
+        Assert.Contains("Expected symbol package was not produced:", proGpuPackScript, StringComparison.Ordinal);
+        Assert.Contains("Unexpected package artifact in output:", proGpuPackScript, StringComparison.Ordinal);
         Assert.Contains("private GpuTextureReadbackBuffer? _readbackBuffer;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.Contains("_readbackBuffer.TryReadTextureRows(", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.DoesNotContain("private GpuBuffer* _stagingBuffer;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
@@ -11569,6 +11591,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Running SciChart MVP SDK app Application.Run validation", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("dev_package_version=\"${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("clean_preview_package_output()", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"${package_output}\"/*.nupkg", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"${package_output}\"/*.snupkg", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"${package_output}\"/*-preview-*.tar.gz", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"${package_output}\"/*-preview-packages-*.json", sdkCiScript, StringComparison.Ordinal);
+        Assert.True(
+            sdkCiScript.IndexOf("clean_preview_package_output", StringComparison.Ordinal)
+                < sdkCiScript.IndexOf("Packing ProGPU packages for LibreWPF.Sdk feed", StringComparison.Ordinal),
+            "SDK CI must clean stale package and bundle artifacts before packing.");
         Assert.Contains("\"${package_output}/${package_id}.${dev_package_version}.nupkg\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj\" \"ProGPU.DirectX\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj\" \"ProGPU.Scene\"", sdkCiScript, StringComparison.Ordinal);
@@ -11616,6 +11647,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("runtime_packages=(\"${progpu_preview_runtime_package_ids[@]}\")", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("all_packages=(\"${progpu_preview_package_ids[@]}\")", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.DoesNotContain("all_packages=(\n  LibreWPF.Transport", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("is_expected_package_artifact()", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("find \"${package_output}\" -maxdepth 1 -type f", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("-name \"*.nupkg\" -o -name \"*.snupkg\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("Unexpected preview package artifact in output", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("require_entry LibreWPF.Sdk \"Sdk/Sdk.props\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("require_entry LibreWPF.Sdk \"targets/ProGPU.Wpf.Sdk.targets\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("require_nuspec_contains LibreWPF.Sdk \"<packageType name=\\\"MSBuildSdk\\\" />\"", previewPackageAuditScript, StringComparison.Ordinal);
@@ -11684,6 +11719,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("sidecar_output=\"${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE_SHA256:-${bundle_output}.sha256}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("release_readme_path=\"${PROGPU_WPF_PREVIEW_RELEASE_README:-${package_output}/README.md}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("release_nuget_config_path=\"${PROGPU_WPF_PREVIEW_RELEASE_NUGET_CONFIG:-${package_output}/NuGet.config}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("is_expected_release_artifact()", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("find \"${package_output}\" -maxdepth 1 -type f", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("-name \"*.nupkg\" -o -name \"*.snupkg\" -o -name \"*.json\" -o -name \"*.tar.gz\" -o -name \"*.sha256\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("Unexpected preview release artifact in output", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("git_commit()", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("git -C \"${git_root}\" rev-parse --verify HEAD", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("source \"${repo_root}/eng/progpu-preview-package-list.sh\"", previewReleaseVerifyScript, StringComparison.Ordinal);

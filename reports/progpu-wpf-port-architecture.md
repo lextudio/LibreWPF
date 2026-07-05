@@ -500,6 +500,8 @@ Retained invalidation snapshot ownership is split by lifetime. The tracker owns 
 
 Retained invalidation subscription refresh should store unsubscribe handles in typed records instead of closure-wrapped actions. Portable invalidation sources that return `IDisposable` handles can be disposed through a direct helper, while event callback unsubscribe actions stay supported through the same exception-tolerant path. This keeps large Xceed/AvalonDock/DataGrid retained dependency graphs from allocating an extra lambda per subscription every time the graph refreshes.
 
+Portable popups are a platform-host contract, not a managed control rewrite. `PresentationFramework.Popup` keeps WPF placement, ownership, `PopupRoot`, `ContextMenu`, `ToolTip`, menu, dropdown, and third-party control semantics, but non-Windows lifetime/position/size/show/hide/hit-testability flows through the typed `IPortablePopupServiceRegistrar` in `ProGPU.Wpf.Interop`. `ProGPU.Wpf` creates/binds popup `PortablePresentationSource` instances, renders each visible popup as a translated retained ProGPU overlay branch above the owner tree, and routes topmost popup input to the popup presentation source before the owner window. WPF-side changes must stay at that service seam; native z-order, GPU hit-test cache use, source-level input, and future transparency/monitor policy belong in ProGPU/Silk.NET.
+
 ## Win32 Abstraction Strategy
 
 Win32 usage should be split into three groups:

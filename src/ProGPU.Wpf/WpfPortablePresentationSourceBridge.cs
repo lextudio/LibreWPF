@@ -283,7 +283,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         }
     }
 
-    private static bool TrySelectPointerInputOwner(ReadOnlySpan<object?> owners, out object? selectedOwner)
+    internal static bool TrySelectPointerInputOwner(ReadOnlySpan<object?> owners, out object? selectedOwner)
     {
         selectedOwner = null;
         int selectedDepth = -1;
@@ -540,7 +540,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         return true;
     }
 
-    private static int FilterTransparentPointerOverlays(Span<object?> owners)
+    internal static int FilterTransparentPointerOverlays(Span<object?> owners)
     {
         int writeIndex = 0;
         for (int i = 0; i < owners.Length; i++)
@@ -622,7 +622,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         }
     }
 
-    private static WpfCursor ToWpfCursor(string? cursorName)
+    internal static WpfCursor ToWpfCursor(string? cursorName)
     {
         return cursorName switch
         {

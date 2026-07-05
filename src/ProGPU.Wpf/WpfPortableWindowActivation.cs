@@ -670,6 +670,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         TrySetWindowActivationState(Window, isActive: true);
+        if (Host.TryProcessPortablePopupInput(e))
+        {
+            return;
+        }
+
         TryForwardInputToWindow(Window, e);
     }
 

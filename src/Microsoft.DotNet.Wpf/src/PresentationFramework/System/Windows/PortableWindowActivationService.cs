@@ -219,6 +219,16 @@ namespace System.Windows
             input.Handled = ProcessInput(source, window, input);
         }
 
+        internal static void ProcessInput(PresentationSource source, PortableInputEventArgs input)
+        {
+            if (OperatingSystem.IsWindows() || source == null || input == null)
+            {
+                return;
+            }
+
+            input.Handled = ProcessInput(source, source.RootVisual as UIElement, input);
+        }
+
         internal static int ProcessDragDrop(
             Window window,
             string[] files,
@@ -273,7 +283,7 @@ namespace System.Windows
             return (int)result;
         }
 
-        private static bool ProcessInput(PresentationSource source, Window window, PortableInputEventArgs input)
+        private static bool ProcessInput(PresentationSource source, UIElement rootHitTestElement, PortableInputEventArgs input)
         {
             InputManager inputManager = InputManager.UnsecureCurrent;
             int timestamp = Environment.TickCount;
@@ -288,17 +298,17 @@ namespace System.Windows
                 case PortableInputEventKind.TextInput:
                     return ProcessTextInput(inputManager, source, input, timestamp);
                 case PortableInputEventKind.MouseMove:
-                    return ProcessMouseInput(inputManager, source, window, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
+                    return ProcessMouseInput(inputManager, source, rootHitTestElement, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
                 case PortableInputEventKind.MouseDown:
                     return TryGetMouseButtonAction(input.Button, isDown: true, out RawMouseActions mouseDownAction)
-                        && ProcessMouseInput(inputManager, source, window, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
+                        && ProcessMouseInput(inputManager, source, rootHitTestElement, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
                 case PortableInputEventKind.MouseUp:
                     return TryGetMouseButtonAction(input.Button, isDown: false, out RawMouseActions mouseUpAction)
-                        && ProcessMouseInput(inputManager, source, window, input, timestamp, mouseActivation | mouseUpAction);
+                        && ProcessMouseInput(inputManager, source, rootHitTestElement, input, timestamp, mouseActivation | mouseUpAction);
                 case PortableInputEventKind.MouseWheel:
                     int wheel = ToMouseWheelDelta(input.DeltaY);
                     return wheel != 0
-                        && ProcessMouseInput(inputManager, source, window, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
+                        && ProcessMouseInput(inputManager, source, rootHitTestElement, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
                 default:
                     return false;
             }
@@ -369,7 +379,7 @@ namespace System.Windows
         private static bool ProcessMouseInput(
             InputManager inputManager,
             PresentationSource source,
-            Window window,
+            UIElement rootHitTestElement,
             PortableInputEventArgs input,
             int timestamp,
             RawMouseActions actions,
@@ -388,7 +398,7 @@ namespace System.Windows
                 }
             }
 
-            Point clientPoint = ToMouseClientPoint(source, window, input);
+            Point clientPoint = ToMouseClientPoint(source, rootHitTestElement, input);
             RawMouseInputReport report = new RawMouseInputReport(
                 InputMode.Foreground,
                 timestamp,
@@ -402,7 +412,7 @@ namespace System.Windows
             return ProcessInputReport(inputManager, report);
         }
 
-        private static Point ToMouseClientPoint(PresentationSource source, Window window, PortableInputEventArgs input)
+        private static Point ToMouseClientPoint(PresentationSource source, UIElement rootHitTestElement, PortableInputEventArgs input)
         {
             Point rootPoint = new Point(input.X, input.Y);
             if (source?.CompositionTarget == null)
@@ -412,7 +422,7 @@ namespace System.Windows
 
             Point clientPoint = PointUtil.RootToClient(rootPoint, source);
             bool rootHit = (clientPoint.X < 0.0 || clientPoint.Y < 0.0) &&
-                IsHitTestableRootPoint(window, source, rootPoint);
+                IsHitTestableRootPoint(rootHitTestElement, source, rootPoint);
             if ((clientPoint.X < 0.0 || clientPoint.Y < 0.0) &&
                 rootHit)
             {
@@ -424,15 +434,15 @@ namespace System.Windows
             return clientPoint;
         }
 
-        private static bool IsHitTestableRootPoint(Window window, PresentationSource source, Point rootPoint)
+        private static bool IsHitTestableRootPoint(UIElement rootHitTestElement, PresentationSource source, Point rootPoint)
         {
-            if (window?.InputHitTest(rootPoint) != null)
+            if (rootHitTestElement?.InputHitTest(rootPoint) != null)
             {
                 return true;
             }
 
             return source?.RootVisual is UIElement root &&
-                !ReferenceEquals(root, window) &&
+                !ReferenceEquals(root, rootHitTestElement) &&
                 root.InputHitTest(rootPoint) != null;
         }
 
@@ -883,7 +893,28 @@ namespace System.Windows
                     return false;
                 }
 
-                var mappedInput = new PortableInputEventArgs(
+                var mappedInput = CreatePortableInputEvent(input);
+                PortableWindowActivationService.ProcessInput(typedWindow, mappedInput);
+                input.Handled = mappedInput.Handled;
+                return true;
+            }
+
+            public bool TryProcessPresentationSourceInputEvent(object presentationSource, PortableWindowInputEvent input)
+            {
+                if (presentationSource is not PresentationSource typedSource || input == null)
+                {
+                    return false;
+                }
+
+                var mappedInput = CreatePortableInputEvent(input);
+                PortableWindowActivationService.ProcessInput(typedSource, mappedInput);
+                input.Handled = mappedInput.Handled;
+                return true;
+            }
+
+            private static PortableInputEventArgs CreatePortableInputEvent(PortableWindowInputEvent input)
+            {
+                return new PortableInputEventArgs(
                     (PortableInputEventKind)input.Kind,
                     input.Key,
                     input.ScanCode,
@@ -894,10 +925,6 @@ namespace System.Windows
                     input.DeltaY,
                     (PortableMouseButton)input.Button,
                     (PortableInputModifiers)input.Modifiers);
-
-                PortableWindowActivationService.ProcessInput(typedWindow, mappedInput);
-                input.Handled = mappedInput.Handled;
-                return true;
             }
 
             public bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout)

@@ -11,6 +11,7 @@ using Silk.NET.Windowing;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Wpf.Interop;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using ProGpuRenderTargetViewport = global::ProGPU.Scene.RenderTargetViewport;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
@@ -42,6 +43,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private IWpfPlatformServices _platformServices = CrossPlatformWpfPlatformServices.Instance;
     private IWpfRenderScheduler _wpfRenderScheduler;
     private WpfPortablePresentationSourceBridge? _portablePresentationSourceBridge;
+    private readonly List<WpfPortablePopupBridge> _portablePopupBridges = new();
+    private readonly WpfPortablePopupService? _portablePopupService;
+    private readonly IDisposable? _portablePopupServiceRegistration;
     private object? _wpfRootVisual;
     private double _portablePresentationSourceDpiScaleX = double.NaN;
     private double _portablePresentationSourceDpiScaleY = double.NaN;
@@ -102,6 +106,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
         AttachDispatcherService(_platformServices.Dispatcher);
         AttachRenderScheduler(_wpfRenderScheduler);
+        if (!OperatingSystem.IsWindows())
+        {
+            _portablePopupService = new WpfPortablePopupService(this);
+            _portablePopupServiceRegistration = PortableWpfServiceRegistry.RegisterPopupService(_portablePopupService);
+        }
     }
 
     public event EventHandler<ProGpuWpfFrameEventArgs>? Render;
@@ -234,6 +243,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public ProGpuWpfFrameState LastPresentedFrameState { get; private set; }
 
     internal RenderSurfaceGeometry LastResolvedRenderSurfaceGeometry { get; private set; }
+
+    internal double CurrentDpiScaleX => ResolveCurrentPortableDpiScale(
+        LastResolvedRenderSurfaceGeometry.DpiScaleX,
+        _portablePresentationSourceDpiScaleX);
+
+    internal double CurrentDpiScaleY => ResolveCurrentPortableDpiScale(
+        LastResolvedRenderSurfaceGeometry.DpiScaleY,
+        _portablePresentationSourceDpiScaleY);
 
     public long SkippedFrameCount { get; private set; }
 
@@ -537,6 +554,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         DetachDragDropService();
         DetachWindowEventService();
         DetachDispatcherService();
+        DisposePortablePopupService();
         DisposePortablePresentationSourceBridge();
         DisposeTarget();
         if (disposeNativeWindow)
@@ -801,6 +819,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     LastSourceDrawingResult = default;
                 }
 
+                if (_portablePopupBridges.Count > 0)
+                {
+                    LastVisualReplayResult = AddWpfVisualReplayResults(
+                        LastVisualReplayResult,
+                        ReplayPortablePopups(
+                            _target,
+                            drawingFrame,
+                            activeWpfImageSourceAdapter));
+                }
+
                 if (Draw != null)
                 {
                     using var drawingContext = drawingFrame.OpenDrawingContext();
@@ -924,6 +952,43 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             $"pixels {geometry.PixelWidth}x{geometry.PixelHeight}, " +
             $"viewport {ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth)}x{ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight)}@{geometry.ViewportX},{geometry.ViewportY}, " +
             $"dpi {geometry.DpiScale:0.###}");
+    }
+
+    private WpfVisualReplayResult ReplayPortablePopups(
+        ProGpuWpfCompositionTarget target,
+        ProGpuWpfDrawingFrame drawingFrame,
+        IWpfImageSourceAdapter? activeWpfImageSourceAdapter)
+    {
+        var result = default(WpfVisualReplayResult);
+        for (int i = 0; i < _portablePopupBridges.Count; i++)
+        {
+            result = AddWpfVisualReplayResults(
+                result,
+                _portablePopupBridges[i].Replay(
+                    target,
+                    drawingFrame,
+                    WpfResourceResolver,
+                    activeWpfImageSourceAdapter));
+        }
+
+        return result;
+    }
+
+    private static WpfVisualReplayResult AddWpfVisualReplayResults(
+        WpfVisualReplayResult left,
+        WpfVisualReplayResult right)
+    {
+        return new WpfVisualReplayResult(
+            left.VisualCount + right.VisualCount,
+            left.ContentCount + right.ContentCount,
+            left.ChildEdgeCount + right.ChildEdgeCount,
+            left.UnsupportedContentCount + right.UnsupportedContentCount,
+            left.UnsupportedVisualStateCount + right.UnsupportedVisualStateCount,
+            new WpfMilDecodeResult(
+                left.RenderData.RecordCount + right.RenderData.RecordCount,
+                left.RenderData.AppliedCount + right.RenderData.AppliedCount,
+                left.RenderData.SkippedCount + right.RenderData.SkippedCount,
+                left.RenderData.UnsupportedCount + right.RenderData.UnsupportedCount));
     }
 
     internal static RenderSurfaceGeometry ResolveRenderSurfaceGeometry(
@@ -1560,6 +1625,21 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return DisplayScaleResolver.NormalizeDisplayScale(dpiScale);
     }
 
+    private static double ResolveCurrentPortableDpiScale(double geometryDpiScale, double cachedDpiScale)
+    {
+        if (double.IsFinite(geometryDpiScale) && geometryDpiScale > 0.0)
+        {
+            return NormalizeMonitorDpiScale(geometryDpiScale);
+        }
+
+        if (double.IsFinite(cachedDpiScale) && cachedDpiScale > 0.0)
+        {
+            return NormalizeMonitorDpiScale(cachedDpiScale);
+        }
+
+        return 1.0;
+    }
+
     private void OnClosing()
     {
         _isInNativeWindowCloseCallback = true;
@@ -2024,6 +2104,21 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         RequestRenderAndWakeNativeLoop();
+    }
+
+    internal bool TryProcessPortablePopupInput(WpfInputEventArgs input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+
+        for (int i = _portablePopupBridges.Count - 1; i >= 0; i--)
+        {
+            if (_portablePopupBridges[i].TryProcessInput(input))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     internal void RaiseInputForDiagnostics(WpfInputEventArgs input)
@@ -2624,6 +2719,165 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _portablePresentationSourceDpiScaleY = double.NaN;
         _portablePresentationSourceClientWidth = -1;
         _portablePresentationSourceClientHeight = -1;
+    }
+
+    internal bool TryCreatePortablePopup(
+        PortablePopupCreateRequest request,
+        out object? presentationSource)
+    {
+        presentationSource = null;
+        if (_isDisposed ||
+            request == null ||
+            !OwnsPortablePopupOwner(request.OwnerPresentationSource, request.OwnerHandle))
+        {
+            return false;
+        }
+
+        if (!WpfPortablePopupBridge.TryCreate(this, request, out var bridge))
+        {
+            return false;
+        }
+
+        _portablePopupBridges.Add(bridge!);
+        presentationSource = bridge!.Source;
+        RequestRenderAndWakeNativeLoop();
+        return true;
+    }
+
+    internal bool TrySetPortablePopupPosition(object presentationSource, int x, int y)
+    {
+        if (!TryFindPortablePopup(presentationSource, out var popup))
+        {
+            return false;
+        }
+
+        popup.TrySetPosition(x, y);
+        return true;
+    }
+
+    internal bool TrySetPortablePopupSize(object presentationSource, int width, int height)
+    {
+        if (!TryFindPortablePopup(presentationSource, out var popup))
+        {
+            return false;
+        }
+
+        popup.TrySetSize(width, height);
+        return true;
+    }
+
+    internal bool TryShowPortablePopup(object presentationSource)
+    {
+        if (!TryFindPortablePopup(presentationSource, out var popup))
+        {
+            return false;
+        }
+
+        popup.TryShow();
+        return true;
+    }
+
+    internal bool TryHidePortablePopup(object presentationSource)
+    {
+        if (!TryFindPortablePopup(presentationSource, out var popup))
+        {
+            return false;
+        }
+
+        popup.TryHide();
+        return true;
+    }
+
+    internal bool TrySetPortablePopupHitTestable(object presentationSource, bool hitTestable)
+    {
+        if (!TryFindPortablePopup(presentationSource, out var popup))
+        {
+            return false;
+        }
+
+        popup.TrySetHitTestable(hitTestable);
+        return true;
+    }
+
+    internal bool TryDestroyPortablePopup(object presentationSource)
+    {
+        if (!TryFindPortablePopup(presentationSource, out var popup))
+        {
+            return false;
+        }
+
+        _portablePopupBridges.Remove(popup);
+        popup.Dispose();
+        RequestRenderAndWakeNativeLoop();
+        return true;
+    }
+
+    internal void ClearPortablePopups()
+    {
+        if (_portablePopupBridges.Count == 0)
+        {
+            return;
+        }
+
+        DisposePortablePopupBridges();
+        RequestRenderAndWakeNativeLoop();
+    }
+
+    private bool OwnsPortablePopupOwner(object? ownerPresentationSource, IntPtr ownerHandle)
+    {
+        var rootBridge = _portablePresentationSourceBridge;
+        if (rootBridge != null &&
+            (ReferenceEquals(ownerPresentationSource, rootBridge.Source) ||
+             (ownerHandle != IntPtr.Zero && ownerHandle == rootBridge.Handle)))
+        {
+            return true;
+        }
+
+        for (int i = 0; i < _portablePopupBridges.Count; i++)
+        {
+            var popup = _portablePopupBridges[i];
+            if (ReferenceEquals(ownerPresentationSource, popup.Source) ||
+                (ownerHandle != IntPtr.Zero && ownerHandle == popup.Handle))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryFindPortablePopup(object presentationSource, out WpfPortablePopupBridge popup)
+    {
+        if (presentationSource != null)
+        {
+            for (int i = _portablePopupBridges.Count - 1; i >= 0; i--)
+            {
+                popup = _portablePopupBridges[i];
+                if (ReferenceEquals(presentationSource, popup.Source))
+                {
+                    return true;
+                }
+            }
+        }
+
+        popup = null!;
+        return false;
+    }
+
+    private void DisposePortablePopupService()
+    {
+        _portablePopupServiceRegistration?.Dispose();
+        DisposePortablePopupBridges();
+    }
+
+    private void DisposePortablePopupBridges()
+    {
+        for (int i = _portablePopupBridges.Count - 1; i >= 0; i--)
+        {
+            _portablePopupBridges[i].Dispose();
+        }
+
+        _portablePopupBridges.Clear();
     }
 
     private void DisposeOwnedRenderScheduler()

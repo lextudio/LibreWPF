@@ -22,6 +22,7 @@ using MS.Internal.Controls;
 using MS.Internal.KnownBoxes;
 using MS.Internal.Interop;
 using MS.Win32;
+using ProGPU.Wpf.Interop;
 
 using CommonDependencyProperty = MS.Internal.PresentationFramework.CommonDependencyPropertyAttribute;
 
@@ -3146,6 +3147,16 @@ namespace System.Windows.Controls.Primitives
             {
                 if (!OperatingSystem.IsWindows())
                 {
+                    if (position)
+                    {
+                        TrySetPortablePopupPosition(x, y);
+                    }
+
+                    if (size)
+                    {
+                        TrySetPortablePopupSize(width, height);
+                    }
+
                     return;
                 }
 
@@ -3264,10 +3275,17 @@ namespace System.Windows.Controls.Primitives
             internal void SetWindowRootVisual(Visual v)
             {
                 _window.RootVisual = v;
-                if (!OperatingSystem.IsWindows() && _window is PortablePresentationSource portableSource)
+                if (!OperatingSystem.IsWindows())
                 {
                     Size clientSize = GetPortableRootClientSize(v);
-                    portableSource.SetClientSize(clientSize.Width, clientSize.Height);
+                    if (_window is PortablePresentationSource portableSource)
+                    {
+                        portableSource.SetClientSize(clientSize.Width, clientSize.Height);
+                    }
+
+                    TrySetPortablePopupSize(
+                        ToPortableClientDimension(clientSize.Width),
+                        ToPortableClientDimension(clientSize.Height));
                 }
             }
 
@@ -3280,6 +3298,7 @@ namespace System.Windows.Controls.Primitives
             {
                 if (!OperatingSystem.IsWindows())
                 {
+                    TryShowPortablePopup();
                     return;
                 }
 
@@ -3314,6 +3333,7 @@ namespace System.Windows.Controls.Primitives
             {
                 if (!OperatingSystem.IsWindows())
                 {
+                    TryHidePortablePopup();
                     return;
                 }
 
@@ -3358,6 +3378,7 @@ namespace System.Windows.Controls.Primitives
             {
                 if (!OperatingSystem.IsWindows())
                 {
+                    TrySetPortablePopupHitTestable(hitTestable);
                     return;
                 }
 
@@ -3426,7 +3447,15 @@ namespace System.Windows.Controls.Primitives
 
                 if (!OperatingSystem.IsWindows())
                 {
-                    _window = new PortablePresentationSource();
+                    if (TryCreatePortablePopupSource(x, y, placementTarget, transparent, out PresentationSource portableWindow))
+                    {
+                        _window = portableWindow;
+                    }
+                    else
+                    {
+                        _window = new PortablePresentationSource();
+                    }
+
                     return;
                 }
 
@@ -3630,9 +3659,115 @@ namespace System.Windows.Controls.Primitives
                 }
                 else
                 {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        TryDestroyPortablePopup(source);
+                    }
+
                     source.RootVisual = null;
                     (source as IDisposable)?.Dispose();
                 }
+            }
+
+            private bool TryCreatePortablePopupSource(
+                int x,
+                int y,
+                Visual placementTarget,
+                bool transparent,
+                out PresentationSource portableWindow)
+            {
+                portableWindow = null;
+                if (!TryGetPortablePopupService(out IPortablePopupServiceRegistrar service))
+                {
+                    return false;
+                }
+
+                Visual mainTreeVisual = placementTarget;
+                if (IsChildPopup)
+                {
+                    mainTreeVisual = FindMainTreeVisual(placementTarget);
+                }
+
+                PresentationSource ownerPresentationSource = GetPresentationSource(mainTreeVisual);
+                var request = new PortablePopupCreateRequest(
+                    placementTarget,
+                    ownerPresentationSource,
+                    GetHandle(ownerPresentationSource),
+                    x,
+                    y,
+                    transparent,
+                    IsChildPopup);
+
+                if (!service.TryCreatePopup(request, out object presentationSource) ||
+                    presentationSource is not PresentationSource typedPresentationSource)
+                {
+                    return false;
+                }
+
+                portableWindow = typedPresentationSource;
+                return true;
+            }
+
+            private bool TrySetPortablePopupPosition(int x, int y)
+            {
+                return TryGetPortablePopupService(out IPortablePopupServiceRegistrar service) &&
+                    _window != null &&
+                    service.TrySetPopupPosition(_window, x, y);
+            }
+
+            private bool TrySetPortablePopupSize(int width, int height)
+            {
+                return TryGetPortablePopupService(out IPortablePopupServiceRegistrar service) &&
+                    _window != null &&
+                    service.TrySetPopupSize(_window, width, height);
+            }
+
+            private bool TryShowPortablePopup()
+            {
+                return TryGetPortablePopupService(out IPortablePopupServiceRegistrar service) &&
+                    _window != null &&
+                    service.TryShowPopup(_window);
+            }
+
+            private bool TryHidePortablePopup()
+            {
+                return TryGetPortablePopupService(out IPortablePopupServiceRegistrar service) &&
+                    _window != null &&
+                    service.TryHidePopup(_window);
+            }
+
+            private bool TrySetPortablePopupHitTestable(bool hitTestable)
+            {
+                return TryGetPortablePopupService(out IPortablePopupServiceRegistrar service) &&
+                    _window != null &&
+                    service.TrySetPopupHitTestable(_window, hitTestable);
+            }
+
+            private bool TryDestroyPortablePopup(PresentationSource source)
+            {
+                return TryGetPortablePopupService(out IPortablePopupServiceRegistrar service) &&
+                    source != null &&
+                    service.TryDestroyPopup(source);
+            }
+
+            private bool TryGetPortablePopupService(out IPortablePopupServiceRegistrar service)
+            {
+                if (_portablePopupService != null)
+                {
+                    service = _portablePopupService;
+                    return true;
+                }
+
+                if (PortableWpfServiceRegistry.TryGetPopupService(
+                        PortableWpfServiceKey.PresentationFramework,
+                        out service))
+                {
+                    _portablePopupService = service;
+                    return true;
+                }
+
+                service = null;
+                return false;
             }
 
             private static Size GetPortableRootClientSize(Visual rootVisual)
@@ -3654,6 +3789,11 @@ namespace System.Windows.Controls.Primitives
                 return double.IsFinite(value) && value > 0.0 ? value : 1.0;
             }
 
+            private static int ToPortableClientDimension(double value)
+            {
+                return DoubleUtil.DoubleToInt(ToPortableClientSize(value));
+            }
+
             private bool _isChildPopup;
 
             /// <summary>
@@ -3662,6 +3802,7 @@ namespace System.Windows.Controls.Primitives
             private bool _isChildPopupInitialized;
 
             private PresentationSource _window;
+            private IPortablePopupServiceRegistrar _portablePopupService;
 
             private const string WebOCWindowClassName = "Shell Embedding";
         }

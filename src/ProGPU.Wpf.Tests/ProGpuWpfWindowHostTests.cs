@@ -1,9 +1,11 @@
 using System.Reflection;
+using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Wpf.Interop;
 using Silk.NET.Maths;
 using Xunit;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
@@ -1502,6 +1504,85 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void PortablePopupHostCreatesAndControlsPopupForBoundOwner()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var popupSourceFactory = UsePortablePopupSourceFactory(() => new FakePortablePresentationSource());
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var owner = new FakePortablePresentationSource
+        {
+            RootVisual = new object()
+        };
+        Assert.True(host.TryBindPortablePresentationSource(owner));
+
+        var request = new PortablePopupCreateRequest(
+            placementTarget: null,
+            ownerPresentationSource: owner,
+            ownerHandle: owner.Handle,
+            x: 24,
+            y: 32,
+            isTransparent: false,
+            isChildPopup: false);
+
+        Assert.True(host.TryCreatePortablePopup(request, out object? popupSource));
+        Assert.NotNull(popupSource);
+        Assert.True(host.TrySetPortablePopupSize(popupSource!, 200, 80));
+        Assert.True(host.TrySetPortablePopupPosition(popupSource!, 48, 64));
+        Assert.True(host.TryShowPortablePopup(popupSource!));
+        Assert.True(host.TrySetPortablePopupHitTestable(popupSource!, false));
+        Assert.True(host.TryHidePortablePopup(popupSource!));
+        Assert.True(host.TryDestroyPortablePopup(popupSource!));
+        Assert.False(host.TryShowPortablePopup(popupSource!));
+        Assert.True(scheduler.RequestCount > 1);
+    }
+
+    [Fact]
+    public void PortablePopupInputRoutesToPopupPresentationSourceWithLocalCoordinates()
+    {
+        var activationService = new TestWindowActivationServiceRegistrar();
+        using var activationRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(activationService);
+        using var popupSourceFactory = UsePortablePopupSourceFactory(() => new FakePortablePresentationSource());
+        using var host = new ProGpuWpfWindowHost();
+        var owner = new FakePortablePresentationSource
+        {
+            RootVisual = new object()
+        };
+        Assert.True(host.TryBindPortablePresentationSource(owner));
+
+        var request = new PortablePopupCreateRequest(
+            placementTarget: null,
+            ownerPresentationSource: owner,
+            ownerHandle: owner.Handle,
+            x: 20,
+            y: 30,
+            isTransparent: false,
+            isChildPopup: false);
+
+        Assert.True(host.TryCreatePortablePopup(request, out object? popupSource));
+        Assert.NotNull(popupSource);
+        Assert.True(host.TrySetPortablePopupSize(popupSource!, 100, 80));
+        Assert.True(host.TryShowPortablePopup(popupSource!));
+
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 25,
+            y: 35,
+            button: WpfMouseButton.Left);
+
+        Assert.True(host.TryProcessPortablePopupInput(input));
+
+        Assert.True(input.Handled);
+        Assert.Equal(1, activationService.PresentationSourceInputCount);
+        Assert.Same(popupSource, activationService.LastPresentationSourceInputSource);
+        Assert.NotNull(activationService.LastPresentationSourceInput);
+        Assert.Equal(5, activationService.LastPresentationSourceInput!.X);
+        Assert.Equal(5, activationService.LastPresentationSourceInput.Y);
+    }
+
+    [Fact]
     public void UpdatePortablePresentationSourceDpiScaleCoalescesUnchangedScale()
     {
         var scheduler = new TestRenderScheduler();
@@ -1874,6 +1955,106 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     private readonly record struct TestRenderSize(double Width, double Height);
+
+    private static IDisposable UsePortablePopupSourceFactory(Func<IPortablePresentationSourceHost> factory)
+    {
+        var previousFactory = WpfPortablePopupBridge.PortablePresentationSourceFactory;
+        WpfPortablePopupBridge.PortablePresentationSourceFactory = (_, _) => factory();
+        return new DelegateDisposable(() =>
+        {
+            WpfPortablePopupBridge.PortablePresentationSourceFactory = previousFactory;
+        });
+    }
+
+    private sealed class DelegateDisposable : IDisposable
+    {
+        private Action? _dispose;
+
+        public DelegateDisposable(Action dispose)
+        {
+            _dispose = dispose;
+        }
+
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref _dispose, null)?.Invoke();
+        }
+    }
+
+    private sealed class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
+    {
+        public PortableWpfServiceKey ServiceKey => PortableWpfServiceKey.PresentationFramework;
+
+        public int PresentationSourceInputCount { get; private set; }
+
+        public object? LastPresentationSourceInputSource { get; private set; }
+
+        public PortableWindowInputEvent? LastPresentationSourceInput { get; private set; }
+
+        public void Register(PortableWindowActivationCallbacks callbacks)
+        {
+        }
+
+        public bool TryIsCurrentApplicationMainWindow(object window, out bool isMainWindow)
+        {
+            isMainWindow = false;
+            return false;
+        }
+
+        public bool TryCloseWindow(object window, out PortableWindowCloseResult result)
+        {
+            result = PortableWindowCloseResult.NotInvoked;
+            return false;
+        }
+
+        public bool TrySetActivationState(object window, bool isActive)
+        {
+            return false;
+        }
+
+        public bool TryBeginInvokeInput(object window, Action callback)
+        {
+            return false;
+        }
+
+        public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)
+        {
+            return false;
+        }
+
+        public bool TryProcessPresentationSourceInputEvent(object presentationSource, PortableWindowInputEvent input)
+        {
+            PresentationSourceInputCount++;
+            LastPresentationSourceInputSource = presentationSource;
+            LastPresentationSourceInput = input;
+            input.Handled = true;
+            return true;
+        }
+
+        public bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout)
+        {
+            return false;
+        }
+
+        public bool TryProcessDragDropEvent(
+            object window,
+            int dragDropEventKind,
+            string[] files,
+            string? text,
+            double x,
+            double y,
+            int allowedEffects,
+            int acceptedEffect,
+            out int result)
+        {
+            result = 0;
+            return false;
+        }
+
+        public void Clear()
+        {
+        }
+    }
 
     private sealed class FakePortablePresentationSource : IPortablePresentationSourceHost
     {

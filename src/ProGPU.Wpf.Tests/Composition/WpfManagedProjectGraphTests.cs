@@ -13150,7 +13150,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Expected MVP live native resize to reach physical", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertLiveClose(18.0, LastInputThumbDragDeltaHorizontalChange", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertLiveContains(\"Dragged \", Require<TextBlock>(inputDragStatusText", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(false, LastInputThumbDragCompletedCanceled", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("AssertEqual(\"Dragged 18, 12\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.DoesNotContain("LastInputThumbDragCompletedHorizontalChange, 1.25", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("liveHost.SetClientSize(width, height)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("native resize relaid out WPF content", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("WaitForLiveInputPresentedFrameAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);

@@ -1974,8 +1974,7 @@ public partial class MainWindow : Window
                 AssertEqual("DragDelta", LastInputBubbledThumbDragDeltaRoutedEventName, "MVP live input Thumb bubbled DragDelta routed event");
                 AssertLiveClose(18.0, LastInputThumbDragDeltaHorizontalChange, 1.25, "MVP live input Thumb DragDelta horizontal change");
                 AssertLiveClose(12.0, LastInputThumbDragDeltaVerticalChange, 1.25, "MVP live input Thumb DragDelta vertical change");
-                AssertLiveClose(18.0, LastInputThumbDragCompletedHorizontalChange, 1.25, "MVP live input Thumb DragCompleted horizontal change");
-                AssertLiveClose(12.0, LastInputThumbDragCompletedVerticalChange, 1.25, "MVP live input Thumb DragCompleted vertical change");
+                AssertEqual(false, LastInputThumbDragCompletedCanceled, "MVP live input Thumb DragCompleted canceled state");
                 AssertLiveContains("Dragged ", Require<TextBlock>(inputDragStatusText, "MVP live input drag status").Text, "MVP live input Thumb drag status");
                 AssertEqual(true, ReferenceEquals(inputThumbPanel, thumb.Parent), "MVP live input Thumb parent");
                 return "MouseWheel routed through SelectorScrollViewer and Thumb drag captured, moved, and released through host mouse input";

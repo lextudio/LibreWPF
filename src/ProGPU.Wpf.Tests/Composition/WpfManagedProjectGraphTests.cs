@@ -12340,6 +12340,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CopyVertices(vertexSpan)", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("CopyIndices(indexSpan)", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("CopyHeights(heightSpan)", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < points.Length; i++)\n        {\n            var point = points[i];", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < heights.Length; i++)\n        {\n            var height = heights[i];", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < vertices.Length; i++)\n        {\n            var vertex = vertices[i];", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < indices.Length; i++)\n        {\n            var index = indices[i];", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("var instanceArray = instanceData.ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("var vertexArray = vertexData.ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("var copiedPoints = points[..count].ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
@@ -12351,6 +12355,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var copiedVertices = vertices.Slice(startIndex, count).ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var source in vertices)", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var vertex in vertices)\n        {\n            if (!TryGetLinePoint", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var point in points)\n        {\n            ValidateXyzPoint(point);", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var height in heights)\n        {\n            minimum = Math.Min(minimum, height);", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var height in heights)\n        {\n            if (!float.IsFinite(height))", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var vertex in vertices)\n        {\n            if (!float.IsFinite(vertex.X)", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var index in indices)\n        {\n            if (index >= vertexCount)", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateLineBatchVertexBuffer(\n            copiedVertices", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateMountainFillVertexBuffer(\n            copiedVertices", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateBandFillVertexBuffer(\n            copiedVertices", proGpuDirectXSciChart, StringComparison.Ordinal);

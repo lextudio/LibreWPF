@@ -9055,6 +9055,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var segment in figure.Segments)", pathOps, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var seg in figure.Segments)", pathOps, StringComparison.Ordinal);
         Assert.DoesNotContain("return (records, segments.ToArray());", pathOps, StringComparison.Ordinal);
+        Assert.Contains("new(StringComparer.OrdinalIgnoreCase)", visual, StringComparison.Ordinal);
+        Assert.Contains("var activeAnimationEnumerator = _activeAnimations.GetEnumerator();", visual, StringComparison.Ordinal);
+        Assert.Contains("while (activeAnimationEnumerator.MoveNext())", visual, StringComparison.Ordinal);
+        Assert.Contains("var kvp = activeAnimationEnumerator.Current;", visual, StringComparison.Ordinal);
+        Assert.Contains("IsAnimationProperty(propertyName, \"opacity\")", visual, StringComparison.Ordinal);
+        Assert.Contains("private static bool IsAnimationProperty(string propertyName, string expected)", visual, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < _children.Count; i++)", visual, StringComparison.Ordinal);
+        Assert.Contains("_children[i].Parent = null;", visual, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var kvp in _activeAnimations)", visual, StringComparison.Ordinal);
+        Assert.DoesNotContain("propertyName.ToLowerInvariant()", visual, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var child in _children)", visual, StringComparison.Ordinal);
         Assert.Contains("_failedShaderSourceKey", visual, StringComparison.Ordinal);
         Assert.Contains("ParseForInitializerExpressions", shaderToyTranspiler, StringComparison.Ordinal);
         Assert.Contains("new BlockStatement(initializers.Select", shaderToyTranspiler, StringComparison.Ordinal);

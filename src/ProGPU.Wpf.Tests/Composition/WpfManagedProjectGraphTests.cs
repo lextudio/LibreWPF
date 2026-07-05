@@ -13237,8 +13237,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Console.Out.Flush();", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SetLiveNativeWindowSize(liveHost, 900, 640)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("NativeResizeGeometryIsReady(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("ComputeExpectedPixelSize(expectedLogicalWidth, geometry.DpiScale)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("Expected MVP live native resize to reach logical", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ComputeExpectedPixelSize(requestedWidth, geometry.DpiScale)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ComputeExpectedLogicalSize(requestedWidth, geometry.DpiScale)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("matchesLogicalRequest || matchesFramebufferRequest", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Expected MVP live native resize to reach requested client size", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertLiveClose(18.0, LastInputThumbDragDeltaHorizontalChange", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertLiveContains(\"Dragged \", Require<TextBlock>(inputDragStatusText", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(false, LastInputThumbDragCompletedCanceled", mvpMainWindowCodeBehind, StringComparison.Ordinal);

@@ -8851,6 +8851,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Backend",
             "RenderPipelineCache.cs"));
+        var renderCommand = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "RenderCommand.cs"));
         var imageEffectPipeline = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -8985,11 +8991,35 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReadOnlySpan<VertexBufferLayout> vertexBufferLayouts", renderPipelineCache, StringComparison.Ordinal);
         Assert.Contains("private RenderPipeline* GetOrCreateRenderPipelineCore(", renderPipelineCache, StringComparison.Ordinal);
         Assert.Contains("fixed (VertexBufferLayout* pLayouts = vertexBufferLayouts)", renderPipelineCache, StringComparison.Ordinal);
+        Assert.Contains("CopyList(_recordingContext.Commands)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("CopyList(_recordingContext.PointBuffer)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("CopyList(_recordingContext.DoubleBuffer)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("CopyList(_recordingContext.Line3DBuffer)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("CopyList(_recordingContext.FloatBuffer)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("private static T[] CopyList<T>(List<T> values)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("for (int i = 0; i < result.Length; i++)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("result[i] = values[i];", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("for (int i = 0; i < resources.Length; i++)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("resources[i].Dispose();", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("var otherCommands = other.Commands;", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("int otherCommandCount = otherCommands.Count;", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("for (int commandIndex = 0; commandIndex < otherCommandCount; commandIndex++)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("var cmd = otherCommands[commandIndex];", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("for (int i = 0; i < _retainedResources.Count; i++)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("_retainedResources[i].Dispose();", renderCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("return registers[..count].ToArray();", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("Registers = activeRegisters.ToArray()", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var register in activeSamplerRegisters)", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var register in activeRegisters)", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var register in sourceLayout.Registers)", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("_recordingContext.Commands.ToArray()", renderCommand, StringComparison.Ordinal);
+        Assert.DoesNotContain("_recordingContext.PointBuffer.ToArray()", renderCommand, StringComparison.Ordinal);
+        Assert.DoesNotContain("_recordingContext.DoubleBuffer.ToArray()", renderCommand, StringComparison.Ordinal);
+        Assert.DoesNotContain("_recordingContext.Line3DBuffer.ToArray()", renderCommand, StringComparison.Ordinal);
+        Assert.DoesNotContain("_recordingContext.FloatBuffer.ToArray()", renderCommand, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var cmd in other.Commands)", renderCommand, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var resource in resources)", renderCommand, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var resource in _retainedResources)", renderCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("new VertexBufferLayout[]", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("Marshal.AllocHGlobal(Marshal.SizeOf<VertexAttribute>() * 3)", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("Marshal.FreeHGlobal((IntPtr)layouts[0].Attributes)", shaderPipeline, StringComparison.Ordinal);

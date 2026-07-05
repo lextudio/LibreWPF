@@ -8644,6 +8644,40 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ProGpuTextLayoutUsesIndexedWrappingTraversal()
+    {
+        var textLayout = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Text",
+            "TextLayout.cs"));
+
+        Assert.Contains("for (int pathIndex = 0; pathIndex < FallbackFontPaths.Length; pathIndex++)", textLayout, StringComparison.Ordinal);
+        Assert.Contains("var path = FallbackFontPaths[pathIndex];", textLayout, StringComparison.Ordinal);
+        Assert.Contains("for (int fallbackIndex = 0; fallbackIndex < _fallbackFonts.Count; fallbackIndex++)", textLayout, StringComparison.Ordinal);
+        Assert.Contains("var fbFont = _fallbackFonts[fallbackIndex];", textLayout, StringComparison.Ordinal);
+        Assert.Contains("int wrapStartIndex = lastWordStartIdxInLine;", textLayout, StringComparison.Ordinal);
+        Assert.Contains("int previousLineCount = currentLine.Count;", textLayout, StringComparison.Ordinal);
+        Assert.Contains("var previousLine = currentLine;", textLayout, StringComparison.Ordinal);
+        Assert.Contains("currentLine = new List<TextRunGlyph>(wrapCount + 1);", textLayout, StringComparison.Ordinal);
+        Assert.Contains("for (int wrapIndex = wrapStartIndex; wrapIndex < previousLineCount; wrapIndex++)", textLayout, StringComparison.Ordinal);
+        Assert.Contains("var wg = previousLine[wrapIndex];", textLayout, StringComparison.Ordinal);
+        Assert.Contains("previousLine.RemoveRange(wrapStartIndex, wrapCount);", textLayout, StringComparison.Ordinal);
+        Assert.Contains("for (int lineIndex = 0; lineIndex < lines.Count; lineIndex++)", textLayout, StringComparison.Ordinal);
+        Assert.Contains("var line = lines[lineIndex];", textLayout, StringComparison.Ordinal);
+        Assert.Contains("for (int glyphIndex = 0; glyphIndex < line.Count; glyphIndex++)", textLayout, StringComparison.Ordinal);
+        Assert.Contains("Glyphs.Add(line[glyphIndex]);", textLayout, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var path in FallbackFontPaths)", textLayout, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var fbFont in _fallbackFonts)", textLayout, StringComparison.Ordinal);
+        Assert.DoesNotContain("currentLine.GetRange", textLayout, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var wg in wrappedGlyphs)", textLayout, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var line in lines)", textLayout, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var g in line)", textLayout, StringComparison.Ordinal);
+        Assert.DoesNotContain("Glyphs.AddRange(line)", textLayout, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PortableTextFormatterKeepsCollapsedSimpleTextOnManagedPath()
     {
         var simpleTextLine = File.ReadAllText(FindRepoPath(

@@ -1319,7 +1319,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var staticDrawCallList = RentDrawCallList(commands.Count)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var staticDrawCallList = RentDrawCallList(context.Commands.Count)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("ReturnDrawCallList(staticDrawCalls)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var drawCallCount = _drawCalls.Count;\n            for (var drawCallIndex = 0; drawCallIndex < drawCallCount; drawCallIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var dc = _drawCalls[drawCallIndex];", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var drawCalls = sb.DrawCalls;\n        for (var drawCallIndex = 0; drawCallIndex < drawCalls.Length; drawCallIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var dc = drawCalls[drawCallIndex];", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var staticDrawCalls = new List<CompositorDrawCall>();", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var dc in _drawCalls)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var dc in sb.DrawCalls)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_maskDrawCallListPool", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static void AddRemovalItem<T>(ref T[]? buffer, ref int count, int capacity, T item)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static void ReturnRemovalBuffer<T>(T[]? buffer, int count)", proGpuCompositor, StringComparison.Ordinal);

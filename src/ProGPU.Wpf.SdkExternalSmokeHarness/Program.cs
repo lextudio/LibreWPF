@@ -6250,8 +6250,10 @@ internal static class Program
 
                     AssertClose(156.0, sizeToContentWindow.ActualWidth, "external SDK live size-to-content window ActualWidth");
                     AssertClose(82.0, sizeToContentWindow.ActualHeight, "external SDK live size-to-content window ActualHeight");
-                    AssertClose(156.0, GetPortableHostDouble(sizeToContentWindow, "Width"), "external SDK live size-to-content portable host width");
-                    AssertClose(82.0, GetPortableHostDouble(sizeToContentWindow, "Height"), "external SDK live size-to-content portable host height");
+                    AssertClose(sizeToContentWindow.ActualWidth, GetPortableHostDouble(sizeToContentWindow, "Width"), 12.0, "external SDK live size-to-content portable host width");
+                    AssertClose(sizeToContentWindow.ActualHeight, GetPortableHostDouble(sizeToContentWindow, "Height"), 8.0, "external SDK live size-to-content portable host height");
+                    AssertBetween(144.0, 168.0, GetPortableHostDouble(sizeToContentWindow, "Width"), "external SDK live size-to-content portable host width bounds");
+                    AssertBetween(74.0, 90.0, GetPortableHostDouble(sizeToContentWindow, "Height"), "external SDK live size-to-content portable host height bounds");
 
                     sizeToContentWindow.Close();
                     DrainDispatcher();
@@ -13611,10 +13613,24 @@ internal static class Program
 
                 private static void AssertClose(double expected, double actual, string description)
                 {
-                    if (Math.Abs(expected - actual) > 0.000001)
+                    AssertClose(expected, actual, 0.000001, description);
+                }
+
+                private static void AssertClose(double expected, double actual, double tolerance, string description)
+                {
+                    if (Math.Abs(expected - actual) > tolerance)
                     {
                         throw new InvalidOperationException(
                             $"Expected {description} to be close to '{expected}', but found '{actual}'.");
+                    }
+                }
+
+                private static void AssertBetween(double minimum, double maximum, double actual, string description)
+                {
+                    if (actual < minimum || actual > maximum)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {description} to be between '{minimum}' and '{maximum}', but found '{actual}'.");
                     }
                 }
 

@@ -15570,6 +15570,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SizeToContent = SizeToContent.WidthAndHeight", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("sizeToContentContent.Width = 156.0", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK live size-to-content portable host width", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK live size-to-content portable host width bounds", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertBetween(144.0, 168.0, GetPortableHostDouble(sizeToContentWindow, \"Width\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetPortableHostDouble(sizeToContentWindow, \"Width\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK size-to-content portable host height", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK owned window", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -1972,7 +1972,11 @@ public partial class MainWindow : Window
                 AssertEqual("DragDelta", LastInputThumbDragDeltaRoutedEventName, "MVP live input Thumb DragDelta routed event");
                 AssertEqual("DragCompleted", LastInputThumbDragCompletedRoutedEventName, "MVP live input Thumb DragCompleted routed event");
                 AssertEqual("DragDelta", LastInputBubbledThumbDragDeltaRoutedEventName, "MVP live input Thumb bubbled DragDelta routed event");
-                AssertEqual("Dragged 18, 12", Require<TextBlock>(inputDragStatusText, "MVP live input drag status").Text, "MVP live input Thumb drag status");
+                AssertLiveClose(18.0, LastInputThumbDragDeltaHorizontalChange, 1.25, "MVP live input Thumb DragDelta horizontal change");
+                AssertLiveClose(12.0, LastInputThumbDragDeltaVerticalChange, 1.25, "MVP live input Thumb DragDelta vertical change");
+                AssertLiveClose(18.0, LastInputThumbDragCompletedHorizontalChange, 1.25, "MVP live input Thumb DragCompleted horizontal change");
+                AssertLiveClose(12.0, LastInputThumbDragCompletedVerticalChange, 1.25, "MVP live input Thumb DragCompleted vertical change");
+                AssertLiveContains("Dragged ", Require<TextBlock>(inputDragStatusText, "MVP live input drag status").Text, "MVP live input Thumb drag status");
                 AssertEqual(true, ReferenceEquals(inputThumbPanel, thumb.Parent), "MVP live input Thumb parent");
                 return "MouseWheel routed through SelectorScrollViewer and Thumb drag captured, moved, and released through host mouse input";
             },
@@ -2388,6 +2392,24 @@ public partial class MainWindow : Window
         {
             throw new InvalidOperationException(
                 $"Expected {description} to be greater than '{minimumExclusive}', but found '{actual}'.");
+        }
+    }
+
+    private static void AssertLiveClose(double expected, double actual, double tolerance, string description)
+    {
+        if (Math.Abs(expected - actual) > tolerance)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be close to '{expected}', but found '{actual}'.");
+        }
+    }
+
+    private static void AssertLiveContains(string expectedText, string actualText, string description)
+    {
+        if (!actualText.Contains(expectedText, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to contain '{expectedText}', but found '{actualText}'.");
         }
     }
 

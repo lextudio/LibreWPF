@@ -10286,6 +10286,8 @@ public sealed class WpfManagedProjectGraphTests
             "packaging",
             "ProGPU.Wpf.Sdk",
             "ProGPU.Wpf.Sdk.ArchNeutral.csproj");
+        var rootNuGetConfigPath = FindRepoPath(
+            "NuGet.config");
         var sdkPropsPath = FindRepoPath(
             "packaging",
             "ProGPU.Wpf.Sdk",
@@ -11034,6 +11036,7 @@ public sealed class WpfManagedProjectGraphTests
             "progpu-wpf-mvp-quickcheck.sh");
 
         var sdkProject = XDocument.Load(sdkProjectPath);
+        var rootNuGetConfig = File.ReadAllText(rootNuGetConfigPath);
         var sdkProps = File.ReadAllText(sdkPropsPath);
         var sdkTargets = File.ReadAllText(sdkTargetsPath);
         var portableProps = File.ReadAllText(portablePropsPath);
@@ -11203,6 +11206,7 @@ public sealed class WpfManagedProjectGraphTests
         ];
         const string ribbonAssembly = "System.Windows.Controls.Ribbon";
 
+        Assert.Contains("<add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" />", rootNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("LibreWPF MSBuild SDK for running existing desktop XAML applications on ProGPU/Silk.NET.", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("<PackageName>LibreWPF.Sdk$(TransportPackageNameSuffix)</PackageName>", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("librewpf;progpu;silk.net;msbuild-sdk", sdkProject.ToString(), StringComparison.Ordinal);

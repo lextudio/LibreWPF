@@ -10612,6 +10612,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.DirectX",
             "ProGpuDirectXDeviceContext.cs");
+        var proGpuDirectXShaderBytecodePath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.DirectX",
+            "ProGpuDirectXShaderBytecode.cs");
         var mvpQuickCheckScriptPath = FindRepoPath(
             "eng",
             "progpu-wpf-mvp-quickcheck.sh");
@@ -10767,6 +10773,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuDirectXNativeFacadeSourceEmitter = File.ReadAllText(proGpuDirectXNativeFacadeSourceEmitterPath);
         var proGpuDirectXNativeResolver = File.ReadAllText(proGpuDirectXNativeResolverPath);
         var proGpuDirectXDeviceContext = File.ReadAllText(proGpuDirectXDeviceContextPath);
+        var proGpuDirectXShaderBytecode = File.ReadAllText(proGpuDirectXShaderBytecodePath);
         var mvpQuickCheckScript = File.ReadAllText(mvpQuickCheckScriptPath);
         string[] wpfThemeAssemblies =
         [
@@ -10936,6 +10943,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Array.Sort(requirements, CompareReflectedBindingRequirements);", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("private static int CompareReflectedBindingRequirements(", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("return vertexShader.ReflectedBindingRequirementsSupported &&", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("public bool HasDxilProgram => ContainsChunk(\"DXIL\");", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.Contains("public bool HasTokenizedProgram => ContainsChunk(\"SHDR\", \"SHEX\");", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.Contains("public bool HasInputSignature => InputSignature.Count > 0 || ContainsChunk(\"ISGN\", \"ISG1\");", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.Contains("private bool ContainsChunk(string fourCC)", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.Contains("private bool ContainsChunk(string firstFourCC, string secondFourCC)", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.Contains("for (var chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++)", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.Contains("var resourceCount = ResourceBindings.Count;\n        for (var resourceIndex = 0; resourceIndex < resourceCount; resourceIndex++)", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.Contains("var resource = ResourceBindings[resourceIndex];", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.Contains("var inputSignatureCount = InputSignature.Count;\n        for (var parameterIndex = 0; parameterIndex < inputSignatureCount; parameterIndex++)", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.Contains("var parameter = InputSignature[parameterIndex];", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
         Assert.Contains("public void ReadPixels(Span<byte> destination)", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("private void ReadBackendSubresourceIntoWriteShadow", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("texture.ReadPixels(\n            _writeShadow.AsSpan(", proGpuDirectXResources, StringComparison.Ordinal);
@@ -10977,6 +10994,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain(".ThenBy(requirement => requirement.Slot)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain("shaders.All(shader => shader is null || shader.ReflectedBindingRequirementsSupported)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain(".Where(shader => shader is { ReflectedBindingRequirementsSupported: false })", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain("Chunks.Any", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.DoesNotContain("Chunks.FirstOrDefault", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var resource in ResourceBindings)", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var parameter in InputSignature)", proGpuDirectXShaderBytecode, StringComparison.Ordinal);
         Assert.DoesNotContain("return MemoryMarshal.Cast<byte, uint>(bytes).ToArray();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("wgpuDevicePoll", proGpuBuffer, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferDestroy(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);
@@ -14370,6 +14391,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackagingContent Include=\"README.md\" SubFolder=\"root\" />", wpfTransportArchNeutralProject, StringComparison.Ordinal);
         Assert.Contains("<None Include=\"README.md\" Pack=\"true\" PackagePath=\"\\\" />", wpfTransportArchNeutralProject, StringComparison.Ordinal);
         Assert.Contains("<IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
+        Assert.Contains("<PackageName>LibreWPF.Transport$(TransportPackageNameSuffix)</PackageName>", wpfTransportProject, StringComparison.Ordinal);
+        Assert.Contains("<PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>", wpfTransportProject, StringComparison.Ordinal);
         Assert.Contains("<PackageReadmeFile>README.md</PackageReadmeFile>", wpfTransportProject, StringComparison.Ordinal);
         Assert.Contains("<PackagingContent Include=\"README.md\" SubFolder=\"root\" />", wpfTransportProject, StringComparison.Ordinal);
         Assert.Contains("<None Include=\"README.md\" Pack=\"true\" PackagePath=\"\\\" />", wpfTransportProject, StringComparison.Ordinal);

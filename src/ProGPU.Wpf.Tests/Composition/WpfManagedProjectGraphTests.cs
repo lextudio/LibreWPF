@@ -12306,6 +12306,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var vertexBuffer = CreateAreaFillVertexBuffer(lineSpan, brush, gradientRotationAngle, out var submittedVertexCount);", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("var lineVertices = CreateLineVertices(pointSpan, pen.ColorArgb);", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("CopyPrimitivePoints(pointSpan)", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < points.Length; i++)\n        {\n            var point = points[i];", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < indices.Count; i++)\n        {\n            var index = indices[i];", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < lines.Length; i++)\n        {\n            var line = lines[i];", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("var vertexSpan = vertices[..count];", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("var vertexSpan = vertices.Slice(startIndex, count);", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("CreateLineBatchVertexBuffer(\n            vertexSpan", proGpuDirectXSciChart, StringComparison.Ordinal);
@@ -12323,6 +12326,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CreateBatchedTextureVertexBuffer(vertexSpan", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("CopySpan(vertexSpan)", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("private static T[] CopySpan<T>(ReadOnlySpan<T> values)", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < vertices.Length; i++)\n        {\n            var source = vertices[i];", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < vertices.Length; i++)\n        {\n            var vertex = vertices[i];", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("var vertexSpan = vertices;", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("var indexSpan = indices;", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("var heightSpan = heights;", proGpuDirectXSciChart, StringComparison.Ordinal);
@@ -12339,8 +12344,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var vertexArray = vertexData.ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("var copiedPoints = points[..count].ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("var copiedLines = lines[..count].ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var point in points)\n        {\n            if (!HasFinitePoint(point))", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var index in indices)\n        {\n            if (index == previousIndex", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var line in lines)", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("var copiedVertices = vertices[..count].ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("var copiedVertices = vertices.Slice(startIndex, count).ToArray();", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var source in vertices)", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var vertex in vertices)\n        {\n            if (!TryGetLinePoint", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateLineBatchVertexBuffer(\n            copiedVertices", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateMountainFillVertexBuffer(\n            copiedVertices", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateBandFillVertexBuffer(\n            copiedVertices", proGpuDirectXSciChart, StringComparison.Ordinal);

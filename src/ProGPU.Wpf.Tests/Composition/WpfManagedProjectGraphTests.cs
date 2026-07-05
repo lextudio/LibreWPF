@@ -8985,6 +8985,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (var i = 0; i < sourceRegisters.Length; i++)", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("Registers = CopyActiveRegisters(activeRegisters),", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("private static int[] CopyActiveRegisters(ReadOnlySpan<int> activeRegisters)", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("var textureBindGroupEnumerator = _textureBindGroups.GetEnumerator();", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("while (textureBindGroupEnumerator.MoveNext())", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("var kvp = textureBindGroupEnumerator.Current;", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("for (int i = 0; i < _pool.Count; i++)", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("var resource = _pool[i];", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("var sourceLayoutEnumerator = _sourceLayouts.Values.GetEnumerator();", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("while (sourceLayoutEnumerator.MoveNext())", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("var layout = sourceLayoutEnumerator.Current;", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("var textureBindGroupValueEnumerator = _textureBindGroups.Values.GetEnumerator();", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("while (textureBindGroupValueEnumerator.MoveNext())", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("var cached = textureBindGroupValueEnumerator.Current;", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("Span<VertexAttribute> attrs = stackalloc VertexAttribute[3];", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("Span<VertexBufferLayout> layouts = stackalloc VertexBufferLayout[1];", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("ArrayStride = (uint)Unsafe.SizeOf<VectorVertex>()", shaderPipeline, StringComparison.Ordinal);
@@ -9012,6 +9023,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var register in activeSamplerRegisters)", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var register in activeRegisters)", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var register in sourceLayout.Registers)", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var kvp in _textureBindGroups)", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var resource in _pool)", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var layout in _sourceLayouts.Values)", shaderPipeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var cached in _textureBindGroups.Values)", shaderPipeline, StringComparison.Ordinal);
         Assert.DoesNotContain("_recordingContext.Commands.ToArray()", renderCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("_recordingContext.PointBuffer.ToArray()", renderCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("_recordingContext.DoubleBuffer.ToArray()", renderCommand, StringComparison.Ordinal);

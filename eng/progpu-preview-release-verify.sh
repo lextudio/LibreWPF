@@ -135,6 +135,8 @@ fi
 
 nuget_config_file="${extract_dir}/${nuget_config_name}"
 if ! grep -q "<add key=\"librewpf-preview\" value=\"\\.\" />" "${nuget_config_file}" \
+  || ! grep -q "<add key=\"dotnet11\" value=\"https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet11/nuget/v3/index.json\" />" "${nuget_config_file}" \
+  || ! grep -q "<add key=\"dotnet11-transport\" value=\"https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet11-transport/nuget/v3/index.json\" />" "${nuget_config_file}" \
   || ! grep -q "<add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" />" "${nuget_config_file}"; then
   echo "Preview release bundle NuGet config is missing required package sources." >&2
   exit 1

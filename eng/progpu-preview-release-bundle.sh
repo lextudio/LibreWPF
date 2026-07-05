@@ -78,6 +78,8 @@ cat >"${release_nuget_config_path}" <<NUGET
   <packageSources>
     <clear />
     <add key="librewpf-preview" value="." />
+    <add key="dotnet11" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet11/nuget/v3/index.json" />
+    <add key="dotnet11-transport" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet11-transport/nuget/v3/index.json" />
     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
 </configuration>

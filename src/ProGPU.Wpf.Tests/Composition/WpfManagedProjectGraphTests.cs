@@ -11764,6 +11764,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("cat >\"${release_readme_path}\" <<README", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("cat >\"${release_nuget_config_path}\" <<NUGET", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("<add key=\"librewpf-preview\" value=\".\" />", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("<add key=\"dotnet11\" value=\"https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet11/nuget/v3/index.json\" />", previewReleaseBundleScript, StringComparison.Ordinal);
+        Assert.Contains("<add key=\"dotnet11-transport\" value=\"https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet11-transport/nuget/v3/index.json\" />", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("# LibreWPF Preview ${dev_package_version}", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("shasum -a 256 -c librewpf-preview-${dev_package_version}.tar.gz.sha256", previewReleaseBundleScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE=1 ./eng/progpu-preview-release-verify.sh", previewReleaseBundleScript, StringComparison.Ordinal);
@@ -11804,6 +11806,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("tar -xzf \"${bundle_output}\" -C \"${extract_dir}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("cmp -s \"${release_readme_path}\" \"${extract_dir}/${readme_name}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("cmp -s \"${release_nuget_config_path}\" \"${extract_dir}/${nuget_config_name}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("<add key=\\\"dotnet11\\\" value=\\\"https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet11/nuget/v3/index.json\\\" />", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("<add key=\\\"dotnet11-transport\\\" value=\\\"https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet11-transport/nuget/v3/index.json\\\" />", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("Preview release bundle NuGet config is missing required package sources.", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE=1 ./eng/progpu-preview-release-verify.sh", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("Preview release bundle README is missing required SDK switch or verification guidance.", previewReleaseVerifyScript, StringComparison.Ordinal);

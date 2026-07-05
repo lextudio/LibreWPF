@@ -8705,6 +8705,38 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ProGpuGlyphAtlasUsesIndexedBatchAndOutlineTraversal()
+    {
+        var glyphAtlas = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Text",
+            "GlyphAtlas.cs"));
+
+        Assert.Contains("int batchBufferCount = _batchBuffers.Count;", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("for (int bufferIndex = 0; bufferIndex < batchBufferCount; bufferIndex++)", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("var buffer = _batchBuffers[bufferIndex];", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("int batchBindGroupCount = _batchBindGroups.Count;", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("for (int bindGroupIndex = 0; bindGroupIndex < batchBindGroupCount; bindGroupIndex++)", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("var bg = _batchBindGroups[bindGroupIndex];", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("var outlineFigures = outline.Figures;", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("for (int figureIndex = 0; figureIndex < outlineFigures.Count; figureIndex++)", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("var figure = outlineFigures[figureIndex];", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("var figureSegments = figure.Segments;", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("for (int segmentIndex = 0; segmentIndex < figureSegments.Count; segmentIndex++)", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("var segment = figureSegments[segmentIndex];", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("var fontGpuDataEnumerator = _fontGpuData.Values.GetEnumerator();", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("while (fontGpuDataEnumerator.MoveNext())", glyphAtlas, StringComparison.Ordinal);
+        Assert.Contains("var data = fontGpuDataEnumerator.Current;", glyphAtlas, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var buffer in _batchBuffers)", glyphAtlas, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var bg in _batchBindGroups)", glyphAtlas, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var figure in outline.Figures)", glyphAtlas, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var segment in figure.Segments)", glyphAtlas, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var data in _fontGpuData.Values)", glyphAtlas, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PortableTextFormatterKeepsCollapsedSimpleTextOnManagedPath()
     {
         var simpleTextLine = File.ReadAllText(FindRepoPath(

@@ -8907,6 +8907,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Vector",
             "PooledRemovalBuffer.cs"));
+        var vectorPathGeometry = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Vector",
+            "PathGeometry.cs"));
         var pathAtlas = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -8989,6 +8995,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static class PooledRemovalBuffer", vectorPooledRemovalBuffer, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<T>.Shared.Rent(Math.Max(1, capacity))", vectorPooledRemovalBuffer, StringComparison.Ordinal);
         Assert.Contains("RuntimeHelpers.IsReferenceOrContainsReferences<T>()", vectorPooledRemovalBuffer, StringComparison.Ordinal);
+        Assert.Contains("var figures = Figures;", vectorPathGeometry, StringComparison.Ordinal);
+        Assert.Contains("for (int figureIndex = 0; figureIndex < figures.Count; figureIndex++)", vectorPathGeometry, StringComparison.Ordinal);
+        Assert.Contains("var figureSegments = figure.Segments;", vectorPathGeometry, StringComparison.Ordinal);
+        Assert.Contains("for (int segmentIndex = 0; segmentIndex < figureSegments.Count; segmentIndex++)", vectorPathGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var figure in Figures)", vectorPathGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var segment in figure.Segments)", vectorPathGeometry, StringComparison.Ordinal);
         Assert.Contains("string[]? keysToRemove = null;", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("PooledRemovalBuffer.Add(ref keysToRemove", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("PooledRemovalBuffer.Return(keysToRemove, keysToRemoveCount)", shaderPipeline, StringComparison.Ordinal);

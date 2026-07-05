@@ -1306,7 +1306,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("query_result_capacity()", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("let total_count = results[0].hit + 1u;", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn stored_result_count(capacity: u32) -> u32", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("if (count >= capacity) {\n            break;\n        }\n\n        if (results[count + 1u].hit == 0u) {", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn find_stored_hit_slot(id: i32, stored_count: u32) -> u32", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (count >= capacity || results[count + 1u].hit == 0u)", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("new GpuHitTestResult[requestedCount + 1]", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("stackalloc GpuHitTestResult[resultBufferElementCount]", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<GpuHitTestResult>.Shared.Rent(resultBufferElementCount)", proGpuHitTesting, StringComparison.Ordinal);
@@ -1317,8 +1319,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("stackalloc byte[readSizeBytes]", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<byte>.Shared.Rent(readSizeBytes)", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("deviceIndex.ResultListBuffer.ReadBytes(readbackBytes);", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("Buffer = deviceIndex.ResultListBuffer.BufferPtr, Offset = 0, Size = deviceIndex.ResultListBuffer.Size", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("byte[] bytes = deviceIndex.ResultBuffer.ReadBytes", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("byte[] bytes = deviceIndex.ResultListBuffer.ReadBytes", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.DoesNotContain("Buffer = deviceIndex.ResultListBuffer.BufferPtr, Offset = 0, Size = checked((uint)(initialResults.Length * resultSize))", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("private SmallValueStack<Rect> _clipStack;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private SmallValueStack<bool> _clipScopeIsGeometryMask;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private SmallValueStack<float> _opacityStack;", proGpuCompositor, StringComparison.Ordinal);
@@ -10617,6 +10621,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "PresentationCore",
             "PresentationCore.csproj");
+        var proGpuWindowsBaseProjectPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "WindowsBase",
+            "WindowsBase.csproj");
         var proGpuPresentationCoreFreezablePath = FindRepoPath(
             "external",
             "ProGPU",
@@ -10883,6 +10893,12 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU",
             "eng",
             "progpu-pack.sh");
+        var proGpuBuildWorkflowPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            ".github",
+            "workflows",
+            "build.yml");
         var proGpuAvaloniaHostControlPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -11083,6 +11099,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuPresentationCoreBrush = File.ReadAllText(proGpuPresentationCoreBrushPath);
         var proGpuPresentationCoreGradientBrushes = File.ReadAllText(proGpuPresentationCoreGradientBrushesPath);
         var proGpuPresentationCoreProject = File.ReadAllText(proGpuPresentationCoreProjectPath);
+        var proGpuWindowsBaseProject = File.ReadAllText(proGpuWindowsBaseProjectPath);
         var proGpuPresentationCoreFreezable = File.ReadAllText(proGpuPresentationCoreFreezablePath);
         var wpfBitmapSourceImageAdapter = File.ReadAllText(wpfBitmapSourceImageAdapterPath);
         var portableBitmapSourcePixels = File.ReadAllText(portableBitmapSourcePixelsPath);
@@ -11146,6 +11163,7 @@ public sealed class WpfManagedProjectGraphTests
         var docsVerifierScript = File.ReadAllText(docsVerifierScriptPath);
         var proGpuDirectoryBuildProps = File.ReadAllText(proGpuDirectoryBuildPropsPath);
         var proGpuPackScript = File.ReadAllText(proGpuPackScriptPath);
+        var proGpuBuildWorkflow = File.ReadAllText(proGpuBuildWorkflowPath);
         var proGpuAvaloniaHostControl = File.ReadAllText(proGpuAvaloniaHostControlPath);
         var proGpuAvaloniaSampleMainWindow = File.ReadAllText(proGpuAvaloniaSampleMainWindowPath);
         var proGpuTextureReadbackBuffer = File.ReadAllText(proGpuTextureReadbackBufferPath);
@@ -11225,12 +11243,43 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("<PackageReadmeFile Condition=\"'$(PackageReadmeFile)' == '' And Exists('$(MSBuildThisFileDirectory)README.md')\">README.md</PackageReadmeFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<PackageDescription Condition=\"'$(PackageDescription)' == ''\">$(Description)</PackageDescription>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGPUStrongNameKeyFile>$(MSBuildThisFileDirectory)eng/ProGPU.snk</ProGPUStrongNameKeyFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<AssemblyOriginatorKeyFile Condition=\"'$(AssemblyOriginatorKeyFile)' == ''\">$(ProGPUStrongNameKeyFile)</AssemblyOriginatorKeyFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<None Include=\"$(MSBuildThisFileDirectory)README.md\" Pack=\"true\" PackagePath=\"\\\" Visible=\"false\" />", proGpuDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.DoesNotContain("35MSSharedLib1024.snk", proGpuWindowsBaseProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("35MSSharedLib1024.snk", proGpuPresentationCoreProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("WpfMicrosoftSharedKeyFile", proGpuWindowsBaseProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("WpfMicrosoftSharedKeyFile", proGpuPresentationCoreProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("<PublicSign>true</PublicSign>", proGpuWindowsBaseProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("<PublicSign>true</PublicSign>", proGpuPresentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}\"/*.${package_version}.nupkg", proGpuPackScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}\"/*.${package_version}.snupkg", proGpuPackScript, StringComparison.Ordinal);
         Assert.Contains("is_expected_package_artifact()", proGpuPackScript, StringComparison.Ordinal);
         Assert.Contains("Expected symbol package was not produced:", proGpuPackScript, StringComparison.Ordinal);
         Assert.Contains("Unexpected package artifact in output:", proGpuPackScript, StringComparison.Ordinal);
+        Assert.Contains("rid: linux-x64", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("rid: osx-arm64", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("rid: win-x64", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("Install Linux WebGPU dependencies", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("libvulkan1", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("mesa-vulkan-drivers", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("dotnet restore src/ProGPU.Tests/ProGPU.Tests.csproj --runtime ${{ matrix.rid }}", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("dotnet build src/ProGPU.Tests/ProGPU.Tests.csproj --configuration Release --runtime ${{ matrix.rid }}", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("LD_LIBRARY_PATH", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("DYLD_LIBRARY_PATH", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("$testArgs = @(", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("\"test\",", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("\"src/ProGPU.Tests/ProGPU.Tests.csproj\",", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("\"--runtime\",", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("\"${{ matrix.rid }}\",", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("if ($IsWindows)", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("\"FullyQualifiedName~DiagnosticsLoggingSourceTests|FullyQualifiedName~StrongNameSigningTests|FullyQualifiedName~WindowsDpiAwarenessTests\"", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("dotnet @testArgs", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("uses: actions/upload-artifact@v4", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("name: progpu-packages-${{ matrix.rid }}", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("artifacts/packages/Release/*.nupkg", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("artifacts/packages/Release/*.snupkg", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("if-no-files-found: error", proGpuBuildWorkflow, StringComparison.Ordinal);
         Assert.Contains("private GpuTextureReadbackBuffer? _readbackBuffer;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.Contains("_readbackBuffer.TryReadTextureRows(", proGpuAvaloniaHostControl, StringComparison.Ordinal);
         Assert.DoesNotContain("private GpuBuffer* _stagingBuffer;", proGpuAvaloniaHostControl, StringComparison.Ordinal);
@@ -11246,6 +11295,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGpuHost.RequestRender();", proGpuAvaloniaSampleMainWindow, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuHost.InvalidateVisual();", proGpuAvaloniaSampleMainWindow, StringComparison.Ordinal);
         Assert.Contains("public unsafe sealed class GpuTextureReadbackBuffer", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("public const int DefaultMapTimeoutMilliseconds = 30000;", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("public static uint AlignBytesPerRow", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.PollDevice(wait: false)", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("uint sourceWidth = GetMipDimension(texture.Width, mipLevel);", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
@@ -11255,6 +11305,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("finally\n        {\n            UnmapActiveBuffer();\n        }", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.Wgpu.BufferUnmap(_buffer);", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.QueueBufferDisposal((IntPtr)_buffer)", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("GpuTextureReadbackBuffer.DefaultMapTimeoutMilliseconds / 1000", proGpuTexture, StringComparison.Ordinal);
+        Assert.Contains("public const int DefaultMapTimeoutMilliseconds = 30000;", proGpuBuffer, StringComparison.Ordinal);
+        Assert.Contains("stopwatch.ElapsedMilliseconds > DefaultMapTimeoutMilliseconds", proGpuBuffer, StringComparison.Ordinal);
         Assert.Contains("using System.Buffers;", proGpuWgpuContext, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<IntPtr> _pendingSnapshotSeen = new();", proGpuWgpuContext, StringComparison.Ordinal);
         Assert.Contains("private PooledResourcePointerSnapshot SnapshotPendingResourcePointers(List<IntPtr> pending)", proGpuWgpuContext, StringComparison.Ordinal);

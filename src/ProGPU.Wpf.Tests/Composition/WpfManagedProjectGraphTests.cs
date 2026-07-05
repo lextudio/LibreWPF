@@ -8653,6 +8653,16 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Text",
             "TextLayout.cs"));
 
+        Assert.Contains("private const int DefaultLineGlyphCapacity = 16;", textLayout, StringComparison.Ordinal);
+        Assert.Contains("private static int EstimateGlyphCapacity(string text)", textLayout, StringComparison.Ordinal);
+        Assert.Contains("private static int EstimateLineCapacity(string text)", textLayout, StringComparison.Ordinal);
+        Assert.Contains("private static List<TextRunGlyph> CreateLineGlyphList(int estimatedGlyphCapacity)", textLayout, StringComparison.Ordinal);
+        Assert.Contains("return new List<TextRunGlyph>(Math.Min(Math.Max(1, estimatedGlyphCapacity), DefaultLineGlyphCapacity));", textLayout, StringComparison.Ordinal);
+        Assert.Contains("int estimatedGlyphCapacity = EstimateGlyphCapacity(Text);", textLayout, StringComparison.Ordinal);
+        Assert.Contains("Glyphs.EnsureCapacity(estimatedGlyphCapacity);", textLayout, StringComparison.Ordinal);
+        Assert.Contains("var lines = new List<List<TextRunGlyph>>(EstimateLineCapacity(Text));", textLayout, StringComparison.Ordinal);
+        Assert.Contains("var currentLine = CreateLineGlyphList(estimatedGlyphCapacity);", textLayout, StringComparison.Ordinal);
+        Assert.Contains("currentLine = CreateLineGlyphList(Text.Length - i);", textLayout, StringComparison.Ordinal);
         Assert.Contains("for (int pathIndex = 0; pathIndex < FallbackFontPaths.Length; pathIndex++)", textLayout, StringComparison.Ordinal);
         Assert.Contains("var path = FallbackFontPaths[pathIndex];", textLayout, StringComparison.Ordinal);
         Assert.Contains("for (int fallbackIndex = 0; fallbackIndex < _fallbackFonts.Count; fallbackIndex++)", textLayout, StringComparison.Ordinal);
@@ -8660,7 +8670,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("int wrapStartIndex = lastWordStartIdxInLine;", textLayout, StringComparison.Ordinal);
         Assert.Contains("int previousLineCount = currentLine.Count;", textLayout, StringComparison.Ordinal);
         Assert.Contains("var previousLine = currentLine;", textLayout, StringComparison.Ordinal);
-        Assert.Contains("currentLine = new List<TextRunGlyph>(wrapCount + 1);", textLayout, StringComparison.Ordinal);
+        Assert.Contains("currentLine = new List<TextRunGlyph>(Math.Max(wrapCount + 1, DefaultLineGlyphCapacity));", textLayout, StringComparison.Ordinal);
         Assert.Contains("for (int wrapIndex = wrapStartIndex; wrapIndex < previousLineCount; wrapIndex++)", textLayout, StringComparison.Ordinal);
         Assert.Contains("var wg = previousLine[wrapIndex];", textLayout, StringComparison.Ordinal);
         Assert.Contains("previousLine.RemoveRange(wrapStartIndex, wrapCount);", textLayout, StringComparison.Ordinal);
@@ -8675,6 +8685,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var line in lines)", textLayout, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var g in line)", textLayout, StringComparison.Ordinal);
         Assert.DoesNotContain("Glyphs.AddRange(line)", textLayout, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<List<TextRunGlyph>>()", textLayout, StringComparison.Ordinal);
+        Assert.DoesNotContain("new List<TextRunGlyph>()", textLayout, StringComparison.Ordinal);
     }
 
     [Fact]

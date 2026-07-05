@@ -1338,6 +1338,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var commands = picture.Commands;\n        for (var commandIndex = 0; commandIndex < commands.Length; commandIndex++)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var commands = context.Commands;\n            var commandCount = commands.Count;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var textRecords = staticBuffer.TextRecords;\n            for (var recordIndex = 0; recordIndex < textRecords.Length; recordIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var extensionCount = _registeredExtensions.Count;", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var ext = _registeredExtensions[extensionIndex];", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var staticDrawCalls = new List<CompositorDrawCall>();", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dc in _drawCalls)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dc in sb.DrawCalls)", proGpuCompositor, StringComparison.Ordinal);
@@ -1359,6 +1361,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var cachedBg in _persistentTextureBindGroups.Values)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var bg in _maskBindGroups.Values)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var bg in _maskBindGroupsOffscreen.Values)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var ext in _registeredExtensions)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_maskDrawCallListPool", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static void AddRemovalItem<T>(ref T[]? buffer, ref int count, int capacity, T item)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static void ReturnRemovalBuffer<T>(T[]? buffer, int count)", proGpuCompositor, StringComparison.Ordinal);

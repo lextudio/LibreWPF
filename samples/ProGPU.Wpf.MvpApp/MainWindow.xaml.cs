@@ -39,6 +39,7 @@ public partial class MainWindow : Window
         new("Refresh status", nameof(RefreshStatusCommand), typeof(MainWindow));
 
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_MVP_LIVE_VALIDATE";
+    private const string LiveValidationStatusPathEnvironmentVariable = "PROGPU_WPF_MVP_LIVE_VALIDATE_STATUS_PATH";
     private const int LiveValidationMaxAttempts = 600;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
     private bool _liveValidationStarted;
@@ -853,13 +854,36 @@ public partial class MainWindow : Window
             string resizeStatus = await ValidateLiveNativeResizeAsync(liveHost);
             Console.WriteLine("ProGPU WPF MVP live native resize validation ready.");
             string inputStatus = await ValidateLiveInputAsync(liveHost);
-            Console.WriteLine($"ProGPU WPF MVP live input validation succeeded: {geometryStatus}; {resizeStatus}; {inputStatus}.");
+            string successStatus = $"ProGPU WPF MVP live input validation succeeded: {geometryStatus}.";
+            string detailStatus = $"ProGPU WPF MVP live input validation details: {resizeStatus}; {inputStatus}.";
+            Console.WriteLine(successStatus);
+            Console.WriteLine(detailStatus);
+            WriteLiveValidationStatus($"{successStatus}{Environment.NewLine}{detailStatus}{Environment.NewLine}");
+            Console.Out.Flush();
             Environment.Exit(0);
             return;
         }
 
         Console.Error.WriteLine("Expected the MVP app to present a stable ProGPU frame before live input validation.");
+        Console.Error.Flush();
         Environment.Exit(1);
+    }
+
+    private static void WriteLiveValidationStatus(string status)
+    {
+        string? statusPath = Environment.GetEnvironmentVariable(LiveValidationStatusPathEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(statusPath))
+        {
+            return;
+        }
+
+        string? statusDirectory = Path.GetDirectoryName(statusPath);
+        if (!string.IsNullOrEmpty(statusDirectory))
+        {
+            Directory.CreateDirectory(statusDirectory);
+        }
+
+        File.WriteAllText(statusPath, status);
     }
 
     private async Task<string> ValidateLiveNativeResizeAsync(ProGpuWpfWindowHost liveHost)

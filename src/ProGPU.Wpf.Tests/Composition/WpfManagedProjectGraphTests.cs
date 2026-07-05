@@ -9868,6 +9868,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DockLayoutRoot.LeftSide.ChildrenCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RoundTripLayout", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_STATUS_PATH", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("WriteLiveValidationStatus", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF Toolkit live input validation details:", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF Toolkit live input validation succeeded:", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("TryGetPortableActivationHost", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("CreateWpfInputEventArgs", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -9896,6 +9899,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU WPF Toolkit Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_RUN_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE", runScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_STATUS_PATH", runScript, StringComparison.Ordinal);
+        Assert.Contains("live_status=\"$(mktemp", runScript, StringComparison.Ordinal);
+        Assert.Contains("grep -h -E \"ProGPU WPF Toolkit live input validation succeeded:\"", runScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF Toolkit live geometry validation succeeded", runScript, StringComparison.Ordinal);
     }
 
@@ -10037,6 +10043,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU WPF paid Xceed package surface validation succeeded", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed live geometry validation succeeded:", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE_STATUS_PATH", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("WriteLiveValidationStatus", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF paid Xceed live geometry validation details:", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("large-scroll performance budget", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("requireFullViewport: true", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application.Run validation requires license variables", appCodeBehind, StringComparison.Ordinal);
@@ -10275,6 +10284,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"${repo_root}/src/ProGPU.Wpf\"", runScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/external/ProGPU/src/ProGPU.Wpf.Interop\"", runScript, StringComparison.Ordinal);
         Assert.Contains("Launching ProGPU WPF paid Xceed apphost live geometry probe", runScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE_STATUS_PATH", runScript, StringComparison.Ordinal);
+        Assert.Contains("live_status=\"$(mktemp", runScript, StringComparison.Ordinal);
+        Assert.Contains("grep -h -E \"ProGPU WPF paid Xceed live geometry validation succeeded:\"", runScript, StringComparison.Ordinal);
         Assert.Contains("Expected paid Xceed apphost viewport to cover full physical target", runScript, StringComparison.Ordinal);
         Assert.Contains("Running ProGPU WPF paid Xceed apphost validation", runScript, StringComparison.Ordinal);
     }
@@ -11234,8 +11246,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProGpuWpfPlatform Condition=\"'$(ProGpuWpfPlatform)' == ''\">SilkNet</ProGpuWpfPlatform>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfRenderingBackend Condition=\"'$(ProGpuWpfRenderingBackend)' == ''\">ProGPU</ProGpuWpfRenderingBackend>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSdkVersion Condition=\"'$(ProGpuWpfSdkVersion)' == ''\">11.0.0-dev</ProGpuWpfSdkVersion>", sdkProps, StringComparison.Ordinal);
-        Assert.Contains("<ProGpuWpfRuntimeFrameworkVersion Condition=\"'$(ProGpuWpfRuntimeFrameworkVersion)' == ''\">11.0.0-preview.4.26210.111</ProGpuWpfRuntimeFrameworkVersion>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfRuntimeFrameworkVersion Condition=\"'$(ProGpuWpfRuntimeFrameworkVersion)' == ''\"></ProGpuWpfRuntimeFrameworkVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<RuntimeFrameworkVersion Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(RuntimeFrameworkVersion)' == '' And '$(ProGpuWpfRuntimeFrameworkVersion)' != ''\">$(ProGpuWpfRuntimeFrameworkVersion)</RuntimeFrameworkVersion>", sdkProps, StringComparison.Ordinal);
+        Assert.DoesNotContain("11.0.0-preview.4.26210.111", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfReferenceMode Condition=\"'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')\">LocalArtifacts</ProGpuWpfReferenceMode>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfManagedPackageId Condition=\"'$(ProGpuWpfManagedPackageId)' == ''\">LibreWPF.Transport</ProGpuWpfManagedPackageId>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfManagedPackageVersion Condition=\"'$(ProGpuWpfManagedPackageVersion)' == ''\">$(ProGpuWpfPackageVersion)</ProGpuWpfManagedPackageVersion>", sdkProps, StringComparison.Ordinal);
@@ -11622,6 +11635,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU.Wpf.XceedPaidApp", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("artifacts/nuget/ProGPU.Wpf.XceedPaidApp", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("apphost_name()", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("export DOTNET_ROOT=\"${DOTNET_ROOT:-${repo_root}/.dotnet}\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("resolve_dotnet_runtime_framework_version()", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("export ProGpuWpfRuntimeFrameworkVersion=\"${validation_runtime_version}\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Using ProGpuWpfRuntimeFrameworkVersion=${ProGpuWpfRuntimeFrameworkVersion} for SDK validation apphosts.", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("has_env_or_launchctl()", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
@@ -12804,11 +12821,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"${dotnet}\" build \"${mvp_project}\" -v:minimal", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("Launching ProGPU WPF MVP apphost", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE_STATUS_PATH", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_TRACE_RENDER_SURFACE", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("export PROGPU_WPF_TRACE_RENDER_SURFACE=1", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF render surface:", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("live_status=\"$(mktemp", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("has_viewport_geometry=0", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("live_validation_line", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("grep -h -E \"ProGPU WPF MVP live input validation succeeded:\"", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("has_viewport_geometry=1", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("viewport_width != pixel_width", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("Launching ProGPU WPF MVP apphost live geometry probe", mvpRunScript, StringComparison.Ordinal);
@@ -13120,6 +13140,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("could not create a pipeline-compatible bind group. Bindings:", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("ValidateRequiredLiveMvpAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveNativeResizeAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LiveValidationStatusPathEnvironmentVariable", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("WriteLiveValidationStatus", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF MVP live input validation details:", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Console.Out.Flush();", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SetLiveNativeWindowSize(liveHost, 900, 640)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("liveHost.SetClientSize(width, height)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("native resize relaid out WPF content", mvpMainWindowCodeBehind, StringComparison.Ordinal);

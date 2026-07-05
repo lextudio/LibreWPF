@@ -48,6 +48,7 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
     export PROGPU_WPF_TRACE_RENDER_SURFACE=1
   fi
   live_log="$(mktemp "${TMPDIR:-/tmp}/progpu-wpf-mvp-live.XXXXXX")"
+  live_status="$(mktemp "${TMPDIR:-/tmp}/progpu-wpf-mvp-live-status.XXXXXX")"
   apphost_pid=""
   cleanup_live_probe() {
     if [[ -n "${apphost_pid}" ]] && kill -0 "${apphost_pid}" 2>/dev/null; then
@@ -58,7 +59,7 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
       fi
       wait "${apphost_pid}" 2>/dev/null || true
     fi
-    rm -f "${live_log}"
+    rm -f "${live_log}" "${live_status}"
   }
   trap cleanup_live_probe EXIT
 
@@ -66,9 +67,9 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
   (
     cd "${mvp_output}"
     if (($# > 0)); then
-      "./${apphost_name}" "$@"
+      PROGPU_WPF_MVP_LIVE_VALIDATE_STATUS_PATH="${live_status}" "./${apphost_name}" "$@"
     else
-      "./${apphost_name}"
+      PROGPU_WPF_MVP_LIVE_VALIDATE_STATUS_PATH="${live_status}" "./${apphost_name}"
     fi
   ) >"${live_log}" 2>&1 &
   apphost_pid="$!"
@@ -76,20 +77,23 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
   live_validation_line=""
   render_surface_line=""
   for _ in {1..600}; do
-    live_validation_line="$(grep -E "ProGPU WPF MVP live input validation succeeded:" "${live_log}" | tail -n 1 || true)"
+    live_validation_line="$(grep -h -E "ProGPU WPF MVP live input validation succeeded:" "${live_status}" "${live_log}" 2>/dev/null | tail -n 1 || true)"
     render_surface_line="$(grep -E "ProGPU WPF render surface:" "${live_log}" | tail -n 1 || true)"
     if [[ -n "${live_validation_line}" ]]; then
       break
     fi
 
     if ! kill -0 "${apphost_pid}" 2>/dev/null; then
-      live_validation_line="$(grep -E "ProGPU WPF MVP live input validation succeeded:" "${live_log}" | tail -n 1 || true)"
+      live_validation_line="$(grep -h -E "ProGPU WPF MVP live input validation succeeded:" "${live_status}" "${live_log}" 2>/dev/null | tail -n 1 || true)"
       render_surface_line="$(grep -E "ProGPU WPF render surface:" "${live_log}" | tail -n 1 || true)"
       if [[ -n "${live_validation_line}" ]]; then
         break
       fi
 
       echo "MVP apphost exited before live input validation succeeded." >&2
+      if [[ -f "${live_status}" ]]; then
+        cat "${live_status}" >&2
+      fi
       cat "${live_log}" >&2
       exit 1
     fi
@@ -99,6 +103,9 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
 
   if [[ -z "${live_validation_line}" ]]; then
     echo "Expected MVP apphost live input validation to succeed before timeout." >&2
+    if [[ -f "${live_status}" ]]; then
+      cat "${live_status}" >&2
+    fi
     cat "${live_log}" >&2
     exit 1
   fi

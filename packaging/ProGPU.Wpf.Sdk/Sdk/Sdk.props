@@ -18,7 +18,7 @@
     <ProGpuWpfPlatform Condition="'$(ProGpuWpfPlatform)' == ''">SilkNet</ProGpuWpfPlatform>
     <ProGpuWpfRenderingBackend Condition="'$(ProGpuWpfRenderingBackend)' == ''">ProGPU</ProGpuWpfRenderingBackend>
     <ProGpuWpfSdkVersion Condition="'$(ProGpuWpfSdkVersion)' == ''">11.0.0-dev</ProGpuWpfSdkVersion>
-    <ProGpuWpfRuntimeFrameworkVersion Condition="'$(ProGpuWpfRuntimeFrameworkVersion)' == ''">11.0.0-preview.4.26210.111</ProGpuWpfRuntimeFrameworkVersion>
+    <ProGpuWpfRuntimeFrameworkVersion Condition="'$(ProGpuWpfRuntimeFrameworkVersion)' == ''"></ProGpuWpfRuntimeFrameworkVersion>
     <RuntimeFrameworkVersion Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(RuntimeFrameworkVersion)' == '' And '$(ProGpuWpfRuntimeFrameworkVersion)' != ''">$(ProGpuWpfRuntimeFrameworkVersion)</RuntimeFrameworkVersion>
     <ProGpuWpfReferenceMode Condition="'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')">LocalArtifacts</ProGpuWpfReferenceMode>
     <ProGpuWpfReferenceMode Condition="'$(ProGpuWpfReferenceMode)' == ''">Package</ProGpuWpfReferenceMode>

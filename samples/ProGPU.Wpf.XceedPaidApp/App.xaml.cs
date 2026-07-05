@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,6 +17,7 @@ namespace ProGPU.Wpf.XceedPaidApp;
 public partial class App : Application
 {
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE";
+    private const string LiveValidationStatusPathEnvironmentVariable = "PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE_STATUS_PATH";
     private const int MaxRunValidationAttempts = 40;
 
     internal static int StartupEventCount { get; private set; }
@@ -114,7 +116,12 @@ public partial class App : Application
                 string geometryStatus = XceedPaidSelfTest.ValidateRenderSurfaceGeometry(
                     window,
                     requireFullViewport: true);
-                Console.WriteLine($"ProGPU WPF paid Xceed live geometry validation succeeded: {geometryStatus}; loaded-window commands, scroll clips, bounded DataGrid rows, large-scroll performance budget, and GPU hit testing updated.");
+                string successStatus = $"ProGPU WPF paid Xceed live geometry validation succeeded: {geometryStatus}.";
+                string detailStatus = "ProGPU WPF paid Xceed live geometry validation details: loaded-window commands, scroll clips, bounded DataGrid rows, large-scroll performance budget, and GPU hit testing updated.";
+                Console.WriteLine(successStatus);
+                Console.WriteLine(detailStatus);
+                WriteLiveValidationStatus($"{successStatus}{Environment.NewLine}{detailStatus}{Environment.NewLine}");
+                Console.Out.Flush();
             }
             else
             {
@@ -128,6 +135,23 @@ public partial class App : Application
             Console.Error.WriteLine(ex);
             Current.Shutdown(1);
         }
+    }
+
+    private static void WriteLiveValidationStatus(string status)
+    {
+        string? statusPath = Environment.GetEnvironmentVariable(LiveValidationStatusPathEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(statusPath))
+        {
+            return;
+        }
+
+        string? statusDirectory = Path.GetDirectoryName(statusPath);
+        if (!string.IsNullOrEmpty(statusDirectory))
+        {
+            Directory.CreateDirectory(statusDirectory);
+        }
+
+        File.WriteAllText(statusPath, status);
     }
 
     private static bool IsProGpuNativeTargetReady(MainWindow window)

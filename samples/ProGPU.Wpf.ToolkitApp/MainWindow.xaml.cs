@@ -85,6 +85,7 @@ public partial class MainWindow : Window
     private const int GpuOwnerBufferCapacity = 64;
 
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_TOOLKIT_LIVE_VALIDATE";
+    private const string LiveValidationStatusPathEnvironmentVariable = "PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_STATUS_PATH";
     private const int LiveValidationMaxAttempts = 400;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
     private static readonly string[] AvalonDockThemeNames = ["Aero", "Metro", "VS2010"];
@@ -3742,13 +3743,36 @@ public partial class MainWindow : Window
                 DispatcherPriority.Send);
             Console.WriteLine($"ProGPU WPF Toolkit live input validation geometry ready: {geometryStatus}.");
             string inputStatus = await ValidateLiveInputAsync(liveHost);
-            Console.WriteLine($"ProGPU WPF Toolkit live input validation succeeded: {geometryStatus}; {inputStatus}.");
+            string successStatus = $"ProGPU WPF Toolkit live input validation succeeded: {geometryStatus}.";
+            string detailStatus = $"ProGPU WPF Toolkit live input validation details: {inputStatus}.";
+            Console.WriteLine(successStatus);
+            Console.WriteLine(detailStatus);
+            WriteLiveValidationStatus($"{successStatus}{Environment.NewLine}{detailStatus}{Environment.NewLine}");
+            Console.Out.Flush();
             Environment.Exit(0);
             return;
         }
 
         Console.Error.WriteLine("Expected the Toolkit app to present a stable ProGPU frame before live input validation.");
+        Console.Error.Flush();
         Environment.Exit(1);
+    }
+
+    private static void WriteLiveValidationStatus(string status)
+    {
+        string? statusPath = Environment.GetEnvironmentVariable(LiveValidationStatusPathEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(statusPath))
+        {
+            return;
+        }
+
+        string? statusDirectory = Path.GetDirectoryName(statusPath);
+        if (!string.IsNullOrEmpty(statusDirectory))
+        {
+            Directory.CreateDirectory(statusDirectory);
+        }
+
+        File.WriteAllText(statusPath, status);
     }
 
     private async Task<string> ValidateLiveInputAsync(ProGpuWpfWindowHost liveHost)

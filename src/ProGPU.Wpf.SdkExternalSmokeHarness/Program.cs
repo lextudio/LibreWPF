@@ -260,6 +260,9 @@ internal static class Program
         AssertContains(nuspec, "<dependencies>", "SDK nuspec dependency group");
 
         AssertContains(sdkProps, "<ProGpuWpfSdkVersion Condition=\"'$(ProGpuWpfSdkVersion)' == ''\">11.0.0-dev</ProGpuWpfSdkVersion>", "SDK root version default");
+        AssertContains(sdkProps, "<ProGpuWpfRuntimeFrameworkVersion Condition=\"'$(ProGpuWpfRuntimeFrameworkVersion)' == ''\"></ProGpuWpfRuntimeFrameworkVersion>", "SDK runtime version override hook");
+        AssertContains(sdkProps, "<RuntimeFrameworkVersion Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(RuntimeFrameworkVersion)' == '' And '$(ProGpuWpfRuntimeFrameworkVersion)' != ''\">$(ProGpuWpfRuntimeFrameworkVersion)</RuntimeFrameworkVersion>", "SDK runtime version opt-in");
+        AssertDoesNotContain(sdkProps, "11.0.0-preview.4.26210.111", "SDK root runtime version default");
         AssertContains(sdkProps, "<ProGpuWpfStbImageSharpVersion Condition=\"'$(ProGpuWpfStbImageSharpVersion)' == ''\">2.30.15</ProGpuWpfStbImageSharpVersion>", "SDK StbImageSharp version default");
         AssertContains(sdkProps, "<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", "SDK root WindowsDesktop props import");
         AssertContains(sdkProps, "ProGPU.Wpf.Sdk.props", "SDK root portable props import");

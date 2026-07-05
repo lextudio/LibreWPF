@@ -7,8 +7,29 @@ if [[ ! -x "${dotnet}" ]]; then
   dotnet="dotnet"
 fi
 
+if [[ "${dotnet}" == "${repo_root}/.dotnet/dotnet" ]]; then
+  export DOTNET_ROOT="${DOTNET_ROOT:-${repo_root}/.dotnet}"
+fi
+
 export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
 export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
+
+resolve_dotnet_runtime_framework_version() {
+  local runtime_version
+  runtime_version="$("${dotnet}" --list-runtimes 2>/dev/null | awk '$1 == "Microsoft.NETCore.App" && $2 ~ /^11\./ { version = $2 } END { print version }')"
+  if [[ -z "${runtime_version}" ]]; then
+    runtime_version="$("${dotnet}" --list-runtimes 2>/dev/null | awk '$1 == "Microsoft.NETCore.App" { version = $2 } END { print version }')"
+  fi
+  printf '%s\n' "${runtime_version}"
+}
+
+if [[ -z "${ProGpuWpfRuntimeFrameworkVersion:-}" ]]; then
+  validation_runtime_version="$(resolve_dotnet_runtime_framework_version)"
+  if [[ -n "${validation_runtime_version}" ]]; then
+    export ProGpuWpfRuntimeFrameworkVersion="${validation_runtime_version}"
+    echo "Using ProGpuWpfRuntimeFrameworkVersion=${ProGpuWpfRuntimeFrameworkVersion} for SDK validation apphosts."
+  fi
+fi
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"

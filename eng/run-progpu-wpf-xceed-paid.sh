@@ -133,28 +133,31 @@ echo "Building ProGPU WPF paid Xceed app..."
 if [[ "${PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE:-0}" == "1" ]]; then
   echo "Launching ProGPU WPF paid Xceed apphost live geometry probe..."
   live_log="$(mktemp "${TMPDIR:-/tmp}/progpu-wpf-xceed-paid-live.XXXXXX")"
+  live_status="$(mktemp "${TMPDIR:-/tmp}/progpu-wpf-xceed-paid-live-status.XXXXXX")"
   (
     cd "${xceed_output}"
     PROGPU_WPF_XCEED_PAID_RUN_VALIDATE=0 \
     PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE=1 \
+    PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE_STATUS_PATH="${live_status}" \
       "./${apphost_name}" "$@" >"${live_log}" 2>&1
   ) &
   apphost_pid="$!"
 
   live_validation_line=""
   for _ in {1..900}; do
-    live_validation_line="$(grep -E "ProGPU WPF paid Xceed live geometry validation succeeded:" "${live_log}" | tail -n 1 || true)"
+    live_validation_line="$(grep -h -E "ProGPU WPF paid Xceed live geometry validation succeeded:" "${live_status}" "${live_log}" 2>/dev/null | tail -n 1 || true)"
     if [[ -n "${live_validation_line}" ]]; then
       break
     fi
 
     if ! kill -0 "${apphost_pid}" 2>/dev/null; then
-      live_validation_line="$(grep -E "ProGPU WPF paid Xceed live geometry validation succeeded:" "${live_log}" | tail -n 1 || true)"
+      live_validation_line="$(grep -h -E "ProGPU WPF paid Xceed live geometry validation succeeded:" "${live_status}" "${live_log}" 2>/dev/null | tail -n 1 || true)"
       if [[ -n "${live_validation_line}" ]]; then
         break
       fi
 
       echo "Paid Xceed apphost exited before live geometry validation succeeded." >&2
+      cat "${live_status}" >&2
       cat "${live_log}" >&2
       exit 1
     fi
@@ -169,6 +172,7 @@ if [[ "${PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE:-0}" == "1" ]]; then
 
   if [[ -z "${live_validation_line}" ]]; then
     echo "Expected paid Xceed apphost live geometry validation to succeed." >&2
+    cat "${live_status}" >&2
     cat "${live_log}" >&2
     exit 1
   fi
@@ -200,6 +204,7 @@ if [[ "${PROGPU_WPF_XCEED_PAID_LIVE_VALIDATE:-0}" == "1" ]]; then
   fi
 
   echo "${live_validation_line}"
+  rm -f "${live_log}" "${live_status}"
   exit 0
 fi
 

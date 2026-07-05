@@ -11301,6 +11301,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var unorderedAccessViewEnumerator = _unorderedAccessViews.GetEnumerator();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("var cacheEnumerator = _pipelineBindGroupCache.GetEnumerator();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("var cachedBindGroupEnumerator = _pipelineBindGroupCache.Values.GetEnumerator();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("var wireframeIndexBufferEnumerator = _wireframeIndexBuffers.Values.GetEnumerator();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("wireframeIndexBufferEnumerator.Current.Dispose();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("var dynamicGraphicsPipelineEnumerator = _dynamicGraphicsPipelines.Values.GetEnumerator();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("dynamicGraphicsPipelineEnumerator.Current.Dispose();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("return entries;\n    }\n\n    private void AddStageBindings", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("private const int VertexBufferSlotStackLimit = 16;", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("Span<uint> sortedSlots = slotCount <= VertexBufferSlotStackLimit", proGpuDirectXDeviceContext, StringComparison.Ordinal);
@@ -11390,6 +11394,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var pair in _unorderedAccessViews)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var candidate in _pipelineBindGroupCache.Keys)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var cached in _pipelineBindGroupCache.Values)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var entry in _wireframeIndexBuffers.Values)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var pipeline in _dynamicGraphicsPipelines.Values)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var pair in source)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("return entries.ToArray();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain(".OrderBy(entry => entry.NativeBinding)", proGpuDirectXDeviceContext, StringComparison.Ordinal);

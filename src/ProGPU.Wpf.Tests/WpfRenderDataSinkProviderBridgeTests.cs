@@ -302,6 +302,9 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("private static bool TryGetSingleSource(\n        HashSet<object> sources,", source, StringComparison.Ordinal);
         Assert.Contains("object? singleSourceHint,", source, StringComparison.Ordinal);
         Assert.Contains("singleSourceHint != null && sources.Contains(singleSourceHint)", source, StringComparison.Ordinal);
+        Assert.Contains("var dirtySourceEnumerator = dirtySources.GetEnumerator();", source, StringComparison.Ordinal);
+        Assert.Contains("while (dirtySourceEnumerator.MoveNext())", source, StringComparison.Ordinal);
+        Assert.Contains("var sourceEnumerator = sources.GetEnumerator();", source, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<object> _scratchDistinctSources = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<ProGpuVisual> _scratchVisitedVisuals = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<ProGpuVisual> _scratchTargetVisuals = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
@@ -350,6 +353,8 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.DoesNotContain("sources = new HashSet<object>(ReferenceEqualityComparer.Instance)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("owners = new HashSet<object>(ReferenceEqualityComparer.Instance)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var existing in visuals)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var source in dirtySources)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var candidate in sources)\n        {\n            source = candidate;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var dirtySources = new HashSet<object>", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var targets = new List<WpfRetainedVisualBranchReplayTarget>", source, StringComparison.Ordinal);
         Assert.DoesNotContain("new WpfRetainedVisualBranchReplayTarget[targets.Count]", source, StringComparison.Ordinal);
@@ -395,6 +400,10 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("private WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForDistinctSourceSet(", source, StringComparison.Ordinal);
         Assert.Contains("private readonly HashSet<ProGpuVisual> _scratchInvalidatedVisuals = new(ReferenceEqualityComparer.Instance);", source, StringComparison.Ordinal);
         Assert.Contains("_scratchInvalidatedVisuals.Clear();", source, StringComparison.Ordinal);
+        Assert.Contains("var visitedSourceEnumerator = visitedSources.GetEnumerator();", source, StringComparison.Ordinal);
+        Assert.Contains("while (visitedSourceEnumerator.MoveNext())", source, StringComparison.Ordinal);
+        Assert.Contains("var invalidatedVisualEnumerator = _scratchInvalidatedVisuals.GetEnumerator();", source, StringComparison.Ordinal);
+        Assert.Contains("while (invalidatedVisualEnumerator.MoveNext())", source, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(candidate.Comparer, ReferenceEqualityComparer.Instance)", source, StringComparison.Ordinal);
         Assert.Contains("if (sourceOwners.Count == 1)\n            {\n                continue;\n            }\n\n            replayTargetConflictCount++;", source, StringComparison.Ordinal);
         Assert.Contains("sourceOwners.ClassifyAgainst(\n                source,", source, StringComparison.Ordinal);
@@ -404,6 +413,8 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("new WpfRetainedVisualBranchInvalidationResult(\n            1,\n            1,", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var visitedSources = new HashSet<object>", source, StringComparison.Ordinal);
         Assert.DoesNotContain("var invalidatedVisuals = new HashSet<ProGpuVisual>", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var source in visitedSources)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var visual in _scratchInvalidatedVisuals)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var sourceOwner in sourceOwners)", source, StringComparison.Ordinal);
 
         var trackerSource = File.ReadAllText(FindRepoPath(

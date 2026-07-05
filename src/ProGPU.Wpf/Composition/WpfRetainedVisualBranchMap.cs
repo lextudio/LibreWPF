@@ -202,8 +202,10 @@ public sealed class WpfRetainedVisualBranchMap
         _scratchVisitedVisuals.Clear();
         try
         {
-            foreach (var source in dirtySources)
+            var dirtySourceEnumerator = dirtySources.GetEnumerator();
+            while (dirtySourceEnumerator.MoveNext())
             {
+                var source = dirtySourceEnumerator.Current;
                 if (!_visualsBySource.TryGetValue(source, out var visuals))
                 {
                     _scratchReplayTargets.Clear();
@@ -300,9 +302,10 @@ public sealed class WpfRetainedVisualBranchMap
             return true;
         }
 
-        foreach (var candidate in sources)
+        using var sourceEnumerator = sources.GetEnumerator();
+        if (sourceEnumerator.MoveNext())
         {
-            source = candidate;
+            source = sourceEnumerator.Current;
             return true;
         }
 
@@ -328,9 +331,10 @@ public sealed class WpfRetainedVisualBranchMap
         HashSet<object> sources,
         out object source)
     {
-        foreach (var candidate in sources)
+        var sourceEnumerator = sources.GetEnumerator();
+        if (sourceEnumerator.MoveNext())
         {
-            source = candidate;
+            source = sourceEnumerator.Current;
             return true;
         }
 
@@ -560,8 +564,10 @@ public sealed class WpfRetainedVisualBranchMap
         var replayTargetConflictCount = 0;
         try
         {
-            foreach (var source in visitedSources)
+            var visitedSourceEnumerator = visitedSources.GetEnumerator();
+            while (visitedSourceEnumerator.MoveNext())
             {
+                var source = visitedSourceEnumerator.Current;
                 if (!_visualsBySource.TryGetValue(source, out var visuals))
                 {
                     continue;
@@ -580,8 +586,10 @@ public sealed class WpfRetainedVisualBranchMap
                 }
             }
 
-            foreach (var visual in _scratchInvalidatedVisuals)
+            var invalidatedVisualEnumerator = _scratchInvalidatedVisuals.GetEnumerator();
+            while (invalidatedVisualEnumerator.MoveNext())
             {
+                var visual = invalidatedVisualEnumerator.Current;
                 if (!_sourceOwnersByVisual.TryGetValue(visual, out var sourceOwners))
                 {
                     replayTargetConflictCount++;

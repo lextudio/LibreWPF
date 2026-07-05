@@ -13821,8 +13821,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WgpuContext[]? staleContexts = null;", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("WpfPooledRemovalBuffer.Add(ref staleContexts", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("WpfPooledRemovalBuffer.Return(staleContexts, staleContextCount)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("var adaptedTextureEnumerator = _texturesByContext.Values.GetEnumerator();", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("while (adaptedTextureEnumerator.MoveNext())", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("var contextTextureEnumerator = _texturesByContext.GetEnumerator();", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("while (contextTextureEnumerator.MoveNext())", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("List<WgpuContext>? staleContexts", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.DoesNotContain("staleContexts ??= new List<WgpuContext>();", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var candidate in _texturesByContext.Values)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var entry in _texturesByContext)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("TryCreateBitmapSourceTextureCacheKey(portablePixels, out cacheKey)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("HashBytes(portablePixels.Pixels)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < palette.Length; i++)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);

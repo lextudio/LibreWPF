@@ -240,8 +240,10 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
                     return false;
                 }
 
-                foreach (var candidate in _texturesByContext.Values)
+                var adaptedTextureEnumerator = _texturesByContext.Values.GetEnumerator();
+                while (adaptedTextureEnumerator.MoveNext())
                 {
+                    var candidate = adaptedTextureEnumerator.Current;
                     if (IsUsableInContext(candidate.Texture, context))
                     {
                         texture = candidate.Texture;
@@ -260,8 +262,10 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             int staleContextCount = 0;
             try
             {
-                foreach (var entry in _texturesByContext)
+                var contextTextureEnumerator = _texturesByContext.GetEnumerator();
+                while (contextTextureEnumerator.MoveNext())
                 {
+                    var entry = contextTextureEnumerator.Current;
                     if (entry.Key.IsDisposed || entry.Value.Texture.IsDisposed)
                     {
                         WpfPooledRemovalBuffer.Add(ref staleContexts, ref staleContextCount, _texturesByContext.Count, entry.Key);

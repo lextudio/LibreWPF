@@ -8907,6 +8907,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Vector",
             "PathAtlas.cs"));
+        var pathOps = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Vector",
+            "PathOpGeometrySolver.cs"));
         var visual = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -9016,6 +9022,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var figure in path.Figures)", pathAtlas, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var segment in figure.Segments)", pathAtlas, StringComparison.Ordinal);
         Assert.DoesNotContain("return (records, segments.ToArray());", pathAtlas, StringComparison.Ordinal);
+        Assert.Contains("var figures = path.Figures;", pathOps, StringComparison.Ordinal);
+        Assert.Contains("for (int figureIndex = 0; figureIndex < figures.Count; figureIndex++)", pathOps, StringComparison.Ordinal);
+        Assert.Contains("var segments = new List<GpuPathSegment>(EstimateSegmentCapacity(figures));", pathOps, StringComparison.Ordinal);
+        Assert.Contains("for (int segmentIndex = 0; segmentIndex < figureSegments.Count; segmentIndex++)", pathOps, StringComparison.Ordinal);
+        Assert.Contains("return (records, CopySegments(segments));", pathOps, StringComparison.Ordinal);
+        Assert.Contains("private static int EstimateSegmentCapacity(List<PathFigure> figures)", pathOps, StringComparison.Ordinal);
+        Assert.Contains("private static GpuPathSegment[] CopySegments(List<GpuPathSegment> segments)", pathOps, StringComparison.Ordinal);
+        Assert.DoesNotContain("var segments = new List<GpuPathSegment>();", pathOps, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var figure in path.Figures)", pathOps, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var segment in figure.Segments)", pathOps, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var seg in figure.Segments)", pathOps, StringComparison.Ordinal);
+        Assert.DoesNotContain("return (records, segments.ToArray());", pathOps, StringComparison.Ordinal);
         Assert.Contains("_failedShaderSourceKey", visual, StringComparison.Ordinal);
         Assert.Contains("ParseForInitializerExpressions", shaderToyTranspiler, StringComparison.Ordinal);
         Assert.Contains("new BlockStatement(initializers.Select", shaderToyTranspiler, StringComparison.Ordinal);

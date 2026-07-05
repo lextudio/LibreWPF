@@ -13172,6 +13172,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DxPrimitiveTopology.TriangleStrip", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("internal string DescribeEntries()", proGpuDirectXBindings, StringComparison.Ordinal);
         Assert.Contains("GetBackendResourceToken(entry)", proGpuDirectXBindings, StringComparison.Ordinal);
+        Assert.Contains("var entryCount = entries.Count;\n        for (var entryIndex = 0; entryIndex < entryCount; entryIndex++)", proGpuDirectXBindings, StringComparison.Ordinal);
+        Assert.Contains("var entry = entries[entryIndex];", proGpuDirectXBindings, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var entry in entries)", proGpuDirectXBindings, StringComparison.Ordinal);
         Assert.Contains("HlslShaderResourceKind.RWTexture2D", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
         Assert.Contains("TryTranslateRwTexture2DWriteStatement", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
         Assert.Contains("texture_storage_2d", proGpuDirectXHlslTranslator, StringComparison.Ordinal);

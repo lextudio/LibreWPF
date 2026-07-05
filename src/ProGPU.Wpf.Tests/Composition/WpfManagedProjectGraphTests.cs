@@ -10978,6 +10978,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static Dictionary<string, uint> CreateUserSemanticLocationMap(IReadOnlyList<HlslField> fields)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
         Assert.Contains("private static Dictionary<string, uint> CreateParameterSemanticLocationMap(IReadOnlyList<HlslParameter> parameters)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
         Assert.Contains("private static void AddUserSemanticLocation(", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.Contains("for (var constantBufferIndex = 0; constantBufferIndex < constantBuffers.Count; constantBufferIndex++)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.Contains("for (var fieldIndex = 0; fieldIndex < constantBuffer.Fields.Count; fieldIndex++)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.Contains("for (var resourceIndex = 0; resourceIndex < shaderResources.Count; resourceIndex++)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryGetConstantBufferField(", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.Contains("private static string CreateRepeatedExpressionList(string expression, int count)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
         Assert.Contains("var names = GetDistinctGroupValues(matches, \"name\");", proGpuDirectXFrontFacingEmulation, StringComparison.Ordinal);
         Assert.Contains("for (var nameIndex = 0; nameIndex < names.Count; nameIndex++)", proGpuDirectXFrontFacingEmulation, StringComparison.Ordinal);
         Assert.Contains("private static List<string> GetDistinctGroupValues(MatchCollection matches, string groupName)", proGpuDirectXFrontFacingEmulation, StringComparison.Ordinal);
@@ -11042,6 +11047,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("parameters.Select(parameter =>", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
         Assert.DoesNotContain(".Select(field => field.Semantic)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var semantic in semantics", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var constantBuffer in constantBuffers)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var field in constantBuffer.Fields)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var resource in shaderResources)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var parameter in function.Parameters)", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.DoesNotContain("Enumerable.Repeat", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.DoesNotContain("FirstOrDefault", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
         Assert.DoesNotContain(".Select(match => match.Groups[\"name\"].Value)", proGpuDirectXFrontFacingEmulation, StringComparison.Ordinal);
         Assert.DoesNotContain(".Distinct(StringComparer.Ordinal)", proGpuDirectXFrontFacingEmulation, StringComparison.Ordinal);
         Assert.DoesNotContain(".ToArray();\n        var constant", proGpuDirectXFrontFacingEmulation, StringComparison.Ordinal);

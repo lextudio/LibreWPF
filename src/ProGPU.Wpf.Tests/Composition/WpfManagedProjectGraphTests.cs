@@ -10814,6 +10814,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (var i = 0; i < entries.Count; i++)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("entries[i] = entry with", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("entries.Sort(static (left, right) =>", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("private const int VertexBufferSlotStackLimit = 16;", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("Span<uint> sortedSlots = slotCount <= VertexBufferSlotStackLimit", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("stackalloc uint[slotCount]", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("ArrayPool<uint>.Shared.Rent(slotCount)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("CopySortedVertexBufferSlots(vertexBufferBindings, sortedSlots);", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("CopySortedVertexBufferSlots(vertexBuffers, sortedSlots);", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("private static void CopySortedVertexBufferSlots<TValue>(", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("slots.Sort();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("public void ReadPixels(Span<byte> destination)", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("private void ReadBackendSubresourceIntoWriteShadow", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("texture.ReadPixels(\n            _writeShadow.AsSpan(", proGpuDirectXResources, StringComparison.Ordinal);
@@ -10829,6 +10837,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("private static IEnumerable<DxShaderStage> EnumerateStages(", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var stage in EnumerateStages(stages))", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain(".OrderBy(entry => entry.NativeBinding)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.DoesNotContain(".OrderBy(pair => pair.Key)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("return MemoryMarshal.Cast<byte, uint>(bytes).ToArray();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("wgpuDevicePoll", proGpuBuffer, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferDestroy(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);

@@ -11268,7 +11268,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var readbackBuffer = new GpuTextureReadbackBuffer(_context);", proGpuTexture, StringComparison.Ordinal);
         Assert.Contains("readbackBuffer.TryReadTextureRows(", proGpuTexture, StringComparison.Ordinal);
         Assert.Contains("_context.CleanupPendingResources();", proGpuTexture, StringComparison.Ordinal);
+        Assert.Contains("private void QueuePipelinesForDisposal()", proGpuTexture, StringComparison.Ordinal);
+        Assert.Contains("var pipelineEnumerator = _pipelines.Values.GetEnumerator();", proGpuTexture, StringComparison.Ordinal);
+        Assert.Contains("_context.QueueRenderPipelineDisposal(pipelineEnumerator.Current);", proGpuTexture, StringComparison.Ordinal);
+        Assert.Contains("QueuePipelinesForDisposal();", proGpuTexture, StringComparison.Ordinal);
         Assert.DoesNotContain("wgpuDevicePoll", proGpuTexture, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var pipeline in _pipelines.Values)", proGpuTexture, StringComparison.Ordinal);
         Assert.Contains("_context.PollDevice(wait: false)", proGpuBuffer, StringComparison.Ordinal);
         Assert.Contains("QueueTemporaryReadbackBufferDisposal(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.QueueBufferDisposal((IntPtr)buffer)", proGpuBuffer, StringComparison.Ordinal);

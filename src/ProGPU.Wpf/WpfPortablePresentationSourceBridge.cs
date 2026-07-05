@@ -288,8 +288,9 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         selectedOwner = null;
         int selectedDepth = -1;
 
-        foreach (object? owner in owners)
+        for (int i = 0; i < owners.Length; i++)
         {
+            object? owner = owners[i];
             if (owner == null)
             {
                 continue;
@@ -316,8 +317,9 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
         object? deepestEnabledOwner = null;
         int deepestEnabledDepth = -1;
-        foreach (object? owner in owners)
+        for (int i = 0; i < owners.Length; i++)
         {
+            object? owner = owners[i];
             if (owner == null || IsTransparentPointerOverlay(owner))
             {
                 continue;

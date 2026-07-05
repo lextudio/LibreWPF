@@ -900,6 +900,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableVisualOwnerKind.PointerInfrastructure", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("PortableVisualOwnerKind.Window", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object? TryHitTestOwner(double rootX, double rootY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("for (int i = 0; i < owners.Length; i++)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("object? owner = owners[i];", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestOwners(double rootX, double rootY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private bool HitTestOwners(double rootX, double rootY, Span<object?> owners, out int ownerCount)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
@@ -914,6 +916,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_host.TryQueryHitTestBoundsCandidates(minX, minY, maxX, maxY, candidates, out candidateCount)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryQueryHitTestEllipseCandidates(minX, minY, maxX, maxY, candidates, out candidateCount)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.DoesNotContain("_host.TryHitTestOwner(rootX, rootY", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (object? owner in owners)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Source : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Array.Empty<object>() : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private const string TraceHitTestEnvironmentVariable = \"PROGPU_WPF_TRACE_HIT_TEST\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);

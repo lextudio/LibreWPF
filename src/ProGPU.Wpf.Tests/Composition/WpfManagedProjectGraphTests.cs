@@ -1356,6 +1356,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (int dashIndex = 0; dashIndex < quadraticSegments.Length; dashIndex++)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("for (int dashIndex = 0; dashIndex < cubicSegments.Length; dashIndex++)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("for (int dashIndex = 0; dashIndex < arcSegments.Length; dashIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("for (int layerIndex = 0; layerIndex < colorLayers.Count; layerIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var layer = colorLayers[layerIndex];", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var layerOutlineFigures = layerOutline.Figures;", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("for (int figureIndex = 0; figureIndex < layerOutlineFigures.Count; figureIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var fig = layerOutlineFigures[figureIndex];", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var seg = figureSegments[segmentIndex];", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var staticDrawCalls = new List<CompositorDrawCall>();", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dc in _drawCalls)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dc in sb.DrawCalls)", proGpuCompositor, StringComparison.Ordinal);
@@ -1384,6 +1390,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var dashSegment in quadraticSegments)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dashSegment in cubicSegments)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dashSegment in arcSegments)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var layer in colorLayers)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var fig in layerOutline.Figures)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var seg in fig.Segments)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("_maskDrawCallListPool", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static void AddRemovalItem<T>(ref T[]? buffer, ref int count, int capacity, T item)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static void ReturnRemovalBuffer<T>(T[]? buffer, int count)", proGpuCompositor, StringComparison.Ordinal);

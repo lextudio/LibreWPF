@@ -5,7 +5,7 @@
     <PackageProjectUrl>https://github.com/wieslawsoltes/wpf</PackageProjectUrl>
     <RepositoryUrl>https://github.com/wieslawsoltes/wpf</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags Condition="'$(PackageTags)' == ''">wpf;progpu;webgpu;silk.net;xaml;cross-platform;desktop</PackageTags>
+    <PackageTags Condition="'$(PackageTags)' == ''">librewpf;progpu;webgpu;silk.net;xaml;cross-platform;desktop</PackageTags>
     <WindowsDesktopARM64Support>true</WindowsDesktopARM64Support>
     <TargetFramework>net11.0</TargetFramework>
     <TargetFrameworkVersion>11.0</TargetFrameworkVersion>

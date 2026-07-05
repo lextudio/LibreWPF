@@ -1,4 +1,4 @@
-# ProGPU WPF Hello App
+# LibreWPF Hello App
 
 This is the smallest runnable SDK-switched WPF app in the repo. The project file uses only:
 

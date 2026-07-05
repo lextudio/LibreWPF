@@ -1,6 +1,6 @@
-# ProGPU WPF Paid Xceed Toolkit + DataGrid
+# LibreWPF Paid Xceed Toolkit + DataGrid
 
-This sample exercises the commercial Xceed Toolkit Plus and Xceed DataGrid packages through the custom `ProGPU.Wpf.Sdk` project shape. The app project stays a normal SDK-switched WPF app:
+This sample exercises the commercial Xceed Toolkit Plus and Xceed DataGrid packages through the custom `LibreWPF.Sdk` project shape. The app project stays a normal SDK-switched WPF app:
 
 - `Project Sdk="LibreWPF.Sdk/11.0.0-dev"`
 - `UseWPF`

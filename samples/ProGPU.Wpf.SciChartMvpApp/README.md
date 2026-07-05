@@ -1,6 +1,6 @@
-# ProGPU WPF SciChart MVP App
+# LibreWPF SciChart MVP App
 
-This is the first executable SciChart-focused SDK smoke lane. It uses the normal `ProGPU.Wpf.Sdk` project shape and renders Visual Xccelerator-style 2D and 3D chart primitives through the reusable `ProGPU.DirectX` SciChart bridge into a WPF `WriteableBitmap`.
+This is the first executable SciChart-focused SDK smoke lane. It uses the normal `LibreWPF.Sdk` project shape and renders Visual Xccelerator-style 2D and 3D chart primitives through the reusable `ProGPU.DirectX` SciChart bridge into a WPF `WriteableBitmap`.
 
 The 2D panel exercises native line, mountain, column, financial, shaped heatmap, and colored sprite marker paths. The line-strip and colored marker paths now use a `ColoredVertex` bridge matching real SciChart's public `SciChart.Data.ColoredVertex` shape; markers map SciChart-style `DrawColoredSprites(...)` start/count semantics to ProGPU-owned instanced textured quad draws with active clipping and per-marker ARGB tinting.
 

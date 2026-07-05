@@ -1,6 +1,6 @@
-# ProGPU WPF MVP App
+# LibreWPF MVP App
 
-This is the first runnable no-source-change MVP app for the custom ProGPU WPF SDK path. It uses regular WPF XAML and code-behind with:
+This is the first runnable no-source-change MVP app for the custom LibreWPF SDK path. It uses regular WPF XAML and code-behind with:
 
 - `Project Sdk="LibreWPF.Sdk/11.0.0-dev"`
 - `TargetFramework=net11.0-windows`, matching the normal WPF project shape

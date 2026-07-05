@@ -13145,6 +13145,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU WPF MVP live input validation details:", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Console.Out.Flush();", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SetLiveNativeWindowSize(liveHost, 900, 640)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("NativeResizeGeometryIsReady(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ComputeExpectedLogicalSize(geometry.PixelWidth, geometry.DpiScale)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Expected MVP live native resize to reach physical", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("liveHost.SetClientSize(width, height)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("native resize relaid out WPF content", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("WaitForLiveInputPresentedFrameAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);

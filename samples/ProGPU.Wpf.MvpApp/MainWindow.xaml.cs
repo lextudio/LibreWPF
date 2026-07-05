@@ -899,8 +899,8 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
         var resizedLayout = await WaitForLiveNativeResizeAsync(
             liveHost,
-            expectedLogicalWidth: 900,
-            expectedLogicalHeight: 640,
+            expectedPixelWidth: 900,
+            expectedPixelHeight: 640,
             description: "resized",
             layoutReady: layout =>
                 layout.ContentWidth >= initialLayout.ContentWidth + 80.0 &&
@@ -912,8 +912,8 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
         var restoredLayout = await WaitForLiveNativeResizeAsync(
             liveHost,
-            expectedLogicalWidth: 760,
-            expectedLogicalHeight: 560,
+            expectedPixelWidth: 760,
+            expectedPixelHeight: 560,
             description: "restored",
             layoutReady: layout =>
                 layout.ContentWidth <= resizedLayout.ContentWidth - 80.0 &&
@@ -926,8 +926,8 @@ public partial class MainWindow : Window
 
     private async Task<LiveLayoutSize> WaitForLiveNativeResizeAsync(
         ProGpuWpfWindowHost liveHost,
-        uint expectedLogicalWidth,
-        uint expectedLogicalHeight,
+        uint expectedPixelWidth,
+        uint expectedPixelHeight,
         string description,
         Func<LiveLayoutSize, bool> layoutReady)
     {
@@ -942,10 +942,10 @@ public partial class MainWindow : Window
                     () =>
                     {
                         var current = CaptureLiveLayoutSize(liveHost);
-                        bool geometryReady = LiveRenderSurfaceGeometryIsReady(
+                        bool geometryReady = NativeResizeGeometryIsReady(
                             current.Geometry,
-                            expectedLogicalWidth,
-                            expectedLogicalHeight);
+                            expectedPixelWidth,
+                            expectedPixelHeight);
                         bool layoutSizeReady = layoutReady(current);
                         lastState =
                             $"{description}: {current.GeometryStatus}, " +
@@ -968,7 +968,7 @@ public partial class MainWindow : Window
         }
 
         throw new InvalidOperationException(
-            $"Expected MVP live native resize to reach {expectedLogicalWidth}x{expectedLogicalHeight}, but last state was: {lastState}.");
+            $"Expected MVP live native resize to reach physical {expectedPixelWidth}x{expectedPixelHeight}, but last state was: {lastState}.");
     }
 
     private async Task<string> ValidateLiveInputAsync(ProGpuWpfWindowHost liveHost)
@@ -2248,6 +2248,44 @@ public partial class MainWindow : Window
                (geometry.DpiScale <= 1.01 ||
                 (geometry.PixelWidth > geometry.LogicalWidth &&
                  geometry.PixelHeight > geometry.LogicalHeight));
+    }
+
+    private static bool NativeResizeGeometryIsReady(
+        LiveRenderSurfaceGeometry geometry,
+        uint expectedPixelWidth,
+        uint expectedPixelHeight)
+    {
+        var expectedLogicalWidth = ComputeExpectedLogicalSize(geometry.PixelWidth, geometry.DpiScale);
+        var expectedLogicalHeight = ComputeExpectedLogicalSize(geometry.PixelHeight, geometry.DpiScale);
+
+        return IsClose(geometry.PixelWidth, expectedPixelWidth, tolerance: 2u) &&
+               IsClose(geometry.PixelHeight, expectedPixelHeight, tolerance: 2u) &&
+               IsClose(geometry.LogicalWidth, expectedLogicalWidth, tolerance: 2u) &&
+               IsClose(geometry.LogicalHeight, expectedLogicalHeight, tolerance: 2u) &&
+               geometry.ViewportX == 0 &&
+               geometry.ViewportY == 0 &&
+               geometry.ViewportWidth == geometry.PixelWidth &&
+               geometry.ViewportHeight == geometry.PixelHeight &&
+               (geometry.DpiScale <= 1.01 ||
+                (geometry.PixelWidth > geometry.LogicalWidth &&
+                 geometry.PixelHeight > geometry.LogicalHeight));
+    }
+
+    private static uint ComputeExpectedLogicalSize(uint pixelSize, double dpiScale)
+    {
+        if (dpiScale <= 0.0 || !double.IsFinite(dpiScale))
+        {
+            return pixelSize;
+        }
+
+        return Math.Max(1u, (uint)Math.Round(pixelSize / dpiScale));
+    }
+
+    private static bool IsClose(uint actual, uint expected, uint tolerance)
+    {
+        return actual >= expected
+            ? actual - expected <= tolerance
+            : expected - actual <= tolerance;
     }
 
     private static string FormatLiveRenderSurfaceGeometry(LiveRenderSurfaceGeometry geometry)

@@ -528,8 +528,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         Dictionary<object, VisualStateSnapshot> current,
         List<object> changedSources)
     {
-        foreach (var snapshot in current)
+        var currentStateEnumerator = current.GetEnumerator();
+        while (currentStateEnumerator.MoveNext())
         {
+            var snapshot = currentStateEnumerator.Current;
             if (!previous.TryGetValue(snapshot.Key, out var previousSnapshot) ||
                 !previousSnapshot.Equals(snapshot.Value))
             {
@@ -537,8 +539,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
-        foreach (var snapshot in previous)
+        var previousStateEnumerator = previous.GetEnumerator();
+        while (previousStateEnumerator.MoveNext())
         {
+            var snapshot = previousStateEnumerator.Current;
             if (!current.ContainsKey(snapshot.Key))
             {
                 changedSources.Add(snapshot.Key);
@@ -551,8 +555,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         HashSet<object> currentSources,
         List<object> changedSources)
     {
-        foreach (var snapshot in previous)
+        var previousChildrenEnumerator = previous.GetEnumerator();
+        while (previousChildrenEnumerator.MoveNext())
         {
+            var snapshot = previousChildrenEnumerator.Current;
             if (!currentSources.Contains(snapshot.Key))
             {
                 changedSources.Add(snapshot.Key);
@@ -745,8 +751,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         var staleSourceCount = 0;
         try
         {
-            foreach (var snapshot in snapshots)
+            var snapshotEnumerator = snapshots.GetEnumerator();
+            while (snapshotEnumerator.MoveNext())
             {
+                var snapshot = snapshotEnumerator.Current;
                 if (!currentSources.Contains(snapshot.Key))
                 {
                     WpfPooledRemovalBuffer.Add(

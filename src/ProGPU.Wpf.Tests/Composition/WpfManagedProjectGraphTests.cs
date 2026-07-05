@@ -6049,6 +6049,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RemoveStaleVisualChildrenSnapshots(_visualChildrenSnapshots, _visualChildrenCurrentSources);", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private static void RemoveStaleVisualChildrenSnapshots(", trackerSource, StringComparison.Ordinal);
         Assert.Contains("WpfPooledRemovalBuffer.Add(", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("var currentStateEnumerator = current.GetEnumerator();", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("while (currentStateEnumerator.MoveNext())", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("var previousStateEnumerator = previous.GetEnumerator();", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("while (previousStateEnumerator.MoveNext())", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("var previousChildrenEnumerator = previous.GetEnumerator();", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("while (previousChildrenEnumerator.MoveNext())", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("var snapshotEnumerator = snapshots.GetEnumerator();", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("while (snapshotEnumerator.MoveNext())", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain(
             "ClearSubscriptions();\n            _visualStateSnapshots.Clear();\n            _visualChildrenSnapshots.Clear();\n            SubscribeGraph(_root);",
             trackerSource,
@@ -6085,6 +6093,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var changedSources = new List<object>();", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var changedSource in CollectVisualStateChanges", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var changedSource in CollectVisualChildrenChanges", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var snapshot in current)", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var snapshot in previous)", trackerSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var snapshot in snapshots)", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("private static List<object> CollectVisualStateChanges", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("IReadOnlyDictionary<object, VisualStateSnapshot> previous", trackerSource, StringComparison.Ordinal);
         Assert.DoesNotContain("IReadOnlyDictionary<object, VisualStateSnapshot> current", trackerSource, StringComparison.Ordinal);

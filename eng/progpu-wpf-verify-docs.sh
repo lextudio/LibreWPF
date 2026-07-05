@@ -14,6 +14,8 @@ require_text() {
 }
 
 require_text ".github/workflows/progpu-wpf-sdk.yml" "./eng/progpu-wpf-sdk-ci.sh"
+require_text ".github/workflows/progpu-wpf-sdk.yml" "librewpf-ci-packages-"
+require_text ".github/workflows/progpu-wpf-sdk.yml" "if-no-files-found: error"
 require_text ".github/workflows/progpu-wpf-release.yml" "NUGET_API_KEY"
 require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-v*"
 require_text ".github/workflows/progpu-wpf-release.yml" "refs/tags/librewpf-v"

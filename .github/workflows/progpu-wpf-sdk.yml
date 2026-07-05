@@ -32,3 +32,16 @@ jobs:
 
       - name: Run LibreWPF SDK gate
         run: ./eng/progpu-wpf-sdk-ci.sh
+
+      - name: Upload CI package bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: librewpf-ci-packages-${{ github.sha }}
+          path: |
+            artifacts/packages/Release/NonShipping/*.nupkg
+            artifacts/packages/Release/NonShipping/*.json
+            artifacts/packages/Release/NonShipping/*.tar.gz
+            artifacts/packages/Release/NonShipping/*.sha256
+            artifacts/packages/Release/NonShipping/README.md
+            artifacts/packages/Release/NonShipping/NuGet.config
+          if-no-files-found: error

@@ -1154,12 +1154,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SetLastHitTestIndex(_hitTestCacheBuilder.BuildIndex());", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CollectionsMarshal.AsSpan(_primitives)", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("CollectionsMarshal.AsSpan(_pathSegments)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("uint startSegment = AppendPathSegments(segments);", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("private uint AppendPathSegments(ReadOnlySpan<GpuPathSegment> segments)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("_pathSegments.EnsureCapacity(checked(startSegment + segments.Length));", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("for (int segmentIndex = 0; segmentIndex < segments.Length; segmentIndex++)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("_pathSegments.Add(segments[segmentIndex]);", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("private SmallValueStack<ClipState> _clipStack;", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("private SmallValueStack<float> _opacityStack;", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("private struct SmallValueStack<T>", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("RuntimeHelpers.IsReferenceOrContainsReferences<T>()", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.DoesNotContain("_primitives.ToArray()", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.DoesNotContain("_pathSegments.ToArray()", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("_pathSegments.AddRange(segments)", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.DoesNotContain("private readonly Stack<ClipState> _clipStack", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.DoesNotContain("private readonly Stack<float> _opacityStack", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.DoesNotContain("new Stack<ClipState>", proGpuHitTestCache, StringComparison.Ordinal);

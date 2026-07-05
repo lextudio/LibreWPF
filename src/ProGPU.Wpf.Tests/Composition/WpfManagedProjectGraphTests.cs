@@ -9163,6 +9163,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReadOnlySpan<VertexBufferLayout> vertexBufferLayouts", renderPipelineCache, StringComparison.Ordinal);
         Assert.Contains("private RenderPipeline* GetOrCreateRenderPipelineCore(", renderPipelineCache, StringComparison.Ordinal);
         Assert.Contains("fixed (VertexBufferLayout* pLayouts = vertexBufferLayouts)", renderPipelineCache, StringComparison.Ordinal);
+        Assert.Contains("var renderPipelineEnumerator = _renderPipelines.Values.GetEnumerator();", renderPipelineCache, StringComparison.Ordinal);
+        Assert.Contains("renderPipelineEnumerator.Current", renderPipelineCache, StringComparison.Ordinal);
+        Assert.Contains("var computePipelineEnumerator = _computePipelines.Values.GetEnumerator();", renderPipelineCache, StringComparison.Ordinal);
+        Assert.Contains("computePipelineEnumerator.Current", renderPipelineCache, StringComparison.Ordinal);
+        Assert.Contains("var shaderModuleEnumerator = _shaders.Values.GetEnumerator();", renderPipelineCache, StringComparison.Ordinal);
+        Assert.Contains("shaderModuleEnumerator.Current", renderPipelineCache, StringComparison.Ordinal);
         Assert.Contains("CopyList(_recordingContext.Commands)", renderCommand, StringComparison.Ordinal);
         Assert.Contains("CopyList(_recordingContext.PointBuffer)", renderCommand, StringComparison.Ordinal);
         Assert.Contains("CopyList(_recordingContext.DoubleBuffer)", renderCommand, StringComparison.Ordinal);
@@ -9206,6 +9212,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var cmd in other.Commands)", renderCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var resource in resources)", renderCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var resource in _retainedResources)", renderCommand, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var p in _renderPipelines.Values)", renderPipelineCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var p in _computePipelines.Values)", renderPipelineCache, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var s in _shaders.Values)", renderPipelineCache, StringComparison.Ordinal);
         Assert.DoesNotContain("PointBuffer.AddRange", renderCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("DoubleBuffer.AddRange", renderCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("Line3DBuffer.AddRange", renderCommand, StringComparison.Ordinal);

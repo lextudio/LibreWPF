@@ -397,6 +397,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Scene",
             "Compositor.cs");
+        var proGpuDxfStaticBufferPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "DxfStaticBuffer.cs");
         var proGpuSeriesBufferPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -515,6 +521,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuRetainedVisualDependencyRegistrar = File.ReadAllText(proGpuRetainedVisualDependencyRegistrarPath);
         var proGpuRetainedCompositionCommandSink = File.ReadAllText(proGpuRetainedCompositionCommandSinkPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
+        var proGpuDxfStaticBuffer = File.ReadAllText(proGpuDxfStaticBufferPath);
         var proGpuSeriesBuffer = File.ReadAllText(proGpuSeriesBufferPath);
         var proGpuLineSeriesPipeline = File.ReadAllText(proGpuLineSeriesPipelinePath);
         var proGpuAcisPipeline = File.ReadAllText(proGpuAcisPipelinePath);
@@ -1358,6 +1365,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var commands = picture.Commands;\n        for (var commandIndex = 0; commandIndex < commands.Length; commandIndex++)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var commands = context.Commands;\n            var commandCount = commands.Count;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var textRecords = staticBuffer.TextRecords;\n            for (var recordIndex = 0; recordIndex < textRecords.Length; recordIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("staticBuffer.UpdateTextBuffer(CollectionsMarshal.AsSpan(_textVerticesList));", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("public void UpdateTextBuffer(ReadOnlySpan<GlyphInstance> textVertices)", proGpuDxfStaticBuffer, StringComparison.Ordinal);
+        Assert.Contains("UpdateTextBuffer((ReadOnlySpan<GlyphInstance>)textVertices);", proGpuDxfStaticBuffer, StringComparison.Ordinal);
+        Assert.Contains("uint requiredBytes = checked((uint)textVertexCount * (uint)Marshal.SizeOf<GlyphInstance>());", proGpuDxfStaticBuffer, StringComparison.Ordinal);
+        Assert.Contains("_textVertexBufferBack.Write(textVertices);", proGpuDxfStaticBuffer, StringComparison.Ordinal);
         Assert.Contains("var layoutGlyphs = layout.Glyphs;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var layoutGlyphCount = layoutGlyphs.Count;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("for (int glyphIndex = 0; glyphIndex < layoutGlyphCount; glyphIndex++)", proGpuCompositor, StringComparison.Ordinal);
@@ -1387,6 +1399,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var cmd in commands)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var cmd in context.Commands)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var record in staticBuffer.TextRecords)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("staticBuffer.UpdateTextBuffer(_textVerticesList.ToArray())", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var runGlyph in layout.Glyphs)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var maskPass in _maskRenderPasses)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dc in maskPass.DrawCalls)", proGpuCompositor, StringComparison.Ordinal);

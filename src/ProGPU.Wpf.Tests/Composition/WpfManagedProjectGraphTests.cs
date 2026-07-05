@@ -10913,6 +10913,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var unorderedAccessViewEnumerator = _unorderedAccessViews.GetEnumerator();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("var cacheEnumerator = _pipelineBindGroupCache.GetEnumerator();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("var cachedBindGroupEnumerator = _pipelineBindGroupCache.Values.GetEnumerator();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("return entries;\n    }\n\n    private void AddStageBindings", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("private const int VertexBufferSlotStackLimit = 16;", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("Span<uint> sortedSlots = slotCount <= VertexBufferSlotStackLimit", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("stackalloc uint[slotCount]", proGpuDirectXDeviceContext, StringComparison.Ordinal);
@@ -10930,6 +10931,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static void InsertSortedUniqueInputSlot(Span<uint> slots, ref int slotCount, uint inputSlot)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("for (var shift = slotCount; shift > i; shift--)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("SHA256.HashData(descriptor.Bytecode.Span)", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("var elements = CopyInputElements(descriptor.Elements);", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.Contains("private static DxInputElementDescriptor[] CopyInputElements(IReadOnlyList<DxInputElementDescriptor> source)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < Elements.Count; i++)\n        {\n            var element = Elements[i];", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < elements.Count; i++)\n        {\n            var element = elements[i];", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.Contains("var builder = new StringBuilder(elements.Count * 64);", proGpuDirectXPipelines, StringComparison.Ordinal);
@@ -10977,10 +10980,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var candidate in _pipelineBindGroupCache.Keys)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var cached in _pipelineBindGroupCache.Values)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var pair in source)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("return entries.ToArray();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain(".OrderBy(entry => entry.NativeBinding)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain(".OrderBy(pair => pair.Key)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain(".Select(element => element.InputSlot)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain("descriptor.Bytecode.ToArray()", proGpuDirectXPipelines, StringComparison.Ordinal);
+        Assert.DoesNotContain("descriptor.Elements.ToArray()", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var element in Elements)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var element in elements)", proGpuDirectXPipelines, StringComparison.Ordinal);
         Assert.DoesNotContain("elements.Select(\n                (e, index)", proGpuDirectXPipelines, StringComparison.Ordinal);

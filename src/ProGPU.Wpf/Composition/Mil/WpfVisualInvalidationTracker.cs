@@ -1217,9 +1217,20 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             return;
         }
 
-        foreach (var item in collection)
+        var enumerator = collection.GetEnumerator();
+        try
         {
-            visitor.Visit(ref state, item);
+            while (enumerator.MoveNext())
+            {
+                visitor.Visit(ref state, enumerator.Current);
+            }
+        }
+        finally
+        {
+            if (enumerator is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
         }
     }
 

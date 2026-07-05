@@ -479,8 +479,10 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             out Action unsubscribe)
             where TDevice : notnull
         {
-            foreach (var subscription in subscriptions)
+            var subscriptionEnumerator = subscriptions.GetEnumerator();
+            if (subscriptionEnumerator.MoveNext())
             {
+                var subscription = subscriptionEnumerator.Current;
                 device = subscription.Key;
                 unsubscribe = subscription.Value;
                 return true;

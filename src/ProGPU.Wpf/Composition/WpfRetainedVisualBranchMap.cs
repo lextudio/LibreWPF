@@ -366,8 +366,10 @@ public sealed class WpfRetainedVisualBranchMap
             return;
         }
 
-        foreach (var source in sources)
+        var sourceEnumerator = sources.GetEnumerator();
+        while (sourceEnumerator.MoveNext())
         {
+            var source = sourceEnumerator.Current;
             distinctSources.Add(source);
         }
     }
@@ -650,8 +652,10 @@ public sealed class WpfRetainedVisualBranchMap
     {
         if (_sourcesByVisual.Remove(visual, out var sources))
         {
-            foreach (var source in sources)
+            var sourceEnumerator = sources.GetEnumerator();
+            while (sourceEnumerator.MoveNext())
             {
+                var source = sourceEnumerator.Current;
                 if (_visualsBySource.TryGetValue(source, out var visuals)
                     && RemoveVisualForSource(source, visual, visuals))
                 {

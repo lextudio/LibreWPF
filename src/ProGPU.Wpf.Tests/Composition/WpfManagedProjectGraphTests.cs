@@ -1007,10 +1007,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("visitor.Visit(ref state, list[i]);", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("collection is IReadOnlyList<object?> objectList", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("private interface ICollectionItemVisitor<TState>", proGpuInvalidationTracker, StringComparison.Ordinal);
-        Assert.Contains(
-            "foreach (var item in collection)\n        {\n            visitor.Visit(ref state, item);\n        }",
-            proGpuInvalidationTracker,
-            StringComparison.Ordinal);
+        Assert.Contains("var enumerator = collection.GetEnumerator();", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("while (enumerator.MoveNext())", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("visitor.Visit(ref state, enumerator.Current);", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("if (enumerator is IDisposable disposable)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var item in collection)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var item in collection)\n            {\n                SubscribeObject", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var item in collection)\n            {\n                CaptureObjectVisualStateAndChildren", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var item in collection)\n            {\n                CollectTrackedDependencies", proGpuInvalidationTracker, StringComparison.Ordinal);
@@ -6157,6 +6158,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var sourceOwner in sourceOwners)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var source in dirtySources)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var source in visitedSources)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var source in sources)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var visual in _scratchInvalidatedVisuals)", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var candidate in sources)\n        {\n            source = candidate;", proGpuRetainedVisualBranchMap, StringComparison.Ordinal);
         Assert.Contains("BranchMapClassifiesPromotedOwnerSetsByScanningSmallerDirtyBatch", proGpuDrawingFrameTests, StringComparison.Ordinal);
@@ -6951,6 +6953,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var entryEnumerator = _entries.GetEnumerator();", textureCacheSource, StringComparison.Ordinal);
         Assert.Contains("while (entryEnumerator.MoveNext())", textureCacheSource, StringComparison.Ordinal);
         Assert.Contains("var entryEnumerator = _entries.Values.GetEnumerator();", textureCacheSource, StringComparison.Ordinal);
+        Assert.Contains("var entry = entryEnumerator.Current;", textureCacheSource, StringComparison.Ordinal);
         Assert.DoesNotContain("List<object>? unusedKeys", textureCacheSource, StringComparison.Ordinal);
         Assert.DoesNotContain("unusedKeys ??= new List<object>();", textureCacheSource, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var entry in _entries)", textureCacheSource, StringComparison.Ordinal);
@@ -12473,8 +12476,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (var i = 0; i < keyboards.Count; i++)", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("DisposeSubscriptions(_mouseSubscriptions);", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("DisposeSubscriptions(_keyboardSubscriptions);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("var subscriptionEnumerator = subscriptions.GetEnumerator();", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("if (subscriptionEnumerator.MoveNext())", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var mouse in inputContext.Mice)", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var keyboard in inputContext.Keyboards)", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var subscription in subscriptions)", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("var subscriptions = new List<Action>();", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("subscriptions.Remove(unsubscribe);", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("List<Action> _unsubscribe", proGpuWpfInputService, StringComparison.Ordinal);

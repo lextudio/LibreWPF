@@ -77,8 +77,10 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
     {
         ThrowIfDisposed();
 
-        foreach (var entry in _entries.Values)
+        var entryEnumerator = _entries.Values.GetEnumerator();
+        while (entryEnumerator.MoveNext())
         {
+            var entry = entryEnumerator.Current;
             entry.Dispose();
         }
 
@@ -92,8 +94,10 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
             return;
         }
 
-        foreach (var entry in _entries.Values)
+        var entryEnumerator = _entries.Values.GetEnumerator();
+        while (entryEnumerator.MoveNext())
         {
+            var entry = entryEnumerator.Current;
             entry.Dispose();
         }
 

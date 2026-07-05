@@ -16749,6 +16749,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateSdkPackageLayout(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(repoRoot, packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("string dotnetPath = ResolveDotNetHost(repoRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(repoRoot, \".dotnet\", dotnetFileName)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Environment.GetEnvironmentVariable(\"DOTNET_ROOT\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("return \"dotnet\";", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("Path.Combine(repoRoot, \".dotnet\", \"dotnet\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRepositoryProGpuAssemblyPath(repoRoot, assemblyName)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRepositoryWpfAssemblyPath(repoRoot, assemblyName)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("local {packageId} package matches {expectedAssemblyDescription}", externalSdkHarnessProgram, StringComparison.Ordinal);

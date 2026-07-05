@@ -135,7 +135,7 @@ internal static class Program
             string appProjectPath = PrepareExternalSdkApp(workRoot, packageFeed);
             string localizationProjectPath = PrepareExternalLocalizationProject(workRoot);
             string defaultItemsProjectPath = PrepareExternalDefaultItemsApp(workRoot);
-            string dotnetPath = Path.Combine(repoRoot, ".dotnet", "dotnet");
+            string dotnetPath = ResolveDotNetHost(repoRoot);
 
             RunProcess(dotnetPath, repoRoot, "build", appProjectPath, "-v:minimal");
             RunProcess(dotnetPath, repoRoot, "build", localizationProjectPath, "-v:minimal");
@@ -18515,6 +18515,30 @@ internal static class Program
     private static string RunProcess(string fileName, string workingDirectory, params string[] arguments)
     {
         return RunProcess(fileName, workingDirectory, environment: null, arguments);
+    }
+
+    private static string ResolveDotNetHost(string repoRoot)
+    {
+        string dotnetFileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? "dotnet.exe"
+            : "dotnet";
+        string repoLocalHost = Path.Combine(repoRoot, ".dotnet", dotnetFileName);
+        if (File.Exists(repoLocalHost))
+        {
+            return repoLocalHost;
+        }
+
+        string? dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        if (!string.IsNullOrWhiteSpace(dotnetRoot))
+        {
+            string dotnetRootHost = Path.Combine(dotnetRoot, dotnetFileName);
+            if (File.Exists(dotnetRootHost))
+            {
+                return dotnetRootHost;
+            }
+        }
+
+        return "dotnet";
     }
 
     private static string RunProcess(

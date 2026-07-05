@@ -1352,6 +1352,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var commands = picture.Commands;\n        for (var commandIndex = 0; commandIndex < commands.Length; commandIndex++)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var commands = context.Commands;\n            var commandCount = commands.Count;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var textRecords = staticBuffer.TextRecords;\n            for (var recordIndex = 0; recordIndex < textRecords.Length; recordIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var layoutGlyphs = layout.Glyphs;", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var layoutGlyphCount = layoutGlyphs.Count;", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("for (int glyphIndex = 0; glyphIndex < layoutGlyphCount; glyphIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var runGlyph = layoutGlyphs[glyphIndex];", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var extensionCount = _registeredExtensions.Count;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var ext = _registeredExtensions[extensionIndex];", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var pathFigures = cmd.Path.Figures;", proGpuCompositor, StringComparison.Ordinal);
@@ -1377,6 +1381,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var cmd in commands)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var cmd in context.Commands)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var record in staticBuffer.TextRecords)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var runGlyph in layout.Glyphs)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var maskPass in _maskRenderPasses)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dc in maskPass.DrawCalls)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var tex in _masksToReturnToPool)", proGpuCompositor, StringComparison.Ordinal);

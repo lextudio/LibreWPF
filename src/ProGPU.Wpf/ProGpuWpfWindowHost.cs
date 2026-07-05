@@ -1722,7 +1722,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return true;
             }
 
-            owners = ownerBuffer.AsSpan(0, ownerCount).ToArray();
+            owners = CopyHitTestResults(ownerBuffer.AsSpan(0, ownerCount));
             return true;
         }
         finally
@@ -1784,7 +1784,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return true;
             }
 
-            owners = ownerBuffer.AsSpan(0, ownerCount).ToArray();
+            owners = CopyHitTestResults(ownerBuffer.AsSpan(0, ownerCount));
             return true;
         }
         finally
@@ -1843,6 +1843,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return true;
     }
 
+    private static object?[] CopyHitTestResults(ReadOnlySpan<object?> results)
+    {
+        if (results.IsEmpty)
+        {
+            return Array.Empty<object?>();
+        }
+
+        var copy = new object?[results.Length];
+        results.CopyTo(copy);
+        return copy;
+    }
+
     internal bool TryQueryHitTestBoundsCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)
     {
         candidates = Array.Empty<object?>();
@@ -1859,7 +1871,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return true;
             }
 
-            candidates = candidateBuffer.AsSpan(0, candidateCount).ToArray();
+            candidates = CopyHitTestResults(candidateBuffer.AsSpan(0, candidateCount));
             return true;
         }
         finally
@@ -1913,7 +1925,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return true;
             }
 
-            candidates = candidateBuffer.AsSpan(0, candidateCount).ToArray();
+            candidates = CopyHitTestResults(candidateBuffer.AsSpan(0, candidateCount));
             return true;
         }
         finally

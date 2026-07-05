@@ -877,8 +877,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal bool HasGpuHitTestCache => _target?.LastGpuHitTestIndex != null;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryGetGpuHitTestCacheSnapshot(out ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot snapshot)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity)", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("owners = ownerBuffer.AsSpan(0, ownerCount).ToArray();", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("candidates = candidateBuffer.AsSpan(0, candidateCount).ToArray();", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("owners = CopyHitTestResults(ownerBuffer.AsSpan(0, ownerCount));", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("candidates = CopyHitTestResults(candidateBuffer.AsSpan(0, candidateCount));", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private static object?[] CopyHitTestResults(ReadOnlySpan<object?> results)", proGpuHost, StringComparison.Ordinal);
+        Assert.DoesNotContain(".ToArray()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<object?>.Shared.Return(candidateBuffer, clearArray: true)", proGpuHost, StringComparison.Ordinal);
         Assert.DoesNotContain("new object?[64]", proGpuHost, StringComparison.Ordinal);

@@ -8832,6 +8832,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Scene",
             "WpfShaderEffectParams.cs"));
+        var shaderDrawingExtensions = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "DrawingContextShaderEffectExtensions.cs"));
         var shaderPipeline = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -8954,7 +8960,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var samplers = Samplers;", shaderParams, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < samplers.Length; i++)", shaderParams, StringComparison.Ordinal);
         Assert.Contains("var sampler = samplers[i];", shaderParams, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < value.Length; i++)", shaderParams, StringComparison.Ordinal);
+        Assert.Contains("var c = value[i];", shaderParams, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var sampler in Samplers)", shaderParams, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var c in value)", shaderParams, StringComparison.Ordinal);
+        Assert.Contains("var constantArray = CopyConstants(constants);", shaderDrawingExtensions, StringComparison.Ordinal);
+        Assert.Contains("private static float[] CopyConstants(ReadOnlySpan<float> constants)", shaderDrawingExtensions, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < constants.Length; i++)", shaderDrawingExtensions, StringComparison.Ordinal);
+        Assert.Contains("copiedConstants[i] = constants[i];", shaderDrawingExtensions, StringComparison.Ordinal);
+        Assert.DoesNotContain("constants.ToArray()", shaderDrawingExtensions, StringComparison.Ordinal);
         Assert.Contains("_src_{p.GetStableShaderSourceKey()}", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("Span<int> activeRegisters = stackalloc int[WpfShaderEffectParams.MaxSamplerRegisterCount];", shaderPipeline, StringComparison.Ordinal);
         Assert.Contains("var activeRegisterCount = CollectActiveSamplerRegisters(p, activeRegisters);", shaderPipeline, StringComparison.Ordinal);

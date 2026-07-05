@@ -10806,6 +10806,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("sourceIndexBuffer.ReadWriteShadowBytes(sourceBytes, offsetBytes);", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("WriteWireframeLineIndices(topology, source, lineIndices);", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("WriteTriangleEdges(lineIndices, ref write, (uint)i, (uint)(i + 1), (uint)(i + 2));", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("private void ClearRecordedCommandResources()", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("private void ExecuteGpuBackedCommands(ProGPU.Backend.WgpuContext context)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("for (var i = 0; i < _commands.Count; i++)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.Contains("var command = _commands[i];", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("public void ReadPixels(Span<byte> destination)", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("private void ReadBackendSubresourceIntoWriteShadow", proGpuDirectXResources, StringComparison.Ordinal);
         Assert.Contains("texture.ReadPixels(\n            _writeShadow.AsSpan(", proGpuDirectXResources, StringComparison.Ordinal);
@@ -10817,6 +10821,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var sourceIndices = ReadSourceIndices(", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("sourceIndexBuffer.ReadWriteShadowBytes(MemoryMarshal.AsBytes(result.AsSpan()), offsetBytes);", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("var indices = new uint[checked((int)vertexCount)]", proGpuDirectXDeviceContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var command in _commands)", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("return MemoryMarshal.Cast<byte, uint>(bytes).ToArray();", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.DoesNotContain("wgpuDevicePoll", proGpuBuffer, StringComparison.Ordinal);
         Assert.DoesNotContain("BufferDestroy(readbackBuffer)", proGpuBuffer, StringComparison.Ordinal);

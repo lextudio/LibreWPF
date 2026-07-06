@@ -2770,11 +2770,14 @@ public sealed class WpfManagedProjectGraphTests
             "System.Windows.Controls.Ribbon",
             "ref",
             "System.Windows.Controls.Ribbon-ref.csproj");
+        var repoRoot = Path.GetDirectoryName(FindRepoPath("README.md"))!;
+        var rootDirectoryBuildPropsPath = Path.Combine(repoRoot, "Directory.Build.props");
         var realPresentationCoreHarnessProjectPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.RealPresentationCoreHarness",
             "ProGPU.Wpf.RealPresentationCoreHarness.csproj");
 
+        var rootDirectoryBuildProps = XDocument.Load(rootDirectoryBuildPropsPath);
         var systemXamlProject = XDocument.Load(systemXamlProjectPath);
         var presentationBuildTasksProject = XDocument.Load(presentationBuildTasksProjectPath);
         var presentationFrameworkProject = XDocument.Load(presentationFrameworkProjectPath);
@@ -2794,6 +2797,10 @@ public sealed class WpfManagedProjectGraphTests
         var targetFrameworks = Assert.Single(presentationBuildTasksProject.Descendants("TargetFrameworks")).Value;
         Assert.Contains("$(BundledNETCoreAppTargetFramework)", targetFrameworks, StringComparison.Ordinal);
         Assert.Contains("$(NetFrameworkToolCurrent)", targetFrameworks, StringComparison.Ordinal);
+        Assert.Contains(
+            rootDirectoryBuildProps.Descendants("PbtTfm"),
+            property => string.Equals(property.Value, "$(BundledNETCoreAppTargetFramework)", StringComparison.Ordinal)
+                && string.Equals(property.Attribute("Condition")?.Value, "'$(MSBuildRuntimeType)' == 'Core'", StringComparison.Ordinal));
         AssertCompileInclude(presentationBuildTasksProject, @"MS\Internal\MarkupCompiler\MarkupCompiler.cs");
         AssertCompileInclude(presentationBuildTasksProject, @"MS\Internal\MarkupCompiler\ParserExtension.cs");
         AssertCompileInclude(presentationBuildTasksProject, @"Microsoft\Build\Tasks\Windows\MarkupCompilePass1.cs");

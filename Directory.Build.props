@@ -48,6 +48,7 @@
 
   <PropertyGroup>
     <BundledNETCoreAppTargetFramework>$(ProGpuWpfTargetFramework)</BundledNETCoreAppTargetFramework>
+    <PbtTfm Condition="'$(MSBuildRuntimeType)' == 'Core'">$(BundledNETCoreAppTargetFramework)</PbtTfm>
   </PropertyGroup>
 
 </Project>

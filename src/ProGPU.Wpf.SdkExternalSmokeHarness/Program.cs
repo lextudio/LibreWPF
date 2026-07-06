@@ -24,6 +24,8 @@ internal static class Program
     private const string AppOutputAssemblyName = "ExternalSdkShell";
     private const string LibraryAssemblyName = "ExternalSdkLibrary";
     private const string LibraryOutputAssemblyName = "ExternalSdkControls";
+    private const string CentralPackageManagementAssemblyName = "ExternalCpmSdkApp";
+    private const string CentralPackageManagementOutputAssemblyName = "ExternalCpmSdkShell";
     private const string LocalizationAssemblyName = "ExternalLocalizationApp";
     private const string DefaultItemsAssemblyName = "ExternalSdkDefaultItemsApp";
     private const string DefaultItemsLibraryAssemblyName = "ExternalSdkDefaultItemsLibrary";
@@ -133,15 +135,21 @@ internal static class Program
 
             string workRoot = Path.Combine(Path.GetTempPath(), "ProGPU.Wpf.SdkExternalSmoke");
             string appProjectPath = PrepareExternalSdkApp(workRoot, packageFeed);
+            string centralPackageManagementProjectPath = PrepareExternalCentralPackageManagementApp(
+                Path.Combine(Path.GetTempPath(), "ProGPU.Wpf.SdkExternalCpmSmoke"),
+                packageFeed);
             string localizationProjectPath = PrepareExternalLocalizationProject(workRoot);
             string defaultItemsProjectPath = PrepareExternalDefaultItemsApp(workRoot);
             string dotnetPath = ResolveDotNetHost(repoRoot);
 
             RunProcess(dotnetPath, repoRoot, "build", appProjectPath, "-v:minimal");
+            RunProcess(dotnetPath, repoRoot, "restore", centralPackageManagementProjectPath, "-v:minimal");
+            RunProcess(dotnetPath, repoRoot, "build", centralPackageManagementProjectPath, "-v:minimal", "--no-restore");
             RunProcess(dotnetPath, repoRoot, "build", localizationProjectPath, "-v:minimal");
             RunProcess(dotnetPath, repoRoot, "build", defaultItemsProjectPath, "-v:minimal");
 
             ValidateExternalProjectShape(workRoot);
+            ValidateExternalCentralPackageManagementProjectShape(centralPackageManagementProjectPath);
             ValidateExternalDefaultItemsProjectShape(workRoot);
             ValidateExternalLocalizationDirectives(workRoot);
             string outputRoot = Path.Combine(workRoot, AppAssemblyName, "bin", "Debug", ExternalAppTargetFramework);
@@ -275,19 +283,28 @@ internal static class Program
         AssertContains(portableProps, "<ApplicationDefinition Include=\"App.xaml\"", "SDK default app XAML item");
         AssertContains(portableProps, "<Page Include=\"**/*.xaml\"", "SDK default page XAML item");
         AssertContains(portableProps, "<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", "SDK native WebGPU package reference");
+        AssertContains(portableProps, "<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" VersionOverride=\"$(ProGpuWpfSilkNetVersion)\" />", "SDK CPM native WebGPU package reference");
         AssertContains(portableProps, "<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", "SDK WPF support package reference");
+        AssertContains(portableProps, "<PackageReference Include=\"System.IO.Packaging\" VersionOverride=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", "SDK CPM WPF support package reference");
         AssertContains(portableProps, "<PackageReference Include=\"StbImageSharp\" Version=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK StbImageSharp package reference");
+        AssertContains(portableProps, "<PackageReference Include=\"StbImageSharp\" VersionOverride=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK CPM StbImageSharp package reference");
 
         AssertContains(portableTargets, "<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", "SDK WindowsDesktop framework suppression");
         AssertContains(portableTargets, "<_ProGpuWpfDefaultResourceItem Include=\"**/*.bmp;**/*.cur;**/*.gif;**/*.ico;**/*.jpg;**/*.jpeg;**/*.png;**/*.tif;**/*.tiff;**/*.wdp;**/*.webp\"", "SDK default image resource item");
         AssertContains(portableTargets, "<Resource Include=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource include");
         AssertContains(portableTargets, "<None Remove=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource None removal");
         AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" />", "SDK managed WPF transport package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" VersionOverride=\"$(ProGpuWpfManagedPackageVersion)\" />", "SDK CPM managed WPF transport package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"LibreWPF.ProGPU\" Version=\"$(ProGpuWpfPackageVersion)\" />", "SDK ProGPU WPF package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"LibreWPF.ProGPU\" VersionOverride=\"$(ProGpuWpfPackageVersion)\" />", "SDK CPM ProGPU WPF package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"LibreWPF.Interop\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU WPF interop package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"LibreWPF.Interop\" VersionOverride=\"$(ProGpuPackageVersion)\" />", "SDK CPM ProGPU WPF interop package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.DirectX\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU DirectX package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.DirectX\" VersionOverride=\"$(ProGpuPackageVersion)\" />", "SDK CPM ProGPU DirectX package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Compute\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU compute package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Compute\" VersionOverride=\"$(ProGpuPackageVersion)\" />", "SDK CPM ProGPU compute package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Transpiler\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU transpiler package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Transpiler\" VersionOverride=\"$(ProGpuPackageVersion)\" />", "SDK CPM ProGPU transpiler package reference");
         AssertContains(portableTargets, "<Compile Include=\"$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", "SDK portable bootstrap injection");
         AssertContains(portableTargets, "_ProGpuWpfSdkCopyPackageRuntimeAssets", "SDK managed runtime copy target");
         AssertContains(portableTargets, "_ProGpuWpfSdkCopyNativeRuntimeAssets", "SDK native runtime copy target");
@@ -13666,6 +13683,126 @@ internal static class Program
         return appProjectPath;
     }
 
+    private static string PrepareExternalCentralPackageManagementApp(string workRoot, string packageFeed)
+    {
+        if (Directory.Exists(workRoot))
+        {
+            Directory.Delete(workRoot, recursive: true);
+        }
+
+        string appRoot = Path.Combine(workRoot, CentralPackageManagementAssemblyName);
+        Directory.CreateDirectory(appRoot);
+
+        WriteFile(
+            Path.Combine(workRoot, "NuGet.config"),
+            $"""
+            <?xml version="1.0" encoding="utf-8"?>
+            <configuration>
+              <config>
+                <add key="globalPackagesFolder" value="{SecurityElement.Escape(Path.Combine(workRoot, ".packages"))}" />
+              </config>
+              <packageSources>
+                <clear />
+                <add key="ProGPUWpfLocalArtifacts" value="{SecurityElement.Escape(packageFeed)}" />
+                <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+              </packageSources>
+            </configuration>
+            """);
+
+        WriteFile(
+            Path.Combine(workRoot, "Directory.Packages.props"),
+            """
+            <Project>
+              <PropertyGroup>
+                <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+              </PropertyGroup>
+
+              <ItemGroup>
+                <PackageVersion Include="System.Reactive" Version="6.0.1" />
+              </ItemGroup>
+            </Project>
+            """);
+
+        string projectPath = Path.Combine(appRoot, CentralPackageManagementAssemblyName + ".csproj");
+        WriteFile(
+            projectPath,
+            SwitchWpfSdkOnly(
+                $"""
+            <Project Sdk="{OriginalWpfSdk}">
+              <PropertyGroup>
+                <OutputType>WinExe</OutputType>
+                <AssemblyName>{CentralPackageManagementOutputAssemblyName}</AssemblyName>
+                <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
+                <UseWPF>true</UseWPF>
+              </PropertyGroup>
+
+              <ItemGroup>
+                <PackageReference Include="System.Reactive" />
+              </ItemGroup>
+            </Project>
+            """,
+                "external SDK central package management app"));
+
+        WriteFile(
+            Path.Combine(appRoot, "App.xaml"),
+            """
+            <Application
+                x:Class="ExternalCpmSdkApp.App"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                StartupUri="MainWindow.xaml" />
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "App.xaml.cs"),
+            """
+            using System.Windows;
+
+            namespace ExternalCpmSdkApp;
+
+            public partial class App : Application
+            {
+            }
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "MainWindow.xaml"),
+            """
+            <Window
+                x:Class="ExternalCpmSdkApp.MainWindow"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                Title="External CPM SDK app"
+                Width="320"
+                Height="180">
+                <Grid>
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Text="Central Package Management" />
+                </Grid>
+            </Window>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "MainWindow.xaml.cs"),
+            """
+            using System.Windows;
+
+            namespace ExternalCpmSdkApp;
+
+            public partial class MainWindow : Window
+            {
+                public MainWindow()
+                {
+                    InitializeComponent();
+                }
+            }
+            """);
+
+        return projectPath;
+    }
+
     private static string PrepareExternalLocalizationProject(string workRoot)
     {
         string localizationRoot = Path.Combine(workRoot, LocalizationAssemblyName);
@@ -17494,6 +17631,38 @@ internal static class Program
         {
             throw new InvalidOperationException("External SDK smoke must not rely on generated Directory.Build.props or Directory.Build.targets files.");
         }
+    }
+
+    private static void ValidateExternalCentralPackageManagementProjectShape(string projectPath)
+    {
+        string appRoot = Path.GetDirectoryName(projectPath)
+            ?? throw new ArgumentException("Project path has no directory.", nameof(projectPath));
+        string workRoot = Directory.GetParent(appRoot)?.FullName
+            ?? throw new ArgumentException("Project path has no parent directory.", nameof(projectPath));
+        string project = File.ReadAllText(projectPath);
+        string centralPackages = File.ReadAllText(Path.Combine(workRoot, "Directory.Packages.props"));
+
+        AssertContains(project, $"<Project Sdk=\"LibreWPF.Sdk/{SdkVersion}\">", "external CPM app SDK");
+        AssertDoesNotContain(project, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external CPM app original SDK");
+        AssertContains(project, $"<AssemblyName>{CentralPackageManagementOutputAssemblyName}</AssemblyName>", "external CPM app custom assembly name");
+        AssertContains(project, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external CPM app Windows target framework");
+        AssertContains(project, "<UseWPF>true</UseWPF>", "external CPM app WPF property");
+        AssertContains(project, "<PackageReference Include=\"System.Reactive\" />", "external CPM app unversioned app package reference");
+        AssertDoesNotContain(project, "Version=", "external CPM app project package version metadata");
+        AssertContains(centralPackages, "<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>", "external CPM app central package management switch");
+        AssertContains(centralPackages, "<PackageVersion Include=\"System.Reactive\" Version=\"6.0.1\" />", "external CPM app central package version");
+        AssertDoesNotContain(centralPackages, "LibreWPF.Transport", "external CPM app central WPF transport version");
+        AssertDoesNotContain(centralPackages, "LibreWPF.ProGPU", "external CPM app central WPF bridge version");
+        AssertDoesNotContain(centralPackages, "ProGPU.DirectX", "external CPM app central ProGPU DirectX version");
+        AssertDoesNotContain(centralPackages, "Silk.NET.WebGPU", "external CPM app central Silk WebGPU version");
+
+        string outputAssembly = Path.Combine(
+            appRoot,
+            "bin",
+            "Debug",
+            ExternalAppTargetFramework,
+            CentralPackageManagementOutputAssemblyName + ".dll");
+        RequireFile(outputAssembly, "external CPM app output assembly");
     }
 
     private static void ValidateExternalDefaultItemsProjectShape(string workRoot)

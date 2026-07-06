@@ -10990,6 +10990,14 @@ public sealed class WpfManagedProjectGraphTests
             "external",
             "ProGPU",
             "Directory.Build.props");
+        var proGpuDirectoryPackagesPropsPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "Directory.Packages.props");
+        var proGpuNuGetConfigPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "NuGet.config");
         var proGpuGitmodulesPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -11011,6 +11019,24 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Avalonia",
             "ProGpuHostControl.cs");
+        var proGpuAvaloniaProjectPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Avalonia",
+            "ProGPU.Avalonia.csproj");
+        var proGpuBackendProjectPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Backend",
+            "ProGPU.Backend.csproj");
+        var proGpuTestsProjectPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Tests",
+            "ProGPU.Tests.csproj");
         var proGpuAvaloniaSampleMainWindowPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -11269,10 +11295,15 @@ public sealed class WpfManagedProjectGraphTests
         var releaseDocs = File.ReadAllText(releaseDocsPath);
         var docsVerifierScript = File.ReadAllText(docsVerifierScriptPath);
         var proGpuDirectoryBuildProps = File.ReadAllText(proGpuDirectoryBuildPropsPath);
+        var proGpuDirectoryPackagesProps = File.ReadAllText(proGpuDirectoryPackagesPropsPath);
+        var proGpuNuGetConfig = File.ReadAllText(proGpuNuGetConfigPath);
         var proGpuGitmodules = File.ReadAllText(proGpuGitmodulesPath);
         var proGpuPackScript = File.ReadAllText(proGpuPackScriptPath);
         var proGpuBuildWorkflow = File.ReadAllText(proGpuBuildWorkflowPath);
         var proGpuAvaloniaHostControl = File.ReadAllText(proGpuAvaloniaHostControlPath);
+        var proGpuAvaloniaProject = File.ReadAllText(proGpuAvaloniaProjectPath);
+        var proGpuBackendProject = File.ReadAllText(proGpuBackendProjectPath);
+        var proGpuTestsProject = File.ReadAllText(proGpuTestsProjectPath);
         var proGpuAvaloniaSampleMainWindow = File.ReadAllText(proGpuAvaloniaSampleMainWindowPath);
         var proGpuTextureReadbackBuffer = File.ReadAllText(proGpuTextureReadbackBufferPath);
         var proGpuWgpuContext = File.ReadAllText(proGpuWgpuContextPath);
@@ -11360,6 +11391,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProGPUStrongNameKeyFile>$(MSBuildThisFileDirectory)eng/ProGPU.snk</ProGPUStrongNameKeyFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<AssemblyOriginatorKeyFile Condition=\"'$(AssemblyOriginatorKeyFile)' == ''\">$(ProGPUStrongNameKeyFile)</AssemblyOriginatorKeyFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<None Include=\"$(MSBuildThisFileDirectory)README.md\" Pack=\"true\" PackagePath=\"\\\" Visible=\"false\" />", proGpuDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>", proGpuDirectoryPackagesProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageVersion Include=\"Silk.NET.WebGPU\" Version=\"2.23.0\" />", proGpuDirectoryPackagesProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageVersion Include=\"Avalonia\" Version=\"12.0.3\" />", proGpuDirectoryPackagesProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageVersion Include=\"Microsoft.NET.Test.Sdk\" Version=\"17.11.1\" />", proGpuDirectoryPackagesProps, StringComparison.Ordinal);
+        Assert.Contains("<clear />", proGpuNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("<add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" />", proGpuNuGetConfig, StringComparison.Ordinal);
+        Assert.DoesNotContain("dotnet11", proGpuNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Silk.NET.WebGPU\" />", proGpuBackendProject, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" />", proGpuBackendProject, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Avalonia\" />", proGpuAvaloniaProject, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"xunit\" />", proGpuTestsProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("Version=\"2.23.0\"", proGpuBackendProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("Version=\"12.0.3\"", proGpuAvaloniaProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("Version=\"2.9.2\"", proGpuTestsProject, StringComparison.Ordinal);
         Assert.Contains("url = https://github.com/wieslawsoltes/microsoft-ui-xaml.git", proGpuGitmodules, StringComparison.Ordinal);
         Assert.DoesNotContain("/Users/wieslawsoltes/GitHub", proGpuGitmodules, StringComparison.Ordinal);
         Assert.DoesNotContain("url = ../", proGpuGitmodules, StringComparison.Ordinal);
@@ -13408,6 +13453,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.Windows.Extensions\" Version=\"$(ProGpuWpfSystemWindowsExtensionsVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"StbImageSharp\" Version=\"$(ProGpuWpfStbImageSharpVersion)\" />", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Silk.NET.Input\" VersionOverride=\"$(ProGpuWpfSilkNetVersion)\" />", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" VersionOverride=\"$(ProGpuWpfSilkNetVersion)\" />", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.IO.Packaging\" VersionOverride=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"StbImageSharp\" VersionOverride=\"$(ProGpuWpfStbImageSharpVersion)\" />", portableProps, StringComparison.Ordinal);
 
         Assert.Contains("<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<CopyLocalLockFileAssemblies Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'\">true</CopyLocalLockFileAssemblies>", portableTargets, StringComparison.Ordinal);
@@ -13431,6 +13480,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReference Include=\"ProGPU.Text\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Compute\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Transpiler\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" VersionOverride=\"$(ProGpuWpfManagedPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"LibreWPF.ProGPU\" VersionOverride=\"$(ProGpuWpfPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"LibreWPF.Interop\" VersionOverride=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.DirectX\" VersionOverride=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.Compute\" VersionOverride=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.Transpiler\" VersionOverride=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"WindowsBase\" HintPath=\"$(_ProGpuWpfManagedReferenceRoot)WindowsBase.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"PresentationFramework\" HintPath=\"$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"ProGPU.Wpf\" HintPath=\"$(_ProGpuReferenceRoot)ProGPU.Wpf.dll\"", portableTargets, StringComparison.Ordinal);
@@ -15229,6 +15284,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AppOutputAssemblyName = \"ExternalSdkShell\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSdkLibrary", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LibraryOutputAssemblyName = \"ExternalSdkControls\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CentralPackageManagementAssemblyName = \"ExternalCpmSdkApp\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CentralPackageManagementOutputAssemblyName = \"ExternalCpmSdkShell\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PrepareExternalCentralPackageManagementApp", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateExternalCentralPackageManagementProjectShape", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<PackageVersion Include=\"System.Reactive\" Version=\"6.0.1\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.Reactive\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("restore\", centralPackageManagementProjectPath", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("build\", centralPackageManagementProjectPath", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertDoesNotContain(centralPackages, \"LibreWPF.Transport\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertDoesNotContain(centralPackages, \"ProGPU.DirectX\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsLibraryAssemblyName = \"ExternalSdkDefaultItemsLibrary\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"{OriginalWpfSdk}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"{OriginalWindowsDesktopWpfSdk}\">", externalSdkHarnessProgram, StringComparison.Ordinal);

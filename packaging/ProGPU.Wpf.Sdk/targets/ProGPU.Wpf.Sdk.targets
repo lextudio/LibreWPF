@@ -30,7 +30,7 @@
     </ItemGroup>
   </Target>
 
-  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package' And '$(ManagePackageVersionsCentrally)' != 'true'">
     <PackageReference Include="$(ProGpuWpfManagedPackageId)" Version="$(ProGpuWpfManagedPackageVersion)" />
     <PackageReference Include="LibreWPF.ProGPU" Version="$(ProGpuWpfPackageVersion)" />
     <PackageReference Include="LibreWPF.Interop" Version="$(ProGpuPackageVersion)" />
@@ -41,6 +41,19 @@
     <PackageReference Include="ProGPU.Text" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Compute" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Transpiler" Version="$(ProGpuPackageVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package' And '$(ManagePackageVersionsCentrally)' == 'true'">
+    <PackageReference Include="$(ProGpuWpfManagedPackageId)" VersionOverride="$(ProGpuWpfManagedPackageVersion)" />
+    <PackageReference Include="LibreWPF.ProGPU" VersionOverride="$(ProGpuWpfPackageVersion)" />
+    <PackageReference Include="LibreWPF.Interop" VersionOverride="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Backend" VersionOverride="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.DirectX" VersionOverride="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Scene" VersionOverride="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Vector" VersionOverride="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Text" VersionOverride="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Compute" VersionOverride="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Transpiler" VersionOverride="$(ProGpuPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuWpfManagedReferenceRoot)' != ''">

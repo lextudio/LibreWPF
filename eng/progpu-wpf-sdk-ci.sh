@@ -33,6 +33,7 @@ fi
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
+sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
 mkdir -p "${package_output}"
 
 clean_preview_package_output() {
@@ -203,7 +204,7 @@ run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.SdkExternalSmokeHarness/Pr
 echo "Building Hello SDK app..."
 run_dotnet build "${repo_root}/samples/ProGPU.Wpf.HelloApp/ProGPU.Wpf.HelloApp.csproj" -v:minimal
 
-hello_output="${repo_root}/artifacts/bin/ProGPU.Wpf.HelloApp/Debug/net11.0-windows"
+hello_output="${repo_root}/artifacts/bin/ProGPU.Wpf.HelloApp/Debug/${sdk_sample_target_framework}"
 hello_apphost_name="$(apphost_name "ProGPU.Wpf.HelloApp")"
 if [[ ! -x "${hello_output}/${hello_apphost_name}" ]]; then
   echo "Expected Hello SDK apphost at ${hello_output}/${hello_apphost_name}" >&2
@@ -239,7 +240,7 @@ PROGPU_WPF_MVP_RUN_VALIDATE=1 \
 PROGPU_WPF_MVP_LIVE_VALIDATE=0 \
   run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
 
-mvp_output="${repo_root}/artifacts/bin/ProGPU.Wpf.MvpApp/Debug/net11.0-windows"
+mvp_output="${repo_root}/artifacts/bin/ProGPU.Wpf.MvpApp/Debug/${sdk_sample_target_framework}"
 mvp_apphost_name="$(apphost_name "ProGPU.Wpf.MvpApp")"
 if [[ ! -x "${mvp_output}/${mvp_apphost_name}" ]]; then
   echo "Expected MVP SDK apphost at ${mvp_output}/${mvp_apphost_name}" >&2

@@ -10,6 +10,8 @@ fi
 export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
 export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
 
+sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
+
 apphost_name() {
   local assembly_name="$1"
   case "$(uname -s 2>/dev/null || echo unknown)" in
@@ -44,7 +46,7 @@ echo "Running external no-source-change ProGPU WPF SDK smoke..."
 echo "Building SDK-switch smoke app..."
 "${dotnet}" build "${repo_root}/src/ProGPU.Wpf.SdkSwitchSmoke/ProGPU.Wpf.SdkSwitchSmoke.csproj" -v:minimal
 
-sdk_switch_output="${repo_root}/artifacts/bin/ProGPU.Wpf.SdkSwitchSmoke/Debug/net11.0-windows"
+sdk_switch_output="${repo_root}/artifacts/bin/ProGPU.Wpf.SdkSwitchSmoke/Debug/${sdk_sample_target_framework}"
 sdk_switch_apphost_name="$(apphost_name "ProGPU.Wpf.SdkSwitchSmoke")"
 if [[ ! -x "${sdk_switch_output}/${sdk_switch_apphost_name}" ]]; then
   echo "Expected SDK-switch smoke apphost at ${sdk_switch_output}/${sdk_switch_apphost_name}" >&2

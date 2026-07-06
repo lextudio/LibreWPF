@@ -1,7 +1,7 @@
 <Project Sdk="LibreWPF.Sdk/11.0.0-dev">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net11.0-windows</TargetFramework>
+    <TargetFramework>$(ProGpuWpfSdkSampleTargetFramework)</TargetFramework>
     <UseWPF>true</UseWPF>
     <XceedPaidToolkitPackageVersion>5.2.26322.8434</XceedPaidToolkitPackageVersion>
     <XceedPaidDataGridPackageVersion>7.3.26322.8481</XceedPaidDataGridPackageVersion>

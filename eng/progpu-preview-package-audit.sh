@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
+transport_target_framework="${PROGPU_WPF_TRANSPORT_TARGET_FRAMEWORK:-net10.0}"
 source "${repo_root}/eng/progpu-preview-package-list.sh"
 
 package_path() {
@@ -123,22 +124,23 @@ require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.PortableBootstrap.cs"
 require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.Win32Compat.c"
 
 transport_entries=(
-  lib/net11.0/WindowsBase.dll
-  lib/net11.0/PresentationCore.dll
-  lib/net11.0/PresentationFramework.dll
-  lib/net11.0/PresentationFramework.Fluent.dll
-  lib/net11.0/System.Xaml.dll
-  lib/net11.0/System.Windows.Controls.Ribbon.dll
-  lib/net11.0/System.Printing.dll
-  lib/net11.0/UIAutomationTypes.dll
-  ref/net11.0/WindowsBase.dll
-  ref/net11.0/PresentationCore.dll
-  ref/net11.0/PresentationFramework.dll
-  ref/net11.0/PresentationFramework.Fluent.dll
-  ref/net11.0/System.Xaml.dll
-  ref/net11.0/System.Windows.Controls.Ribbon.dll
-  ref/net11.0/System.Printing.dll
-  ref/net11.0/UIAutomationTypes.dll
+  "lib/${transport_target_framework}/WindowsBase.dll"
+  "lib/${transport_target_framework}/PresentationCore.dll"
+  "lib/${transport_target_framework}/PresentationFramework.dll"
+  "lib/${transport_target_framework}/PresentationFramework.Fluent.dll"
+  "lib/${transport_target_framework}/System.Xaml.dll"
+  "lib/${transport_target_framework}/System.Windows.Controls.Ribbon.dll"
+  "lib/${transport_target_framework}/System.Printing.dll"
+  "lib/${transport_target_framework}/UIAutomationTypes.dll"
+  "lib/${transport_target_framework}/System.Private.Windows.Core.dll"
+  "ref/${transport_target_framework}/WindowsBase.dll"
+  "ref/${transport_target_framework}/PresentationCore.dll"
+  "ref/${transport_target_framework}/PresentationFramework.dll"
+  "ref/${transport_target_framework}/PresentationFramework.Fluent.dll"
+  "ref/${transport_target_framework}/System.Xaml.dll"
+  "ref/${transport_target_framework}/System.Windows.Controls.Ribbon.dll"
+  "ref/${transport_target_framework}/System.Printing.dll"
+  "ref/${transport_target_framework}/UIAutomationTypes.dll"
 )
 
 for entry in "${transport_entries[@]}"; do
@@ -146,6 +148,6 @@ for entry in "${transport_entries[@]}"; do
 done
 
 require_entry LibreWPF.Transport "runtime.json"
-require_nuspec_contains LibreWPF.Transport "<group targetFramework=\"net11.0\" />"
+require_nuspec_contains LibreWPF.Transport "<group targetFramework=\"${transport_target_framework}\" />"
 
 echo "LibreWPF preview package audit succeeded for ${dev_package_version}."

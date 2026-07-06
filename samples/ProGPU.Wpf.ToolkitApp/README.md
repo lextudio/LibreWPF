@@ -3,7 +3,7 @@
 This sample exercises the public Xceed `Extended.Wpf.Toolkit` package through the custom LibreWPF SDK. The app project keeps the normal WPF migration shape:
 
 - `Project Sdk="LibreWPF.Sdk/11.0.0-dev"`
-- `TargetFramework=net11.0-windows`
+- `TargetFramework=net10.0-windows`
 - `UseWPF=true`
 - one `PackageReference` to `Extended.Wpf.Toolkit`
 

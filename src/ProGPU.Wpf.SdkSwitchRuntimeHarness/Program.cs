@@ -12,7 +12,7 @@ using System.Security.Cryptography;
 internal static class Program
 {
     private const string PackageVersion = "11.0.0-dev";
-    private const string SmokeTargetFramework = "net11.0-windows";
+    private const string SmokeTargetFramework = "net10.0-windows";
     private const string SmokeAssemblyName = "ProGPU.Wpf.SdkSwitchSmoke";
     private const string LibraryAssemblyName = "ProGPU.Wpf.SdkSwitchLibrary";
     private const string AppTypeName = "ProGPU.Wpf.SdkSwitchSmoke.App";
@@ -125,7 +125,7 @@ internal static class Program
             "Release",
             "LibreWPF.Transport",
             "lib",
-            "net11.0");
+            "net10.0");
         string debugPackagedWpfRoot = Path.Combine(
             repoRoot,
             "artifacts",
@@ -133,7 +133,7 @@ internal static class Program
             "Debug",
             "LibreWPF.Transport.Debug",
             "lib",
-            "net11.0");
+            "net10.0");
         string wpfRoot = Directory.Exists(releasePackagedWpfRoot)
             ? releasePackagedWpfRoot
             : Directory.Exists(debugPackagedWpfRoot)
@@ -192,7 +192,7 @@ internal static class Program
                 packageFeed,
                 "LibreWPF.Transport",
                 assemblyName,
-                "net11.0",
+                "net10.0",
                 repositoryAssemblyPath,
                 $"repository WPF transport {assemblyName}.dll");
         }
@@ -282,7 +282,7 @@ internal static class Program
                 packageFeed,
                 "LibreWPF.Transport",
                 assemblyName,
-                "net11.0");
+                "net10.0");
         }
 
         RequireAnyFile(
@@ -4853,7 +4853,7 @@ internal static class Program
             }
 
             path = TryFindAssembly(_appOutputRoot, fileName)
-                ?? TryFindArtifactAssembly(assemblyName.Name, "net11.0")
+                ?? TryFindArtifactAssembly(assemblyName.Name, "net10.0")
                 ?? TryFindArtifactAssembly(assemblyName.Name, "net10.0")
                 ?? _resolver.ResolveAssemblyToPath(assemblyName);
             return path is not null && File.Exists(path) ? path : null;

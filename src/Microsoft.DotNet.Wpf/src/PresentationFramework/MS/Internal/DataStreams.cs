@@ -239,7 +239,7 @@ namespace MS.Internal.AppModel
                             NrbfDecoder.Decode(dataStream, leaveOpen: true).TryGetFrameworkObject(out object val);
                             newValue = val;
                         }
-                        catch (Exception ex) when (!ex.IsCriticalException())
+                        catch (Exception ex) when (!MS.Internal.CriticalExceptions.IsCriticalException(ex))
                         {
                             // Being extra cautious here, but the Try method above should never throw in normal circumstances.
                             Debug.Fail($"Unexpected exception reading binary formatted data. {ex.Message}");

@@ -3,18 +3,30 @@
 
 #nullable enable
 
+#if PROGPU_WPF_ALIAS_WINCORE
+extern alias WinCore;
+#endif
+
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+#if PROGPU_WPF_ALIAS_WINCORE
+using WinCore::System.Private.Windows.Ole;
+using HRESULT = WinCore::Windows.Win32.Foundation.HRESULT;
+using BOOL = WinCore::Windows.Win32.Foundation.BOOL;
+using Com = WinCore::Windows.Win32.System.Com;
+using static WinCore::System.ArgumentValidation;
+#else
 using System.Private.Windows.Ole;
+using HRESULT = Windows.Win32.Foundation.HRESULT;
+using BOOL = Windows.Win32.Foundation.BOOL;
+using Com = Windows.Win32.System.Com;
+#endif
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices.ComTypes;
 using System.Windows.Media.Imaging;
 using System.Windows.Ole;
-using HRESULT = Windows.Win32.Foundation.HRESULT;
-using BOOL = Windows.Win32.Foundation.BOOL;
-using Com = Windows.Win32.System.Com;
 using ComTypes = System.Runtime.InteropServices.ComTypes;
 
 namespace System.Windows;

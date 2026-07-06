@@ -54,7 +54,7 @@ Existing WPF applications should be able to switch only the project SDK:
 <Project Sdk="LibreWPF.Sdk/11.0.0-dev">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net11.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 </Project>

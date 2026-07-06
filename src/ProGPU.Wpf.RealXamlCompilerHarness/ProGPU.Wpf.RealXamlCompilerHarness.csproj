@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net11.0</TargetFramework>
-    <RuntimeFrameworkVersion>11.0.0-preview.4.26210.111</RuntimeFrameworkVersion>
+    <TargetFramework>$(ProGpuWpfRuntimeHarnessTargetFramework)</TargetFramework>
+    <RuntimeFrameworkVersion Condition="&apos;$(ProGpuWpfRuntimeFrameworkVersion)&apos; != &apos;&apos;">$(ProGpuWpfRuntimeFrameworkVersion)</RuntimeFrameworkVersion>
     <AssemblyName>ProGPU.Wpf.RealXamlCompilerHarness</AssemblyName>
     <RootNamespace>ProGPU.Wpf.RealXamlCompilerHarness</RootNamespace>
     <ImplicitUsings>disable</ImplicitUsings>

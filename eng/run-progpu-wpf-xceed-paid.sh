@@ -10,6 +10,8 @@ fi
 export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
 export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
 
+sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
+
 hydrate_env_from_launchctl() {
   local name="$1"
   if [[ -n "${!name:-}" ]]; then
@@ -62,7 +64,7 @@ fi
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 sdk_package="${package_output}/LibreWPF.Sdk.11.0.0-dev.nupkg"
 xceed_project="${repo_root}/samples/ProGPU.Wpf.XceedPaidApp/ProGPU.Wpf.XceedPaidApp.csproj"
-xceed_output="${repo_root}/artifacts/bin/ProGPU.Wpf.XceedPaidApp/Debug/net11.0-windows"
+xceed_output="${repo_root}/artifacts/bin/ProGPU.Wpf.XceedPaidApp/Debug/${sdk_sample_target_framework}"
 
 apphost_name="ProGPU.Wpf.XceedPaidApp"
 case "$(uname -s 2>/dev/null || echo unknown)" in

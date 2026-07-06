@@ -19,7 +19,7 @@ internal static class Program
     private const string OriginalWpfSdk = "Microsoft.NET.Sdk";
     private const string OriginalWindowsDesktopWpfSdk = "Microsoft.NET.Sdk.WindowsDesktop";
     private const string SdkVersion = "11.0.0-dev";
-    private const string ExternalAppTargetFramework = "net11.0-windows";
+    private const string ExternalAppTargetFramework = "net10.0-windows";
     private const string AppAssemblyName = "ExternalSdkApp";
     private const string AppOutputAssemblyName = "ExternalSdkShell";
     private const string LibraryAssemblyName = "ExternalSdkLibrary";
@@ -90,25 +90,25 @@ internal static class Program
 
     private static readonly PackageAssemblyExpectation[] s_packageAssemblyExpectations =
     [
-        new("LibreWPF.Transport", "WindowsBase", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "System.Xaml", "net11.0", "Ecma"),
-        new("LibreWPF.Transport", "PresentationCore", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "PresentationFramework", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "PresentationUI", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "ReachFramework", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "System.Printing", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "UIAutomationTypes", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "UIAutomationProvider", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "System.Windows.Input.Manipulations", "net11.0", "Ecma"),
-        new("LibreWPF.Transport", "System.Windows.Primitives", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "PresentationFramework.Aero", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "PresentationFramework.Aero2", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "PresentationFramework.AeroLite", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "PresentationFramework.Classic", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "PresentationFramework.Fluent", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "PresentationFramework.Luna", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "PresentationFramework.Royale", "net11.0", "WPF"),
-        new("LibreWPF.Transport", "System.Windows.Controls.Ribbon", "net11.0", "Ecma"),
+        new("LibreWPF.Transport", "WindowsBase", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "System.Xaml", "net10.0", "Ecma"),
+        new("LibreWPF.Transport", "PresentationCore", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationUI", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "ReachFramework", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "System.Printing", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "UIAutomationTypes", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "UIAutomationProvider", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "System.Windows.Input.Manipulations", "net10.0", "Ecma"),
+        new("LibreWPF.Transport", "System.Windows.Primitives", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Aero", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Aero2", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.AeroLite", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Classic", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Fluent", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Luna", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "PresentationFramework.Royale", "net10.0", "WPF"),
+        new("LibreWPF.Transport", "System.Windows.Controls.Ribbon", "net10.0", "Ecma"),
         new("LibreWPF.ProGPU", "ProGPU.Wpf", "net10.0", "ProGPU"),
         new("LibreWPF.Interop", "ProGPU.Wpf.Interop", "net10.0", "ProGPU"),
         new("ProGPU.Backend", "ProGPU.Backend", "net10.0", "ProGPU"),
@@ -394,7 +394,7 @@ internal static class Program
                 packageFeed,
                 "LibreWPF.Transport",
                 assemblyName,
-                "net11.0",
+                "net10.0",
                 repositoryAssemblyPath,
                 $"repository WPF transport {assemblyName}.dll");
         }
@@ -463,7 +463,7 @@ internal static class Program
             "Release",
             "LibreWPF.Transport",
             "lib",
-            "net11.0",
+            "net10.0",
             assemblySimpleName + ".dll");
         if (File.Exists(releasePath))
         {
@@ -477,7 +477,7 @@ internal static class Program
             "Debug",
             "LibreWPF.Transport.Debug",
             "lib",
-            "net11.0",
+            "net10.0",
             assemblySimpleName + ".dll");
     }
 
@@ -17702,7 +17702,7 @@ internal static class Program
                 packageFeed,
                 "LibreWPF.Transport",
                 assemblyName,
-                "net11.0");
+                "net10.0");
         }
 
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("wgpu"), "external SDK output native WebGPU runtime asset");

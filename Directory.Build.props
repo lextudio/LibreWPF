@@ -7,8 +7,16 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags Condition="'$(PackageTags)' == ''">librewpf;progpu;webgpu;silk.net;xaml;cross-platform;desktop</PackageTags>
     <WindowsDesktopARM64Support>true</WindowsDesktopARM64Support>
-    <TargetFramework>net11.0</TargetFramework>
-    <TargetFrameworkVersion>11.0</TargetFrameworkVersion>
+    <ProGpuWpfTargetFramework Condition="'$(ProGpuWpfTargetFramework)' == ''">net10.0</ProGpuWpfTargetFramework>
+    <ProGpuWpfTargetFrameworkVersion Condition="'$(ProGpuWpfTargetFrameworkVersion)' == ''">10.0</ProGpuWpfTargetFrameworkVersion>
+    <ProGpuWpfSdkSampleTargetFramework Condition="'$(ProGpuWpfSdkSampleTargetFramework)' == ''">net10.0-windows</ProGpuWpfSdkSampleTargetFramework>
+    <ProGpuWpfRuntimeHarnessTargetFramework Condition="'$(ProGpuWpfRuntimeHarnessTargetFramework)' == ''">net10.0</ProGpuWpfRuntimeHarnessTargetFramework>
+    <ProGpuWpfSkipMissingPrivateWinFormsReferences Condition="'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == '' And '$(ProGpuWpfTargetFramework)' == 'net10.0'">true</ProGpuWpfSkipMissingPrivateWinFormsReferences>
+    <RunRefApiCompat Condition="'$(RunRefApiCompat)' == '' And '$(ProGpuWpfTargetFramework)' == 'net10.0'">false</RunRefApiCompat>
+    <DefineConstants Condition="'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true'">$(DefineConstants);PROGPU_WPF_ALIAS_WINCORE</DefineConstants>
+    <BundledNETCoreAppTargetFramework Condition="'$(BundledNETCoreAppTargetFramework)' == ''">$(ProGpuWpfTargetFramework)</BundledNETCoreAppTargetFramework>
+    <TargetFramework>$(ProGpuWpfTargetFramework)</TargetFramework>
+    <TargetFrameworkVersion>$(ProGpuWpfTargetFrameworkVersion)</TargetFrameworkVersion>
     <BuildWithNetFrameworkHostedCompiler>true</BuildWithNetFrameworkHostedCompiler>
     <PublishWindowsPdb>false</PublishWindowsPdb>
     <TestRunnerName>XUnitV3</TestRunnerName>
@@ -37,5 +45,9 @@
   <Import Sdk="Microsoft.DotNet.Arcade.Wpf.Sdk"
           Project="Sdk.props"
           Condition="!Exists('$(WpfArcadeSdkProps)') Or !Exists('$(WpfArcadeSdkTargets)')"/>
+
+  <PropertyGroup>
+    <BundledNETCoreAppTargetFramework>$(ProGpuWpfTargetFramework)</BundledNETCoreAppTargetFramework>
+  </PropertyGroup>
 
 </Project>

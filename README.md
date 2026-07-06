@@ -17,7 +17,7 @@ After adding the preview feed, existing WPF projects should only need the SDK ch
 <Project Sdk="LibreWPF.Sdk/11.0.0-dev">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net11.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 </Project>

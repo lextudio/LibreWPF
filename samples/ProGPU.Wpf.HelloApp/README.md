@@ -3,7 +3,7 @@
 This is the smallest runnable SDK-switched WPF app in the repo. The project file uses only:
 
 - `Project Sdk="LibreWPF.Sdk/11.0.0-dev"`
-- `TargetFramework=net11.0-windows`
+- `TargetFramework=net10.0-windows`
 - `UseWPF=true`
 
 The app uses compiled `App.xaml`, `StartupUri`, a compiled `Window`, basic binding, collection binding, dynamic resources, and a button event handler without any app-side ProGPU APIs.

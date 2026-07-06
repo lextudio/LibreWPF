@@ -1443,6 +1443,14 @@
     <PackageReference Include="StbImageSharp" Version="$(StbImageSharpPackageVersion)" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true'">
+    <PackageReference Include="$(SystemDrawingCommonPackage)" Version="$(SystemDrawingCommonVersion)" GeneratePathProperty="true" ExcludeAssets="all" />
+    <Reference Include="System.Private.Windows.Core"
+               HintPath="$(PkgSystem_Drawing_Common)\lib\$(TargetFramework)\System.Private.Windows.Core.dll"
+               Aliases="WinCore"
+               Private="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- required for internals access -->
     <ProjectReference Include="$(WpfSourceDir)WindowsBase\WindowsBase.csproj" />

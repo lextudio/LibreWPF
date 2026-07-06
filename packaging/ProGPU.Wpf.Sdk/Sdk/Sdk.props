@@ -29,6 +29,10 @@
     <ProGpuWpfClearMutablePackageOutputs Condition="'$(ProGpuWpfClearMutablePackageOutputs)' == '' And ('$([System.String]::Copy(`$(ProGpuWpfPackageVersion)`).Contains(`-dev`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuWpfManagedPackageVersion)`).Contains(`-dev`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuPackageVersion)`).Contains(`-dev`))' == 'True')">true</ProGpuWpfClearMutablePackageOutputs>
     <ProGpuWpfClearMutablePackageOutputs Condition="'$(ProGpuWpfClearMutablePackageOutputs)' == ''">false</ProGpuWpfClearMutablePackageOutputs>
     <ProGpuWpfSilkNetVersion Condition="'$(ProGpuWpfSilkNetVersion)' == ''">2.23.0</ProGpuWpfSilkNetVersion>
+    <ProGpuWpfSystemConfigurationConfigurationManagerVersion Condition="'$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">10.0.0</ProGpuWpfSystemConfigurationConfigurationManagerVersion>
+    <ProGpuWpfSystemFormatsNrbfVersion Condition="'$(ProGpuWpfSystemFormatsNrbfVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">10.0.0</ProGpuWpfSystemFormatsNrbfVersion>
+    <ProGpuWpfSystemIOPackagingVersion Condition="'$(ProGpuWpfSystemIOPackagingVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">10.0.0</ProGpuWpfSystemIOPackagingVersion>
+    <ProGpuWpfSystemWindowsExtensionsVersion Condition="'$(ProGpuWpfSystemWindowsExtensionsVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">10.0.0</ProGpuWpfSystemWindowsExtensionsVersion>
     <ProGpuWpfSystemConfigurationConfigurationManagerVersion Condition="'$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemConfigurationConfigurationManagerVersion>
     <ProGpuWpfSystemFormatsNrbfVersion Condition="'$(ProGpuWpfSystemFormatsNrbfVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemFormatsNrbfVersion>
     <ProGpuWpfSystemIOPackagingVersion Condition="'$(ProGpuWpfSystemIOPackagingVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemIOPackagingVersion>

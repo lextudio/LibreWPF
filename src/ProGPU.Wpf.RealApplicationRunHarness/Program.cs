@@ -6277,12 +6277,12 @@ internal static class Program
             SearchOption.AllDirectories);
 
         string? selected = candidates
-            .Where(path => path.Contains($"{Path.DirectorySeparatorChar}net11.0{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(path => path.Contains($"{Path.DirectorySeparatorChar}net10.0{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .OrderByDescending(File.GetLastWriteTimeUtc)
             .FirstOrDefault();
 
         return selected
-            ?? throw new FileNotFoundException($"Could not locate a net11.0 {assemblyName}.dll artifact.", artifactsRoot);
+            ?? throw new FileNotFoundException($"Could not locate a net10.0 {assemblyName}.dll artifact.", artifactsRoot);
     }
 
     private static string? TryFindArtifactAssembly(string repoRoot, AssemblyName assemblyName)
@@ -6300,7 +6300,7 @@ internal static class Program
 
         return Directory
             .GetFiles(artifactsRoot, $"{assemblyName.Name}.dll", SearchOption.AllDirectories)
-            .Where(path => path.Contains($"{Path.DirectorySeparatorChar}net11.0{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(path => path.Contains($"{Path.DirectorySeparatorChar}net10.0{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .OrderByDescending(File.GetLastWriteTimeUtc)
             .FirstOrDefault();
     }

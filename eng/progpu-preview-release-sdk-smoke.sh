@@ -41,12 +41,13 @@ mkdir -p "${feed_dir}"
 tar -xzf "${bundle_output}" -C "${feed_dir}"
 project_dir="${feed_dir}/BundleSdkSmoke"
 mkdir -p "${project_dir}"
+sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
 
 cat >"${project_dir}/BundleSdkSmoke.csproj" <<PROJECT
 <Project Sdk="LibreWPF.Sdk/${dev_package_version}">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net11.0-windows</TargetFramework>
+    <TargetFramework>${sdk_sample_target_framework}</TargetFramework>
     <UseWPF>true</UseWPF>
     <AssemblyName>BundleSdkSmoke</AssemblyName>
     <RootNamespace>BundleSdkSmoke</RootNamespace>

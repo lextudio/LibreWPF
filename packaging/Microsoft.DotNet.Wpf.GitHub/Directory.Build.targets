@@ -10,6 +10,14 @@
     <_IsServicingRelease Condition="'$(PreReleaseVersionLabel)' == 'servicing'">true</_IsServicingRelease>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true' And $(PackageName.Contains('LibreWPF.Transport'))">
+    <PackageReference Include="$(SystemDrawingCommonPackage)"
+                      Version="$(SystemDrawingCommonVersion)"
+                      GeneratePathProperty="true"
+                      ExcludeAssets="all"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
   <!-- 
     Inspect the following NuSpecs and validate the assembly versions
         * .\artifacts\packages\Release\NonShipping\LibreWPF.Transport.<version>.nuspec produced by LibreWPF.Transport.ArchNeutral.csproj
@@ -136,7 +144,7 @@
 
   <Target Name="AddManagedWpfTransportPrivateWinFormsPayload"
           BeforeTargets="CreateContentFolder"
-          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('LibreWPF.Transport'))">
+          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('LibreWPF.Transport')) And '$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' != 'true'">
     <PropertyGroup>
       <_ManagedWpfTransportLibRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\$(TargetFramework)</_ManagedWpfTransportLibRoot>
       <_PrivateWinFormsLibRoot>$(PkgMicrosoft_Private_Winforms)\lib\$(TargetFramework)</_PrivateWinFormsLibRoot>
@@ -158,6 +166,35 @@
     <MakeDir Directories="$(_ManagedWpfTransportLibRoot)" />
     <Copy
         SourceFiles="@(_ManagedWpfTransportPrivateWinFormsPayload)"
+        DestinationFolder="$(_ManagedWpfTransportLibRoot)"
+        SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="AddManagedWpfTransportSystemDrawingCorePayload"
+          BeforeTargets="CreateContentFolder"
+          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('LibreWPF.Transport')) And '$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true'">
+    <PropertyGroup>
+      <_ManagedWpfTransportLibRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\$(TargetFramework)</_ManagedWpfTransportLibRoot>
+      <_SystemDrawingCommonPackageRoot Condition="'$(PkgSystem_Drawing_Common)' != ''">$(PkgSystem_Drawing_Common)</_SystemDrawingCommonPackageRoot>
+      <_SystemDrawingCommonPackageRoot Condition="'$(_SystemDrawingCommonPackageRoot)' == ''">$(NuGetPackageRoot)system.drawing.common\$(SystemDrawingCommonVersion)</_SystemDrawingCommonPackageRoot>
+      <_SystemDrawingCommonLibRoot>$(_SystemDrawingCommonPackageRoot)\lib\$(TargetFramework)</_SystemDrawingCommonLibRoot>
+    </PropertyGroup>
+
+    <Error
+        Condition="!Exists('$(_SystemDrawingCommonLibRoot)\System.Private.Windows.Core.dll')"
+        Text="System.Drawing.Common is missing '$(_SystemDrawingCommonLibRoot)\System.Private.Windows.Core.dll', which is required by the .NET 10 LibreWPF transport package." />
+
+    <ItemGroup>
+      <_ManagedWpfTransportSystemDrawingCorePayload Include="$(_SystemDrawingCommonLibRoot)\System.Private.Windows.Core.dll" />
+      <_ManagedWpfTransportSystemDrawingCorePayload Include="$(_SystemDrawingCommonLibRoot)\System.Private.Windows.Core.pdb"
+                                                    Condition="Exists('$(_SystemDrawingCommonLibRoot)\System.Private.Windows.Core.pdb')" />
+      <_ManagedWpfTransportSystemDrawingCorePayload Include="$(_SystemDrawingCommonLibRoot)\System.Private.Windows.Core.xml"
+                                                    Condition="Exists('$(_SystemDrawingCommonLibRoot)\System.Private.Windows.Core.xml')" />
+    </ItemGroup>
+
+    <MakeDir Directories="$(_ManagedWpfTransportLibRoot)" />
+    <Copy
+        SourceFiles="@(_ManagedWpfTransportSystemDrawingCorePayload)"
         DestinationFolder="$(_ManagedWpfTransportLibRoot)"
         SkipUnchangedFiles="true" />
   </Target>

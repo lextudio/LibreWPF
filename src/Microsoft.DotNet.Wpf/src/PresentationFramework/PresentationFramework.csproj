@@ -1386,6 +1386,14 @@
     <PackageReference Include="System.Formats.Nrbf" Version="$(SystemFormatsNrbfVersion)" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true'">
+    <PackageReference Include="$(SystemDrawingCommonPackage)" Version="$(SystemDrawingCommonVersion)" GeneratePathProperty="true" ExcludeAssets="all" />
+    <Reference Include="System.Private.Windows.Core"
+               HintPath="$(PkgSystem_Drawing_Common)\lib\$(TargetFramework)\System.Private.Windows.Core.dll"
+               Aliases="WinCore"
+               Private="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="$(WpfSourceDir)..\..\..\external\ProGPU\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj" />
     <ProjectReference Include="$(WpfSourceDir)PresentationCore\PresentationCore.csproj" />

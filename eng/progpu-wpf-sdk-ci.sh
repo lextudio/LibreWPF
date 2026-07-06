@@ -32,7 +32,7 @@ if [[ -z "${ProGpuWpfRuntimeFrameworkVersion:-}" ]]; then
 fi
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
+dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.1}"
 sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
 mkdir -p "${package_output}"
 
@@ -53,7 +53,12 @@ pack_project() {
   rm -f \
     "${package_output}/${package_id}.${dev_package_version}.nupkg" \
     "${package_output}/${package_id}.${dev_package_version}.snupkg"
-  "${dotnet}" pack "${repo_root}/${project}" -c Release -o "${package_output}" -v:minimal
+  "${dotnet}" pack "${repo_root}/${project}" \
+    -c Release \
+    -o "${package_output}" \
+    -v:minimal \
+    -p:Version="${dev_package_version}" \
+    -p:PackageVersion="${dev_package_version}"
 }
 
 build_project() {

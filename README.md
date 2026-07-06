@@ -14,7 +14,7 @@ Current focus areas:
 After adding the preview feed, existing WPF projects should only need the SDK change:
 
 ```xml
-<Project Sdk="LibreWPF.Sdk/11.0.0-dev">
+<Project Sdk="LibreWPF.Sdk/0.1.0-preview.1">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -50,7 +50,7 @@ The preview package set is defined in `eng/progpu-preview-package-list.sh` and v
 ## Build And Release
 
 ```bash
-PROGPU_WPF_DEV_PACKAGE_VERSION=11.0.0-dev ./eng/progpu-wpf-sdk-ci.sh
+PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.1 ./eng/progpu-wpf-sdk-ci.sh
 ```
 
 The SDK CI script builds ProGPU runtime packages, managed WPF transport assemblies, `LibreWPF.ProGPU`, and `LibreWPF.Sdk`, then audits the packages, writes the preview manifest, creates and verifies the release bundle, and runs package-mode SDK smoke tests.

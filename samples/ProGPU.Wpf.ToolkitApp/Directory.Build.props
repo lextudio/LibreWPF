@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ProGpuWpfToolkitPackageVersion>11.0.0-dev</ProGpuWpfToolkitPackageVersion>
+    <ProGpuWpfToolkitPackageVersion>0.1.0-preview.1</ProGpuWpfToolkitPackageVersion>
     <RestorePackagesPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../artifacts/nuget/ProGPU.Wpf.ToolkitApp'))</RestorePackagesPath>
     <RestoreForce>true</RestoreForce>
     <RestoreForceEvaluate>true</RestoreForceEvaluate>

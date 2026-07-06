@@ -11,7 +11,7 @@ using System.Security.Cryptography;
 
 internal static class Program
 {
-    private const string PackageVersion = "11.0.0-dev";
+    private const string PackageVersion = "0.1.0-preview.1";
     private const string SmokeTargetFramework = "net10.0-windows";
     private const string SmokeAssemblyName = "ProGPU.Wpf.SdkSwitchSmoke";
     private const string LibraryAssemblyName = "ProGPU.Wpf.SdkSwitchLibrary";

@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ProGpuWpfSciChartPackageVersion>11.0.0-dev</ProGpuWpfSciChartPackageVersion>
+    <ProGpuWpfSciChartPackageVersion>0.1.0-preview.1</ProGpuWpfSciChartPackageVersion>
     <RestorePackagesPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../artifacts/nuget/ProGPU.Wpf.SciChartMvpApp'))</RestorePackagesPath>
     <RestoreForce>true</RestoreForce>
     <RestoreForceEvaluate>true</RestoreForceEvaluate>

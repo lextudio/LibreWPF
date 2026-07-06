@@ -11,9 +11,10 @@
     <ProGpuWpfTargetFrameworkVersion Condition="'$(ProGpuWpfTargetFrameworkVersion)' == ''">10.0</ProGpuWpfTargetFrameworkVersion>
     <ProGpuWpfSdkSampleTargetFramework Condition="'$(ProGpuWpfSdkSampleTargetFramework)' == ''">net10.0-windows</ProGpuWpfSdkSampleTargetFramework>
     <ProGpuWpfRuntimeHarnessTargetFramework Condition="'$(ProGpuWpfRuntimeHarnessTargetFramework)' == ''">net10.0</ProGpuWpfRuntimeHarnessTargetFramework>
+    <ProGpuWpfPortableNetCoreAppRefVersion Condition="'$(ProGpuWpfPortableNetCoreAppRefVersion)' == '' And '$(ProGpuWpfTargetFramework)' == 'net10.0'">10.0.5</ProGpuWpfPortableNetCoreAppRefVersion>
     <ProGpuWpfSkipMissingPrivateWinFormsReferences Condition="'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == '' And '$(ProGpuWpfTargetFramework)' == 'net10.0'">true</ProGpuWpfSkipMissingPrivateWinFormsReferences>
     <RunRefApiCompat Condition="'$(RunRefApiCompat)' == '' And '$(ProGpuWpfTargetFramework)' == 'net10.0'">false</RunRefApiCompat>
-    <DefineConstants Condition="'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true'">$(DefineConstants);PROGPU_WPF_ALIAS_WINCORE</DefineConstants>
+    <DefineConstants Condition="'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true'">$(DefineConstants);PROGPU_WPF_ALIAS_WINCORE;PROGPU_WPF_PORTABLE_NO_WINFORMS</DefineConstants>
     <BundledNETCoreAppTargetFramework Condition="'$(BundledNETCoreAppTargetFramework)' == ''">$(ProGpuWpfTargetFramework)</BundledNETCoreAppTargetFramework>
     <TargetFramework>$(ProGpuWpfTargetFramework)</TargetFramework>
     <TargetFrameworkVersion>$(ProGpuWpfTargetFrameworkVersion)</TargetFrameworkVersion>

@@ -72,6 +72,65 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void PresentationUIPortableBuildUsesWinFormsFreeDialogStubs()
+    {
+        var projectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationUI",
+            "PresentationUI.csproj");
+        var document = XDocument.Load(projectPath);
+
+        AssertCompileCondition(
+            document,
+            @"MS\Internal\Documents\DocumentSignatureManager.cs",
+            "'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' != 'true'");
+        AssertCompileCondition(
+            document,
+            @"MS\Internal\Documents\DocumentSignatureManager.Portable.cs",
+            "'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true'");
+        AssertCompileCondition(
+            document,
+            @"MS\Internal\Documents\RightsManagementManager.cs",
+            "'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' != 'true'");
+        AssertCompileCondition(
+            document,
+            @"MS\Internal\Documents\RightsManagementManager.Portable.cs",
+            "'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true'");
+        AssertCompileCondition(
+            document,
+            @"MS\Internal\Documents\Application\DocumentPropertiesDialog.cs",
+            "'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' != 'true'");
+        AssertCompileCondition(
+            document,
+            @"MS\Internal\Documents\CredentialManagerDialog.cs",
+            "'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' != 'true'");
+        AssertCompileCondition(
+            document,
+            @"MS\Internal\Documents\RMPublishingDialog.cs",
+            "'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' != 'true'");
+        AssertCompileCondition(
+            document,
+            @"MS\Internal\Documents\SignatureSummaryDialog.cs",
+            "'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' != 'true'");
+        AssertCompileCondition(
+            document,
+            @"MS\Internal\Documents\SigningDialog.cs",
+            "'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' != 'true'");
+
+        var winFormsReferenceGroup = Assert.Single(
+            document.Descendants("ItemGroup"),
+            itemGroup => itemGroup.Elements("MicrosoftPrivateWinFormsReference").Any());
+        Assert.Equal("'$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' != 'true'", winFormsReferenceGroup.Attribute("Condition")?.Value);
+
+        var rootPath = Path.GetDirectoryName(FindRepoPath("README.md"))!;
+        var rootPropsPath = Path.Combine(rootPath, "Directory.Build.props");
+        var rootProps = File.ReadAllText(rootPropsPath);
+        Assert.Contains("PROGPU_WPF_PORTABLE_NO_WINFORMS", rootProps, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ProGpuWpfRenderDataCatalogUsesTypedDrawingReplayTerminology()
     {
         var sourcePath = FindRepoPath(
@@ -83,6 +142,19 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("TypedDrawingReplay", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ReflectionReplay", source, StringComparison.Ordinal);
+    }
+
+    private static void AssertCompileCondition(XDocument document, string includePath, string condition)
+    {
+        var item = Assert.Single(
+            document.Descendants("Compile"),
+            compile =>
+            {
+                var include = compile.Attribute("Include")?.Value.Replace('/', '\\');
+                return string.Equals(include, includePath, StringComparison.OrdinalIgnoreCase);
+            });
+
+        Assert.Equal(condition, item.Attribute("Condition")?.Value);
     }
 
     [Fact]
@@ -2772,12 +2844,14 @@ public sealed class WpfManagedProjectGraphTests
             "System.Windows.Controls.Ribbon-ref.csproj");
         var repoRoot = Path.GetDirectoryName(FindRepoPath("README.md"))!;
         var rootDirectoryBuildPropsPath = Path.Combine(repoRoot, "Directory.Build.props");
+        var rootDirectoryBuildTargetsPath = Path.Combine(repoRoot, "Directory.Build.targets");
         var realPresentationCoreHarnessProjectPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.RealPresentationCoreHarness",
             "ProGPU.Wpf.RealPresentationCoreHarness.csproj");
 
         var rootDirectoryBuildProps = XDocument.Load(rootDirectoryBuildPropsPath);
+        var rootDirectoryBuildTargets = XDocument.Load(rootDirectoryBuildTargetsPath);
         var systemXamlProject = XDocument.Load(systemXamlProjectPath);
         var presentationBuildTasksProject = XDocument.Load(presentationBuildTasksProjectPath);
         var presentationFrameworkProject = XDocument.Load(presentationFrameworkProjectPath);
@@ -2801,6 +2875,14 @@ public sealed class WpfManagedProjectGraphTests
             rootDirectoryBuildProps.Descendants("PbtTfm"),
             property => string.Equals(property.Value, "$(BundledNETCoreAppTargetFramework)", StringComparison.Ordinal)
                 && string.Equals(property.Attribute("Condition")?.Value, "'$(MSBuildRuntimeType)' == 'Core'", StringComparison.Ordinal));
+        Assert.Contains(
+            rootDirectoryBuildProps.Descendants("ProGpuWpfPortableNetCoreAppRefVersion"),
+            property => string.Equals(property.Value, "10.0.5", StringComparison.Ordinal)
+                && string.Equals(property.Attribute("Condition")?.Value, "'$(ProGpuWpfPortableNetCoreAppRefVersion)' == '' And '$(ProGpuWpfTargetFramework)' == 'net10.0'", StringComparison.Ordinal));
+        Assert.Contains(
+            rootDirectoryBuildTargets.Descendants("MicrosoftNETCoreAppRefVersion"),
+            property => string.Equals(property.Value, "$(ProGpuWpfPortableNetCoreAppRefVersion)", StringComparison.Ordinal)
+                && string.Equals(property.Parent?.Attribute("Condition")?.Value, "'$(ProGpuWpfPortableNetCoreAppRefVersion)' != ''", StringComparison.Ordinal));
         AssertCompileInclude(presentationBuildTasksProject, @"MS\Internal\MarkupCompiler\MarkupCompiler.cs");
         AssertCompileInclude(presentationBuildTasksProject, @"MS\Internal\MarkupCompiler\ParserExtension.cs");
         AssertCompileInclude(presentationBuildTasksProject, @"Microsoft\Build\Tasks\Windows\MarkupCompilePass1.cs");
@@ -17021,6 +17103,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new(\"LibreWPF.Interop\", \"ProGPU.Wpf.Interop\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"ProGPU.DirectX\", \"ProGPU.DirectX\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetExpectedPackageAssemblyVersion(expectation)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("StringComparer.Ordinal.Equals(expectation.PublicKeyTokenGroup, \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("return new Version(0, 1, 0, 0);", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("return new Version(11, 0, 0, 0);", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssemblyName.GetAssemblyName(tempPath)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Expected {description} assembly to have a public key token.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(expectedAssemblyVersion", externalSdkHarnessProgram, StringComparison.Ordinal);

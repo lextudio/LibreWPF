@@ -325,11 +325,11 @@ internal static class Program
 
     private static void ValidatePackageAssemblyIdentities(string packageFeed)
     {
-        var expectedAssemblyVersion = new Version(11, 0, 0, 0);
         var publicKeyTokensByGroup = new Dictionary<string, string>(StringComparer.Ordinal);
 
         foreach (PackageAssemblyExpectation expectation in s_packageAssemblyExpectations)
         {
+            Version expectedAssemblyVersion = GetExpectedPackageAssemblyVersion(expectation);
             string packagePath = Path.Combine(packageFeed, $"{expectation.PackageId}.{SdkVersion}.nupkg");
             string description = $"{expectation.PackageId}/{expectation.AssemblySimpleName}";
             RequireFile(packagePath, $"{description} package");
@@ -365,6 +365,16 @@ internal static class Program
                 publicKeyTokensByGroup.Add(expectation.PublicKeyTokenGroup, publicKeyToken);
             }
         }
+    }
+
+    private static Version GetExpectedPackageAssemblyVersion(PackageAssemblyExpectation expectation)
+    {
+        if (StringComparer.Ordinal.Equals(expectation.PublicKeyTokenGroup, "ProGPU"))
+        {
+            return new Version(0, 1, 0, 0);
+        }
+
+        return new Version(11, 0, 0, 0);
     }
 
     private static void ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(string repoRoot, string packageFeed)

@@ -25,6 +25,14 @@
     <None Include="README.md" Pack="true" PackagePath="\" />
     <None Include="Sdk\**\*" Pack="true" PackagePath="Sdk\%(RecursiveDir)" />
     <None Include="targets\**\*" Pack="true" PackagePath="targets\%(RecursiveDir)" />
+    <None Include="$(ArtifactsBinDir)PresentationBuildTasks\$(Configuration)\net10.0\**\*"
+          Pack="true"
+          PackagePath="tools\net10.0"
+          Visible="false" />
+    <None Include="$(ArtifactsBinDir)PresentationBuildTasks\$(Configuration)\net472\**\*"
+          Pack="true"
+          PackagePath="tools\net472"
+          Visible="false" />
   </ItemGroup>
 
   <ItemGroup>

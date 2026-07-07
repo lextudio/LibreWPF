@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -195,6 +196,237 @@ typedef struct progpu_point
     int32_t y;
 } progpu_point;
 
+typedef struct progpu_open_file_name_a
+{
+    int32_t struct_size;
+    progpu_intptr owner;
+    progpu_intptr instance;
+    char* filter;
+    char* custom_filter;
+    int32_t max_cust_filter;
+    int32_t filter_index;
+    char* file;
+    int32_t max_file;
+    char* file_title;
+    int32_t max_file_title;
+    char* initial_dir;
+    char* title;
+    int32_t flags;
+    int16_t file_offset;
+    int16_t file_extension;
+    char* def_ext;
+    progpu_intptr cust_data;
+    progpu_intptr hook;
+    char* template_name;
+} progpu_open_file_name_a;
+
+typedef struct progpu_open_file_name_w
+{
+    int32_t struct_size;
+    progpu_intptr owner;
+    progpu_intptr instance;
+    uint16_t* filter;
+    uint16_t* custom_filter;
+    int32_t max_cust_filter;
+    int32_t filter_index;
+    uint16_t* file;
+    int32_t max_file;
+    uint16_t* file_title;
+    int32_t max_file_title;
+    uint16_t* initial_dir;
+    uint16_t* title;
+    int32_t flags;
+    int16_t file_offset;
+    int16_t file_extension;
+    uint16_t* def_ext;
+    progpu_intptr cust_data;
+    progpu_intptr hook;
+    uint16_t* template_name;
+} progpu_open_file_name_w;
+
+static void progpu_copy_dialog_title(char* destination, size_t destination_count, const char* title, const char* fallback)
+{
+    if (destination == 0 || destination_count == 0)
+    {
+        return;
+    }
+
+    const char* source = title != 0 && title[0] != 0 ? title : fallback;
+    size_t position = 0;
+    for (; source[position] != 0 && position + 2 < destination_count; ++position)
+    {
+        char value = source[position];
+        if (value == '"' || value == '\\')
+        {
+            destination[position++] = '\\';
+            if (position + 1 >= destination_count)
+            {
+                break;
+            }
+        }
+
+        destination[position] = value;
+    }
+
+    destination[position] = 0;
+}
+
+static void progpu_trim_process_output(char* value)
+{
+    if (value == 0)
+    {
+        return;
+    }
+
+    size_t length = strlen(value);
+    while (length > 0)
+    {
+        char c = value[length - 1];
+        if (c != '\r' && c != '\n' && c != ' ' && c != '\t')
+        {
+            break;
+        }
+
+        value[--length] = 0;
+    }
+}
+
+static int32_t progpu_run_dialog_process(int save, const char* title, char* result, size_t result_count)
+{
+    if (result == 0 || result_count == 0)
+    {
+        return 0;
+    }
+
+    result[0] = 0;
+
+    const char* forced_result = getenv(save ? "PROGPU_WPF_WIN32_SAVE_FILE_NAME" : "PROGPU_WPF_WIN32_OPEN_FILE_NAME");
+    if (forced_result == 0 || forced_result[0] == 0)
+    {
+        forced_result = getenv("PROGPU_WPF_WIN32_FILE_DIALOG_RESULT");
+    }
+
+    if (forced_result != 0 && forced_result[0] != 0)
+    {
+        strncpy(result, forced_result, result_count - 1);
+        result[result_count - 1] = 0;
+        return 1;
+    }
+
+#if defined(__APPLE__)
+    char escaped_title[512];
+    progpu_copy_dialog_title(escaped_title, sizeof(escaped_title), title, save ? "Save File" : "Open File");
+
+    char command[1024];
+    if (save)
+    {
+        snprintf(
+            command,
+            sizeof(command),
+            "osascript -e 'POSIX path of (choose file name default name \"untitled\" with prompt \"%s\")' 2>/dev/null",
+            escaped_title);
+    }
+    else
+    {
+        snprintf(
+            command,
+            sizeof(command),
+            "osascript -e 'POSIX path of (choose file with prompt \"%s\")' 2>/dev/null",
+            escaped_title);
+    }
+
+    FILE* pipe = popen(command, "r");
+    if (pipe == 0)
+    {
+        return 0;
+    }
+
+    char* read_result = fgets(result, (int)result_count, pipe);
+    int status = pclose(pipe);
+    if (read_result == 0 || status != 0)
+    {
+        result[0] = 0;
+        return 0;
+    }
+
+    progpu_trim_process_output(result);
+    return result[0] != 0;
+#else
+    (void)save;
+    (void)title;
+    return 0;
+#endif
+}
+
+static void progpu_set_file_offsets_a(progpu_open_file_name_a* ofn, const char* path)
+{
+    const char* file_name = strrchr(path, '/');
+    file_name = file_name == 0 ? path : file_name + 1;
+    ofn->file_offset = (int16_t)(file_name - path);
+
+    const char* extension = strrchr(file_name, '.');
+    ofn->file_extension = extension == 0 ? 0 : (int16_t)(extension - path + 1);
+}
+
+static int32_t progpu_write_open_file_name_a(progpu_open_file_name_a* ofn, const char* path)
+{
+    if (ofn == 0 || ofn->file == 0 || ofn->max_file <= 0 || path == 0 || path[0] == 0)
+    {
+        return 0;
+    }
+
+    strncpy(ofn->file, path, (size_t)ofn->max_file - 1);
+    ofn->file[ofn->max_file - 1] = 0;
+    progpu_set_file_offsets_a(ofn, ofn->file);
+    return 1;
+}
+
+static int32_t progpu_write_open_file_name_w(progpu_open_file_name_w* ofn, const char* path)
+{
+    if (ofn == 0 || ofn->file == 0 || ofn->max_file <= 0 || path == 0 || path[0] == 0)
+    {
+        return 0;
+    }
+
+    int32_t i = 0;
+    for (; i + 1 < ofn->max_file && path[i] != 0; ++i)
+    {
+        ofn->file[i] = (uint16_t)(unsigned char)path[i];
+    }
+
+    ofn->file[i] = 0;
+
+    const char* file_name = strrchr(path, '/');
+    file_name = file_name == 0 ? path : file_name + 1;
+    ofn->file_offset = (int16_t)(file_name - path);
+
+    const char* extension = strrchr(file_name, '.');
+    ofn->file_extension = extension == 0 ? 0 : (int16_t)(extension - path + 1);
+    return 1;
+}
+
+static int32_t progpu_get_open_file_name_a(progpu_open_file_name_a* ofn, int save)
+{
+    char path[4096];
+    if (!progpu_run_dialog_process(save, ofn != 0 ? ofn->title : 0, path, sizeof(path)))
+    {
+        return 0;
+    }
+
+    return progpu_write_open_file_name_a(ofn, path);
+}
+
+static int32_t progpu_get_open_file_name_w(progpu_open_file_name_w* ofn, int save)
+{
+    char path[4096];
+    if (!progpu_run_dialog_process(save, 0, path, sizeof(path)))
+    {
+        return 0;
+    }
+
+    return progpu_write_open_file_name_w(ofn, path);
+}
+
 PROGPU_EXPORT uint32_t GetCurrentThreadId(void)
 {
 #if defined(__APPLE__)
@@ -227,6 +459,36 @@ PROGPU_EXPORT void Sleep(uint32_t milliseconds)
     requested.tv_sec = (time_t)(milliseconds / 1000u);
     requested.tv_nsec = (long)((milliseconds % 1000u) * 1000000u);
     nanosleep(&requested, 0);
+}
+
+PROGPU_EXPORT int32_t GetOpenFileNameA(progpu_open_file_name_a* ofn)
+{
+    return progpu_get_open_file_name_a(ofn, 0);
+}
+
+PROGPU_EXPORT int32_t GetOpenFileNameW(progpu_open_file_name_w* ofn)
+{
+    return progpu_get_open_file_name_w(ofn, 0);
+}
+
+PROGPU_EXPORT int32_t GetOpenFileName(progpu_open_file_name_a* ofn)
+{
+    return GetOpenFileNameA(ofn);
+}
+
+PROGPU_EXPORT int32_t GetSaveFileNameA(progpu_open_file_name_a* ofn)
+{
+    return progpu_get_open_file_name_a(ofn, 1);
+}
+
+PROGPU_EXPORT int32_t GetSaveFileNameW(progpu_open_file_name_w* ofn)
+{
+    return progpu_get_open_file_name_w(ofn, 1);
+}
+
+PROGPU_EXPORT int32_t GetSaveFileName(progpu_open_file_name_a* ofn)
+{
+    return GetSaveFileNameA(ofn);
 }
 
 PROGPU_EXPORT progpu_intptr LocalFree(progpu_intptr memory)

@@ -318,9 +318,17 @@ internal static class Program
         AssertNoPackageEntryPrefix(package, "contentFiles/", "SDK package content files folder");
         AssertNoPackageEntryPrefix(package, "lib/", "SDK package lib folder");
         AssertNoPackageEntryPrefix(package, "ref/", "SDK package ref folder");
-        AssertNoPackageEntryPrefix(package, "tools/", "SDK package tools folder");
+        ValidateSdkToolPayload(package);
 
         ValidatePackageAssemblyIdentities(packageFeed);
+    }
+
+    private static void ValidateSdkToolPayload(ZipArchive package)
+    {
+        _ = RequirePackageEntry(package, "tools/net10.0/PresentationBuildTasks.dll", "Core MSBuild PresentationBuildTasks assembly");
+        _ = RequirePackageEntry(package, "tools/net10.0/PresentationBuildTasks.dll.config", "Core MSBuild PresentationBuildTasks config");
+        _ = RequirePackageEntry(package, "tools/net472/PresentationBuildTasks.dll", "desktop MSBuild PresentationBuildTasks assembly");
+        _ = RequirePackageEntry(package, "tools/net472/PresentationBuildTasks.dll.config", "desktop MSBuild PresentationBuildTasks config");
     }
 
     private static void ValidatePackageAssemblyIdentities(string packageFeed)

@@ -84,6 +84,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
 
             Vector2 lastPosition = default;
             bool hasLastPosition = false;
+            var pressedButtons = new HashSet<SilkInput.MouseButton>();
             Action<SilkInput.IMouse, Vector2> mouseMove = (_, position) =>
             {
                 lastPosition = position;
@@ -99,10 +100,16 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
                     hasLastPosition = true;
                 }
 
+                pressedButtons.Add(button);
                 OnInputReceived(CreateMouseButtonEvent(WpfInputEventKind.MouseDown, button, position, ReadModifiers(inputContext)));
             };
             Action<SilkInput.IMouse, SilkInput.MouseButton> mouseUp = (_, button) =>
             {
+                if (!pressedButtons.Remove(button))
+                {
+                    return;
+                }
+
                 var position = ResolveMousePosition(mouse.Position, lastPosition, hasLastPosition);
                 if (IsFinite(position))
                 {

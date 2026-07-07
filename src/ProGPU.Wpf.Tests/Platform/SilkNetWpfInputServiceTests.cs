@@ -268,6 +268,36 @@ public sealed class SilkNetWpfInputServiceTests
     }
 
     [Fact]
+    public void AttachSuppressesMouseUpWithoutMatchingMouseDown()
+    {
+        var mouse = new FakeMouse { Position = new Vector2(12, 34) };
+        var context = new FakeInputContext();
+        context.AddInitialMouse(mouse);
+        var service = new SilkNetWpfInputService();
+        var received = new List<WpfInputEventArgs>();
+        service.InputReceived += (_, e) => received.Add(e);
+
+        using var subscription = service.Attach(context);
+
+        mouse.RaiseMouseUp(MouseButton.Left);
+        mouse.RaiseMouseDown(MouseButton.Left);
+        mouse.RaiseMouseUp(MouseButton.Left);
+
+        Assert.Collection(
+            received,
+            first =>
+            {
+                Assert.Equal(WpfInputEventKind.MouseDown, first.Kind);
+                Assert.Equal(WpfMouseButton.Left, first.Button);
+            },
+            second =>
+            {
+                Assert.Equal(WpfInputEventKind.MouseUp, second.Kind);
+                Assert.Equal(WpfMouseButton.Left, second.Button);
+            });
+    }
+
+    [Fact]
     public void AttachStopsForwardingDisconnectedDevices()
     {
         var mouse = new FakeMouse();

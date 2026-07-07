@@ -9,9 +9,36 @@ Current focus areas:
 - Package the runtime as a preview SDK and NuGet set that can be consumed from a local feed or NuGet.org.
 - Keep third-party validation active through basic WPF apps, Xceed Toolkit/AvalonDock, Xceed paid Toolkit/DataGrid, SciChart MVP, ProGPU Avalonia package smoke, and no-source-change SDK smoke tests.
 
-## SDK Switch
+## Getting Started: Switch From WPF To LibreWPF
 
-After adding the preview feed, existing WPF projects should only need the SDK change:
+LibreWPF is packaged as an MSBuild SDK so normal WPF apps can move to the ProGPU/Silk.NET platform through the project file first. Keep your application code, XAML, resources, and existing package references unchanged unless the app uses Windows-only interop or unsupported native graphics APIs.
+
+1. Start from an existing SDK-style WPF project and keep a clean commit of the working WPF version.
+
+2. Make sure the project targets the supported preview TFM:
+
+```xml
+<TargetFramework>net10.0-windows</TargetFramework>
+<UseWPF>true</UseWPF>
+```
+
+`LibreWPF.Sdk` sets `EnableWindowsTargeting` when needed, so cross-platform builds can still use the Windows-shaped WPF API surface while running through the portable ProGPU host.
+
+3. Change only the project SDK.
+
+Before:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+</Project>
+```
+
+After:
 
 ```xml
 <Project Sdk="LibreWPF.Sdk/0.1.0-preview.1">
@@ -23,29 +50,61 @@ After adding the preview feed, existing WPF projects should only need the SDK ch
 </Project>
 ```
 
-Windows-only interop and unsupported native/DirectX APIs remain the expected exceptions while the portable platform layer is completed.
+Older projects that still use `Microsoft.NET.Sdk.WindowsDesktop` should make the same SDK change and keep the existing WPF properties.
+
+4. Keep existing app dependencies in place. For example, a Toolkit app only changes the SDK line:
+
+```xml
+<Project Sdk="LibreWPF.Sdk/0.1.0-preview.1">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Extended.Wpf.Toolkit" Version="5.1.2" />
+  </ItemGroup>
+</Project>
+```
+
+5. Restore and run the app normally:
+
+```bash
+dotnet restore
+dotnet run
+```
+
+6. Treat Windows-only interop, direct Win32 calls, `D3DImage`, raw DirectX use, custom HWND hosting, and unsupported native graphics APIs as the first compatibility review points. Normal WPF managed code, XAML, bindings, controls, resources, and themes should remain source-compatible as the port fills out.
 
 ## NuGet Packages
 
 The preview package set is defined in `eng/progpu-preview-package-list.sh` and validated by the release workflow.
 
-| Package | Purpose | Source |
+### LibreWPF Packages
+
+| Package | NuGet | Purpose |
 | --- | --- | --- |
-| `LibreWPF.Transport` | Ported managed WPF transport assemblies, refs, themes, XAML build tasks, and runtime metadata. | `packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj` |
-| `ProGPU.Backend` | WebGPU device, swapchain, Silk.NET windowing, and platform backend services. | `external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj` |
-| `ProGPU.DirectX` | DirectX-compatible facade for SciChart and future D3D-style interop on ProGPU/WebGPU. | `external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj` |
-| `ProGPU.Transpiler` | Shader/source transformation helpers used by generated GPU pipelines. | `external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj` |
-| `ProGPU.Compute` | Compute pipeline helpers for GPU effects, indexes, and acceleration structures. | `external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj` |
-| `ProGPU.Vector` | Vector paths, geometry, brushes, pens, and rasterization data models. | `external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj` |
-| `ProGPU.Text` | Text layout, glyph metrics, and GPU-ready text rendering helpers. | `external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj` |
-| `ProGPU.Scene` | Scene graph, compositor commands, retained visuals, effects, and presentation primitives. | `external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj` |
-| `ProGPU.Layout` | Measure/arrange layout substrate shared by ProGPU UI adapters. | `external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj` |
-| `ProGPU.Virtualization` | Virtualization helpers for large retained visual and item surfaces. | `external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj` |
-| `ProGPU.WinUI` | WinUI-shaped controls and app model implemented on ProGPU. | `external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj` |
-| `ProGPU.Avalonia` | Avalonia integration and compositor backend adapter used by package smoke validation. | `external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj` |
-| `LibreWPF.Interop` | Shared WPF interop contracts consumed by the WPF bridge and ProGPU runtime. | `external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj` |
-| `LibreWPF.ProGPU` | WPF-to-ProGPU host, retained/source replay bridge, Silk.NET input/windowing, and compositor adapter. | `src/ProGPU.Wpf/ProGPU.Wpf.csproj` |
-| `LibreWPF.Sdk` | Custom MSBuild SDK that redirects WPF apps to the ProGPU/Silk.NET platform. | `packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj` |
+| `LibreWPF.Sdk` | [![NuGet](https://img.shields.io/nuget/vpre/LibreWPF.Sdk.svg)](https://www.nuget.org/packages/LibreWPF.Sdk) | Custom MSBuild SDK that redirects WPF apps to the ProGPU/Silk.NET platform. |
+| `LibreWPF.ProGPU` | [![NuGet](https://img.shields.io/nuget/vpre/LibreWPF.ProGPU.svg)](https://www.nuget.org/packages/LibreWPF.ProGPU) | WPF-to-ProGPU host, retained/source replay bridge, Silk.NET input/windowing, and compositor adapter. |
+| `LibreWPF.Transport` | [![NuGet](https://img.shields.io/nuget/vpre/LibreWPF.Transport.svg)](https://www.nuget.org/packages/LibreWPF.Transport) | Ported managed WPF transport assemblies, refs, themes, XAML build tasks, and runtime metadata. |
+| `LibreWPF.Interop` | [![NuGet](https://img.shields.io/nuget/vpre/LibreWPF.Interop.svg)](https://www.nuget.org/packages/LibreWPF.Interop) | Shared WPF interop contracts consumed by the WPF bridge and ProGPU runtime. |
+
+### ProGPU Packages
+
+| Package | NuGet | Purpose |
+| --- | --- | --- |
+| `ProGPU.Backend` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Backend.svg)](https://www.nuget.org/packages/ProGPU.Backend) | WebGPU device, swapchain, Silk.NET windowing, and platform backend services. |
+| `ProGPU.DirectX` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.DirectX.svg)](https://www.nuget.org/packages/ProGPU.DirectX) | DirectX-compatible facade for SciChart and future D3D-style interop on ProGPU/WebGPU. |
+| `ProGPU.Transpiler` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Transpiler.svg)](https://www.nuget.org/packages/ProGPU.Transpiler) | Shader/source transformation helpers used by generated GPU pipelines. |
+| `ProGPU.Compute` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Compute.svg)](https://www.nuget.org/packages/ProGPU.Compute) | Compute pipeline helpers for GPU effects, indexes, and acceleration structures. |
+| `ProGPU.Vector` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Vector.svg)](https://www.nuget.org/packages/ProGPU.Vector) | Vector paths, geometry, brushes, pens, and rasterization data models. |
+| `ProGPU.Text` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Text.svg)](https://www.nuget.org/packages/ProGPU.Text) | Text layout, glyph metrics, and GPU-ready text rendering helpers. |
+| `ProGPU.Scene` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Scene.svg)](https://www.nuget.org/packages/ProGPU.Scene) | Scene graph, compositor commands, retained visuals, effects, and presentation primitives. |
+| `ProGPU.Layout` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Layout.svg)](https://www.nuget.org/packages/ProGPU.Layout) | Measure/arrange layout substrate shared by ProGPU UI adapters. |
+| `ProGPU.Virtualization` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Virtualization.svg)](https://www.nuget.org/packages/ProGPU.Virtualization) | Virtualization helpers for large retained visual and item surfaces. |
+| `ProGPU.WinUI` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.WinUI.svg)](https://www.nuget.org/packages/ProGPU.WinUI) | WinUI-shaped controls and app model implemented on ProGPU. |
+| `ProGPU.Avalonia` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Avalonia.svg)](https://www.nuget.org/packages/ProGPU.Avalonia) | Avalonia integration and compositor backend adapter used by package smoke validation. |
 
 ## Build And Release
 

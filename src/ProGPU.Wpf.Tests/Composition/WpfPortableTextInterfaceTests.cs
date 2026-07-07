@@ -22,6 +22,11 @@ public sealed class WpfPortableTextInterfaceTests
         Assert.Contains("TTO_GPOS = 0x47504F53", source, StringComparison.Ordinal);
         Assert.Contains("TTO_GDEF = 0x47444546", source, StringComparison.Ordinal);
         Assert.Contains("FontCollection.FromFontSources(fontSources)", source, StringComparison.Ordinal);
+        Assert.Contains("s_portableFamilyAliases", source, StringComparison.Ordinal);
+        Assert.Contains("(\"Calibri\", new[]", source, StringComparison.Ordinal);
+        Assert.Contains("(\"Segoe UI\", new[]", source, StringComparison.Ordinal);
+        Assert.Contains("(\"Consolas\", new[]", source, StringComparison.Ordinal);
+        Assert.Contains("TryFindFamilyName(candidate, out index)", source, StringComparison.Ordinal);
         Assert.Contains("internal sealed class PortableFontData", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntFontFace = ProGPU.Text.SfntFontFace;", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntGlyphBounds = ProGPU.Text.SfntGlyphBounds;", source, StringComparison.Ordinal);

@@ -3152,6 +3152,28 @@ public sealed class WpfResourceResolverTests
         Assert.Equal(0, glyphRun.ReflectedGlyphRunProbeCount);
     }
 
+    [Theory]
+    [InlineData("Calibri")]
+    [InlineData("Segoe UI")]
+    [InlineData("Segoe UI, Arial")]
+    public void AdaptGlyphRunResolvesCommonWpfFontFamiliesThroughPortableFallbacks(string familyName)
+    {
+        var glyphRun = new PortableGlyphRun
+        {
+            GlyphIndices = new ushort[] { 3 },
+            AdvanceWidths = new[] { 5.0 },
+            BaselineOrigin = new PortablePoint(0, 0),
+            FontRenderingEmSize = 12,
+            FontFamilyNames = new[] { familyName }
+        };
+
+        var adapted = WpfResourceResolver.AdaptGlyphRun(glyphRun);
+
+        Assert.NotNull(adapted);
+        var cachedFont = Assert.IsType<TtfFont>(glyphRun.NativeFont);
+        Assert.Same(cachedFont, adapted.Font);
+    }
+
     [Fact]
     public void AdaptGlyphRunAdaptsPortableGlyphRunWithoutTypeNameShape()
     {

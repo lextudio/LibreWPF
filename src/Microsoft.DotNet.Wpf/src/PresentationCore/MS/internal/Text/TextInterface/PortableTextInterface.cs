@@ -467,6 +467,21 @@ namespace MS.Internal.Text.TextInterface
     {
         internal static readonly FontCollection Empty = new FontCollection(Array.Empty<FontFamily>());
 
+        private static readonly (string FamilyName, string[] Candidates)[] s_portableFamilyAliases =
+        {
+            ("Segoe UI", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
+            ("Segoe UI Light", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
+            ("Segoe UI Semibold", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
+            ("Calibri", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
+            ("Cambria", new[] { "Georgia", "Times New Roman", "Times", "Liberation Serif", "DejaVu Serif", "Noto Serif" }),
+            ("Consolas", new[] { "Menlo", "Monaco", "Courier New", "Courier", "Liberation Mono", "DejaVu Sans Mono", "Noto Sans Mono" }),
+            ("Courier New", new[] { "Courier New", "Courier", "Menlo", "Monaco", "Liberation Mono", "DejaVu Sans Mono", "Noto Sans Mono" }),
+            ("Microsoft Sans Serif", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
+            ("Tahoma", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
+            ("Verdana", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
+            ("Times New Roman", new[] { "Times New Roman", "Times", "Georgia", "Liberation Serif", "DejaVu Serif", "Noto Serif" })
+        };
+
         private readonly IReadOnlyList<FontFamily> _families;
 
         internal FontCollection(IReadOnlyList<FontFamily> families)
@@ -564,6 +579,35 @@ namespace MS.Internal.Text.TextInterface
         }
 
         internal bool FindFamilyName(string familyName, out uint index)
+        {
+            if (TryFindFamilyName(familyName, out index))
+            {
+                return true;
+            }
+
+            foreach ((string aliasName, string[] candidates) in s_portableFamilyAliases)
+            {
+                if (!string.Equals(aliasName, familyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                foreach (string candidate in candidates)
+                {
+                    if (TryFindFamilyName(candidate, out index))
+                    {
+                        return true;
+                    }
+                }
+
+                break;
+            }
+
+            index = uint.MaxValue;
+            return false;
+        }
+
+        private bool TryFindFamilyName(string familyName, out uint index)
         {
             for (int i = 0; i < _families.Count; i++)
             {

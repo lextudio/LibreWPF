@@ -1555,6 +1555,17 @@ namespace System.Windows.Controls.Primitives
                 isWindowAlive = _secHelper.IsWindowAlive();
                 if (isWindowAlive)
                 {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        // The HWND path gets here through HwndSource auto-resize, which
+                        // updates _positionInfo.ChildSize and calls Reposition. Portable
+                        // popup sources are composed into the owner surface, so no native
+                        // auto-resize message is raised; run the equivalent position pass
+                        // after the popup root has been measured and sized.
+                        UpdatePosition();
+                        AttachPortablePopupRootLayoutUpdates();
+                    }
+
                     _secHelper.ForceMsaaToUiaBridge(_popupRoot);
                 }
             }
@@ -1562,6 +1573,7 @@ namespace System.Windows.Controls.Primitives
             {
                 // Update position manually
                 UpdatePosition();
+                AttachPortablePopupRootLayoutUpdates();
                 isWindowAlive = _secHelper.IsWindowAlive();
             }
 
@@ -1621,6 +1633,7 @@ namespace System.Windows.Controls.Primitives
         {
             if (_secHelper.IsWindowAlive())
             {
+                DetachPortablePopupRootLayoutUpdates();
                 _secHelper.DestroyWindow(PopupFilterMessage, OnWindowResize, OnDpiChanged);
                 return true;
             }
@@ -1877,6 +1890,55 @@ namespace System.Windows.Controls.Primitives
 
                 // Reposition the popup
                 Reposition();
+            }
+        }
+
+        private void AttachPortablePopupRootLayoutUpdates()
+        {
+            if (OperatingSystem.IsWindows() ||
+                _popupRoot == null ||
+                _isPortablePopupRootLayoutUpdateAttached)
+            {
+                return;
+            }
+
+            _popupRoot.LayoutUpdated += OnPortablePopupRootLayoutUpdated;
+            _isPortablePopupRootLayoutUpdateAttached = true;
+        }
+
+        private void DetachPortablePopupRootLayoutUpdates()
+        {
+            if (!_isPortablePopupRootLayoutUpdateAttached)
+            {
+                return;
+            }
+
+            _popupRoot?.LayoutUpdated -= OnPortablePopupRootLayoutUpdated;
+
+            _isPortablePopupRootLayoutUpdateAttached = false;
+        }
+
+        private void OnPortablePopupRootLayoutUpdated(object sender, EventArgs e)
+        {
+            if (_isUpdatingPortablePopupRootLayout ||
+                !IsOpen ||
+                _popupRoot == null ||
+                !_secHelper.IsWindowAlive())
+            {
+                return;
+            }
+
+            _isUpdatingPortablePopupRootLayout = true;
+            try
+            {
+                if (_secHelper.TryUpdatePortablePopupRootClientSize(_popupRoot, out Size clientSize))
+                {
+                    OnWindowResize(_popupRoot, new AutoResizedEventArgs(clientSize));
+                }
+            }
+            finally
+            {
+                _isUpdatingPortablePopupRootLayout = false;
             }
         }
 
@@ -2927,6 +2989,8 @@ namespace System.Windows.Controls.Primitives
         private PopupRoot _popupRoot;
         private DispatcherOperation _asyncCreate;
         private DispatcherTimer _asyncDestroy;
+        private bool _isPortablePopupRootLayoutUpdateAttached;
+        private bool _isUpdatingPortablePopupRootLayout;
 
         // holder of the popup's security helper
         private PopupSecurityHelper _secHelper;
@@ -3275,18 +3339,25 @@ namespace System.Windows.Controls.Primitives
             internal void SetWindowRootVisual(Visual v)
             {
                 _window.RootVisual = v;
-                if (!OperatingSystem.IsWindows())
-                {
-                    Size clientSize = GetPortableRootClientSize(v);
-                    if (_window is PortablePresentationSource portableSource)
-                    {
-                        portableSource.SetClientSize(clientSize.Width, clientSize.Height);
-                    }
+                TryUpdatePortablePopupRootClientSize(v, out _);
+            }
 
-                    TrySetPortablePopupSize(
-                        ToPortableClientDimension(clientSize.Width),
-                        ToPortableClientDimension(clientSize.Height));
+            internal bool TryUpdatePortablePopupRootClientSize(Visual rootVisual, out Size clientSize)
+            {
+                clientSize = default;
+                if (OperatingSystem.IsWindows() ||
+                    rootVisual == null ||
+                    _window is not PortablePresentationSource portableSource)
+                {
+                    return false;
                 }
+
+                clientSize = GetPortableRootClientSize(rootVisual);
+                portableSource.SetClientSize(clientSize.Width, clientSize.Height);
+                TrySetPortablePopupSize(
+                    ToPortableClientDimension(clientSize.Width),
+                    ToPortableClientDimension(clientSize.Height));
+                return true;
             }
 
             internal static bool IsVisualPresentationSourceNull(Visual visual)

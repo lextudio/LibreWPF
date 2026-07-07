@@ -765,15 +765,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source = PortablePresentationSourceFactory(", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("TryProcessPresentationSourceInputEvent(Source, portableInput)", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("Matrix4x4.CreateTranslation(", proGpuPortablePopupBridge, StringComparison.Ordinal);
+        Assert.Contains("ProGpuRetainedCompositionLayer.Popup", proGpuPortablePopupBridge, StringComparison.Ordinal);
+        Assert.Contains("ReplayVisualSubtreeUntracked(rootVisual, sink, resources, imageSourceAdapter)", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("internal sealed class WpfPortablePopupService : IPortablePopupServiceRegistrar", proGpuPortablePopupService, StringComparison.Ordinal);
         Assert.Contains("TryCreatePopup(PortablePopupCreateRequest request, out object? presentationSource)", proGpuPortablePopupService, StringComparison.Ordinal);
         Assert.Contains("public static class ProGpuWpfDiagnostics", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryGetActiveHost(window, out host)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("RenderSurfaceGeometrySnapshot", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("CompositionLayerSnapshot", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryRequestRender(object? window)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryWakeNativeLoop(object? window)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetRenderSchedulerWakeupCount(object? window, out long wakeupCount)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetRenderSurfaceGeometry(object? window, out RenderSurfaceGeometrySnapshot geometry)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetCompositionLayerSnapshot(object? window, out CompositionLayerSnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("PopupLayerChildCount", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryRaiseInput(", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool HasGpuHitTestCache(object? window)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetGpuHitTestCacheSnapshot(object? window, out GpuHitTestCacheSnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
@@ -1240,6 +1245,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Present(\n                    logicalWidth,\n                    logicalHeight,\n                    pixelWidth,\n                    pixelHeight,\n                    viewportX,\n                    viewportY,\n                    viewportWidth,\n                    viewportHeight,\n                    dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("new ProGpuRenderTargetViewport(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveLogicalRenderDimension(SceneRootVisual.Size.X, RootVisual.Size.X, RetainedWpfVisualRoot.Size.X, pixelWidth)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("public ProGpuContainerVisual PopupRetainedWpfVisualRoot { get; } = new();", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("SceneRootVisual.AddChild(PopupRetainedWpfVisualRoot);", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Render(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale, targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("using ProGpuRenderTargetViewport = global::ProGPU.Scene.RenderTargetViewport;", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("renderTargetViewport", proGpuCompositionTarget, StringComparison.Ordinal);
@@ -8232,6 +8239,14 @@ public sealed class WpfManagedProjectGraphTests
             "Automation",
             "Peers",
             "WindowAutomationPeer.cs"));
+        var securityHelper = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "MS",
+            "Internal",
+            "SecurityHelper.cs"));
         var bmpBitmapDecoder = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -8346,6 +8361,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PackUriHelper.UriSchemePack", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("WebRequest request = WpfWebRequestHelper.CreateRequest(uri)", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("uriCachePolicy != null && OperatingSystem.IsWindows()", bitmapDecoder, StringComparison.Ordinal);
+        AssertGuardBefore(securityHelper, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CoInternetCreateSecurityManager");
+        Assert.Contains("return uri != null && uri.IsFile", securityHelper, StringComparison.Ordinal);
         Assert.Contains("request.CachePolicy = uriCachePolicy", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("httpRequest.UserAgent = DefaultUserAgent", wpfWebRequestHelper, StringComparison.Ordinal);
         Assert.Contains("OperatingSystem.IsWindows()", wpfWebRequestHelper, StringComparison.Ordinal);
@@ -8540,9 +8557,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryHidePortablePopup();", popup, StringComparison.Ordinal);
         Assert.Contains("TrySetPortablePopupHitTestable(hitTestable);", popup, StringComparison.Ordinal);
         Assert.Contains("TryDestroyPortablePopup(source);", popup, StringComparison.Ordinal);
+        Assert.Contains("AttachPortablePopupRootLayoutUpdates();", popup, StringComparison.Ordinal);
+        Assert.Contains("DetachPortablePopupRootLayoutUpdates();", popup, StringComparison.Ordinal);
+        Assert.Contains("_popupRoot.LayoutUpdated += OnPortablePopupRootLayoutUpdated;", popup, StringComparison.Ordinal);
+        Assert.Contains("_popupRoot?.LayoutUpdated -= OnPortablePopupRootLayoutUpdated;", popup, StringComparison.Ordinal);
+        Assert.Contains("private void OnPortablePopupRootLayoutUpdated(object sender, EventArgs e)", popup, StringComparison.Ordinal);
+        Assert.Contains("_secHelper.TryUpdatePortablePopupRootClientSize(_popupRoot, out Size clientSize)", popup, StringComparison.Ordinal);
+        Assert.Contains("OnWindowResize(_popupRoot, new AutoResizedEventArgs(clientSize));", popup, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryUpdatePortablePopupRootClientSize(Visual rootVisual, out Size clientSize)", popup, StringComparison.Ordinal);
         Assert.Contains("private static IntPtr GetHandle(PresentationSource source)", popup, StringComparison.Ordinal);
         Assert.Contains("return (source is HwndSource hwnd ? hwnd.Handle : IntPtr.Zero);", popup, StringComparison.Ordinal);
-        Assert.Contains("if (_window is PortablePresentationSource portableSource)", popup, StringComparison.Ordinal);
+        Assert.Contains("_window is not PortablePresentationSource portableSource", popup, StringComparison.Ordinal);
         Assert.Contains("portableSource.SetClientSize(clientSize.Width, clientSize.Height);", popup, StringComparison.Ordinal);
         Assert.Contains("private static Size GetPortableRootClientSize(Visual rootVisual)", popup, StringComparison.Ordinal);
         Assert.Contains("private static NativeMethods.POINT GetPortableMouseCursorFallbackPos(Visual targetVisual)", popup, StringComparison.Ordinal);
@@ -8987,7 +9012,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<TargetPath>$(TargetDir)uxtheme.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<TargetPath>$(TargetDir)shell32.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<TargetPath>$(TargetDir)gdiplus.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>$(TargetDir)comdlg32.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>$(TargetDir)comdlg32.dll.so</TargetPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>$(TargetDir)libcomdlg32.dll.so</TargetPath>", portableTargets, StringComparison.Ordinal);
         Assert.Contains("GetCurrentThreadId", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("GetOpenFileNameA", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("GetOpenFileNameW", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("GetSaveFileNameA", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("GetSaveFileNameW", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_WIN32_FILE_DIALOG_RESULT", win32Compat, StringComparison.Ordinal);
         Assert.Contains("GetModuleHandleW", win32Compat, StringComparison.Ordinal);
         Assert.Contains("RegisterClassExW", win32Compat, StringComparison.Ordinal);
         Assert.Contains("UnregisterClassW", win32Compat, StringComparison.Ordinal);
@@ -11445,6 +11478,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<None Include=\"README.md\" Pack=\"true\" PackagePath=\"\\\" />", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("<None Include=\"Sdk\\**\\*\" Pack=\"true\" PackagePath=\"Sdk\\%(RecursiveDir)\" />", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("<None Include=\"targets\\**\\*\" Pack=\"true\" PackagePath=\"targets\\%(RecursiveDir)\" />", sdkProject.ToString(), StringComparison.Ordinal);
+        Assert.Contains("PackagePath=\"tools\\net10.0\"", sdkProject.ToString(), StringComparison.Ordinal);
+        Assert.Contains("PackagePath=\"tools\\net472\"", sdkProject.ToString(), StringComparison.Ordinal);
         AssertProjectReference(sdkProject, @"PresentationBuildTasks\PresentationBuildTasks.csproj");
 
         Assert.Contains("<_ProGpuWpfSdkImported>true</_ProGpuWpfSdkImported>", sdkProps, StringComparison.Ordinal);
@@ -11467,10 +11502,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("11.0.0-preview.4.26210.111", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfReferenceMode Condition=\"'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')\">LocalArtifacts</ProGpuWpfReferenceMode>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfManagedPackageId Condition=\"'$(ProGpuWpfManagedPackageId)' == ''\">LibreWPF.Transport</ProGpuWpfManagedPackageId>", sdkProps, StringComparison.Ordinal);
-        Assert.Contains("<ProGpuWpfManagedPackageVersion Condition=\"'$(ProGpuWpfManagedPackageVersion)' == ''\">$(ProGpuWpfPackageVersion)</ProGpuWpfManagedPackageVersion>", sdkProps, StringComparison.Ordinal);
-        Assert.Contains("ProGpuWpfClearMutablePackageOutputs", sdkProps, StringComparison.Ordinal);
-        Assert.Contains("Contains(`-dev`)", sdkProps, StringComparison.Ordinal);
-        Assert.Contains("Contains(`-preview`)", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfManagedPackageVersion Condition=\"'$(ProGpuWpfManagedPackageVersion)' == ''\">$(ProGpuWpfPackageVersion)</ProGpuWpfManagedPackageVersion>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfClearMutablePackageOutputs", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("Contains(`-dev`)", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("Contains(`-preview`)", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSilkNetVersion Condition=\"'$(ProGpuWpfSilkNetVersion)' == ''\">2.23.0</ProGpuWpfSilkNetVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSystemConfigurationConfigurationManagerVersion Condition=\"'$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)' == '' And $(TargetFramework.StartsWith('net10.'))\">10.0.0</ProGpuWpfSystemConfigurationConfigurationManagerVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSystemFormatsNrbfVersion Condition=\"'$(ProGpuWpfSystemFormatsNrbfVersion)' == '' And $(TargetFramework.StartsWith('net10.'))\">10.0.0</ProGpuWpfSystemFormatsNrbfVersion>", sdkProps, StringComparison.Ordinal);
@@ -13474,6 +13509,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"ToolBarToggleButton\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP live ToolBar refresh command count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ToolBar refresh command and toggle binding updated through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLivePopupSurfacesAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryGetCompositionLayerSnapshot(liveHost, out var current)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Menu, ComboBox dropdown, and direct Popup opened through the ProGPU retained popup layer", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MouseWheel=\"OnSelectorScrollViewerMouseWheel\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectorScrollViewer.AddHandler(MouseWheelEvent", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveWheelAndCaptureInputAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);

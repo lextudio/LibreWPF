@@ -18,6 +18,12 @@ using ProGpuEffectBase = global::ProGPU.Scene.EffectBase;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
+internal enum ProGpuRetainedCompositionLayer
+{
+    Main,
+    Popup
+}
+
 internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfCompositionCommandSink,
     IWpfViewport3DCommandSink,
@@ -60,6 +66,19 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         ProGpuWpfDrawingFrame drawingFrame,
         global::ProGPU.Backend.WgpuContext? context,
         WpfViewport3DTextureCache? viewport3DTextureCache)
+        : this(
+            drawingFrame,
+            context,
+            viewport3DTextureCache,
+            ProGpuRetainedCompositionLayer.Main)
+    {
+    }
+
+    internal ProGpuRetainedCompositionCommandSink(
+        ProGpuWpfDrawingFrame drawingFrame,
+        global::ProGPU.Backend.WgpuContext? context,
+        WpfViewport3DTextureCache? viewport3DTextureCache,
+        ProGpuRetainedCompositionLayer layer)
     {
         ArgumentNullException.ThrowIfNull(drawingFrame);
         _drawingFrame = drawingFrame;
@@ -69,7 +88,10 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             Size = new Vector2(drawingFrame.LogicalWidth, drawingFrame.LogicalHeight)
         };
 
-        if (!drawingFrame.AddRetainedWpfVisual(rootVisual))
+        bool added = layer == ProGpuRetainedCompositionLayer.Popup
+            ? drawingFrame.AddPopupRetainedWpfVisual(rootVisual)
+            : drawingFrame.AddRetainedWpfVisual(rootVisual);
+        if (!added)
         {
             throw new InvalidOperationException("The drawing frame does not expose a retained WPF visual root.");
         }

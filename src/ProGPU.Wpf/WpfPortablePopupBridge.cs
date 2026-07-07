@@ -179,7 +179,8 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         using var sink = new ProGpuRetainedCompositionCommandSink(
             drawingFrame,
             target.Context,
-            target.Viewport3DTextureCache);
+            target.Viewport3DTextureCache,
+            ProGpuRetainedCompositionLayer.Popup);
 
         var nativeTransformSink = (IWpfNativeTransformCommandSink)sink;
         nativeTransformSink.PushNativeTransform(Matrix4x4.CreateTranslation(
@@ -188,7 +189,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             0f));
         try
         {
-            return target.ReplayVisualSubtree(rootVisual, sink, resources, imageSourceAdapter);
+            return target.ReplayVisualSubtreeUntracked(rootVisual, sink, resources, imageSourceAdapter);
         }
         finally
         {

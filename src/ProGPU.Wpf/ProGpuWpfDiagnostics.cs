@@ -24,6 +24,15 @@ public static class ProGpuWpfDiagnostics
         int PathSegmentCount,
         int OwnerCount);
 
+    public readonly record struct CompositionLayerSnapshot(
+        bool HasCompositionTarget,
+        int SceneRootChildCount,
+        int RetainedLayerIndex,
+        int FlatLayerIndex,
+        int PopupLayerIndex,
+        int RetainedLayerChildCount,
+        int PopupLayerChildCount);
+
     public static bool TryGetWindowHost(object? window, out ProGpuWpfWindowHost? host)
     {
         if (window is ProGpuWpfWindowHost directHost)
@@ -81,6 +90,33 @@ public static class ProGpuWpfDiagnostics
 
         ArgumentNullException.ThrowIfNull(host);
         geometry = CreateSnapshot(host.ResolveCurrentRenderSurfaceGeometryForDiagnostics());
+        return true;
+    }
+
+    public static bool TryGetCompositionLayerSnapshot(object? window, out CompositionLayerSnapshot snapshot)
+    {
+        snapshot = default;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        var target = host.CompositionTarget;
+        if (target == null)
+        {
+            return false;
+        }
+
+        var sceneChildren = target.SceneRootVisual.Children;
+        snapshot = new CompositionLayerSnapshot(
+            HasCompositionTarget: true,
+            SceneRootChildCount: sceneChildren.Count,
+            RetainedLayerIndex: IndexOfChild(sceneChildren, target.RetainedWpfVisualRoot),
+            FlatLayerIndex: IndexOfChild(sceneChildren, target.RootVisual),
+            PopupLayerIndex: IndexOfChild(sceneChildren, target.PopupRetainedWpfVisualRoot),
+            RetainedLayerChildCount: target.RetainedWpfVisualRoot.Children.Count,
+            PopupLayerChildCount: target.PopupRetainedWpfVisualRoot.Children.Count);
         return true;
     }
 
@@ -210,5 +246,20 @@ public static class ProGpuWpfDiagnostics
             geometry.ViewportY,
             geometry.ViewportWidth,
             geometry.ViewportHeight);
+    }
+
+    private static int IndexOfChild(
+        System.Collections.Generic.IReadOnlyList<global::ProGPU.Scene.Visual> children,
+        global::ProGPU.Scene.Visual target)
+    {
+        for (int i = 0; i < children.Count; i++)
+        {
+            if (ReferenceEquals(children[i], target))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 }

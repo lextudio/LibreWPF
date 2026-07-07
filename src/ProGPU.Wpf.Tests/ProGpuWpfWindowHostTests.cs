@@ -1583,6 +1583,54 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void PortablePopupSinkDoesNotReplaceMainWindowInvalidationRoot()
+    {
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var mainRoot = new object();
+        target.WpfInvalidationTracker.Attach(mainRoot);
+        target.WpfInvalidationTracker.ConsumeDirty();
+
+        var frame = target.BeginDrawingFrame(
+            pixelWidth: 200,
+            pixelHeight: 100,
+            clearRetainedWpfVisualRoot: false,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            dpiScaleX: 1.0,
+            dpiScaleY: 1.0);
+        using var sink = new ProGpuRetainedCompositionCommandSink(
+            frame,
+            target.Context,
+            target.Viewport3DTextureCache,
+            ProGpuRetainedCompositionLayer.Popup);
+
+        Assert.Same(mainRoot, target.WpfInvalidationTracker.Root);
+        Assert.False(target.WpfInvalidationTracker.IsDirty);
+        Assert.Empty(target.RetainedWpfVisualRoot.Children);
+        Assert.Single(target.PopupRetainedWpfVisualRoot.Children);
+    }
+
+    [Fact]
+    public void DrawingFrameKeepsPortablePopupLayerAboveMainWpfDrawingLayer()
+    {
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+
+        target.BeginDrawingFrame(
+            pixelWidth: 200,
+            pixelHeight: 100,
+            clearRetainedWpfVisualRoot: true,
+            logicalWidth: 200,
+            logicalHeight: 100,
+            dpiScaleX: 1.0,
+            dpiScaleY: 1.0);
+
+        Assert.Equal(3, target.SceneRootVisual.Children.Count);
+        Assert.Same(target.RetainedWpfVisualRoot, target.SceneRootVisual.Children[0]);
+        Assert.Same(target.RootVisual, target.SceneRootVisual.Children[1]);
+        Assert.Same(target.PopupRetainedWpfVisualRoot, target.SceneRootVisual.Children[2]);
+    }
+
+    [Fact]
     public void UpdatePortablePresentationSourceDpiScaleCoalescesUnchangedScale()
     {
         var scheduler = new TestRenderScheduler();

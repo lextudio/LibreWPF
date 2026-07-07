@@ -15,6 +15,7 @@ public sealed class ProGpuWpfDrawingFrame
 {
     private readonly ProGpuContainerVisual? _sceneRootVisual;
     private readonly ProGpuContainerVisual? _retainedWpfVisualRoot;
+    private readonly ProGpuContainerVisual? _popupRetainedWpfVisualRoot;
     private readonly ProGpuDrawingVisual _rootVisual;
     private readonly ProGpuWgpuContext? _context;
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
@@ -36,6 +37,7 @@ public sealed class ProGpuWpfDrawingFrame
         : this(
             sceneRootVisual: null,
             retainedWpfVisualRoot: null,
+            popupRetainedWpfVisualRoot: null,
             rootVisual,
             pixelWidth,
             pixelHeight,
@@ -64,9 +66,45 @@ public sealed class ProGpuWpfDrawingFrame
         double dpiScaleX = 1.0,
         double dpiScaleY = 1.0,
         WpfGpuHitTestOwnerMap? hitTestOwnerMap = null)
+        : this(
+            sceneRootVisual,
+            retainedWpfVisualRoot,
+            popupRetainedWpfVisualRoot: null,
+            rootVisual,
+            pixelWidth,
+            pixelHeight,
+            context,
+            viewport3DTextureCache,
+            clearRetainedWpfVisualRoot,
+            retainedVisualBranchMap,
+            logicalWidth,
+            logicalHeight,
+            dpiScaleX,
+            dpiScaleY,
+            hitTestOwnerMap)
+    {
+    }
+
+    internal ProGpuWpfDrawingFrame(
+        ProGpuContainerVisual? sceneRootVisual,
+        ProGpuContainerVisual? retainedWpfVisualRoot,
+        ProGpuContainerVisual? popupRetainedWpfVisualRoot,
+        ProGpuDrawingVisual rootVisual,
+        uint pixelWidth,
+        uint pixelHeight,
+        ProGpuWgpuContext? context = null,
+        WpfViewport3DTextureCache? viewport3DTextureCache = null,
+        bool clearRetainedWpfVisualRoot = true,
+        WpfRetainedVisualBranchMap? retainedVisualBranchMap = null,
+        uint logicalWidth = 0,
+        uint logicalHeight = 0,
+        double dpiScaleX = 1.0,
+        double dpiScaleY = 1.0,
+        WpfGpuHitTestOwnerMap? hitTestOwnerMap = null)
     {
         _sceneRootVisual = sceneRootVisual;
         _retainedWpfVisualRoot = retainedWpfVisualRoot;
+        _popupRetainedWpfVisualRoot = popupRetainedWpfVisualRoot;
         _rootVisual = rootVisual ?? throw new ArgumentNullException(nameof(rootVisual));
         _context = context;
         _viewport3DTextureCache = viewport3DTextureCache;
@@ -100,6 +138,16 @@ public sealed class ProGpuWpfDrawingFrame
             _retainedWpfVisualRoot.RenderTransformOrigin = Vector2.Zero;
         }
 
+        if (_popupRetainedWpfVisualRoot != null)
+        {
+            _popupRetainedWpfVisualRoot.ClearChildren();
+            _popupRetainedWpfVisualRoot.Size = new Vector2(LogicalWidth, LogicalHeight);
+            _popupRetainedWpfVisualRoot.Offset = Vector2.Zero;
+            _popupRetainedWpfVisualRoot.Transform = Matrix4x4.Identity;
+            _popupRetainedWpfVisualRoot.Scale = Vector3.One;
+            _popupRetainedWpfVisualRoot.RenderTransformOrigin = Vector2.Zero;
+        }
+
         if (_sceneRootVisual != null)
         {
             _sceneRootVisual.ClearChildren();
@@ -110,6 +158,11 @@ public sealed class ProGpuWpfDrawingFrame
             }
 
             _sceneRootVisual.AddChild(_rootVisual);
+
+            if (_popupRetainedWpfVisualRoot != null)
+            {
+                _sceneRootVisual.AddChild(_popupRetainedWpfVisualRoot);
+            }
         }
     }
 
@@ -147,6 +200,19 @@ public sealed class ProGpuWpfDrawingFrame
         }
 
         _retainedWpfVisualRoot.AddChild(visual);
+        return true;
+    }
+
+    internal bool AddPopupRetainedWpfVisual(ProGpuVisual visual)
+    {
+        ArgumentNullException.ThrowIfNull(visual);
+
+        if (_popupRetainedWpfVisualRoot == null)
+        {
+            return false;
+        }
+
+        _popupRetainedWpfVisualRoot.AddChild(visual);
         return true;
     }
 

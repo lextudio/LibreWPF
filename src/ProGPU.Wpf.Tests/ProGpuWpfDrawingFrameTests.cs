@@ -87,6 +87,60 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void ConstructorResetsPopupRetainedLayerAboveMainWpfAndFlatLayers()
+    {
+        var sceneRoot = new ProGpuContainerVisual();
+        var retainedRoot = new ProGpuContainerVisual();
+        var popupRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var retainedChild = new ProGpuDrawingVisual();
+        var stalePopupChild = new ProGpuDrawingVisual();
+        retainedRoot.AddChild(retainedChild);
+        popupRoot.AddChild(stalePopupChild);
+
+        var frame = new ProGpuWpfDrawingFrame(
+            sceneRoot,
+            retainedRoot,
+            popupRoot,
+            flatRoot,
+            320,
+            180,
+            clearRetainedWpfVisualRoot: false);
+
+        Assert.Same(retainedChild, Assert.Single(retainedRoot.Children));
+        Assert.Empty(popupRoot.Children);
+        Assert.Equal(new Vector2(320, 180), popupRoot.Size);
+        Assert.Equal(new ProGPU.Scene.Visual[] { retainedRoot, flatRoot, popupRoot }, sceneRoot.Children.ToArray());
+    }
+
+    [Fact]
+    public void RetainedSinkCanTargetPopupLayerWithoutTouchingMainRetainedLayer()
+    {
+        var sceneRoot = new ProGpuContainerVisual();
+        var retainedRoot = new ProGpuContainerVisual();
+        var popupRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            sceneRoot,
+            retainedRoot,
+            popupRoot,
+            flatRoot,
+            320,
+            180,
+            clearRetainedWpfVisualRoot: false);
+
+        using var sink = new ProGpuRetainedCompositionCommandSink(
+            frame,
+            context: null,
+            viewport3DTextureCache: null,
+            ProGpuRetainedCompositionLayer.Popup);
+
+        Assert.Empty(retainedRoot.Children);
+        var popupFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(popupRoot.Children));
+        Assert.Empty(popupFrameRoot.Context.Commands);
+    }
+
+    [Fact]
     public void ConstructorKeepsWpfLayerBoundsAndTransformLogicalForHighDpiFrames()
     {
         var sceneRoot = new ProGpuContainerVisual();

@@ -1146,9 +1146,10 @@ public partial class MainWindow : Window
         string mouseBindingStatus = await ValidateLiveMouseBindingAsync(liveHost);
         string discreteControlStatus = await ValidateLiveDiscreteInputControlsAsync(liveHost);
         string toolBarStatus = await ValidateLiveToolBarInputAsync(liveHost);
+        string popupStatus = await ValidateLivePopupSurfacesAsync(liveHost);
         string keyboardNavigationStatus = await ValidateLiveKeyboardNavigationAsync(liveHost);
         string wheelAndCaptureStatus = await ValidateLiveWheelAndCaptureInputAsync(liveHost);
-        return $"{textInputStatus}; {controlMouseStatus}; {mouseBindingStatus}; {discreteControlStatus}; {toolBarStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
+        return $"{textInputStatus}; {controlMouseStatus}; {mouseBindingStatus}; {discreteControlStatus}; {toolBarStatus}; {popupStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
     }
 
     private async Task<string> ValidateLiveControlMouseInputAsync(ProGpuWpfWindowHost liveHost)
@@ -1498,6 +1499,317 @@ public partial class MainWindow : Window
                 return "ToolBar refresh command and toggle binding updated through host mouse input";
             },
             DispatcherPriority.Send);
+    }
+
+    private async Task<string> ValidateLivePopupSurfacesAsync(ProGpuWpfWindowHost liveHost)
+    {
+        await CloseLivePopupSurfacesAsync(liveHost);
+        await WaitForLivePopupLayerChildCountAsync(
+            liveHost,
+            expectedPopupChildren: 0,
+            exact: true,
+            "initial closed popup layer");
+
+        try
+        {
+            var menuSnapshot = await ValidateLiveMenuPopupSurfaceAsync(liveHost);
+            var comboSnapshot = await ValidateLiveComboBoxPopupSurfaceAsync(liveHost);
+            var directPopupSnapshot = await ValidateLiveDirectPopupSurfaceAsync(liveHost);
+            return
+                "Menu, ComboBox dropdown, and direct Popup opened through the ProGPU retained popup layer " +
+                $"above the main drawing layer (popup children {menuSnapshot.PopupLayerChildCount}/" +
+                $"{comboSnapshot.PopupLayerChildCount}/{directPopupSnapshot.PopupLayerChildCount})";
+        }
+        finally
+        {
+            await CloseLivePopupSurfacesAsync(liveHost);
+        }
+    }
+
+    private async Task<ProGpuWpfDiagnostics.CompositionLayerSnapshot> ValidateLiveMenuPopupSurfaceAsync(
+        ProGpuWpfWindowHost liveHost)
+    {
+        bool opened = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), "MVP live File MenuItem");
+                fileMenuItem.IsSubmenuOpen = true;
+                UpdateLayout();
+                WakeLiveRenderHost(liveHost);
+                return fileMenuItem.IsSubmenuOpen;
+            },
+            DispatcherPriority.Send);
+        if (!opened)
+        {
+            throw new InvalidOperationException("Expected MVP live File menu popup to open.");
+        }
+
+        var snapshot = await WaitForLivePopupLayerChildCountAsync(
+            liveHost,
+            expectedPopupChildren: 1,
+            exact: false,
+            "File menu popup layer");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                Require<MenuItem>(FindName("FileMenuItem"), "MVP live File MenuItem after popup validation").IsSubmenuOpen = false;
+                UpdateLayout();
+                WakeLiveRenderHost(liveHost);
+            },
+            DispatcherPriority.Send);
+        await WaitForLivePopupLayerChildCountAsync(
+            liveHost,
+            expectedPopupChildren: 0,
+            exact: true,
+            "closed File menu popup layer");
+        return snapshot;
+    }
+
+    private async Task<ProGpuWpfDiagnostics.CompositionLayerSnapshot> ValidateLiveComboBoxPopupSurfaceAsync(
+        ProGpuWpfWindowHost liveHost)
+    {
+        string lastState = "not checked";
+        bool opened = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            opened = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live popup TabControl");
+                    tabControl.SelectedIndex = 3;
+                    UpdateLayout();
+
+                    var comboBox = Require<ComboBox>(FindName("SelectedValueComboBox"), "MVP live SelectedValue ComboBox");
+                    comboBox.ApplyTemplate();
+                    UpdateLayout();
+                    lastState =
+                        $"IsLoaded={comboBox.IsLoaded}, " +
+                        $"IsVisible={comboBox.IsVisible}, " +
+                        $"ActualSize={comboBox.ActualWidth:0.###}x{comboBox.ActualHeight:0.###}, " +
+                        $"IsEnabled={comboBox.IsEnabled}, " +
+                        $"IsHitTestVisible={comboBox.IsHitTestVisible}";
+                    if (!comboBox.IsLoaded ||
+                        !comboBox.IsVisible ||
+                        comboBox.ActualWidth <= 1.0 ||
+                        comboBox.ActualHeight <= 1.0 ||
+                        !comboBox.IsEnabled ||
+                        !comboBox.IsHitTestVisible)
+                    {
+                        WakeLiveRenderHost(liveHost);
+                        return false;
+                    }
+
+                    comboBox.Focus();
+                    comboBox.IsDropDownOpen = true;
+                    UpdateLayout();
+                    WakeLiveRenderHost(liveHost);
+                    lastState += $", IsDropDownOpen={comboBox.IsDropDownOpen}";
+                    return comboBox.IsDropDownOpen;
+                },
+                DispatcherPriority.Send);
+            if (opened)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!opened)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live SelectedValue ComboBox dropdown to open, but last state was: {lastState}.");
+        }
+
+        var snapshot = await WaitForLivePopupLayerChildCountAsync(
+            liveHost,
+            expectedPopupChildren: 1,
+            exact: false,
+            "ComboBox dropdown popup layer");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                Require<ComboBox>(FindName("SelectedValueComboBox"), "MVP live SelectedValue ComboBox after popup validation").IsDropDownOpen = false;
+                UpdateLayout();
+                WakeLiveRenderHost(liveHost);
+            },
+            DispatcherPriority.Send);
+        await WaitForLivePopupLayerChildCountAsync(
+            liveHost,
+            expectedPopupChildren: 0,
+            exact: true,
+            "closed ComboBox dropdown popup layer");
+        return snapshot;
+    }
+
+    private async Task<ProGpuWpfDiagnostics.CompositionLayerSnapshot> ValidateLiveDirectPopupSurfaceAsync(
+        ProGpuWpfWindowHost liveHost)
+    {
+        string lastState = "not checked";
+        bool opened = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            opened = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live direct Popup TabControl");
+                    tabControl.SelectedIndex = 4;
+                    UpdateLayout();
+
+                    var owner = Require<Button>(FindName("PopupOwnerButton"), "MVP live direct Popup owner");
+                    var popup = Require<Popup>(FindName("InputPopup"), "MVP live direct Popup");
+                    lastState =
+                        $"Owner.IsLoaded={owner.IsLoaded}, " +
+                        $"Owner.IsVisible={owner.IsVisible}, " +
+                        $"Owner.ActualSize={owner.ActualWidth:0.###}x{owner.ActualHeight:0.###}, " +
+                        $"Owner.IsEnabled={owner.IsEnabled}, " +
+                        $"Owner.IsHitTestVisible={owner.IsHitTestVisible}";
+                    if (!owner.IsLoaded ||
+                        !owner.IsVisible ||
+                        owner.ActualWidth <= 1.0 ||
+                        owner.ActualHeight <= 1.0 ||
+                        !owner.IsEnabled ||
+                        !owner.IsHitTestVisible)
+                    {
+                        WakeLiveRenderHost(liveHost);
+                        return false;
+                    }
+
+                    popup.IsOpen = true;
+                    UpdateLayout();
+                    WakeLiveRenderHost(liveHost);
+                    lastState += $", Popup.IsOpen={popup.IsOpen}";
+                    return popup.IsOpen;
+                },
+                DispatcherPriority.Send);
+            if (opened)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!opened)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live direct Popup to open, but last state was: {lastState}.");
+        }
+
+        var snapshot = await WaitForLivePopupLayerChildCountAsync(
+            liveHost,
+            expectedPopupChildren: 1,
+            exact: false,
+            "direct Popup layer");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                Require<Popup>(FindName("InputPopup"), "MVP live direct Popup after popup validation").IsOpen = false;
+                UpdateLayout();
+                WakeLiveRenderHost(liveHost);
+            },
+            DispatcherPriority.Send);
+        await WaitForLivePopupLayerChildCountAsync(
+            liveHost,
+            expectedPopupChildren: 0,
+            exact: true,
+            "closed direct Popup layer");
+        return snapshot;
+    }
+
+    private async Task CloseLivePopupSurfacesAsync(ProGpuWpfWindowHost liveHost)
+    {
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                if (FindName("FileMenuItem") is MenuItem fileMenuItem)
+                {
+                    fileMenuItem.IsSubmenuOpen = false;
+                }
+
+                if (FindName("SelectedValueComboBox") is ComboBox comboBox)
+                {
+                    comboBox.IsDropDownOpen = false;
+                }
+
+                if (FindName("InputPopup") is Popup popup)
+                {
+                    popup.IsOpen = false;
+                }
+
+                UpdateLayout();
+                WakeLiveRenderHost(liveHost);
+            },
+            DispatcherPriority.Send);
+    }
+
+    private async Task<ProGpuWpfDiagnostics.CompositionLayerSnapshot> WaitForLivePopupLayerChildCountAsync(
+        ProGpuWpfWindowHost liveHost,
+        int expectedPopupChildren,
+        bool exact,
+        string description)
+    {
+        string lastState = "not checked";
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            await Task.Delay(LiveValidationRetryDelay);
+            var snapshot = await InvokeWithLiveNativeLoopWakeAsync(
+                liveHost,
+                () =>
+                {
+                    if (!ProGpuWpfDiagnostics.TryGetCompositionLayerSnapshot(liveHost, out var current))
+                    {
+                        lastState = $"{description}: no composition target";
+                        return default;
+                    }
+
+                    lastState =
+                        $"{description}: scene children {current.SceneRootChildCount}, " +
+                        $"layer order retained={current.RetainedLayerIndex}, flat={current.FlatLayerIndex}, popup={current.PopupLayerIndex}, " +
+                        $"popup children {current.PopupLayerChildCount}, retained children {current.RetainedLayerChildCount}";
+                    return IsLivePopupLayerSnapshotReady(current, expectedPopupChildren, exact)
+                        ? current
+                        : default;
+                },
+                DispatcherPriority.Background);
+
+            if (snapshot.HasCompositionTarget)
+            {
+                return snapshot;
+            }
+        }
+
+        string expectedText = exact
+            ? $"exactly {expectedPopupChildren}"
+            : $"at least {expectedPopupChildren}";
+        throw new InvalidOperationException(
+            $"Expected MVP live {description} to present {expectedText} popup retained child visual(s) above the main drawing layer, but last state was: {lastState}.");
+    }
+
+    private static bool IsLivePopupLayerSnapshotReady(
+        ProGpuWpfDiagnostics.CompositionLayerSnapshot snapshot,
+        int expectedPopupChildren,
+        bool exact)
+    {
+        if (!snapshot.HasCompositionTarget ||
+            snapshot.SceneRootChildCount < 3 ||
+            snapshot.RetainedLayerIndex < 0 ||
+            snapshot.FlatLayerIndex < 0 ||
+            snapshot.PopupLayerIndex <= snapshot.FlatLayerIndex)
+        {
+            return false;
+        }
+
+        return exact
+            ? snapshot.PopupLayerChildCount == expectedPopupChildren
+            : snapshot.PopupLayerChildCount >= expectedPopupChildren;
     }
 
     private async Task<string> ValidateLiveMouseBindingAsync(ProGpuWpfWindowHost liveHost)

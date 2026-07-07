@@ -7,7 +7,7 @@ source "${repo_root}/eng/progpu-preview-package-list.sh"
 require_text() {
   local file="$1"
   local text="$2"
-  if ! grep -Fq "${text}" "${repo_root}/${file}"; then
+  if ! grep -Fq -- "${text}" "${repo_root}/${file}"; then
     echo "Missing '${text}' in ${file}." >&2
     exit 1
   fi
@@ -20,10 +20,14 @@ require_text ".github/workflows/progpu-wpf-release.yml" "NUGET_API_KEY"
 require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-v*"
 require_text ".github/workflows/progpu-wpf-release.yml" "refs/tags/librewpf-v"
 require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-packages-"
+require_text ".github/workflows/progpu-wpf-release.yml" "Create GitHub Release"
+require_text ".github/workflows/progpu-wpf-release.yml" "gh release create"
+require_text ".github/workflows/progpu-wpf-release.yml" "--generate-notes"
 require_text ".github/workflows/progpu-wpf-docs.yml" "librewpf-docs"
 require_text "README.md" "# LibreWPF ProGPU Port"
 require_text "Directory.Build.props" "<PackageTags Condition=\"'\$(PackageTags)' == ''\">librewpf;progpu;webgpu;silk.net;xaml;cross-platform;desktop</PackageTags>"
 require_text "docs/progpu-wpf-release.md" "LibreWPF.Sdk"
+require_text "docs/progpu-wpf-release.md" "gh release create --generate-notes"
 require_text "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "<PackageName>LibreWPF.Transport"
 require_text "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.csproj" "<PackageName>LibreWPF.Transport"
 require_text "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.csproj" "<PackageDescription>LibreWPF transport package"

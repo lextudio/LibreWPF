@@ -36,7 +36,7 @@ verifies the bundle, and runs package-mode SDK smoke tests.
 
 - `LibreWPF Build` runs the SDK package/no-source-change smoke on macOS with submodules checked out.
 - `LibreWPF Docs` verifies that this document and README stay aligned with the preview package list.
-- `LibreWPF Release` runs the same SDK CI gate, uploads packages/bundle artifacts, and can publish to NuGet.org.
+- `LibreWPF Release` runs the same SDK CI gate, uploads packages/bundle artifacts, publishes to NuGet.org, and creates tag-driven GitHub Releases with generated release notes.
 
 ## NuGet Publishing
 
@@ -45,6 +45,7 @@ Publishing is gated by repository secret `NUGET_API_KEY`.
 - Manual workflow runs publish only when the `publish` input is true.
 - Tags named `librewpf-v*` publish after validation.
 - The release job pushes all preview `.nupkg` files from `artifacts/packages/Release/NonShipping`.
+- Tag runs create the matching GitHub Release with `gh release create --generate-notes` and attach the preview packages, manifest, bundle, checksum, README, and NuGet.config.
 
 ## SDK Switch Contract
 

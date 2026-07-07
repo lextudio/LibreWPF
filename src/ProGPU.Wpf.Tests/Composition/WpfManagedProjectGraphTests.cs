@@ -11829,6 +11829,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("./eng/progpu-wpf-sdk-ci.sh", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("NUGET_API_KEY", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping/*.nupkg", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("Create GitHub Release", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("GH_TOKEN: ${{ github.token }}", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("gh release create \"${GITHUB_REF_NAME}\"", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("--title \"LibreWPF ${{ env.PROGPU_WPF_DEV_PACKAGE_VERSION }}\"", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("--generate-notes", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("--verify-tag", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("--prerelease", releaseWorkflow, StringComparison.Ordinal);
         Assert.StartsWith("# LibreWPF ProGPU Port", wpfReadme, StringComparison.Ordinal);
         Assert.Contains("The public package brand is LibreWPF", wpfReadme, StringComparison.Ordinal);
         Assert.Contains("LibreWPF.Sdk/0.1.0-preview.1", wpfReadme, StringComparison.Ordinal);
@@ -11838,6 +11845,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("## Original Upstream README", wpfReadme, StringComparison.Ordinal);
         Assert.Contains("LibreWPF.Sdk", releaseDocs, StringComparison.Ordinal);
         Assert.Contains("NUGET_API_KEY", releaseDocs, StringComparison.Ordinal);
+        Assert.Contains("gh release create --generate-notes", releaseDocs, StringComparison.Ordinal);
         Assert.Contains("eng/progpu-preview-package-list.sh", docsVerifierScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj", sdkCiScript, StringComparison.Ordinal);

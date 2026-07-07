@@ -43,6 +43,7 @@
     <Compile Include="SmokePage.xaml.cs" />
     <Compile Include="SmokeSecondPage.xaml.cs" />
     <Compile Include="SmokeUserControl.xaml.cs" />
+    <Compile Include="SameAssemblyResourceMarker.cs" />
   </ItemGroup>
 
   <ItemGroup>

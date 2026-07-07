@@ -55,6 +55,7 @@ namespace System.Windows.Baml2006
 
         protected override XamlType GetXamlType(string xamlNamespace, string name, params XamlType[] typeArguments)
         {
+            xamlNamespace = NormalizeLocalClrNamespace(xamlNamespace);
             EnsureXmlnsAssembliesLoaded(xamlNamespace);
             XamlTypeName fullTypeName = new XamlTypeName { Namespace = xamlNamespace, Name = name };
             if (typeArguments != null)
@@ -450,6 +451,36 @@ namespace System.Windows.Baml2006
                     GetAssembly(assembly);
                 }
             }
+        }
+
+        private string NormalizeLocalClrNamespace(string xamlNamespace)
+        {
+            if (_localAssembly == null)
+            {
+                return xamlNamespace;
+            }
+
+            const string clrNamespacePrefix = "clr-namespace:";
+            const string assemblyPart = ";assembly=";
+
+            if (!xamlNamespace.StartsWith(clrNamespacePrefix, StringComparison.Ordinal))
+            {
+                return xamlNamespace;
+            }
+
+            int assemblyPartIndex = xamlNamespace.IndexOf(assemblyPart, StringComparison.Ordinal);
+            if (assemblyPartIndex < 0)
+            {
+                return xamlNamespace + assemblyPart + _localAssembly.FullName;
+            }
+
+            int assemblyNameIndex = assemblyPartIndex + assemblyPart.Length;
+            if (assemblyNameIndex == xamlNamespace.Length)
+            {
+                return string.Concat(xamlNamespace.AsSpan(0, assemblyNameIndex), _localAssembly.FullName.AsSpan());
+            }
+
+            return xamlNamespace;
         }
 
         private Assembly ResolveAssembly(BamlAssembly bamlAssembly)

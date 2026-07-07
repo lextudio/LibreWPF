@@ -50,6 +50,7 @@
   <PropertyGroup>
     <BundledNETCoreAppTargetFramework>$(ProGpuWpfTargetFramework)</BundledNETCoreAppTargetFramework>
     <PbtTfm Condition="'$(MSBuildRuntimeType)' == 'Core'">$(BundledNETCoreAppTargetFramework)</PbtTfm>
+    <PbtDir Condition="'$(ArtifactsTmpDir)' != '' And '$(PbtTfm)' != ''">$(ArtifactsTmpDir)PresentationBuildTasks\$(PbtTfm)\</PbtDir>
   </PropertyGroup>
 
 </Project>

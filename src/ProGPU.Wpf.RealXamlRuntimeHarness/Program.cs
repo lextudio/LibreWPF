@@ -257,6 +257,14 @@ internal static class Program
         object mergedBlockMargin = Invoke(application, "TryFindResource", "MergedBlockMargin");
         AssertType(mergedBlockMargin, "System.Windows.Thickness", "merged block margin");
         AssertEqual(8.0, GetProperty(mergedBlockMargin, "Top"), "merged block margin top");
+
+        object sameAssemblyImplicitMarker = Invoke(application, "TryFindResource", "SameAssemblyImplicitMarker");
+        AssertType(sameAssemblyImplicitMarker, "ProGPU.Wpf.RealXamlCompilerHarness.SameAssemblyResourceMarker", "implicit same-assembly marker");
+        AssertEqual("implicit local assembly", GetProperty(sameAssemblyImplicitMarker, "Name"), "implicit same-assembly marker name");
+
+        object sameAssemblyExplicitMarker = Invoke(application, "TryFindResource", "SameAssemblyExplicitMarker");
+        AssertType(sameAssemblyExplicitMarker, "ProGPU.Wpf.RealXamlCompilerHarness.SameAssemblyResourceMarker", "explicit same-assembly marker");
+        AssertEqual("explicit local assembly", GetProperty(sameAssemblyExplicitMarker, "Name"), "explicit same-assembly marker name");
     }
 
     private static void ValidateLooseXamlReader(Assembly presentationFramework)

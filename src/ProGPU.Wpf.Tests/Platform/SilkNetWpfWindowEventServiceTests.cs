@@ -33,4 +33,40 @@ public sealed class SilkNetWpfWindowEventServiceTests
         Assert.Equal(WpfWindowEventKind.FilesDropped, args.Kind);
         Assert.Empty(args.Files);
     }
+
+    [Fact]
+    public void CreateWindowPositionChangingEventStoresCoordinates()
+    {
+        var args = SilkNetWpfWindowEventService.CreateWindowPositionChangingEvent(-12, 34);
+
+        Assert.Equal(WpfWindowEventKind.WindowPositionChanging, args.Kind);
+        Assert.Equal(-12, args.Left);
+        Assert.Equal(34, args.Top);
+        Assert.Null(args.Width);
+        Assert.Null(args.Height);
+    }
+
+    [Fact]
+    public void CreateWindowPositionChangedEventStoresCoordinates()
+    {
+        var args = SilkNetWpfWindowEventService.CreateWindowPositionChangedEvent(120, -45);
+
+        Assert.Equal(WpfWindowEventKind.WindowPositionChanged, args.Kind);
+        Assert.Equal(120, args.Left);
+        Assert.Equal(-45, args.Top);
+        Assert.Null(args.Width);
+        Assert.Null(args.Height);
+    }
+
+    [Fact]
+    public void CreateWindowSizeChangedEventStoresSize()
+    {
+        var args = SilkNetWpfWindowEventService.CreateWindowSizeChangedEvent(800, 600);
+
+        Assert.Equal(WpfWindowEventKind.WindowSizeChanged, args.Kind);
+        Assert.Null(args.Left);
+        Assert.Null(args.Top);
+        Assert.Equal(800, args.Width);
+        Assert.Equal(600, args.Height);
+    }
 }

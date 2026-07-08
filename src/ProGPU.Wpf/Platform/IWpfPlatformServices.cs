@@ -331,20 +331,41 @@ public enum WpfWindowEventKind
 {
     Activated,
     Deactivated,
-    FilesDropped
+    FilesDropped,
+    WindowPositionChanging,
+    WindowPositionChanged,
+    WindowSizeChanged
 }
 
 public sealed class WpfWindowEventArgs : EventArgs
 {
-    public WpfWindowEventArgs(WpfWindowEventKind kind, IReadOnlyList<string>? files = null)
+    public WpfWindowEventArgs(
+        WpfWindowEventKind kind,
+        IReadOnlyList<string>? files = null,
+        int? left = null,
+        int? top = null,
+        int? width = null,
+        int? height = null)
     {
         Kind = kind;
         Files = files ?? Array.Empty<string>();
+        Left = left;
+        Top = top;
+        Width = width;
+        Height = height;
     }
 
     public WpfWindowEventKind Kind { get; }
 
     public IReadOnlyList<string> Files { get; }
+
+    public int? Left { get; }
+
+    public int? Top { get; }
+
+    public int? Width { get; }
+
+    public int? Height { get; }
 }
 
 public enum WpfInputEventKind

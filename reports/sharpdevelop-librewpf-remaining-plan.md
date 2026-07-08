@@ -6,14 +6,14 @@ Date: 2026-07-08
 
 The current SharpDevelop slice is closed at package-mode build parity plus broad popup/hosted-control smoke coverage. `/Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj` builds in Release from a fresh NuGet cache against `/Users/wieslawsoltes/GitHub/wpf/artifacts/packages/SharpDevelopLocal` with `286` warnings and `0` errors.
 
-Reusable fixes now landed in LibreWPF, LibreWinForms, and ProGPU include menu/context/combo popup coverage, AvalonEdit completion popup smoke support, hosted WinForms TreeView/ListView/ComboBox owner drawing, DrawItem background/focus helpers, dialog/clipboard services, ImageList/TreeView icon rendering, and the first typed portable `HwndSource` hook dispatch path for activation messages.
+Reusable fixes now landed in LibreWPF, LibreWinForms, and ProGPU include menu/context/combo popup coverage, AvalonEdit completion popup smoke support, hosted WinForms TreeView/ListView/ComboBox owner drawing, DrawItem background/focus helpers, dialog/clipboard services, ImageList/TreeView icon rendering, and typed portable `HwndSource` hook dispatch for activation plus basic window move/resize geometry messages.
 
 SharpDevelop is not yet fully runnable as an IDE. The remaining work below is the plan for the next implementation phase.
 
 ## Remaining implementation work
 
 1. Expand portable HWND hook coverage.
-   - Add typed ProGPU/LibreWPF contracts for window position, mouse activation, non-client activation, show/hide, and region/floating-window events used by AvalonDock and SharpDevelop.
+   - Add typed ProGPU/LibreWPF contracts for mouse activation, non-client activation/title-bar messages, show/hide, exact window-position data when consumers need native `WINDOWPOS` details, and region/floating-window events used by AvalonDock and SharpDevelop.
    - Keep the existing activation hook path reflection-free and extend it with neutral DTOs rather than passing native Win32 structs through package APIs.
 
 2. Finish AvalonDock floating/flyout parity.
@@ -46,6 +46,7 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 
 - `SharpDevelop.Full.LibreWpf.csproj` Release fresh-cache build succeeds from the local LibreWPF SDK feed.
 - Focused `ProGPU.Wpf.Tests` popup, activation, host, and LibreWinForms compatibility sets pass.
+- Focused `ProGPU.Wpf.Tests` window geometry hook coverage remains green when AvalonDock hook behavior changes.
 - A runtime smoke opens the workbench, loads a C# project, opens a source file, opens/uses the File menu, editor context menu, completion popup, and at least one hosted WinForms combo/tree/list owner-draw surface.
 - AvalonDock float/auto-hide/dock restore flows run without Win32-only fallbacks.
 - Reports stay updated after every slice with exact commands, warning/error counts, and any remaining blocker.

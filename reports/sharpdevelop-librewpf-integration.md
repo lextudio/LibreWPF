@@ -1756,12 +1756,28 @@ ProGPU.Wpf.Tests focused activation/source/host/WinForms set             -> 174 
 SharpDevelop.Full.LibreWpf fresh-cache Release package-mode build        -> succeeds, 286 warnings, 0 errors
 ```
 
+## 2026-07-08 AvalonDock window geometry hook pass
+
+AvalonDock's `WindowInteropWrapper` uses `WM_WINDOWPOSCHANGING` to keep auto-hide flyout windows aligned while the owner window moves, and floating windows route `WM_WINDOWPOSCHANGED`, `WM_MOVE`, and `WM_SIZE` through the same `HwndSource.AddHook(...)` filter surface. LibreWPF previously forwarded only activation messages, so those hooks stayed silent in package mode.
+
+The ProGPU WPF platform event contract now carries typed window geometry events: `WindowPositionChanging`, `WindowPositionChanged`, and `WindowSizeChanged`, with neutral left/top/width/height fields on `WpfWindowEventArgs`. The Silk.NET window event service raises those events from native `Move` and `Resize`, and `WpfPortableWindowActivation` translates them into the legacy `HwndSource` hook messages expected by AvalonDock. `WM_WINDOWPOSCHANGING`/`WM_WINDOWPOSCHANGED` carry no fake native `WINDOWPOS` pointer; consumers that need exact native structure data still need a typed portable contract. `WM_MOVE` and `WM_SIZE` receive packed coordinate/size `lParam` values for existing filters that read those values.
+
+Validation:
+
+```text
+LibreWPF.ProGPU Release build                                            -> succeeds, 0 warnings, 0 errors
+ProGPU.Wpf.Tests Release build                                           -> succeeds, 95 warnings, 0 errors
+ProGPU.Wpf.Tests window activation/event focused set                     -> 55 passed, 0 failed
+LibreWPF.ProGPU Release pack into SharpDevelopLocal feed                 -> succeeds
+SharpDevelop.Full.LibreWpf fresh-cache Release package-mode build        -> succeeds, 286 warnings, 0 errors
+```
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:
   - Missing reference assemblies for `.NETFramework,Version=v3.5`, `v4.0`, `v4.0,Profile=Client`, `v4.5`, and `v4.5.1` on macOS.
   - `src/Tools/Tools.build` uses `ResGen.exe`, which .NET Core MSBuild reports as unsupported.
-- `ICSharpCode.SharpDevelop.Workbench.WpfWorkbench` and AvalonDock still contain old Win32/HWND hook assumptions. LibreWPF now dispatches portable activation hooks for the package-mode `HwndSource.AddHook(...)` path, but non-activation messages such as window-position changes, mouse activation, IME composition, and region/floating-window behavior still need typed portable contracts.
+- `ICSharpCode.SharpDevelop.Workbench.WpfWorkbench` and AvalonDock still contain old Win32/HWND hook assumptions. LibreWPF now dispatches portable activation and basic geometry hooks for the package-mode `HwndSource.AddHook(...)` path, but mouse activation, non-client title-bar messages, IME composition, exact native `WINDOWPOS` structure needs, and region/floating-window behavior still need typed portable contracts.
 - `SharpDevelop.Full.LibreWpf` now builds and starts the historical workbench shell through LibreWPF package mode, loads the legacy LineCounter C# project as `CSharpProject`, opens a real source file, attaches the CSharpBinding editor extension, and renders the real AddInTree-built menu/context/combo popup surfaces. The complete IDE still cannot yet be claimed as fully working: debug commands, full designer support including handler generation/source navigation, add-in workflows, broader tool windows, templates, completion/refactoring flows, and non-smoke user interaction still need systematic runtime validation and additional portable service seams.
 - The ResourceToolkit add-in is currently disabled in the local package-mode wrapper because it depends on legacy NRefactory Ast/PrettyPrinter/SharpDevelop.Dom resolver APIs that are not part of the current LibreWPF SharpDevelop project graph. It needs a compatibility parser layer or a targeted rewrite before it can become part of the default full-workbench build.
 - Full-workbench AvalonEdit can now open and display a real source file with source-tree C# syntax registration, `CSharpBinding.CSharpLanguageBinding`, `CSharpTextEditorExtension` attached, and the completion popup opened in the package-mode smoke. Remaining editor parity work includes completion commit/filter interaction, semantic issue update behavior, refactoring context actions, IME composition, and designer-specific editor flows.
@@ -1773,6 +1789,6 @@ SharpDevelop.Full.LibreWpf fresh-cache Release package-mode build        -> succ
 ## Next steps
 
 - Add the real workbench service bootstrap to `SharpDevelop.LibreWpf` incrementally, keeping the SDK-style shell buildable after every slice.
-- Expand the new portable `HwndSource` hook path beyond activation into typed window-position, mouse-activation, region, floating-window, and IME contracts.
+- Expand the new portable `HwndSource` hook path beyond activation and basic geometry into typed mouse-activation, non-client, region, floating-window, and IME contracts.
 - Add portable contracts for AvalonDock floating-window regions and AvalonEdit IME composition rather than relying on HWND hooks in package-mode apps.
 - Keep validating popup classes in package mode after each shell milestone: menu, context menu, ComboBox, Core.Presentation drop-down buttons, toolbars, AvalonDock tabs, and AvalonEdit completion popups.

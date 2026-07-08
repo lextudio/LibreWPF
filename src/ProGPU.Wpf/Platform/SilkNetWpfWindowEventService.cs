@@ -1,4 +1,5 @@
 using System;
+using Silk.NET.Maths;
 using Silk.NET.Windowing;
 
 namespace System.Windows.Media.ProGPU.Platform;
@@ -23,11 +24,19 @@ public sealed class SilkNetWpfWindowEventService : IWpfWindowEventService
 
         Action<bool> focusChanged = isFocused => OnWindowEventReceived(CreateFocusChangedEvent(isFocused));
         Action<string[]> fileDrop = files => OnWindowEventReceived(CreateFileDropEvent(files));
+        Action<Vector2D<int>> move = position =>
+        {
+            OnWindowEventReceived(CreateWindowPositionChangingEvent(position.X, position.Y));
+            OnWindowEventReceived(CreateWindowPositionChangedEvent(position.X, position.Y));
+        };
+        Action<Vector2D<int>> resize = size => OnWindowEventReceived(CreateWindowSizeChangedEvent(size.X, size.Y));
 
         window.FocusChanged += focusChanged;
         window.FileDrop += fileDrop;
+        window.Move += move;
+        window.Resize += resize;
 
-        return new WindowEventSubscription(window, focusChanged, fileDrop);
+        return new WindowEventSubscription(window, focusChanged, fileDrop, move, resize);
     }
 
     public static WpfWindowEventArgs CreateFocusChangedEvent(bool isFocused)
@@ -40,6 +49,21 @@ public sealed class SilkNetWpfWindowEventService : IWpfWindowEventService
         return new WpfWindowEventArgs(WpfWindowEventKind.FilesDropped, files ?? Array.Empty<string>());
     }
 
+    public static WpfWindowEventArgs CreateWindowPositionChangingEvent(int left, int top)
+    {
+        return new WpfWindowEventArgs(WpfWindowEventKind.WindowPositionChanging, left: left, top: top);
+    }
+
+    public static WpfWindowEventArgs CreateWindowPositionChangedEvent(int left, int top)
+    {
+        return new WpfWindowEventArgs(WpfWindowEventKind.WindowPositionChanged, left: left, top: top);
+    }
+
+    public static WpfWindowEventArgs CreateWindowSizeChangedEvent(int width, int height)
+    {
+        return new WpfWindowEventArgs(WpfWindowEventKind.WindowSizeChanged, width: width, height: height);
+    }
+
     private void OnWindowEventReceived(WpfWindowEventArgs args)
     {
         WindowEventReceived?.Invoke(this, args);
@@ -50,13 +74,22 @@ public sealed class SilkNetWpfWindowEventService : IWpfWindowEventService
         private readonly IWindow _window;
         private readonly Action<bool> _focusChanged;
         private readonly Action<string[]> _fileDrop;
+        private readonly Action<Vector2D<int>> _move;
+        private readonly Action<Vector2D<int>> _resize;
         private bool _isDisposed;
 
-        public WindowEventSubscription(IWindow window, Action<bool> focusChanged, Action<string[]> fileDrop)
+        public WindowEventSubscription(
+            IWindow window,
+            Action<bool> focusChanged,
+            Action<string[]> fileDrop,
+            Action<Vector2D<int>> move,
+            Action<Vector2D<int>> resize)
         {
             _window = window;
             _focusChanged = focusChanged;
             _fileDrop = fileDrop;
+            _move = move;
+            _resize = resize;
         }
 
         public void Dispose()
@@ -68,6 +101,8 @@ public sealed class SilkNetWpfWindowEventService : IWpfWindowEventService
 
             _window.FocusChanged -= _focusChanged;
             _window.FileDrop -= _fileDrop;
+            _window.Move -= _move;
+            _window.Resize -= _resize;
             _isDisposed = true;
         }
     }

@@ -10,6 +10,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
 {
     private const int WM_ACTIVATE = 0x0006;
     private const int WM_ACTIVATEAPP = 0x001C;
+    private const int WM_MOVE = 0x0003;
+    private const int WM_SIZE = 0x0005;
+    private const int WM_WINDOWPOSCHANGING = 0x0046;
+    private const int WM_WINDOWPOSCHANGED = 0x0047;
     private const int WA_INACTIVE = 0;
     private const int WA_ACTIVE = 1;
 
@@ -830,6 +834,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 DispatchPortableActivationHooks(isActive: false);
                 TrySetWindowActivationStateForHostEvent(isActive: false);
                 break;
+            case WpfWindowEventKind.WindowPositionChanging:
+                DispatchPortableWindowPositionChangingHook();
+                break;
+            case WpfWindowEventKind.WindowPositionChanged:
+                DispatchPortableWindowPositionChangedHooks(e.Left, e.Top);
+                break;
+            case WpfWindowEventKind.WindowSizeChanged:
+                DispatchPortableWindowSizeChangedHooks(e.Width, e.Height);
+                break;
         }
     }
 
@@ -844,6 +857,60 @@ public sealed class WpfPortableWindowActivation : IDisposable
         IntPtr activeWParam = new(isActive ? WA_ACTIVE : WA_INACTIVE);
         bridge.TryDispatchHwndSourceHook(WM_ACTIVATE, activeWParam, IntPtr.Zero, out _, out _);
         bridge.TryDispatchHwndSourceHook(WM_ACTIVATEAPP, isActive ? new IntPtr(1) : IntPtr.Zero, IntPtr.Zero, out _, out _);
+    }
+
+    private void DispatchPortableWindowPositionChangingHook()
+    {
+        WpfPortablePresentationSourceBridge? bridge = Host.PortablePresentationSourceBridge;
+        if (bridge == null)
+        {
+            return;
+        }
+
+        bridge.TryDispatchHwndSourceHook(WM_WINDOWPOSCHANGING, IntPtr.Zero, IntPtr.Zero, out _, out _);
+    }
+
+    private void DispatchPortableWindowPositionChangedHooks(int? left, int? top)
+    {
+        WpfPortablePresentationSourceBridge? bridge = Host.PortablePresentationSourceBridge;
+        if (bridge == null)
+        {
+            return;
+        }
+
+        bridge.TryDispatchHwndSourceHook(WM_WINDOWPOSCHANGED, IntPtr.Zero, IntPtr.Zero, out _, out _);
+        if (left.HasValue && top.HasValue)
+        {
+            bridge.TryDispatchHwndSourceHook(WM_MOVE, IntPtr.Zero, PackSignedLowHigh(left.Value, top.Value), out _, out _);
+        }
+    }
+
+    private void DispatchPortableWindowSizeChangedHooks(int? width, int? height)
+    {
+        WpfPortablePresentationSourceBridge? bridge = Host.PortablePresentationSourceBridge;
+        if (bridge == null)
+        {
+            return;
+        }
+
+        bridge.TryDispatchHwndSourceHook(WM_WINDOWPOSCHANGING, IntPtr.Zero, IntPtr.Zero, out _, out _);
+        bridge.TryDispatchHwndSourceHook(WM_WINDOWPOSCHANGED, IntPtr.Zero, IntPtr.Zero, out _, out _);
+        if (width.HasValue && height.HasValue)
+        {
+            bridge.TryDispatchHwndSourceHook(WM_SIZE, IntPtr.Zero, PackUnsignedLowHigh(width.Value, height.Value), out _, out _);
+        }
+    }
+
+    private static IntPtr PackSignedLowHigh(int low, int high)
+    {
+        uint packed = (ushort)low | ((uint)(ushort)high << 16);
+        return new IntPtr(unchecked((int)packed));
+    }
+
+    private static IntPtr PackUnsignedLowHigh(int low, int high)
+    {
+        uint packed = (uint)(ushort)Math.Max(0, low) | ((uint)(ushort)Math.Max(0, high) << 16);
+        return new IntPtr(unchecked((int)packed));
     }
 
     private void TrySetWindowActivationStateForHostEvent(bool isActive)

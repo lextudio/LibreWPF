@@ -618,6 +618,29 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostWindowGeometryEventsDispatchLegacyHwndSourceHooks()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        RaiseHostWindowEvent(host, new WpfWindowEventArgs(WpfWindowEventKind.WindowPositionChanging, left: -12, top: 34));
+        RaiseHostWindowEvent(host, new WpfWindowEventArgs(WpfWindowEventKind.WindowPositionChanged, left: -12, top: 34));
+        RaiseHostWindowEvent(host, new WpfWindowEventArgs(WpfWindowEventKind.WindowSizeChanged, width: 800, height: 600));
+
+        Assert.Equal(
+            new[] { 0x0046, 0x0047, 0x0003, 0x0046, 0x0047, 0x0005 },
+            source.DispatchedHwndSourceHooks.Select(hook => hook.Message).ToArray());
+        Assert.Equal(PackSignedLowHigh(-12, 34), source.DispatchedHwndSourceHooks[2].LParam);
+        Assert.Equal(PackUnsignedLowHigh(800, 600), source.DispatchedHwndSourceHooks[5].LParam);
+    }
+
+    [Fact]
     public void HostActivationEventsUseTypedWindowActivationService()
     {
         var service = new TestWindowActivationServiceRegistrar();
@@ -1287,9 +1310,26 @@ public sealed class WpfPortableWindowActivationTests
 
     private static void RaiseHostWindowEvent(ProGpuWpfWindowHost host, WpfWindowEventKind kind)
     {
+        RaiseHostWindowEvent(host, new WpfWindowEventArgs(kind));
+    }
+
+    private static void RaiseHostWindowEvent(ProGpuWpfWindowHost host, WpfWindowEventArgs args)
+    {
         typeof(ProGpuWpfWindowHost)
             .GetMethod("OnPlatformWindowEventReceived", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .Invoke(host, new object?[] { null, new WpfWindowEventArgs(kind) });
+            .Invoke(host, new object?[] { null, args });
+    }
+
+    private static IntPtr PackSignedLowHigh(int low, int high)
+    {
+        uint packed = (ushort)low | ((uint)(ushort)high << 16);
+        return new IntPtr(unchecked((int)packed));
+    }
+
+    private static IntPtr PackUnsignedLowHigh(int low, int high)
+    {
+        uint packed = (uint)(ushort)Math.Max(0, low) | ((uint)(ushort)Math.Max(0, high) << 16);
+        return new IntPtr(unchecked((int)packed));
     }
 
     private static void RaiseHostInputEvent(ProGpuWpfWindowHost host, WpfInputEventArgs args)

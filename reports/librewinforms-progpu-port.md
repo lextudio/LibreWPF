@@ -179,9 +179,24 @@ SharpDevelop.Full.LibreWpf fresh-cache Release build        -> succeeds, 286 war
 SharpDevelop broad smoke                                    -> popups/build/resx/forms designer/property grid/context menu/completion all pass, exit code 0
 ```
 
+## 2026-07-08 FormsDesigner resources and localization
+
+The portable CodeDOM replay now handles the resource patterns emitted by WinForms designers. `ComponentResourceManager.GetObject(...)`, `GetString(...)`, `GetStream(...)`, and `ApplyResources(...)` are evaluated through typed resource-manager APIs, and `ApplyResources(...)` has a property-descriptor fallback over the resolved `ResourceSet` for portable controls whose platform implementation does not mutate all properties itself. CodeDOM type names are normalized before type-resolution service and known-type lookup, so assembly-qualified designer type names resolve consistently.
+
+The serializer also reads the active `CodeDomLocalizationProvider` from the portable design host and emits `resources.ApplyResources(this, "$this")` plus per-component `resources.ApplyResources(...)` calls when `CodeDomLocalizationModel.PropertyReflection` is requested. This preserves the reflection-localization shape that SharpDevelop detects in existing designer files while the remaining resource-file writer path is brought over from upstream WinForms.
+
+Focused validation:
+
+```text
+ProGPU.Wpf.Tests PortableWinFormsCodeDomDesignerLoaderTests -> Passed, 10 total
+LibreWinForms.System.Windows.Forms build                    -> succeeds, 27 warnings, 0 errors
+SharpDevelop.Full.LibreWpf fresh-cache Release build        -> succeeds, 286 warnings, 0 errors
+SharpDevelop broad smoke                                    -> popups/build/resx/forms designer/property grid/context menu/completion all pass, exit code 0
+```
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.
 - Replace the remaining compatibility-only controls with upstream managed WinForms implementations behind typed ProGPU/Silk.NET platform services.
-- Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing/component create-remove coverage to handler generation/source navigation, resources, localization, and broader generated-code round trips.
+- Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing/component create-remove/resource-replay/localization-shape coverage to handler generation/source navigation, resource-file writing, toolbox placement details, and broader generated-code round trips.
 - Make the standard WPF SDK pack workflow restore from the required private WPF feeds so local validation does not need generated package artifact refreshes.

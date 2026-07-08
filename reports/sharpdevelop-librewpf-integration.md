@@ -1551,6 +1551,21 @@ SharpDevelop.Full.LibreWpf Release build                    -> succeeds, 286 war
 SharpDevelop broad smoke                                    -> popups/build/resx/forms designer/property grid/context menu/completion all pass, exit code 0
 ```
 
+## 2026-07-08 FormsDesigner resource replay and localization shape
+
+LibreWinForms now replays the WinForms designer resource patterns used by localized designer files. The portable CodeDOM loader evaluates `ComponentResourceManager.GetObject(...)`, `GetString(...)`, `GetStream(...)`, and `ApplyResources(...)`; `ApplyResources(...)` also falls back to typed property descriptors over the resolved resource set so portable controls receive resource values even when the platform method is incomplete. The CodeDOM type resolver now normalizes assembly-qualified names before service and known-type lookup.
+
+The portable serializer also preserves SharpDevelop's reflection-localization model by emitting `resources.ApplyResources(...)` for the root and named components when a `CodeDomLocalizationProvider` requests `CodeDomLocalizationModel.PropertyReflection`. This does not yet claim complete localized resource-file editing; the next remaining slice is writing/updating resource files through upstream WinForms resource services.
+
+Validation:
+
+```text
+ProGPU.Wpf.Tests PortableWinFormsCodeDomDesignerLoaderTests -> 10 passed
+LibreWinForms.System.Windows.Forms Release build            -> succeeds, 27 warnings, 0 errors
+SharpDevelop.Full.LibreWpf Release build                    -> succeeds, 286 warnings, 0 errors
+SharpDevelop broad smoke                                    -> popups/build/resx/forms designer/property grid/context menu/completion all pass, exit code 0
+```
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:

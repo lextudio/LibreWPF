@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.ComponentModel.Design.Serialization;
 using System.Linq;
+using System.Reflection;
 using Xunit;
 using Forms = System.Windows.Forms;
 
@@ -217,6 +218,41 @@ public sealed class PortableWinFormsCodeDomDesignerLoaderTests
         Assert.NotNull(addStatement);
     }
 
+    [Fact]
+    public void BeginLoadAppliesComponentResourceManagerResources()
+    {
+        ComponentResourceManager resourceManager = new(typeof(LocalizableWinFormsResourceTarget));
+        Forms.Button probeButton = new();
+        resourceManager.ApplyResources(probeButton, "button1");
+        Assert.Equal("Localized button", probeButton.Text);
+
+        var surface = new DesignSurface();
+
+        surface.BeginLoad(new ResourceApplyCodeDomDesignerLoader());
+
+        Assert.Empty(surface.LoadErrors);
+        Assert.True(surface.IsLoaded);
+        var root = Assert.IsType<Forms.UserControl>(surface.View);
+        var button = Assert.IsType<Forms.Button>(Assert.Single(root.Controls));
+        Assert.Equal("Localized button", button.Text);
+        Assert.Equal("Localized root", root.Text);
+    }
+
+    [Fact]
+    public void FlushEmitsApplyResourcesForReflectionLocalizationModel()
+    {
+        var loader = new ReflectionLocalizedCodeDomDesignerLoader();
+        var surface = new DesignSurface();
+
+        surface.BeginLoad(loader);
+        surface.Flush();
+
+        Assert.NotNull(loader.WrittenUnit);
+        Assert.NotNull(FindVariableDeclaration(loader.WrittenUnit!, "resources"));
+        Assert.NotNull(FindApplyResources(loader.WrittenUnit!, null, "$this"));
+        Assert.NotNull(FindApplyResources(loader.WrittenUnit!, "button1", "button1"));
+    }
+
     private static CodeAssignStatement FindAssignment(CodeCompileUnit unit, string fieldName, string propertyName)
     {
         return unit.Namespaces
@@ -295,6 +331,51 @@ public sealed class PortableWinFormsCodeDomDesignerLoaderTests
                 && ownerField.FieldName == ownerFieldName);
     }
 
+    private static CodeVariableDeclarationStatement? FindVariableDeclaration(CodeCompileUnit unit, string variableName)
+    {
+        return unit.Namespaces
+            .Cast<CodeNamespace>()
+            .SelectMany(codeNamespace => codeNamespace.Types.Cast<CodeTypeDeclaration>())
+            .SelectMany(type => type.Members.OfType<CodeMemberMethod>())
+            .Where(method => method.Name == "InitializeComponent")
+            .SelectMany(method => method.Statements.OfType<CodeVariableDeclarationStatement>())
+            .SingleOrDefault(statement =>
+                statement.Name == variableName
+                && statement.Type.BaseType == typeof(ComponentResourceManager).FullName);
+    }
+
+    private static CodeExpressionStatement? FindApplyResources(
+        CodeCompileUnit unit,
+        string? fieldName,
+        string resourceName)
+    {
+        return unit.Namespaces
+            .Cast<CodeNamespace>()
+            .SelectMany(codeNamespace => codeNamespace.Types.Cast<CodeTypeDeclaration>())
+            .SelectMany(type => type.Members.OfType<CodeMemberMethod>())
+            .Where(method => method.Name == "InitializeComponent")
+            .SelectMany(method => method.Statements.OfType<CodeExpressionStatement>())
+            .SingleOrDefault(statement =>
+                statement.Expression is CodeMethodInvokeExpression invoke
+                && invoke.Method.MethodName == nameof(ComponentResourceManager.ApplyResources)
+                && invoke.Method.TargetObject is CodeVariableReferenceExpression variable
+                && variable.VariableName == "resources"
+                && invoke.Parameters.Count == 2
+                && MatchesApplyResourcesTarget(invoke.Parameters[0], fieldName)
+                && invoke.Parameters[1] is CodePrimitiveExpression primitive
+                && Equals(primitive.Value, resourceName));
+    }
+
+    private static bool MatchesApplyResourcesTarget(CodeExpression expression, string? fieldName)
+    {
+        if (fieldName is null)
+            return expression is CodeThisReferenceExpression;
+
+        return expression is CodeFieldReferenceExpression field
+            && field.TargetObject is CodeThisReferenceExpression
+            && field.FieldName == fieldName;
+    }
+
     private static CodeAttachEventStatement? FindEventAttach(
         CodeCompileUnit unit,
         string fieldName,
@@ -317,13 +398,13 @@ public sealed class PortableWinFormsCodeDomDesignerLoaderTests
                 && listener.MethodName == methodName);
     }
 
-    private sealed class TestCodeDomDesignerLoader : CodeDomDesignerLoader
+    private class TestCodeDomDesignerLoader : CodeDomDesignerLoader
     {
         public CodeCompileUnit? WrittenUnit { get; private set; }
 
         protected override CodeDomProvider? CodeDomProvider => null;
 
-        protected override ITypeResolutionService? TypeResolutionService => null;
+        protected override ITypeResolutionService? TypeResolutionService { get; } = new ResourceTypeResolutionService();
 
         protected override CodeCompileUnit Parse()
         {
@@ -390,6 +471,138 @@ public sealed class PortableWinFormsCodeDomDesignerLoaderTests
                 panelField)));
 
             return method;
+        }
+    }
+
+    private sealed class ReflectionLocalizedCodeDomDesignerLoader : TestCodeDomDesignerLoader
+    {
+        protected override void Initialize()
+        {
+            var host = Assert.IsAssignableFrom<IDesignerLoaderHost>(GetService(typeof(IDesignerLoaderHost)));
+            var manager = Assert.IsAssignableFrom<IDesignerSerializationManager>(
+                GetService(typeof(IDesignerSerializationManager)));
+            manager.AddSerializationProvider(new CodeDomLocalizationProvider(
+                host,
+                CodeDomLocalizationModel.PropertyReflection));
+        }
+    }
+
+    private sealed class ResourceApplyCodeDomDesignerLoader : CodeDomDesignerLoader
+    {
+        protected override CodeDomProvider? CodeDomProvider => null;
+
+        protected override ITypeResolutionService? TypeResolutionService { get; } = new ResourceTypeResolutionService();
+
+        protected override CodeCompileUnit Parse()
+        {
+            CodeTypeDeclaration codeClass = new("ResourceApplyControl");
+            codeClass.BaseTypes.Add(typeof(Forms.UserControl).FullName!);
+            codeClass.Members.Add(new CodeMemberField(typeof(Forms.Button), "button1"));
+            codeClass.Members.Add(CreateInitializeComponent());
+
+            CodeNamespace codeNamespace = new("PortableDesignerSmoke");
+            codeNamespace.Types.Add(codeClass);
+
+            CodeCompileUnit unit = new();
+            unit.Namespaces.Add(codeNamespace);
+            return unit;
+        }
+
+        protected override void Write(CodeCompileUnit unit)
+        {
+        }
+
+        private static CodeMemberMethod CreateInitializeComponent()
+        {
+            CodeMemberMethod method = new()
+            {
+                Name = "InitializeComponent"
+            };
+
+            CodeThisReferenceExpression @this = new();
+            CodeVariableReferenceExpression resources = new("resources");
+            CodeFieldReferenceExpression buttonField = new(@this, "button1");
+
+            method.Statements.Add(new CodeVariableDeclarationStatement(
+                typeof(ComponentResourceManager),
+                "resources",
+                new CodeObjectCreateExpression(
+                    typeof(ComponentResourceManager),
+                    new CodeTypeOfExpression(typeof(LocalizableWinFormsResourceTarget).FullName!))));
+            method.Statements.Add(new CodeAssignStatement(
+                buttonField,
+                new CodeObjectCreateExpression(typeof(Forms.Button))));
+            method.Statements.Add(new CodeExpressionStatement(new CodeMethodInvokeExpression(
+                resources,
+                nameof(ComponentResourceManager.ApplyResources),
+                buttonField,
+                new CodePrimitiveExpression("button1"))));
+            method.Statements.Add(new CodeExpressionStatement(new CodeMethodInvokeExpression(
+                resources,
+                nameof(ComponentResourceManager.ApplyResources),
+                @this,
+                new CodePrimitiveExpression("$this"))));
+            method.Statements.Add(new CodeExpressionStatement(new CodeMethodInvokeExpression(
+                new CodePropertyReferenceExpression(@this, nameof(Forms.Control.Controls)),
+                "Add",
+                buttonField)));
+
+            return method;
+        }
+    }
+
+    private sealed class ResourceTypeResolutionService : ITypeResolutionService
+    {
+        public Assembly? GetAssembly(AssemblyName name)
+        {
+            return GetAssembly(name, throwOnError: false);
+        }
+
+        public Assembly? GetAssembly(AssemblyName name, bool throwOnError)
+        {
+            try
+            {
+                return Assembly.Load(name);
+            }
+            catch
+            {
+                if (throwOnError)
+                    throw;
+                return null;
+            }
+        }
+
+        public string? GetPathOfAssembly(AssemblyName name)
+        {
+            return null;
+        }
+
+        public Type? GetType(string name)
+        {
+            return GetType(name, throwOnError: false, ignoreCase: false);
+        }
+
+        public Type? GetType(string name, bool throwOnError)
+        {
+            return GetType(name, throwOnError, ignoreCase: false);
+        }
+
+        public Type? GetType(string name, bool throwOnError, bool ignoreCase)
+        {
+            StringComparison comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            Type resourceType = typeof(LocalizableWinFormsResourceTarget);
+            if (string.Equals(name, resourceType.FullName, comparison) || string.Equals(name, resourceType.Name, comparison))
+                return resourceType;
+
+            Type? resolved = Type.GetType(name, throwOnError: false, ignoreCase: ignoreCase);
+            if (resolved is null && throwOnError)
+                throw new TypeLoadException(name);
+
+            return resolved;
+        }
+
+        public void ReferenceAssembly(AssemblyName name)
+        {
         }
     }
 
@@ -492,4 +705,8 @@ public sealed class PortableWinFormsCodeDomDesignerLoaderTests
             return method;
         }
     }
+}
+
+internal sealed class LocalizableWinFormsResourceTarget
+{
 }

@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Linq;
 using Forms = System.Windows.Forms;
 using Xunit;
@@ -433,6 +435,21 @@ public sealed class PortableWinFormsControlCompatibilityTests
         Assert.Equal(1, imageList.Images.Count);
     }
 
+    [Fact]
+    public void WindowsFormsHostTreeViewRendererUsesImageListTypedPath()
+    {
+        string source = File.ReadAllText(FindRepoPath("src", "LibreWPF.WinFormsCompat", "WindowsFormsIntegration", "WindowsFormsHost.cs"));
+
+        Assert.Contains("TryGetTreeNodeImageSource", source, StringComparison.Ordinal);
+        Assert.Contains("Forms.ImageList? imageList = treeView.ImageList;", source, StringComparison.Ordinal);
+        Assert.Contains("DrawingImage? keyedImage = imageList.Images[key];", source, StringComparison.Ordinal);
+        Assert.Contains("drawingContext.DrawImage(imageSource", source, StringComparison.Ordinal);
+        Assert.Contains("new WriteableBitmap(bitmap.Width, bitmap.Height, 96, 96, PixelFormats.Pbgra32, null)", source, StringComparison.Ordinal);
+        Assert.Contains("bitmap.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly, DrawingPixelFormat.Format32bppPArgb)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", source, StringComparison.Ordinal);
+    }
+
     private sealed class ListViewTextComparer : System.Collections.IComparer
     {
         public int Compare(object? x, object? y)
@@ -442,5 +459,24 @@ public sealed class PortableWinFormsControlCompatibilityTests
                 ((Forms.ListViewItem?)y)?.Text,
                 StringComparison.Ordinal);
         }
+    }
+
+    private static string FindRepoPath(params string[] pathSegments)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory != null)
+        {
+            var candidate = Path.Combine(new[] { directory.FullName }.Concat(pathSegments).ToArray());
+
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException($"Could not locate repo file '{Path.Combine(pathSegments)}' from the test output directory.");
     }
 }

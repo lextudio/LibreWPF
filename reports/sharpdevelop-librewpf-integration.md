@@ -1671,6 +1671,29 @@ XmlEditor.LibreWpf fresh-cache Release build                             -> succ
 SharpDevelop.Full.LibreWpf with XmlEditor fresh-cache Release build      -> succeeds, 286 warnings, 0 errors
 ```
 
+## 2026-07-08 XmlEditor runtime and TreeView icons
+
+The package-mode full workbench now opens a real XML-like file through the included XmlEditor add-in. Opening `/Users/wieslawsoltes/GitHub/SharpDevelop/samples/SdaUser/app.config` selects `ICSharpCode.XmlEditor.XmlLanguageBinding`, loads XML syntax highlighting, and attaches the `XmlTreeView` secondary view:
+
+```text
+LibreWPF CodeEditorAdapter.FileNameChanged language binding=ICSharpCode.XmlEditor.XmlLanguageBinding
+LibreWPF CodeEditor.UpdateSyntaxHighlighting highlighting=XML highlighter=ICSharpCode.AvalonEdit.AddIn.CustomizingHighlighter
+LibreWPF DisplayBindingService secondary attached id=XmlTreeView count=1
+LibreWPF WorkbenchStartup application exit code=0
+```
+
+The hosted WinForms TreeView renderer in both LibreWPF package compatibility and source-owned LibreWinForms now consumes the existing typed `ImageList`/`TreeNode.ImageKey`/`TreeNode.SelectedImageKey` model and draws node icons through a cached `WriteableBitmap` upload path backed by ProGPU `System.Drawing.Bitmap.LockBits(...)`. This keeps the SharpDevelop XmlEditor fix in the reusable host renderer rather than adding an app-specific workaround.
+
+Validation:
+
+```text
+LibreWinForms.WindowsFormsIntegration Release build                      -> succeeds, 34 warnings, 0 errors
+LibreWPF WindowsFormsIntegration Release build                           -> succeeds, 101 warnings, 0 errors
+ProGPU.Wpf.Tests WinForms compatibility focused set                      -> 20 passed, 0 failed
+SharpDevelop.Full.LibreWpf fresh-cache Release build                     -> succeeds, 286 warnings, 0 errors
+SharpDevelop XmlEditor app.config open smoke                             -> XmlTreeView attached, exit code 0
+```
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:

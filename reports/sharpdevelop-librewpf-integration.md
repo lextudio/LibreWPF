@@ -1725,6 +1725,19 @@ ProGPU.Wpf.Tests WinForms compatibility focused set                      -> 22 p
 SharpDevelop.Full.LibreWpf fresh-cache Release build                     -> succeeds, 286 warnings, 0 errors
 ```
 
+## 2026-07-08 WinForms owner-draw background and focus helpers
+
+SharpDevelop owner-drawn WinForms controls call `DrawItemEventArgs.DrawBackground()` and `DrawFocusRectangle()` from their normal `DrawItem` handlers. Those helpers were previously empty in the portable compatibility layer, so hosted owner-drawn combo/list rows could paint text or custom swatches but still miss the stock selected-row background and focus indication.
+
+LibreWinForms and the LibreWPF package mirror now implement those helpers through the existing ProGPU-backed `System.Drawing.Graphics` path. `DrawBackground()` fills selected rows with `SystemBrushes.Highlight`, disabled rows with `SystemBrushes.Control`, and normal rows with `SystemBrushes.Window`; `DrawFocusRectangle()` draws the standard focus outline when `DrawItemState.Focus` is present and `NoFocusRect` is absent. This keeps the behavior generic to the WinForms compatibility layer and avoids SharpDevelop-specific rendering code.
+
+Validation:
+
+```text
+LibreWinForms.WindowsFormsIntegration Release build, fresh NuGet cache    -> succeeds, 34 warnings, 0 errors
+ProGPU.Wpf.Tests WinForms compatibility focused set                      -> 23 passed, 0 failed
+```
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:

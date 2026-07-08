@@ -487,6 +487,28 @@ public sealed class PortableWinFormsControlCompatibilityTests
         Assert.DoesNotContain("GetProperty(", hostSource, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void DrawItemEventArgsDrawsBackgroundAndFocusRectangle()
+    {
+        using var bitmap = new System.Drawing.Bitmap(8, 8);
+        using System.Drawing.Graphics graphics = System.Drawing.Graphics.FromImage(bitmap);
+        var args = new Forms.DrawItemEventArgs(
+            graphics,
+            Forms.Control.DefaultFont,
+            new System.Drawing.Rectangle(0, 0, 8, 8),
+            0,
+            Forms.DrawItemState.Selected | Forms.DrawItemState.Focus);
+
+        args.DrawBackground();
+        args.DrawFocusRectangle();
+
+        Assert.Equal(System.Drawing.Color.Blue.ToArgb(), bitmap.GetPixel(4, 4).ToArgb());
+        System.Drawing.Color focusPixel = bitmap.GetPixel(1, 1);
+        Assert.Equal(0, focusPixel.R);
+        Assert.Equal(0, focusPixel.G);
+        Assert.InRange(focusPixel.B, 0, 254);
+    }
+
     private sealed class ListViewTextComparer : System.Collections.IComparer
     {
         public int Compare(object? x, object? y)

@@ -295,6 +295,8 @@ Validation:
 Real WPF Application.Run harness -> succeeds
 ```
 
+The following LibreWinForms rerun cleared the real `Application.Run` harness and then exposed the same stale registration call in the package-mode SDK switch runtime harness. `ProGPU.Wpf.SdkSwitchRuntimeHarness` now also passes the explicit trailing `null` callback value so the nested LibreWinForms bridge build can run against the current portable activation service contract.
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.

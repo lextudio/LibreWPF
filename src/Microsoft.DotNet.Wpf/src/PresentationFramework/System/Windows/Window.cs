@@ -570,6 +570,12 @@ namespace System.Windows
             VerifyContextAndObjectState();
             VerifyHwndCreateShowState();
 
+            if (!OperatingSystem.IsWindows() && _portableWindowActivation != null)
+            {
+                PortableWindowActivationService.SetActivationState(this, true);
+                return IsActive;
+            }
+
             // Adding check for IsCompositionTargetInvalid
             if (IsSourceWindowNull || IsCompositionTargetInvalid)
             {

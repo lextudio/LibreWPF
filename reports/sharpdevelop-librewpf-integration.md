@@ -41,6 +41,43 @@ Date: 2026-07-08
 
 The current validation path includes both the controlled `SharpDevelop.LibreWpf` smoke shell and the fuller `SharpDevelop.Full.LibreWpf` wrapper. The full wrapper builds the historical SharpDevelop workbench entry point through LibreWPF package mode and now starts/renders the main IDE shell on macOS. It is not yet full IDE parity: legacy Win32 hooks, project-system services, editor IME, and several Windows-only integration points still need typed portable seams.
 
+## 2026-07-09 Portable activation and SharpDevelop smoke refresh
+
+SharpDevelop's AvalonDock auto-hide smoke exposed a real LibreWPF port issue: on non-Windows, `Window.Activate()` could return `false` for a shown portable window because it fell through to the HWND `HwndSource` activation path. `PresentationFramework.Window.Activate()` now routes shown portable windows through the existing typed `PortableWindowActivationService.SetActivationState(this, true)` boundary before any Win32/source-window check. This keeps activation state in the source-built WPF portable service and avoids adding bridge-local reflection or AvalonDock-specific workarounds.
+
+The SharpDevelop-local AvalonDock smoke also gained typed `LIBREWPF` helpers to observe flyout creation without private-field reflection. The harness now records `flyoutShowResult`, `flyoutCreated`, `flyoutHasPresentationSource`, and `flyoutWindowCount`, which separates a failed portable activation contract from the normal AvalonDock auto-hide close timer behavior.
+
+LibreWinForms repo state was rechecked as part of the same pass. `wieslawsoltes/winforms` already uses `librewinforms-progpu-port` as the default branch, has the LibreWinForms/ProGPU/Silk.NET description and topics, and `./eng/librewinforms-verify-docs.sh` succeeds, so no empty LibreWinForms commit was needed.
+
+Validation:
+
+```text
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj -c Release -v:minimal /nr:false
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj -c Release -v:minimal /nr:false
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet vstest src/ProGPU.Wpf.Tests/bin/Release/net10.0/ProGPU.Wpf.Tests.dll --Tests:ProGPU.Wpf.Tests.Composition.WpfManagedProjectGraphTests.PresentationFrameworkHasPortableWindowActivationBoundary
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet pack packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj -c Release -o artifacts/packages/SharpDevelopLocal -v:minimal -p:Version=0.1.0-preview.sharpdevelop.1 -p:PackageVersion=0.1.0-preview.sharpdevelop.1 /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-goal-nuget-activate DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /p:GenerateFullPaths=true /p:LibreWpfSharpDevelopIncludeResourceToolkit=true /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-goal-nuget-activate DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_AVALONDOCK_SMOKE=ProjectBrowser LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=30000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-goal-nuget-activate DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_FULL_POPUP_SMOKE=All LIBREWPF_SHARPDEVELOP_AVALONDOCK_SMOKE=ProjectBrowser LIBREWPF_SHARPDEVELOP_BUILD_SMOKE=Solution LIBREWPF_SHARPDEVELOP_RESX_SMOKE=1 LIBREWPF_SHARPDEVELOP_PROPERTY_PAD_SMOKE=1 LIBREWPF_SHARPDEVELOP_WINFORMS_CONTEXT_MENU_SMOKE=1 LIBREWPF_SHARPDEVELOP_EDITOR_COMPLETION_SMOKE=1 LIBREWPF_SHARPDEVELOP_FORMS_DESIGNER_SMOKE=/Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=45000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+gh repo view wieslawsoltes/winforms --json defaultBranchRef,description,repositoryTopics
+./eng/librewinforms-verify-docs.sh
+```
+
+Results:
+
+```text
+PresentationFramework Release build          -> succeeds, 2 existing ReachFramework version-conflict warnings, 0 errors
+ProGPU.Wpf.Tests Release build               -> succeeds, existing warning set, 0 errors
+Portable activation boundary test            -> 1 passed, 0 failed
+LibreWPF.Transport SharpDevelopLocal pack    -> succeeds, 0.1.0-preview.sharpdevelop.1 refreshed
+SharpDevelop.Full.LibreWpf fresh-cache build -> succeeds, 287 warnings, 0 errors
+SharpDevelop.Full.LibreWpf focused rebuild   -> succeeds, 39 warnings, 0 errors
+Focused AvalonDock smoke                     -> Success, ownerActivateResult=True, ownerActiveAfterActivate=True, flyoutShowResult=True, flyoutCreated=True, flyoutHasPresentationSource=True, flyoutWindowCount=1, flyoutVisible=True
+Broad SharpDevelop smoke                     -> main menu, AddInTree context menu, ComboBox popup, toolbar dropdown, WinForms ContextMenuStrip, AvalonDock float/context menu/redock/auto-hide/flyout, ResX, build, property pad, FormsDesigner load/mutation, and editor completion all pass; exit code 0
+LibreWinForms GitHub metadata                -> defaultBranch=librewinforms-progpu-port, LibreWinForms description/topics present
+LibreWinForms docs verification              -> succeeds
+```
+
 ## 2026-07-08 SharpDevelop popup/menu mode pass
 
 The SharpDevelop full-workbench popup lane exposed a portable popup ordering issue in `ContextMenu`/`MenuBase`. The hosted WinForms `ContextMenuStrip` path opened a WPF `ContextMenu` through `WindowsFormsHost`, but `MenuBase.PushMenuMode(...)` could run before `PresentationSource.CriticalFromVisual(this)` returned a source on the portable popup path. The release build then passed `null` into `InputManager.PushMenuMode(...)` and threw `ArgumentNullException("menuSite")`.

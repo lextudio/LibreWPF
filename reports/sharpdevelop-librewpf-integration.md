@@ -85,6 +85,8 @@ The full SharpDevelop package-mode smoke now includes a real AvalonDock pad flow
 
 - docked pad activation
 - dockable floating window creation
+- floating-window context-menu creation through the real AvalonDock menu path
+- dockable/floating mode toggle while the pad is hosted by the floating window
 - redock through AvalonDock state restoration
 - auto-hide transition
 - flyout window creation through the portable popup/window path
@@ -95,9 +97,8 @@ No private-field reflection or object-shape probing was added for this validatio
 Validation:
 
 ```text
-rm -rf /tmp/sharpdevelop-librewpf-goal-nuget
 NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-goal-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /p:GenerateFullPaths=true /p:LibreWpfSharpDevelopIncludeResourceToolkit=true /nr:false
-NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-goal-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_FULL_POPUP_SMOKE=All LIBREWPF_SHARPDEVELOP_AVALONDOCK_SMOKE=ProjectBrowser LIBREWPF_SHARPDEVELOP_BUILD_SMOKE=Solution LIBREWPF_SHARPDEVELOP_RESX_SMOKE=1 LIBREWPF_SHARPDEVELOP_PROPERTY_PAD_SMOKE=1 LIBREWPF_SHARPDEVELOP_WINFORMS_CONTEXT_MENU_SMOKE=1 LIBREWPF_SHARPDEVELOP_EDITOR_COMPLETION_SMOKE=1 LIBREWPF_SHARPDEVELOP_FORMS_DESIGNER_SMOKE=/Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=28000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-goal-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_FULL_POPUP_SMOKE=All LIBREWPF_SHARPDEVELOP_AVALONDOCK_SMOKE=ProjectBrowser LIBREWPF_SHARPDEVELOP_BUILD_SMOKE=Solution LIBREWPF_SHARPDEVELOP_RESX_SMOKE=1 LIBREWPF_SHARPDEVELOP_PROPERTY_PAD_SMOKE=1 LIBREWPF_SHARPDEVELOP_WINFORMS_CONTEXT_MENU_SMOKE=1 LIBREWPF_SHARPDEVELOP_EDITOR_COMPLETION_SMOKE=1 LIBREWPF_SHARPDEVELOP_FORMS_DESIGNER_SMOKE=/Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=30000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
 ```
 
 Results:
@@ -115,7 +116,7 @@ FormsDesigner smoke                      -> Attached, root=System.Windows.Forms.
 FormsDesigner mutation smoke             -> Success, selected component reaches PropertyGrid and changed Text value is visible
 PropertyGrid smoke                       -> Success, selected=ToolStripContainer, rows=54
 Editor completion smoke                  -> Opened, bindings=8, items=12
-AvalonDock smoke                         -> Success, ProjectBrowserPad DockableWindow -> Docked -> AutoHide/Flyout -> Docked
+AvalonDock smoke                         -> Success, floatingContextMenuOpened=True, floatingContextMenuItems=6, floatingModeToggled=True, dockableModeRestored=True, DockableWindow -> Docked -> AutoHide/Flyout -> Docked
 Application exit                         -> code 0 through smoke exit timer
 ```
 

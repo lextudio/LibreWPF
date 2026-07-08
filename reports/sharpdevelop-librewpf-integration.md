@@ -1625,6 +1625,19 @@ SharpDevelop full smoke                                               -> menus/c
 
 The final smoke log contains no `Unhandled`, `dispatcher exception`, `Reset inside`, `NullReference`, `InvalidCast`, or `PictureBox` failure entries.
 
+## 2026-07-08 ResourceToolkit integration checkpoint
+
+The ResourceToolkit add-in was probed as the next SharpDevelop surface because it covers `.resx`/`.resources` content, resource tooltips, completion, context menus, and WinForms resource dialogs. A local SDK-style `ResourceToolkit.LibreWpf.csproj` can be created and made optional in `SharpDevelop.Full.LibreWpf`, but enabling it now fails before LibreWPF or ProGPU runtime code is reached. The add-in targets the older SharpDevelop/NRefactory parser stack and references legacy `ICSharpCode.NRefactory.Ast`, `ICSharpCode.NRefactory.PrettyPrinter`, `ICSharpCode.NRefactory.Visitors`, and `ICSharpCode.SharpDevelop.Dom.NRefactoryResolver` APIs that are not present in the current package-mode SharpDevelop graph.
+
+Validation:
+
+```text
+SharpDevelop.Full.LibreWpf default Release build                         -> succeeds, 38 warnings, 0 errors
+ResourceToolkit.LibreWpf optional Release build with add-in enabled       -> fails, 173 legacy parser/API errors
+```
+
+This is tracked as a SharpDevelop add-in compatibility task, not a ProGPU rendering or LibreWinForms runtime blocker. The default full-workbench wrapper should keep ResourceToolkit disabled until either a legacy NRefactory compatibility assembly is ported or the add-in's parser/completion/refactoring paths are rewritten against the current SharpDevelop parser services. Resource file read/write support remains covered independently by the LibreWinForms `System.Resources.ResX*` implementation and the existing `LIBREWPF_SHARPDEVELOP_RESX_SMOKE` lane.
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:
@@ -1632,6 +1645,7 @@ The final smoke log contains no `Unhandled`, `dispatcher exception`, `Reset insi
   - `src/Tools/Tools.build` uses `ResGen.exe`, which .NET Core MSBuild reports as unsupported.
 - `ICSharpCode.SharpDevelop.Workbench.WpfWorkbench` still assumes old Win32 handle hooks through `System.Windows.Interop.IWin32Window`, `HwndSource.FromHwnd(...).AddHook(...)`, and `SingleInstanceHelper.WndProc`.
 - `SharpDevelop.Full.LibreWpf` now builds and starts the historical workbench shell through LibreWPF package mode, loads the legacy LineCounter C# project as `CSharpProject`, opens a real source file, attaches the CSharpBinding editor extension, and renders the real AddInTree-built menu/context/combo popup surfaces. The complete IDE still cannot yet be claimed as fully working: debug commands, full designer support including handler generation/source navigation, add-in workflows, broader tool windows, templates, completion/refactoring flows, and non-smoke user interaction still need systematic runtime validation and additional portable service seams.
+- The ResourceToolkit add-in is currently disabled in the local package-mode wrapper because it depends on legacy NRefactory Ast/PrettyPrinter/SharpDevelop.Dom resolver APIs that are not part of the current LibreWPF SharpDevelop project graph. It needs a compatibility parser layer or a targeted rewrite before it can become part of the default full-workbench build.
 - Full-workbench AvalonEdit can now open and display a real source file with source-tree C# syntax registration, `CSharpBinding.CSharpLanguageBinding`, `CSharpTextEditorExtension` attached, and the completion popup opened in the package-mode smoke. Remaining editor parity work includes completion commit/filter interaction, semantic issue update behavior, refactoring context actions, IME composition, and designer-specific editor flows.
 - Full-workbench external click validation is currently blocked on this macOS machine by automation permissions: Apple Events/System Events is not authorized, and synthetic CoreGraphics clicks did not reliably reach the LibreWPF-hosted window. In-process popup validation now covers the real full-workbench File menu plus the smoke-shell menu, context menu, ComboBox, and Core drop-down surfaces; broader manual interaction still needs user-side validation.
 - AvalonDock full-workbench floating/flyout windows still contain Win32 region and interop wrappers (`WindowInteropWrapper`, `FlyoutPaneWindow`, `FloatingWindow`) that need portable window-region/floating-window contracts before the full workbench can be treated as cross-platform.

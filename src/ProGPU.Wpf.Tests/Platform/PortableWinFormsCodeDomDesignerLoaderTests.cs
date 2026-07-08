@@ -130,6 +130,70 @@ public sealed class PortableWinFormsCodeDomDesignerLoaderTests
     }
 
     [Fact]
+    public void HostCreateComponentAssignsSerializableName()
+    {
+        var loader = new TestCodeDomDesignerLoader();
+        var surface = new DesignSurface();
+
+        surface.BeginLoad(loader);
+
+        var root = Assert.IsType<Forms.UserControl>(surface.View);
+        var panel = Assert.IsType<Forms.Panel>(Assert.Single(root.Controls));
+        var host = Assert.IsAssignableFrom<IDesignerHost>(surface.GetService(typeof(IDesignerHost)));
+        var serializationManager = Assert.IsAssignableFrom<IDesignerSerializationManager>(
+            surface.GetService(typeof(IDesignerSerializationManager)));
+
+        var label = Assert.IsType<Forms.Label>(host.CreateComponent(typeof(Forms.Label)));
+        label.Text = "Generated";
+        panel.Controls.Add(label);
+
+        Assert.Equal("label1", label.Site?.Name);
+        Assert.Same(label, serializationManager.GetInstance("label1"));
+
+        surface.Flush();
+
+        Assert.NotNull(loader.WrittenUnit);
+        Assert.NotNull(FindField(loader.WrittenUnit!, "label1"));
+        Assert.NotNull(FindControlsAddInvocation(loader.WrittenUnit!, "panel1", "label1"));
+        var textAssignment = FindAssignment(loader.WrittenUnit!, "label1", nameof(Forms.Control.Text));
+        var primitive = Assert.IsType<CodePrimitiveExpression>(textAssignment.Right);
+        Assert.Equal("Generated", primitive.Value);
+    }
+
+    [Fact]
+    public void HostDestroyComponentDetachesControlAndEventBindings()
+    {
+        var loader = new TestCodeDomDesignerLoader();
+        var surface = new DesignSurface();
+
+        surface.BeginLoad(loader);
+
+        var root = Assert.IsType<Forms.UserControl>(surface.View);
+        var panel = Assert.IsType<Forms.Panel>(Assert.Single(root.Controls));
+        var button = Assert.IsType<Forms.Button>(Assert.Single(panel.Controls));
+        var host = Assert.IsAssignableFrom<IDesignerHost>(surface.GetService(typeof(IDesignerHost)));
+        var serializationManager = Assert.IsAssignableFrom<IDesignerSerializationManager>(
+            surface.GetService(typeof(IDesignerSerializationManager)));
+
+        host.DestroyComponent(button);
+
+        Assert.DoesNotContain(button, panel.Controls);
+        Assert.DoesNotContain(button, host.Container.Components.Cast<IComponent>());
+        Assert.Null(serializationManager.GetInstance("button1"));
+
+        surface.Flush();
+
+        Assert.NotNull(loader.WrittenUnit);
+        Assert.Null(FindField(loader.WrittenUnit!, "button1"));
+        Assert.Null(FindControlsAddInvocation(loader.WrittenUnit!, "panel1", "button1"));
+        Assert.Null(FindEventAttach(
+            loader.WrittenUnit!,
+            "button1",
+            nameof(Forms.Control.Click),
+            "button1_Click"));
+    }
+
+    [Fact]
     public void FlushSerializesNamedChildrenInsideToolStripContainerPanels()
     {
         var loader = new ToolStripContainerCodeDomDesignerLoader();
@@ -167,6 +231,40 @@ public sealed class PortableWinFormsCodeDomDesignerLoaderTests
                 && property.TargetObject is CodeFieldReferenceExpression field
                 && field.TargetObject is CodeThisReferenceExpression
                 && field.FieldName == fieldName);
+    }
+
+    private static CodeMemberField? FindField(CodeCompileUnit unit, string fieldName)
+    {
+        return unit.Namespaces
+            .Cast<CodeNamespace>()
+            .SelectMany(codeNamespace => codeNamespace.Types.Cast<CodeTypeDeclaration>())
+            .SelectMany(type => type.Members.OfType<CodeMemberField>())
+            .SingleOrDefault(field => field.Name == fieldName);
+    }
+
+    private static CodeExpressionStatement? FindControlsAddInvocation(
+        CodeCompileUnit unit,
+        string parentFieldName,
+        string childFieldName)
+    {
+        return unit.Namespaces
+            .Cast<CodeNamespace>()
+            .SelectMany(codeNamespace => codeNamespace.Types.Cast<CodeTypeDeclaration>())
+            .SelectMany(type => type.Members.OfType<CodeMemberMethod>())
+            .Where(method => method.Name == "InitializeComponent")
+            .SelectMany(method => method.Statements.OfType<CodeExpressionStatement>())
+            .SingleOrDefault(statement =>
+                statement.Expression is CodeMethodInvokeExpression invoke
+                && invoke.Method.MethodName == "Add"
+                && invoke.Parameters.Count == 1
+                && invoke.Parameters[0] is CodeFieldReferenceExpression childField
+                && childField.TargetObject is CodeThisReferenceExpression
+                && childField.FieldName == childFieldName
+                && invoke.Method.TargetObject is CodePropertyReferenceExpression controlsProperty
+                && controlsProperty.PropertyName == nameof(Forms.Control.Controls)
+                && controlsProperty.TargetObject is CodeFieldReferenceExpression parentField
+                && parentField.TargetObject is CodeThisReferenceExpression
+                && parentField.FieldName == parentFieldName);
     }
 
     private static CodeExpressionStatement? FindPanelControlsAddInvocation(

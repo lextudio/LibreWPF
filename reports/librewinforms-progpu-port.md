@@ -219,6 +219,15 @@ LibreWinForms.System.Windows.Forms package-mode build                         ->
 
 The package-mode build used a refreshed `LibreWPF.Interop/0.1.0-preview.sharpdevelop.1` package and an explicit `LibreWinFormsBridgePackageVersion=0.1.0-preview.sharpdevelop.1` so the source-owned LibreWinForms project resolved the current ProGPU dialog and service DTO contracts. The next SharpDevelop validation step is to remove or disable its transitional local `System.Resources.ResX*` shim in the LibreWPF wrapper, because those types now correctly belong to LibreWinForms.
 
+SharpDevelop package-mode validation after disabling that transitional local shim:
+
+```text
+SharpDevelop.Full.LibreWpf fresh-cache Release build -> succeeds, 286 warnings, 0 errors
+SharpDevelop broad smoke                             -> popups/resx/build/forms designer/property grid/context menu/completion all pass, exit code 0
+```
+
+The broad smoke used the refreshed local `LibreWinForms.System.Windows.Forms/0.1.0-preview.sharpdevelop.1` package and verified the package-owned ResX API through `LIBREWPF_SHARPDEVELOP_RESX_SMOKE=1`.
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.

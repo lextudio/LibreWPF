@@ -168,6 +168,23 @@ LibreWinForms.System.Windows.Forms package-mode build                       -> s
 
 This is a port/library ownership fix, not a XAML compiler change. The current SharpDevelop local LibreWPF wrapper still has a transitional duplicate `System.Resources.ResX*` shim under `src/Main/Base/Project/LibreWpf/Compat/SystemResourcesResXCompat.cs`; package-mode SharpDevelop validation should disable that shim now that LibreWinForms owns the API, otherwise the compiler sees duplicate `ResXResourceReader`/`ResXResourceWriter` definitions.
 
+Validated after disabling the transitional local shim and repacking `LibreWinForms.System.Windows.Forms/0.1.0-preview.sharpdevelop.1`:
+
+```text
+SharpDevelop.Full.LibreWpf fresh-cache Release build -> succeeds, 286 warnings, 0 errors
+Main menu popup                                      -> opened
+AddInTree context menu popup                         -> opened, 27 items
+ComboBox popup                                       -> opened
+ResX smoke                                           -> Success, files=1
+LineCounter build smoke                              -> Success, 0 errors, 4 existing sample warnings
+FormsDesigner smoke                                  -> Attached, root=System.Windows.Forms.UserControl, components=21, selectable=21
+FormsDesigner mutation smoke                         -> Success, selected ToolStripContainer, flushPersisted=True
+Hosted PropertyGrid smoke                            -> Success, rows=54
+WinForms ContextMenuStrip smoke                      -> Opened, 3 items
+Editor completion smoke                              -> Opened, bindings=7, items=39
+Application exit                                     -> code 0
+```
+
 ## 2026-07-08 WinForms-hosted pad and popup pass
 
 The current pass focused on real SharpDevelop workbench surfaces that combine popups with WinForms-hosted content:

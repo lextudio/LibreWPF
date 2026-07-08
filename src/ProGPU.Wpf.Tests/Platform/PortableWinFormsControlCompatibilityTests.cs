@@ -468,6 +468,25 @@ public sealed class PortableWinFormsControlCompatibilityTests
         Assert.DoesNotContain("GetProperty(", hostSource, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void WindowsFormsHostComboBoxRendererUsesTypedPopupAndOwnerDrawPath()
+    {
+        string formsSource = File.ReadAllText(FindRepoPath("src", "LibreWPF.WinFormsCompat", "System.Windows.Forms", "WinFormsCompatTypes.cs"));
+        string hostSource = File.ReadAllText(FindRepoPath("src", "LibreWPF.WinFormsCompat", "WindowsFormsIntegration", "WindowsFormsHost.cs"));
+
+        Assert.Contains("public void RaiseDrawItem(DrawItemEventArgs e)", formsSource, StringComparison.Ordinal);
+        Assert.Contains("public void RaiseMeasureItem(MeasureItemEventArgs e)", formsSource, StringComparison.Ordinal);
+        Assert.Contains("TryShowComboBoxDropDown", hostSource, StringComparison.Ordinal);
+        Assert.Contains("target is Forms.ComboBox comboBox", hostSource, StringComparison.Ordinal);
+        Assert.Contains("comboBox.DroppedDown = true;", hostSource, StringComparison.Ordinal);
+        Assert.Contains("comboBox.SelectedIndex = itemIndex;", hostSource, StringComparison.Ordinal);
+        Assert.Contains("TryRenderListItemOwnerDraw", hostSource, StringComparison.Ordinal);
+        Assert.Contains("Forms.DrawItemEventArgs eventArgs = new(graphics, listBox.Font, drawBounds, index, state);", hostSource, StringComparison.Ordinal);
+        Assert.Contains("listBox.RaiseDrawItem(eventArgs);", hostSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection", hostSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", hostSource, StringComparison.Ordinal);
+    }
+
     private sealed class ListViewTextComparer : System.Collections.IComparer
     {
         public int Compare(object? x, object? y)

@@ -1710,6 +1710,21 @@ SharpDevelop.Full.LibreWpf fresh-cache Release build                     -> succ
 SharpDevelop XmlEditor app.config open smoke                             -> XmlTreeView attached; timed shutdown ended with code 143 in this run
 ```
 
+## 2026-07-08 Hosted WinForms ComboBox drop-down and owner draw
+
+SharpDevelop add-ins also use hosted WinForms combo boxes inside editor/designer surfaces. One concrete case is the IconEditor color picker, which sets `ComboBox.DrawMode = OwnerDrawFixed` and handles `DrawItem` to paint color swatches. The portable host previously rendered only the selected text/button and treated `ComboBox` clicks as inherited `ListBox` row selection, so hosted WinForms combo boxes had no drop-down popup path and owner-drawn selected cells were ignored.
+
+LibreWinForms and the LibreWPF package mirror now expose typed `ListBox.RaiseDrawItem(...)` and `RaiseMeasureItem(...)` bridges. The WPF host uses those bridges for hosted owner-drawn `ListBox`/`ComboBox` rows through an offscreen ProGPU `System.Drawing.Bitmap`/`Graphics.FromImage(...)` replay path. Hosted WinForms `ComboBox` clicks now open a WPF/ProGPU popup menu positioned below the hosted control, keep `ComboBox.DroppedDown` synchronized, and select items through the normal `SelectedIndex`/`SelectedIndexChanged` path. The fix is generic host behavior with no SharpDevelop-specific code or reflection.
+
+Validation:
+
+```text
+LibreWPF WindowsFormsIntegration Release build                           -> succeeds, 101 warnings, 0 errors
+LibreWinForms.WindowsFormsIntegration Release build, fresh NuGet cache    -> succeeds, 4 warnings, 0 errors
+ProGPU.Wpf.Tests WinForms compatibility focused set                      -> 22 passed, 0 failed
+SharpDevelop.Full.LibreWpf fresh-cache Release build                     -> succeeds, 286 warnings, 0 errors
+```
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:

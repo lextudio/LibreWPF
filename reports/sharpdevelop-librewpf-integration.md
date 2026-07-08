@@ -1694,6 +1694,22 @@ SharpDevelop.Full.LibreWpf fresh-cache Release build                     -> succ
 SharpDevelop XmlEditor app.config open smoke                             -> XmlTreeView attached, exit code 0
 ```
 
+## 2026-07-08 WinForms TreeView owner drawing
+
+SharpDevelop's XML tree and project browser use WinForms `TreeViewDrawMode.OwnerDrawText`: `ExtTreeView.OnDrawNode(...)` decides whether default text rendering should run, custom `ExtTreeNode.Draw(...)` paints label backgrounds/foregrounds, and project-browser handlers draw overlay images through `DrawTreeNodeEventArgs.Graphics`. The portable WinForms host previously rendered only its built-in TreeView row path, so those application-owned owner-draw callbacks never executed.
+
+LibreWinForms and the LibreWPF package mirror now expose a typed `TreeView.RaiseDrawNode(DrawTreeNodeEventArgs)` bridge and the WPF host composes owner-draw rows through an offscreen ProGPU `System.Drawing.Bitmap`/`Graphics.FromImage(...)` path. `OwnerDrawText` keeps the host-owned expander and `ImageList` icon rendering while letting the app draw the text region; `OwnerDrawAll` can replace the full row. The implementation uses typed WinForms and System.Drawing APIs only, with no reflection or SharpDevelop-specific special cases.
+
+Validation:
+
+```text
+LibreWPF WindowsFormsIntegration Release build                           -> succeeds, 101 warnings, 0 errors
+LibreWinForms.WindowsFormsIntegration Release build, fresh NuGet cache    -> succeeds, 34 warnings, 0 errors
+ProGPU.Wpf.Tests WinForms compatibility focused set                      -> 21 passed, 0 failed
+SharpDevelop.Full.LibreWpf fresh-cache Release build                     -> succeeds, 286 warnings, 0 errors
+SharpDevelop XmlEditor app.config open smoke                             -> XmlTreeView attached; timed shutdown ended with code 143 in this run
+```
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:

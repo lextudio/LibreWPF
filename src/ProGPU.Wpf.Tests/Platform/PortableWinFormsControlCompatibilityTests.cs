@@ -450,6 +450,24 @@ public sealed class PortableWinFormsControlCompatibilityTests
         Assert.DoesNotContain("GetProperty(", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void WindowsFormsHostTreeViewRendererUsesTypedOwnerDrawPath()
+    {
+        string formsSource = File.ReadAllText(FindRepoPath("src", "LibreWPF.WinFormsCompat", "System.Windows.Forms", "WinFormsCompatTypes.cs"));
+        string hostSource = File.ReadAllText(FindRepoPath("src", "LibreWPF.WinFormsCompat", "WindowsFormsIntegration", "WindowsFormsHost.cs"));
+
+        Assert.Contains("public void RaiseDrawNode(DrawTreeNodeEventArgs e)", formsSource, StringComparison.Ordinal);
+        Assert.Contains("OnDrawNode(e);", formsSource, StringComparison.Ordinal);
+        Assert.Contains("TryRenderTreeNodeOwnerDraw", hostSource, StringComparison.Ordinal);
+        Assert.Contains("Forms.TreeNodeStates state = GetTreeNodeState(treeView, node);", hostSource, StringComparison.Ordinal);
+        Assert.Contains("DrawingGraphics.FromImage(bitmap)", hostSource, StringComparison.Ordinal);
+        Assert.Contains("graphics.TranslateTransform(0, -eventBounds.Y);", hostSource, StringComparison.Ordinal);
+        Assert.Contains("treeView.RaiseDrawNode(eventArgs);", hostSource, StringComparison.Ordinal);
+        Assert.Contains("drawDefault = eventArgs.DrawDefault;", hostSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection", hostSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", hostSource, StringComparison.Ordinal);
+    }
+
     private sealed class ListViewTextComparer : System.Collections.IComparer
     {
         public int Compare(object? x, object? y)

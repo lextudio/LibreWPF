@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Media.ProGPU;
@@ -611,6 +612,9 @@ public sealed class WpfPortableWindowActivationTests
         Assert.False(window.IsActive);
         Assert.Equal(0, window.ActivatedCount);
         Assert.Equal(0, window.DeactivatedCount);
+        Assert.Equal(
+            new[] { 0x0006, 0x001C, 0x0006, 0x001C, 0x0006, 0x001C, 0x0006, 0x001C },
+            source.DispatchedHwndSourceHooks.Select(hook => hook.Message).ToArray());
     }
 
     [Fact]
@@ -2161,6 +2165,8 @@ public sealed class WpfPortableWindowActivationTests
 
         public int ClientSizeChangeCount { get; private set; }
 
+        public List<(int Message, IntPtr WParam, IntPtr LParam)> DispatchedHwndSourceHooks { get; } = new();
+
         public void SetDeviceScale(double dpiScaleX, double dpiScaleY)
         {
             RenderRequested?.Invoke(this, EventArgs.Empty);
@@ -2179,6 +2185,14 @@ public sealed class WpfPortableWindowActivationTests
             width = ClientWidth;
             height = ClientHeight;
             return false;
+        }
+
+        public bool DispatchHwndSourceHook(int message, IntPtr wParam, IntPtr lParam, out IntPtr result, out bool handled)
+        {
+            DispatchedHwndSourceHooks.Add((message, wParam, lParam));
+            result = IntPtr.Zero;
+            handled = false;
+            return true;
         }
 
         public void Dispose()

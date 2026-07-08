@@ -1163,6 +1163,7 @@ namespace System.Windows
         object RootVisual { get; set; }
         event System.EventHandler CursorRequested;
         event System.EventHandler RenderRequested;
+        bool DispatchHwndSourceHook(int message, System.IntPtr wParam, System.IntPtr lParam, out System.IntPtr result, out bool handled);
         void SetClientSize(double width, double height);
         void SetDeviceScale(double dpiScaleX, double dpiScaleY);
         bool TryUpdateRootVisualClientSize(out double width, out double height);

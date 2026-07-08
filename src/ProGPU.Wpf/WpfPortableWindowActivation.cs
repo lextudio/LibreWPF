@@ -8,6 +8,11 @@ namespace System.Windows.Media.ProGPU;
 
 public sealed class WpfPortableWindowActivation : IDisposable
 {
+    private const int WM_ACTIVATE = 0x0006;
+    private const int WM_ACTIVATEAPP = 0x001C;
+    private const int WA_INACTIVE = 0;
+    private const int WA_ACTIVE = 1;
+
     private static readonly ConditionalWeakTable<object, WpfPortableWindowActivation> s_activeActivations = new();
     private static readonly object s_nonActivatingOwnedActivationsLock = new();
     private static readonly List<WeakReference<WpfPortableWindowActivation>> s_nonActivatingOwnedActivations = new();
@@ -818,12 +823,27 @@ public sealed class WpfPortableWindowActivation : IDisposable
         switch (e.Kind)
         {
             case WpfWindowEventKind.Activated:
+                DispatchPortableActivationHooks(isActive: true);
                 TrySetWindowActivationStateForHostEvent(isActive: true);
                 break;
             case WpfWindowEventKind.Deactivated:
+                DispatchPortableActivationHooks(isActive: false);
                 TrySetWindowActivationStateForHostEvent(isActive: false);
                 break;
         }
+    }
+
+    private void DispatchPortableActivationHooks(bool isActive)
+    {
+        WpfPortablePresentationSourceBridge? bridge = Host.PortablePresentationSourceBridge;
+        if (bridge == null)
+        {
+            return;
+        }
+
+        IntPtr activeWParam = new(isActive ? WA_ACTIVE : WA_INACTIVE);
+        bridge.TryDispatchHwndSourceHook(WM_ACTIVATE, activeWParam, IntPtr.Zero, out _, out _);
+        bridge.TryDispatchHwndSourceHook(WM_ACTIVATEAPP, isActive ? new IntPtr(1) : IntPtr.Zero, IntPtr.Zero, out _, out _);
     }
 
     private void TrySetWindowActivationStateForHostEvent(bool isActive)

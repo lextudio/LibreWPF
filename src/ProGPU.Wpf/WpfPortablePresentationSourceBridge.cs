@@ -103,6 +103,12 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         return true;
     }
 
+    public bool TryDispatchHwndSourceHook(int message, IntPtr wParam, IntPtr lParam, out IntPtr result, out bool handled)
+    {
+        ThrowIfDisposed();
+        return _source.DispatchHwndSourceHook(message, wParam, lParam, out result, out handled);
+    }
+
     public bool SyncHostRootVisual()
     {
         ThrowIfDisposed();

@@ -735,6 +735,25 @@ namespace System.Windows.Interop
             get { return _portableOwner; }
         }
 
+        internal bool DispatchPortableHwndSourceHook(
+            int message,
+            IntPtr wParam,
+            IntPtr lParam,
+            out IntPtr result,
+            out bool handled)
+        {
+            result = IntPtr.Zero;
+            handled = false;
+
+            if (_portableOwner == null || _isDisposed || _portableHandle == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            result = PublicHooksFilterMessage(_portableHandle, message, wParam, lParam, ref handled);
+            return true;
+        }
+
 
         /// <summary>
         ///     The visual manager for the visuals being presented in the source.

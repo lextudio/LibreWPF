@@ -459,6 +459,13 @@ public sealed class WpfPortablePresentationSourceBridgeTests
             return false;
         }
 
+        public bool DispatchHwndSourceHook(int message, IntPtr wParam, IntPtr lParam, out IntPtr result, out bool handled)
+        {
+            result = IntPtr.Zero;
+            handled = false;
+            return false;
+        }
+
         internal void RequestCursor(object cursor)
         {
             RequestedCursor = cursor;
@@ -616,6 +623,13 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         {
             width = ClientSize.Width;
             height = ClientSize.Height;
+            return false;
+        }
+
+        bool IPortablePresentationSourceHost.DispatchHwndSourceHook(int message, IntPtr wParam, IntPtr lParam, out IntPtr result, out bool handled)
+        {
+            result = IntPtr.Zero;
+            handled = false;
             return false;
         }
 

@@ -224,6 +224,18 @@ namespace System.Windows
             return TryUpdateRootVisualClientSize(out width, out height);
         }
 
+        bool IPortablePresentationSourceHost.DispatchHwndSourceHook(int message, IntPtr wParam, IntPtr lParam, out IntPtr result, out bool handled)
+        {
+            if (_isDisposed || _portableHwndSource == null)
+            {
+                result = IntPtr.Zero;
+                handled = false;
+                return false;
+            }
+
+            return _portableHwndSource.DispatchPortableHwndSourceHook(message, wParam, lParam, out result, out handled);
+        }
+
         public override bool IsDisposed
         {
             get { return _isDisposed; }

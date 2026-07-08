@@ -462,6 +462,32 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void GpuHitTestingFailsClosedAfterHostDisposal()
+    {
+        var host = new ProGpuWpfWindowHost();
+        var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        SetPrivateField(host, "_target", target);
+
+        host.Dispose();
+
+        object?[] owners = new object?[4];
+        object?[] candidates = new object?[4];
+
+        Assert.False(host.HasGpuHitTestCache);
+        Assert.False(host.TryHitTestOwner(1, 1, out var owner));
+        Assert.Null(owner);
+        Assert.False(host.TryHitTestOwners(1, 1, owners, out var ownerCount));
+        Assert.Equal(0, ownerCount);
+        Assert.False(host.TryQueryHitTestBoundsOwners(0, 0, 10, 10, owners, out var boundsOwnerCount));
+        Assert.Equal(0, boundsOwnerCount);
+        Assert.False(host.TryGetGpuHitTestCacheSnapshot(out _));
+        Assert.False(host.TryQueryHitTestBoundsCandidates(0, 0, 10, 10, candidates, out var boundsCandidateCount));
+        Assert.Equal(0, boundsCandidateCount);
+        Assert.False(host.TryQueryHitTestEllipseCandidates(0, 0, 10, 10, candidates, out var ellipseCandidateCount));
+        Assert.Equal(0, ellipseCandidateCount);
+    }
+
+    [Fact]
     public void ShouldRenderFrameReturnsTrueWhenCoalescingIsDisabled()
     {
         using var host = new ProGpuWpfWindowHost

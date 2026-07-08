@@ -269,6 +269,37 @@ public sealed class WpfPortablePresentationSourceBridgeTests
     }
 
     [Fact]
+    public void CapturedGpuHitTestCallbacksFailClosedAfterHostDisposal()
+    {
+        var host = new ProGpuWpfWindowHost();
+        var source = new FakePortablePresentationSource();
+        var bound = WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge);
+        Assert.True(bound);
+        Assert.NotNull(bridge);
+
+        Func<double, double, object?> hitTest = source.HitTestOverride!;
+        Func<double, double, object?[]?> hitTestAll = source.HitTestAllOverride!;
+        PortableHitTestAllBufferOverride hitTestAllBuffer = source.HitTestAllBufferOverride!;
+        Func<double, double, double, double, object?[]?> hitTestBounds = source.HitTestBoundsOverride!;
+        PortableGeometryHitTestBufferOverride hitTestBoundsBuffer = source.HitTestBoundsBufferOverride!;
+        Func<double, double, double, double, object?[]?> hitTestEllipse = source.HitTestEllipseBoundsOverride!;
+        PortableGeometryHitTestBufferOverride hitTestEllipseBuffer = source.HitTestEllipseBoundsBufferOverride!;
+
+        host.Dispose();
+
+        Assert.Null(hitTest(12, 24));
+        Assert.Null(hitTestAll(12, 24));
+        Assert.False(hitTestAllBuffer(12, 24, new object?[4], out var allBufferCount));
+        Assert.Equal(0, allBufferCount);
+        Assert.Null(hitTestBounds(0, 0, 12, 24));
+        Assert.False(hitTestBoundsBuffer(0, 0, 12, 24, new object?[4], out var boundsBufferCount));
+        Assert.Equal(0, boundsBufferCount);
+        Assert.Null(hitTestEllipse(0, 0, 12, 24));
+        Assert.False(hitTestEllipseBuffer(0, 0, 12, 24, new object?[4], out var ellipseBufferCount));
+        Assert.Equal(0, ellipseBufferCount);
+    }
+
+    [Fact]
     public void TryBindReturnsFalseWhenSourceShapeIsMissing()
     {
         using var host = new ProGpuWpfWindowHost();

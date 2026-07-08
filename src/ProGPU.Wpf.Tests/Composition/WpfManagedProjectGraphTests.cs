@@ -981,7 +981,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal bool TryQueryHitTestBoundsCandidates(double minX, double minY, double maxX, double maxY, Span<object?> candidates, out int candidateCount)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, Span<object?> candidates, out int candidateCount)", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("internal bool HasGpuHitTestCache => _target?.LastGpuHitTestIndex != null;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool HasGpuHitTestCache => !_isDisposed && _target?.LastGpuHitTestIndex != null;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryGetGpuHitTestCacheSnapshot(out ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot snapshot)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("owners = CopyHitTestResults(ownerBuffer.AsSpan(0, ownerCount));", proGpuHost, StringComparison.Ordinal);

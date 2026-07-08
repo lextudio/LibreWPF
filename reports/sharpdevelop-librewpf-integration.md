@@ -1608,6 +1608,23 @@ LibreWinForms.System.Windows.Forms Release build            -> succeeds, 27 warn
 SharpDevelop.Full.LibreWpf Release build                    -> succeeds, 286 warnings, 0 errors
 ```
 
+## 2026-07-08 SharpDevelop shutdown and WinForms PictureBox compatibility
+
+The latest SharpDevelop package-mode smoke closed two shutdown blockers found after the ResX package lane started running through the real full workbench. `LibreWinForms.System.Windows.Forms.PictureBox` now implements the standard `ISupportInitialize` contract expected by generated WinForms designer code and SharpDevelop's own exception dialog. The ProGPU WPF host now defers native window disposal out of render/dispatcher callbacks and fails GPU hit testing closed after target or host disposal, including captured presentation-source hit-test delegates that can run from queued WPF input work during shutdown.
+
+Validation:
+
+```text
+LibreWinForms.System.Windows.Forms package-mode build                 -> succeeds, 28 warnings, 0 errors
+ProGPU.Wpf.Tests PictureBoxSupportsDesignerInitialization             -> passed
+ProGPU.Wpf.Tests GpuHitTestingFailsClosedAfterHostDisposal            -> passed
+ProGPU.Wpf.Tests CapturedGpuHitTestCallbacksFailClosedAfterHostDisposal -> passed
+SharpDevelop.Full.LibreWpf fresh-cache Release build                  -> succeeds, 286 warnings, 0 errors
+SharpDevelop full smoke                                               -> menus/context menu/combo/resx/forms designer/property grid/context menu/completion pass, exit code 0
+```
+
+The final smoke log contains no `Unhandled`, `dispatcher exception`, `Reset inside`, `NullReference`, `InvalidCast`, or `PictureBox` failure entries.
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:

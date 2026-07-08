@@ -1851,13 +1851,19 @@ SharpDevelop.Full.LibreWpf fresh-cache Release package-mode build        -> succ
 
 The LibreWinForms submodule now has the same preview-shipping scaffolding expected from the LibreWPF lane. `/Users/wieslawsoltes/GitHub/wpf/external/LibreWinForms` gained a LibreWinForms README front matter section, package table with NuGet badges, `eng/librewinforms-pack.sh`, package manifest/release-bundle helpers, docs verification, release docs, and GitHub workflows for build, docs, and release. The GitHub repository `wieslawsoltes/winforms` now reports `librewinforms-progpu-port` as its default branch with LibreWinForms/ProGPU/Silk.NET topics and description.
 
+The follow-up hardening pass is pushed to LibreWinForms commit `108952950`. The package lane now cleans all current-version package artifacts before packing, fails if an unexpected `0.1.0-preview.1` package remains in the output directory, includes the root README in each package, verifies the release workflow fails on missing artifacts, and publishes a public `nuget.org` source in the release bundle `NuGet.config`.
+
 Validation:
 
 ```text
 LibreWinForms docs verification                                           -> succeeds
 LibreWinForms package lane, fresh NuGet cache + SharpDevelopLocal feed    -> succeeds; packages, manifest, bundle, checksum written
-WPF superproject submodule update                                         -> points external/LibreWinForms at ccc97de6a
+LibreWinForms release bundle checksum                                     -> succeeds
+LibreWinForms SDK package README metadata                                 -> present
+WPF superproject submodule update                                         -> points external/LibreWinForms at 108952950
 ```
+
+The local package-lane validation still uses `LIBREWINFORMS_BRIDGE_PACKAGE_VERSION=0.1.0-preview.sharpdevelop.1` with `/Users/wieslawsoltes/GitHub/wpf/artifacts/packages/SharpDevelopLocal` until the next public LibreWPF/ProGPU preview contains the newer portable dialog DTOs and `ProGPU.System.Drawing.Common` package needed by the current LibreWinForms source.
 
 ## 2026-07-08 AvalonDock show/hide hook pass
 

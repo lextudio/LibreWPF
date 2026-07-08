@@ -101,6 +101,42 @@ public sealed class PortableWinFormsResXResourceTests
         }
     }
 
+    [Fact]
+    public void ResXDataNodeFromReaderUsesReaderBasePathForFileRefs()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "librewpf-resx-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string textPath = Path.Combine(directory, "resource.txt");
+            File.WriteAllText(textPath, "Node file value", Encoding.UTF8);
+
+            using MemoryStream stream = new();
+            using (ResXResourceWriter writer = new(stream))
+            {
+                writer.AddResource("FromFile", new ResXFileRef("resource.txt", typeof(string).AssemblyQualifiedName!, Encoding.UTF8));
+                writer.Generate();
+            }
+
+            stream.Position = 0;
+            using ResXResourceReader reader = new(stream)
+            {
+                BasePath = directory,
+                UseResXDataNodes = true
+            };
+
+            IDictionaryEnumerator enumerator = reader.GetEnumerator();
+            Assert.True(enumerator.MoveNext());
+            ResXDataNode node = Assert.IsType<ResXDataNode>(enumerator.Value);
+
+            Assert.Equal("Node file value", node.GetValue(null));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static Dictionary<string, object?> ReadEntries(IDictionaryEnumerator enumerator)
     {
         Dictionary<string, object?> values = new(StringComparer.Ordinal);

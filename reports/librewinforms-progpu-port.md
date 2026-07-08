@@ -278,10 +278,13 @@ Public-feed-only LibreWinForms packing is still expected to fail until `ProGPU.S
 
 The first pushed LibreWinForms bridge-bootstrap workflow exposed one extra CI-only issue: when WPF is checked out below the LibreWinForms repository, the generated ProGPU Avalonia package-smoke project inherited the parent repository's Central Package Management settings and failed restore with `NU1008`. `eng/progpu-avalonia-package-smoke.sh` now writes a local `Directory.Packages.props` with `ManagePackageVersionsCentrally=false` beside the generated smoke project, so the package references with explicit versions remain isolated from parent checkout policy.
 
+The same parent-checkout issue also affected WPF repo projects that intentionally carry explicit `PackageReference Version=...` metadata. The WPF repo root now has a `Directory.Packages.props` boundary with CPM disabled, while ProGPU and LibreWinForms submodules keep their own nearer CPM files. This keeps nested bridge builds isolated without removing CPM support from package consumers.
+
 Validation:
 
 ```text
-ProGPU Avalonia package smoke -> succeeds, 0 warnings, 0 errors
+PresentationBuildTasks Release build -> succeeds, 0 warnings, 0 errors
+ProGPU Avalonia package smoke        -> succeeds, 0 warnings, 0 errors
 ```
 
 ## Remaining work

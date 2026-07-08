@@ -297,6 +297,8 @@ Real WPF Application.Run harness -> succeeds
 
 The following LibreWinForms rerun cleared the real `Application.Run` harness and then exposed the same stale registration call in the package-mode SDK switch runtime harness. `ProGPU.Wpf.SdkSwitchRuntimeHarness` now also passes the explicit trailing `null` callback value so the nested LibreWinForms bridge build can run against the current portable activation service contract.
 
+After both harness registration fixes, the nested LibreWPF bridge build passed and LibreWinForms packaging reached its own package restore. The remaining CI blocker was that `ProGPU.System.Drawing.Common` was not produced into the local bridge feed even though LibreWinForms consumes it as a preview package dependency. ProGPU now lists `ProGPU.System.Drawing.Common` as an official package, and the LibreWPF SDK CI feed now packs `external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj` with the correct package ID and audit assembly mapping.
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.

@@ -105,6 +105,7 @@ The preview package set is defined in `eng/progpu-preview-package-list.sh` and v
 | `ProGPU.Virtualization` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Virtualization.svg)](https://www.nuget.org/packages/ProGPU.Virtualization) | Virtualization helpers for large retained visual and item surfaces. |
 | `ProGPU.WinUI` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.WinUI.svg)](https://www.nuget.org/packages/ProGPU.WinUI) | WinUI-shaped controls and app model implemented on ProGPU. |
 | `ProGPU.Avalonia` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Avalonia.svg)](https://www.nuget.org/packages/ProGPU.Avalonia) | Avalonia integration and compositor backend adapter used by package smoke validation. |
+| `ProGPU.System.Drawing.Common` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.System.Drawing.Common.svg)](https://www.nuget.org/packages/ProGPU.System.Drawing.Common) | ProGPU-backed portable System.Drawing.Common compatibility shim for LibreWinForms and GDI-style callers. |
 
 ## Build And Release
 

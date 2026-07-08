@@ -11886,6 +11886,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Building managed WPF transport payload", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj", sdkCiScript, StringComparison.Ordinal);
@@ -11974,6 +11975,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj\" \"ProGPU.Virtualization\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj\" \"ProGPU.WinUI\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj\" \"ProGPU.Avalonia\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("pack_project \"external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj\" \"ProGPU.System.Drawing.Common\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj\" \"LibreWPF.Interop\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Running ProGPU Avalonia package consumer smoke", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/progpu-avalonia-package-smoke.sh\"", sdkCiScript, StringComparison.Ordinal);
@@ -12006,6 +12008,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("progpu_preview_package_ids=(", previewPackageListScript, StringComparison.Ordinal);
         Assert.Contains("LibreWPF.Transport", previewPackageListScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Avalonia", previewPackageListScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.System.Drawing.Common", previewPackageListScript, StringComparison.Ordinal);
         Assert.Contains("LibreWPF.ProGPU", previewPackageListScript, StringComparison.Ordinal);
         Assert.Contains("LibreWPF.Sdk", previewPackageListScript, StringComparison.Ordinal);
         Assert.DoesNotContain("Microsoft.DotNet.Wpf.GitHub", previewPackageListScript, StringComparison.Ordinal);

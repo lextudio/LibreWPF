@@ -21,6 +21,9 @@ package_assembly_name() {
     LibreWPF.ProGPU)
       echo "ProGPU.Wpf"
       ;;
+    ProGPU.System.Drawing.Common)
+      echo "System.Drawing.Common"
+      ;;
     *)
       echo "${package_id}"
       ;;

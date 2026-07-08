@@ -166,9 +166,20 @@ SharpDevelop.Full.LibreWpf fresh-cache Release build        -> succeeds, 115 war
 SharpDevelop broad smoke                                    -> popups/build/resx/forms designer/property grid/context menu/completion all pass, exit code 0
 ```
 
+## 2026-07-08 FormsDesigner component lifecycle
+
+The portable `IDesignerHost` now also owns the basic component lifecycle expected by toolbox and delete flows. Unnamed `CreateComponent(...)` calls get a stable `INameCreationService` name such as `label1`, the name is published through the component site and `IDesignerSerializationManager`, and the generated CodeDOM can serialize the new component field, properties, and parent `Controls.Add(...)` relationship. `DestroyComponent(...)` now detaches controls from their parent collection, removes name/instance mappings, clears portable event bindings for the component, disposes it, and prevents stale fields, child-add statements, or event hookups from being emitted on the next flush.
+
+Focused validation:
+
+```text
+ProGPU.Wpf.Tests PortableWinFormsCodeDomDesignerLoaderTests -> Passed, 8 total
+LibreWinForms.System.Windows.Forms build                    -> succeeds, 27 warnings, 0 errors
+```
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.
 - Replace the remaining compatibility-only controls with upstream managed WinForms implementations behind typed ProGPU/Silk.NET platform services.
-- Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing coverage to component creation, removal, handler generation/source navigation, resources, localization, and generated-code round trips.
+- Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing/component create-remove coverage to handler generation/source navigation, resources, localization, and broader generated-code round trips.
 - Make the standard WPF SDK pack workflow restore from the required private WPF feeds so local validation does not need generated package artifact refreshes.

@@ -1538,6 +1538,17 @@ SharpDevelop.Full.LibreWpf Release build                    -> succeeds, 115 war
 SharpDevelop broad smoke                                    -> popups/build/resx/forms designer/property grid/context menu/completion all pass, exit code 0
 ```
 
+## 2026-07-08 FormsDesigner component lifecycle
+
+LibreWinForms now covers the next designer lifecycle slice needed for real toolbox/delete flows. The portable design host provides `INameCreationService`, assigns stable names to unnamed created components, publishes those names through the component site and serialization manager, and serializes new controls added to existing parent collections. Destroyed controls are detached from their parent, removed from the container/name map, cleared from the portable event-binding service, disposed, and omitted from regenerated fields, `Controls.Add(...)` calls, and event hookups.
+
+Validation:
+
+```text
+ProGPU.Wpf.Tests PortableWinFormsCodeDomDesignerLoaderTests -> 8 passed
+LibreWinForms.System.Windows.Forms Release build            -> succeeds, 27 warnings, 0 errors
+```
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:

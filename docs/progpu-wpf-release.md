@@ -18,6 +18,7 @@ projects on the ProGPU/Silk.NET platform.
 - `ProGPU.Virtualization`
 - `ProGPU.WinUI`
 - `ProGPU.Avalonia`
+- `ProGPU.SkiaSharp`
 - `ProGPU.System.Drawing.Common`
 - `LibreWPF.Interop`
 - `LibreWPF.ProGPU`

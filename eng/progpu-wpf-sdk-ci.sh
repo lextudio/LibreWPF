@@ -136,6 +136,7 @@ pack_project "external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj" "ProGPU.La
 pack_project "external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj" "ProGPU.Virtualization"
 pack_project "external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj" "ProGPU.WinUI"
 pack_project "external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj" "ProGPU.Avalonia"
+pack_project "external/ProGPU/src/SkiaSharp/SkiaSharp.csproj" "ProGPU.SkiaSharp"
 pack_project "external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj" "ProGPU.System.Drawing.Common"
 pack_project "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "LibreWPF.Interop"
 

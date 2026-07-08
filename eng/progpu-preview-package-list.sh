@@ -12,6 +12,7 @@ progpu_preview_runtime_package_ids=(
   ProGPU.Virtualization
   ProGPU.WinUI
   ProGPU.Avalonia
+  ProGPU.SkiaSharp
   ProGPU.System.Drawing.Common
   LibreWPF.Interop
 )

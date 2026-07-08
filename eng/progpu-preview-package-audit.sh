@@ -24,6 +24,9 @@ package_assembly_name() {
     ProGPU.System.Drawing.Common)
       echo "System.Drawing.Common"
       ;;
+    ProGPU.SkiaSharp)
+      echo "SkiaSharp"
+      ;;
     *)
       echo "${package_id}"
       ;;

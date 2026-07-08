@@ -41,6 +41,44 @@ Date: 2026-07-08
 
 The current validation path includes both the controlled `SharpDevelop.LibreWpf` smoke shell and the fuller `SharpDevelop.Full.LibreWpf` wrapper. The full wrapper builds the historical SharpDevelop workbench entry point through LibreWPF package mode and now starts/renders the main IDE shell on macOS. It is not yet full IDE parity: legacy Win32 hooks, project-system services, editor IME, and several Windows-only integration points still need typed portable seams.
 
+## 2026-07-08 SharpDevelop popup/menu mode pass
+
+The SharpDevelop full-workbench popup lane exposed a portable popup ordering issue in `ContextMenu`/`MenuBase`. The hosted WinForms `ContextMenuStrip` path opened a WPF `ContextMenu` through `WindowsFormsHost`, but `MenuBase.PushMenuMode(...)` could run before `PresentationSource.CriticalFromVisual(this)` returned a source on the portable popup path. The release build then passed `null` into `InputManager.PushMenuMode(...)` and threw `ArgumentNullException("menuSite")`.
+
+LibreWPF now guards that source-less transient in `MenuBase.PushMenuMode(...)`: normal menus still push menu mode when a source is present, while portable popups that are not source-attached yet fail closed for that push instead of throwing. A focused source-level regression was added in `PortableWinFormsControlCompatibilityTests`.
+
+SharpDevelop's local full-workbench smoke harness was also extended to cover real Core.Presentation toolbar dropdown menus, and the popup checks now drain earlier smoke popups before validating hosted WinForms context menus. That avoids overlap between independent popup checks while preserving a strict `ContextMenuStrip.Visible` result.
+
+Validation:
+
+```text
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj -v:minimal /nr:false
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet vstest src/ProGPU.Wpf.Tests/bin/Debug/net10.0/ProGPU.Wpf.Tests.dll --Tests:ProGPU.Wpf.Tests.Platform.PortableWinFormsControlCompatibilityTests.MenuBaseDefersMenuModePushUntilPortablePopupHasPresentationSource
+PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.1 DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 ./eng/progpu-wpf-sdk-ci.sh
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet pack packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj -c Release -o artifacts/packages/SharpDevelopLocal -v:minimal -p:Version=0.1.0-preview.sharpdevelop.1 -p:PackageVersion=0.1.0-preview.sharpdevelop.1
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-menu-fix-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /p:GenerateFullPaths=true /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-menu-fix-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 LIBREWPF_SHARPDEVELOP_FULL_POPUP_SMOKE=All LIBREWPF_SHARPDEVELOP_BUILD_SMOKE=Solution LIBREWPF_SHARPDEVELOP_RESX_SMOKE=1 LIBREWPF_SHARPDEVELOP_PROPERTY_PAD_SMOKE=1 LIBREWPF_SHARPDEVELOP_WINFORMS_CONTEXT_MENU_SMOKE=1 LIBREWPF_SHARPDEVELOP_EDITOR_COMPLETION_SMOKE=1 LIBREWPF_SHARPDEVELOP_FORMS_DESIGNER_SMOKE=/Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=19000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+MenuBase portable popup regression test -> 1 passed, 0 failed
+LibreWPF SDK CI/package gate             -> succeeds, including Hello/MVP/Toolkit/paid Xceed/SciChart lanes
+SharpDevelop.Full.LibreWpf fresh build   -> succeeds, 193 warnings, 0 errors
+Main menu popup                          -> opened
+Context menu popup                       -> opened, 27 items
+ComboBox popup                           -> opened
+Core.Presentation toolbar dropdown       -> opened, 3 items
+WinForms ContextMenuStrip smoke           -> Opened, 3 items
+ResX smoke                               -> Success, files=1
+LineCounter build smoke                  -> Success, 0 errors, 4 existing sample warnings
+FormsDesigner smoke                      -> Attached, root=System.Windows.Forms.UserControl, components=21, selectable=21
+FormsDesigner mutation smoke             -> Success, selected component reaches PropertyGrid and changed Text value is visible
+PropertyGrid smoke                       -> Success, selected=ToolStripContainer, rows=54
+Editor completion smoke                  -> Opened, bindings=7, items=12
+```
+
 ## 2026-07-08 AvalonDock portable window-region pass
 
 AvalonDock flyout windows used direct `CreateRectRgn`, `CombineRgn`, and `SetWindowRgn` calls while opening, closing, and updating auto-hide flyout regions. That path is now routed through a typed LibreWPF/ProGPU service on non-Windows:

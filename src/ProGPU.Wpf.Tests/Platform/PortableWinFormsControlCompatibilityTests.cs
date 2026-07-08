@@ -488,6 +488,26 @@ public sealed class PortableWinFormsControlCompatibilityTests
     }
 
     [Fact]
+    public void MenuBaseDefersMenuModePushUntilPortablePopupHasPresentationSource()
+    {
+        string menuBaseSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "Primitives",
+            "MenuBase.cs"));
+
+        Assert.Contains("_pushedMenuMode = PresentationSource.CriticalFromVisual(this);", menuBaseSource, StringComparison.Ordinal);
+        Assert.Contains("if (_pushedMenuMode == null)", menuBaseSource, StringComparison.Ordinal);
+        Assert.Contains("Portable popup sources can be attached after Opened is raised.", menuBaseSource, StringComparison.Ordinal);
+        Assert.Contains("InputManager.UnsecureCurrent.PushMenuMode(_pushedMenuMode);", menuBaseSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void DrawItemEventArgsDrawsBackgroundAndFocusRectangle()
     {
         using var bitmap = new System.Drawing.Bitmap(8, 8);

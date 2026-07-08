@@ -894,7 +894,12 @@ namespace System.Windows.Controls.Primitives
         {
             Debug.Assert(_pushedMenuMode == null);
             _pushedMenuMode = PresentationSource.CriticalFromVisual(this);
-            Debug.Assert(_pushedMenuMode != null);
+            if (_pushedMenuMode == null)
+            {
+                // Portable popup sources can be attached after Opened is raised.
+                IsAcquireFocusMenuMode = false;
+                return;
+            }
             IsAcquireFocusMenuMode = isAcquireFocusMenuMode;
             InputManager.UnsecureCurrent.PushMenuMode(_pushedMenuMode);
         }

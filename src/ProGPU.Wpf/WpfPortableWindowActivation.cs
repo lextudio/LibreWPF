@@ -14,8 +14,17 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private const int WM_SIZE = 0x0005;
     private const int WM_WINDOWPOSCHANGING = 0x0046;
     private const int WM_WINDOWPOSCHANGED = 0x0047;
+    private const int WM_MOUSEACTIVATE = 0x0021;
+    private const int WM_LBUTTONDOWN = 0x0201;
+    private const int WM_RBUTTONDOWN = 0x0204;
+    private const int WM_MBUTTONDOWN = 0x0207;
+    private const int WM_XBUTTONDOWN = 0x020B;
+    private const int HTCLIENT = 1;
     private const int WA_INACTIVE = 0;
     private const int WA_ACTIVE = 1;
+    private const int MA_ACTIVATEANDEAT = 2;
+    private const int MA_NOACTIVATE = 3;
+    private const int MA_NOACTIVATEANDEAT = 4;
 
     private static readonly ConditionalWeakTable<object, WpfPortableWindowActivation> s_activeActivations = new();
     private static readonly object s_nonActivatingOwnedActivationsLock = new();
@@ -1047,13 +1056,20 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
-        if (_showActivated)
+        bool suppressActivation = TryDispatchPortableMouseActivateHook(e, out bool eatInput);
+        if (!suppressActivation && _showActivated)
         {
             TrySetWindowActivationState(Window, isActive: true);
         }
-        else if (_ownerWindow != null)
+        else if (!suppressActivation && _ownerWindow != null)
         {
             TrySetWindowActivationState(_ownerWindow, isActive: true);
+        }
+
+        if (eatInput)
+        {
+            e.Handled = true;
+            return;
         }
 
         if (Host.TryProcessPortablePopupInput(e))
@@ -1062,6 +1078,59 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         TryForwardInputToWindow(Window, e);
+    }
+
+    private bool TryDispatchPortableMouseActivateHook(WpfInputEventArgs e, out bool eatInput)
+    {
+        eatInput = false;
+        if (e.Kind != WpfInputEventKind.MouseDown)
+        {
+            return false;
+        }
+
+        WpfPortablePresentationSourceBridge? bridge = Host.PortablePresentationSourceBridge;
+        if (bridge == null || !TryMapMouseDownMessage(e.Button, out int mouseMessage))
+        {
+            return false;
+        }
+
+        if (!bridge.TryDispatchHwndSourceHook(
+                WM_MOUSEACTIVATE,
+                bridge.Handle,
+                PackUnsignedLowHigh(HTCLIENT, mouseMessage),
+                out IntPtr result,
+                out bool handled) ||
+            !handled)
+        {
+            return false;
+        }
+
+        int mouseActivateResult = result.ToInt32();
+        eatInput = mouseActivateResult is MA_ACTIVATEANDEAT or MA_NOACTIVATEANDEAT;
+        return mouseActivateResult is MA_NOACTIVATE or MA_NOACTIVATEANDEAT;
+    }
+
+    private static bool TryMapMouseDownMessage(WpfMouseButton button, out int message)
+    {
+        switch (button)
+        {
+            case WpfMouseButton.Left:
+                message = WM_LBUTTONDOWN;
+                return true;
+            case WpfMouseButton.Right:
+                message = WM_RBUTTONDOWN;
+                return true;
+            case WpfMouseButton.Middle:
+                message = WM_MBUTTONDOWN;
+                return true;
+            case WpfMouseButton.XButton1:
+            case WpfMouseButton.XButton2:
+                message = WM_XBUTTONDOWN;
+                return true;
+            default:
+                message = 0;
+                return false;
+        }
     }
 
     private bool TryDispatchHostInputToWindowDispatcher(WpfInputEventArgs e)

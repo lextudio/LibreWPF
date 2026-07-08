@@ -869,6 +869,57 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostMouseDownDispatchesMouseActivateHookAndCanSuppressActivation()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+        source.HwndSourceHookResponses[0x0021] = (new IntPtr(3), true);
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfInputEventArgs(WpfInputEventKind.MouseDown, x: 12, y: 24, button: WpfMouseButton.Left);
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(0, service.SetActivationStateCount);
+        Assert.Equal(1, service.InputCount);
+        Assert.True(args.Handled);
+        Assert.Equal(0x0021, source.DispatchedHwndSourceHooks[0].Message);
+        Assert.Equal(PackUnsignedLowHigh(1, 0x0201), source.DispatchedHwndSourceHooks[0].LParam);
+    }
+
+    [Fact]
+    public void HostMouseActivateAndEatActivatesWindowAndStopsInputForwarding()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+        source.HwndSourceHookResponses[0x0021] = (new IntPtr(2), true);
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfInputEventArgs(WpfInputEventKind.MouseDown, x: 12, y: 24, button: WpfMouseButton.Left);
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(1, service.SetActivationStateCount);
+        Assert.Same(window, service.LastActivationStateWindow);
+        Assert.True(service.LastActivationState);
+        Assert.Equal(0, service.InputCount);
+        Assert.True(args.Handled);
+        Assert.Equal(0x0021, source.DispatchedHwndSourceHooks[0].Message);
+    }
+
+    [Fact]
     public void HostInputDoesNotUseReflectedDispatcherQueueFallback()
     {
         var scheduler = new TestRenderScheduler();
@@ -2207,6 +2258,8 @@ public sealed class WpfPortableWindowActivationTests
 
         public List<(int Message, IntPtr WParam, IntPtr LParam)> DispatchedHwndSourceHooks { get; } = new();
 
+        public Dictionary<int, (IntPtr Result, bool Handled)> HwndSourceHookResponses { get; } = new();
+
         public void SetDeviceScale(double dpiScaleX, double dpiScaleY)
         {
             RenderRequested?.Invoke(this, EventArgs.Empty);
@@ -2230,6 +2283,13 @@ public sealed class WpfPortableWindowActivationTests
         public bool DispatchHwndSourceHook(int message, IntPtr wParam, IntPtr lParam, out IntPtr result, out bool handled)
         {
             DispatchedHwndSourceHooks.Add((message, wParam, lParam));
+            if (HwndSourceHookResponses.TryGetValue(message, out var response))
+            {
+                result = response.Result;
+                handled = response.Handled;
+                return true;
+            }
+
             result = IntPtr.Zero;
             handled = false;
             return true;

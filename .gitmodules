@@ -2,3 +2,7 @@
 	path = external/ProGPU
 	url = ../ProGPU
 	branch = main
+[submodule "external/LibreWinForms"]
+	path = external/LibreWinForms
+	url = ../winforms
+	branch = librewinforms-progpu-port

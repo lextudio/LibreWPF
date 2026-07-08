@@ -249,6 +249,33 @@ RestoreSources=/Users/wieslawsoltes/GitHub/wpf/artifacts/packages/SharpDevelopLo
 LibreWinFormsBridgePackageVersion=0.1.0-preview.sharpdevelop.1
 ```
 
+## 2026-07-08 LibreWinForms package workflow bridge bootstrap
+
+The LibreWinForms repository now follows the LibreWPF preview-shipping shape more closely:
+
+- GitHub default branch is `librewinforms-progpu-port`.
+- Repository description and topics are set for LibreWinForms, WinForms, ProGPU, Silk.NET, cross-platform, .NET, and SDK discovery.
+- The README front section has split NuGet tables for main LibreWinForms packages and bridge packages, with NuGet badge columns.
+- CI and release workflows build matching LibreWPF/ProGPU bridge packages from `wieslawsoltes/wpf` branch `progpu-rendering-port` before packing LibreWinForms.
+- The release workflow accepts an optional bridge version and still creates GitHub releases for `librewinforms-v*` tags with generated notes.
+- Docs verification now checks the bridge-package documentation and workflow bootstrap text.
+
+`LibreWinForms.WindowsFormsIntegration` can now restore in package mode by depending on `LibreWPF.Transport` when no explicit `LibreWpfManagedAssemblyRoot` is provided. The old direct WPF assembly references remain available only for local artifact-root validation. This makes standalone LibreWinForms CI/release usable after the matching bridge packages are built in the workflow.
+
+`LibreWinForms.System.Windows.Forms.Control` now exposes the standard typed `Validating` and `Validated` event surface and raises validation before `Leave` during focus loss. The WPF fallback compatibility package mirrors the same event contract for package consumers that have not moved to LibreWinForms yet.
+
+Validation:
+
+```text
+LibreWinForms docs verification                                           -> succeeds
+LibreWinForms package lane, fresh NuGet cache + SharpDevelopLocal feed    -> succeeds; packages, manifest, bundle, checksum written
+SharpDevelop.ResourceToolkit package-mode build                           -> succeeds, 155 warnings, 0 errors
+SharpDevelop.Full.LibreWpf ResourceToolkit-included build                 -> succeeds, 39 warnings, 0 errors
+SharpDevelop broad smoke                                                  -> popups/resx/build/forms designer/property grid/context menu/completion all pass, exit code 0
+```
+
+Public-feed-only LibreWinForms packing is still expected to fail until `ProGPU.System.Drawing.Common` and the matching LibreWPF bridge packages are published for the selected preview version. The release order stays ProGPU first, then LibreWPF bridge packages, then LibreWinForms.
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.

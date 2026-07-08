@@ -1893,6 +1893,37 @@ SharpDevelop.Full.LibreWpf fresh-cache Release package-mode build        -> succ
 - AvalonEdit IME support still uses `HwndSource` and native IME calls. The current shell validates AvalonEdit rendering/editing basics, but IME composition needs a LibreWPF portable text-input/IME seam before full editor parity.
 - The LibreWPF wrapper still carries temporary project-shaping warnings from duplicate source inclusion. These should be removed by splitting the package-mode wrapper into typed facade projects or by excluding the duplicate generated/version/native-helper files explicitly instead of relying on conflict warnings.
 
+## 2026-07-08 ResourceToolkit package-mode enablement
+
+The ResourceToolkit add-in is no longer fully excluded from the local LibreWPF full-workbench wrapper. `ResourceToolkit.LibreWpf.csproj` now builds against the current SharpDevelop text editor and project APIs, and the full wrapper can include it with `LibreWpfSharpDevelopIncludeResourceToolkit=true`.
+
+The port keeps this slice source-compatible and typed: old NRefactory v3 AST resolver/refactoring entry points that are not present in the current package-mode graph are disabled behind `LIBREWPF` with explicit unsupported messages rather than replaced by reflection or duck-typed shims. The remaining ResourceToolkit work is a current-parser/resource-analysis rewrite for Find References, Rename Resource, Find Unused Resources, and Find Missing Resources.
+
+Validation:
+
+```text
+ResourceToolkit.LibreWpf Release build                                      -> succeeds, 155 warnings, 0 errors
+SharpDevelop.Full.LibreWpf Release build with ResourceToolkit included       -> succeeds, 39 warnings, 0 errors
+SharpDevelop broad package-mode smoke                                       -> popups/resx/build/forms designer/property grid/context menu/completion pass, exit code 0
+```
+
+The broad smoke covered the real full-workbench menu popup, AddInTree context menu popup with 27 items, ComboBox popup, ResX smoke, LineCounter build smoke, FormsDesigner load and mutation, hosted PropertyGrid, direct WinForms `ContextMenuStrip`, and editor completion popup. This closes the current SharpDevelop ResourceToolkit compile/packaging task, while full ResourceToolkit feature parity remains a planned compatibility-parser rewrite.
+
+## 2026-07-08 LibreWinForms bridge workflow update
+
+LibreWinForms packaging now treats matching LibreWPF/ProGPU bridge packages as first-class build inputs instead of relying on an already-populated local artifact directory. The LibreWinForms CI and release workflows check out `wieslawsoltes/wpf` branch `progpu-rendering-port`, build the matching LibreWPF bridge feed with `eng/progpu-wpf-sdk-ci.sh`, and then pack LibreWinForms against that feed plus NuGet.org.
+
+The source-owned LibreWinForms `System.Windows.Forms.Control` compatibility surface now includes standard `Validating` and `Validated` events, and the WPF fallback compatibility package mirrors those APIs. This unblocks SharpDevelop dialogs such as ResourceToolkit's string-resource editor through normal typed WinForms event contracts.
+
+Validation:
+
+```text
+LibreWinForms docs verification                                             -> succeeds
+LibreWinForms package lane with fresh cache + local bridge feed              -> succeeds; runtime packages, SDK package, manifest, bundle, and checksum written
+LibreWinForms public-feed-only package lane                                  -> blocked until ProGPU.System.Drawing.Common and matching LibreWPF bridge packages are public
+GitHub repository metadata                                                   -> default branch librewinforms-progpu-port, description/topics updated
+```
+
 ## Next steps
 
 - Add the real workbench service bootstrap to `SharpDevelop.LibreWpf` incrementally, keeping the SDK-style shell buildable after every slice.

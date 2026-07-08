@@ -1651,6 +1651,26 @@ LibreWinForms.System.Windows.Forms Release build                         -> succ
 SharpDevelop.Full.LibreWpf fresh-cache Release build                     -> succeeds, 286 warnings, 0 errors
 ```
 
+## 2026-07-08 XmlEditor package-mode add-in build
+
+The SharpDevelop XmlEditor add-in is now a local LibreWPF wrapper pressure test and can be included in the full workbench wrapper. The first optional build exposed missing reusable WinForms API rather than WPF rendering issues. LibreWinForms now covers the required typed surface:
+
+- `ListBox.SelectionMode`, `SelectedItems`, `SetSelected(...)`, `GetSelected(...)`, and `Sorted` insertion.
+- `DataGridView.MultiSelect` and `ShowEditingIcon`.
+- `ListViewItem(string text, int imageIndex)` and `ListViewItem(string[] items, int imageIndex)`.
+- `Control.BringToFront()` / `SendToBack()` using the host renderer's child-order model.
+- `TextBoxBase.Clear()`, `TreeNode.ExpandAll()`, `TreeNode.Collapse(bool)`, and `SplitContainer.SplitterWidth`.
+
+Validation:
+
+```text
+ProGPU.Wpf.Tests ListBoxSupportsSortedMultiSelection                    -> passed
+ProGPU.Wpf.Tests XmlEditorWinFormsSurfaceApiIsAvailable                 -> passed
+LibreWinForms.System.Windows.Forms Release build                         -> succeeds, 30 warnings, 0 errors
+XmlEditor.LibreWpf fresh-cache Release build                             -> succeeds, 248 warnings, 0 errors
+SharpDevelop.Full.LibreWpf with XmlEditor fresh-cache Release build      -> succeeds, 286 warnings, 0 errors
+```
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:

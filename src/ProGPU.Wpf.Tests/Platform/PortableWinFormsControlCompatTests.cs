@@ -46,4 +46,75 @@ public sealed class PortableWinFormsControlCompatTests
 
         Assert.Equal(string.Empty, provider.GetError(textBox));
     }
+
+    [Fact]
+    public void ListBoxSupportsSortedMultiSelection()
+    {
+        var listBox = new ListBox
+        {
+            SelectionMode = SelectionMode.MultiExtended,
+            Sorted = true
+        };
+
+        listBox.Items.Add("zeta");
+        listBox.Items.Add("alpha");
+        listBox.Items.Add("gamma");
+        listBox.SetSelected(0, true);
+        listBox.SetSelected(2, true);
+
+        Assert.Equal("alpha", listBox.Items[0]);
+        Assert.Equal("zeta", listBox.Items[2]);
+        Assert.Equal(0, listBox.SelectedIndex);
+        Assert.Equal(new[] { "alpha", "zeta" }, listBox.SelectedItems.Cast<string>().ToArray());
+    }
+
+    [Fact]
+    public void XmlEditorWinFormsSurfaceApiIsAvailable()
+    {
+        var parent = new Panel();
+        var first = new TextBox { Text = "first" };
+        var second = new PropertyGrid();
+        parent.Controls.Add(first);
+        parent.Controls.Add(second);
+
+        first.BringToFront();
+        Assert.Same(first, parent.Controls[parent.Controls.Count - 1]);
+
+        first.SendToBack();
+        Assert.Same(first, parent.Controls[0]);
+
+        first.Clear();
+        Assert.Equal(string.Empty, first.Text);
+
+        var split = new SplitContainer { SplitterWidth = 8 };
+        Assert.Equal(8, split.SplitterWidth);
+
+        var grid = new DataGridView
+        {
+            MultiSelect = false,
+            ShowEditingIcon = false
+        };
+        Assert.False(grid.MultiSelect);
+        Assert.False(grid.ShowEditingIcon);
+
+        var item = new ListViewItem(new[] { "match", "value" }, 3);
+        Assert.Equal(3, item.ImageIndex);
+        Assert.Equal("match", item.Text);
+        Assert.Equal("value", item.SubItems[1].Text);
+
+        var textItem = new ListViewItem("single", 2);
+        Assert.Equal(2, textItem.ImageIndex);
+        Assert.Equal("single", textItem.Text);
+
+        var root = new TreeNode("root");
+        var child = new TreeNode("child");
+        root.Nodes.Add(child);
+        root.ExpandAll();
+        Assert.True(root.IsExpanded);
+        Assert.True(child.IsExpanded);
+
+        root.Collapse(false);
+        Assert.False(root.IsExpanded);
+        Assert.False(child.IsExpanded);
+    }
 }

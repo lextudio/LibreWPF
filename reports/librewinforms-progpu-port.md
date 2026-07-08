@@ -287,6 +287,14 @@ PresentationBuildTasks Release build -> succeeds, 0 warnings, 0 errors
 ProGPU Avalonia package smoke        -> succeeds, 0 warnings, 0 errors
 ```
 
+The next LibreWinForms bridge rerun reached the real WPF `Application.Run` harness and exposed a stale harness invocation of `PortableWindowActivationService.Register(...)`. The service gained the optional `setWindowRegion` callback, and reflection invocation still requires the optional slot to be supplied. `ProGPU.Wpf.RealApplicationRunHarness` now passes the explicit trailing `null` callback value.
+
+Validation:
+
+```text
+Real WPF Application.Run harness -> succeeds
+```
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.

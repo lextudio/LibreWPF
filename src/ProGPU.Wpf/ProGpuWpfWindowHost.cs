@@ -13,6 +13,9 @@ using System.Windows.Media.ProGPU.Composition.Mil;
 using System.Windows.Media.ProGPU.Platform;
 using ProGPU.Wpf.Interop;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using ProGpuPathGeometry = global::ProGPU.Vector.PathGeometry;
+using ProGpuPrimitivePathGeometry = global::ProGPU.Vector.PrimitivePathGeometry;
+using ProGpuRect = global::ProGPU.Scene.Rect;
 using ProGpuRenderTargetViewport = global::ProGPU.Scene.RenderTargetViewport;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using SilkWindowBorder = Silk.NET.Windowing.WindowBorder;
@@ -412,7 +415,104 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         ArgumentNullException.ThrowIfNull(region);
 
         _windowRegion = region.IsEmpty ? null : region;
+        ApplyWindowRegionToCompositionTarget();
         RequestRenderAndWakeNativeLoop();
+    }
+
+    private void ApplyWindowRegionToCompositionTarget()
+    {
+        if (_target == null)
+        {
+            return;
+        }
+
+        _target.SceneRootVisual.GeometryClip = TryCreateWindowRegionClip(_windowRegion, out var clip)
+            ? clip
+            : null;
+    }
+
+    internal static bool TryCreateWindowRegionClip(
+        PortableWindowRegion? region,
+        out ProGpuPathGeometry? clip)
+    {
+        clip = null;
+        if (region == null || region.IsEmpty || !TryToSceneRect(region.Bounds, out var bounds))
+        {
+            return false;
+        }
+
+        clip = ProGpuPrimitivePathGeometry.CreateRectangle(
+            bounds.X,
+            bounds.Y,
+            bounds.Width,
+            bounds.Height);
+
+        var excludedRects = region.ExcludedRects;
+        for (int i = 0; i < excludedRects.Count; i++)
+        {
+            if (!TryToSceneRect(excludedRects[i], out var excluded) ||
+                !TryIntersect(bounds, excluded, out var clippedExcluded))
+            {
+                continue;
+            }
+
+            clip = new ProGpuPathGeometry
+            {
+                IsCombined = true,
+                PathA = clip,
+                PathB = ProGpuPrimitivePathGeometry.CreateRectangle(
+                    clippedExcluded.X,
+                    clippedExcluded.Y,
+                    clippedExcluded.Width,
+                    clippedExcluded.Height),
+                Op = 0
+            };
+        }
+
+        return true;
+    }
+
+    private static bool TryToSceneRect(PortableRect rect, out ProGpuRect sceneRect)
+    {
+        if (rect.IsEmpty ||
+            !double.IsFinite(rect.X) ||
+            !double.IsFinite(rect.Y) ||
+            !double.IsFinite(rect.Width) ||
+            !double.IsFinite(rect.Height) ||
+            rect.Width <= 0 ||
+            rect.Height <= 0)
+        {
+            sceneRect = default;
+            return false;
+        }
+
+        sceneRect = new ProGpuRect(
+            (float)rect.X,
+            (float)rect.Y,
+            (float)rect.Width,
+            (float)rect.Height);
+        return float.IsFinite(sceneRect.X) &&
+               float.IsFinite(sceneRect.Y) &&
+               float.IsFinite(sceneRect.Width) &&
+               float.IsFinite(sceneRect.Height) &&
+               sceneRect.Width > 0 &&
+               sceneRect.Height > 0;
+    }
+
+    private static bool TryIntersect(ProGpuRect left, ProGpuRect right, out ProGpuRect intersection)
+    {
+        float x1 = Math.Max(left.X, right.X);
+        float y1 = Math.Max(left.Y, right.Y);
+        float x2 = Math.Min(left.Right, right.Right);
+        float y2 = Math.Min(left.Bottom, right.Bottom);
+        if (x2 <= x1 || y2 <= y1)
+        {
+            intersection = default;
+            return false;
+        }
+
+        intersection = new ProGpuRect(x1, y1, x2 - x1, y2 - y1);
+        return true;
     }
 
     internal void SetInitialClientSize(int width, int height)
@@ -700,6 +800,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _target = ProGpuWpfCompositionTarget.CreateForWindow(_window);
         _target.RenderInvalidated += OnCompositionTargetRenderInvalidated;
         _target.Context.VSync = _options.VSync;
+        ApplyWindowRegionToCompositionTarget();
         AttachInputService();
         AttachDragDropService();
         AttachWindowEventService();

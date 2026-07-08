@@ -6,9 +6,9 @@ Date: 2026-07-08
 
 The current SharpDevelop slice is closed at package-mode build parity plus broad popup/hosted-control smoke coverage. `/Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj` builds in Release from a fresh NuGet cache against `/Users/wieslawsoltes/GitHub/wpf/artifacts/packages/SharpDevelopLocal` with `286` warnings and `0` errors.
 
-Reusable fixes now landed in LibreWPF, LibreWinForms, and ProGPU include menu/context/combo popup coverage, AvalonEdit completion popup smoke support, hosted WinForms TreeView/ListView/ComboBox owner drawing, DrawItem background/focus helpers, dialog/clipboard services, ImageList/TreeView icon rendering, typed portable `HwndSource` hook dispatch for activation, mouse activation, show/hide, and basic window move/resize geometry messages, plus LibreWinForms preview package/release workflows on the default `librewinforms-progpu-port` branch.
+Reusable fixes now landed in LibreWPF, LibreWinForms, and ProGPU include menu/context/combo popup coverage, AvalonEdit completion popup smoke support, hosted WinForms TreeView/ListView/ComboBox owner drawing, DrawItem background/focus helpers, dialog/clipboard services, ImageList/TreeView icon rendering, typed portable `HwndSource` hook dispatch for activation, mouse activation, show/hide, basic window move/resize geometry messages, exact ProGPU scene geometry clipping for portable window regions, plus LibreWinForms preview package/release workflows on the default `librewinforms-progpu-port` branch.
 
-The latest AvalonDock pass also adds a typed handle-based `PortableWindowRegion` route from SharpDevelop flyout windows into ProGPU. Direct `SetWindowRgn`/`CreateRectRgn`/`CombineRgn` use is now avoided on non-Windows for the active flyout update and open/close animation paths, and SharpDevelop startup remains alive after the change. The region DTO preserves exclusion rectangles, but the compositor still needs exact base-minus-exclusion region clipping and hit-test enforcement.
+The latest AvalonDock pass also adds a typed handle-based `PortableWindowRegion` route from SharpDevelop flyout windows into ProGPU. Direct `SetWindowRgn`/`CreateRectRgn`/`CombineRgn` use is now avoided on non-Windows for the active flyout update and open/close animation paths, and SharpDevelop startup remains alive after the change. The region DTO exclusion rectangles now feed a ProGPU vector path difference assigned to the scene root `GeometryClip`, so the same base-minus-exclusion region is enforced for rendering and GPU hit testing.
 
 SharpDevelop is not yet fully runnable as an IDE. The remaining work below is the plan for the next implementation phase.
 
@@ -20,7 +20,7 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 
 2. Finish AvalonDock floating/flyout parity.
    - Replace the remaining `WindowInteropWrapper` and `FloatingWindow` Win32 assumptions with portable window ownership, activation, and placement services.
-   - Implement ProGPU-native exact window-region composition for `PortableWindowRegion.Bounds` minus `ExcludedRects`, and apply it consistently to rendering and GPU hit testing.
+   - Validate the new ProGPU-native `PortableWindowRegion.Bounds` minus `ExcludedRects` composition in live AvalonDock float/auto-hide flows, then broaden the contract if AvalonDock exposes non-rectangular native regions.
    - Validate dock, float, auto-hide, restore layout, focus restoration, and tab switching in the full SharpDevelop shell.
 
 3. Complete popup runtime validation.

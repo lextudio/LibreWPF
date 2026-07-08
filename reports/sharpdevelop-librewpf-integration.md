@@ -76,7 +76,31 @@ SharpDevelop.Full.LibreWpf       -> succeeds, 286 warnings, 0 errors
 SharpDevelop startup             -> process stayed alive until interrupted; only the known log4net config warning was printed
 ```
 
-This pass removes another macOS crash path and keeps the data in ProGPU-owned region state. Exact compositor enforcement for exclusion rectangles is still pending: the DTO preserves the exclusion list, but ProGPU scene composition still needs a native region/geometry clip feature that can apply base-minus-exclusions to render and hit-test paths.
+This pass removes another macOS crash path and keeps the data in ProGPU-owned region state. The follow-up compositor slice now enforces the region as a native ProGPU scene geometry clip:
+
+- `ProGPU.Scene.Visual.GeometryClip` is a first-class retained visual state property that invalidates the visual and parent branch.
+- `Compositor` applies `GeometryClip` through the existing vector mask path for rendering and pushes the same `PushGeometryClip` state into GPU hit-test cache construction.
+- `ProGpuWpfWindowHost` converts `PortableWindowRegion.Bounds` plus `ExcludedRects` into an exact vector path difference (`bounds - clipped exclusions`) and assigns it to the scene root visual.
+
+Focused validation:
+
+```text
+dotnet restore external/ProGPU/src/ProGPU.Tests/ProGPU.Tests.csproj
+dotnet test external/ProGPU/src/ProGPU.Tests/ProGPU.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~VisualChangeVersionTests"
+dotnet restore src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj
+dotnet build src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj -c Release --no-restore
+ln -sfn /Users/wieslawsoltes/.dotnet/shared/Microsoft.NETCore.App/10.0.5 .dotnet/shared/Microsoft.NETCore.App/10.0.5
+dotnet vstest src/ProGPU.Wpf.Tests/bin/Release/net10.0/ProGPU.Wpf.Tests.dll --Tests:ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests.TryCreateWindowRegionClipBuildsExactDifferencePath
+dotnet vstest src/ProGPU.Wpf.Tests/bin/Release/net10.0/ProGPU.Wpf.Tests.dll --Tests:ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests.TryCreateWindowRegionClipFailsClosedForEmptyRegion
+```
+
+Results:
+
+```text
+ProGPU VisualChangeVersionTests -> 15 passed, 0 failed
+ProGPU.Wpf.Tests Release build  -> succeeds, existing warning set, 0 errors
+Window-region clip tests        -> 2 passed, 0 failed
+```
 
 ## 2026-07-08 LibreWinForms and FormsDesigner pass
 

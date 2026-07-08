@@ -72,6 +72,47 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void TryCreateWindowRegionClipBuildsExactDifferencePath()
+    {
+        var region = new PortableWindowRegion(
+            new PortableRect(10, 20, 100, 50),
+            new[]
+            {
+                new PortableRect(0, 30, 30, 20),
+                new PortableRect(200, 30, 30, 20)
+            });
+
+        Assert.True(ProGpuWpfWindowHost.TryCreateWindowRegionClip(region, out var clip));
+        Assert.NotNull(clip);
+        Assert.True(clip!.IsCombined);
+        Assert.Equal(0, clip.Op);
+        Assert.NotNull(clip.PathA);
+        Assert.NotNull(clip.PathB);
+        Assert.True(clip.TryGetBounds(out var min, out var max));
+        Assert.Equal(10f, min.X);
+        Assert.Equal(20f, min.Y);
+        Assert.Equal(110f, max.X);
+        Assert.Equal(70f, max.Y);
+        Assert.True(clip.PathB!.TryGetBounds(out var excludedMin, out var excludedMax));
+        Assert.Equal(10f, excludedMin.X);
+        Assert.Equal(30f, excludedMin.Y);
+        Assert.Equal(30f, excludedMax.X);
+        Assert.Equal(50f, excludedMax.Y);
+    }
+
+    [Fact]
+    public void TryCreateWindowRegionClipFailsClosedForEmptyRegion()
+    {
+        Assert.False(ProGpuWpfWindowHost.TryCreateWindowRegionClip(null, out var nullClip));
+        Assert.Null(nullClip);
+
+        var region = new PortableWindowRegion(PortableRect.Empty);
+
+        Assert.False(ProGpuWpfWindowHost.TryCreateWindowRegionClip(region, out var emptyClip));
+        Assert.Null(emptyClip);
+    }
+
+    [Fact]
     public void SettingSameWpfRootVisualDoesNotRequestRenderAgain()
     {
         var scheduler = new TestRenderScheduler();

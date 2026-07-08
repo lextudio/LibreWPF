@@ -276,6 +276,14 @@ SharpDevelop broad smoke                                                  -> pop
 
 Public-feed-only LibreWinForms packing is still expected to fail until `ProGPU.System.Drawing.Common` and the matching LibreWPF bridge packages are published for the selected preview version. The release order stays ProGPU first, then LibreWPF bridge packages, then LibreWinForms.
 
+The first pushed LibreWinForms bridge-bootstrap workflow exposed one extra CI-only issue: when WPF is checked out below the LibreWinForms repository, the generated ProGPU Avalonia package-smoke project inherited the parent repository's Central Package Management settings and failed restore with `NU1008`. `eng/progpu-avalonia-package-smoke.sh` now writes a local `Directory.Packages.props` with `ManagePackageVersionsCentrally=false` beside the generated smoke project, so the package references with explicit versions remain isolated from parent checkout policy.
+
+Validation:
+
+```text
+ProGPU Avalonia package smoke -> succeeds, 0 warnings, 0 errors
+```
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.

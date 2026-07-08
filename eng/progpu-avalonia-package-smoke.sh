@@ -72,6 +72,14 @@ cat >"${project_dir}/Directory.Build.targets" <<'XML'
 <Project />
 XML
 
+cat >"${project_dir}/Directory.Packages.props" <<'XML'
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>
+XML
+
 cat >"${project_dir}/NuGet.config" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>

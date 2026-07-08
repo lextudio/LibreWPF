@@ -155,6 +155,19 @@ Focused regression coverage was added in `ProGPU.Wpf.Tests.Platform.PortableWinF
 
 The remaining FormsDesigner work is now inside richer CodeDOM/component behavior: broaden designer statement coverage, paint selection/adorners, mutate properties through the hosted grid, serialize changes, and validate generated-code round trip. The current milestone is replayed loaded-surface package-mode inclusion, not full designer parity.
 
+## 2026-07-08 LibreWinForms ResX ownership update
+
+The WinForms ResX resource-file API is now implemented in the source-owned LibreWinForms `System.Windows.Forms.dll` package instead of being a SharpDevelop-local LibreWPF compatibility shim. The new package slice provides `System.Resources.ResXFileRef`, `ResXDataNode`, `ResXResourceReader`, and `ResXResourceWriter` with the designer-facing behavior SharpDevelop needs for localized WinForms resources: values, metadata, comments, data nodes, `BasePath` file references, and type-name converter hooks.
+
+Focused validation in the LibreWPF repo:
+
+```text
+ProGPU.Wpf.Tests PortableWinFormsResXResourceTests + designer resource tests -> 5 passed, 0 failed
+LibreWinForms.System.Windows.Forms package-mode build                       -> succeeds, 28 warnings, 0 errors
+```
+
+This is a port/library ownership fix, not a XAML compiler change. The current SharpDevelop local LibreWPF wrapper still has a transitional duplicate `System.Resources.ResX*` shim under `src/Main/Base/Project/LibreWpf/Compat/SystemResourcesResXCompat.cs`; package-mode SharpDevelop validation should disable that shim now that LibreWinForms owns the API, otherwise the compiler sees duplicate `ResXResourceReader`/`ResXResourceWriter` definitions.
+
 ## 2026-07-08 WinForms-hosted pad and popup pass
 
 The current pass focused on real SharpDevelop workbench surfaces that combine popups with WinForms-hosted content:

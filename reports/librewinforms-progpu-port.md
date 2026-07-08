@@ -206,9 +206,22 @@ LibreWinForms.System.Windows.Forms build                    -> succeeds, 27 warn
 SharpDevelop.Full.LibreWpf fresh-cache Release build        -> succeeds, 286 warnings, 0 errors
 ```
 
+## 2026-07-08 FormsDesigner ResX resource file support
+
+LibreWinForms now owns a portable `System.Resources` ResX compatibility slice in the source-owned `System.Windows.Forms.dll` package: `ResXFileRef`, `ResXDataNode`, `ResXResourceReader`, and `ResXResourceWriter`. The implementation covers the designer resource-file API surface SharpDevelop expects without depending on Windows WinForms assemblies: string and byte resources, metadata enumeration, `UseResXDataNodes`, comments, node round trips, relative file references through `BasePath`, and standard type-name converter hooks.
+
+Focused validation:
+
+```text
+ProGPU.Wpf.Tests PortableWinFormsResXResourceTests + designer resource tests -> Passed, 5 total
+LibreWinForms.System.Windows.Forms package-mode build                         -> succeeds, 28 warnings, 0 errors
+```
+
+The package-mode build used a refreshed `LibreWPF.Interop/0.1.0-preview.sharpdevelop.1` package and an explicit `LibreWinFormsBridgePackageVersion=0.1.0-preview.sharpdevelop.1` so the source-owned LibreWinForms project resolved the current ProGPU dialog and service DTO contracts. The next SharpDevelop validation step is to remove or disable its transitional local `System.Resources.ResX*` shim in the LibreWPF wrapper, because those types now correctly belong to LibreWinForms.
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.
 - Replace the remaining compatibility-only controls with upstream managed WinForms implementations behind typed ProGPU/Silk.NET platform services.
-- Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing/component create-remove/resource-replay/localization-shape/handler-generation-contract coverage to real SharpDevelop source-navigation smoke, resource-file writing, toolbox placement details, and broader generated-code round trips.
+- Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing/component create-remove/resource-replay/localization-shape/handler-generation-contract/ResX-reader-writer coverage to real SharpDevelop source-navigation smoke, resource-file save/load round trips, toolbox placement details, and broader generated-code round trips.
 - Make the standard WPF SDK pack workflow restore from the required private WPF feeds so local validation does not need generated package artifact refreshes.

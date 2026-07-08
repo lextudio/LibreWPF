@@ -175,6 +175,8 @@ Focused validation:
 ```text
 ProGPU.Wpf.Tests PortableWinFormsCodeDomDesignerLoaderTests -> Passed, 8 total
 LibreWinForms.System.Windows.Forms build                    -> succeeds, 27 warnings, 0 errors
+SharpDevelop.Full.LibreWpf fresh-cache Release build        -> succeeds, 286 warnings, 0 errors
+SharpDevelop broad smoke                                    -> popups/build/resx/forms designer/property grid/context menu/completion all pass, exit code 0
 ```
 
 ## Remaining work

@@ -1547,6 +1547,8 @@ Validation:
 ```text
 ProGPU.Wpf.Tests PortableWinFormsCodeDomDesignerLoaderTests -> 8 passed
 LibreWinForms.System.Windows.Forms Release build            -> succeeds, 27 warnings, 0 errors
+SharpDevelop.Full.LibreWpf Release build                    -> succeeds, 286 warnings, 0 errors
+SharpDevelop broad smoke                                    -> popups/build/resx/forms designer/property grid/context menu/completion all pass, exit code 0
 ```
 
 ## Remaining issues

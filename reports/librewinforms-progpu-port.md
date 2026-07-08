@@ -299,6 +299,16 @@ The following LibreWinForms rerun cleared the real `Application.Run` harness and
 
 After both harness registration fixes, the nested LibreWPF bridge build passed and LibreWinForms packaging reached its own package restore. The remaining CI blocker was that `ProGPU.System.Drawing.Common` and its `ProGPU.SkiaSharp` dependency were not produced into the local bridge feed even though LibreWinForms consumes them as preview package dependencies. ProGPU now lists both packages as official packages, and the LibreWPF SDK CI feed now packs `external/ProGPU/src/SkiaSharp/SkiaSharp.csproj` and `external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj` with the correct package IDs and audit assembly mappings.
 
+The standalone LibreWinForms package lane then exposed a local reproducibility issue: an older same-version `LibreWPF.Interop/0.1.0-preview.1` in the user/global NuGet cache could shadow the freshly built bridge feed and hide newly added typed ColorDialog/FontDialog DTOs. LibreWinForms commit `2810c93a8` fixes this in `eng/librewinforms-pack.sh` by defaulting restore to `artifacts/nuget/librewinforms-pack` and evicting the current LibreWinForms plus bridge package versions before restore. The README and release docs now document `LIBREWINFORMS_NUGET_PACKAGES` for alternate cache locations.
+
+Validation:
+
+```text
+LibreWinForms docs verification                                                       -> succeeds
+LibreWinForms package lane with isolated cache + local LibreWPF/ProGPU bridge feed     -> succeeds; manifest records winFormsHasTrackedChanges=false
+WPF superproject submodule update                                                     -> points external/LibreWinForms at 2810c93a8
+```
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.

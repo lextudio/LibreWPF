@@ -78,6 +78,39 @@ LibreWinForms GitHub metadata                -> defaultBranch=librewinforms-prog
 LibreWinForms docs verification              -> succeeds
 ```
 
+## 2026-07-09 AvalonDock non-client hook contract
+
+AvalonDock floating windows still consume legacy title-bar/non-client messages through `WindowInteropWrapper.FilterMessage(...)`. The concrete messages used by the SharpDevelop copy are `WM_NCLBUTTONDOWN` for starting dock drags, `WM_NCLBUTTONDBLCLK` for dock/maximize toggles, and `WM_NCRBUTTONDOWN`/`WM_NCRBUTTONUP` for floating-window title context menus.
+
+LibreWPF now has a typed ProGPU window-event contract for those messages:
+
+- `WpfWindowEventKind.NonClientMouseMove`
+- `WpfWindowEventKind.NonClientMouseDown`
+- `WpfWindowEventKind.NonClientMouseUp`
+- `WpfWindowEventKind.NonClientMouseDoubleClick`
+
+`WpfWindowEventArgs` carries the neutral button, hit-test code, and screen coordinate payload. `WpfPortableWindowActivation` maps those events back to the legacy `HwndSource` hook messages with the same `wParam` hit-test code and packed screen-coordinate `lParam` shape that AvalonDock expects. The current default Silk.NET window event service exposes factory helpers for these DTOs; native title-bar event generation is still a platform-service follow-up because the current Silk.NET `IWindow` event set does not surface non-client title-bar mouse events directly.
+
+Validation:
+
+```text
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj -c Release -v:minimal /nr:false
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet vstest src/ProGPU.Wpf.Tests/bin/Release/net10.0/ProGPU.Wpf.Tests.dll --Tests:ProGPU.Wpf.Tests.WpfPortableWindowActivationTests.HostNonClientMouseEventsDispatchLegacyHwndSourceHooks,ProGPU.Wpf.Tests.WpfPortableWindowActivationTests.HostNonClientMouseMoveDefaultsToCaptionHitTest,ProGPU.Wpf.Tests.Platform.SilkNetWpfWindowEventServiceTests.CreateNonClientMouseMoveEventStoresHitTestAndScreenCoordinates,ProGPU.Wpf.Tests.Platform.SilkNetWpfWindowEventServiceTests.CreateNonClientMouseButtonEventStoresButtonHitTestAndScreenCoordinates,ProGPU.Wpf.Tests.Platform.SilkNetWpfWindowEventServiceTests.CreateNonClientMouseButtonEventRejectsNonButtonKinds
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet vstest src/ProGPU.Wpf.Tests/bin/Release/net10.0/ProGPU.Wpf.Tests.dll --Tests:ProGPU.Wpf.Tests.WpfPortableWindowActivationTests,ProGPU.Wpf.Tests.Platform.SilkNetWpfWindowEventServiceTests
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet pack src/ProGPU.Wpf/ProGPU.Wpf.csproj -c Release -o artifacts/packages/SharpDevelopLocal -v:minimal -p:Version=0.1.0-preview.sharpdevelop.1 -p:PackageVersion=0.1.0-preview.sharpdevelop.1 /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-goal-nuget-nonclient DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /p:GenerateFullPaths=true /p:LibreWpfSharpDevelopIncludeResourceToolkit=true /nr:false
+```
+
+Results:
+
+```text
+ProGPU.Wpf.Tests Release build                 -> succeeds, existing warning set, 0 errors
+Focused non-client hook/factory tests          -> 5 passed, 0 failed
+Activation/window-event test group             -> 67 passed, 0 failed
+LibreWPF.ProGPU SharpDevelopLocal pack         -> succeeds, 0.1.0-preview.sharpdevelop.1 refreshed
+SharpDevelop.Full.LibreWpf fresh-cache build   -> succeeds, 287 warnings, 0 errors
+```
+
 ## 2026-07-08 SharpDevelop popup/menu mode pass
 
 The SharpDevelop full-workbench popup lane exposed a portable popup ordering issue in `ContextMenu`/`MenuBase`. The hosted WinForms `ContextMenuStrip` path opened a WPF `ContextMenu` through `WindowsFormsHost`, but `MenuBase.PushMenuMode(...)` could run before `PresentationSource.CriticalFromVisual(this)` returned a source on the portable popup path. The release build then passed `null` into `InputManager.PushMenuMode(...)` and threw `ArgumentNullException("menuSite")`.

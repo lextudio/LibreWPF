@@ -336,7 +336,11 @@ public enum WpfWindowEventKind
     Hidden,
     WindowPositionChanging,
     WindowPositionChanged,
-    WindowSizeChanged
+    WindowSizeChanged,
+    NonClientMouseMove,
+    NonClientMouseDown,
+    NonClientMouseUp,
+    NonClientMouseDoubleClick
 }
 
 public sealed class WpfWindowEventArgs : EventArgs
@@ -347,7 +351,11 @@ public sealed class WpfWindowEventArgs : EventArgs
         int? left = null,
         int? top = null,
         int? width = null,
-        int? height = null)
+        int? height = null,
+        WpfMouseButton button = WpfMouseButton.None,
+        int hitTestCode = 0,
+        int? screenX = null,
+        int? screenY = null)
     {
         Kind = kind;
         Files = files ?? Array.Empty<string>();
@@ -355,6 +363,10 @@ public sealed class WpfWindowEventArgs : EventArgs
         Top = top;
         Width = width;
         Height = height;
+        Button = button;
+        HitTestCode = hitTestCode;
+        ScreenX = screenX;
+        ScreenY = screenY;
     }
 
     public WpfWindowEventKind Kind { get; }
@@ -368,6 +380,14 @@ public sealed class WpfWindowEventArgs : EventArgs
     public int? Width { get; }
 
     public int? Height { get; }
+
+    public WpfMouseButton Button { get; }
+
+    public int HitTestCode { get; }
+
+    public int? ScreenX { get; }
+
+    public int? ScreenY { get; }
 }
 
 public enum WpfInputEventKind

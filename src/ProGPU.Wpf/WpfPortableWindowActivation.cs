@@ -16,11 +16,22 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private const int WM_WINDOWPOSCHANGING = 0x0046;
     private const int WM_WINDOWPOSCHANGED = 0x0047;
     private const int WM_MOUSEACTIVATE = 0x0021;
+    private const int WM_NCMOUSEMOVE = 0x00A0;
+    private const int WM_NCLBUTTONDOWN = 0x00A1;
+    private const int WM_NCLBUTTONUP = 0x00A2;
+    private const int WM_NCLBUTTONDBLCLK = 0x00A3;
+    private const int WM_NCRBUTTONDOWN = 0x00A4;
+    private const int WM_NCRBUTTONUP = 0x00A5;
+    private const int WM_NCRBUTTONDBLCLK = 0x00A6;
+    private const int WM_NCMBUTTONDOWN = 0x00A7;
+    private const int WM_NCMBUTTONUP = 0x00A8;
+    private const int WM_NCMBUTTONDBLCLK = 0x00A9;
     private const int WM_LBUTTONDOWN = 0x0201;
     private const int WM_RBUTTONDOWN = 0x0204;
     private const int WM_MBUTTONDOWN = 0x0207;
     private const int WM_XBUTTONDOWN = 0x020B;
     private const int HTCLIENT = 1;
+    private const int HTCAPTION = 2;
     private const int WA_INACTIVE = 0;
     private const int WA_ACTIVE = 1;
     private const int MA_ACTIVATEANDEAT = 2;
@@ -930,6 +941,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
             case WpfWindowEventKind.WindowSizeChanged:
                 DispatchPortableWindowSizeChangedHooks(e.Width, e.Height);
                 break;
+            case WpfWindowEventKind.NonClientMouseMove:
+            case WpfWindowEventKind.NonClientMouseDown:
+            case WpfWindowEventKind.NonClientMouseUp:
+            case WpfWindowEventKind.NonClientMouseDoubleClick:
+                DispatchPortableNonClientMouseHook(e);
+                break;
         }
     }
 
@@ -996,6 +1013,80 @@ public sealed class WpfPortableWindowActivation : IDisposable
         if (width.HasValue && height.HasValue)
         {
             bridge.TryDispatchHwndSourceHook(WM_SIZE, IntPtr.Zero, PackUnsignedLowHigh(width.Value, height.Value), out _, out _);
+        }
+    }
+
+    private void DispatchPortableNonClientMouseHook(WpfWindowEventArgs e)
+    {
+        WpfPortablePresentationSourceBridge? bridge = Host.PortablePresentationSourceBridge;
+        if (bridge == null || !TryMapNonClientMouseMessage(e.Kind, e.Button, out int message))
+        {
+            return;
+        }
+
+        int hitTestCode = e.HitTestCode == 0 ? HTCAPTION : e.HitTestCode;
+        IntPtr lParam = PackSignedLowHigh(e.ScreenX ?? 0, e.ScreenY ?? 0);
+        bridge.TryDispatchHwndSourceHook(message, new IntPtr(hitTestCode), lParam, out _, out _);
+    }
+
+    private static bool TryMapNonClientMouseMessage(
+        WpfWindowEventKind kind,
+        WpfMouseButton button,
+        out int message)
+    {
+        switch (kind)
+        {
+            case WpfWindowEventKind.NonClientMouseMove:
+                message = WM_NCMOUSEMOVE;
+                return true;
+            case WpfWindowEventKind.NonClientMouseDown:
+                return TryMapNonClientMouseButtonMessage(
+                    button,
+                    WM_NCLBUTTONDOWN,
+                    WM_NCRBUTTONDOWN,
+                    WM_NCMBUTTONDOWN,
+                    out message);
+            case WpfWindowEventKind.NonClientMouseUp:
+                return TryMapNonClientMouseButtonMessage(
+                    button,
+                    WM_NCLBUTTONUP,
+                    WM_NCRBUTTONUP,
+                    WM_NCMBUTTONUP,
+                    out message);
+            case WpfWindowEventKind.NonClientMouseDoubleClick:
+                return TryMapNonClientMouseButtonMessage(
+                    button,
+                    WM_NCLBUTTONDBLCLK,
+                    WM_NCRBUTTONDBLCLK,
+                    WM_NCMBUTTONDBLCLK,
+                    out message);
+            default:
+                message = 0;
+                return false;
+        }
+    }
+
+    private static bool TryMapNonClientMouseButtonMessage(
+        WpfMouseButton button,
+        int leftMessage,
+        int rightMessage,
+        int middleMessage,
+        out int message)
+    {
+        switch (button)
+        {
+            case WpfMouseButton.Left:
+                message = leftMessage;
+                return true;
+            case WpfMouseButton.Right:
+                message = rightMessage;
+                return true;
+            case WpfMouseButton.Middle:
+                message = middleMessage;
+                return true;
+            default:
+                message = 0;
+                return false;
         }
     }
 

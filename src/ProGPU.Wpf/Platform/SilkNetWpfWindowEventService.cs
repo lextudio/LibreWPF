@@ -74,6 +74,37 @@ public sealed class SilkNetWpfWindowEventService : IWpfWindowEventService
         return new WpfWindowEventArgs(WpfWindowEventKind.WindowSizeChanged, width: width, height: height);
     }
 
+    public static WpfWindowEventArgs CreateNonClientMouseMoveEvent(int hitTestCode, int screenX, int screenY)
+    {
+        return new WpfWindowEventArgs(
+            WpfWindowEventKind.NonClientMouseMove,
+            hitTestCode: hitTestCode,
+            screenX: screenX,
+            screenY: screenY);
+    }
+
+    public static WpfWindowEventArgs CreateNonClientMouseButtonEvent(
+        WpfWindowEventKind kind,
+        WpfMouseButton button,
+        int hitTestCode,
+        int screenX,
+        int screenY)
+    {
+        if (kind is not WpfWindowEventKind.NonClientMouseDown
+            and not WpfWindowEventKind.NonClientMouseUp
+            and not WpfWindowEventKind.NonClientMouseDoubleClick)
+        {
+            throw new ArgumentOutOfRangeException(nameof(kind), kind, "Expected a non-client mouse button event kind.");
+        }
+
+        return new WpfWindowEventArgs(
+            kind,
+            button: button,
+            hitTestCode: hitTestCode,
+            screenX: screenX,
+            screenY: screenY);
+    }
+
     private void OnWindowEventReceived(WpfWindowEventArgs args)
     {
         WindowEventReceived?.Invoke(this, args);

@@ -675,6 +675,86 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostNonClientMouseEventsDispatchLegacyHwndSourceHooks()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        RaiseHostWindowEvent(
+            host,
+            new WpfWindowEventArgs(
+                WpfWindowEventKind.NonClientMouseDown,
+                button: WpfMouseButton.Left,
+                hitTestCode: 2,
+                screenX: -7,
+                screenY: 42));
+        RaiseHostWindowEvent(
+            host,
+            new WpfWindowEventArgs(
+                WpfWindowEventKind.NonClientMouseDoubleClick,
+                button: WpfMouseButton.Left,
+                hitTestCode: 2,
+                screenX: -7,
+                screenY: 42));
+        RaiseHostWindowEvent(
+            host,
+            new WpfWindowEventArgs(
+                WpfWindowEventKind.NonClientMouseDown,
+                button: WpfMouseButton.Right,
+                hitTestCode: 2,
+                screenX: 300,
+                screenY: -8));
+        RaiseHostWindowEvent(
+            host,
+            new WpfWindowEventArgs(
+                WpfWindowEventKind.NonClientMouseUp,
+                button: WpfMouseButton.Right,
+                hitTestCode: 2,
+                screenX: 300,
+                screenY: -8));
+
+        Assert.Equal(
+            new[] { 0x00A1, 0x00A3, 0x00A4, 0x00A5 },
+            source.DispatchedHwndSourceHooks.Select(hook => hook.Message).ToArray());
+        Assert.All(source.DispatchedHwndSourceHooks, hook => Assert.Equal(new IntPtr(2), hook.WParam));
+        Assert.Equal(PackSignedLowHigh(-7, 42), source.DispatchedHwndSourceHooks[0].LParam);
+        Assert.Equal(PackSignedLowHigh(-7, 42), source.DispatchedHwndSourceHooks[1].LParam);
+        Assert.Equal(PackSignedLowHigh(300, -8), source.DispatchedHwndSourceHooks[2].LParam);
+        Assert.Equal(PackSignedLowHigh(300, -8), source.DispatchedHwndSourceHooks[3].LParam);
+    }
+
+    [Fact]
+    public void HostNonClientMouseMoveDefaultsToCaptionHitTest()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        RaiseHostWindowEvent(
+            host,
+            new WpfWindowEventArgs(
+                WpfWindowEventKind.NonClientMouseMove,
+                screenX: 10,
+                screenY: 20));
+
+        var hook = Assert.Single(source.DispatchedHwndSourceHooks);
+        Assert.Equal(0x00A0, hook.Message);
+        Assert.Equal(new IntPtr(2), hook.WParam);
+        Assert.Equal(PackSignedLowHigh(10, 20), hook.LParam);
+    }
+
+    [Fact]
     public void HostWindowVisibilityEventsDispatchLegacyShowWindowHooks()
     {
         using var host = new ProGpuWpfWindowHost();

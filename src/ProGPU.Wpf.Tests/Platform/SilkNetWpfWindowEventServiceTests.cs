@@ -85,4 +85,45 @@ public sealed class SilkNetWpfWindowEventServiceTests
         Assert.Equal(800, args.Width);
         Assert.Equal(600, args.Height);
     }
+
+    [Fact]
+    public void CreateNonClientMouseMoveEventStoresHitTestAndScreenCoordinates()
+    {
+        var args = SilkNetWpfWindowEventService.CreateNonClientMouseMoveEvent(2, -7, 42);
+
+        Assert.Equal(WpfWindowEventKind.NonClientMouseMove, args.Kind);
+        Assert.Equal(WpfMouseButton.None, args.Button);
+        Assert.Equal(2, args.HitTestCode);
+        Assert.Equal(-7, args.ScreenX);
+        Assert.Equal(42, args.ScreenY);
+    }
+
+    [Fact]
+    public void CreateNonClientMouseButtonEventStoresButtonHitTestAndScreenCoordinates()
+    {
+        var args = SilkNetWpfWindowEventService.CreateNonClientMouseButtonEvent(
+            WpfWindowEventKind.NonClientMouseDown,
+            WpfMouseButton.Right,
+            2,
+            300,
+            -8);
+
+        Assert.Equal(WpfWindowEventKind.NonClientMouseDown, args.Kind);
+        Assert.Equal(WpfMouseButton.Right, args.Button);
+        Assert.Equal(2, args.HitTestCode);
+        Assert.Equal(300, args.ScreenX);
+        Assert.Equal(-8, args.ScreenY);
+    }
+
+    [Fact]
+    public void CreateNonClientMouseButtonEventRejectsNonButtonKinds()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => SilkNetWpfWindowEventService.CreateNonClientMouseButtonEvent(
+                WpfWindowEventKind.NonClientMouseMove,
+                WpfMouseButton.Left,
+                2,
+                0,
+                0));
+    }
 }

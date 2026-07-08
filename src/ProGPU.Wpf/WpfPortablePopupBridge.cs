@@ -11,6 +11,8 @@ namespace System.Windows.Media.ProGPU;
 internal sealed class WpfPortablePopupBridge : IDisposable
 {
     private const int HitTestOwnerBufferCapacity = 64;
+    private const string TracePopupEnvironmentVariable = "PROGPU_WPF_TRACE_POPUP";
+    private static readonly bool s_tracePopup = IsTraceEnabled(TracePopupEnvironmentVariable);
 
     private readonly ProGpuWpfWindowHost _host;
     private readonly IPortablePresentationSourceHost _source;
@@ -87,6 +89,10 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         bridge = new WpfPortablePopupBridge(host, source, request.X, request.Y);
         bridge.SubscribeToSource();
         bridge.InstallHitTestOverrides();
+        Trace(
+            "create " +
+            $"x={request.X} y={request.Y} " +
+            $"transparent={request.IsTransparent} child={request.IsChildPopup}");
         return true;
     }
 
@@ -100,6 +106,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
 
         X = x;
         Y = y;
+        Trace($"position x={x} y={y}");
         RequestRender();
         return true;
     }
@@ -117,6 +124,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         Width = normalizedWidth;
         Height = normalizedHeight;
         _source.SetClientSize(normalizedWidth, normalizedHeight);
+        Trace($"size width={normalizedWidth} height={normalizedHeight}");
         RequestRender();
         return true;
     }
@@ -130,6 +138,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         }
 
         IsVisible = true;
+        Trace($"show width={Width} height={Height} root={RootVisual?.GetType().FullName ?? "<null>"}");
         RequestRender();
         return true;
     }
@@ -143,6 +152,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         }
 
         IsVisible = false;
+        Trace("hide");
         RequestRender();
         return true;
     }
@@ -176,25 +186,24 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             return default;
         }
 
+        EnsureRootLayout(rootVisual);
+
         using var sink = new ProGpuRetainedCompositionCommandSink(
             drawingFrame,
             target.Context,
             target.Viewport3DTextureCache,
             ProGpuRetainedCompositionLayer.Popup);
 
-        var nativeTransformSink = (IWpfNativeTransformCommandSink)sink;
-        nativeTransformSink.PushNativeTransform(Matrix4x4.CreateTranslation(
-            (float)LogicalX,
-            (float)LogicalY,
-            0f));
-        try
-        {
-            return target.ReplayVisualSubtreeUntracked(rootVisual, sink, resources, imageSourceAdapter);
-        }
-        finally
-        {
-            sink.Pop();
-        }
+        PositionPopupRoot(sink.RootVisual);
+
+        WpfVisualReplayResult result = target.ReplayVisualSubtreeUntracked(
+            rootVisual,
+            sink,
+            resources,
+            imageSourceAdapter,
+            includePortablePopupRoots: true);
+        Trace(FormattableString.Invariant($"replay visible={IsVisible} logical=({LogicalX:0.###},{LogicalY:0.###}) size={Width}x{Height} root={rootVisual.GetType().FullName} visuals={result.VisualCount} content={result.ContentCount} renderData={result.RenderData.AppliedCount}/{result.RenderData.RecordCount}"));
+        return result;
     }
 
     public bool ContainsHostPoint(double x, double y)
@@ -496,6 +505,61 @@ internal sealed class WpfPortablePopupBridge : IDisposable
     private void RequestRender()
     {
         _host.RequestRenderAndWakeNativeLoop();
+    }
+
+    private void EnsureRootLayout(object rootVisual)
+    {
+        if (Width > 1 &&
+            Height > 1)
+        {
+            return;
+        }
+
+        if (!_source.TryUpdateRootVisualClientSize(out double width, out double height))
+        {
+            return;
+        }
+
+        if (width <= 1.0 ||
+            height <= 1.0)
+        {
+            return;
+        }
+
+        int clientWidth = (int)Math.Ceiling(width);
+        int clientHeight = (int)Math.Ceiling(height);
+        Width = clientWidth;
+        Height = clientHeight;
+        Trace($"layout width={clientWidth} height={clientHeight}");
+    }
+
+    private void PositionPopupRoot(ProGpuRetainedDrawingVisual rootVisual)
+    {
+        rootVisual.Offset = new Vector2((float)LogicalX, (float)LogicalY);
+        rootVisual.Size = new Vector2(Width, Height);
+        rootVisual.Transform = Matrix4x4.Identity;
+        rootVisual.Scale = Vector3.One;
+        rootVisual.RenderTransformOrigin = Vector2.Zero;
+    }
+
+    private static void Trace(string message)
+    {
+        if (!s_tracePopup)
+        {
+            return;
+        }
+
+        Console.WriteLine($"ProGPU WPF popup: {message}");
+    }
+
+    private static bool IsTraceEnabled(string variableName)
+    {
+        string? value = Environment.GetEnvironmentVariable(variableName);
+        return value != null &&
+            (value.Length == 0 ||
+             string.Equals(value, "1", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool IsPointerInput(WpfInputEventKind kind)

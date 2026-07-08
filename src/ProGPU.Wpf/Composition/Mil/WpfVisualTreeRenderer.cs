@@ -19,6 +19,7 @@ using PortableVisualBoundsSource = ProGPU.Wpf.Interop.IPortableVisualBoundsSourc
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
+using PortablePopupRootSource = ProGPU.Wpf.Interop.IPortablePopupRootSource;
 using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
 using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
@@ -64,14 +65,15 @@ public sealed class WpfVisualTreeRenderer
         object rootVisual,
         IWpfCompositionCommandSink sink,
         IWpfMilResourceResolver? resources = null,
-        IWpfImageSourceAdapter? imageSourceAdapter = null)
+        IWpfImageSourceAdapter? imageSourceAdapter = null,
+        bool includePortablePopupRoots = false)
     {
         ArgumentNullException.ThrowIfNull(rootVisual);
         ArgumentNullException.ThrowIfNull(sink);
 
         using var visualStateCacheScope = BeginVisualStateReplayCache();
         var stats = new ReplayStats();
-        ReplaySubtreeCore(rootVisual, sink, resources, imageSourceAdapter, stats, RetainedOwnerScopeMode.Full);
+        ReplaySubtreeCore(rootVisual, sink, resources, imageSourceAdapter, stats, RetainedOwnerScopeMode.Full, includePortablePopupRoots);
         return stats.ToResult();
     }
 
@@ -96,7 +98,7 @@ public sealed class WpfVisualTreeRenderer
 
         using var visualStateCacheScope = BeginVisualStateReplayCache();
         var stats = new ReplayStats();
-        if (!TryReplaySubtreeIntoCurrentRetainedVisualCore(rootVisual, sink, resources, imageSourceAdapter, stats))
+        if (!TryReplaySubtreeIntoCurrentRetainedVisualCore(rootVisual, sink, resources, imageSourceAdapter, stats, includePortablePopupRoots: false))
         {
             result = default;
             return false;
@@ -112,12 +114,18 @@ public sealed class WpfVisualTreeRenderer
         IWpfMilResourceResolver? resources,
         IWpfImageSourceAdapter? imageSourceAdapter,
         ReplayStats stats,
-        RetainedOwnerScopeMode retainedOwnerScopeMode)
+        RetainedOwnerScopeMode retainedOwnerScopeMode,
+        bool includePortablePopupRoots)
     {
+        if (ShouldSkipPortablePopupRoot(visual, includePortablePopupRoots))
+        {
+            return;
+        }
+
         stats.VisualCount++;
 
         if (retainedOwnerScopeMode == RetainedOwnerScopeMode.Full
-            && TryReplaySubtreeWithRetainedVisualOwner(visual, sink, resources, imageSourceAdapter, stats))
+            && TryReplaySubtreeWithRetainedVisualOwner(visual, sink, resources, imageSourceAdapter, stats, includePortablePopupRoots))
         {
             return;
         }
@@ -139,7 +147,7 @@ public sealed class WpfVisualTreeRenderer
                     var childScopeMode = hitTestOwnerPushed
                         ? RetainedOwnerScopeMode.LightweightOnly
                         : RetainedOwnerScopeMode.None;
-                    ReplayVisualChildren(visual, sink, resources, imageSourceAdapter, stats, childScopeMode);
+                    ReplayVisualChildren(visual, sink, resources, imageSourceAdapter, stats, childScopeMode, includePortablePopupRoots);
                 }
             }
             finally
@@ -175,8 +183,14 @@ public sealed class WpfVisualTreeRenderer
         IWpfCompositionCommandSink sink,
         IWpfMilResourceResolver? resources,
         IWpfImageSourceAdapter? imageSourceAdapter,
-        ReplayStats stats)
+        ReplayStats stats,
+        bool includePortablePopupRoots)
     {
+        if (ShouldSkipPortablePopupRoot(visual, includePortablePopupRoots))
+        {
+            return false;
+        }
+
         stats.VisualCount++;
 
         if (sink is not IWpfRetainedVisualBranchSink retainedVisualBranchSink
@@ -205,7 +219,8 @@ public sealed class WpfVisualTreeRenderer
                     resources,
                     imageSourceAdapter,
                     stats,
-                    RetainedOwnerScopeMode.Full);
+                    RetainedOwnerScopeMode.Full,
+                    includePortablePopupRoots);
             }
         }
         finally
@@ -221,8 +236,14 @@ public sealed class WpfVisualTreeRenderer
         IWpfCompositionCommandSink sink,
         IWpfMilResourceResolver? resources,
         IWpfImageSourceAdapter? imageSourceAdapter,
-        ReplayStats stats)
+        ReplayStats stats,
+        bool includePortablePopupRoots)
     {
+        if (ShouldSkipPortablePopupRoot(visual, includePortablePopupRoots))
+        {
+            return false;
+        }
+
         if (sink is not IWpfRetainedVisualBranchSink retainedVisualBranchSink
             || sink is not IWpfRetainedVisualStateSink retainedVisualStateSink
             || !TryCreateRetainedVisualState(visual, imageSourceAdapter, out var visualState))
@@ -259,7 +280,8 @@ public sealed class WpfVisualTreeRenderer
                         resources,
                         imageSourceAdapter,
                         stats,
-                        RetainedOwnerScopeMode.Full);
+                        RetainedOwnerScopeMode.Full,
+                        includePortablePopupRoots);
                 }
             }
             finally
@@ -286,7 +308,8 @@ public sealed class WpfVisualTreeRenderer
         IWpfMilResourceResolver? resources,
         IWpfImageSourceAdapter? imageSourceAdapter,
         ReplayStats stats,
-        RetainedOwnerScopeMode retainedOwnerScopeMode)
+        RetainedOwnerScopeMode retainedOwnerScopeMode,
+        bool includePortablePopupRoots)
     {
         if (!TryGetPortableVisualChildren(visual, out var childrenSource, out var childCount))
         {
@@ -301,8 +324,15 @@ public sealed class WpfVisualTreeRenderer
             }
 
             stats.ChildEdgeCount++;
-            ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, retainedOwnerScopeMode);
+            ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, retainedOwnerScopeMode, includePortablePopupRoots);
         }
+    }
+
+    private static bool ShouldSkipPortablePopupRoot(object visual, bool includePortablePopupRoots)
+    {
+        return !includePortablePopupRoots &&
+            visual is PortablePopupRootSource popupRootSource &&
+            popupRootSource.IsPortablePopupRoot;
     }
 
     private static void RegisterRetainedVisualOwner(object visual, IWpfCompositionCommandSink sink)

@@ -125,7 +125,11 @@ namespace System.Windows
                 HasResizeMode = true,
                 ResizeMode = (int)ResizeMode,
                 HasWindowStyle = true,
-                WindowStyle = (int)WindowStyle
+                WindowStyle = (int)WindowStyle,
+                HasShowActivated = true,
+                ShowActivated = ShowActivated,
+                HasOwner = Owner != null,
+                Owner = Owner
             };
             return true;
         }
@@ -2296,6 +2300,38 @@ namespace System.Windows
 
             _appShuttingDown = shutdown;
             _ignoreCancel = ignoreCancel;
+
+            if (IsPortableWindowActive)
+            {
+                _isClosing = true;
+
+                CancelEventArgs e = new CancelEventArgs(false);
+                try
+                {
+                    OnClosing(e);
+                }
+                catch
+                {
+                    CloseWindowBeforeShow();
+                    throw;
+                }
+
+                if (ShouldCloseWindow(e.Cancel))
+                {
+                    if (_showingAsDialog)
+                    {
+                        DoDialogHide();
+                    }
+
+                    CloseWindowBeforeShow();
+                }
+                else
+                {
+                    _isClosing = false;
+                }
+
+                return;
+            }
 
             if ( IsSourceWindowNull )
             {

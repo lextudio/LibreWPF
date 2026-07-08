@@ -421,6 +421,13 @@ public sealed class WpfPortablePresentationSourceBridgeTests
             RenderRequested?.Invoke(this, EventArgs.Empty);
         }
 
+        public bool TryUpdateRootVisualClientSize(out double width, out double height)
+        {
+            width = ClientWidth;
+            height = ClientHeight;
+            return false;
+        }
+
         internal void RequestCursor(object cursor)
         {
             RequestedCursor = cursor;
@@ -572,6 +579,13 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         {
             ClientSize = (width, height);
             RenderRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        bool IPortablePresentationSourceHost.TryUpdateRootVisualClientSize(out double width, out double height)
+        {
+            width = ClientSize.Width;
+            height = ClientSize.Height;
+            return false;
         }
 
         public void RequestCursor(object cursor)

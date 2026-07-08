@@ -202,10 +202,12 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
         ArgumentNullException.ThrowIfNull(dragDrop);
 
         Clipboard = clipboard;
+        ColorDialogs = new ProcessWpfColorDialogService();
         Cursors = cursors;
         Dispatcher = dispatcher;
         DragDrop = dragDrop;
         FileDialogs = fileDialogs;
+        FontDialogs = new ProcessWpfFontDialogService();
         Input = input;
         Launcher = launcher;
         MessageBoxes = messageBoxes;
@@ -217,6 +219,8 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
 
     public IWpfClipboard Clipboard { get; }
 
+    public IWpfColorDialogService ColorDialogs { get; }
+
     public IWpfCursorService Cursors { get; }
 
     public IWpfDispatcherService Dispatcher { get; }
@@ -224,6 +228,8 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
     public IWpfDragDropService DragDrop { get; }
 
     public IWpfFileDialogService FileDialogs { get; }
+
+    public IWpfFontDialogService FontDialogs { get; }
 
     public IWpfInputService Input { get; }
 

@@ -774,6 +774,21 @@ namespace System.Windows
             return markerReached;
         }
 
+        internal static bool PromoteDispatcherTimers(object window, int currentTimeInTicks)
+        {
+            if (OperatingSystem.IsWindows() ||
+                window is not Window typedWindow ||
+                typedWindow.Dispatcher == null ||
+                typedWindow.Dispatcher.HasShutdownStarted ||
+                typedWindow.Dispatcher.HasShutdownFinished)
+            {
+                return false;
+            }
+
+            typedWindow.Dispatcher.PromoteTimers(currentTimeInTicks);
+            return true;
+        }
+
         internal static void Dispose(object activation)
         {
             Action<object> dispose = Volatile.Read(ref _dispose);
@@ -861,6 +876,18 @@ namespace System.Windows
                 return true;
             }
 
+            public bool TryIsWindowDisposed(object window, out bool isDisposed)
+            {
+                isDisposed = false;
+                if (window is not Window typedWindow)
+                {
+                    return false;
+                }
+
+                isDisposed = typedWindow.IsDisposed;
+                return true;
+            }
+
             public bool TrySetActivationState(object window, bool isActive)
             {
                 if (window is not Window typedWindow)
@@ -944,6 +971,11 @@ namespace System.Windows
 
                 PortableWindowActivationService.FlushDispatcherOperations(window, markerPriority);
                 return true;
+            }
+
+            public bool TryPromoteDispatcherTimers(object window, int currentTimeInTicks)
+            {
+                return PortableWindowActivationService.PromoteDispatcherTimers(window, currentTimeInTicks);
             }
 
             public bool TryProcessDragDropEvent(

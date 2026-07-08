@@ -276,7 +276,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         object rootVisual,
         IWpfCompositionCommandSink sink,
         IWpfMilResourceResolver? resources = null,
-        IWpfImageSourceAdapter? imageSourceAdapter = null)
+        IWpfImageSourceAdapter? imageSourceAdapter = null,
+        bool includePortablePopupRoots = false)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(rootVisual);
@@ -287,7 +288,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             sink,
             resources,
             CreateFrameImageSourceAdapter(imageSourceAdapter ?? WpfImageSourceAdapter),
-            trackInvalidationRoot: false);
+            trackInvalidationRoot: false,
+            includePortablePopupRoots);
     }
 
     public void Render(uint pixelWidth, uint pixelHeight, TextureView* targetView)
@@ -954,7 +956,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         IWpfCompositionCommandSink sink,
         IWpfMilResourceResolver? resources,
         IWpfImageSourceAdapter? imageSourceAdapter,
-        bool trackInvalidationRoot = true)
+        bool trackInvalidationRoot = true,
+        bool includePortablePopupRoots = false)
     {
         if (trackInvalidationRoot)
         {
@@ -969,7 +972,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
                 rootVisual,
                 sink,
                 resources,
-                imageSourceAdapter);
+                imageSourceAdapter,
+                includePortablePopupRoots);
             if (trackInvalidationRoot)
             {
                 WpfInvalidationTracker.ConsumeDirty();

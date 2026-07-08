@@ -219,6 +219,11 @@ namespace System.Windows
             SetClientSize(width, height);
         }
 
+        bool IPortablePresentationSourceHost.TryUpdateRootVisualClientSize(out double width, out double height)
+        {
+            return TryUpdateRootVisualClientSize(out width, out height);
+        }
+
         public override bool IsDisposed
         {
             get { return _isDisposed; }
@@ -382,6 +387,44 @@ namespace System.Windows
             rootUIElement.Measure(_clientSize);
             rootUIElement.Arrange(new Rect(new Point(), _clientSize));
             rootUIElement.UpdateLayout();
+        }
+
+        private bool TryUpdateRootVisualClientSize(out double width, out double height)
+        {
+            width = 0.0;
+            height = 0.0;
+            VerifyNotDisposed();
+
+            if (_rootVisual is not UIElement rootUIElement)
+            {
+                return false;
+            }
+
+            Size desiredSize = MeasureRootVisual(rootUIElement, new Size(double.PositiveInfinity, double.PositiveInfinity));
+            if (IsClientSizeEmpty(desiredSize))
+            {
+                desiredSize = MeasureRootVisual(rootUIElement, new Size(4096.0, 4096.0));
+            }
+
+            width = ToPositiveFiniteClientSize(desiredSize.Width);
+            height = ToPositiveFiniteClientSize(desiredSize.Height);
+            SetClientSize(width, height);
+            return true;
+        }
+
+        private static Size MeasureRootVisual(UIElement rootUIElement, Size constraint)
+        {
+            rootUIElement.InvalidateMeasure();
+            rootUIElement.Measure(constraint);
+            return rootUIElement.DesiredSize;
+        }
+
+        private static bool IsClientSizeEmpty(Size size)
+        {
+            return !double.IsFinite(size.Width) ||
+                !double.IsFinite(size.Height) ||
+                size.Width <= 1.0 ||
+                size.Height <= 1.0;
         }
 
         private static double ToPositiveFiniteClientSize(double value)

@@ -9,6 +9,8 @@ public interface IWpfPlatformServices
 {
     IWpfClipboard Clipboard { get; }
 
+    IWpfColorDialogService ColorDialogs { get; }
+
     IWpfCursorService Cursors { get; }
 
     IWpfDispatcherService Dispatcher { get; }
@@ -16,6 +18,8 @@ public interface IWpfPlatformServices
     IWpfDragDropService DragDrop { get; }
 
     IWpfFileDialogService FileDialogs { get; }
+
+    IWpfFontDialogService FontDialogs { get; }
 
     IWpfInputService Input { get; }
 
@@ -37,6 +41,11 @@ public interface IWpfClipboard
     ValueTask<string?> GetTextAsync(CancellationToken cancellationToken = default);
 
     ValueTask SetTextAsync(string? text, CancellationToken cancellationToken = default);
+}
+
+public interface IWpfColorDialogService
+{
+    int? Show(WpfColorDialogOptions options);
 }
 
 public interface IWpfCursorService
@@ -80,6 +89,11 @@ public interface IWpfFileDialogService
     ValueTask<string?> SaveFileAsync(WpfFileDialogOptions options, CancellationToken cancellationToken = default);
 
     ValueTask<string?> PickFolderAsync(CancellationToken cancellationToken = default);
+}
+
+public interface IWpfFontDialogService
+{
+    WpfFontDialogResult? Show(WpfFontDialogOptions options);
 }
 
 public interface IWpfLauncher
@@ -158,6 +172,51 @@ public sealed class WpfMessageBoxOptions
     public string Options { get; set; } = "None";
 
     public string FallbackResult { get; set; } = "OK";
+}
+
+public sealed class WpfColorDialogOptions
+{
+    public int InitialArgb { get; set; } = unchecked((int)0xFF000000);
+
+    public IReadOnlyList<int> CustomColors { get; set; } = Array.Empty<int>();
+}
+
+public sealed class WpfFontDialogOptions
+{
+    public string FamilyName { get; set; } = "Courier New";
+
+    public float Size { get; set; } = 10f;
+
+    public int Style { get; set; }
+
+    public string Unit { get; set; } = "Point";
+
+    public bool ShowEffects { get; set; } = true;
+
+    public bool ShowColor { get; set; }
+
+    public int MinSize { get; set; }
+
+    public int MaxSize { get; set; }
+}
+
+public sealed class WpfFontDialogResult
+{
+    public WpfFontDialogResult(string familyName, float size, int style, string unit)
+    {
+        FamilyName = familyName;
+        Size = size;
+        Style = style;
+        Unit = unit;
+    }
+
+    public string FamilyName { get; }
+
+    public float Size { get; }
+
+    public int Style { get; }
+
+    public string Unit { get; }
 }
 
 public enum WpfCursor

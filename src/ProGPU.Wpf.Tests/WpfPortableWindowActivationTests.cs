@@ -43,11 +43,12 @@ public sealed class WpfPortableWindowActivationTests
     {
         var service = new TestClipboardServiceRegistrar();
         using var registration = PortableWpfServiceRegistry.RegisterClipboardService(service);
+        var registerCountBefore = service.RegisterCount;
 
         var registered = WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService();
 
         Assert.True(registered);
-        Assert.Equal(1, service.RegisterCount);
+        Assert.Equal(registerCountBefore + 1, service.RegisterCount);
         Assert.NotNull(service.GetText);
         Assert.NotNull(service.SetText);
     }
@@ -61,6 +62,9 @@ public sealed class WpfPortableWindowActivationTests
         using var launcherRegistration = PortableWpfServiceRegistry.RegisterLauncherService(launcherService);
         using var messageBoxRegistration = PortableWpfServiceRegistry.RegisterMessageBoxService(messageBoxService);
         using var fileDialogRegistration = PortableWpfServiceRegistry.RegisterFileDialogService(fileDialogService);
+        var launcherRegisterCountBefore = launcherService.RegisterCount;
+        var messageBoxRegisterCountBefore = messageBoxService.RegisterCount;
+        var fileDialogRegisterCountBefore = fileDialogService.RegisterCount;
 
         var launcherRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkLauncherService();
         var messageBoxRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkMessageBoxService();
@@ -69,9 +73,9 @@ public sealed class WpfPortableWindowActivationTests
         Assert.True(launcherRegistered);
         Assert.True(messageBoxRegistered);
         Assert.True(fileDialogRegistered);
-        Assert.Equal(1, launcherService.RegisterCount);
-        Assert.Equal(1, messageBoxService.RegisterCount);
-        Assert.Equal(1, fileDialogService.RegisterCount);
+        Assert.Equal(launcherRegisterCountBefore + 1, launcherService.RegisterCount);
+        Assert.Equal(messageBoxRegisterCountBefore + 1, messageBoxService.RegisterCount);
+        Assert.Equal(fileDialogRegisterCountBefore + 1, fileDialogService.RegisterCount);
         Assert.NotNull(launcherService.Launch);
         Assert.NotNull(messageBoxService.Show);
         Assert.NotNull(fileDialogService.ShowDialog);
@@ -635,6 +639,55 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void NonActivatingOwnedWindowDoesNotDeactivateOwner()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var ownerHost = new ProGpuWpfWindowHost();
+        using var ownedHost = new ProGpuWpfWindowHost();
+        var ownerWindow = new FakeWindow();
+        var ownedWindow = new FakeWindow
+        {
+            Owner = ownerWindow,
+            ShowActivated = false
+        };
+        var ownerSource = new FakePortablePresentationSource();
+        var ownedSource = new FakePortablePresentationSource();
+
+        Assert.True(WpfPortableWindowActivation.TryAttach(ownerHost, ownerWindow, ownerSource, out var ownerActivation));
+        Assert.True(WpfPortableWindowActivation.TryAttach(ownedHost, ownedWindow, ownedSource, out var ownedActivation));
+        Assert.NotNull(ownerActivation);
+        Assert.NotNull(ownedActivation);
+
+        RaiseHostWindowEvent(ownedHost, WpfWindowEventKind.Activated);
+        RaiseHostWindowEvent(ownerHost, WpfWindowEventKind.Deactivated);
+
+        Assert.Equal(0, service.SetActivationStateCount);
+
+        ownedActivation.Hide();
+        RaiseHostWindowEvent(ownerHost, WpfWindowEventKind.Deactivated);
+
+        Assert.Equal(1, service.SetActivationStateCount);
+        Assert.Same(ownerWindow, service.LastActivationStateWindow);
+        Assert.False(service.LastActivationState);
+    }
+
+    [Fact]
+    public void CreateHostOptionsUsesPortableShowActivatedState()
+    {
+        var ownerWindow = new FakeWindow();
+        var ownedWindow = new FakeWindow
+        {
+            Owner = ownerWindow,
+            ShowActivated = false
+        };
+
+        var options = WpfPortableWindowActivation.CreateHostOptions(ownedWindow);
+
+        Assert.False(options.ShowActivated);
+    }
+
+    [Fact]
     public void HostDeactivationDoesNotBubblePortableCaptureCleanupFailure()
     {
         var service = new TestWindowActivationServiceRegistrar
@@ -749,6 +802,41 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(24, service.LastInput.Y);
         Assert.Equal((int)WpfMouseButton.XButton1, service.LastInput.Button);
         Assert.Equal((int)(WpfInputModifiers.Shift | WpfInputModifiers.Alt), service.LastInput.Modifiers);
+        Assert.True(args.Handled);
+        Assert.True(scheduler.RequestCount >= 1);
+    }
+
+    [Fact]
+    public void HostInputForNonActivatingOwnedWindowKeepsOwnerActive()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var ownerWindow = new FakeWindow();
+        var ownedWindow = new FakeWindow
+        {
+            Owner = ownerWindow,
+            ShowActivated = false
+        };
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, ownedWindow, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfInputEventArgs(WpfInputEventKind.MouseDown, x: 12, y: 24, button: WpfMouseButton.Left);
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(1, service.SetActivationStateCount);
+        Assert.Same(ownerWindow, service.LastActivationStateWindow);
+        Assert.True(service.LastActivationState);
+        Assert.Equal(1, service.InputCount);
+        Assert.Same(ownedWindow, service.LastInputWindow);
         Assert.True(args.Handled);
         Assert.True(scheduler.RequestCount >= 1);
     }
@@ -1238,6 +1326,10 @@ public sealed class WpfPortableWindowActivationTests
 
         public FakeWindowStyle WindowStyle { get; set; } = FakeWindowStyle.SingleBorderWindow;
 
+        public bool ShowActivated { get; set; } = true;
+
+        public object? Owner { get; set; }
+
         public bool CancelClose { get; set; }
 
         public bool IsClosed { get; private set; }
@@ -1278,7 +1370,11 @@ public sealed class WpfPortableWindowActivationTests
                 HasResizeMode = true,
                 ResizeMode = (int)ResizeMode,
                 HasWindowStyle = true,
-                WindowStyle = (int)WindowStyle
+                WindowStyle = (int)WindowStyle,
+                HasShowActivated = true,
+                ShowActivated = ShowActivated,
+                HasOwner = Owner != null,
+                Owner = Owner
             };
             return true;
         }
@@ -2076,6 +2172,13 @@ public sealed class WpfPortableWindowActivationTests
             ClientHeight = height;
             ClientSizeChangeCount++;
             RenderRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public bool TryUpdateRootVisualClientSize(out double width, out double height)
+        {
+            width = ClientWidth;
+            height = ClientHeight;
+            return false;
         }
 
         public void Dispose()

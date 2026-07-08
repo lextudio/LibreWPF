@@ -83,20 +83,20 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         ArgumentNullException.ThrowIfNull(drawingFrame);
         _drawingFrame = drawingFrame;
 
-        var rootVisual = new ProGpuRetainedDrawingVisual
+        RootVisual = new ProGpuRetainedDrawingVisual
         {
             Size = new Vector2(drawingFrame.LogicalWidth, drawingFrame.LogicalHeight)
         };
 
         bool added = layer == ProGpuRetainedCompositionLayer.Popup
-            ? drawingFrame.AddPopupRetainedWpfVisual(rootVisual)
-            : drawingFrame.AddRetainedWpfVisual(rootVisual);
+            ? drawingFrame.AddPopupRetainedWpfVisual(RootVisual)
+            : drawingFrame.AddRetainedWpfVisual(RootVisual);
         if (!added)
         {
             throw new InvalidOperationException("The drawing frame does not expose a retained WPF visual root.");
         }
 
-        _visualScopes.Push(new VisualScope(drawingFrame, rootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
+        _visualScopes.Push(new VisualScope(drawingFrame, RootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
     }
 
     internal ProGpuRetainedCompositionCommandSink(
@@ -109,10 +109,13 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         ArgumentNullException.ThrowIfNull(rootVisual);
 
         _drawingFrame = drawingFrame;
-        _visualScopes.Push(new VisualScope(drawingFrame, rootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
+        RootVisual = rootVisual;
+        _visualScopes.Push(new VisualScope(drawingFrame, RootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
     }
 
     public MediaDrawingContext? DrawingContext => Current.DrawingContext;
+
+    internal ProGpuRetainedDrawingVisual RootVisual { get; }
 
     public void RegisterVisualOwner(object sourceVisual)
     {

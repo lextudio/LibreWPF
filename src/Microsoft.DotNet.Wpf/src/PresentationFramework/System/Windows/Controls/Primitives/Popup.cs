@@ -341,6 +341,7 @@ namespace System.Windows.Controls.Primitives
             // This is actually the current state and not necessary the desired state (i.e. old value)
             bool currentVisible = (popup._secHelper.IsWindowAlive() && (popup._asyncDestroy == null)) || (popup._asyncCreate != null);
             bool visible = (bool) e.NewValue;
+            PopupSecurityHelper.TracePortablePopup("is-open changed old=" + e.OldValue + " new=" + e.NewValue + " currentVisible=" + currentVisible + " child=" + (popup.Child != null));
 
             if (visible != currentVisible)
             {
@@ -1482,14 +1483,17 @@ namespace System.Windows.Controls.Primitives
 
         private void CreateWindow(bool asyncCall)
         {
+            PopupSecurityHelper.TracePortablePopup("create-window async=" + asyncCall + " placementTarget=" + (PlacementTarget != null) + " child=" + (Child != null));
             // Clear any previously cached value and let the current setup make a new determination
             ClearDropOpposite();
 
             // get target's visual
             Visual targetVisual = GetTarget();
+            PopupSecurityHelper.TracePortablePopup("create-window targetVisual=" + (targetVisual != null));
             // defer creation?
             if ((targetVisual != null) && PopupSecurityHelper.IsVisualPresentationSourceNull(targetVisual))
             {
+                PopupSecurityHelper.TracePortablePopup("create-window target presentation source null async=" + asyncCall);
                 // This is a case where the Popup is in a tree and its target is not hooked up to a window.
                 if (!asyncCall)
                 {
@@ -1530,6 +1534,7 @@ namespace System.Windows.Controls.Primitives
             if (makeNewWindow)
             {
                 // create the window
+                PopupSecurityHelper.TracePortablePopup("create-window build new targetVisual=" + (targetVisual != null));
                 BuildWindow(targetVisual);
                 CreateNewPopupRoot();
             }
@@ -1579,8 +1584,13 @@ namespace System.Windows.Controls.Primitives
 
             if (isWindowAlive)
             {
+                PopupSecurityHelper.TracePortablePopup("create-window show");
                 ShowWindow();
                 OnOpened(EventArgs.Empty);
+            }
+            else
+            {
+                PopupSecurityHelper.TracePortablePopup("create-window not alive after root");
             }
         }
 
@@ -2721,18 +2731,14 @@ namespace System.Windows.Controls.Primitives
         {
             if (!OperatingSystem.IsWindows())
             {
+                Rect primaryScreenBounds = GetPortablePrimaryScreenBounds();
+                if (!primaryScreenBounds.IsEmpty)
+                {
+                    return primaryScreenBounds;
+                }
+
                 Rect sourceBounds = _secHelper.GetParentWindowRect();
-                if (!sourceBounds.IsEmpty)
-                {
-                    return sourceBounds;
-                }
-
-                if (!boundingBox.IsEmpty)
-                {
-                    return boundingBox;
-                }
-
-                return new Rect(0, 0, SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
+                return !sourceBounds.IsEmpty ? sourceBounds : boundingBox;
             }
 
             if (_secHelper.IsChildPopup)
@@ -2773,6 +2779,18 @@ namespace System.Windows.Controls.Primitives
             }
 
             return PointUtil.ToRect(rect);
+        }
+
+        private static Rect GetPortablePrimaryScreenBounds()
+        {
+            double width = SystemParameters.PrimaryScreenWidth;
+            double height = SystemParameters.PrimaryScreenHeight;
+            return double.IsFinite(width) &&
+                double.IsFinite(height) &&
+                width > 1.0 &&
+                height > 1.0
+                ? new Rect(0, 0, width, height)
+                : Rect.Empty;
         }
 
         private Rect GetMouseRect(PlacementMode placement)
@@ -3338,6 +3356,7 @@ namespace System.Windows.Controls.Primitives
 
             internal void SetWindowRootVisual(Visual v)
             {
+                TracePortablePopup("set-root " + (v?.GetType().FullName ?? "<null>"));
                 _window.RootVisual = v;
                 TryUpdatePortablePopupRootClientSize(v, out _);
             }
@@ -3345,14 +3364,26 @@ namespace System.Windows.Controls.Primitives
             internal bool TryUpdatePortablePopupRootClientSize(Visual rootVisual, out Size clientSize)
             {
                 clientSize = default;
-                if (OperatingSystem.IsWindows() ||
-                    rootVisual == null ||
-                    _window is not PortablePresentationSource portableSource)
+                if (OperatingSystem.IsWindows())
                 {
+                    TracePortablePopup("size-skip windows");
+                    return false;
+                }
+
+                if (rootVisual == null)
+                {
+                    TracePortablePopup("size-skip root-null");
+                    return false;
+                }
+
+                if (_window is not PortablePresentationSource portableSource)
+                {
+                    TracePortablePopup("size-skip source=" + (_window?.GetType().FullName ?? "<null>"));
                     return false;
                 }
 
                 clientSize = GetPortableRootClientSize(rootVisual);
+                TracePortablePopup("size-root " + clientSize.Width.ToString("0.###") + "x" + clientSize.Height.ToString("0.###"));
                 portableSource.SetClientSize(clientSize.Width, clientSize.Height);
                 TrySetPortablePopupSize(
                     ToPortableClientDimension(clientSize.Width),
@@ -3520,10 +3551,12 @@ namespace System.Windows.Controls.Primitives
                 {
                     if (TryCreatePortablePopupSource(x, y, placementTarget, transparent, out PresentationSource portableWindow))
                     {
+                        TracePortablePopup("build-window portable source created");
                         _window = portableWindow;
                     }
                     else
                     {
+                        TracePortablePopup("build-window portable source fallback");
                         _window = new PortablePresentationSource();
                     }
 
@@ -3845,14 +3878,41 @@ namespace System.Windows.Controls.Primitives
             {
                 if (rootVisual is UIElement rootElement)
                 {
-                    rootElement.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                    Size desiredSize = rootElement.DesiredSize;
-                    return new Size(
+                    Size desiredSize = MeasurePortableRoot(rootElement, new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    if (IsPortableClientSizeEmpty(desiredSize))
+                    {
+                        desiredSize = MeasurePortableRoot(rootElement, new Size(4096.0, 4096.0));
+                    }
+
+                    desiredSize = new Size(
                         ToPortableClientSize(desiredSize.Width),
                         ToPortableClientSize(desiredSize.Height));
+
+                    rootElement.Arrange(new Rect(new Point(), desiredSize));
+                    rootElement.UpdateLayout();
+
+                    Size renderSize = rootElement.RenderSize;
+                    return new Size(
+                        Math.Max(desiredSize.Width, ToPortableClientSize(renderSize.Width)),
+                        Math.Max(desiredSize.Height, ToPortableClientSize(renderSize.Height)));
                 }
 
                 return new Size(1.0, 1.0);
+            }
+
+            private static Size MeasurePortableRoot(UIElement rootElement, Size constraint)
+            {
+                rootElement.InvalidateMeasure();
+                rootElement.Measure(constraint);
+                return rootElement.DesiredSize;
+            }
+
+            private static bool IsPortableClientSizeEmpty(Size size)
+            {
+                return !double.IsFinite(size.Width) ||
+                    !double.IsFinite(size.Height) ||
+                    size.Width <= 1.0 ||
+                    size.Height <= 1.0;
             }
 
             private static double ToPortableClientSize(double value)
@@ -3863,6 +3923,21 @@ namespace System.Windows.Controls.Primitives
             private static int ToPortableClientDimension(double value)
             {
                 return DoubleUtil.DoubleToInt(ToPortableClientSize(value));
+            }
+
+            internal static void TracePortablePopup(string message)
+            {
+                string value = Environment.GetEnvironmentVariable("PROGPU_WPF_TRACE_POPUP");
+                if (value == null ||
+                    (value.Length != 0 &&
+                     !string.Equals(value, "1", StringComparison.OrdinalIgnoreCase) &&
+                     !string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) &&
+                     !string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return;
+                }
+
+                Console.WriteLine("WPF popup: " + message);
             }
 
             private bool _isChildPopup;

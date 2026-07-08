@@ -1583,6 +1583,57 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void PortablePopupInputUsesLogicalCoordinatesAfterDpiScale()
+    {
+        var activationService = new TestWindowActivationServiceRegistrar();
+        using var activationRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(activationService);
+        using var popupSourceFactory = UsePortablePopupSourceFactory(() => new FakePortablePresentationSource());
+        using var host = new ProGpuWpfWindowHost();
+        var owner = new FakePortablePresentationSource
+        {
+            RootVisual = new object()
+        };
+        Assert.True(host.TryBindPortablePresentationSource(owner));
+        Assert.True(host.UpdatePortablePresentationSourceDpiScale(2.0, 2.0));
+
+        var request = new PortablePopupCreateRequest(
+            placementTarget: null,
+            ownerPresentationSource: owner,
+            ownerHandle: owner.Handle,
+            x: 20,
+            y: 30,
+            isTransparent: false,
+            isChildPopup: false);
+
+        Assert.True(host.TryCreatePortablePopup(request, out object? popupSource));
+        Assert.NotNull(popupSource);
+        Assert.True(host.TrySetPortablePopupSize(popupSource!, 100, 80));
+        Assert.True(host.TryShowPortablePopup(popupSource!));
+
+        var outsideInput = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 9,
+            y: 14,
+            button: WpfMouseButton.Left);
+        Assert.False(host.TryProcessPortablePopupInput(outsideInput));
+        Assert.Equal(0, activationService.PresentationSourceInputCount);
+
+        var insideInput = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 15,
+            y: 20,
+            button: WpfMouseButton.Left);
+        Assert.True(host.TryProcessPortablePopupInput(insideInput));
+
+        Assert.True(insideInput.Handled);
+        Assert.Equal(1, activationService.PresentationSourceInputCount);
+        Assert.Same(popupSource, activationService.LastPresentationSourceInputSource);
+        Assert.NotNull(activationService.LastPresentationSourceInput);
+        Assert.Equal(5, activationService.LastPresentationSourceInput!.X);
+        Assert.Equal(5, activationService.LastPresentationSourceInput.Y);
+    }
+
+    [Fact]
     public void PortablePopupSinkDoesNotReplaceMainWindowInvalidationRoot()
     {
         using var target = ProGpuWpfCompositionTarget.CreateHeadless();
@@ -2180,6 +2231,13 @@ public sealed class ProGpuWpfWindowHostTests
             ClientSizeChangeCount++;
             CallLog.Add("ClientSize");
             RenderRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public bool TryUpdateRootVisualClientSize(out double width, out double height)
+        {
+            width = ClientWidth;
+            height = ClientHeight;
+            return false;
         }
 
         public void Dispose()

@@ -1165,6 +1165,7 @@ namespace System.Windows
         event System.EventHandler RenderRequested;
         void SetClientSize(double width, double height);
         void SetDeviceScale(double dpiScaleX, double dpiScaleY);
+        bool TryUpdateRootVisualClientSize(out double width, out double height);
     }
     public partial interface IPortableVisualOwnerHost
     {

@@ -14,9 +14,21 @@ public sealed class SilkNetWpfCursorService : IWpfCursorService
                 return SetCursor(inputContext, cursor);
 
             case IView silkView:
-                using (var inputContext = SilkInput.InputWindowExtensions.CreateInput(silkView))
+                if (!silkView.IsInitialized)
                 {
-                    return SetCursor(inputContext, cursor);
+                    return false;
+                }
+
+                try
+                {
+                    using (var inputContext = SilkInput.InputWindowExtensions.CreateInput(silkView))
+                    {
+                        return SetCursor(inputContext, cursor);
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
                 }
 
             default:

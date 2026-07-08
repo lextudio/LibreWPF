@@ -48,5 +48,7 @@ namespace System.Windows
         void SetDeviceScale(double dpiScaleX, double dpiScaleY);
 
         void SetClientSize(double width, double height);
+
+        bool TryUpdateRootVisualClientSize(out double width, out double height);
     }
 }

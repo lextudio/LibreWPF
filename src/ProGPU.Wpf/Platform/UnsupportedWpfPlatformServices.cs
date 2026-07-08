@@ -11,6 +11,8 @@ public sealed class UnsupportedWpfPlatformServices : IWpfPlatformServices
 
     public IWpfClipboard Clipboard { get; } = new UnsupportedClipboard();
 
+    public IWpfColorDialogService ColorDialogs { get; } = new UnsupportedColorDialogService();
+
     public IWpfCursorService Cursors { get; } = new UnsupportedCursorService();
 
     public IWpfDispatcherService Dispatcher { get; } = new UnsupportedDispatcherService();
@@ -18,6 +20,8 @@ public sealed class UnsupportedWpfPlatformServices : IWpfPlatformServices
     public IWpfDragDropService DragDrop { get; } = new UnsupportedDragDropService();
 
     public IWpfFileDialogService FileDialogs { get; } = new UnsupportedFileDialogService();
+
+    public IWpfFontDialogService FontDialogs { get; } = new UnsupportedFontDialogService();
 
     public IWpfInputService Input { get; } = new UnsupportedInputService();
 
@@ -61,6 +65,22 @@ public sealed class UnsupportedWpfPlatformServices : IWpfPlatformServices
         public ValueTask<string?> PickFolderAsync(CancellationToken cancellationToken = default)
         {
             throw new PlatformNotSupportedException("Folder picker services are not configured for this WPF ProGPU host.");
+        }
+    }
+
+    private sealed class UnsupportedColorDialogService : IWpfColorDialogService
+    {
+        public int? Show(WpfColorDialogOptions options)
+        {
+            throw new PlatformNotSupportedException("Color dialog services are not configured for this WPF ProGPU host.");
+        }
+    }
+
+    private sealed class UnsupportedFontDialogService : IWpfFontDialogService
+    {
+        public WpfFontDialogResult? Show(WpfFontDialogOptions options)
+        {
+            throw new PlatformNotSupportedException("Font dialog services are not configured for this WPF ProGPU host.");
         }
     }
 

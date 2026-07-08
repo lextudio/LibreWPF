@@ -52,6 +52,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private int _portablePresentationSourceClientWidth = -1;
     private int _portablePresentationSourceClientHeight = -1;
     private bool _isDisposed;
+    private bool _isNativeLoopRunning;
+    private bool _disposeNativeWindowWhenLoopExits;
     private bool _hasPresentedFrame;
     private bool _ownsRenderScheduler;
     private bool _isRendering;
@@ -158,7 +160,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
-    public bool IsVisible => _window?.IsVisible ?? _isHostVisible;
+    public bool IsVisible => _isHostVisible || (_window?.IsVisible ?? false);
 
     public ProGpuWpfWindowState WindowState => _windowState;
 
@@ -280,7 +282,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _isHostVisible = true;
         EnsureWindow();
         _window!.IsVisible = true;
-        _window!.Run();
+        _isNativeLoopRunning = true;
+        try
+        {
+            _window!.Run();
+        }
+        finally
+        {
+            _isNativeLoopRunning = false;
+            DisposeDeferredNativeWindowIfNeeded();
+        }
     }
 
     public void Initialize()
@@ -440,7 +451,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public void Close()
     {
-        _window?.Close();
+        if (_window == null)
+        {
+            return;
+        }
+
+        RequestNativeWindowClose(_window);
     }
 
     public bool SetCursor(WpfCursor cursor)
@@ -539,15 +555,21 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _isDisposed = true;
 
         IWindow? window = _window;
-        bool disposeNativeWindow = window != null && !_isInNativeWindowCloseCallback && !_isRendering;
+        bool deferNativeWindowDispose = window != null && _isNativeLoopRunning;
+        bool disposeNativeWindow = window != null && !deferNativeWindowDispose;
 
-        if (window != null)
+        if (window != null && !deferNativeWindowDispose)
         {
             window.Load -= OnLoad;
             window.Update -= OnUpdate;
             window.Render -= OnRender;
             window.Resize -= OnResize;
             window.Closing -= OnClosing;
+        }
+        else if (deferNativeWindowDispose)
+        {
+            _disposeNativeWindowWhenLoopExits = true;
+            RequestNativeWindowClose(window!);
         }
 
         DetachInputService();
@@ -566,7 +588,39 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         DisposeOwnedRenderScheduler();
 
         _target = null;
+        if (!deferNativeWindowDispose)
+        {
+            _window = null;
+        }
+    }
+
+    private void DisposeDeferredNativeWindowIfNeeded()
+    {
+        if (!_disposeNativeWindowWhenLoopExits)
+        {
+            return;
+        }
+
+        _disposeNativeWindowWhenLoopExits = false;
+        IWindow? window = _window;
+        if (window == null)
+        {
+            return;
+        }
+
+        window.Load -= OnLoad;
+        window.Update -= OnUpdate;
+        window.Render -= OnRender;
+        window.Resize -= OnResize;
+        window.Closing -= OnClosing;
+        window.Dispose();
         _window = null;
+    }
+
+    private void RequestNativeWindowClose(IWindow window)
+    {
+        window.Close();
+        TryRequestNativeLoopWakeup(window.ContinueEvents);
     }
 
     private void EnsureWindow()
@@ -673,6 +727,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnUpdate(double deltaSeconds)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         TryProcessDispatcherWorkWakeup();
         UpdateTick?.Invoke(this, EventArgs.Empty);
     }
@@ -687,6 +746,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _isRendering = true;
         try
         {
+            if (_isDisposed)
+            {
+                return;
+            }
+
             if (_target == null || _window == null || _target.Context.Surface == null)
             {
                 ProcessDispatcherQueueCore();

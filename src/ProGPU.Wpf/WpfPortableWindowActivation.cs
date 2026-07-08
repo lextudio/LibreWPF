@@ -9,14 +9,29 @@ namespace System.Windows.Media.ProGPU;
 public sealed class WpfPortableWindowActivation : IDisposable
 {
     private static readonly ConditionalWeakTable<object, WpfPortableWindowActivation> s_activeActivations = new();
+    private static readonly object s_nonActivatingOwnedActivationsLock = new();
+    private static readonly List<WeakReference<WpfPortableWindowActivation>> s_nonActivatingOwnedActivations = new();
     private static readonly TimeSpan ApplicationIdleFlushTimeout = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan UpdateTickFlushTimeout = TimeSpan.FromMilliseconds(8);
+    private static readonly TimeSpan DispatcherTimerPumpInterval = TimeSpan.FromMilliseconds(16);
     private bool _isDisposed;
     private bool _isClosingFromNative;
     private bool _isClosingFromWpf;
     private bool _isFlushingWpfDispatcher;
     private bool _isNativeRunStarted;
     private IDisposable? _mediaContextRenderRegistration;
+    private IWpfTimer? _dispatcherTimerPump;
+    private bool _showActivated = true;
+    private bool _isRegisteredNonActivatingOwnedWindow;
+    private object? _ownerWindow;
+
+    static WpfPortableWindowActivation()
+    {
+        PortableWpfServiceRegistry.ClipboardServiceRegistered += OnClipboardServiceRegistered;
+        PortableWpfServiceRegistry.FileDialogServiceRegistered += OnFileDialogServiceRegistered;
+        PortableWpfServiceRegistry.ColorDialogServiceRegistered += OnColorDialogServiceRegistered;
+        PortableWpfServiceRegistry.FontDialogServiceRegistered += OnFontDialogServiceRegistered;
+    }
 
     private WpfPortableWindowActivation(
         ProGpuWpfWindowHost host,
@@ -57,6 +72,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
             TryRegisterPresentationFrameworkLauncherService();
             TryRegisterPresentationFrameworkMessageBoxService();
             TryRegisterPresentationFrameworkFileDialogService();
+            TryRegisterWinFormsCompatClipboardService();
+            TryRegisterWinFormsCompatFileDialogService();
+            TryRegisterWinFormsCompatColorDialogService();
+            TryRegisterWinFormsCompatFontDialogService();
             return true;
         }
 
@@ -99,6 +118,19 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         if (PortableWpfServiceRegistry.TryGetClipboardService(
                 PortableWpfServiceKey.PresentationCore,
+                out var clipboardService))
+        {
+            clipboardService.Register(GetPortableClipboardText, SetPortableClipboardText);
+            return true;
+        }
+
+        return false;
+    }
+
+    public static bool TryRegisterWinFormsCompatClipboardService()
+    {
+        if (PortableWpfServiceRegistry.TryGetClipboardService(
+                PortableWpfServiceKey.WinForms,
                 out var clipboardService))
         {
             clipboardService.Register(GetPortableClipboardText, SetPortableClipboardText);
@@ -161,6 +193,79 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
+    public static bool TryRegisterWinFormsCompatFileDialogService()
+    {
+        if (PortableWpfServiceRegistry.TryGetFileDialogService(
+                PortableWpfServiceKey.WinForms,
+                out var fileDialogService))
+        {
+            fileDialogService.Register(ShowPortableFileDialog);
+            return true;
+        }
+
+        return false;
+    }
+
+    public static bool TryRegisterWinFormsCompatColorDialogService()
+    {
+        if (PortableWpfServiceRegistry.TryGetColorDialogService(
+                PortableWpfServiceKey.WinForms,
+                out var colorDialogService))
+        {
+            colorDialogService.Register(ShowPortableColorDialog);
+            return true;
+        }
+
+        return false;
+    }
+
+    public static bool TryRegisterWinFormsCompatFontDialogService()
+    {
+        if (PortableWpfServiceRegistry.TryGetFontDialogService(
+                PortableWpfServiceKey.WinForms,
+                out var fontDialogService))
+        {
+            fontDialogService.Register(ShowPortableFontDialog);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void OnClipboardServiceRegistered(IPortableClipboardServiceRegistrar service)
+    {
+        if (service.ServiceKey == PortableWpfServiceKey.PresentationCore ||
+            service.ServiceKey == PortableWpfServiceKey.WinForms)
+        {
+            service.Register(GetPortableClipboardText, SetPortableClipboardText);
+        }
+    }
+
+    private static void OnFileDialogServiceRegistered(IPortableFileDialogServiceRegistrar service)
+    {
+        if (service.ServiceKey == PortableWpfServiceKey.PresentationFramework ||
+            service.ServiceKey == PortableWpfServiceKey.WinForms)
+        {
+            service.Register(ShowPortableFileDialog);
+        }
+    }
+
+    private static void OnColorDialogServiceRegistered(IPortableColorDialogServiceRegistrar service)
+    {
+        if (service.ServiceKey == PortableWpfServiceKey.WinForms)
+        {
+            service.Register(ShowPortableColorDialog);
+        }
+    }
+
+    private static void OnFontDialogServiceRegistered(IPortableFontDialogServiceRegistrar service)
+    {
+        if (service.ServiceKey == PortableWpfServiceKey.WinForms)
+        {
+            service.Register(ShowPortableFontDialog);
+        }
+    }
+
     public void Show()
     {
         ThrowIfDisposed();
@@ -172,6 +277,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         Host.Show();
+        if (!_showActivated)
+        {
+            TrySetWindowActivationState(Window, isActive: false);
+            if (_ownerWindow != null)
+            {
+                TrySetWindowActivationState(_ownerWindow, isActive: true);
+            }
+        }
+
         FlushWpfDispatcherOperations("Loaded", "Render");
     }
 
@@ -272,7 +386,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
-        Host.Run();
+        StartDispatcherTimerPump();
+        try
+        {
+            Host.Run();
+        }
+        finally
+        {
+            StopDispatcherTimerPump();
+        }
     }
 
     private bool ShouldDeferNativeShowUntilRun()
@@ -299,8 +421,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.DragDropReceived -= OnHostDragDropReceived;
         Host.RenderWakeupRequested -= OnHostRenderWakeupRequested;
         Host.UpdateTick -= OnHostUpdateTick;
+        StopDispatcherTimerPump();
         _mediaContextRenderRegistration?.Dispose();
         _mediaContextRenderRegistration = null;
+        RemoveNonActivatingOwnedWindowRegistration();
         s_activeActivations.Remove(Window);
         Host.Dispose();
         _isDisposed = true;
@@ -310,6 +434,92 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         s_activeActivations.Remove(window);
         s_activeActivations.Add(window, activation);
+    }
+
+    private void UpdateNonActivatingOwnedWindowRegistration()
+    {
+        if (!_showActivated && _ownerWindow != null)
+        {
+            RegisterNonActivatingOwnedWindow();
+            return;
+        }
+
+        RemoveNonActivatingOwnedWindowRegistration();
+    }
+
+    private void RegisterNonActivatingOwnedWindow()
+    {
+        if (_isRegisteredNonActivatingOwnedWindow)
+        {
+            return;
+        }
+
+        lock (s_nonActivatingOwnedActivationsLock)
+        {
+            CleanupNonActivatingOwnedWindowRegistrations();
+            s_nonActivatingOwnedActivations.Add(new WeakReference<WpfPortableWindowActivation>(this));
+            _isRegisteredNonActivatingOwnedWindow = true;
+        }
+    }
+
+    private void RemoveNonActivatingOwnedWindowRegistration()
+    {
+        if (!_isRegisteredNonActivatingOwnedWindow)
+        {
+            return;
+        }
+
+        lock (s_nonActivatingOwnedActivationsLock)
+        {
+            for (int i = s_nonActivatingOwnedActivations.Count - 1; i >= 0; i--)
+            {
+                if (!s_nonActivatingOwnedActivations[i].TryGetTarget(out var activation) ||
+                    ReferenceEquals(activation, this))
+                {
+                    s_nonActivatingOwnedActivations.RemoveAt(i);
+                }
+            }
+        }
+
+        _isRegisteredNonActivatingOwnedWindow = false;
+    }
+
+    private static bool HasVisibleNonActivatingOwnedWindow(object ownerWindow)
+    {
+        lock (s_nonActivatingOwnedActivationsLock)
+        {
+            var hasVisibleOwnedWindow = false;
+            for (int i = s_nonActivatingOwnedActivations.Count - 1; i >= 0; i--)
+            {
+                if (!s_nonActivatingOwnedActivations[i].TryGetTarget(out var activation) ||
+                    activation._isDisposed)
+                {
+                    s_nonActivatingOwnedActivations.RemoveAt(i);
+                    continue;
+                }
+
+                if (!activation._showActivated &&
+                    ReferenceEquals(activation._ownerWindow, ownerWindow) &&
+                    activation.Host.IsVisible)
+                {
+                    hasVisibleOwnedWindow = true;
+                }
+            }
+
+            return hasVisibleOwnedWindow;
+        }
+    }
+
+    private static void CleanupNonActivatingOwnedWindowRegistrations()
+    {
+        for (int i = s_nonActivatingOwnedActivations.Count - 1; i >= 0; i--)
+        {
+            if (!s_nonActivatingOwnedActivations[i].TryGetTarget(out var activation) ||
+                activation._isDisposed)
+            {
+                s_nonActivatingOwnedActivations.RemoveAt(i);
+            }
+        }
     }
 
     public static bool TryAttach(
@@ -379,6 +589,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             VSync = fallback.VSync,
             IsVisible = fallback.IsVisible,
             Topmost = fallback.Topmost,
+            ShowActivated = fallback.ShowActivated,
             WindowBorder = fallback.WindowBorder,
             WindowState = fallback.WindowState
         };
@@ -455,6 +666,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
             options.Topmost = state.Topmost;
         }
 
+        if (state.HasShowActivated)
+        {
+            options.ShowActivated = state.ShowActivated;
+        }
+
         options.WindowBorder = ResolveWindowBorder(state, options.WindowBorder);
     }
 
@@ -462,6 +678,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
         PortableWindowState state,
         bool updatePortablePresentationSource)
     {
+        UpdatePortableActivationHints(state);
+
         if (state.HasTitle && !string.IsNullOrWhiteSpace(state.Title))
         {
             Host.SetTitle(state.Title!);
@@ -508,6 +726,13 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
+    private void UpdatePortableActivationHints(PortableWindowState state)
+    {
+        _showActivated = !state.HasShowActivated || state.ShowActivated;
+        _ownerWindow = state.HasOwner ? state.Owner : null;
+        UpdateNonActivatingOwnedWindowRegistration();
+    }
+
     private void SetHostClientSize(int width, int height, bool updatePortablePresentationSource)
     {
         if (updatePortablePresentationSource)
@@ -523,6 +748,43 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private static object ResolveRootVisual(object window)
     {
         return window;
+    }
+
+    private void StartDispatcherTimerPump()
+    {
+        if (_dispatcherTimerPump != null)
+        {
+            return;
+        }
+
+        _dispatcherTimerPump = Host.PlatformServices.Timers.CreateTimer(
+            DispatcherTimerPumpInterval,
+            OnDispatcherTimerPumpTick,
+            isRepeating: true);
+        _dispatcherTimerPump.Start();
+    }
+
+    private void StopDispatcherTimerPump()
+    {
+        _dispatcherTimerPump?.Dispose();
+        _dispatcherTimerPump = null;
+    }
+
+    private void OnDispatcherTimerPumpTick()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Host.TryRequestNativeLoopWakeup();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A timer callback can race host teardown after a WPF close request.
+        }
     }
 
     private void OnHostClosing(object? sender, ProGpuWpfWindowClosingEventArgs e)
@@ -566,6 +828,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private void TrySetWindowActivationStateForHostEvent(bool isActive)
     {
+        if (ShouldSuppressHostActivationEvent(isActive))
+        {
+            return;
+        }
+
         try
         {
             TrySetWindowActivationState(Window, isActive);
@@ -575,6 +842,16 @@ public sealed class WpfPortableWindowActivation : IDisposable
             // A native focus-loss callback can arrive while a third-party control still owns mouse capture.
             // Keep the portable host alive if that capture-cancel path rejects an intermediate layout state.
         }
+    }
+
+    private bool ShouldSuppressHostActivationEvent(bool isActive)
+    {
+        if (!_showActivated)
+        {
+            return true;
+        }
+
+        return !isActive && HasVisibleNonActivatingOwnedWindow(Window);
     }
 
     private static bool IsRecoverablePortableDeactivationException(Exception exception)
@@ -599,7 +876,14 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
+        TryPromoteDispatcherTimers(Window);
+        if (TryCloseHostWhenWindowDisposed())
+        {
+            return;
+        }
+
         FlushWpfDispatcherOperations("Input", "Render", "ApplicationIdle");
+        TryCloseHostWhenWindowDisposed();
     }
 
     private void OnHostUpdateTick(object? sender, EventArgs e)
@@ -609,7 +893,14 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
+        TryPromoteDispatcherTimers(Window);
+        if (TryCloseHostWhenWindowDisposed())
+        {
+            return;
+        }
+
         FlushWpfDispatcherOperation("Background", UpdateTickFlushTimeout);
+        TryCloseHostWhenWindowDisposed();
     }
 
     private void FlushWpfDispatcherOperations(params string[] markerPriorityNames)
@@ -669,7 +960,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
-        TrySetWindowActivationState(Window, isActive: true);
+        if (_showActivated)
+        {
+            TrySetWindowActivationState(Window, isActive: true);
+        }
+        else if (_ownerWindow != null)
+        {
+            TrySetWindowActivationState(_ownerWindow, isActive: true);
+        }
+
         if (Host.TryProcessPortablePopupInput(e))
         {
             return;
@@ -766,6 +1065,24 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return WpfWindowCloseResult.NotInvoked;
+    }
+
+    private bool TryCloseHostWhenWindowDisposed()
+    {
+        if (_isDisposed || _isClosingFromWpf)
+        {
+            return false;
+        }
+
+        if (!TryGetWindowActivationService(out var activationService) ||
+            !activationService.TryIsWindowDisposed(Window, out bool isDisposed) ||
+            !isDisposed)
+        {
+            return false;
+        }
+
+        Close();
+        return true;
     }
 
     private static WpfWindowCloseResult MapCloseResult(PortableWindowCloseResult result)
@@ -866,6 +1183,16 @@ public sealed class WpfPortableWindowActivation : IDisposable
             {
                 return false;
             }
+        }
+
+        return false;
+    }
+
+    private static bool TryPromoteDispatcherTimers(object window)
+    {
+        if (TryGetWindowActivationService(out var activationService))
+        {
+            return activationService.TryPromoteDispatcherTimers(window, Environment.TickCount);
         }
 
         return false;
@@ -1017,6 +1344,67 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 "PickFolder" => fileDialogs.PickFolderAsync().AsTask().GetAwaiter().GetResult(),
                 _ => fileDialogs.OpenFileAsync(options).AsTask().GetAwaiter().GetResult()
             };
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return null;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private static int? ShowPortableColorDialog(PortableColorDialogRequest request)
+    {
+        var options = new WpfColorDialogOptions
+        {
+            InitialArgb = request.InitialArgb,
+            CustomColors = request.CustomColors
+        };
+
+        try
+        {
+            return CrossPlatformWpfPlatformServices.Instance.ColorDialogs.Show(options);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return null;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private static PortableFontDialogResult? ShowPortableFontDialog(PortableFontDialogRequest request)
+    {
+        var options = new WpfFontDialogOptions
+        {
+            FamilyName = request.FamilyName,
+            Size = request.Size,
+            Style = request.Style,
+            Unit = request.Unit,
+            ShowEffects = request.ShowEffects,
+            ShowColor = request.ShowColor,
+            MinSize = request.MinSize,
+            MaxSize = request.MaxSize
+        };
+
+        try
+        {
+            WpfFontDialogResult? result = CrossPlatformWpfPlatformServices.Instance.FontDialogs.Show(options);
+            return result == null
+                ? null
+                : new PortableFontDialogResult(result.FamilyName, result.Size, result.Style, result.Unit);
         }
         catch (PlatformNotSupportedException)
         {

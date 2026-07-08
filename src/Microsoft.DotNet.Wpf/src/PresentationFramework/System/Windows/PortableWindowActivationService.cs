@@ -29,6 +29,7 @@ namespace System.Windows
         private static Action<object> _dispose;
         private static Func<object, bool> _dragMove;
         private static Func<object, IntPtr> _getHandle;
+        private static Func<IntPtr, PortableWindowRegion, bool> _setWindowRegion;
 
         internal static bool IsEnabled
         {
@@ -57,7 +58,8 @@ namespace System.Windows
             Action<object> run = null,
             Action<object> dispose = null,
             Func<object, bool> dragMove = null,
-            Func<object, IntPtr> getHandle = null)
+            Func<object, IntPtr> getHandle = null,
+            Func<IntPtr, PortableWindowRegion, bool> setWindowRegion = null)
         {
             ArgumentNullException.ThrowIfNull(activate);
 
@@ -75,6 +77,7 @@ namespace System.Windows
             Volatile.Write(ref _dispose, dispose);
             Volatile.Write(ref _dragMove, dragMove);
             Volatile.Write(ref _getHandle, getHandle);
+            Volatile.Write(ref _setWindowRegion, setWindowRegion);
         }
 
         internal static void Clear()
@@ -93,6 +96,7 @@ namespace System.Windows
             Volatile.Write(ref _dispose, null);
             Volatile.Write(ref _dragMove, null);
             Volatile.Write(ref _getHandle, null);
+            Volatile.Write(ref _setWindowRegion, null);
         }
 
         internal static bool TryActivate(Window window, out object activation)
@@ -174,6 +178,17 @@ namespace System.Windows
 
             Func<object, IntPtr> getHandle = Volatile.Read(ref _getHandle);
             return getHandle != null ? getHandle(activation) : IntPtr.Zero;
+        }
+
+        internal static bool TrySetWindowRegion(IntPtr handle, PortableWindowRegion region)
+        {
+            if (OperatingSystem.IsWindows() || handle == IntPtr.Zero || region == null)
+            {
+                return false;
+            }
+
+            Func<IntPtr, PortableWindowRegion, bool> setWindowRegion = Volatile.Read(ref _setWindowRegion);
+            return setWindowRegion != null && setWindowRegion(handle, region);
         }
 
         internal static void SetActivationState(Window window, bool isActive)
@@ -830,7 +845,8 @@ namespace System.Windows
                     callbacks.Run,
                     callbacks.Dispose,
                     callbacks.DragMove,
-                    callbacks.GetHandle);
+                    callbacks.GetHandle,
+                    callbacks.SetWindowRegion);
             }
 
             public bool TryRegisterMediaContextRenderService(
@@ -976,6 +992,11 @@ namespace System.Windows
             public bool TryPromoteDispatcherTimers(object window, int currentTimeInTicks)
             {
                 return PortableWindowActivationService.PromoteDispatcherTimers(window, currentTimeInTicks);
+            }
+
+            public bool TrySetWindowRegion(IntPtr handle, PortableWindowRegion region)
+            {
+                return PortableWindowActivationService.TrySetWindowRegion(handle, region);
             }
 
             public bool TryProcessDragDropEvent(

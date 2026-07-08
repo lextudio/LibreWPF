@@ -8,6 +8,8 @@ The current SharpDevelop slice is closed at package-mode build parity plus broad
 
 Reusable fixes now landed in LibreWPF, LibreWinForms, and ProGPU include menu/context/combo popup coverage, AvalonEdit completion popup smoke support, hosted WinForms TreeView/ListView/ComboBox owner drawing, DrawItem background/focus helpers, dialog/clipboard services, ImageList/TreeView icon rendering, typed portable `HwndSource` hook dispatch for activation, mouse activation, show/hide, and basic window move/resize geometry messages, plus LibreWinForms preview package/release workflows on the default `librewinforms-progpu-port` branch.
 
+The latest AvalonDock pass also adds a typed handle-based `PortableWindowRegion` route from SharpDevelop flyout windows into ProGPU. Direct `SetWindowRgn`/`CreateRectRgn`/`CombineRgn` use is now avoided on non-Windows for the active flyout update and open/close animation paths, and SharpDevelop startup remains alive after the change. The region DTO preserves exclusion rectangles, but the compositor still needs exact base-minus-exclusion region clipping and hit-test enforcement.
+
 SharpDevelop is not yet fully runnable as an IDE. The remaining work below is the plan for the next implementation phase.
 
 ## Remaining implementation work
@@ -17,7 +19,8 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
    - Keep the existing activation hook path reflection-free and extend it with neutral DTOs rather than passing native Win32 structs through package APIs.
 
 2. Finish AvalonDock floating/flyout parity.
-   - Replace `WindowInteropWrapper`, `FloatingWindow`, and `FlyoutPaneWindow` Win32 assumptions with portable window ownership, region, activation, and placement services.
+   - Replace the remaining `WindowInteropWrapper` and `FloatingWindow` Win32 assumptions with portable window ownership, activation, and placement services.
+   - Implement ProGPU-native exact window-region composition for `PortableWindowRegion.Bounds` minus `ExcludedRects`, and apply it consistently to rendering and GPU hit testing.
    - Validate dock, float, auto-hide, restore layout, focus restoration, and tab switching in the full SharpDevelop shell.
 
 3. Complete popup runtime validation.

@@ -41,6 +41,43 @@ Date: 2026-07-08
 
 The current validation path includes both the controlled `SharpDevelop.LibreWpf` smoke shell and the fuller `SharpDevelop.Full.LibreWpf` wrapper. The full wrapper builds the historical SharpDevelop workbench entry point through LibreWPF package mode and now starts/renders the main IDE shell on macOS. It is not yet full IDE parity: legacy Win32 hooks, project-system services, editor IME, and several Windows-only integration points still need typed portable seams.
 
+## 2026-07-08 AvalonDock portable window-region pass
+
+AvalonDock flyout windows used direct `CreateRectRgn`, `CombineRgn`, and `SetWindowRgn` calls while opening, closing, and updating auto-hide flyout regions. That path is now routed through a typed LibreWPF/ProGPU service on non-Windows:
+
+- `PortableWindowRegion` was added to `ProGPU.Wpf.Interop` with a base `PortableRect` and preserved exclusion rectangles.
+- `IPortableWindowActivationServiceRegistrar.TrySetWindowRegion(IntPtr, PortableWindowRegion)` was added as the public typed entry point for legacy handle-based interop.
+- Source-built `PortableWindowActivationService` now stores a typed `SetWindowRegion` callback and forwards registrar calls without reflection.
+- `WpfPortableWindowActivation` keeps a weak handle-to-activation map and applies regions to `ProGpuWpfWindowHost.WindowRegion`.
+- SharpDevelop AvalonDock `FlyoutPaneWindow` now calls `InteropHelper.TrySetPortableWindowRegion(...)` on non-Windows before the Win32 fallback and no longer calls `GetCursorPos` for the auto-close mouse-over check on non-Windows.
+
+Validation:
+
+```text
+dotnet build external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj -c Release --no-restore
+dotnet build src/ProGPU.Wpf/ProGPU.Wpf.csproj -c Release --no-restore
+dotnet build src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj -c Release --no-restore
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 ./.dotnet/dotnet .dotnet/sdk/11.0.100-preview.4.26210.111/vstest.console.dll src/ProGPU.Wpf.Tests/bin/Release/net10.0/ProGPU.Wpf.Tests.dll --TestCaseFilter:"FullyQualifiedName~WpfPortableWindowActivationTests|FullyQualifiedName~SilkNetWpfWindowEventServiceTests"
+dotnet pack external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj -c Release --no-build -o artifacts/packages/SharpDevelopLocal -p:Version=0.1.0-preview.sharpdevelop.1 -p:PackageVersion=0.1.0-preview.sharpdevelop.1
+dotnet pack src/ProGPU.Wpf/ProGPU.Wpf.csproj -c Release --no-build -o artifacts/packages/SharpDevelopLocal -p:Version=0.1.0-preview.sharpdevelop.1 -p:PackageVersion=0.1.0-preview.sharpdevelop.1
+rm -rf /tmp/sharpdevelop-librewpf-region-nuget-1
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-region-nuget-1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -p:RestoreSources='/Users/wieslawsoltes/GitHub/wpf/artifacts/packages/SharpDevelopLocal;https://api.nuget.org/v3/index.json'
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-region-nuget-1 dotnet run --project /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release --no-build
+```
+
+Results:
+
+```text
+ProGPU.Wpf.Interop Release build -> succeeds, 0 warnings, 0 errors
+ProGPU.Wpf Release build         -> succeeds, 0 warnings, 0 errors
+ProGPU.Wpf.Tests Release build   -> succeeds, existing warning set, 0 errors
+Activation/window-event tests    -> 62 passed, 0 failed
+SharpDevelop.Full.LibreWpf       -> succeeds, 286 warnings, 0 errors
+SharpDevelop startup             -> process stayed alive until interrupted; only the known log4net config warning was printed
+```
+
+This pass removes another macOS crash path and keeps the data in ProGPU-owned region state. Exact compositor enforcement for exclusion rectangles is still pending: the DTO preserves the exclusion list, but ProGPU scene composition still needs a native region/geometry clip feature that can apply base-minus-exclusions to render and hit-test paths.
+
 ## 2026-07-08 LibreWinForms and FormsDesigner pass
 
 The WPF repo now mounts `/Users/wieslawsoltes/GitHub/wpf/external/LibreWinForms` from `wieslawsoltes/winforms` on branch `librewinforms-progpu-port`. Initial `LibreWinForms.Sdk`, `LibreWinForms.System.Windows.Forms`, and `LibreWinForms.WindowsFormsIntegration` package identities are present as transitional aliases over the currently working compatibility assemblies. SharpDevelop is switched to `ProGpuWpfUseLibreWinForms=true` so future WinForms source-reuse work can land behind stable package names.

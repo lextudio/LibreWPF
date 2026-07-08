@@ -75,6 +75,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private int? _windowTop;
     private bool _windowTopmost;
     private ProGpuWpfWindowBorder _windowBorder;
+    private PortableWindowRegion? _windowRegion;
 
     internal readonly record struct RenderSurfaceGeometry(
         uint LogicalWidth,
@@ -177,6 +178,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public bool Topmost => _window?.TopMost ?? _windowTopmost;
 
     public ProGpuWpfWindowBorder WindowBorder => _windowBorder;
+
+    public PortableWindowRegion? WindowRegion => _windowRegion;
 
     public object? PortablePresentationSource => _portablePresentationSourceBridge?.Source;
 
@@ -400,6 +403,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.WindowBorder = ToSilkWindowBorder(windowBorder);
         }
 
+        RequestRenderAndWakeNativeLoop();
+    }
+
+    public void SetWindowRegion(PortableWindowRegion region)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(region);
+
+        _windowRegion = region.IsEmpty ? null : region;
         RequestRenderAndWakeNativeLoop();
     }
 

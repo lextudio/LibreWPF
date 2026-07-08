@@ -28,6 +28,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private const int MA_NOACTIVATEANDEAT = 4;
 
     private static readonly ConditionalWeakTable<object, WpfPortableWindowActivation> s_activeActivations = new();
+    private static readonly object s_activeActivationsByHandleLock = new();
+    private static readonly Dictionary<IntPtr, WeakReference<WpfPortableWindowActivation>> s_activeActivationsByHandle = new();
     private static readonly object s_nonActivatingOwnedActivationsLock = new();
     private static readonly List<WeakReference<WpfPortableWindowActivation>> s_nonActivatingOwnedActivations = new();
     private static readonly TimeSpan ApplicationIdleFlushTimeout = TimeSpan.FromMilliseconds(250);
@@ -130,7 +132,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
             dispose: activation => ((WpfPortableWindowActivation)activation).Dispose(),
             dragMove: activation => ((WpfPortableWindowActivation)activation).TryDragMove(),
             getHandle: activation =>
-                ((WpfPortableWindowActivation)activation).Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero);
+                ((WpfPortableWindowActivation)activation).Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero,
+            setWindowRegion: TrySetWindowRegion);
     }
 
     public static bool TryRegisterPresentationCoreClipboardService()
@@ -380,6 +383,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.SetWindowBorder(ResolveWindowBorder(resizeMode, windowStyle, Host.WindowBorder));
     }
 
+    public bool SetWindowRegion(PortableWindowRegion region)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(region);
+
+        Host.SetWindowRegion(region);
+        return true;
+    }
+
     public void Close()
     {
         if (_isDisposed || _isClosingFromNative)
@@ -448,6 +460,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         _mediaContextRenderRegistration = null;
         RemoveNonActivatingOwnedWindowRegistration();
         s_activeActivations.Remove(Window);
+        UnregisterActiveActivationHandle(this);
         Host.Dispose();
         _isDisposed = true;
     }
@@ -456,6 +469,61 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         s_activeActivations.Remove(window);
         s_activeActivations.Add(window, activation);
+        RegisterActiveActivationHandle(activation);
+    }
+
+    private static void RegisterActiveActivationHandle(WpfPortableWindowActivation activation)
+    {
+        IntPtr handle = activation.Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero;
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        lock (s_activeActivationsByHandleLock)
+        {
+            s_activeActivationsByHandle[handle] = new WeakReference<WpfPortableWindowActivation>(activation);
+        }
+    }
+
+    private static void UnregisterActiveActivationHandle(WpfPortableWindowActivation activation)
+    {
+        lock (s_activeActivationsByHandleLock)
+        {
+            foreach (var entry in s_activeActivationsByHandle.ToArray())
+            {
+                if (!entry.Value.TryGetTarget(out var registeredActivation) ||
+                    ReferenceEquals(registeredActivation, activation))
+                {
+                    s_activeActivationsByHandle.Remove(entry.Key);
+                }
+            }
+        }
+    }
+
+    private static bool TrySetWindowRegion(IntPtr handle, PortableWindowRegion region)
+    {
+        ArgumentNullException.ThrowIfNull(region);
+        if (handle == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        lock (s_activeActivationsByHandleLock)
+        {
+            if (!s_activeActivationsByHandle.TryGetValue(handle, out var weakActivation))
+            {
+                return false;
+            }
+
+            if (!weakActivation.TryGetTarget(out var activation) || activation._isDisposed)
+            {
+                s_activeActivationsByHandle.Remove(handle);
+                return false;
+            }
+
+            return activation.SetWindowRegion(region);
+        }
     }
 
     private void UpdateNonActivatingOwnedWindowRegistration()

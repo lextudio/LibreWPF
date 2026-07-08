@@ -37,6 +37,7 @@ public sealed class WpfPortableWindowActivationTests
         Assert.NotNull(service.Callbacks.Dispose);
         Assert.NotNull(service.Callbacks.DragMove);
         Assert.NotNull(service.Callbacks.GetHandle);
+        Assert.NotNull(service.Callbacks.SetWindowRegion);
     }
 
     [Fact]
@@ -115,6 +116,39 @@ public sealed class WpfPortableWindowActivationTests
         activation.Dispose();
 
         Assert.True(service.LastMediaContextRenderRegistration?.IsDisposed);
+    }
+
+    [Fact]
+    public void WindowRegionCallbackUsesTypedHandleMap()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource
+        {
+            Handle = new IntPtr(42)
+        };
+        var service = new TestWindowActivationServiceRegistrar();
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+
+        Assert.True(WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation());
+        Assert.True(WpfPortableWindowActivation.TryAttach(host, window, source, out var activation));
+        Assert.NotNull(activation);
+        Assert.NotNull(service.Callbacks?.SetWindowRegion);
+
+        var region = new PortableWindowRegion(
+            new PortableRect(0, 0, 320, 240),
+            new[]
+            {
+                new PortableRect(16, 24, 64, 32)
+            });
+
+        var applied = service.Callbacks.SetWindowRegion(source.Handle, region);
+
+        Assert.True(applied);
+        Assert.Same(region, host.WindowRegion);
+
+        activation.Dispose();
+        Assert.False(service.Callbacks.SetWindowRegion(source.Handle, region));
     }
 
     [Fact]
@@ -2266,7 +2300,7 @@ public sealed class WpfPortableWindowActivationTests
 
         public object CompositionTarget { get; } = new();
 
-        public IntPtr Handle => IntPtr.Zero;
+        public IntPtr Handle { get; set; }
 
         public object? RequestedCursor => null;
 

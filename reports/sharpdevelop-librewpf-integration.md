@@ -1566,6 +1566,18 @@ SharpDevelop.Full.LibreWpf Release build                    -> succeeds, 286 war
 SharpDevelop broad smoke                                    -> popups/build/resx/forms designer/property grid/context menu/completion all pass, exit code 0
 ```
 
+## 2026-07-08 FormsDesigner handler generation contract
+
+LibreWinForms now implements the standard `IEventBindingService.ShowCode(component, event)` flow for events that do not yet have a handler. The portable event service creates a unique method name, stores it through the same event-property map used by the serializer, delegates source navigation/generation to the active service override, and removes the newly-created binding if navigation fails. This is the missing host-side contract that SharpDevelop's `CSharpEventBindingService` expects before it inserts or navigates to event handlers.
+
+Validation:
+
+```text
+ProGPU.Wpf.Tests PortableWinFormsCodeDomDesignerLoaderTests -> 11 passed
+LibreWinForms.System.Windows.Forms Release build            -> succeeds, 27 warnings, 0 errors
+SharpDevelop.Full.LibreWpf Release build                    -> succeeds, 286 warnings, 0 errors
+```
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:

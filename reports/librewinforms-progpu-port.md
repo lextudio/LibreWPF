@@ -194,9 +194,21 @@ SharpDevelop.Full.LibreWpf fresh-cache Release build        -> succeeds, 286 war
 SharpDevelop broad smoke                                    -> popups/build/resx/forms designer/property grid/context menu/completion all pass, exit code 0
 ```
 
+## 2026-07-08 FormsDesigner handler generation contract
+
+The portable `EventBindingService` now follows the standard designer flow for `IEventBindingService.ShowCode(component, event)`: when no handler is assigned, it creates a unique method name, publishes it through the event-property binding map, calls the app-provided code navigation/generation override, and rolls the new binding back if navigation fails. This lets SharpDevelop's `CSharpEventBindingService` keep owning real handler insertion and source navigation while the portable host supplies the expected WinForms service contract.
+
+Focused validation:
+
+```text
+ProGPU.Wpf.Tests PortableWinFormsCodeDomDesignerLoaderTests -> Passed, 11 total
+LibreWinForms.System.Windows.Forms build                    -> succeeds, 27 warnings, 0 errors
+SharpDevelop.Full.LibreWpf fresh-cache Release build        -> succeeds, 286 warnings, 0 errors
+```
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.
 - Replace the remaining compatibility-only controls with upstream managed WinForms implementations behind typed ProGPU/Silk.NET platform services.
-- Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing/component create-remove/resource-replay/localization-shape coverage to handler generation/source navigation, resource-file writing, toolbox placement details, and broader generated-code round trips.
+- Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing/component create-remove/resource-replay/localization-shape/handler-generation-contract coverage to real SharpDevelop source-navigation smoke, resource-file writing, toolbox placement details, and broader generated-code round trips.
 - Make the standard WPF SDK pack workflow restore from the required private WPF feeds so local validation does not need generated package artifact refreshes.

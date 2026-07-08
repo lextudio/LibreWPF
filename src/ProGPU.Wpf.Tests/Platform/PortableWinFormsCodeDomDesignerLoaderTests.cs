@@ -118,6 +118,38 @@ public sealed class PortableWinFormsCodeDomDesignerLoaderTests
     }
 
     [Fact]
+    public void EventBindingShowCodeCreatesAndSerializesHandler()
+    {
+        ServiceContainer services = new();
+        NavigatingEventBindingService eventBindingService = new(services);
+        services.AddService(typeof(IEventBindingService), eventBindingService);
+        var loader = new TestCodeDomDesignerLoader();
+        var surface = new DesignSurface(services);
+
+        surface.BeginLoad(loader);
+
+        var root = Assert.IsType<Forms.UserControl>(surface.View);
+        var panel = Assert.IsType<Forms.Panel>(Assert.Single(root.Controls));
+        var bindingService = Assert.IsAssignableFrom<IEventBindingService>(
+            surface.GetService(typeof(IEventBindingService)));
+        EventDescriptor click = Assert.IsAssignableFrom<EventDescriptor>(
+            TypeDescriptor.GetEvents(panel)[nameof(Forms.Control.Click)]);
+
+        Assert.True(bindingService.ShowCode(panel, click));
+        Assert.Equal("panel1_Click", eventBindingService.ShownMethodName);
+        Assert.Equal("panel1_Click", bindingService.GetEventProperty(click).GetValue(panel));
+
+        surface.Flush();
+
+        Assert.NotNull(loader.WrittenUnit);
+        Assert.NotNull(FindEventAttach(
+            loader.WrittenUnit!,
+            "panel1",
+            nameof(Forms.Control.Click),
+            "panel1_Click"));
+    }
+
+    [Fact]
     public void DesignSurfaceUsesProvidedEventBindingService()
     {
         ServiceContainer services = new();
@@ -636,6 +668,42 @@ public sealed class PortableWinFormsCodeDomDesignerLoaderTests
         protected override bool ShowCode(IComponent component, EventDescriptor e, string methodName)
         {
             return false;
+        }
+    }
+
+    private sealed class NavigatingEventBindingService : EventBindingService
+    {
+        public NavigatingEventBindingService(IServiceProvider provider)
+            : base(provider)
+        {
+        }
+
+        public string? ShownMethodName { get; private set; }
+
+        protected override string CreateUniqueMethodName(IComponent component, EventDescriptor e)
+        {
+            return component.Site?.Name + "_" + e.Name;
+        }
+
+        protected override ICollection GetCompatibleMethods(EventDescriptor e)
+        {
+            return Array.Empty<string>();
+        }
+
+        protected override bool ShowCode()
+        {
+            return true;
+        }
+
+        protected override bool ShowCode(int lineNumber)
+        {
+            return true;
+        }
+
+        protected override bool ShowCode(IComponent component, EventDescriptor e, string methodName)
+        {
+            ShownMethodName = methodName;
+            return true;
         }
     }
 

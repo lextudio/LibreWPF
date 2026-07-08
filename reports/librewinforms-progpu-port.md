@@ -228,6 +228,27 @@ SharpDevelop broad smoke                             -> popups/resx/build/forms 
 
 The broad smoke used the refreshed local `LibreWinForms.System.Windows.Forms/0.1.0-preview.sharpdevelop.1` package and verified the package-owned ResX API through `LIBREWPF_SHARPDEVELOP_RESX_SMOKE=1`.
 
+## 2026-07-08 PictureBox designer initialization compatibility
+
+`LibreWinForms.System.Windows.Forms.PictureBox` now implements `ISupportInitialize` with the standard no-op initialization contract required by generated WinForms designer code. This unblocks SharpDevelop's historical `ExceptionBox.InitializeComponent()` and other designer-generated `((ISupportInitialize)pictureBox).BeginInit()/EndInit()` patterns without adding app-specific shims.
+
+Focused validation:
+
+```text
+ProGPU.Wpf.Tests PictureBoxSupportsDesignerInitialization -> Passed
+LibreWinForms.System.Windows.Forms package-mode build     -> succeeds, 28 warnings, 0 errors
+SharpDevelop.Full.LibreWpf fresh-cache Release build      -> succeeds, 286 warnings, 0 errors
+SharpDevelop full smoke                                   -> popups/resx/forms designer/property grid/context menu/completion all pass, exit code 0
+```
+
+The package-mode `LibreWinForms.System.Windows.Forms` build must restore with a fresh `NUGET_PACKAGES` cache and the local LibreWPF/ProGPU feed so `LibreWPF.Interop` and `ProGPU.System.Drawing.Common` are extracted before compile:
+
+```text
+NUGET_PACKAGES=/tmp/librewinforms-local-nuget
+RestoreSources=/Users/wieslawsoltes/GitHub/wpf/artifacts/packages/SharpDevelopLocal;https://api.nuget.org/v3/index.json
+LibreWinFormsBridgePackageVersion=0.1.0-preview.sharpdevelop.1
+```
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.

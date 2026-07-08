@@ -332,6 +332,8 @@ public enum WpfWindowEventKind
     Activated,
     Deactivated,
     FilesDropped,
+    Shown,
+    Hidden,
     WindowPositionChanging,
     WindowPositionChanged,
     WindowSizeChanged

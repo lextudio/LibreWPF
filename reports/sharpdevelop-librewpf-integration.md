@@ -1786,12 +1786,38 @@ LibreWPF.ProGPU Release pack into SharpDevelopLocal feed                 -> succ
 SharpDevelop.Full.LibreWpf fresh-cache Release package-mode build        -> succeeds, 286 warnings, 0 errors
 ```
 
+## 2026-07-08 LibreWinForms packaging/default-branch pass
+
+The LibreWinForms submodule now has the same preview-shipping scaffolding expected from the LibreWPF lane. `/Users/wieslawsoltes/GitHub/wpf/external/LibreWinForms` gained a LibreWinForms README front matter section, package table with NuGet badges, `eng/librewinforms-pack.sh`, package manifest/release-bundle helpers, docs verification, release docs, and GitHub workflows for build, docs, and release. The GitHub repository `wieslawsoltes/winforms` now reports `librewinforms-progpu-port` as its default branch with LibreWinForms/ProGPU/Silk.NET topics and description.
+
+Validation:
+
+```text
+LibreWinForms docs verification                                           -> succeeds
+LibreWinForms package lane, fresh NuGet cache + SharpDevelopLocal feed    -> succeeds; packages, manifest, bundle, checksum written
+WPF superproject submodule update                                         -> points external/LibreWinForms at ccc97de6a
+```
+
+## 2026-07-08 AvalonDock show/hide hook pass
+
+AvalonDock floating/flyout windows also observe visibility transitions through the legacy `HwndSource.AddHook(...)` path. LibreWPF now carries typed `Shown` and `Hidden` window event kinds and translates both platform-raised visibility events and direct WPF `Show()`/`Hide()` activation callbacks into `WM_SHOWWINDOW`. `wParam` is `1` for show and `0` for hide, with no fake native structures or reflected state.
+
+Validation:
+
+```text
+LibreWPF.ProGPU Release build                                            -> succeeds, 0 warnings, 0 errors
+ProGPU.Wpf.Tests Release build                                           -> succeeds, 95 warnings, 0 errors
+ProGPU.Wpf.Tests window activation/event focused set                     -> 61 passed, 0 failed
+LibreWPF.ProGPU Release pack into SharpDevelopLocal feed                 -> succeeds
+SharpDevelop.Full.LibreWpf fresh-cache Release package-mode build        -> succeeds, 286 warnings, 0 errors
+```
+
 ## Remaining issues
 
 - The unmodified `SharpDevelop.sln` still fails before LibreWPF runtime is reached because it targets legacy .NET Framework versions and old Windows build tools:
   - Missing reference assemblies for `.NETFramework,Version=v3.5`, `v4.0`, `v4.0,Profile=Client`, `v4.5`, and `v4.5.1` on macOS.
   - `src/Tools/Tools.build` uses `ResGen.exe`, which .NET Core MSBuild reports as unsupported.
-- `ICSharpCode.SharpDevelop.Workbench.WpfWorkbench` and AvalonDock still contain old Win32/HWND hook assumptions. LibreWPF now dispatches portable activation, mouse activation, and basic geometry hooks for the package-mode `HwndSource.AddHook(...)` path, but non-client title-bar messages, IME composition, exact native `WINDOWPOS` structure needs, and region/floating-window behavior still need typed portable contracts.
+- `ICSharpCode.SharpDevelop.Workbench.WpfWorkbench` and AvalonDock still contain old Win32/HWND hook assumptions. LibreWPF now dispatches portable activation, mouse activation, show/hide, and basic geometry hooks for the package-mode `HwndSource.AddHook(...)` path, but non-client title-bar messages, IME composition, exact native `WINDOWPOS` structure needs, and region/floating-window behavior still need typed portable contracts.
 - `SharpDevelop.Full.LibreWpf` now builds and starts the historical workbench shell through LibreWPF package mode, loads the legacy LineCounter C# project as `CSharpProject`, opens a real source file, attaches the CSharpBinding editor extension, and renders the real AddInTree-built menu/context/combo popup surfaces. The complete IDE still cannot yet be claimed as fully working: debug commands, full designer support including handler generation/source navigation, add-in workflows, broader tool windows, templates, completion/refactoring flows, and non-smoke user interaction still need systematic runtime validation and additional portable service seams.
 - The ResourceToolkit add-in is currently disabled in the local package-mode wrapper because it depends on legacy NRefactory Ast/PrettyPrinter/SharpDevelop.Dom resolver APIs that are not part of the current LibreWPF SharpDevelop project graph. It needs a compatibility parser layer or a targeted rewrite before it can become part of the default full-workbench build.
 - Full-workbench AvalonEdit can now open and display a real source file with source-tree C# syntax registration, `CSharpBinding.CSharpLanguageBinding`, `CSharpTextEditorExtension` attached, and the completion popup opened in the package-mode smoke. Remaining editor parity work includes completion commit/filter interaction, semantic issue update behavior, refactoring context actions, IME composition, and designer-specific editor flows.

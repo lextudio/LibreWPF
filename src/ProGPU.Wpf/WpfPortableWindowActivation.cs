@@ -10,6 +10,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 {
     private const int WM_ACTIVATE = 0x0006;
     private const int WM_ACTIVATEAPP = 0x001C;
+    private const int WM_SHOWWINDOW = 0x0018;
     private const int WM_MOVE = 0x0003;
     private const int WM_SIZE = 0x0005;
     private const int WM_WINDOWPOSCHANGING = 0x0046;
@@ -291,10 +292,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
         if (ShouldDeferNativeShowUntilRun())
         {
             Host.DeferShowUntilRun();
+            DispatchPortableShowWindowHook(isShown: true);
             return;
         }
 
         Host.Show();
+        DispatchPortableShowWindowHook(isShown: true);
         if (!_showActivated)
         {
             TrySetWindowActivationState(Window, isActive: false);
@@ -311,6 +314,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         ThrowIfDisposed();
         Host.Hide();
+        DispatchPortableShowWindowHook(isShown: false);
     }
 
     public void SetWindowState(object? windowState)
@@ -843,6 +847,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 DispatchPortableActivationHooks(isActive: false);
                 TrySetWindowActivationStateForHostEvent(isActive: false);
                 break;
+            case WpfWindowEventKind.Shown:
+                DispatchPortableShowWindowHook(isShown: true);
+                break;
+            case WpfWindowEventKind.Hidden:
+                DispatchPortableShowWindowHook(isShown: false);
+                break;
             case WpfWindowEventKind.WindowPositionChanging:
                 DispatchPortableWindowPositionChangingHook();
                 break;
@@ -866,6 +876,17 @@ public sealed class WpfPortableWindowActivation : IDisposable
         IntPtr activeWParam = new(isActive ? WA_ACTIVE : WA_INACTIVE);
         bridge.TryDispatchHwndSourceHook(WM_ACTIVATE, activeWParam, IntPtr.Zero, out _, out _);
         bridge.TryDispatchHwndSourceHook(WM_ACTIVATEAPP, isActive ? new IntPtr(1) : IntPtr.Zero, IntPtr.Zero, out _, out _);
+    }
+
+    private void DispatchPortableShowWindowHook(bool isShown)
+    {
+        WpfPortablePresentationSourceBridge? bridge = Host.PortablePresentationSourceBridge;
+        if (bridge == null)
+        {
+            return;
+        }
+
+        bridge.TryDispatchHwndSourceHook(WM_SHOWWINDOW, isShown ? new IntPtr(1) : IntPtr.Zero, IntPtr.Zero, out _, out _);
     }
 
     private void DispatchPortableWindowPositionChangingHook()

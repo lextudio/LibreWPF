@@ -641,6 +641,52 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostWindowVisibilityEventsDispatchLegacyShowWindowHooks()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        RaiseHostWindowEvent(host, WpfWindowEventKind.Shown);
+        RaiseHostWindowEvent(host, WpfWindowEventKind.Hidden);
+
+        Assert.Equal(new[] { 0x0018, 0x0018 }, source.DispatchedHwndSourceHooks.Select(hook => hook.Message).ToArray());
+        Assert.Equal(new IntPtr(1), source.DispatchedHwndSourceHooks[0].WParam);
+        Assert.Equal(IntPtr.Zero, source.DispatchedHwndSourceHooks[1].WParam);
+    }
+
+    [Fact]
+    public void ShowHideDispatchLegacyShowWindowHooks()
+    {
+        var service = new TestWindowActivationServiceRegistrar
+        {
+            HandleMainWindowQuery = true,
+            IsMainWindow = true
+        };
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        activation.Show();
+        activation.Hide();
+
+        Assert.Equal(new[] { 0x0018, 0x0018 }, source.DispatchedHwndSourceHooks.Select(hook => hook.Message).ToArray());
+        Assert.Equal(new IntPtr(1), source.DispatchedHwndSourceHooks[0].WParam);
+        Assert.Equal(IntPtr.Zero, source.DispatchedHwndSourceHooks[1].WParam);
+    }
+
+    [Fact]
     public void HostActivationEventsUseTypedWindowActivationService()
     {
         var service = new TestWindowActivationServiceRegistrar();

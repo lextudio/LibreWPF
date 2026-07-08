@@ -49,6 +49,16 @@ public sealed class SilkNetWpfWindowEventService : IWpfWindowEventService
         return new WpfWindowEventArgs(WpfWindowEventKind.FilesDropped, files ?? Array.Empty<string>());
     }
 
+    public static WpfWindowEventArgs CreateWindowShownEvent()
+    {
+        return new WpfWindowEventArgs(WpfWindowEventKind.Shown);
+    }
+
+    public static WpfWindowEventArgs CreateWindowHiddenEvent()
+    {
+        return new WpfWindowEventArgs(WpfWindowEventKind.Hidden);
+    }
+
     public static WpfWindowEventArgs CreateWindowPositionChangingEvent(int left, int top)
     {
         return new WpfWindowEventArgs(WpfWindowEventKind.WindowPositionChanging, left: left, top: top);

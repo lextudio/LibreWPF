@@ -35,6 +35,22 @@ public sealed class SilkNetWpfWindowEventServiceTests
     }
 
     [Fact]
+    public void CreateWindowShownEventMapsToShown()
+    {
+        var args = SilkNetWpfWindowEventService.CreateWindowShownEvent();
+
+        Assert.Equal(WpfWindowEventKind.Shown, args.Kind);
+    }
+
+    [Fact]
+    public void CreateWindowHiddenEventMapsToHidden()
+    {
+        var args = SilkNetWpfWindowEventService.CreateWindowHiddenEvent();
+
+        Assert.Equal(WpfWindowEventKind.Hidden, args.Kind);
+    }
+
+    [Fact]
     public void CreateWindowPositionChangingEventStoresCoordinates()
     {
         var args = SilkNetWpfWindowEventService.CreateWindowPositionChangingEvent(-12, 34);

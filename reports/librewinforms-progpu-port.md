@@ -309,6 +309,45 @@ LibreWinForms package lane with isolated cache + local LibreWPF/ProGPU bridge fe
 WPF superproject submodule update                                                     -> points external/LibreWinForms at 2810c93a8
 ```
 
+## 2026-07-09 LibreWinForms repo shipping-shape verification
+
+The LibreWinForms repository settings were re-applied idempotently through `gh repo edit`:
+
+- default branch: `librewinforms-progpu-port`
+- description: `LibreWinForms: cross-platform WinForms-shaped APIs and SDK backed by ProGPU/Silk.NET.`
+- topics: `librewinforms`, `winforms`, `progpu`, `silk-net`, `cross-platform`, `dotnet`, `sdk`
+
+No source or workflow file changes were needed in `/Users/wieslawsoltes/GitHub/winforms`: the README already has the LibreWinForms front section, SDK migration steps, split NuGet package tables with badge columns, bridge-package table, build/release instructions, and the original upstream README at the bottom. The existing GitHub workflow set also already matches the LibreWPF shape:
+
+- `.github/workflows/librewinforms-ci.yml`
+- `.github/workflows/librewinforms-docs.yml`
+- `.github/workflows/librewinforms-release.yml`
+
+Validation used the current `0.1.0-preview.1` LibreWPF/ProGPU bridge packages from `/Users/wieslawsoltes/GitHub/wpf/artifacts/packages/Release/NonShipping` and wrote temporary package artifacts outside the repo:
+
+```text
+./eng/librewinforms-verify-docs.sh
+LIBREWINFORMS_DEV_PACKAGE_VERSION=0.1.0-preview.1 \
+LIBREWINFORMS_BRIDGE_PACKAGE_VERSION=0.1.0-preview.1 \
+LIBREWINFORMS_PACKAGE_OUTPUT=/tmp/librewinforms-pack-validation \
+LIBREWINFORMS_NUGET_PACKAGES=/tmp/librewinforms-pack-nuget \
+LIBREWINFORMS_RESTORE_SOURCES=/Users/wieslawsoltes/GitHub/wpf/artifacts/packages/Release/NonShipping\;https://api.nuget.org/v3/index.json \
+./eng/librewinforms-pack.sh
+```
+
+Results:
+
+```text
+LibreWinForms docs verification               -> succeeds
+LibreWinForms.System.Windows.Forms package    -> created
+LibreWinForms.WindowsFormsIntegration package -> created
+LibreWinForms.Sdk package                     -> created
+Preview package manifest                      -> created
+Preview release bundle                        -> created
+Preview release bundle SHA-256                -> created
+WinForms repository working tree              -> clean
+```
+
 ## Remaining work
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.

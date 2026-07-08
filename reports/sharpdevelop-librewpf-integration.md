@@ -79,6 +79,46 @@ PropertyGrid smoke                       -> Success, selected=ToolStripContainer
 Editor completion smoke                  -> Opened, bindings=7, items=12
 ```
 
+## 2026-07-09 SharpDevelop AvalonDock smoke pass
+
+The full SharpDevelop package-mode smoke now includes a real AvalonDock pad flow instead of only standalone menu/popup controls. The local SharpDevelop harness exposes the existing typed `PadDescriptor -> AvalonPadContent` map through an internal lookup and validates a real `ProjectBrowserPad` through:
+
+- docked pad activation
+- dockable floating window creation
+- redock through AvalonDock state restoration
+- auto-hide transition
+- flyout window creation through the portable popup/window path
+- final docked-state restoration
+
+No private-field reflection or object-shape probing was added for this validation path.
+
+Validation:
+
+```text
+rm -rf /tmp/sharpdevelop-librewpf-goal-nuget
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-goal-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /p:GenerateFullPaths=true /p:LibreWpfSharpDevelopIncludeResourceToolkit=true /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-goal-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_FULL_POPUP_SMOKE=All LIBREWPF_SHARPDEVELOP_AVALONDOCK_SMOKE=ProjectBrowser LIBREWPF_SHARPDEVELOP_BUILD_SMOKE=Solution LIBREWPF_SHARPDEVELOP_RESX_SMOKE=1 LIBREWPF_SHARPDEVELOP_PROPERTY_PAD_SMOKE=1 LIBREWPF_SHARPDEVELOP_WINFORMS_CONTEXT_MENU_SMOKE=1 LIBREWPF_SHARPDEVELOP_EDITOR_COMPLETION_SMOKE=1 LIBREWPF_SHARPDEVELOP_FORMS_DESIGNER_SMOKE=/Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=28000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+SharpDevelop.Full.LibreWpf fresh build   -> succeeds, 39 warnings, 0 errors
+Main menu popup                          -> opened
+Context menu popup                       -> opened, 27 items
+ComboBox popup                           -> opened
+Core.Presentation toolbar dropdown       -> opened, 3 items
+Hosted WinForms ContextMenuStrip smoke   -> Opened, 3 items
+ResX smoke                               -> Success, files=1
+LineCounter build smoke                  -> Success, 0 errors, 4 existing sample warnings
+FormsDesigner smoke                      -> Attached, root=System.Windows.Forms.UserControl, components=21, selectable=21
+FormsDesigner mutation smoke             -> Success, selected component reaches PropertyGrid and changed Text value is visible
+PropertyGrid smoke                       -> Success, selected=ToolStripContainer, rows=54
+Editor completion smoke                  -> Opened, bindings=8, items=12
+AvalonDock smoke                         -> Success, ProjectBrowserPad DockableWindow -> Docked -> AutoHide/Flyout -> Docked
+Application exit                         -> code 0 through smoke exit timer
+```
+
 ## 2026-07-08 AvalonDock portable window-region pass
 
 AvalonDock flyout windows used direct `CreateRectRgn`, `CombineRgn`, and `SetWindowRgn` calls while opening, closing, and updating auto-hide flyout regions. That path is now routed through a typed LibreWPF/ProGPU service on non-Windows:

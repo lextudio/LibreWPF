@@ -2406,3 +2406,30 @@ GitHub repository metadata                                                   -> 
 - Expand the new portable `HwndSource` hook path beyond activation, mouse activation, and basic geometry into typed non-client, region, floating-window, and IME contracts.
 - Add portable contracts for AvalonDock floating-window regions and AvalonEdit IME composition rather than relying on HWND hooks in package-mode apps.
 - Keep validating popup classes in package mode after each shell milestone: menu, context menu, ComboBox, Core.Presentation drop-down buttons, toolbars, AvalonDock tabs, and AvalonEdit completion popups.
+
+## 2026-07-09 SharpDevelop LibreWinForms package identity refresh
+
+The latest SharpDevelop package-mode pass fixed the stale WinForms/drawing package identity issue in the shared SDK feed. `LibreWPF.Transport` no longer carries `WindowsFormsIntegration.dll` payloads, and the `ProGPU.Wpf.Sdk` explicit package-root fallback now selects `LibreWinForms.*` packages only when `ProGpuWpfUseLibreWinForms=true`. The preview package audit also rejects any future `WindowsFormsIntegration.dll` entry under `LibreWPF.Transport` `lib/` or `ref/` payloads.
+
+The first clean SharpDevelop rebuild after that packaging fix exposed the .NET `System.Drawing` facade contract: `System.Drawing.Icon` is forwarded to `System.Drawing.Common, Version=0.0.0.0`. ProGPU's portable `System.Drawing.Common` shim already had `Icon`, but its assembly version was `0.1.0.0`, so Roslyn followed the facade and still rejected `Icon`. `ProGPU.System.Drawing.Common` now keeps package/file versions at `0.1.0-preview.*` while publishing the assembly identity `System.Drawing.Common, Version=0.0.0.0, PublicKeyToken=c29c9752855ee183`, matching the framework facade's type-forward target. LibreWinForms was repacked against that corrected shim, so `System.Windows.Forms.dll` and `WindowsFormsIntegration.dll` both reference `System.Drawing.Common, Version=0.0.0.0`.
+
+Validation:
+
+```text
+ProGPU.System.Drawing.Common local pack                         -> succeeds, 0.1.0-preview.sharpdevelop.1
+Minimal package consumer using Icon/Bitmap/Size                 -> succeeds, 0 warnings, 0 errors
+LibreWinForms local package repack against corrected drawing    -> packages created; verifier rejected only because the shared feed also contains LibreWPF/ProGPU packages of the same version
+SharpDevelop.Full.LibreWpf Release build                       -> succeeds, 192 warnings, 0 errors
+SharpDevelop template smoke                                    -> succeeds, exit code 0
+```
+
+Runtime/package identity result:
+
+```text
+System.Drawing.Common, Version=0.0.0.0, Culture=neutral, PublicKeyToken=c29c9752855ee183
+System.Windows.Forms, Version=0.1.0.0, Culture=neutral, PublicKeyToken=c29c9752855ee183
+WindowsFormsIntegration, Version=0.1.0.0, Culture=neutral, PublicKeyToken=c29c9752855ee183
+System.Windows.Forms -> System.Drawing.Common, Version=0.0.0.0
+WindowsFormsIntegration -> System.Windows.Forms, Version=0.1.0.0; System.Drawing.Common, Version=0.0.0.0
+Template smoke -> loaded LineCounter.sln, ProjectBrowser rootNodes=1, template catalog path completed, exit code 0
+```

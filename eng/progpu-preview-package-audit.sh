@@ -68,6 +68,19 @@ require_entry() {
   fi
 }
 
+reject_entry() {
+  local package_id="$1"
+  local entry="$2"
+  local package_file
+  local entries
+  package_file="$(package_path "${package_id}")"
+  entries="$(unzip -Z -1 "${package_file}")"
+  if grep -Fxq "${entry}" <<<"${entries}"; then
+    echo "Package ${package_id} should not contain '${entry}'." >&2
+    exit 1
+  fi
+}
+
 require_nuspec_contains() {
   local package_id="$1"
   local expected="$2"
@@ -153,6 +166,8 @@ for entry in "${transport_entries[@]}"; do
   require_entry LibreWPF.Transport "${entry}"
 done
 
+reject_entry LibreWPF.Transport "lib/${transport_target_framework}/WindowsFormsIntegration.dll"
+reject_entry LibreWPF.Transport "ref/${transport_target_framework}/WindowsFormsIntegration.dll"
 require_entry LibreWPF.Transport "runtime.json"
 require_nuspec_contains LibreWPF.Transport "<group targetFramework=\"${transport_target_framework}\" />"
 

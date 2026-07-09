@@ -50,6 +50,26 @@
 
   </Target>
 
+  <Target Name="ExcludeManagedWpfTransportWindowsFormsIntegrationPayload"
+          AfterTargets="CreateContentFolder"
+          BeforeTargets="ValidateManagedWpfTransportPayload;GenerateNuspec"
+          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('LibreWPF.Transport'))">
+    <PropertyGroup>
+      <_ManagedWpfTransportRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)</_ManagedWpfTransportRoot>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_ManagedWpfTransportWindowsFormsIntegrationPayload Include="$(_ManagedWpfTransportRoot)\lib\**\WindowsFormsIntegration.*" />
+      <_ManagedWpfTransportWindowsFormsIntegrationPayload Include="$(_ManagedWpfTransportRoot)\ref\**\WindowsFormsIntegration.*" />
+      <_ExistingManagedWpfTransportWindowsFormsIntegrationPayload
+        Include="@(_ManagedWpfTransportWindowsFormsIntegrationPayload)"
+        Condition="Exists('%(_ManagedWpfTransportWindowsFormsIntegrationPayload.Identity)')" />
+      <Content Remove="@(_ManagedWpfTransportWindowsFormsIntegrationPayload)" />
+    </ItemGroup>
+
+    <Delete Files="@(_ExistingManagedWpfTransportWindowsFormsIntegrationPayload)" />
+  </Target>
+
   <Target Name="ValidateManagedWpfTransportPayload"
           BeforeTargets="GenerateNuspec"
           DependsOnTargets="CreateContentFolder"

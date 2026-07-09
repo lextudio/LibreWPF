@@ -2299,6 +2299,27 @@ ProGPU WPF native loop: run leaving: disposed=True, closeStarted=True, hostVisib
 
 The final log contains no `InvalidOperationException` or `Reset inside of the render loop` marker.
 
+## 2026-07-09 SharpDevelop shutdown persistence smoke
+
+The next SharpDevelop runtime slice validates that a real LibreWPF-hosted session can write its workbench settings during normal shutdown on macOS. `SharpDevelopMain` now accepts `LIBREWPF_SHARPDEVELOP_CONFIG_DIR` so package-mode smokes can run against an isolated settings directory instead of modifying the user's normal SharpDevelop profile. The WPF workbench smoke hook `LIBREWPF_SHARPDEVELOP_SHUTDOWN_PERSISTENCE_SMOKE` writes a typed marker into `SD.PropertyService`, and `CallHelper` validates that marker, the nested smoke properties, the `WorkbenchMemento`, the saved `WindowState`, and the AvalonDock `layouts/Default.xml` file after the normal `propertyService.Save()` shutdown path completes.
+
+Validation:
+
+```text
+SharpDevelop.Full.LibreWpf fresh-cache ResourceToolkit build     -> succeeds, 287 warnings, 0 errors
+SharpDevelop.Full.LibreWpf incremental ResourceToolkit build      -> succeeds, 39 warnings, 0 errors
+SharpDevelop isolated-config shutdown persistence smoke           -> succeeds, exit code 0
+```
+
+Runtime result:
+
+```text
+LibreWPF shutdown persistence smoke prepared marker=SessionA config=/tmp/sharpdevelop-librewpf-shutdown-config
+LibreWPF shutdown persistence smoke result=Success marker=SessionA file=/tmp/sharpdevelop-librewpf-shutdown-config/SharpDevelopProperties.xml fileExists=True layoutFile=/tmp/sharpdevelop-librewpf-shutdown-config/layouts/Default.xml layoutSaved=True markerSaved=True nestedMarkerSaved=True workbenchMementoSaved=True windowStateSaved=True boundsSaved=False
+```
+
+The isolated config directory contained `SharpDevelopProperties.xml`, `layouts/Default.xml`, and solution/project preference XML files after shutdown. `boundsSaved=False` is expected for this run because the workbench shut down while maximized, so the memento stores `WindowState` without a restore-bounds payload.
+
 ## 2026-07-08 AvalonDock show/hide hook pass
 
 AvalonDock floating/flyout windows also observe visibility transitions through the legacy `HwndSource.AddHook(...)` path. LibreWPF now carries typed `Shown` and `Hidden` window event kinds and translates both platform-raised visibility events and direct WPF `Show()`/`Hide()` activation callbacks into `WM_SHOWWINDOW`. `wParam` is `1` for show and `0` for hide, with no fake native structures or reflected state.

@@ -41,6 +41,27 @@ Date: 2026-07-08
 
 The current validation path includes both the controlled `SharpDevelop.LibreWpf` smoke shell and the fuller `SharpDevelop.Full.LibreWpf` wrapper. The full wrapper builds the historical SharpDevelop workbench entry point through LibreWPF package mode and now starts/renders the main IDE shell on macOS. It is not yet full IDE parity: legacy Win32 hooks, project-system services, editor IME, and several Windows-only integration points still need typed portable seams.
 
+## 2026-07-09 SharpDevelop safe-save portability pass
+
+The SharpDevelop LibreWPF wrapper now covers the normal workbench save path on non-Windows. `OpenedFile.SaveToDisk()` can run with SharpDevelop's temporary-file safe-save mode enabled, and that path preserves creation time through `NativeMethods.SetFileCreationTime(...)`. The LibreWPF build now no-ops that Windows-only `SetFileTime` call when the host OS is not Windows, preserving the existing Windows path while allowing macOS package-mode saves to complete.
+
+The full workbench also gained `LIBREWPF_SHARPDEVELOP_SAVE_SMOKE`. The smoke opens a file-backed AvalonEdit document, appends a marker, marks the `OpenedFile` dirty, invokes the normal `SaveFile.Save(content)` command path, verifies the dirty state clears and the marker reaches disk, then restores the original file content through `file.SaveToDisk()` with safe-save still enabled. The LineCounter sample file was restored byte-for-byte and remained clean after validation.
+
+Validation:
+
+```text
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /nr:false /p:LibreWpfSharpDevelopIncludeResourceToolkit=true
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 PROGPU_WPF_TRACE_NATIVE_LOOP=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_SAVE_SMOKE=Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=25000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+SharpDevelop.Full.LibreWpf ResourceToolkit build -> succeeds, 39 warnings, 0 errors
+Save smoke                                      -> Success, file=LineCounterBrowser.cs, markedDirty=True, saveClearedDirty=True, diskContainsMarker=True, diskRestored=True, safeSaving=True; exit code 0
+Sample tree                                     -> no diff in samples/LineCounter/Src/LineCounterBrowser.cs after smoke
+```
+
 ## 2026-07-09 Portable activation and SharpDevelop smoke refresh
 
 SharpDevelop's AvalonDock auto-hide smoke exposed a real LibreWPF port issue: on non-Windows, `Window.Activate()` could return `false` for a shown portable window because it fell through to the HWND `HwndSource` activation path. `PresentationFramework.Window.Activate()` now routes shown portable windows through the existing typed `PortableWindowActivationService.SetActivationState(this, true)` boundary before any Win32/source-window check. This keeps activation state in the source-built WPF portable service and avoids adding bridge-local reflection or AvalonDock-specific workarounds.

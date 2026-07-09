@@ -123,6 +123,27 @@ New-file/save-as smoke                          -> Success, file=LibreWpfNewFile
 Temporary output                                -> deleted after smoke
 ```
 
+## 2026-07-09 SharpDevelop template service smoke extension
+
+The full SharpDevelop LibreWPF workbench now has `LIBREWPF_SHARPDEVELOP_TEMPLATE_SMOKE` for package-mode template-service coverage. The smoke waits for the LineCounter solution load, calls the real `SD.Templates.UpdateTemplates()` path, walks the typed `TemplateCategory` graph, counts file and project templates, selects a simple visible file template through the public `FileTemplate.SuggestFileName(...)` contract, runs `FileTemplate.Create(...)` plus `RunActions(...)`, verifies that the generated opened file is registered, then closes all generated views and checks the opened-file registration is removed.
+
+The first run exposed a SharpDevelop template-catalog fragility: an add-in file template with a `RunCommand` create action could abort the whole catalog when the command path failed to resolve under the current package-mode add-in graph. `FileTemplateImpl.ReadAction(...)` now validates that the built item is an `ICommand` and warns/skips unavailable action commands instead of throwing out the catalog. This keeps normal templates loadable while preserving the existing action execution path when the command exists.
+
+Validation:
+
+```text
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release --no-restore
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-template-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 LIBREWPF_SHARPDEVELOP_CONFIG_DIR=/tmp/sharpdevelop-librewpf-template-config LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_TEMPLATE_SMOKE=1 LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=9000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+SharpDevelop.Full.LibreWpf focused rebuild -> succeeds, 38 warnings, 0 errors
+Template smoke                             -> Success, categories=27, fileTemplates=85, projectTemplates=55, selectedFileTemplate=Empty text file, createdOpenedFile=True, openedFileRegistered=True, createdOpenFilesClosed=True, cleanup=True; exit code 0
+Known remaining runtime noise              -> a WinForms-hosted pad logs FileNotFoundException for System.Windows.Forms, Version=11.0.0.0 before the smoke; this is tracked under the LibreWinForms parity work.
+```
+
 ## 2026-07-09 SharpDevelop editor navigation smoke extension
 
 The full SharpDevelop LibreWPF workbench now has `LIBREWPF_SHARPDEVELOP_EDITOR_NAVIGATION_SMOKE` for editor navigation coverage. The smoke opens a real file-backed AvalonEdit document, finds a stable source marker, calls the normal `SD.FileService.JumpToFilePosition(...)` route used by class-browser/editor navigation features, and verifies the returned active content, selected file, caret line/column, caret offset, and presentation source.

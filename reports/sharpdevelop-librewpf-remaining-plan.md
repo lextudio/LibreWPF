@@ -24,6 +24,8 @@ The latest close/reopen solution pass adds `LIBREWPF_SHARPDEVELOP_CLOSE_REOPEN_S
 
 The latest shutdown persistence pass adds the LibreWPF-only `LIBREWPF_SHARPDEVELOP_CONFIG_DIR` startup override so package-mode smokes can run against isolated settings directories, plus `LIBREWPF_SHARPDEVELOP_SHUTDOWN_PERSISTENCE_SMOKE` to validate the normal SharpDevelop shutdown save path. The smoke writes a marker through `SD.PropertyService` while the workbench is running, then validates after `propertyService.Save()` that the isolated `SharpDevelopProperties.xml` persisted the top-level marker, nested smoke state, `WorkbenchMemento`, and `WindowState`, and that AvalonDock wrote `layouts/Default.xml`. `SharpDevelop.Full.LibreWpf.csproj` with ResourceToolkit included builds with `287` warnings and `0` errors from a fresh package cache and `39` warnings and `0` errors incrementally; the isolated-config smoke exits with code `0` and reports `Success marker=SessionA fileExists=True layoutSaved=True markerSaved=True nestedMarkerSaved=True workbenchMementoSaved=True windowStateSaved=True`.
 
+The latest template-service pass adds `LIBREWPF_SHARPDEVELOP_TEMPLATE_SMOKE` to validate `SD.Templates.UpdateTemplates()` through the real package-mode add-in tree. The smoke walks the typed `TemplateCategory` graph, verifies file and project template inventory, creates an `Empty text file` through the public `FileTemplate.Create(...)`/`RunActions(...)` path, verifies the created opened file is registered, closes the generated view, and verifies cleanup. The first run exposed an unavailable add-in `RunCommand` action aborting template catalog load; `FileTemplateImpl.ReadAction(...)` now validates the built action item is an `ICommand` and warns/skips unavailable action commands instead of throwing out all templates. The focused rebuild succeeds with `38` warnings and `0` errors, and the template smoke reports `Success categories=27 fileTemplates=85 projectTemplates=55 selectedFileTemplate=Empty text file createdOpenedFile=True openedFileRegistered=True createdOpenFilesClosed=True cleanup=True`.
+
 SharpDevelop is not yet fully runnable as an IDE. The remaining work below is the plan for the next implementation phase.
 
 ## Remaining implementation work
@@ -51,13 +53,15 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 
 5. Broaden workbench service/runtime coverage.
    - Covered now: source-file save flows through the normal workbench save command, workbench-wide `SaveAllFiles.SaveAll()`, dirty-state transitions, temporary-file safe saving, explicit reload command coverage, external disk-change reload validation, untitled new-file creation, non-dialog save-as path, opened-file rekeying, close-all command cleanup, opened-file deregistration, close-solution cleanup, same-solution reopen, project-count restoration, isolated-config settings write, workbench memento persistence, AvalonDock default-layout persistence, and restore/cleanup validation.
-   - Remaining: exercise debug commands, templates, add-in loading, command routing, broader workbench pads, toolbar updates, additional project loading cases, modal save-as dialog routing, and external-change prompt paths for dirty files.
+   - Covered now: package-mode template catalog loading, typed file/project template inventory, and a real file-template create/run-actions/opened-file cleanup path.
+   - Remaining: exercise project-template creation, debug commands, add-in loading, command routing, broader workbench pads, toolbar updates, additional project loading cases, modal save-as dialog routing, and external-change prompt paths for dirty files.
    - Promote each validated runtime feature into a package-mode smoke or focused unit test.
 
 6. Continue LibreWinForms parity for designer surfaces.
    - Finish any missing FormsDesigner runtime and property-grid behavior with source-owned LibreWinForms APIs mirrored into the temporary LibreWPF compatibility package only when needed for current package consumers.
    - Keep source-owned LibreWinForms as the long-term implementation and remove compatibility mirrors once SharpDevelop consumes LibreWinForms directly.
    - Keep LibreWinForms package validation on the matching bridge version and a local LibreWPF/ProGPU feed when testing unpublished bridge bits. The package lane now uses `artifacts/nuget/librewinforms-pack` by default and evicts same-version bridge packages before restore, so stale user/global packages no longer hide missing local bridge content.
+   - Remaining: resolve the current package-mode hosted-pad dispatcher warning where `CustomWindowsFormsHost.Child` tries to load `System.Windows.Forms, Version=11.0.0.0` before the LibreWinForms assembly identity/runtime binding is fully coherent.
 
 7. Complete ResourceToolkit feature parity.
    - The ResourceToolkit package-mode wrapper now builds and can be included in `SharpDevelop.Full.LibreWpf` with `LibreWpfSharpDevelopIncludeResourceToolkit=true`.
@@ -82,6 +86,7 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 - The close-all smoke remains green for `CloseAllWindows` and verifies the requested view contents and opened-file registrations are removed.
 - The close/reopen solution smoke remains green for `CloseSolution` plus `SD.ProjectService.OpenSolutionOrProject(...)` and verifies solution state, view contents, opened-file registrations, and reopened project count.
 - The shutdown persistence smoke remains green with `LIBREWPF_SHARPDEVELOP_CONFIG_DIR` pointed at an isolated directory and verifies the settings XML marker, nested smoke state, workbench memento, window state, and AvalonDock layout file after normal shutdown.
+- The template smoke remains green and verifies template catalog loading, file/project template inventory, file-template creation, opened-file registration, generated-view close, and cleanup.
 - A ResourceToolkit-included full wrapper build remains green, `${res:...}` resource refactoring remains enabled, the ResourceToolkit smoke remains green, and feature smokes are added as BCL/strongly typed resource support and cleanup UI parity are restored.
 - AvalonDock float/auto-hide/dock restore smoke remains green, and any broader floating-window hook work keeps the ProGPU/LibreWPF path reflection-free.
 - Reports stay updated after every slice with exact commands, warning/error counts, and any remaining blocker.

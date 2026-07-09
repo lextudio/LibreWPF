@@ -134,6 +134,32 @@ Broad SharpDevelop smoke                       -> menu/context/ComboBox/toolbar 
 LibreWinForms docs verification                -> succeeds
 ```
 
+## 2026-07-09 ResourceToolkit smoke hook pass
+
+The full SharpDevelop LibreWPF workbench now has a generic typed add-in smoke extension point at `/SharpDevelop/LibreWpf/SmokeHooks`. The main workbench discovers `ILibreWpfSmokeHook` instances through AddInTree and schedules only hooks whose environment variable is set, so ResourceToolkit validation does not introduce a direct main-workbench dependency on the ResourceToolkit add-in.
+
+ResourceToolkit registers `Hornung.ResourceToolkit.LibreWpf.LibreWpfResourceToolkitSmokeHook`, enabled by `LIBREWPF_SHARPDEVELOP_RESOURCE_TOOLKIT_SMOKE`. The hook waits for the active solution, runs the LibreWPF `${res:...}` refactoring service across `SearchScope.WholeSolution`, and reports candidate file, reference, missing-key, and unused-key counts without mutating project files.
+
+The ResourceToolkit add-in descriptor still contains historical NRefactory resolver and C#/VB resource-completion entries. Because the LibreWPF project intentionally excludes the old NRefactory AST implementation, those add-in identities now resolve to explicit LibreWPF no-op implementations. This keeps add-in loading and editor completion safe while making the unsupported BCL/strongly typed resource path fail closed instead of reviving the old parser stack.
+
+Validation:
+
+```text
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/AddIns/Misc/ResourceToolkit/Project/ResourceToolkit.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /nr:false /p:LibreWpfSharpDevelopIncludeResourceToolkit=true
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 PROGPU_WPF_TRACE_NATIVE_LOOP=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_RESOURCE_TOOLKIT_SMOKE=WholeSolution LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=20000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 PROGPU_WPF_TRACE_NATIVE_LOOP=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_RESOURCE_TOOLKIT_SMOKE=WholeSolution LIBREWPF_SHARPDEVELOP_EDITOR_COMPLETION_SMOKE=1 LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=25000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+ResourceToolkit.LibreWpf Release build            -> succeeds, 1 warning, 0 errors
+SharpDevelop.Full.LibreWpf ResourceToolkit build  -> succeeds, 39 warnings, 0 errors
+ResourceToolkit smoke                             -> Success, mode=WholeSolution, files=8, references=0, missing=0, unused=0; exit code 0
+ResourceToolkit + editor completion smoke         -> ResourceToolkit Success plus editor completion Opened, bindings=8, items=12; exit code 0
+```
+
 ## 2026-07-09 AvalonDock non-client hook contract
 
 AvalonDock floating windows still consume legacy title-bar/non-client messages through `WindowInteropWrapper.FilterMessage(...)`. The concrete messages used by the SharpDevelop copy are `WM_NCLBUTTONDOWN` for starting dock drags, `WM_NCLBUTTONDBLCLK` for dock/maximize toggles, and `WM_NCRBUTTONDOWN`/`WM_NCRBUTTONUP` for floating-window title context menus.

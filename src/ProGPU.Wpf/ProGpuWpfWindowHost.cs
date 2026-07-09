@@ -27,10 +27,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 {
     private const string TraceRenderSurfaceEnvironmentVariable = "PROGPU_WPF_TRACE_RENDER_SURFACE";
     private const string TraceInputEnvironmentVariable = "PROGPU_WPF_TRACE_INPUT";
+    private const string TraceNativeLoopEnvironmentVariable = "PROGPU_WPF_TRACE_NATIVE_LOOP";
     private const int HitTestOwnerBufferCapacity = 64;
+    private static readonly TimeSpan PortableNativeLoopActiveDelay = TimeSpan.FromMilliseconds(1);
+    private static readonly TimeSpan PortableNativeLoopIdleDelay = TimeSpan.FromMilliseconds(16);
 
     private static readonly bool s_traceRenderSurface = IsTraceEnabled(TraceRenderSurfaceEnvironmentVariable);
     private static readonly bool s_traceInput = IsTraceEnabled(TraceInputEnvironmentVariable);
+    private static readonly bool s_traceNativeLoop = IsTraceEnabled(TraceNativeLoopEnvironmentVariable);
 
     private readonly ProGpuWpfWindowOptions _options;
     private IWindow? _window;
@@ -66,6 +70,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _isProcessingDispatcherWorkWakeup;
     private bool _forceFullWpfReplay;
     private bool _isHostVisible;
+    private bool _hasNativeWindowCloseStarted;
     private ProGpuWpfWindowState _windowState;
     private string _windowTitle;
     private int _clientWidth;
@@ -274,6 +279,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal long NativeLoopWakeupCount { get; private set; }
 
+    internal long NativeLoopOwnerActivationCount { get; private set; }
+
+    internal long NativeLoopOwnerIterationCount { get; private set; }
+
     internal bool HasGpuHitTestCache => !_isDisposed && _target?.LastGpuHitTestIndex != null;
 
     public Action<MediaDrawingContext, ProGpuWpfFrameEventArgs>? Draw { get; set; }
@@ -289,15 +298,65 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         EnsureWindow();
         _window!.IsVisible = true;
         _isNativeLoopRunning = true;
+        TraceNativeLoop("run entering: " + CreateNativeLoopTraceState());
         try
         {
-            _window!.Run();
+            RunPortableNativeLoop();
         }
         finally
         {
             _isNativeLoopRunning = false;
             DisposeDeferredNativeWindowIfNeeded();
+            TraceNativeLoop("run leaving: " + CreateNativeLoopTraceState());
         }
+    }
+
+    private void RunPortableNativeLoop()
+    {
+        if (!ShouldKeepPortableNativeRunLoopAlive())
+        {
+            TraceNativeLoop("owner loop skipped: " + CreateNativeLoopTraceState());
+            return;
+        }
+
+        NativeLoopOwnerActivationCount++;
+        TraceNativeLoop("owner loop entering: " + CreateNativeLoopTraceState());
+        while (ShouldKeepPortableNativeRunLoopAlive())
+        {
+            var hadPendingRender = WpfRenderScheduler.HasPendingRenderRequest;
+            try
+            {
+                DoEvents();
+            }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
+            catch (InvalidOperationException) when (!ShouldKeepPortableNativeRunLoopAlive())
+            {
+                return;
+            }
+
+            NativeLoopOwnerIterationCount++;
+            if (!ShouldKeepPortableNativeRunLoopAlive())
+            {
+                return;
+            }
+
+            Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest
+                ? PortableNativeLoopActiveDelay
+                : PortableNativeLoopIdleDelay);
+        }
+
+        TraceNativeLoop("owner loop leaving: " + CreateNativeLoopTraceState());
+    }
+
+    private bool ShouldKeepPortableNativeRunLoopAlive()
+    {
+        var window = _window;
+        return !_isDisposed &&
+            !_hasNativeWindowCloseStarted &&
+            window != null;
     }
 
     public void Initialize()
@@ -741,6 +800,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void RequestNativeWindowClose(IWindow window)
     {
+        _hasNativeWindowCloseStarted = true;
+        TraceNativeLoop("close requested: " + CreateNativeLoopTraceState());
         window.Close();
         TryRequestNativeLoopWakeup(window.ContinueEvents);
     }
@@ -768,6 +829,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         _window = Window.Create(windowOptions);
+        _hasNativeWindowCloseStarted = false;
         _window.Load += OnLoad;
         _window.Update += OnUpdate;
         _window.Render += OnRender;
@@ -1141,6 +1203,23 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             $"pixels {geometry.PixelWidth}x{geometry.PixelHeight}, " +
             $"viewport {ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth)}x{ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight)}@{geometry.ViewportX},{geometry.ViewportY}, " +
             $"dpi {geometry.DpiScale:0.###}");
+    }
+
+    private void TraceNativeLoop(string message)
+    {
+        if (!s_traceNativeLoop)
+        {
+            return;
+        }
+
+        Console.WriteLine("ProGPU WPF native loop: " + message);
+    }
+
+    private string CreateNativeLoopTraceState()
+    {
+        return $"disposed={_isDisposed}, closeStarted={_hasNativeWindowCloseStarted}, " +
+            $"hostVisible={_isHostVisible}, hasWindow={_window != null}, " +
+            $"ownerActivations={NativeLoopOwnerActivationCount}, ownerIterations={NativeLoopOwnerIterationCount}";
     }
 
     private WpfVisualReplayResult ReplayPortablePopups(
@@ -1834,6 +1913,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _isInNativeWindowCloseCallback = true;
         try
         {
+            _hasNativeWindowCloseStarted = true;
+            TraceNativeLoop("closing event entering: " + CreateNativeLoopTraceState());
             var args = new ProGpuWpfWindowClosingEventArgs();
             Closing?.Invoke(this, args);
             if (args.Cancel)
@@ -1843,13 +1924,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     _window.IsClosing = false;
                 }
 
+                _hasNativeWindowCloseStarted = false;
                 _isHostVisible = true;
+                TraceNativeLoop("closing event canceled: " + CreateNativeLoopTraceState());
                 RequestRenderAndWakeNativeLoop();
                 return;
             }
 
             _isHostVisible = false;
             DisposeTarget();
+            TraceNativeLoop("closing event accepted: " + CreateNativeLoopTraceState());
         }
         finally
         {

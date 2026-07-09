@@ -14,12 +14,15 @@ The latest AvalonDock pass also adds a typed handle-based `PortableWindowRegion`
 
 LibreWinForms repository packaging/default-branch status was rechecked on 2026-07-09. `wieslawsoltes/winforms` already reports `librewinforms-progpu-port` as default branch with the LibreWinForms description/topics, and `./eng/librewinforms-verify-docs.sh` succeeds, so no new WinForms commit was needed for that request.
 
+The latest SharpDevelop crash pass fixed a LibreWPF host-loop shutdown bug instead of adding a SharpDevelop workaround. A macOS crash report showed the failed thread inside `glfwWindowShouldClose` after the broad smoke run finished. `ProGpuWpfWindowHost.Run()` now owns the portable native loop, pumps `DoEvents()`, exits on a LibreWPF-owned close-start flag, and avoids `IWindow.Run()`, `IWindow.IsClosing`, or trace-time native window property reads during shutdown. The refreshed `LibreWPF.ProGPU` local package rebuilds `SharpDevelop.Full.LibreWpf`, and the final crash-regression smoke exits with code `0` while validating menu/context/ComboBox/toolbar popups, ProjectBrowser, property pad, FormsDesigner load/mutation, and LineCounter build. The optional AvalonDock detail, editor-completion, and hosted WinForms `ContextMenuStrip` markers did not emit in that final owner-loop run, so they remain explicit next validation items even though earlier package-mode passes covered them. No new ProGPU or LibreWinForms code changes were required for this slice.
+
 SharpDevelop is not yet fully runnable as an IDE. The remaining work below is the plan for the next implementation phase.
 
 ## Remaining implementation work
 
 1. Expand portable HWND hook coverage.
    - Covered now: activation, mouse activation, show/hide, basic move/resize, portable window regions, and non-client/title-bar mouse hook dispatch for `WM_NCMOUSEMOVE`, `WM_NCLBUTTONDOWN`, `WM_NCLBUTTONDBLCLK`, and `WM_NCRBUTTONDOWN`/`WM_NCRBUTTONUP` when a platform service supplies typed non-client events.
+   - Covered now: the WPF package host no longer delegates lifetime to Silk.NET `IWindow.Run()` and no longer polls `IWindow.IsClosing` after close begins.
    - Remaining: add native host event generation for title-bar/non-client mouse events on supported platform backends, add exact window-position data when consumers need native `WINDOWPOS` details, and cover any additional region/floating-window events used by AvalonDock and SharpDevelop.
    - Keep the existing activation hook path reflection-free and extend it with neutral DTOs rather than passing native Win32 structs through package APIs.
 
@@ -30,7 +33,7 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 
 3. Complete remaining popup runtime validation.
    - Covered now: main menu, real AddInTree context menu, ComboBox, Core.Presentation toolbar drop-down button, hosted WinForms `ContextMenuStrip`, AvalonEdit completion popup, AvalonDock floating-window context menu, and AvalonDock auto-hide flyout through package-mode SharpDevelop flows.
-   - Remaining: validate AvalonDock tab/dropdown context-menu interactions and manual user-driven menu/context-menu flows beyond the in-process smoke harness.
+   - Remaining: validate AvalonDock tab/dropdown context-menu interactions, explicit editor-completion smoke logging in the newest owner-loop run, and manual user-driven menu/context-menu flows beyond the in-process smoke harness.
    - Add more in-process validation helpers only where macOS automation permissions block reliable external driving.
 
 4. Add AvalonEdit IME/text-input seam.

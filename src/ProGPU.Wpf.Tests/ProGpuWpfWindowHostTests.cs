@@ -1,3 +1,4 @@
+using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
@@ -179,6 +180,28 @@ public sealed class ProGpuWpfWindowHostTests
         var options = new ProGpuWpfWindowOptions();
 
         Assert.True(options.IsEventDriven);
+    }
+
+    [Fact]
+    public void NativeRunUsesOwnerDrivenPortableLoop()
+    {
+        var source = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowHost.cs"));
+
+        Assert.DoesNotContain("_window!.Run();", source, StringComparison.Ordinal);
+        Assert.Contains("RunPortableNativeLoop();", source, StringComparison.Ordinal);
+        Assert.Contains("private void RunPortableNativeLoop()", source, StringComparison.Ordinal);
+        Assert.Contains("while (ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
+        Assert.Contains("DoEvents();", source, StringComparison.Ordinal);
+        Assert.Contains("Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest", source, StringComparison.Ordinal);
+        Assert.Contains("private bool ShouldKeepPortableNativeRunLoopAlive()", source, StringComparison.Ordinal);
+        Assert.Contains("!_hasNativeWindowCloseStarted", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("!window.IsClosing", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("windowClosing", source, StringComparison.Ordinal);
+        Assert.Contains("_hasNativeWindowCloseStarted = true;", source, StringComparison.Ordinal);
+        Assert.Contains("_hasNativeWindowCloseStarted = false;", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -2325,6 +2348,28 @@ public sealed class ProGpuWpfWindowHostTests
         typeof(ProGpuWpfWindowHost)
             .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(instance, value);
+    }
+
+    private static string FindRepoPath(params string[] pathSegments)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            var candidate = directory.FullName;
+            foreach (var segment in pathSegments)
+            {
+                candidate = Path.Combine(candidate, segment);
+            }
+
+            if (File.Exists(candidate) || Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException($"Could not find repository path '{Path.Combine(pathSegments)}'.");
     }
 
     private static void RaisePlatformInput(ProGpuWpfWindowHost host, WpfInputEventArgs args)

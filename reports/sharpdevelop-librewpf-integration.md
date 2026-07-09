@@ -2014,6 +2014,35 @@ WPF superproject submodule update                                         -> poi
 
 Local package-lane validation should keep using the matching bridge version and explicit LibreWPF/ProGPU feed when validating unpublished bridge bits. The pack script now owns `artifacts/nuget/librewinforms-pack` by default and evicts the current bridge package versions before restore, so package-mode validation is no longer sensitive to stale packages already present in `~/.nuget/packages`.
 
+## 2026-07-09 SharpDevelop native loop crash fix
+
+The broad SharpDevelop package-mode smoke exposed a macOS native-window crash after the validated popup/AvalonDock/FormsDesigner flows completed. The process exited with code `139`; the crash report at `/Users/wieslawsoltes/Library/Logs/DiagnosticReports/dotnet-2026-07-09-015852.ips` showed the faulting thread inside `glfwWindowShouldClose` with an invalid `0x20` address. That pointed at LibreWPF/ProGPU host-loop shutdown polling rather than a SharpDevelop app bug.
+
+`ProGpuWpfWindowHost.Run()` now uses an owner-driven portable loop instead of `IWindow.Run()`. The loop pumps Silk.NET events through the existing `DoEvents()` path, tracks close-start state with `_hasNativeWindowCloseStarted`, wakes the native event queue on close requests, and exits without polling `IWindow.IsClosing` or other native window properties after close has begun. The optional `PROGPU_WPF_TRACE_NATIVE_LOOP=1` diagnostics also avoid native property reads and only report LibreWPF-owned state.
+
+Validation:
+
+```text
+dotnet build src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj -c Release -v:minimal /nr:false
+dotnet vstest src/ProGPU.Wpf.Tests/bin/Release/net10.0/ProGPU.Wpf.Tests.dll --Tests:ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests.NativeRunUsesOwnerDrivenPortableLoop
+dotnet pack src/ProGPU.Wpf/ProGPU.Wpf.csproj -c Release -o artifacts/packages/SharpDevelopLocal -v:minimal -p:Version=0.1.0-preview.sharpdevelop.1 -p:PackageVersion=0.1.0-preview.sharpdevelop.1 /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-ownerloop-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-ownerloop-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 PROGPU_WPF_TRACE_NATIVE_LOOP=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_FULL_POPUP_SMOKE=All LIBREWPF_SHARPDEVELOP_AVALONDOCK_SMOKE=ProjectBrowser LIBREWPF_SHARPDEVELOP_BUILD_SMOKE=Solution LIBREWPF_SHARPDEVELOP_RESX_SMOKE=1 LIBREWPF_SHARPDEVELOP_PROPERTY_PAD_SMOKE=1 LIBREWPF_SHARPDEVELOP_WINFORMS_CONTEXT_MENU_SMOKE=1 LIBREWPF_SHARPDEVELOP_EDITOR_COMPLETION_SMOKE=1 LIBREWPF_SHARPDEVELOP_FORMS_DESIGNER_SMOKE=/Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=45000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+ProGPU.Wpf.Tests Release build                         -> succeeds, 95 existing warnings, 0 errors
+Owner-driven native loop guard test                    -> 1 passed, 0 failed
+LibreWPF.ProGPU SharpDevelopLocal pack                 -> succeeds, 0.1.0-preview.sharpdevelop.1 refreshed
+SharpDevelop.Full.LibreWpf fresh-cache build           -> succeeds, 286 warnings, 0 errors
+SharpDevelop broad package-mode smoke                  -> exit code 0
+Validated runtime markers                              -> menu/context/ComboBox/toolbar popups, ProjectBrowser, property pad, FormsDesigner load/mutation, LineCounter build
+Optional smoke markers not emitted in this final run    -> AvalonDock ProjectBrowser detail, editor completion, hosted WinForms ContextMenuStrip
+Native-loop trace                                      -> owner loop entered and exited without a new crash report
+```
+
 ## 2026-07-08 AvalonDock show/hide hook pass
 
 AvalonDock floating/flyout windows also observe visibility transitions through the legacy `HwndSource.AddHook(...)` path. LibreWPF now carries typed `Shown` and `Hidden` window event kinds and translates both platform-raised visibility events and direct WPF `Show()`/`Hide()` activation callbacks into `WM_SHOWWINDOW`. `wParam` is `1` for show and `0` for hide, with no fake native structures or reflected state.

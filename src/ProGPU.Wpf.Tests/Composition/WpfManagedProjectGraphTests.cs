@@ -8075,6 +8075,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Shell",
             "WindowChromeWorker.cs"));
+        var jumpList = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Shell",
+            "JumpList.cs"));
         var systemCommands = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -8578,7 +8587,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void ForceMsaaToUiaBridgeWindows(PopupRoot popupRoot)", popup, StringComparison.Ordinal);
         AssertGuardBefore(popup, "if (!OperatingSystem.IsWindows())\n                {\n                    return;\n                }\n\n                ForceMsaaToUiaBridgeWindows(popupRoot);", "IAccessible acc");
         AssertGuardBefore(popup, "if (!OperatingSystem.IsWindows())\n                {\n                    if (TryCreatePortablePopupSource", "HwndSource newWindow = new HwndSource(param)");
-        AssertGuardBefore(popup, "if (!OperatingSystem.IsWindows())\n            {\n                Rect sourceBounds", "SafeNativeMethods.MonitorFromRect");
+        AssertGuardBefore(popup, "if (!OperatingSystem.IsWindows())\n            {\n                Rect primaryScreenBounds = GetPortablePrimaryScreenBounds();", "SafeNativeMethods.MonitorFromRect");
         Assert.Contains("SystemParameters.PrimaryScreenWidth", popup, StringComparison.Ordinal);
         AssertGuardBefore(popup, "if (IsPerMonitorDpiScalingActive && OperatingSystem.IsWindows())", "SafeNativeMethods.MonitorFromPoint");
         Assert.Contains("if (!OperatingSystem.IsWindows())\n                {\n                    if (position)", popup, StringComparison.Ordinal);
@@ -8759,6 +8768,10 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows() || _hwnd == IntPtr.Zero || _hwndSource == null)", "_hwndSource.RemoveHook(_WndProc)");
         Assert.Contains("private void _ApplyPortableCustomChrome()", windowChromeWorker, StringComparison.Ordinal);
         Assert.Contains("if (_chromeInfo == null || _window == null)", windowChromeWorker, StringComparison.Ordinal);
+        AssertGuardBefore(jumpList, "OperatingSystem.IsWindows()\n                ? UnsafeNativeMethods.GetModuleFileName", "UnsafeNativeMethods.GetModuleFileName(new HandleRef())");
+        AssertGuardBefore(jumpList, "if (!OperatingSystem.IsWindows())", "NativeMethods2.SHAddToRecentDocs(itemPath)");
+        AssertGuardBefore(jumpList, "if (!OperatingSystem.IsWindows())", "IShellLinkW shellLink = CreateLinkFromJumpTask(jumpTask, false)");
+        AssertGuardBefore(jumpList, "if (!OperatingSystem.IsWindows() || !Utilities.IsOSWindows7OrNewer)", "var destinationList = (ICustomDestinationList)Activator.CreateInstance");
         AssertGuardBefore(systemCommands, "if (!OperatingSystem.IsWindows())", "new WindowInteropHelper(window).Handle");
         AssertGuardBefore(systemCommands, "if (!OperatingSystem.IsWindows())", "NativeMethods.GetSystemMenu(hwnd, false)");
         Assert.Contains("window.WindowState = WindowState.Maximized", systemCommands, StringComparison.Ordinal);

@@ -2249,6 +2249,31 @@ Optional smoke markers not emitted in this final run    -> AvalonDock ProjectBro
 Native-loop trace                                      -> owner loop entered and exited without a new crash report
 ```
 
+## 2026-07-09 SharpDevelop close/reopen solution and JumpList portability pass
+
+The SharpDevelop workbench smoke harness now includes `LIBREWPF_SHARPDEVELOP_CLOSE_REOPEN_SOLUTION_SMOKE`. The smoke opens requested file-backed editors, runs the real `CloseSolution` command, verifies the current solution, view contents, and opened-file registrations are cleared, reopens the same solution through `SD.ProjectService.OpenSolutionOrProject(...)`, and verifies the project count is restored.
+
+The first package-mode run exposed a LibreWPF portability gap in `System.Windows.Shell.JumpList`. SharpDevelop's recent-project update called `JumpList.AddToRecentCategory(...)` during solution reopen, which initialized `JumpList` through `kernel32!GetModuleFileName` and then attempted Windows Shell recent-document APIs on macOS. LibreWPF now keeps path validation, uses `Environment.ProcessPath` for the non-Windows process path fallback, no-ops recent-document registration outside Windows, and rejects applied JumpLists before creating the Windows Shell destination-list COM object. The guard coverage is source-level in `RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints`.
+
+Validation:
+
+```text
+PresentationFramework Release build                                      -> succeeds, 2 existing warnings, 0 errors
+ProGPU.Wpf.Tests Release build                                           -> succeeds, 95 existing warnings, 0 errors
+Platform-entrypoint guard focused test                                   -> 1 passed, 0 failed
+LibreWPF.Transport SharpDevelopLocal pack                                -> succeeds, 0.1.0-preview.sharpdevelop.1 refreshed
+SharpDevelop.Full.LibreWpf fresh-cache ResourceToolkit build             -> succeeds, 287 warnings, 0 errors
+SharpDevelop close/reopen solution smoke                                 -> succeeds, exit code 0
+```
+
+Runtime result:
+
+```text
+LibreWPF close/reopen solution smoke result=Success solution=LineCounter.sln beforeProjects=1 afterProjects=1 beforeViews=3 viewsAfterClose=0 beforeTrackedOpenFiles=2 trackedOpenFilesAfterClose=0 remainingOpenedContentsAfterClose=0 closeClearedSolution=True reopened=True reopenedCurrentSolution=True
+```
+
+The run still prints the existing ProGPU shutdown-loop diagnostic `You cannot call Reset inside of the render loop!` after the smoke has passed and the process is exiting. That remains a ProGPU host-loop cleanup item, not a SharpDevelop close/reopen solution blocker.
+
 ## 2026-07-08 AvalonDock show/hide hook pass
 
 AvalonDock floating/flyout windows also observe visibility transitions through the legacy `HwndSource.AddHook(...)` path. LibreWPF now carries typed `Shown` and `Hidden` window event kinds and translates both platform-raised visibility events and direct WPF `Show()`/`Hide()` activation callbacks into `WM_SHOWWINDOW`. `wParam` is `1` for show and `0` for hide, with no fake native structures or reflected state.

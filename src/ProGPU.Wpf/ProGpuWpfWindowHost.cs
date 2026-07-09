@@ -283,6 +283,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal long NativeLoopOwnerIterationCount { get; private set; }
 
+    internal long NativeLoopOwnerDoEventsCallCount { get; private set; }
+
     internal bool HasGpuHitTestCache => !_isDisposed && _target?.LastGpuHitTestIndex != null;
 
     public Action<MediaDrawingContext, ProGpuWpfFrameEventArgs>? Draw { get; set; }
@@ -302,6 +304,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         try
         {
             RunPortableNativeLoop();
+        }
+        catch (Exception ex)
+        {
+            TraceNativeLoop("run failed: " + ex);
+            throw;
         }
         finally
         {
@@ -324,22 +331,36 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         while (ShouldKeepPortableNativeRunLoopAlive())
         {
             var hadPendingRender = WpfRenderScheduler.HasPendingRenderRequest;
+            NativeLoopOwnerDoEventsCallCount++;
             try
             {
                 DoEvents();
             }
-            catch (ObjectDisposedException)
+            catch (ObjectDisposedException ex) when (!ShouldKeepPortableNativeRunLoopAlive())
             {
+                TraceNativeLoop("owner loop close/dispose exit after ObjectDisposedException: " + ex.ObjectName);
                 return;
             }
-            catch (InvalidOperationException) when (!ShouldKeepPortableNativeRunLoopAlive())
+            catch (ObjectDisposedException ex)
             {
+                TraceNativeLoop("owner loop unexpected ObjectDisposedException: " + ex);
+                throw;
+            }
+            catch (InvalidOperationException ex) when (!ShouldKeepPortableNativeRunLoopAlive())
+            {
+                TraceNativeLoop("owner loop close/dispose exit after InvalidOperationException: " + ex.Message);
                 return;
+            }
+            catch (Exception ex)
+            {
+                TraceNativeLoop("owner loop unexpected exception: " + ex);
+                throw;
             }
 
             NativeLoopOwnerIterationCount++;
             if (!ShouldKeepPortableNativeRunLoopAlive())
             {
+                TraceNativeLoop("owner loop stopping after DoEvents: " + CreateNativeLoopTraceState());
                 return;
             }
 
@@ -1219,7 +1240,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         return $"disposed={_isDisposed}, closeStarted={_hasNativeWindowCloseStarted}, " +
             $"hostVisible={_isHostVisible}, hasWindow={_window != null}, " +
-            $"ownerActivations={NativeLoopOwnerActivationCount}, ownerIterations={NativeLoopOwnerIterationCount}";
+            $"ownerActivations={NativeLoopOwnerActivationCount}, ownerDoEvents={NativeLoopOwnerDoEventsCallCount}, " +
+            $"ownerIterations={NativeLoopOwnerIterationCount}";
     }
 
     private WpfVisualReplayResult ReplayPortablePopups(

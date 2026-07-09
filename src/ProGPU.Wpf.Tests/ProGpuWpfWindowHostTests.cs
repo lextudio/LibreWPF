@@ -198,6 +198,9 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Contains("Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest", source, StringComparison.Ordinal);
         Assert.Contains("private bool ShouldKeepPortableNativeRunLoopAlive()", source, StringComparison.Ordinal);
         Assert.Contains("!_hasNativeWindowCloseStarted", source, StringComparison.Ordinal);
+        Assert.Contains("catch (ObjectDisposedException ex) when (!ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
+        Assert.Contains("owner loop unexpected ObjectDisposedException", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("catch (ObjectDisposedException)\n            {\n                return;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("!window.IsClosing", source, StringComparison.Ordinal);
         Assert.DoesNotContain("windowClosing", source, StringComparison.Ordinal);
         Assert.Contains("_hasNativeWindowCloseStarted = true;", source, StringComparison.Ordinal);

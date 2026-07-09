@@ -14,7 +14,7 @@ The latest AvalonDock pass also adds a typed handle-based `PortableWindowRegion`
 
 LibreWinForms repository packaging/default-branch status was rechecked on 2026-07-09. `wieslawsoltes/winforms` already reports `librewinforms-progpu-port` as default branch with the LibreWinForms description/topics, and `./eng/librewinforms-verify-docs.sh` succeeds, so no new WinForms commit was needed for that request.
 
-The latest SharpDevelop crash pass fixed a LibreWPF host-loop shutdown bug instead of adding a SharpDevelop workaround. A macOS crash report showed the failed thread inside `glfwWindowShouldClose` after the broad smoke run finished. `ProGpuWpfWindowHost.Run()` now owns the portable native loop, pumps `DoEvents()`, exits on a LibreWPF-owned close-start flag, and avoids `IWindow.Run()`, `IWindow.IsClosing`, or trace-time native window property reads during shutdown. The refreshed `LibreWPF.ProGPU` local package rebuilds `SharpDevelop.Full.LibreWpf`, and the final crash-regression smoke exits with code `0` while validating menu/context/ComboBox/toolbar popups, ProjectBrowser, property pad, FormsDesigner load/mutation, and LineCounter build. The optional AvalonDock detail, editor-completion, and hosted WinForms `ContextMenuStrip` markers did not emit in that final owner-loop run, so they remain explicit next validation items even though earlier package-mode passes covered them. No new ProGPU or LibreWinForms code changes were required for this slice.
+The latest SharpDevelop crash pass fixed a LibreWPF host-loop shutdown bug instead of adding a SharpDevelop workaround. A macOS crash report showed the failed thread inside `glfwWindowShouldClose` after the broad smoke run finished. `ProGpuWpfWindowHost.Run()` now owns the portable native loop, pumps `DoEvents()`, exits on a LibreWPF-owned close-start flag, and avoids `IWindow.Run()`, `IWindow.IsClosing`, or trace-time native window property reads during shutdown. The follow-up package-coherence pass also refreshed every ProGPU package in the SharpDevelop-local feed after a stale same-version `ProGPU.Scene.dll` hid the current `Visual.GeometryClip` API and caused a runtime `MissingMethodException`. The refreshed ProGPU package set plus refreshed `LibreWPF.ProGPU` local package rebuild `SharpDevelop.Full.LibreWpf`, and the final owner-loop smoke exits with code `0` while validating menu/context/ComboBox/toolbar popups, hosted WinForms `ContextMenuStrip`, AvalonDock floating/context menu/redock/auto-hide/flyout, ProjectBrowser, property pad, FormsDesigner load/mutation, ResX, LineCounter build, and editor completion. No new ProGPU or LibreWinForms source changes were required for this slice.
 
 SharpDevelop is not yet fully runnable as an IDE. The remaining work below is the plan for the next implementation phase.
 
@@ -33,7 +33,7 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 
 3. Complete remaining popup runtime validation.
    - Covered now: main menu, real AddInTree context menu, ComboBox, Core.Presentation toolbar drop-down button, hosted WinForms `ContextMenuStrip`, AvalonEdit completion popup, AvalonDock floating-window context menu, and AvalonDock auto-hide flyout through package-mode SharpDevelop flows.
-   - Remaining: validate AvalonDock tab/dropdown context-menu interactions, explicit editor-completion smoke logging in the newest owner-loop run, and manual user-driven menu/context-menu flows beyond the in-process smoke harness.
+   - Remaining: validate AvalonDock tab/dropdown context-menu interactions and manual user-driven menu/context-menu flows beyond the in-process smoke harness.
    - Add more in-process validation helpers only where macOS automation permissions block reliable external driving.
 
 4. Add AvalonEdit IME/text-input seam.
@@ -62,7 +62,7 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 - `SharpDevelop.Full.LibreWpf.csproj` Release fresh-cache build succeeds from the local LibreWPF SDK feed.
 - Focused `ProGPU.Wpf.Tests` popup, activation, host, and LibreWinForms compatibility sets pass.
 - Focused `ProGPU.Wpf.Tests` window geometry hook coverage remains green when AvalonDock hook behavior changes.
-- A runtime smoke opens the workbench, loads a C# project, opens a source file, opens/uses the File menu, editor context menu, toolbar dropdown, completion popup, hosted WinForms context menu, and at least one hosted WinForms combo/tree/list owner-draw surface.
+- A runtime smoke opens the workbench, loads a C# project, opens a source file, opens/uses the File menu, editor context menu, toolbar dropdown, completion popup, hosted WinForms context menu, AvalonDock float/auto-hide/flyout paths, and at least one hosted WinForms combo/tree/list owner-draw surface.
 - A ResourceToolkit-included full wrapper build remains green, and feature smokes are added as each disabled legacy ResourceToolkit command is replaced with a current typed implementation.
 - AvalonDock float/auto-hide/dock restore smoke remains green, and any broader floating-window hook work keeps the ProGPU/LibreWPF path reflection-free.
 - Reports stay updated after every slice with exact commands, warning/error counts, and any remaining blocker.

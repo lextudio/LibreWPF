@@ -78,6 +78,36 @@ LibreWinForms GitHub metadata                -> defaultBranch=librewinforms-prog
 LibreWinForms docs verification              -> succeeds
 ```
 
+## 2026-07-09 Owner-loop package coherence pass
+
+The broad SharpDevelop smoke later exposed a packaging failure rather than a SharpDevelop runtime failure: `LibreWPF.ProGPU` had been packed against the current ProGPU submodule, but the SharpDevelop-local feed still contained stale same-version ProGPU packages. At runtime this loaded an older `ProGPU.Scene.dll` and failed with `MissingMethodException` for `ProGPU.Scene.Visual.GeometryClip`.
+
+The local SharpDevelop feed was refreshed with a coherent `0.1.0-preview.sharpdevelop.1` ProGPU package set from `/Users/wieslawsoltes/GitHub/wpf/external/ProGPU`, then `LibreWPF.ProGPU` was repacked after tightening the native owner-loop diagnostics. The host loop now treats close/dispose exceptions as normal only after LibreWPF has started shutdown, while unexpected `ObjectDisposedException` or other event-pump failures are traced and rethrown instead of making the package-mode app exit silently. The temporary per-iteration trace was removed; `PROGPU_WPF_TRACE_NATIVE_LOOP=1` now records lifecycle transitions and owner-loop counters without flooding the log.
+
+Validation:
+
+```text
+PROGPU_PACKAGE_VERSION=0.1.0-preview.sharpdevelop.1 PROGPU_PACKAGE_OUTPUT=/tmp/progpu-sharpdevelop-packages external/ProGPU/eng/progpu-pack.sh
+cp /tmp/progpu-sharpdevelop-packages/*.0.1.0-preview.sharpdevelop.1.nupkg /tmp/progpu-sharpdevelop-packages/*.0.1.0-preview.sharpdevelop.1.snupkg artifacts/packages/SharpDevelopLocal/
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj -c Release -v:minimal /nr:false
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet vstest src/ProGPU.Wpf.Tests/bin/Release/net10.0/ProGPU.Wpf.Tests.dll --Tests:ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests.NativeRunUsesOwnerDrivenPortableLoop
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet pack src/ProGPU.Wpf/ProGPU.Wpf.csproj -c Release -o artifacts/packages/SharpDevelopLocal -v:minimal -p:Version=0.1.0-preview.sharpdevelop.1 -p:PackageVersion=0.1.0-preview.sharpdevelop.1 /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 PROGPU_WPF_TRACE_NATIVE_LOOP=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_FULL_POPUP_SMOKE=All LIBREWPF_SHARPDEVELOP_AVALONDOCK_SMOKE=ProjectBrowser LIBREWPF_SHARPDEVELOP_BUILD_SMOKE=Solution LIBREWPF_SHARPDEVELOP_RESX_SMOKE=1 LIBREWPF_SHARPDEVELOP_PROPERTY_PAD_SMOKE=1 LIBREWPF_SHARPDEVELOP_WINFORMS_CONTEXT_MENU_SMOKE=1 LIBREWPF_SHARPDEVELOP_EDITOR_COMPLETION_SMOKE=1 LIBREWPF_SHARPDEVELOP_FORMS_DESIGNER_SMOKE=/Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=45000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+ProGPU SharpDevelopLocal package refresh       -> succeeds, coherent ProGPU/LibreWPF.Interop 0.1.0-preview.sharpdevelop.1 packages produced
+ProGPU.Wpf.Tests Release build                 -> succeeds, existing warning set, 0 errors
+Owner-loop regression test                     -> 1 passed, 0 failed
+LibreWPF.ProGPU SharpDevelopLocal pack         -> succeeds, 0.1.0-preview.sharpdevelop.1 refreshed
+SharpDevelop.Full.LibreWpf fresh-cache build   -> succeeds, 286 warnings, 0 errors
+Broad SharpDevelop smoke                       -> main menu, context menu, ComboBox, toolbar popup, hosted WinForms ContextMenuStrip, AvalonDock float/context menu/redock/auto-hide/flyout, ResX, LineCounter build, property pad, FormsDesigner load/mutation, and editor completion all pass; exit code 0
+Native owner-loop trace                         -> no MissingMethodException; closes through expected smoke timer after 1203 DoEvents calls / 1202 owner-loop iterations
+```
+
 ## 2026-07-09 AvalonDock non-client hook contract
 
 AvalonDock floating windows still consume legacy title-bar/non-client messages through `WindowInteropWrapper.FilterMessage(...)`. The concrete messages used by the SharpDevelop copy are `WM_NCLBUTTONDOWN` for starting dock drags, `WM_NCLBUTTONDBLCLK` for dock/maximize toggles, and `WM_NCRBUTTONDOWN`/`WM_NCRBUTTONUP` for floating-window title context menus.

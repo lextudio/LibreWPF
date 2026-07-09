@@ -2433,3 +2433,25 @@ System.Windows.Forms -> System.Drawing.Common, Version=0.0.0.0
 WindowsFormsIntegration -> System.Windows.Forms, Version=0.1.0.0; System.Drawing.Common, Version=0.0.0.0
 Template smoke -> loaded LineCounter.sln, ProjectBrowser rootNodes=1, template catalog path completed, exit code 0
 ```
+
+## 2026-07-09 SharpDevelop project-template smoke extension
+
+The SharpDevelop package-mode template smoke now validates both file-template and project-template paths. `LIBREWPF_SHARPDEVELOP_TEMPLATE_SMOKE` still loads the real template catalog through `SD.Templates.UpdateTemplates()`, creates the simple `Empty text file` file template, verifies opened-file registration, closes generated views, and deletes the temporary file output. It now also selects a project-backed C# Console template through typed `ProjectTemplateImpl` data, creates a temporary solution with `ProjectTemplate.CreateAndOpenSolution(...)`, runs the template open actions, verifies that `Program.cs` opens through the normal AvalonEdit/CSharpBinding path, verifies the generated project file is registered in the temporary solution, closes the generated solution, closes temp project views, and deletes the full temp solution tree.
+
+The smoke no longer waits for the background parser thread before template creation. That wait was too late for the current package-mode app lifetime and is not required for template catalog/project creation. When trace is enabled, the smoke reports that it is continuing while project load is still running.
+
+Validation:
+
+```text
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release --no-restore -v:minimal
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-template-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 LIBREWPF_SHARPDEVELOP_CONFIG_DIR=/tmp/sharpdevelop-librewpf-template-config LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_TEMPLATE_SMOKE=1 LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=25000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln | tee /tmp/sharpdevelop-template-smoke.log
+grep -F "LibreWPF template smoke result=Success" /tmp/sharpdevelop-template-smoke.log
+```
+
+Results:
+
+```text
+SharpDevelop.Full.LibreWpf focused rebuild -> succeeds, 38 warnings, 0 errors
+Template smoke                             -> Success, categories=27, fileTemplates=85, projectTemplates=55, selectedFileTemplate=Empty text file, createdOpenedFile=True, openedFileRegistered=True, createdOpenFilesClosed=True, cleanup=True, selectedProjectTemplate=Console Application, projectCreated=True, projectFileExists=True, projectInSolution=True, projectSolutionOpened=True, projectOpenActionOpenedFile=True, projectClosed=True, projectCleanup=True
+LibreWinForms repo state                   -> default branch librewinforms-progpu-port; description/topics set; README package tables/getting-started present; docs verifier succeeds
+```

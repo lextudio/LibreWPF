@@ -123,6 +123,27 @@ New-file/save-as smoke                          -> Success, file=LibreWpfNewFile
 Temporary output                                -> deleted after smoke
 ```
 
+## 2026-07-09 SharpDevelop editor navigation smoke extension
+
+The full SharpDevelop LibreWPF workbench now has `LIBREWPF_SHARPDEVELOP_EDITOR_NAVIGATION_SMOKE` for editor navigation coverage. The smoke opens a real file-backed AvalonEdit document, finds a stable source marker, calls the normal `SD.FileService.JumpToFilePosition(...)` route used by class-browser/editor navigation features, and verifies the returned active content, selected file, caret line/column, caret offset, and presentation source.
+
+This adds coverage for the editor/file navigation path without setting the caret directly in the smoke harness.
+
+Validation:
+
+```text
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /nr:false /p:LibreWpfSharpDevelopIncludeResourceToolkit=true
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 PROGPU_WPF_TRACE_NATIVE_LOOP=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_EDITOR_NAVIGATION_SMOKE=Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=25000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+SharpDevelop.Full.LibreWpf ResourceToolkit build -> succeeds, 103 warnings, 0 errors
+Editor navigation smoke                          -> Success, file=LineCounterBrowser.cs, marker=LineCounterBrowser, requestedLine=1, requestedColumn=4, caretLine=1, caretColumn=4, caretOffset=3, expectedOffset=3, active=True, sameFile=True, visible=True; exit code 0
+Native owner-loop trace                           -> bounded timer closes the workbench; shutdown still logs the known post-close Reset-inside-render-loop diagnostic without failing the run
+```
+
 ## 2026-07-09 Portable activation and SharpDevelop smoke refresh
 
 SharpDevelop's AvalonDock auto-hide smoke exposed a real LibreWPF port issue: on non-Windows, `Window.Activate()` could return `false` for a shown portable window because it fell through to the HWND `HwndSource` activation path. `PresentationFramework.Window.Activate()` now routes shown portable windows through the existing typed `PortableWindowActivationService.SetActivationState(this, true)` boundary before any Win32/source-window check. This keeps activation state in the source-built WPF portable service and avoids adding bridge-local reflection or AvalonDock-specific workarounds.

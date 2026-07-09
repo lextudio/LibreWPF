@@ -81,6 +81,27 @@ Save-all smoke                                  -> Success, command=SaveAll, fil
 Sample tree                                     -> no diff in samples/LineCounter/Src/LineCounterBrowser.cs after smoke
 ```
 
+## 2026-07-09 SharpDevelop reload smoke extension
+
+The full SharpDevelop LibreWPF workbench now has `LIBREWPF_SHARPDEVELOP_RELOAD_SMOKE` for file reload coverage. The smoke opens a file-backed AvalonEdit document, writes an external marker directly to the file on disk, invokes the real `ICSharpCode.SharpDevelop.Commands.ReloadFile` command, verifies that the editor document reloaded the external content and stayed clean, then restores the original bytes and reloads again so the sample tree remains unchanged.
+
+This covers the workbench reload command plus the externally changed file path without adding platform-specific reload workarounds. The FileChangeWatcher path also observes the external write during the run; the command validation remains explicit because the smoke calls the real reload command after the external edit.
+
+Validation:
+
+```text
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /nr:false /p:LibreWpfSharpDevelopIncludeResourceToolkit=true
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 PROGPU_WPF_TRACE_NATIVE_LOOP=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_RELOAD_SMOKE=Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=25000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+SharpDevelop.Full.LibreWpf ResourceToolkit build -> succeeds, 103 warnings, 0 errors
+Reload smoke                                    -> Success, command=Reload, file=LineCounterBrowser.cs, diskChanged=True, commandReloaded=True, dirtyCleared=True, diskRestored=True, editorRestored=True; exit code 0
+Sample tree                                     -> no diff in samples/LineCounter/Src/LineCounterBrowser.cs after smoke
+```
+
 ## 2026-07-09 Portable activation and SharpDevelop smoke refresh
 
 SharpDevelop's AvalonDock auto-hide smoke exposed a real LibreWPF port issue: on non-Windows, `Window.Activate()` could return `false` for a shown portable window because it fell through to the HWND `HwndSource` activation path. `PresentationFramework.Window.Activate()` now routes shown portable windows through the existing typed `PortableWindowActivationService.SetActivationState(this, true)` boundary before any Win32/source-window check. This keeps activation state in the source-built WPF portable service and avoids adding bridge-local reflection or AvalonDock-specific workarounds.

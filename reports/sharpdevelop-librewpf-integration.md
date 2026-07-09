@@ -144,6 +144,27 @@ Template smoke                             -> Success, categories=27, fileTempla
 Known remaining runtime noise              -> a WinForms-hosted pad logs FileNotFoundException for System.Windows.Forms, Version=11.0.0.0 before the smoke; this is tracked under the LibreWinForms parity work.
 ```
 
+## 2026-07-09 SharpDevelop command-routing smoke extension
+
+The full SharpDevelop LibreWPF workbench now has `LIBREWPF_SHARPDEVELOP_COMMAND_ROUTING_SMOKE` for live AddInTree menu and toolbar command routing coverage. The smoke creates a temporary file-backed AvalonEdit document, refreshes menu/toolbar status, finds the generated Save All `MenuItem` and toolbar button through typed command objects, routes both through `WpfWorkbench.CanExecuteCommand(...)` and `WpfWorkbench.ExecuteCommand(...)`, verifies both Save All paths write dirty markers and clear dirty state, then closes the temp view and deletes the temp directory.
+
+The smoke intentionally starts before project parsing completes. Waiting for parser completion can let the host exit before any document opens in no-source-file runs, so this path follows the template smoke approach and keeps validation focused on the workbench command surface.
+
+Validation:
+
+```text
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release --no-restore -v:minimal
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-command-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 LIBREWPF_SHARPDEVELOP_CONFIG_DIR=/tmp/sharpdevelop-librewpf-command-config LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_COMMAND_ROUTING_SMOKE=1 LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=30000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+SharpDevelop.Full.LibreWpf focused rebuild -> succeeds, 38 warnings, 0 errors
+Command-routing smoke                      -> Success, openedEditor=True, menuCommandItems=220, toolBars=1, toolBarCommandItems=29, menuLocated=True, menuCanExecute=True, menuSaved=True, toolBarLocated=True, toolBarCanExecute=True, toolBarSaved=True, closed=True, cleanup=True; exit code 0
+Temporary output                           -> deleted after smoke
+```
+
 ## 2026-07-09 SharpDevelop editor navigation smoke extension
 
 The full SharpDevelop LibreWPF workbench now has `LIBREWPF_SHARPDEVELOP_EDITOR_NAVIGATION_SMOKE` for editor navigation coverage. The smoke opens a real file-backed AvalonEdit document, finds a stable source marker, calls the normal `SD.FileService.JumpToFilePosition(...)` route used by class-browser/editor navigation features, and verifies the returned active content, selected file, caret line/column, caret offset, and presentation source.

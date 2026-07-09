@@ -165,6 +165,28 @@ Command-routing smoke                      -> Success, openedEditor=True, menuCo
 Temporary output                           -> deleted after smoke
 ```
 
+## 2026-07-09 SharpDevelop debug-command smoke extension
+
+The full SharpDevelop LibreWPF workbench now installs a LibreWPF-only portable debugger service after add-in initialization. The service keeps process start-without-debugging available, does not falsely advertise the unsupported managed debugger start/attach/step backend on macOS, and implements editor breakpoint toggling through SharpDevelop's existing typed bookmark manager.
+
+`LIBREWPF_SHARPDEVELOP_DEBUG_COMMAND_SMOKE` validates the real AddInTree-generated Debug menu route. The smoke opens a temporary file-backed AvalonEdit document, selects a caret line, finds the generated Toggle Breakpoint `MenuItem` through its typed command object, routes add/remove through `WpfWorkbench.CanExecuteCommand(...)` and `ExecuteCommand(...)`, verifies a `LibreWpfPortableBreakpointBookmark` is added and then removed, closes the temp view, and deletes the temp directory.
+
+Validation:
+
+```text
+DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release --no-restore -v:minimal
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-debug-command-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 LIBREWPF_SHARPDEVELOP_CONFIG_DIR=/tmp/sharpdevelop-librewpf-debug-command-config LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_DEBUG_COMMAND_SMOKE=1 LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=30000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+SharpDevelop.Full.LibreWpf focused rebuild -> succeeds, 38 warnings, 0 errors
+Debug-command smoke                        -> Success, openedEditor=True, serviceIsPortable=True, supportsStartWithoutDebugging=True, supportsStartWithDebugger=False, debugCommandItems=11, toggleLocated=True, toggleCanExecute=True, toggleAddExecuted=True, breakpointAdded=True, toggleRemoveCanExecute=True, toggleRemoveExecuted=True, breakpointRemoved=True, closed=True, cleanup=True; exit code 0
+Temporary output                           -> deleted after smoke
+Known remaining debugger gap               -> managed debugger start/attach/step is intentionally not advertised until a portable backend replaces the old Windows CLR debugger path
+```
+
 ## 2026-07-09 SharpDevelop editor navigation smoke extension
 
 The full SharpDevelop LibreWPF workbench now has `LIBREWPF_SHARPDEVELOP_EDITOR_NAVIGATION_SMOKE` for editor navigation coverage. The smoke opens a real file-backed AvalonEdit document, finds a stable source marker, calls the normal `SD.FileService.JumpToFilePosition(...)` route used by class-browser/editor navigation features, and verifies the returned active content, selected file, caret line/column, caret offset, and presentation source.

@@ -16,6 +16,8 @@ LibreWinForms repository packaging/default-branch status was rechecked on 2026-0
 
 The latest SharpDevelop crash pass fixed a LibreWPF host-loop shutdown bug instead of adding a SharpDevelop workaround. A macOS crash report showed the failed thread inside `glfwWindowShouldClose` after the broad smoke run finished. `ProGpuWpfWindowHost.Run()` now owns the portable native loop, pumps `DoEvents()`, exits on a LibreWPF-owned close-start flag, and avoids `IWindow.Run()`, `IWindow.IsClosing`, or trace-time native window property reads during shutdown. The follow-up package-coherence pass also refreshed every ProGPU package in the SharpDevelop-local feed after a stale same-version `ProGPU.Scene.dll` hid the current `Visual.GeometryClip` API and caused a runtime `MissingMethodException`. The refreshed ProGPU package set plus refreshed `LibreWPF.ProGPU` local package rebuild `SharpDevelop.Full.LibreWpf`, and the final owner-loop smoke exits with code `0` while validating menu/context/ComboBox/toolbar popups, hosted WinForms `ContextMenuStrip`, AvalonDock floating/context menu/redock/auto-hide/flyout, ProjectBrowser, property pad, FormsDesigner load/mutation, ResX, LineCounter build, and editor completion. No new ProGPU or LibreWinForms source changes were required for this slice.
 
+The latest ResourceToolkit pass enables the LibreWPF add-in's `${res:...}` Find References, Rename Resource, Find Missing Resource Keys, and unused-key detection path against current SharpDevelop document/project/search-result APIs. This replaces the previous user-facing "not enabled" messages for that resolver family without reintroducing the old NRefactory v3 AST/refactoring path. `ResourceToolkit.LibreWpf.csproj` builds in Release with `1` warning and `0` errors, `SharpDevelop.Full.LibreWpf.csproj` rebuilds with `38` warnings and `0` errors, and the broad package-mode smoke still exits with code `0`.
+
 SharpDevelop is not yet fully runnable as an IDE. The remaining work below is the plan for the next implementation phase.
 
 ## Remaining implementation work
@@ -51,8 +53,9 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 
 7. Complete ResourceToolkit feature parity.
    - The ResourceToolkit package-mode wrapper now builds and can be included in `SharpDevelop.Full.LibreWpf` with `LibreWpfSharpDevelopIncludeResourceToolkit=true`.
-   - Keep the compile-time shell, completion, tooltip, and resource resolver cache on current SharpDevelop text/project APIs.
-   - Rewrite Find References, Rename Resource, Find Unused Resources, and Find Missing Resources against the current parser/project model. The old NRefactory v3 AST resolver/refactoring paths remain disabled under `LIBREWPF` until that rewrite is implemented.
+   - Covered now: `${res:...}` Find References, Rename Resource, Find Missing Resource Keys, and unused-key detection use current SharpDevelop text/project/search-result APIs in the LibreWPF build.
+   - Remaining: port BCL/strongly typed resource references that used the old NRefactory v3 AST resolvers, restore an interactive unused-key cleanup view or equivalent typed UI, and add an in-process ResourceToolkit smoke once the add-in can be exercised without coupling the main workbench assembly to the add-in.
+   - Keep completion, tooltip, and resource resolver cache behavior on current SharpDevelop text/project APIs.
 
 8. Clean package-mode wrapper warnings.
    - Split the SharpDevelop LibreWPF wrapper into typed facade projects or explicit source excludes so duplicate source/version/native-helper warnings disappear without changing upstream SharpDevelop source behavior.
@@ -63,6 +66,6 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 - Focused `ProGPU.Wpf.Tests` popup, activation, host, and LibreWinForms compatibility sets pass.
 - Focused `ProGPU.Wpf.Tests` window geometry hook coverage remains green when AvalonDock hook behavior changes.
 - A runtime smoke opens the workbench, loads a C# project, opens a source file, opens/uses the File menu, editor context menu, toolbar dropdown, completion popup, hosted WinForms context menu, AvalonDock float/auto-hide/flyout paths, and at least one hosted WinForms combo/tree/list owner-draw surface.
-- A ResourceToolkit-included full wrapper build remains green, and feature smokes are added as each disabled legacy ResourceToolkit command is replaced with a current typed implementation.
+- A ResourceToolkit-included full wrapper build remains green, `${res:...}` resource refactoring remains enabled, and feature smokes are added as BCL/strongly typed resource support and cleanup UI parity are restored.
 - AvalonDock float/auto-hide/dock restore smoke remains green, and any broader floating-window hook work keeps the ProGPU/LibreWPF path reflection-free.
 - Reports stay updated after every slice with exact commands, warning/error counts, and any remaining blocker.

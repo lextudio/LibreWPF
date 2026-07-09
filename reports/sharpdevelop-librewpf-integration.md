@@ -108,6 +108,32 @@ Broad SharpDevelop smoke                       -> main menu, context menu, Combo
 Native owner-loop trace                         -> no MissingMethodException; closes through expected smoke timer after 1203 DoEvents calls / 1202 owner-loop iterations
 ```
 
+## 2026-07-09 ResourceToolkit LibreWPF refactoring pass
+
+The SharpDevelop ResourceToolkit add-in no longer disables its core refactoring commands under `LIBREWPF` for the currently supported `${res:...}` resolver path. The LibreWPF-specific refactoring service now scans the active solution/project/open files through the existing `ResourceResolverService`, creates current `SearchResultMatch` instances for the modern Search Results pad, detects missing keys, detects unused keys for resource files that are referenced from code, and performs resource-key rename updates through typed SharpDevelop document/editor APIs. The implementation keeps the legacy NRefactory AST cache disabled and does not re-enable the old commented `Reference`-list refactoring path.
+
+Menu/context-menu entries for ResourceToolkit Find References and Rename are now visible in the LibreWPF text-editor context menu. Find Missing Resource Keys opens the current Search Results pad. Find Unused Resource Keys runs detection in the LibreWPF build and reports the count while the old WinForms cleanup view remains excluded from the package-mode wrapper.
+
+Remaining ResourceToolkit gap: BCL/strongly typed resource references that depended on the removed NRefactory v3 AST resolvers are still not covered by this slice; they need a current parser/project-model implementation.
+
+Validation:
+
+```text
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/AddIns/Misc/ResourceToolkit/Project/ResourceToolkit.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /nr:false
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 PROGPU_WPF_TRACE_NATIVE_LOOP=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_FULL_POPUP_SMOKE=All LIBREWPF_SHARPDEVELOP_AVALONDOCK_SMOKE=ProjectBrowser LIBREWPF_SHARPDEVELOP_BUILD_SMOKE=Solution LIBREWPF_SHARPDEVELOP_RESX_SMOKE=1 LIBREWPF_SHARPDEVELOP_PROPERTY_PAD_SMOKE=1 LIBREWPF_SHARPDEVELOP_WINFORMS_CONTEXT_MENU_SMOKE=1 LIBREWPF_SHARPDEVELOP_EDITOR_COMPLETION_SMOKE=1 LIBREWPF_SHARPDEVELOP_FORMS_DESIGNER_SMOKE=/Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/Src/LineCounterBrowser.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=45000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+./eng/librewinforms-verify-docs.sh
+```
+
+Results:
+
+```text
+ResourceToolkit.LibreWpf Release build         -> succeeds, 1 warning, 0 errors
+SharpDevelop.Full.LibreWpf focused build       -> succeeds, 38 warnings, 0 errors
+Broad SharpDevelop smoke                       -> menu/context/ComboBox/toolbar popups, hosted WinForms ContextMenuStrip, AvalonDock float/context menu/redock/auto-hide/flyout, ResX, LineCounter build, property pad, FormsDesigner load/mutation, and editor completion all pass; exit code 0
+LibreWinForms docs verification                -> succeeds
+```
+
 ## 2026-07-09 AvalonDock non-client hook contract
 
 AvalonDock floating windows still consume legacy title-bar/non-client messages through `WindowInteropWrapper.FilterMessage(...)`. The concrete messages used by the SharpDevelop copy are `WM_NCLBUTTONDOWN` for starting dock drags, `WM_NCLBUTTONDBLCLK` for dock/maximize toggles, and `WM_NCRBUTTONDOWN`/`WM_NCRBUTTONUP` for floating-window title context menus.

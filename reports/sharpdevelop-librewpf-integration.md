@@ -102,6 +102,27 @@ Reload smoke                                    -> Success, command=Reload, file
 Sample tree                                     -> no diff in samples/LineCounter/Src/LineCounterBrowser.cs after smoke
 ```
 
+## 2026-07-09 SharpDevelop new-file/save-as smoke extension
+
+The full SharpDevelop LibreWPF workbench now has `LIBREWPF_SHARPDEVELOP_NEW_FILE_SMOKE` for the core new-file and save-as flow. The smoke creates an untitled source file through `SD.FileService.NewFile(...)`, verifies the AvalonEdit-backed view is created from the normal display binding, saves it to a temporary path through `OpenedFile.SaveToDisk(FileName.Create(...))`, verifies the opened-file dictionary rekeys to the saved path, closes the workbench window, and deletes the temporary file/directory.
+
+This does not drive the modal Save As dialog yet, but it validates the underlying non-dialog file-service and `OpenedFile.SaveToDisk(newFileName)` path that Save As uses after a path is selected. It also keeps the test isolated from the LineCounter sample tree.
+
+Validation:
+
+```text
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 dotnet build /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/SharpDevelop.Full.LibreWpf.csproj -c Release -v:minimal -clp:ErrorsOnly /nr:false /p:LibreWpfSharpDevelopIncludeResourceToolkit=true
+NUGET_PACKAGES=/tmp/sharpdevelop-librewpf-final-nuget DOTNET_ROLL_FORWARD=Major DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 PROGPU_WPF_TRACE_NATIVE_LOOP=1 LIBREWPF_SHARPDEVELOP_TRACE_OPEN=1 LIBREWPF_SHARPDEVELOP_NEW_FILE_SMOKE=LibreWpfNewFileSmoke.cs LIBREWPF_SHARPDEVELOP_EXIT_AFTER_MS=25000 dotnet /Users/wieslawsoltes/GitHub/SharpDevelop/src/Main/SharpDevelop/bin/Release/net10.0-windows/SharpDevelop.dll /nologo /noExceptionBox /Users/wieslawsoltes/GitHub/SharpDevelop/samples/LineCounter/LineCounter.sln
+```
+
+Results:
+
+```text
+SharpDevelop.Full.LibreWpf ResourceToolkit build -> succeeds, 103 warnings, 0 errors
+New-file/save-as smoke                          -> Success, file=LibreWpfNewFileSmoke.cs, createdView=True, untitledBeforeSave=True, editorContainsMarker=True, fileNameUpdated=True, savedToDisk=True, diskContainsMarker=True, dirtyCleared=True, openedFileRekeyed=True, closed=True, cleanup=True; exit code 0
+Temporary output                                -> deleted after smoke
+```
+
 ## 2026-07-09 Portable activation and SharpDevelop smoke refresh
 
 SharpDevelop's AvalonDock auto-hide smoke exposed a real LibreWPF port issue: on non-Windows, `Window.Activate()` could return `false` for a shown portable window because it fell through to the HWND `HwndSource` activation path. `PresentationFramework.Window.Activate()` now routes shown portable windows through the existing typed `PortableWindowActivationService.SetActivationState(this, true)` boundary before any Win32/source-window check. This keeps activation state in the source-built WPF portable service and avoids adding bridge-local reflection or AvalonDock-specific workarounds.

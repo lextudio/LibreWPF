@@ -195,6 +195,7 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Contains("private void RunPortableNativeLoop()", source, StringComparison.Ordinal);
         Assert.Contains("while (ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("DoEvents();", source, StringComparison.Ordinal);
+        Assert.Contains("_window.DoEvents();\n        if (!ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest", source, StringComparison.Ordinal);
         Assert.Contains("private bool ShouldKeepPortableNativeRunLoopAlive()", source, StringComparison.Ordinal);
         Assert.Contains("!_hasNativeWindowCloseStarted", source, StringComparison.Ordinal);
@@ -203,7 +204,12 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.DoesNotContain("catch (ObjectDisposedException)\n            {\n                return;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("!window.IsClosing", source, StringComparison.Ordinal);
         Assert.DoesNotContain("windowClosing", source, StringComparison.Ordinal);
+        Assert.Contains("if (!_disposeNativeWindowWhenLoopExits || _isNativeLoopRunning)", source, StringComparison.Ordinal);
+        Assert.Contains("bool closeAlreadyStarted = _hasNativeWindowCloseStarted;", source, StringComparison.Ordinal);
         Assert.Contains("_hasNativeWindowCloseStarted = true;", source, StringComparison.Ordinal);
+        Assert.Contains("if (closeAlreadyStarted)\n        {\n            return;\n        }", source, StringComparison.Ordinal);
+        Assert.Contains("window.Close();\n        TryRequestNativeLoopWakeup(window.ContinueEvents);", source, StringComparison.Ordinal);
+        Assert.Contains("close request already pending", source, StringComparison.Ordinal);
         Assert.Contains("_hasNativeWindowCloseStarted = false;", source, StringComparison.Ordinal);
     }
 

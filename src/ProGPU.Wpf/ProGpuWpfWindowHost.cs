@@ -635,6 +635,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         EnsureCompositionTargetLoaded();
         _window.DoEvents();
+        if (!ShouldKeepPortableNativeRunLoopAlive())
+        {
+            DisposeDeferredNativeWindowIfNeeded();
+            return;
+        }
+
         _window.DoUpdate();
         EnsureCompositionTargetLoaded();
         _window.DoRender();
@@ -798,7 +804,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void DisposeDeferredNativeWindowIfNeeded()
     {
-        if (!_disposeNativeWindowWhenLoopExits)
+        if (!_disposeNativeWindowWhenLoopExits || _isNativeLoopRunning)
         {
             return;
         }
@@ -821,8 +827,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void RequestNativeWindowClose(IWindow window)
     {
+        bool closeAlreadyStarted = _hasNativeWindowCloseStarted;
         _hasNativeWindowCloseStarted = true;
-        TraceNativeLoop("close requested: " + CreateNativeLoopTraceState());
+        TraceNativeLoop((closeAlreadyStarted ? "close request already pending: " : "close requested: ") + CreateNativeLoopTraceState());
+        if (closeAlreadyStarted)
+        {
+            return;
+        }
+
         window.Close();
         TryRequestNativeLoopWakeup(window.ContinueEvents);
     }

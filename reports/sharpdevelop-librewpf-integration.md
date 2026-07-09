@@ -2272,7 +2272,32 @@ Runtime result:
 LibreWPF close/reopen solution smoke result=Success solution=LineCounter.sln beforeProjects=1 afterProjects=1 beforeViews=3 viewsAfterClose=0 beforeTrackedOpenFiles=2 trackedOpenFilesAfterClose=0 remainingOpenedContentsAfterClose=0 closeClearedSolution=True reopened=True reopenedCurrentSolution=True
 ```
 
-The run still prints the existing ProGPU shutdown-loop diagnostic `You cannot call Reset inside of the render loop!` after the smoke has passed and the process is exiting. That remains a ProGPU host-loop cleanup item, not a SharpDevelop close/reopen solution blocker.
+## 2026-07-09 ProGPU close-time native disposal cleanup
+
+The close/reopen solution smoke also exposed a ProGPU native host cleanup issue after the SharpDevelop workbench had already passed its runtime checks. `Dispose()` could request a second native close and then dispose the Silk.NET window while the owner-driven native loop was still inside event/update processing, which produced the shutdown diagnostic `You cannot call Reset inside of the render loop!`.
+
+`ProGpuWpfWindowHost` now keeps close requests idempotent and returns immediately when a close is already pending. Deferred native-window disposal is also held until the owner-driven native loop has left native processing; the `Run()` finally block performs the actual deferred window disposal after `_isNativeLoopRunning` is cleared. `DoEvents()` also checks the close-start state after draining native events and stops before update/render work when shutdown has begun.
+
+Validation:
+
+```text
+ProGPU.Wpf Release build                                         -> succeeds, 0 warnings, 0 errors
+ProGPU.Wpf.Tests Release build                                   -> succeeds, 95 existing warnings, 0 errors
+Owner-driven native loop guard test                              -> 1 passed, 0 failed
+LibreWPF.ProGPU SharpDevelopLocal pack                           -> succeeds, 0.1.0-preview.sharpdevelop.1 refreshed
+SharpDevelop.Full.LibreWpf fresh-cache ResourceToolkit build     -> succeeds, 287 warnings, 0 errors
+SharpDevelop close/reopen solution smoke                         -> succeeds, exit code 0
+```
+
+Runtime result:
+
+```text
+LibreWPF close/reopen solution smoke result=Success solution=LineCounter.sln beforeProjects=1 afterProjects=1 beforeViews=3 viewsAfterClose=0 beforeTrackedOpenFiles=2 trackedOpenFilesAfterClose=0 remainingOpenedContentsAfterClose=0 closeClearedSolution=True reopened=True reopenedCurrentSolution=True
+ProGPU WPF native loop: owner loop stopping after DoEvents: disposed=True, closeStarted=True, hostVisible=False, hasWindow=True
+ProGPU WPF native loop: run leaving: disposed=True, closeStarted=True, hostVisible=False, hasWindow=False
+```
+
+The final log contains no `InvalidOperationException` or `Reset inside of the render loop` marker.
 
 ## 2026-07-08 AvalonDock show/hide hook pass
 

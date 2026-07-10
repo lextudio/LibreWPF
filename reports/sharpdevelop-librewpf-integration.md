@@ -2588,3 +2588,24 @@ Broad build/ResX/FormsDesigner/PropertyGrid    -> Success
 Broad AvalonDock/ExceptionBox/completion       -> Success
 Shutdown                                       -> exit code 0; native input attach/detach balanced
 ```
+
+## 2026-07-10 FormsDesigner toolbox and designer-instance checkpoint
+
+The package-mode FormsDesigner now exercises the standard WinForms toolbox contract below the SharpDevelop palette. LibreWinForms `ToolboxItem` resolves and creates a real `Button` through the active `IDesignerHost`, and the host supplies an `IComponentInitializer` designer that applies parent, location, size, and text defaults. The runtime smoke verifies host/container registration, control-tree placement, designer lookup, then `DestroyComponent(...)` cleanup of the site, parent, designer, and container entry.
+
+LibreWinForms also validates the standard third-party extension path with an attributed designer created through `TypeDescriptor`, initialized by the host, returned by `GetDesigner(...)`, and disposed during removal. The root designer now supplies `DesignSurface.View`; no SharpDevelop reflection or app-specific component construction was added.
+
+Validation used freshly packed `LibreWinForms.* / 0.1.0-preview.sharpdevelop.1` packages and a new NuGet cache:
+
+```text
+SharpDevelop.Full.LibreWpf fresh-cache rebuild  -> succeeds, 286 warnings, 0 errors
+Focused FormsDesigner load                      -> Attached; UserControl root, 21 components
+Focused FormsDesigner mutation                  -> Success; 54 rows, flushPersisted=True
+Focused toolbox lifecycle                       -> toolboxCreated=True, toolboxRemoved=True
+Broad popups/build/ResX/PropertyGrid             -> pass
+Broad AvalonDock/ContextMenuStrip/ExceptionBox   -> pass
+Broad editor completion                          -> Opened, 12 items
+Shutdown                                         -> exit code 0; input attach/detach balanced
+```
+
+The remaining toolbox work is interactive surface behavior: palette selection, click/drop coordinates, drag sizing, selection adorners, parent-designer rules, commands, and undo/redo.

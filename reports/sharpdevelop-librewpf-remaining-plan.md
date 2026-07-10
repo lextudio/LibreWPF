@@ -73,7 +73,8 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
    - Covered now: the SharpDevelop package-mode output no longer binds hosted WinForms through stale `System.Windows.Forms, Version=11.0.0.0` or transport-owned `WindowsFormsIntegration.dll`; LibreWinForms and ProGPU drawing assembly identities are coherent in the local feed.
    - Covered now: source-owned designer sites expose typed, site-owned `INestedContainer` services; nested components inherit host/site-local services, publish qualified `INestedSite` names, participate in lifecycle events and serialization lookup, and refresh names when an owner is renamed. SharpDevelop's nonpublic nested-container reflection bootstrap is removed.
    - Covered now: direct host-container add/remove uses upstream-style lifecycle events and site-preserving removal; public named `DesignSurface.CreateNestedContainer(...)` is available with owner-qualified names and owner-site service inheritance.
-   - Remaining: broaden FormsDesigner/property-grid runtime behavior beyond the current build, load, mutation, nested-service, direct-lifecycle, and hosted-control smoke coverage. Prioritize real toolbox command placement/removal, extender providers, designer instance creation, undo/redo transactions, verbs/menu commands, inherited components, localized resource round trips, and live event-handler source navigation.
+   - Covered now: `ToolboxItem` creates host-owned controls, designers are indexed/initialized/disposed through `IDesignerHost`, attributed third-party designers use `TypeDescriptor`, root designers supply the view, and the live SharpDevelop smoke verifies default-value placement plus complete removal.
+   - Remaining: broaden FormsDesigner/property-grid runtime behavior beyond the current build, load, mutation, nested-service, lifecycle, and toolbox-create-remove coverage. Prioritize interactive toolbox click/drop and parent adorners, extender providers, undo/redo transactions, verbs/menu commands, inherited components, localized resource round trips, and live event-handler source navigation.
 
 7. Complete ResourceToolkit feature parity.
    - The ResourceToolkit package-mode wrapper now builds and can be included in `SharpDevelop.Full.LibreWpf` with `LibreWpfSharpDevelopIncludeResourceToolkit=true`.
@@ -129,4 +130,12 @@ Keep these gates in subsequent phases:
 - `LibreWinForms.SdkSmoke --run-designer` remains green and reflection-free.
 - The focused SharpDevelop designer smoke uses the current stable host and leaves the LineCounter source byte-for-byte unchanged.
 - Worker-thread WinForms hosts never read `Application.MainWindow` across dispatcher ownership.
-- ProGPU package refreshes remain coherent with the pinned submodule; current validation uses clean `ea24546` (`v0.1.0-preview.4`) source.
+- ProGPU package refreshes remain coherent with the pinned submodule; current validation uses clean `895fe73` (`0.1.0-preview.6`) source.
+
+## 2026-07-10 FormsDesigner toolbox checkpoint update
+
+The framework contract below interactive toolbox UI is now complete for the current portable controls. `ToolboxItem` creates components through the active host, standard creating/created events fire, `IComponentInitializer` applies typed defaults, and the host owns designer initialization and disposal. Both portable fallback designers and a real `DesignerAttribute`/`TypeDescriptor` designer are covered.
+
+The SharpDevelop smoke now reports `toolboxCreated=True` only after a new `Button` is sited, indexed, designed, parented to the loaded root, and assigned the requested bounds/text. It reports `toolboxRemoved=True` only after `DestroyComponent(...)` removes the control from its parent and host, clears its site, and removes its designer. Existing selection, PropertyGrid, and CodeDOM persistence checks remain successful.
+
+Remaining work moves one layer up: wire palette selection and mouse click/drop to the root/parent designer, add selection/resize adorners and parent rules, and integrate those operations with commands and undo/redo. Extender providers, inherited components, verbs, localized resource round trips, and event-handler source navigation also remain.

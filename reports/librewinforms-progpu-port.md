@@ -378,7 +378,7 @@ The first windowed smoke attempts exposed two packaging/runtime alignment issues
 
 - Replace the copied compatibility implementation with progressively reused upstream WinForms managed code from the submodule, keeping the same typed ProGPU/Silk.NET platform seams.
 - Replace the remaining compatibility-only controls with upstream managed WinForms implementations behind typed ProGPU/Silk.NET platform services.
-- Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing/component create-remove/resource-replay/localization-shape/handler-generation-contract/ResX-reader-writer coverage to real SharpDevelop source-navigation smoke, resource-file save/load round trips, toolbox placement details, and broader generated-code round trips.
+- Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing/component create-remove/resource-replay/localization-shape/handler-generation-contract/ResX-reader-writer/toolbox-create-remove coverage to real SharpDevelop source-navigation smoke, resource-file save/load round trips, interactive toolbox click/drop behavior, and broader generated-code round trips.
 - Make the standard WPF SDK pack workflow restore from the required private WPF feeds so local validation does not need generated package artifact refreshes.
 
 ## 2026-07-10 WPF-owned modal forms
@@ -453,4 +453,22 @@ Broad ContextMenuStrip                 -> Opened, then correctly superseded by t
 Broad SharpDevelop workbench           -> all expected gates, exit code 0, balanced input teardown
 ```
 
-Remaining designer work is actual toolbox command placement/removal, extender-provider registration, designer instance creation, undo/redo, verbs/menu commands, inherited components, localized resource round trips, and live event source navigation.
+Remaining designer work is interactive toolbox selection/drop and parent-control adorners, extender-provider registration, undo/redo, verbs/menu commands, inherited components, localized resource round trips, and live event source navigation.
+
+## 2026-07-10 toolbox creation and designer instances
+
+LibreWinForms now ports the upstream managed `ToolboxItem` creation contract instead of exposing an empty stub. Type metadata, `ITypeResolutionService`, creating/created events, host-owned component construction, and `IComponentInitializer` default values all flow through standard typed APIs. `DesignSurface.ComponentContainer` exposes the real host container.
+
+The portable host now creates and indexes designers before `ComponentAdded`, initializes them once, returns them from `IDesignerHost.GetDesigner(...)`, and disposes them before component removal. `TypeDescriptor` remains the standard extension path for attributed third-party designers; typed portable component/control/root designers cover source-owned controls while larger upstream designer source groups are ported. Root view selection and parent/location/size/text initialization now run through those designer contracts.
+
+SharpDevelop's live FormsDesigner smoke creates a real `Button` with `ToolboxItem`, places it under the loaded `UserControl` using default values, verifies host registration plus `IComponentInitializer`, then destroys it and verifies site, parent, designer, and container cleanup. The sample source and dirty state are restored.
+
+```text
+LibreWinForms SDK designer smoke          -> toolboxCreation=True, attributedDesigner=True
+LibreWinForms package lane                -> succeeds at 0.1.0-preview.sharpdevelop.1
+SharpDevelop fresh-cache rebuild          -> succeeds, 286 warnings, 0 errors
+Focused FormsDesigner                     -> toolboxCreated=True, toolboxRemoved=True, flushPersisted=True
+Broad SharpDevelop workbench              -> all expected gates pass, exit code 0
+```
+
+ProGPU source stayed unchanged at `895fe73` (`0.1.0-preview.6`).

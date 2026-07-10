@@ -380,3 +380,17 @@ The first windowed smoke attempts exposed two packaging/runtime alignment issues
 - Replace the remaining compatibility-only controls with upstream managed WinForms implementations behind typed ProGPU/Silk.NET platform services.
 - Expand FormsDesigner runtime validation from the current load/selection/property mutation/minimal CodeDOM flush/event-preservation/event-property editing/component create-remove/resource-replay/localization-shape/handler-generation-contract/ResX-reader-writer coverage to real SharpDevelop source-navigation smoke, resource-file save/load round trips, toolbox placement details, and broader generated-code round trips.
 - Make the standard WPF SDK pack workflow restore from the required private WPF feeds so local validation does not need generated package artifact refreshes.
+
+## 2026-07-10 WPF-owned modal forms
+
+The source-owned LibreWinForms WPF host now accepts both LibreWinForms `Form` owners and external `IWin32Window` owners. For the latter, it resolves the typed LibreWPF `HwndSource` associated with the portable handle and assigns that source's root `Window` as the generated form window owner. This keeps owner resolution out of reflection and avoids treating a synthetic portable handle as a native Win32 HWND.
+
+`LibreWinForms.SdkSmoke --run-dialog` now validates owner loading/linkage, `Shown`, `FormClosed`, and synchronous `DialogResult.OK`. The package-mode SharpDevelop lane validates the same contract with its real `ExceptionBox` and `SD.WinForms.MainWin32Window` owner. The corresponding WPF portable modal loop and ProGPU/Silk input-lifetime hardening live in LibreWPF; the ProGPU submodule did not need a host-specific change.
+
+Validation:
+
+```text
+LibreWinForms.SdkSmoke --run-form    -> Success
+LibreWinForms.SdkSmoke --run-dialog  -> Success host=WPF ownerLoaded=True dialogShown=True dialogClosed=True ownerLinked=True result=OK
+SharpDevelop ExceptionBox smoke      -> Success controls=10 ownerLinked=True presentationSource=True result=OK
+```

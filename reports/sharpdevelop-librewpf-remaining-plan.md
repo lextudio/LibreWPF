@@ -1,6 +1,6 @@
 # SharpDevelop LibreWPF Remaining Plan
 
-Date: 2026-07-09
+Date: 2026-07-10
 
 ## Current finalized state
 
@@ -101,3 +101,16 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 - A ResourceToolkit-included full wrapper build remains green, `${res:...}` resource refactoring remains enabled, the ResourceToolkit smoke remains green, and feature smokes are added as BCL/strongly typed resource support and cleanup UI parity are restored.
 - AvalonDock float/auto-hide/dock restore smoke remains green, and any broader floating-window hook work keeps the ProGPU/LibreWPF path reflection-free.
 - Reports stay updated after every slice with exact commands, warning/error counts, and any remaining blocker.
+
+## 2026-07-10 owned-dialog checkpoint
+
+The portable modal-host and owner bridge are now covered. A source-built LibreWinForms dialog can use the SharpDevelop workbench's `IWin32Window` owner, enter a synchronous WPF `ShowDialog()` call, receive normal shown/closed events, return `DialogResult.OK`, and tear down its ProGPU/Silk.NET host without leaking a GLFW input context. The package-mode smoke uses SharpDevelop's real ten-control `ExceptionBox`; seven consecutive warmed launches and the broad full-workbench lane completed without the prior duplicate-input-context failure.
+
+The next phase should not revisit modal looping through app-specific code. Remaining dialog work is feature coverage: real file/folder/color/font dialogs, dirty-file prompts, cancellation/owner activation edge cases, multiple nested owned dialogs, keyboard default/cancel buttons, focus restoration, accessibility, and normal user-driven interaction. Keep those on typed WPF/LibreWinForms service and window-manager contracts.
+
+Add these gates to the next phase:
+
+- The real SharpDevelop `ExceptionBox` owned-dialog smoke remains `Success` in the broad package-mode lane.
+- Native-loop logs contain no `More than one input context`, `owner loop unexpected exception`, `run failed`, or post-close input reattachment.
+- Modal close during cold native initialization is covered whenever host initialization or Silk.NET versions change.
+- FormsDesigner completion remains separate: `selectedByContainer` and `flushPersisted` must become true through upstream-compatible managed designer behavior before that subsystem is declared complete.

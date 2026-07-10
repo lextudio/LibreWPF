@@ -511,3 +511,9 @@ Win32 usage should be split into three groups:
 - Windows-only compatibility: retain a Windows implementation behind the same abstraction where behavior cannot be portable.
 
 No new direct Win32 calls should be added to the ProGPU lane.
+
+## Portable modal windows and native input leases
+
+Modal policy remains managed-framework state. Source-built WPF owns `Window.ShowDialog()`, `_showingAsDialog`, `DialogResult`, owner collections, closing cancellation, and closed-event sequencing. On the portable path it invokes the already-registered typed window-activation `Run` callback for the dialog host while modal state is active; this preserves synchronous WPF API behavior even though portable dispatcher frames are intentionally bounded and ProGPU/Silk.NET owns native event pumping. LibreWinForms maps `Form.ShowDialog(IWin32Window)` onto that WPF contract and resolves non-Form owners through typed `HwndSource.FromHwnd(...)` state, never by reflecting owner objects or passing a synthetic handle to Win32.
+
+Each native window host owns at most one Silk input context lease. Composition-target initialization is treated as a transaction: reentrant initialization fails closed, close/dispose state is checked before and between target/platform-service setup stages, and a target or input subscription created during reentrant shutdown is disposed before it can become host state. `DoEvents()` must stop after an initialization-time close before attempting target creation. Silk input-context construction also has failure cleanup. Do not work around duplicate contexts by swallowing Silk exceptions or globally sharing input devices between unrelated windows; unexpected event-loop failures must remain visible.

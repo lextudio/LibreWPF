@@ -1,6 +1,6 @@
 # SharpDevelop LibreWPF Integration
 
-Date: 2026-07-08
+Date: 2026-07-10
 
 ## Current status
 
@@ -2498,3 +2498,27 @@ SharpDevelop.Full.LibreWpf focused rebuild -> succeeds, 38 warnings, 0 errors
 Template smoke                             -> Success, categories=27, fileTemplates=85, projectTemplates=55, selectedFileTemplate=Empty text file, createdOpenedFile=True, openedFileRegistered=True, createdOpenFilesClosed=True, cleanup=True, selectedProjectTemplate=Console Application, projectCreated=True, projectFileExists=True, projectInSolution=True, projectSolutionOpened=True, projectOpenActionOpenedFile=True, projectClosed=True, projectCleanup=True
 LibreWinForms repo state                   -> default branch librewinforms-progpu-port; description/topics set; README package tables/getting-started present; docs verifier succeeds
 ```
+
+## 2026-07-10 Owned WinForms dialog and input-lifetime pass
+
+SharpDevelop now has package-mode coverage for a real owned WinForms dialog rather than only synthetic forms and hosted controls. `LIBREWPF_SHARPDEVELOP_WINFORMS_DIALOG_SMOKE=ExceptionBox` constructs the historical `ICSharpCode.SharpDevelop.Logging.ExceptionBox`, calls `ShowDialog(SD.WinForms.MainWin32Window)`, validates the full ten-control tree, verifies the generated WPF window is owned by the live workbench and has a portable presentation source, closes it through the normal `DialogResult.OK` path, and verifies synchronous return plus `Shown`/`FormClosed` delivery.
+
+The reusable implementation is split across the framework boundaries. LibreWinForms resolves a non-`Form` `IWin32Window` owner through typed `HwndSource.FromHwnd(...)` state in its WPF application host. Source-built WPF keeps its managed dialog state and now runs the dialog's registered portable activation host while `_showingAsDialog` is active, because the portable dispatcher uses bounded frames while ProGPU/Silk.NET owns the native event loop. No SharpDevelop-specific modal behavior was added to LibreWPF, LibreWinForms, or ProGPU.
+
+Repeated dialog startup exposed a separate native-host lifetime defect. A dialog could close while Silk window initialization was returning; the outer `ProGpuWpfWindowHost.DoEvents()` path then recreated the disposed composition target and attached a second input context. When GLFW reused that native handle, Silk raised `More than one input context for window`. The host now stops immediately after initialization-time close, rejects reentrant or close-time composition-target setup, validates target ownership between setup stages, and assigns input subscriptions transactionally. `SilkNetWpfInputService` also disposes a newly created context if subscription setup fails. The exception is no longer suppressed: unexpected native-loop failures still propagate.
+
+Validation:
+
+```text
+LibreWinForms SDK --run-dialog source smoke                         -> Success; WPF owner loaded/linked, shown/closed, result OK
+ProGPU.Wpf host/input focused tests                                -> 136 passed, 0 failed
+SharpDevelop.Full.LibreWpf fresh-cache ResourceToolkit rebuild     -> succeeds, 286 warnings, 0 errors
+Warm package-mode ExceptionBox stress                              -> 7 consecutive Success results, no duplicate input context
+SharpDevelop broad package-mode smoke                              -> exit code 0
+Broad runtime markers                                              -> popups, AvalonDock, FormsDesigner, PropertyGrid, build, ResX, hosted ContextMenuStrip, owned ExceptionBox, completion
+Native-loop/input trace                                            -> balanced input attach/detach; no unexpected exception or run failure
+ProGPU submodule source                                            -> unchanged at 4a25075
+LibreWinForms source/docs                                         -> 024419fac / ca7e4db7b
+```
+
+The existing FormsDesigner mutation smoke still reports `Partial` for `selectedByContainer=False` and `flushPersisted=False`; this modal-window pass does not claim that remaining serializer/designer work is complete.

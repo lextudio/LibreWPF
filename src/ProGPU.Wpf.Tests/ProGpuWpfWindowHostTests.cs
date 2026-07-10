@@ -195,9 +195,16 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Contains("private void RunPortableNativeLoop()", source, StringComparison.Ordinal);
         Assert.Contains("while (ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("DoEvents();", source, StringComparison.Ordinal);
+        Assert.Contains("if (!EnsureCompositionTargetLoaded() || !ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("_window.DoEvents();\n        if (!ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest", source, StringComparison.Ordinal);
         Assert.Contains("private bool ShouldKeepPortableNativeRunLoopAlive()", source, StringComparison.Ordinal);
+        Assert.Contains("if (_isLoadingCompositionTarget)", source, StringComparison.Ordinal);
+        Assert.Contains("composition target load deferred during reentrant initialization", source, StringComparison.Ordinal);
+        Assert.Contains("_isLoadingCompositionTarget = true;", source, StringComparison.Ordinal);
+        Assert.Contains("_isLoadingCompositionTarget = false;", source, StringComparison.Ordinal);
+        Assert.Contains("if (_window == null || _isDisposed || _hasNativeWindowCloseStarted)", source, StringComparison.Ordinal);
+        Assert.Contains("input attach canceled after host close", source, StringComparison.Ordinal);
         Assert.Contains("!_hasNativeWindowCloseStarted", source, StringComparison.Ordinal);
         Assert.Contains("catch (ObjectDisposedException ex) when (!ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("owner loop unexpected ObjectDisposedException", source, StringComparison.Ordinal);

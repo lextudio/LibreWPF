@@ -60,6 +60,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private int _portablePresentationSourceClientHeight = -1;
     private bool _isDisposed;
     private bool _isNativeLoopRunning;
+    private bool _isLoadingCompositionTarget;
     private bool _disposeNativeWindowWhenLoopExits;
     private bool _hasPresentedFrame;
     private bool _ownsRenderScheduler;
@@ -633,7 +634,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.Initialize();
         }
 
-        EnsureCompositionTargetLoaded();
+        if (!ShouldKeepPortableNativeRunLoopAlive())
+        {
+            DisposeDeferredNativeWindowIfNeeded();
+            return;
+        }
+
+        if (!EnsureCompositionTargetLoaded() || !ShouldKeepPortableNativeRunLoopAlive())
+        {
+            DisposeDeferredNativeWindowIfNeeded();
+            return;
+        }
+
         _window.DoEvents();
         if (!ShouldKeepPortableNativeRunLoopAlive())
         {
@@ -877,6 +889,17 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private bool EnsureCompositionTargetLoaded()
     {
+        if (_isDisposed || _hasNativeWindowCloseStarted)
+        {
+            return false;
+        }
+
+        if (_isLoadingCompositionTarget)
+        {
+            TraceNativeLoop("composition target load deferred during reentrant initialization");
+            return false;
+        }
+
         if (_target != null)
         {
             return true;
@@ -892,16 +915,63 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
-        _target = ProGpuWpfCompositionTarget.CreateForWindow(_window);
-        _target.RenderInvalidated += OnCompositionTargetRenderInvalidated;
-        _target.Context.VSync = _options.VSync;
-        ApplyWindowRegionToCompositionTarget();
-        AttachInputService();
-        AttachDragDropService();
-        AttachWindowEventService();
-        SynchronizePortablePresentationSourceGeometry();
-        RequestRenderAndWakeNativeLoop();
-        return true;
+        _isLoadingCompositionTarget = true;
+        try
+        {
+            IWindow window = _window;
+            ProGpuWpfCompositionTarget target = ProGpuWpfCompositionTarget.CreateForWindow(window);
+            if (_isDisposed || _hasNativeWindowCloseStarted || !ReferenceEquals(window, _window))
+            {
+                target.Dispose();
+                return false;
+            }
+
+            _target = target;
+            target.RenderInvalidated += OnCompositionTargetRenderInvalidated;
+            target.Context.VSync = _options.VSync;
+            ApplyWindowRegionToCompositionTarget();
+            if (!CanFinishCompositionTargetLoad(target, window))
+            {
+                DisposeTarget();
+                return false;
+            }
+
+            AttachInputService();
+            if (!CanFinishCompositionTargetLoad(target, window))
+            {
+                DisposeTarget();
+                return false;
+            }
+
+            AttachDragDropService();
+            AttachWindowEventService();
+            if (!CanFinishCompositionTargetLoad(target, window))
+            {
+                DisposeTarget();
+                return false;
+            }
+
+            SynchronizePortablePresentationSourceGeometry();
+            RequestRenderAndWakeNativeLoop();
+            return true;
+        }
+        catch
+        {
+            DisposeTarget();
+            throw;
+        }
+        finally
+        {
+            _isLoadingCompositionTarget = false;
+        }
+    }
+
+    private bool CanFinishCompositionTargetLoad(ProGpuWpfCompositionTarget target, IWindow window)
+    {
+        return !_isDisposed &&
+            !_hasNativeWindowCloseStarted &&
+            ReferenceEquals(window, _window) &&
+            ReferenceEquals(target, _target);
     }
 
     private static bool CanCreateNativeRenderSurface(IWindow window)
@@ -2378,19 +2448,35 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void AttachInputService()
     {
-        if (_window == null)
+        if (_window == null || _isDisposed || _hasNativeWindowCloseStarted)
         {
             return;
         }
 
+        IWindow window = _window;
+        TraceNativeLoop(
+            $"input attach entering: host={GetHashCode():x}, handle={window.Handle}, " +
+            $"hadSubscription={_inputSubscription != null}");
         DetachInputService();
 
         var input = PlatformServices.Input;
         try
         {
             input.InputReceived += OnPlatformInputReceived;
-            _inputSubscription = input.Attach(_window);
+            IDisposable inputSubscription = input.Attach(window);
+            if (_isDisposed ||
+                _hasNativeWindowCloseStarted ||
+                !ReferenceEquals(window, _window))
+            {
+                inputSubscription.Dispose();
+                input.InputReceived -= OnPlatformInputReceived;
+                TraceNativeLoop($"input attach canceled after host close: host={GetHashCode():x}, handle={window.Handle}");
+                return;
+            }
+
+            _inputSubscription = inputSubscription;
             _attachedInputService = input;
+            TraceNativeLoop($"input attached: host={GetHashCode():x}, handle={window.Handle}");
         }
         catch (PlatformNotSupportedException)
         {
@@ -2398,10 +2484,23 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _inputSubscription = null;
             _attachedInputService = null;
         }
+        catch
+        {
+            input.InputReceived -= OnPlatformInputReceived;
+            throw;
+        }
     }
 
     private void DetachInputService()
     {
+        IWindow? window = _window;
+        bool hadSubscription = _inputSubscription != null;
+        if (hadSubscription)
+        {
+            TraceNativeLoop(
+                $"input detach entering: host={GetHashCode():x}, handle={window?.Handle ?? IntPtr.Zero}");
+        }
+
         _inputSubscription?.Dispose();
         _inputSubscription = null;
 
@@ -2409,6 +2508,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             _attachedInputService.InputReceived -= OnPlatformInputReceived;
             _attachedInputService = null;
+        }
+
+        if (hadSubscription && window != null)
+        {
+            TraceNativeLoop($"input detached: host={GetHashCode():x}, handle={window.Handle}");
         }
     }
 

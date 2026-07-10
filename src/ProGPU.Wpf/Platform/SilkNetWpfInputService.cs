@@ -26,24 +26,42 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
         }
 
         var inputContext = SilkInput.InputWindowExtensions.CreateInput(silkView);
-        lock (_sync)
+        try
         {
-            _inputContexts[silkView] = inputContext;
-        }
-
-        return Attach(
-            inputContext,
-            () =>
-            {
-                lock (_sync)
+            IDisposable subscription = Attach(
+                inputContext,
+                () =>
                 {
-                    if (_inputContexts.TryGetValue(silkView, out var registeredContext) &&
-                        ReferenceEquals(registeredContext, inputContext))
+                    lock (_sync)
                     {
-                        _inputContexts.Remove(silkView);
+                        if (_inputContexts.TryGetValue(silkView, out var registeredContext) &&
+                            ReferenceEquals(registeredContext, inputContext))
+                        {
+                            _inputContexts.Remove(silkView);
+                        }
                     }
+                });
+            lock (_sync)
+            {
+                _inputContexts[silkView] = inputContext;
+            }
+
+            return subscription;
+        }
+        catch
+        {
+            lock (_sync)
+            {
+                if (_inputContexts.TryGetValue(silkView, out var registeredContext) &&
+                    ReferenceEquals(registeredContext, inputContext))
+                {
+                    _inputContexts.Remove(silkView);
                 }
-            });
+            }
+
+            inputContext.Dispose();
+            throw;
+        }
     }
 
     public IDisposable Attach(SilkInput.IInputContext inputContext)

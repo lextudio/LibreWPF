@@ -532,11 +532,22 @@ namespace System.Windows
         private Nullable<bool> ShowPortableDialog()
         {
             EnsureDialogCommand();
+            bool pushedModal = false;
 
             try
             {
                 _showingAsDialog = true;
                 Show();
+
+                // The portable dispatcher uses short frames because the platform host owns
+                // the native event loop. Run the dialog host itself to preserve synchronous
+                // ShowDialog semantics without blocking ProGPU/Silk.NET event processing.
+                if (_showingAsDialog && _isVisible)
+                {
+                    ComponentDispatcher.PushModal();
+                    pushedModal = true;
+                    PortableWindowActivationService.TryRun(this);
+                }
             }
             catch
             {
@@ -546,6 +557,11 @@ namespace System.Windows
             }
             finally
             {
+                if (pushedModal)
+                {
+                    ComponentDispatcher.PopModal();
+                }
+
                 _showingAsDialog = false;
             }
 

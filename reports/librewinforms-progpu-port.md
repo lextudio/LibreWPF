@@ -432,3 +432,25 @@ Native input lifetime                         -> balanced attach/detach; no runt
 ```
 
 No ProGPU source change was needed for this managed designer contract.
+
+## 2026-07-10 designer container lifecycle and popup replacement
+
+The portable design host now centralizes the upstream managed component-container lifecycle. `Container.Add(...)`, `IDesignerHost.CreateComponent(...)`, loader-created components, and direct toolbox-style additions share naming, root registration, serialization lookup, and adding/added events. Main and nested removals keep `IComponent.Site` valid through removing/removed callbacks, then clear selection/name/event state and dispose the site before unsiting. `DestroyComponent(...)` removes through the component's actual container, so nested components no longer bypass their nested lifecycle.
+
+`DesignSurface` owns its host from construction and exposes `CreateNestedContainer(owner)` plus `CreateNestedContainer(owner, containerName)`. Named nested containers inherit the owner's site services and publish names such as `toolStripContainer1.tools.namedComponent1`. The SDK smoke covers direct add/remove ordering and cleanup plus the named public API.
+
+A concurrent SharpDevelop popup run also identified two distinct context-menu states. LibreWinForms now restores `ContextMenuStrip.Visible` after closing a stale WPF popup for the same strip before opening its replacement. Separately, SharpDevelop records the strip's `Opened` event even when its independently scheduled toolbar popup correctly closes the context menu before `Show(...)` returns from reentrant dispatcher work.
+
+Validation used a coherent local package set rebuilt from ProGPU `895fe73` (`0.1.0-preview.6`):
+
+```text
+LibreWinForms SDK designer smoke       -> Success; directLifecycle=True, namedNested=True, namedNestedRemoved=True
+LibreWinForms package lane             -> Success; packages, manifest, bundle, checksum
+SharpDevelop fresh-cache rebuild       -> succeeds, 286 warnings, 0 errors
+Focused FormsDesigner                  -> Success; 21 components, 54 rows, persistence true
+Focused ContextMenuStrip               -> Opened, visibleAfterShow=True, 3 items
+Broad ContextMenuStrip                 -> Opened, then correctly superseded by toolbar popup
+Broad SharpDevelop workbench           -> all expected gates, exit code 0, balanced input teardown
+```
+
+Remaining designer work is actual toolbox command placement/removal, extender-provider registration, designer instance creation, undo/redo, verbs/menu commands, inherited components, localized resource round trips, and live event source navigation.

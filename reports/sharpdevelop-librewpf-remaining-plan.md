@@ -51,6 +51,7 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 3. Complete remaining popup runtime validation.
    - Covered now: main menu, real AddInTree context menu, ComboBox, Core.Presentation toolbar drop-down button, hosted WinForms `ContextMenuStrip`, AvalonEdit completion popup, AvalonDock floating-window context menu, and AvalonDock auto-hide flyout through package-mode SharpDevelop flows.
    - Remaining: validate AvalonDock tab/dropdown context-menu interactions and manual user-driven menu/context-menu flows beyond the in-process smoke harness.
+   - Covered now: hosted `ContextMenuStrip` validation keys success from its real `Opened` event, while reporting post-show visibility separately when another concurrent popup correctly supersedes it. LibreWinForms also preserves managed visibility when replacing a stale WPF popup for the same strip.
    - Add more in-process validation helpers only where macOS automation permissions block reliable external driving.
 
 4. Add AvalonEdit IME/text-input seam.
@@ -71,7 +72,8 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
    - Keep LibreWinForms package validation on the matching bridge version and a local LibreWPF/ProGPU feed when testing unpublished bridge bits. The package lane now uses `artifacts/nuget/librewinforms-pack` by default and evicts same-version bridge packages before restore, so stale user/global packages no longer hide missing local bridge content.
    - Covered now: the SharpDevelop package-mode output no longer binds hosted WinForms through stale `System.Windows.Forms, Version=11.0.0.0` or transport-owned `WindowsFormsIntegration.dll`; LibreWinForms and ProGPU drawing assembly identities are coherent in the local feed.
    - Covered now: source-owned designer sites expose typed, site-owned `INestedContainer` services; nested components inherit host/site-local services, publish qualified `INestedSite` names, participate in lifecycle events and serialization lookup, and refresh names when an owner is renamed. SharpDevelop's nonpublic nested-container reflection bootstrap is removed.
-   - Remaining: broaden FormsDesigner/property-grid runtime behavior beyond the current build, load, mutation, nested-service, and hosted-control smoke coverage. Prioritize toolbox placement/removal, extender providers, undo/redo transactions, verbs/menu commands, inherited components, localized resource round trips, and live event-handler source navigation.
+   - Covered now: direct host-container add/remove uses upstream-style lifecycle events and site-preserving removal; public named `DesignSurface.CreateNestedContainer(...)` is available with owner-qualified names and owner-site service inheritance.
+   - Remaining: broaden FormsDesigner/property-grid runtime behavior beyond the current build, load, mutation, nested-service, direct-lifecycle, and hosted-control smoke coverage. Prioritize real toolbox command placement/removal, extender providers, designer instance creation, undo/redo transactions, verbs/menu commands, inherited components, localized resource round trips, and live event-handler source navigation.
 
 7. Complete ResourceToolkit feature parity.
    - The ResourceToolkit package-mode wrapper now builds and can be included in `SharpDevelop.Full.LibreWpf` with `LibreWpfSharpDevelopIncludeResourceToolkit=true`.

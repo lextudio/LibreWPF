@@ -2569,3 +2569,22 @@ Native input teardown                          -> balanced; no unexpected except
 ```
 
 The LineCounter source remains restored after mutation validation. ProGPU stayed clean at `ea24546` (`v0.1.0-preview.4`).
+
+## 2026-07-10 designer lifecycle and concurrent popup validation
+
+LibreWinForms now raises component lifecycle events from the designer host's actual `Container.Add/Remove` implementation, keeps sites alive through removal callbacks, and exposes the public named nested-container API. Its SDK smoke validates direct toolbox-style component registration/removal and a named nested component with inherited design services. This closes the framework behavior below SharpDevelop without adding application-specific designer logic.
+
+The broad workbench run initially printed `ContextMenuStrip ... NotVisible` even though the preceding `Opened` event was present. Log ordering showed the independent toolbar popup smoke opening during reentrant WPF context-menu setup and correctly closing the WinForms context menu before the old smoke read `Visible`. The smoke now treats the actual `Opened` event as the contract and includes `visibleAfterShow` as diagnostic state. LibreWinForms separately restores managed visibility when stale popup cleanup closes the same strip during replacement.
+
+The complete local package closure was regenerated from ProGPU `895fe73` (`0.1.0-preview.6`), then LibreWPF.ProGPU and LibreWinForms were repacked at `0.1.0-preview.sharpdevelop.1` before a fresh-cache SharpDevelop rebuild.
+
+```text
+SharpDevelop.Full.LibreWpf fresh-cache rebuild -> succeeds, 286 warnings, 0 errors
+Focused FormsDesigner                          -> Success; 21 components, 54 rows, flushPersisted=True
+Focused WinForms ContextMenuStrip              -> Opened, visibleAfterShow=True, 3 items
+Broad WinForms ContextMenuStrip                -> Opened, visibleAfterShow=False after toolbar supersedes it
+Broad menu/context/combo/toolbar popups        -> opened
+Broad build/ResX/FormsDesigner/PropertyGrid    -> Success
+Broad AvalonDock/ExceptionBox/completion       -> Success
+Shutdown                                       -> exit code 0; native input attach/detach balanced
+```

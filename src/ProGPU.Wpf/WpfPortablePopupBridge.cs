@@ -138,7 +138,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         }
 
         IsVisible = true;
-        Trace($"show width={Width} height={Height} root={RootVisual?.GetType().FullName ?? "<null>"}");
+        Trace($"show width={Width} height={Height} root={(RootVisual is null ? "<null>" : "set")}");
         RequestRender();
         return true;
     }
@@ -202,7 +202,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             resources,
             imageSourceAdapter,
             includePortablePopupRoots: true);
-        Trace(FormattableString.Invariant($"replay visible={IsVisible} logical=({LogicalX:0.###},{LogicalY:0.###}) size={Width}x{Height} root={rootVisual.GetType().FullName} visuals={result.VisualCount} content={result.ContentCount} renderData={result.RenderData.AppliedCount}/{result.RenderData.RecordCount}"));
+        Trace(FormattableString.Invariant($"replay visible={IsVisible} logical=({LogicalX:0.###},{LogicalY:0.###}) size={Width}x{Height} root=set visuals={result.VisualCount} content={result.ContentCount} renderData={result.RenderData.AppliedCount}/{result.RenderData.RecordCount}"));
         return result;
     }
 

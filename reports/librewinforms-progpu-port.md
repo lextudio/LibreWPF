@@ -258,6 +258,7 @@ The LibreWinForms repository now follows the LibreWPF preview-shipping shape mor
 - The README front section has split NuGet tables for main LibreWinForms packages and bridge packages, with NuGet badge columns.
 - CI and release workflows build matching LibreWPF/ProGPU bridge packages from `wieslawsoltes/wpf` branch `progpu-rendering-port` before packing LibreWinForms.
 - The release workflow accepts an optional bridge version and still creates GitHub releases for `librewinforms-v*` tags with generated notes.
+
 - Docs verification now checks the bridge-package documentation and workflow bootstrap text.
 
 `LibreWinForms.WindowsFormsIntegration` can now restore in package mode by depending on `LibreWPF.Transport` when no explicit `LibreWpfManagedAssemblyRoot` is provided. The old direct WPF assembly references remain available only for local artifact-root validation. This makes standalone LibreWinForms CI/release usable after the matching bridge packages are built in the workflow.
@@ -347,6 +348,31 @@ Preview release bundle                        -> created
 Preview release bundle SHA-256                -> created
 WinForms repository working tree              -> clean
 ```
+
+## 2026-07-10 WinForms application host bootstrap
+
+The WPF superproject updated `external/ProGPU` to `main` commit `4a25075ec56a9dbff2a0a789e524cb5117ed9bf5` and aligned `external/LibreWinForms` to branch `librewinforms-progpu-port` before adding new WinForms host work. No ProGPU source changes were made in this pass.
+
+LibreWinForms now has a typed `IWinFormsApplicationHost` seam in `System.Windows.Forms`. `Application.Run(Form)`, `Form.ShowDialog(...)`, and `Application.ExitThread()` route through that seam when WindowsFormsIntegration registers a host; otherwise the existing fallback behavior remains. `Form.Close(CloseReason)` now returns cancellation state so the WPF host can honor `Closing` and `FormClosing` cancellation without reflection or Win32 callbacks.
+
+`WindowsFormsHost.EnableWindowsFormsInterop()` now registers the WPF-backed application host and also registers LibreWPF portable activation through `LibreWPF.ProGPU`. This makes `Application.Run(Form)` use the existing ProGPU/Silk.NET WPF window path instead of raw `HwndSource`/`user32.dll`. The WPF host defers `Form.Show()` until the WPF window is loaded and marshals close/title updates to the owning WPF dispatcher.
+
+The LibreWinForms SDK now defaults `LibreWinFormsUseWindowsFormsIntegration=true` when `UseWindowsForms=true`, generates a small module-initializer bootstrap that calls `WindowsFormsHost.EnableWindowsFormsInterop()`, and adds the WPF support package closure required by PresentationFramework (`System.Configuration.ConfigurationManager`, `System.Formats.Nrbf`, `System.IO.Packaging`, and `System.Windows.Extensions`) when WindowsFormsIntegration is enabled.
+
+Source validation was added under `src/LibreWinForms.Portable/LibreWinForms.SdkSmoke`. The smoke imports the local SDK, references current LibreWPF managed artifacts, references current ProGPU submodule projects for source-mode DLL coherence, and verifies both startup bootstrap and `Application.Run(Form)` show/close routing.
+
+Validation results:
+
+```text
+LibreWinForms.SdkSmoke Release build -> succeeds, 2 warning groups from source-built WPF assembly-version conflicts, 0 errors
+LibreWinForms.SdkSmoke startup run   -> LibreWinForms SDK smoke build loaded.
+LibreWinForms.SdkSmoke --run-form    -> LibreWinForms SDK smoke result=Success host=WPF formShown=True formClosed=True
+```
+
+The first windowed smoke attempts exposed two packaging/runtime alignment issues that are now documented release requirements rather than WinForms code changes:
+
+- The public `0.1.0-preview.1` bridge packages are behind current source for typed dialog DTOs, so source validation used `/Users/wieslawsoltes/GitHub/wpf/artifacts/packages/SharpDevelopLocal` with `LibreWinFormsBridgePackageVersion=0.1.0-preview.sharpdevelop.1`.
+- After updating the ProGPU submodule, stale package-mode `ProGPU.Scene.dll` conflicted with newer `ProGPU.Wpf.dll`. Source smoke now references the current ProGPU submodule projects to validate the updated source state. Before preview release, LibreWPF/ProGPU/LibreWinForms package feeds must be regenerated from matching commits so package-mode apps do not mix old ProGPU runtime assemblies with newer LibreWPF host assemblies.
 
 ## Remaining work
 

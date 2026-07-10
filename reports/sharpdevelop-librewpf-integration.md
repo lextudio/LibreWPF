@@ -2608,4 +2608,24 @@ Broad editor completion                          -> Opened, 12 items
 Shutdown                                         -> exit code 0; input attach/detach balanced
 ```
 
-The remaining toolbox work is interactive surface behavior: palette selection, click/drop coordinates, drag sizing, selection adorners, parent-designer rules, commands, and undo/redo.
+The remaining toolbox work is visual selection/move/resize adorners, grid and snap behavior, palette-originated drag data, parent-designer rules, commands, and undo/redo.
+
+## 2026-07-10 interactive FormsDesigner toolbox checkpoint
+
+The package-mode FormsDesigner smoke no longer calls `ToolboxItem.CreateComponents(...)` directly. It selects a real `Button` through SharpDevelop's existing `ToolboxProvider.ToolboxService`, sends a `24,32` to `144,60` design-mode mouse sequence to the loaded `UserControl`, and discovers the newly created host component. LibreWinForms owns coordinate translation, parent selection, capture, transaction, initialization, selection, and toolbox reset. The smoke still destroys the button and verifies complete site/parent/designer/container cleanup before restoring the sample source and dirty state.
+
+Fresh packages and a new NuGet cache produced these results:
+
+```text
+SharpDevelop.Full.LibreWpf rebuild             -> succeeds, 286 warnings, 0 errors
+Focused FormsDesigner load                     -> Attached; UserControl root, 21 components
+Focused FormsDesigner mutation                 -> Success; 54 rows, flushPersisted=True
+Focused selected-tool placement                -> toolboxCreated=True, toolboxRemoved=True
+Broad menu/context/combo/toolbar popups        -> opened
+Broad build/ResX/PropertyGrid                  -> Success
+Broad AvalonDock/ContextMenuStrip/ExceptionBox -> Success
+Broad editor completion                        -> Opened, 12 items
+Shutdown                                       -> exit code 0; 5 input attaches, 5 detaches
+```
+
+No SharpDevelop production workaround or ProGPU source edit was needed.

@@ -21,12 +21,33 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\external\ProGPU\src\WindowsBase\WindowsBase.csproj" PrivateAssets="all" Private="false" />
-    <ProjectReference Include="..\..\external\ProGPU\src\PresentationCore\PresentationCore.csproj" PrivateAssets="all" Private="false" />
-    <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Backend\ProGPU.Backend.csproj" />
-    <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.DirectX\ProGPU.DirectX.csproj" />
-    <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Scene\ProGPU.Scene.csproj" />
-    <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj" />
+    <!--
+      SkiaCore M3 experiment: swap the rendering-engine + compile-only shim assemblies to
+      SkiaCore's Skia-backed set. This must be ALL SIX together, not just Backend/DirectX/Scene:
+      the real external/ProGPU PresentationCore/WindowsBase shim's own source hard-references
+      the real ProGPU.Scene (e.g. Geometry : ProGPU.Scene.INativePathGeometrySource), so mixing
+      "real shim + SkiaCore engine" produces an unresolvable assembly-identity conflict
+      (confirmed: CS0012 against ProGPU.Scene). SkiaCore ships its own self-consistent
+      WindowsBase/PresentationCore/Interop specifically so all six can move together. Because
+      ProGPU.Wpf.Interop's identity changes here, Microsoft.DotNet.Wpf's own Interop reference
+      (PresentationCore/PresentationFramework/PresentationUI/ReachFramework/
+      System.Windows.Controls.Ribbon) must be repointed to the same SkiaCore copy too, or WPF's
+      concrete types (e.g. SolidColorBrush) implement interfaces from a different assembly
+      identity than the adapter checks against, and every `is IPortableXxxSource` pattern match
+      silently fails at runtime. See docs/design.md M3.
+    -->
+    <ProjectReference Include="..\..\..\SkiaCore\src\WindowsBase\WindowsBase.csproj" PrivateAssets="all" Private="false" />
+    <ProjectReference Include="..\..\..\SkiaCore\src\PresentationCore\PresentationCore.csproj" PrivateAssets="all" Private="false" />
+    <!--
+      Backend/DirectX/Scene are packed as their own standalone nupkgs from SkiaCore (matching
+      their project names) and dropped in the same local feed, so this plain ProjectReference's
+      auto-generated NuGet dependency ("ProGPU.Backend" etc, at whatever version this pack
+      invocation's -p:PackageVersion resolves to) is satisfiable. See docs/design.md M3.
+    -->
+    <ProjectReference Include="..\..\..\SkiaCore\src\ProGPU.Backend\ProGPU.Backend.csproj" />
+    <ProjectReference Include="..\..\..\SkiaCore\src\ProGPU.DirectX\ProGPU.DirectX.csproj" />
+    <ProjectReference Include="..\..\..\SkiaCore\src\ProGPU.Scene\ProGPU.Scene.csproj" />
+    <ProjectReference Include="..\..\..\SkiaCore\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj" />
   </ItemGroup>
 
   <Target Name="_ProGpuWpfRemoveNetCoreWindowsBaseFacade"

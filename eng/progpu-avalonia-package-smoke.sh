@@ -72,11 +72,12 @@ cat >"${project_dir}/Directory.Build.targets" <<'XML'
 <Project />
 XML
 
-cat >"${project_dir}/Directory.Packages.props" <<'XML'
+cat >"${project_dir}/Directory.Packages.props" <<XML
 <Project>
-  <PropertyGroup>
-    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-  </PropertyGroup>
+  <Import Project="${repo_root}/external/ProGPU/Directory.Packages.props" />
+  <ItemGroup>
+    <PackageVersion Include="ProGPU.Avalonia" Version="${dev_package_version}" />
+  </ItemGroup>
 </Project>
 XML
 
@@ -101,11 +102,11 @@ cat >"${project_dir}/ProGPU.Avalonia.PackageSmoke.csproj" <<XML
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.3" />
-    <PackageReference Include="ProGPU.Avalonia" Version="${dev_package_version}" />
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="ProGPU.Avalonia" />
   </ItemGroup>
 </Project>
 XML

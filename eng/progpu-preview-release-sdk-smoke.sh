@@ -160,6 +160,15 @@ PROGPU_WPF_BUNDLE_SDK_SMOKE_VALIDATE=1 \
 avalonia_project_dir="${feed_dir}/BundleAvaloniaSmoke"
 mkdir -p "${avalonia_project_dir}"
 
+cat >"${avalonia_project_dir}/Directory.Packages.props" <<PROJECT
+<Project>
+  <Import Project="${repo_root}/external/ProGPU/Directory.Packages.props" />
+  <ItemGroup>
+    <PackageVersion Include="ProGPU.Avalonia" Version="${dev_package_version}" />
+  </ItemGroup>
+</Project>
+PROJECT
+
 cat >"${avalonia_project_dir}/BundleAvaloniaSmoke.csproj" <<PROJECT
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -170,11 +179,11 @@ cat >"${avalonia_project_dir}/BundleAvaloniaSmoke.csproj" <<PROJECT
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.3" />
-    <PackageReference Include="ProGPU.Avalonia" Version="${dev_package_version}" />
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="ProGPU.Avalonia" />
   </ItemGroup>
 </Project>
 PROJECT

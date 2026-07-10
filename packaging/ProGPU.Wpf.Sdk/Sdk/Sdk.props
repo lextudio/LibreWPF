@@ -1,5 +1,8 @@
 <Project>
 
+  <Import Project="$(MSBuildThisFileDirectory)LibreWPF.Sdk.Version.props"
+          Condition="Exists('$(MSBuildThisFileDirectory)LibreWPF.Sdk.Version.props')" />
+
   <PropertyGroup>
     <_ProGpuWpfSdkImported>true</_ProGpuWpfSdkImported>
     <ProGpuWpfUseWpfMarkup Condition="'$(ProGpuWpfUseWpfMarkup)' == ''">true</ProGpuWpfUseWpfMarkup>
@@ -19,6 +22,7 @@
     <AppendRuntimeIdentifierToOutputPath Condition="'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(AppendRuntimeIdentifierToOutputPath)' == ''">false</AppendRuntimeIdentifierToOutputPath>
     <ProGpuWpfPlatform Condition="'$(ProGpuWpfPlatform)' == ''">SilkNet</ProGpuWpfPlatform>
     <ProGpuWpfRenderingBackend Condition="'$(ProGpuWpfRenderingBackend)' == ''">ProGPU</ProGpuWpfRenderingBackend>
+    <ProGpuWpfSdkVersion Condition="'$(ProGpuWpfSdkVersion)' == '' And '$(_LibreWpfSdkPackageVersion)' != ''">$(_LibreWpfSdkPackageVersion)</ProGpuWpfSdkVersion>
     <ProGpuWpfSdkVersion Condition="'$(ProGpuWpfSdkVersion)' == ''">0.1.0-preview.1</ProGpuWpfSdkVersion>
     <ProGpuWpfRuntimeFrameworkVersion Condition="'$(ProGpuWpfRuntimeFrameworkVersion)' == ''"></ProGpuWpfRuntimeFrameworkVersion>
     <RuntimeFrameworkVersion Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(RuntimeFrameworkVersion)' == '' And '$(ProGpuWpfRuntimeFrameworkVersion)' != ''">$(ProGpuWpfRuntimeFrameworkVersion)</RuntimeFrameworkVersion>

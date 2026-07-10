@@ -68,6 +68,18 @@ require_entry() {
   fi
 }
 
+require_entry_contains() {
+  local package_id="$1"
+  local entry="$2"
+  local expected="$3"
+  local package_file
+  package_file="$(package_path "${package_id}")"
+  if ! unzip -p "${package_file}" "${entry}" | grep -Fq "${expected}"; then
+    echo "Package ${package_id} entry '${entry}' is missing '${expected}'." >&2
+    exit 1
+  fi
+}
+
 reject_entry() {
   local package_id="$1"
   local entry="$2"
@@ -131,11 +143,13 @@ require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Backend\" versio
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Layout\" version=\"${dev_package_version}\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Scene\" version=\"${dev_package_version}\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.WinUI\" version=\"${dev_package_version}\""
-require_nuspec_contains ProGPU.Avalonia "dependency id=\"Avalonia\" version=\"12.0.3\""
+require_nuspec_contains ProGPU.Avalonia "dependency id=\"Avalonia\" version=\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"Silk.NET.WebGPU\" version=\"2.23.0\""
 
 require_nuspec_contains LibreWPF.Sdk "<packageType name=\"MSBuildSdk\" />"
 require_entry LibreWPF.Sdk "Sdk/Sdk.props"
+require_entry LibreWPF.Sdk "Sdk/LibreWPF.Sdk.Version.props"
+require_entry_contains LibreWPF.Sdk "Sdk/LibreWPF.Sdk.Version.props" "<_LibreWpfSdkPackageVersion>${dev_package_version}</_LibreWpfSdkPackageVersion>"
 require_entry LibreWPF.Sdk "Sdk/Sdk.targets"
 require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.props"
 require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.targets"

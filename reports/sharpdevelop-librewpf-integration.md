@@ -2545,3 +2545,27 @@ Broad package-mode workbench                             -> menu/context/combo/t
 Broad shutdown                                           -> exit code 0; balanced input attach/detach; sample sources unchanged
 ProGPU submodule                                         -> ea24546, clean, no local ProGPU source changes
 ```
+
+## 2026-07-10 reflection-free nested FormsDesigner services
+
+SharpDevelop's old `ComponentContainerSetUp(...)` hook used reflection to invoke the protected `NestedContainer.GetService(Type)` method and force initialization of an `IServiceContainer`. That workaround is no longer needed. LibreWinForms portable design sites now implement the current upstream contract: a public `INestedContainer` request creates the site-owned nested container and initializes its typed service chain. SharpDevelop retains the component-added hook but now performs only that public contract request, and `AbstractCodeDomDesignerLoader.cs` no longer imports `System.Reflection`.
+
+The framework implementation also covers nested design components directly: design-mode `INestedSite` values, qualified serialization names, host and site-local service inheritance, lifecycle events, owner rename propagation, recursive lookup, and deterministic disposal. This keeps the behavior reusable by other WinForms designers and avoids a SharpDevelop-specific compatibility path.
+
+Validation used freshly packed `LibreWinForms.System.Windows.Forms/0.1.0-preview.sharpdevelop.1` in a new NuGet cache:
+
+```text
+SharpDevelop.Full.LibreWpf rebuild             -> succeeds, 286 warnings, 0 errors
+Focused FormsDesigner load                     -> Attached; UserControl root, 21 components
+Focused FormsDesigner mutation                 -> Success; selection/service/grid/persistence true, 54 rows
+Broad package-mode workbench                   -> exit code 0
+Main/AddInTree/ComboBox/toolbar popups          -> opened
+LineCounter build                              -> Success, 0 errors, 4 sample warnings
+ResX                                           -> Success
+AvalonDock float/context/auto-hide/redock      -> Success
+Hosted ContextMenuStrip / owned ExceptionBox   -> Success
+AvalonEdit completion                          -> Opened, 12 items
+Native input teardown                          -> balanced; no unexpected exception
+```
+
+The LineCounter source remains restored after mutation validation. ProGPU stayed clean at `ea24546` (`v0.1.0-preview.4`).

@@ -70,7 +70,8 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
    - Keep source-owned LibreWinForms as the long-term implementation and remove compatibility mirrors once SharpDevelop consumes LibreWinForms directly.
    - Keep LibreWinForms package validation on the matching bridge version and a local LibreWPF/ProGPU feed when testing unpublished bridge bits. The package lane now uses `artifacts/nuget/librewinforms-pack` by default and evicts same-version bridge packages before restore, so stale user/global packages no longer hide missing local bridge content.
    - Covered now: the SharpDevelop package-mode output no longer binds hosted WinForms through stale `System.Windows.Forms, Version=11.0.0.0` or transport-owned `WindowsFormsIntegration.dll`; LibreWinForms and ProGPU drawing assembly identities are coherent in the local feed.
-   - Remaining: broaden FormsDesigner/property-grid runtime behavior beyond the current build, load, mutation, and hosted-control smoke coverage.
+   - Covered now: source-owned designer sites expose typed, site-owned `INestedContainer` services; nested components inherit host/site-local services, publish qualified `INestedSite` names, participate in lifecycle events and serialization lookup, and refresh names when an owner is renamed. SharpDevelop's nonpublic nested-container reflection bootstrap is removed.
+   - Remaining: broaden FormsDesigner/property-grid runtime behavior beyond the current build, load, mutation, nested-service, and hosted-control smoke coverage. Prioritize toolbox placement/removal, extender providers, undo/redo transactions, verbs/menu commands, inherited components, localized resource round trips, and live event-handler source navigation.
 
 7. Complete ResourceToolkit feature parity.
    - The ResourceToolkit package-mode wrapper now builds and can be included in `SharpDevelop.Full.LibreWpf` with `LibreWpfSharpDevelopIncludeResourceToolkit=true`.

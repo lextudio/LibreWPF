@@ -408,3 +408,27 @@ LibreWinForms.SdkSmoke --run-designer    -> Success; load/site services/local st
 SharpDevelop focused FormsDesigner       -> Success; 21 components, 54 rows, changed Text persisted
 SharpDevelop broad package-mode run       -> exit code 0 with FormsDesigner, PropertyGrid, AvalonDock, popups and owned form
 ```
+
+## 2026-07-10 nested designer sites and service containers
+
+LibreWinForms now completes the upstream-managed nested-site pattern used by WinForms designers. Every portable designer site lazily owns a typed `INestedContainer`; its service container chains site-local services to the containing nested site and then to `PortableDesignerHost`. Nested components receive design-mode `INestedSite` instances, owner-qualified names, host service lookup, component lifecycle events, recursive name refresh after owner rename, and deterministic subtree/service disposal.
+
+`IDesignerSerializationManager.GetName(...)` and `GetInstance(...)` now understand nested full names without property probing or private method invocation. A nested site's `ISite.Container` remains the nested container while `GetService(IContainer)` and `GetService(IServiceContainer)` resolve the designer host, matching upstream WinForms behavior.
+
+The SDK designer smoke now validates `INestedContainer.Owner`, `INestedSite.FullName`, adding/added events, inherited `IDesignerHost`, `IContainer`, `IComponentChangeService`, site-local service lookup, serialization lookup, and descendant name updates after renaming the owner. The result is fully successful.
+
+SharpDevelop's historical `ComponentContainerSetUp(...)` reflection bootstrap was removed. It now requests only the public `INestedContainer` contract; LibreWinForms performs service initialization inside the framework.
+
+Validation:
+
+```text
+LibreWinForms SDK designer smoke             -> Success; all root and nested site assertions true
+SharpDevelop fresh-cache package-mode build  -> succeeds, 286 warnings, 0 errors
+Focused LineCounter FormsDesigner             -> Success; 21 components, 54 rows, flushPersisted=True
+Broad SharpDevelop package-mode run           -> exit code 0
+Broad runtime coverage                        -> menu/context/combo/toolbar popups, build, ResX, FormsDesigner,
+                                                 PropertyGrid, AvalonDock, ContextMenuStrip, ExceptionBox, completion
+Native input lifetime                         -> balanced attach/detach; no runtime failure marker
+```
+
+No ProGPU source change was needed for this managed designer contract.

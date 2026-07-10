@@ -2522,3 +2522,26 @@ LibreWinForms source/docs                                         -> 024419fac /
 ```
 
 The existing FormsDesigner mutation smoke still reports `Partial` for `selectedByContainer=False` and `flushPersisted=False`; this modal-window pass does not claim that remaining serializer/designer work is complete.
+
+## 2026-07-10 FormsDesigner host-site and ProGPU preview.4 checkpoint
+
+The remaining FormsDesigner partial result is resolved. LibreWinForms previously hosted design components in a plain child `Container`, so a component's standard site could not resolve `IComponentChangeService` or the other design-host services. The portable host now follows upstream managed WinForms: the host is the `Container`, creates design-mode host-aware sites, delegates typed services through `IComponent.Site`, preserves site-local services and dictionary state, synchronizes site renames with serialization names, and disposes site-local services with the design surface. `LibreWinForms.SdkSmoke --run-designer` validates load, selection, site services, local services, dictionary state, rename, and changed-property CodeDOM emission.
+
+Source tracing showed that LibreWinForms already emitted the changed `ToolStripContainer.Text` assignment correctly. The SharpDevelop smoke captured design-host generation 1, yielded for the PropertyPad, allowed two normal `OpenedFile.SwitchedToView` reloads, then flushed generation 3. The validation hook now waits for a stable current host before selecting its target and performs mutation, PropertyGrid inspection, flush, and restore without yielding. It then merges the restored value before restoring the original document/dirty state, so validation leaves no save prompt or source change. SharpDevelop's production designer loader and `CSharpDesignerGenerator` were not altered.
+
+The same run exposed a cross-dispatcher owned-form startup case in `AsynchronousWaitDialog`: a worker-thread WPF window queried the application-dispatcher-owned `Application.MainWindow`. Source-built WPF now compares dispatcher identities first and only reads `MainWindow` from the owning dispatcher. Worker windows are classified as non-main without crossing thread affinity; ProGPU needed no host-specific workaround.
+
+ProGPU was fast-forwarded without local source changes from `4a25075` (`preview.3`) to `ea24546` (`v0.1.0-preview.4`). The coherent `0.1.0-preview.sharpdevelop.1` local package set and `LibreWPF.ProGPU` were rebuilt before validation.
+
+Validation:
+
+```text
+LibreWinForms SDK designer smoke                         -> Success
+LibreWPF portable window activation source guard        -> 1 passed
+PresentationFramework Release build                     -> succeeds, 2 warnings, 0 errors
+SharpDevelop.Full.LibreWpf fresh-cache rebuild           -> succeeds, 286 warnings, 0 errors
+Focused FormsDesigner mutation                           -> Success; selection/service/grid/persistence all true, 54 rows
+Broad package-mode workbench                             -> menu/context/combo/toolbar popups, build, ResX, FormsDesigner, PropertyGrid, AvalonDock, ContextMenuStrip, ExceptionBox, completion pass
+Broad shutdown                                           -> exit code 0; balanced input attach/detach; sample sources unchanged
+ProGPU submodule                                         -> ea24546, clean, no local ProGPU source changes
+```

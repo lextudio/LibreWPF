@@ -114,3 +114,16 @@ Add these gates to the next phase:
 - Native-loop logs contain no `More than one input context`, `owner loop unexpected exception`, `run failed`, or post-close input reattachment.
 - Modal close during cold native initialization is covered whenever host initialization or Silk.NET versions change.
 - FormsDesigner completion remains separate: `selectedByContainer` and `flushPersisted` must become true through upstream-compatible managed designer behavior before that subsystem is declared complete.
+
+## 2026-07-10 FormsDesigner checkpoint update
+
+The previous FormsDesigner gate is complete at the current mutation/flush level. LibreWinForms now exposes host-aware design sites through the same managed container/site pattern as upstream WinForms, and the package-mode SharpDevelop smoke reports all of `selectedByService`, `selectedByContainer`, `selectedByGrid`, `valueVisible`, `flushPersisted`, `siteHasChangeService`, and `shouldSerializeText` as true. The sample source and dirty state are restored and normal shutdown exits with code 0.
+
+Remaining FormsDesigner work is broader parity, not basic host selection/persistence: toolbox placement and removal through real UI commands, event-handler creation and source navigation through live PropertyGrid interaction, localized resource save/load round trips, nested components and extender providers, undo/redo transactions, design verbs/menu commands, inherited/read-only component behavior, and more upstream designer/control source reuse.
+
+Keep these gates in subsequent phases:
+
+- `LibreWinForms.SdkSmoke --run-designer` remains green and reflection-free.
+- The focused SharpDevelop designer smoke uses the current stable host and leaves the LineCounter source byte-for-byte unchanged.
+- Worker-thread WinForms hosts never read `Application.MainWindow` across dispatcher ownership.
+- ProGPU package refreshes remain coherent with the pinned submodule; current validation uses clean `ea24546` (`v0.1.0-preview.4`) source.

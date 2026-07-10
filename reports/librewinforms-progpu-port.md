@@ -394,3 +394,17 @@ LibreWinForms.SdkSmoke --run-form    -> Success
 LibreWinForms.SdkSmoke --run-dialog  -> Success host=WPF ownerLoaded=True dialogShown=True dialogClosed=True ownerLinked=True result=OK
 SharpDevelop ExceptionBox smoke      -> Success controls=10 ownerLinked=True presentationSource=True result=OK
 ```
+
+## 2026-07-10 source-owned designer sites
+
+The portable `DesignSurface` no longer puts components in a detached plain `Container`. `PortableDesignerHost` now derives from the managed component container, creates design-mode sites that resolve host services through typed `IServiceProvider`, and supports per-site `IServiceContainer`/`IDictionaryService` state. This reuses the upstream WinForms `DesignerHost : Container` and host-aware `Site` architecture while keeping the portable implementation free of the old nested-container reflection bootstrap.
+
+The design surface now disposes its host, components, and site-local service containers. Site renames update serialization-manager name/instance maps and emit the standard component-rename event. This lets SharpDevelop's replayed controls resolve `IComponentChangeService` from `component.Site`, allows normal property descriptors to notify the designer, and keeps CodeDOM serialization on the real current component graph.
+
+Validation:
+
+```text
+LibreWinForms.SdkSmoke --run-designer    -> Success; load/site services/local state/selection/serialization/rename
+SharpDevelop focused FormsDesigner       -> Success; 21 components, 54 rows, changed Text persisted
+SharpDevelop broad package-mode run       -> exit code 0 with FormsDesigner, PropertyGrid, AvalonDock, popups and owned form
+```

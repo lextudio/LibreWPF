@@ -873,7 +873,19 @@ namespace System.Windows
                     return false;
                 }
 
-                isMainWindow = ReferenceEquals(Application.Current?.MainWindow, typedWindow);
+                Application application = Application.Current;
+                if (application == null
+                    || !ReferenceEquals(application.Dispatcher, typedWindow.Dispatcher))
+                {
+                    return true;
+                }
+
+                if (!application.Dispatcher.CheckAccess())
+                {
+                    return false;
+                }
+
+                isMainWindow = ReferenceEquals(application.MainWindow, typedWindow);
                 return true;
             }
 

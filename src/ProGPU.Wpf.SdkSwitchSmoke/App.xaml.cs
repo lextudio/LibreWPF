@@ -13,7 +13,7 @@ namespace ProGPU.Wpf.SdkSwitchSmoke;
 
 public partial class App : Application
 {
-    private const string PackageVersion = "0.1.0-preview.1";
+    private const string PackageVersion = "0.1.0-preview.7";
 
     public int StartupEventCount { get; private set; }
 

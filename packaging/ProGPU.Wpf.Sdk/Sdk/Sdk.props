@@ -23,7 +23,7 @@
     <ProGpuWpfPlatform Condition="'$(ProGpuWpfPlatform)' == ''">SilkNet</ProGpuWpfPlatform>
     <ProGpuWpfRenderingBackend Condition="'$(ProGpuWpfRenderingBackend)' == ''">ProGPU</ProGpuWpfRenderingBackend>
     <ProGpuWpfSdkVersion Condition="'$(ProGpuWpfSdkVersion)' == '' And '$(_LibreWpfSdkPackageVersion)' != ''">$(_LibreWpfSdkPackageVersion)</ProGpuWpfSdkVersion>
-    <ProGpuWpfSdkVersion Condition="'$(ProGpuWpfSdkVersion)' == ''">0.1.0-preview.1</ProGpuWpfSdkVersion>
+    <ProGpuWpfSdkVersion Condition="'$(ProGpuWpfSdkVersion)' == ''">0.1.0-preview.7</ProGpuWpfSdkVersion>
     <ProGpuWpfRuntimeFrameworkVersion Condition="'$(ProGpuWpfRuntimeFrameworkVersion)' == ''"></ProGpuWpfRuntimeFrameworkVersion>
     <RuntimeFrameworkVersion Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(RuntimeFrameworkVersion)' == '' And '$(ProGpuWpfRuntimeFrameworkVersion)' != ''">$(ProGpuWpfRuntimeFrameworkVersion)</RuntimeFrameworkVersion>
     <ProGpuWpfReferenceMode Condition="'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')">LocalArtifacts</ProGpuWpfReferenceMode>

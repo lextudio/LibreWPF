@@ -9189,7 +9189,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var active)", presentationCoreGpuProvider, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var active in WgpuContext.ActiveContexts)", presentationCoreGpuProvider, StringComparison.Ordinal);
         Assert.Contains("var current = WgpuContext.Current;", systemDrawingGpuProvider, StringComparison.Ordinal);
-        Assert.Contains("if (current != null && current.IsReady)", systemDrawingGpuProvider, StringComparison.Ordinal);
+        Assert.Contains("if (current != null && current.IsInitialized)", systemDrawingGpuProvider, StringComparison.Ordinal);
         Assert.Contains("lock (s_compositorCacheScope)", systemDrawingGpuProvider, StringComparison.Ordinal);
         Assert.Contains("_context = new WgpuContext();", systemDrawingGpuProvider, StringComparison.Ordinal);
         Assert.DoesNotContain("WgpuContext.TryGetFirstActiveContext", systemDrawingGpuProvider, StringComparison.Ordinal);
@@ -9565,9 +9565,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("foreach (var segment in figure.Segments)", pathOps, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var seg in figure.Segments)", pathOps, StringComparison.Ordinal);
         Assert.DoesNotContain("return (records, segments.ToArray());", pathOps, StringComparison.Ordinal);
-        Assert.Contains("Span<nint> bindGroupsToRelease = stackalloc nint[iterations * 2];", computeAccelerator, StringComparison.Ordinal);
+        Assert.Contains("horizontalParams.WriteSingle(new GaussianBlurParams(sigmaX));", computeAccelerator, StringComparison.Ordinal);
+        Assert.Contains("verticalParams.WriteSingle(new GaussianBlurParams(sigmaY));", computeAccelerator, StringComparison.Ordinal);
         Assert.Contains("var bindGroupToReleaseCount = 0;", computeAccelerator, StringComparison.Ordinal);
-        Assert.Contains("RunBlurPass(encoder, _blurHorizPipeline, blurHLayout, hInput, temp, width, height, bindGroupsToRelease, ref bindGroupToReleaseCount);", computeAccelerator, StringComparison.Ordinal);
         Assert.Contains("Span<nint> bindGroupsToRelease = stackalloc nint[2];", computeAccelerator, StringComparison.Ordinal);
         Assert.Contains("RunShadowPass(encoder, _shadowBlurHorizPipeline, shadowHLayout, source, temp, paramsBuffer, width, height, bindGroupsToRelease, ref bindGroupToReleaseCount);", computeAccelerator, StringComparison.Ordinal);
         Assert.Contains("RunShadowPass(encoder, _shadowBlurVertPipeline, shadowVLayout, temp, destination, paramsBuffer, width, height, bindGroupsToRelease, ref bindGroupToReleaseCount);", computeAccelerator, StringComparison.Ordinal);
@@ -9661,7 +9661,7 @@ public sealed class WpfManagedProjectGraphTests
             "eng",
             "run-progpu-wpf-toolkit.sh"));
 
-        Assert.Equal("LibreWPF.Sdk/0.1.0-preview.1", project.Root?.Attribute("Sdk")?.Value);
+        Assert.Equal("LibreWPF.Sdk/0.1.0-preview.7", project.Root?.Attribute("Sdk")?.Value);
         AssertPackageReference(project, "Extended.Wpf.Toolkit");
         Assert.Contains("xmlns:sys=\"clr-namespace:System;assembly=System.Private.CoreLib\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("<sys:String x:Key=\"ToolkitFilterWatermark\">Filter documents</sys:String>", appXaml, StringComparison.Ordinal);
@@ -10207,7 +10207,7 @@ public sealed class WpfManagedProjectGraphTests
             "eng",
             "run-progpu-wpf-xceed-paid.sh"));
 
-        Assert.Equal("LibreWPF.Sdk/0.1.0-preview.1", project.Root?.Attribute("Sdk")?.Value);
+        Assert.Equal("LibreWPF.Sdk/0.1.0-preview.7", project.Root?.Attribute("Sdk")?.Value);
         Assert.Contains("<TargetFramework>$(ProGpuWpfSdkSampleTargetFramework)</TargetFramework>", project.ToString(), StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", project.ToString(), StringComparison.Ordinal);
         Assert.Contains("<XceedPaidToolkitPackageVersion>5.2.26322.8434</XceedPaidToolkitPackageVersion>", project.ToString(), StringComparison.Ordinal);
@@ -11520,7 +11520,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("LibreWPF MSBuild SDK for running existing desktop XAML applications on ProGPU/Silk.NET.", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("<PackageName>LibreWPF.Sdk$(TransportPackageNameSuffix)</PackageName>", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("<VersionPrefix>0.1.0</VersionPrefix>", sdkProject.ToString(), StringComparison.Ordinal);
-        Assert.Contains("<VersionSuffix>preview.1</VersionSuffix>", sdkProject.ToString(), StringComparison.Ordinal);
+        Assert.Contains("<VersionSuffix>preview.7</VersionSuffix>", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("<Version>$(VersionPrefix)-$(VersionSuffix)</Version>", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("<PackageVersion>$(Version)</PackageVersion>", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("librewpf;progpu;silk.net;msbuild-sdk", sdkProject.ToString(), StringComparison.Ordinal);
@@ -11555,7 +11555,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProGpuWpfRenderingBackend Condition=\"'$(ProGpuWpfRenderingBackend)' == ''\">ProGPU</ProGpuWpfRenderingBackend>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<Import Project=\"$(MSBuildThisFileDirectory)LibreWPF.Sdk.Version.props\"", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSdkVersion Condition=\"'$(ProGpuWpfSdkVersion)' == '' And '$(_LibreWpfSdkPackageVersion)' != ''\">$(_LibreWpfSdkPackageVersion)</ProGpuWpfSdkVersion>", sdkProps, StringComparison.Ordinal);
-        Assert.Contains("<ProGpuWpfSdkVersion Condition=\"'$(ProGpuWpfSdkVersion)' == ''\">0.1.0-preview.1</ProGpuWpfSdkVersion>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfSdkVersion Condition=\"'$(ProGpuWpfSdkVersion)' == ''\">0.1.0-preview.7</ProGpuWpfSdkVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfRuntimeFrameworkVersion Condition=\"'$(ProGpuWpfRuntimeFrameworkVersion)' == ''\"></ProGpuWpfRuntimeFrameworkVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<RuntimeFrameworkVersion Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(RuntimeFrameworkVersion)' == '' And '$(ProGpuWpfRuntimeFrameworkVersion)' != ''\">$(ProGpuWpfRuntimeFrameworkVersion)</RuntimeFrameworkVersion>", sdkProps, StringComparison.Ordinal);
         Assert.DoesNotContain("11.0.0-preview.4.26210.111", sdkProps, StringComparison.Ordinal);
@@ -11921,6 +11921,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("name: LibreWPF Release", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_DEV_PACKAGE_VERSION", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("./eng/progpu-wpf-sdk-ci.sh", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("Stage exact ProGPU release packages", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_PREPACKAGED_PROGPU_DIR", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("for package_id in LibreWPF.Transport LibreWPF.ProGPU LibreWPF.Sdk", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("NUGET_API_KEY", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping/*.nupkg", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("Create GitHub Release", releaseWorkflow, StringComparison.Ordinal);
@@ -11932,7 +11935,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("--prerelease", releaseWorkflow, StringComparison.Ordinal);
         Assert.StartsWith("# LibreWPF ProGPU Port", wpfReadme, StringComparison.Ordinal);
         Assert.Contains("The public package brand is LibreWPF", wpfReadme, StringComparison.Ordinal);
-        Assert.Contains("LibreWPF.Sdk/0.1.0-preview.1", wpfReadme, StringComparison.Ordinal);
+        Assert.Contains("LibreWPF.Sdk/0.1.0-preview.7", wpfReadme, StringComparison.Ordinal);
         Assert.Contains("| `LibreWPF.Transport` |", wpfReadme, StringComparison.Ordinal);
         Assert.Contains("| `LibreWPF.ProGPU` |", wpfReadme, StringComparison.Ordinal);
         Assert.Contains("| `LibreWPF.Sdk` |", wpfReadme, StringComparison.Ordinal);
@@ -12018,26 +12021,29 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Running SciChart MVP SDK app renderer validation", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Running SciChart MVP SDK app Application.Run validation", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("dev_package_version=\"${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.1}\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("dev_package_version=\"${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.7}\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("clean_preview_package_output()", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}\"/*.nupkg", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}\"/*.snupkg", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}\"/*-preview-*.tar.gz", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}\"/*-preview-packages-*.json", sdkCiScript, StringComparison.Ordinal);
         Assert.True(
-            sdkCiScript.IndexOf("clean_preview_package_output", StringComparison.Ordinal)
-                < sdkCiScript.IndexOf("Packing ProGPU packages for LibreWPF.Sdk feed", StringComparison.Ordinal),
-            "SDK CI must clean stale package and bundle artifacts before packing.");
+            sdkCiScript.IndexOf("\nclean_preview_package_output\n", StringComparison.Ordinal)
+                < sdkCiScript.IndexOf("Staging exact ProGPU packages for the LibreWPF.Sdk feed", StringComparison.Ordinal),
+            "SDK CI must clean stale package and bundle artifacts before staging.");
+        Assert.Contains("prepackaged_progpu_dir=\"${PROGPU_WPF_PREPACKAGED_PROGPU_DIR:-}\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("stage_or_pack_progpu_project()", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("cmp \"${source_package}\" \"${destination_package}\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}/${package_id}.${dev_package_version}.nupkg\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj\" \"ProGPU.DirectX\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj\" \"ProGPU.Scene\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj\" \"ProGPU.Layout\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj\" \"ProGPU.Virtualization\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj\" \"ProGPU.WinUI\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj\" \"ProGPU.Avalonia\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("pack_project \"external/ProGPU/src/SkiaSharp/SkiaSharp.csproj\" \"ProGPU.SkiaSharp\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("pack_project \"external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj\" \"ProGPU.System.Drawing.Common\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj\" \"LibreWPF.Interop\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("stage_or_pack_progpu_project \"external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj\" \"ProGPU.DirectX\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("stage_or_pack_progpu_project \"external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj\" \"ProGPU.Scene\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("stage_or_pack_progpu_project \"external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj\" \"ProGPU.Layout\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("stage_or_pack_progpu_project \"external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj\" \"ProGPU.Virtualization\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("stage_or_pack_progpu_project \"external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj\" \"ProGPU.WinUI\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("stage_or_pack_progpu_project \"external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj\" \"ProGPU.Avalonia\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("stage_or_pack_progpu_project \"external/ProGPU/src/SkiaSharp/SkiaSharp.csproj\" \"ProGPU.SkiaSharp\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("stage_or_pack_progpu_project \"external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj\" \"ProGPU.System.Drawing.Common\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("stage_or_pack_progpu_project \"external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj\" \"LibreWPF.Interop\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Running ProGPU Avalonia package consumer smoke", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/progpu-avalonia-package-smoke.sh\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"src/ProGPU.Wpf/ProGPU.Wpf.csproj\" \"LibreWPF.ProGPU\"", sdkCiScript, StringComparison.Ordinal);
@@ -12111,17 +12117,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("shasum -a 256", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("sha256sum", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("git_commit()", previewPackageManifestScript, StringComparison.Ordinal);
-        Assert.Contains("git_has_tracked_changes()", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("git_is_dirty()", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("git -C \"${git_root}\" rev-parse --verify HEAD", previewPackageManifestScript, StringComparison.Ordinal);
-        Assert.Contains("git -C \"${git_root}\" diff --quiet --ignore-submodules=dirty -- .", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("git -C \"${git_root}\" status --porcelain --untracked-files=normal --ignore-submodules=dirty", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("wpf_commit=\"$(git_commit \"${repo_root}\")\"", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("progpu_commit=\"$(git_commit \"${repo_root}/external/ProGPU\")\"", previewPackageManifestScript, StringComparison.Ordinal);
-        Assert.Contains("\"schemaVersion\": 2", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("librewinforms_commit=\"$(git_commit \"${repo_root}/external/LibreWinForms\")\"", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"schemaVersion\": 3", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"source\": {", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"wpfCommit\": \"%s\"", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"progpuCommit\": \"%s\"", previewPackageManifestScript, StringComparison.Ordinal);
-        Assert.Contains("\"wpfHasTrackedChanges\": %s", previewPackageManifestScript, StringComparison.Ordinal);
-        Assert.Contains("\"progpuHasTrackedChanges\": %s", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"libreWinFormsCommit\": \"%s\"", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"wpfIsDirty\": %s", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"progpuIsDirty\": %s", previewPackageManifestScript, StringComparison.Ordinal);
+        Assert.Contains("\"libreWinFormsIsDirty\": %s", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"sizeBytes\": %s", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("\"sha256\": \"%s\"", previewPackageManifestScript, StringComparison.Ordinal);
         Assert.Contains("LibreWPF preview package manifest written", previewPackageManifestScript, StringComparison.Ordinal);
@@ -12188,10 +12197,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("cmp -s \"${manifest_path}\" \"${extract_dir}/${manifest_name}\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_PREVIEW_RELEASE_CURRENT_WPF_COMMIT=\"$(git_commit \"${repo_root}\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_PREVIEW_RELEASE_CURRENT_PROGPU_COMMIT=\"$(git_commit \"${repo_root}/external/ProGPU\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_PREVIEW_RELEASE_CURRENT_LIBREWINFORMS_COMMIT=\"$(git_commit \"${repo_root}/external/LibreWinForms\")\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("const [extractDirectory, manifestName, devPackageVersion, ...packageIds] = process.argv.slice(2);", previewReleaseVerifyScript, StringComparison.Ordinal);
-        Assert.Contains("if (manifest.schemaVersion !== 2)", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("if (manifest.schemaVersion !== 3)", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("manifest.source.wpfCommit", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("manifest.source.progpuCommit", previewReleaseVerifyScript, StringComparison.Ordinal);
+        Assert.Contains("manifest.source.libreWinFormsCommit", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("process.env.PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE === \"1\"", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("Preview manifest source provenance is dirty", previewReleaseVerifyScript, StringComparison.Ordinal);
         Assert.Contains("does not match current checkout", previewReleaseVerifyScript, StringComparison.Ordinal);
@@ -12228,7 +12239,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("require_package_cache_entry \"ProGPU.WinUI\"", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU Avalonia preview release bundle package smoke succeeded.", previewReleaseSdkSmokeScript, StringComparison.Ordinal);
 
-        Assert.Contains("<Project Sdk=\"LibreWPF.Sdk/0.1.0-preview.1\">", mvpProject, StringComparison.Ordinal);
+        Assert.Contains("<Project Sdk=\"LibreWPF.Sdk/0.1.0-preview.7\">", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>$(ProGpuWpfSdkSampleTargetFramework)</TargetFramework>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/MvpResource.txt\" />", mvpProject, StringComparison.Ordinal);
@@ -13198,7 +13209,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("logical_width=760", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("logical_height=560", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF MVP live geometry validation succeeded", mvpRunScript, StringComparison.Ordinal);
-        Assert.Contains("<Project Sdk=\"LibreWPF.Sdk/0.1.0-preview.1\">", scichartProject, StringComparison.Ordinal);
+        Assert.Contains("<Project Sdk=\"LibreWPF.Sdk/0.1.0-preview.7\">", scichartProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>$(ProGpuWpfSdkSampleTargetFramework)</TargetFramework>", scichartProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", scichartProject, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfUseRealSciChartPackages Condition=\"'$(ProGpuWpfUseRealSciChartPackages)' == ''\">false</ProGpuWpfUseRealSciChartPackages>", scichartProject, StringComparison.Ordinal);
@@ -13312,7 +13323,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("apphost_name=\"ProGPU.Wpf.SciChartMvpApp\"", scichartRunScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_SCICHART_REAL_PACKAGES", scichartRunScript, StringComparison.Ordinal);
         Assert.Contains("-p:ProGpuWpfUseRealSciChartPackages=true", scichartRunScript, StringComparison.Ordinal);
-        Assert.Contains("directx_package=\"${package_output}/ProGPU.DirectX.0.1.0-preview.1.nupkg\"", scichartRunScript, StringComparison.Ordinal);
+        Assert.Contains("directx_package=\"${package_output}/ProGPU.DirectX.0.1.0-preview.7.nupkg\"", scichartRunScript, StringComparison.Ordinal);
         Assert.Contains("! -f \"${directx_package}\"", scichartRunScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/artifacts/nuget/ProGPU.Wpf.SciChartMvpApp\"", scichartRunScript, StringComparison.Ordinal);
         Assert.Contains("public static class ProGpuDirectXNativeDependencyInspector", proGpuDirectXNativeDependencyInspector, StringComparison.Ordinal);
@@ -13768,7 +13779,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("typeof(Application).Assembly", portableBootstrap, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(Clipboard).Assembly", portableBootstrap, StringComparison.Ordinal);
 
-        Assert.Contains("<Project Sdk=\"LibreWPF.Sdk/0.1.0-preview.1\">", smokeProject, StringComparison.Ordinal);
+        Assert.Contains("<Project Sdk=\"LibreWPF.Sdk/0.1.0-preview.7\">", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<OutputType>WinExe</OutputType>", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>$(ProGpuWpfSdkSampleTargetFramework)</TargetFramework>", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", smokeProject, StringComparison.Ordinal);
@@ -13805,7 +13816,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGpuWpfReferenceMode", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfManagedReferenceRoot", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuReferenceRoot", smokeDirectoryBuildProps, StringComparison.Ordinal);
-        Assert.Contains("<Project Sdk=\"LibreWPF.Sdk/0.1.0-preview.1\">", libraryProject, StringComparison.Ordinal);
+        Assert.Contains("<Project Sdk=\"LibreWPF.Sdk/0.1.0-preview.7\">", libraryProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>$(ProGpuWpfSdkSampleTargetFramework)</TargetFramework>", libraryProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", libraryProject, StringComparison.Ordinal);
         Assert.DoesNotContain("OutputType", libraryProject, StringComparison.Ordinal);
@@ -14503,7 +14514,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<SignAssembly>true</SignAssembly>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains(@"<AssemblyOriginatorKeyFile>..\..\external\ProGPU\eng\ProGPU.snk</AssemblyOriginatorKeyFile>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("<VersionPrefix Condition=\"'$(VersionPrefix)' == ''\">0.1.0</VersionPrefix>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
-        Assert.Contains("<VersionSuffix Condition=\"'$(VersionSuffix)' == ''\">preview.1</VersionSuffix>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<VersionSuffix Condition=\"'$(VersionSuffix)' == ''\">preview.7</VersionSuffix>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<Version Condition=\"'$(Version)' == ''\">$(VersionPrefix)-$(VersionSuffix)</Version>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<PackageVersion Condition=\"'$(PackageVersion)' == ''\">$(Version)</PackageVersion>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<AssemblyVersion Condition=\"'$(AssemblyVersion)' == ''\">0.1.0.0</AssemblyVersion>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
@@ -15423,11 +15434,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("system.drawing.common\\$(SystemDrawingCommonVersion)", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\System.Private.Windows.Core.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("Build the managed WPF assemblies for $(Configuration)|$(TargetFramework) before packing $(PackageName).", wpfTransportTargets, StringComparison.Ordinal);
-        Assert.Contains("<VersionPrefix Condition=\"'$(PackageVersion)' == '0.1.0-preview.1'\">0.1.0</VersionPrefix>", packagingTargets, StringComparison.Ordinal);
-        Assert.Contains("<VersionSuffix Condition=\"'$(PackageVersion)' == '0.1.0-preview.1'\">preview.1</VersionSuffix>", packagingTargets, StringComparison.Ordinal);
+        Assert.Contains("<VersionPrefix Condition=\"'$(PackageVersion)' == '0.1.0-preview.7'\">0.1.0</VersionPrefix>", packagingTargets, StringComparison.Ordinal);
+        Assert.Contains("<VersionSuffix Condition=\"'$(PackageVersion)' == '0.1.0-preview.7'\">preview.7</VersionSuffix>", packagingTargets, StringComparison.Ordinal);
         Assert.Contains("<Version Condition=\"'$(Version)' != '$(PackageVersion)' And '$(PackageVersion)' != ''\">$(PackageVersion)</Version>", packagingTargets, StringComparison.Ordinal);
         Assert.Contains("<VersionPrefix>0.1.0</VersionPrefix>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
-        Assert.Contains("<VersionSuffix>preview.1</VersionSuffix>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
+        Assert.Contains("<VersionSuffix>preview.7</VersionSuffix>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
         Assert.Contains("<Version>$(VersionPrefix)-$(VersionSuffix)</Version>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
         Assert.Contains("<PackageVersion>$(Version)</PackageVersion>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
         Assert.Contains("<PackageReadmeFile>README.md</PackageReadmeFile>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
@@ -15436,7 +15447,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
         Assert.Contains("<PackageName>LibreWPF.Transport$(TransportPackageNameSuffix)</PackageName>", wpfTransportProject, StringComparison.Ordinal);
         Assert.Contains("<VersionPrefix>0.1.0</VersionPrefix>", wpfTransportProject, StringComparison.Ordinal);
-        Assert.Contains("<VersionSuffix>preview.1</VersionSuffix>", wpfTransportProject, StringComparison.Ordinal);
+        Assert.Contains("<VersionSuffix>preview.7</VersionSuffix>", wpfTransportProject, StringComparison.Ordinal);
         Assert.Contains("<Version>$(VersionPrefix)-$(VersionSuffix)</Version>", wpfTransportProject, StringComparison.Ordinal);
         Assert.Contains("<PackageVersion>$(Version)</PackageVersion>", wpfTransportProject, StringComparison.Ordinal);
         Assert.Contains("<PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>", wpfTransportProject, StringComparison.Ordinal);

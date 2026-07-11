@@ -24,7 +24,7 @@ public sealed class StrokeJoinGeometryTests
     }
 
     [Fact]
-    public void CreateLineJoinCreatesMiterOuterCornerTriangleWithinLimit()
+    public void CreateLineJoinCreatesMiterOuterCornerTrianglesWithinLimit()
     {
         var triangles = StrokeJoinGeometry.CreateLineJoin(
             PenLineJoin.Miter,
@@ -34,10 +34,13 @@ public sealed class StrokeJoinGeometryTests
             joinPoint: new Vector2(10, 0),
             nextPoint: new Vector2(10, 10));
 
-        var triangle = Assert.Single(triangles);
-        AssertClose(new Vector2(10, -2), triangle.P0);
-        AssertClose(new Vector2(12, -2), triangle.P1);
-        AssertClose(new Vector2(12, 0), triangle.P2);
+        Assert.Equal(2, triangles.Length);
+        AssertClose(new Vector2(10, -2), triangles[0].P0);
+        AssertClose(new Vector2(10, 0), triangles[0].P1);
+        AssertClose(new Vector2(12, 0), triangles[0].P2);
+        AssertClose(new Vector2(10, -2), triangles[1].P0);
+        AssertClose(new Vector2(12, -2), triangles[1].P1);
+        AssertClose(new Vector2(12, 0), triangles[1].P2);
     }
 
     [Fact]
@@ -90,7 +93,7 @@ public sealed class StrokeJoinGeometryTests
     }
 
     [Fact]
-    public void CreateDirectionalJoinCreatesMiterFromCurveTangents()
+    public void CreateDirectionalJoinCreatesMiterFillFromCurveTangents()
     {
         var triangles = StrokeJoinGeometry.CreateDirectionalJoin(
             PenLineJoin.Miter,
@@ -100,10 +103,13 @@ public sealed class StrokeJoinGeometryTests
             incomingDirection: new Vector2(6, 0),
             outgoingDirection: new Vector2(0, 8));
 
-        var triangle = Assert.Single(triangles);
-        AssertClose(new Vector2(10, -2), triangle.P0);
-        AssertClose(new Vector2(12, -2), triangle.P1);
-        AssertClose(new Vector2(12, 0), triangle.P2);
+        Assert.Equal(2, triangles.Length);
+        AssertClose(new Vector2(10, -2), triangles[0].P0);
+        AssertClose(new Vector2(10, 0), triangles[0].P1);
+        AssertClose(new Vector2(12, 0), triangles[0].P2);
+        AssertClose(new Vector2(10, -2), triangles[1].P0);
+        AssertClose(new Vector2(12, -2), triangles[1].P1);
+        AssertClose(new Vector2(12, 0), triangles[1].P2);
     }
 
     [Fact]

@@ -13,12 +13,19 @@ using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
+using PortableNativeDrawingContextSource = ProGPU.Wpf.Interop.IPortableNativeDrawingContextSource;
+using PortableNativeDrawingContextState = ProGPU.Wpf.Interop.PortableNativeDrawingContextState;
+using PortableNativeDrawingContextStateSource = ProGPU.Wpf.Interop.IPortableNativeDrawingContextStateSource;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
 using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
-public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataSink, IDisposable
+public sealed class WpfObjectRenderDataDrawingContext :
+    MediaPortableRenderDataSink,
+    PortableNativeDrawingContextSource,
+    PortableNativeDrawingContextStateSource,
+    IDisposable
 {
     private readonly IWpfCompositionCommandSink _sink;
     private readonly WpfResourceResolver _resources;
@@ -44,6 +51,35 @@ public sealed class WpfObjectRenderDataDrawingContext : MediaPortableRenderDataS
         _operationCount,
         _appliedCount,
         _unsupportedCount);
+
+    bool PortableNativeDrawingContextSource.TryGetPortableNativeDrawingContext(out object? nativeDrawingContext)
+    {
+        if (((PortableNativeDrawingContextStateSource)this).TryGetPortableNativeDrawingContextState(out var state))
+        {
+            nativeDrawingContext = state.NativeDrawingContext;
+            return true;
+        }
+
+        nativeDrawingContext = null;
+        return false;
+    }
+
+    bool PortableNativeDrawingContextStateSource.TryGetPortableNativeDrawingContextState(
+        out PortableNativeDrawingContextState state)
+    {
+        if (_sink is IWpfProGpuSceneDrawingContextSource nativeDrawingContextSource
+            && nativeDrawingContextSource.TryGetProGpuSceneDrawingContextState(
+                out var sceneDrawingContext,
+                out var transform)
+            && sceneDrawingContext != null)
+        {
+            state = new PortableNativeDrawingContextState(sceneDrawingContext, transform);
+            return true;
+        }
+
+        state = default;
+        return false;
+    }
 
     public void DrawLine(object? pen, object? point0, object? point1)
     {

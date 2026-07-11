@@ -14,7 +14,6 @@ using MediaFormattedText = System.Windows.Media.FormattedText;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGeometryGroup = System.Windows.Media.GeometryGroup;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
-using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaLineGeometry = System.Windows.Media.LineGeometry;
 using MediaLineSegment = System.Windows.Media.LineSegment;
@@ -46,7 +45,8 @@ public sealed class ProGpuCompositionCommandSink :
     IWpfNativePrimitiveCommandSink,
     IWpfNativeClipCommandSink,
     IWpfNativeGeometryCommandSink,
-    IWpfHitTestOwnerScopeCommandSink
+    IWpfHitTestOwnerScopeCommandSink,
+    IWpfProGpuSceneDrawingContextSource
 {
     private const float TransformEpsilon = 0.0001f;
     private const ulong NativeGeometryPathKeyOffset = 1469598103934665603UL;
@@ -150,6 +150,29 @@ public sealed class ProGpuCompositionCommandSink :
     public MediaDrawingContext? DrawingContext => _drawingContext;
 
     internal global::ProGPU.Scene.DrawingContext NativeContext { get; }
+
+    bool IWpfProGpuSceneDrawingContextSource.TryGetProGpuSceneDrawingContext(
+        out global::ProGPU.Scene.DrawingContext? drawingContext)
+    {
+        return ((IWpfProGpuSceneDrawingContextSource)this)
+            .TryGetProGpuSceneDrawingContextState(out drawingContext, out _);
+    }
+
+    bool IWpfProGpuSceneDrawingContextSource.TryGetProGpuSceneDrawingContextState(
+        out global::ProGPU.Scene.DrawingContext? drawingContext,
+        out Matrix4x4 transform)
+    {
+        if (_isClosed)
+        {
+            drawingContext = null;
+            transform = Matrix4x4.Identity;
+            return false;
+        }
+
+        drawingContext = NativeContext;
+        transform = _transformStack.Peek();
+        return true;
+    }
 
     private void AddNativeCommand(global::ProGPU.Scene.RenderCommand command)
     {
@@ -526,8 +549,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (imageSource is MediaBitmapSource bitmapSource
-            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
+        if (WpfBitmapSourceImageAdapter.TryGetGpuTexture(imageSource, out var texture))
         {
             AddNativeCommand(new global::ProGPU.Scene.RenderCommand
             {
@@ -554,8 +576,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (imageSource is MediaBitmapSource bitmapSource
-            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
+        if (WpfBitmapSourceImageAdapter.TryGetGpuTexture(imageSource, out var texture))
         {
             AddNativeCommand(new global::ProGPU.Scene.RenderCommand
             {
@@ -856,8 +877,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (imageSource is MediaBitmapSource bitmapSource
-            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
+        if (WpfBitmapSourceImageAdapter.TryGetGpuTexture(imageSource, out var texture))
         {
             AddNativeCommand(new global::ProGPU.Scene.RenderCommand
             {
@@ -877,8 +897,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (imageSource is MediaBitmapSource bitmapSource
-            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
+        if (WpfBitmapSourceImageAdapter.TryGetGpuTexture(imageSource, out var texture))
         {
             AddNativeCommand(new global::ProGPU.Scene.RenderCommand
             {

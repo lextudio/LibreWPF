@@ -138,3 +138,12 @@ internal interface IWpfHitTestOwnerScopeCommandSink
 
     void PopHitTestOwner();
 }
+
+internal interface IWpfProGpuSceneDrawingContextSource
+{
+    bool TryGetProGpuSceneDrawingContext(out global::ProGPU.Scene.DrawingContext? drawingContext);
+
+    bool TryGetProGpuSceneDrawingContextState(
+        out global::ProGPU.Scene.DrawingContext? drawingContext,
+        out Matrix4x4 transform);
+}

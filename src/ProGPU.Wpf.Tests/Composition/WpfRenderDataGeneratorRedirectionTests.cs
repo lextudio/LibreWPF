@@ -256,8 +256,18 @@ public sealed class WpfRenderDataGeneratorRedirectionTests
             "Media",
             "DrawingContextRenderDataSink.cs"));
 
-        Assert.Contains("internal sealed class DrawingContextRenderDataSink : IRenderDataDrawingContextSink", source, StringComparison.Ordinal);
+        Assert.Contains("internal sealed class DrawingContextRenderDataSink :", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "IRenderDataDrawingContextSink,\n        IPortableNativeDrawingContextSource,\n        IPortableNativeDrawingContextStateSource",
+            source,
+            StringComparison.Ordinal);
         Assert.Contains("_drawingContext = drawingContext ?? throw new ArgumentNullException(nameof(drawingContext));", source, StringComparison.Ordinal);
+        Assert.Contains("return ((IPortableNativeDrawingContextSource)_drawingContext)", source, StringComparison.Ordinal);
+        Assert.Contains("return ((IPortableNativeDrawingContextStateSource)_drawingContext)", source, StringComparison.Ordinal);
+        Assert.Contains(".TryGetPortableNativeDrawingContext(out nativeDrawingContext);", source, StringComparison.Ordinal);
+        Assert.Contains(".TryGetPortableNativeDrawingContextState(out state);", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", source, StringComparison.Ordinal);
 
         foreach (var instruction in WpfRenderDataInstructionRedirectionCatalog.Instructions)
         {
@@ -286,9 +296,19 @@ public sealed class WpfRenderDataGeneratorRedirectionTests
             "Media",
             "ObjectRenderDataDrawingContextSink.cs"));
 
-        Assert.Contains("internal sealed class ObjectRenderDataDrawingContextSink : IRenderDataDrawingContextSink", source, StringComparison.Ordinal);
+        Assert.Contains("internal sealed class ObjectRenderDataDrawingContextSink :", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "IRenderDataDrawingContextSink,\n        IPortableNativeDrawingContextSource,\n        IPortableNativeDrawingContextStateSource",
+            source,
+            StringComparison.Ordinal);
         Assert.Contains("private readonly IPortableRenderDataDrawingContextSink _sink;", source, StringComparison.Ordinal);
         Assert.Contains("_sink = sink ?? throw new ArgumentNullException(nameof(sink));", source, StringComparison.Ordinal);
+        Assert.Contains("_sink is IPortableNativeDrawingContextSource nativeDrawingContextSource", source, StringComparison.Ordinal);
+        Assert.Contains("_sink is IPortableNativeDrawingContextStateSource nativeDrawingContextStateSource", source, StringComparison.Ordinal);
+        Assert.Contains("return nativeDrawingContextStateSource.TryGetPortableNativeDrawingContextState(out state);", source, StringComparison.Ordinal);
+        Assert.Contains("state = new PortableNativeDrawingContextState(", source, StringComparison.Ordinal);
+        Assert.Contains("System.Numerics.Matrix4x4.Identity", source, StringComparison.Ordinal);
+        Assert.Contains("state = default;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("System.Reflection", source, StringComparison.Ordinal);
         Assert.DoesNotContain("BindingFlags", source, StringComparison.Ordinal);
         Assert.DoesNotContain("MethodInfo", source, StringComparison.Ordinal);

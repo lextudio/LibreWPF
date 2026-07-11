@@ -861,6 +861,7 @@
     <Compile Include="System\Windows\Media\PortableCompositionTarget.cs" />
     <Compile Include="System\Windows\Media\PortableMediaContextRenderService.cs" />
     <Compile Include="System\Windows\Media\PortableRenderDataDrawingContextSinkProvider.cs" />
+    <Compile Include="System\Windows\Media\PortableNativeImageSourceFactory.cs" />
     <!--Compile Include="System\Windows\Media\printcontext.cs" /-->
     <Compile Include="System\Windows\Media\QuadraticBezierSegment.cs" />
     <Compile Include="System\Windows\Media\RadialGradientBrush.cs" />

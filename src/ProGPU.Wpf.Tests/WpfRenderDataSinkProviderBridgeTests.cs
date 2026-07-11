@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU;
@@ -169,6 +170,237 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Same(ownerBranch, dependencyTarget.Visual);
 
         registration.Dispose();
+    }
+
+    [Fact]
+    public void ObjectRenderDataSinkExposesFlatSceneContextInsideActiveClipScope()
+    {
+        var root = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(root, 100, 50);
+        using var context = frame.OpenObjectRenderDataSinkContext(ownerVisual: null);
+        var nativeContextSource = Assert.IsAssignableFrom<IPortableNativeDrawingContextSource>(context);
+
+        Assert.True(nativeContextSource.TryGetPortableNativeDrawingContext(out object? nativeContextObject));
+        var nativeContext = Assert.IsType<ProGPU.Scene.DrawingContext>(nativeContextObject);
+        Assert.Same(root.Context, nativeContext);
+
+        context.PushClip(new PortableRect(2, 3, 20, 10));
+        nativeContext.DrawRectangle(null, null, new ProGPU.Scene.Rect(4, 5, 6, 7));
+        context.Pop();
+
+        Assert.Collection(
+            root.Context.Commands,
+            command => Assert.Equal(ProGpuRenderCommandType.PushClip, command.Type),
+            command => Assert.Equal(ProGpuRenderCommandType.DrawRect, command.Type),
+            command => Assert.Equal(ProGpuRenderCommandType.PopClip, command.Type));
+    }
+
+    [Fact]
+    public void ObjectRenderDataSinkExposesCurrentRetainedOwnerSceneContext()
+    {
+        var retainedRoot = new ProGpuContainerVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            new ProGpuDrawingVisual(),
+            100,
+            50);
+        var ownerVisual = new FakeVisual();
+        var context = frame.OpenObjectRenderDataSinkContext(ownerVisual);
+        var nativeContextSource = Assert.IsAssignableFrom<IPortableNativeDrawingContextSource>(context);
+
+        Assert.True(nativeContextSource.TryGetPortableNativeDrawingContext(out object? nativeContextObject));
+        var nativeContext = Assert.IsType<ProGPU.Scene.DrawingContext>(nativeContextObject);
+        context.PushClip(new PortableRect(2, 3, 20, 10));
+        nativeContext.DrawRectangle(null, null, new ProGPU.Scene.Rect(4, 5, 6, 7));
+        context.Pop();
+
+        var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var ownerBranch = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedFrameRoot.Children));
+        Assert.Same(ownerBranch.Context, nativeContext);
+        Assert.Collection(
+            ownerBranch.Context.Commands,
+            command => Assert.Equal(ProGpuRenderCommandType.PushClip, command.Type),
+            command => Assert.Equal(ProGpuRenderCommandType.DrawRect, command.Type),
+            command => Assert.Equal(ProGpuRenderCommandType.PopClip, command.Type));
+
+        context.Close();
+        Assert.False(nativeContextSource.TryGetPortableNativeDrawingContext(out nativeContextObject));
+        Assert.Null(nativeContextObject);
+    }
+
+    [Fact]
+    public void ObjectRenderDataSinkExposesCurrentFlatNativeTransformState()
+    {
+        var root = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(root, 100, 50);
+        using var context = frame.OpenObjectRenderDataSinkContext(ownerVisual: null);
+        var nativeStateSource = Assert.IsAssignableFrom<IPortableNativeDrawingContextStateSource>(context);
+        var expected = new Matrix4x4(
+            2f, 0.25f, 0f, 0f,
+            0.5f, 3f, 0f, 0f,
+            0f, 0f, 1f, 0f,
+            11f, 13f, 0f, 1f);
+
+        context.PushTransform(new FakePortableTransform(expected));
+
+        Assert.True(nativeStateSource.TryGetPortableNativeDrawingContextState(out var state));
+        Assert.Same(root.Context, state.NativeDrawingContext);
+        Assert.Equal(expected, state.Transform);
+
+        context.Pop();
+        Assert.True(nativeStateSource.TryGetPortableNativeDrawingContextState(out state));
+        Assert.Equal(Matrix4x4.Identity, state.Transform);
+    }
+
+    [Fact]
+    public void ObjectRenderDataSinkExposesRetainedEffectNormalizationTransformState()
+    {
+        var retainedRoot = new ProGpuContainerVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            new ProGpuDrawingVisual(),
+            100,
+            50);
+        using var retainedSink = new ProGpuRetainedCompositionCommandSink(
+            frame,
+            context: null,
+            viewport3DTextureCache: null);
+        using var context = new WpfObjectRenderDataDrawingContext(retainedSink);
+        var nativeStateSource = Assert.IsAssignableFrom<IPortableNativeDrawingContextStateSource>(context);
+        var effectBounds = new WpfReplayRect(11, 13, 40, 30);
+
+        Assert.True(retainedSink.PushNativeVisualEffect(new ProGPU.Scene.BlurEffect(), effectBounds));
+        Assert.True(nativeStateSource.TryGetPortableNativeDrawingContextState(out var effectState));
+
+        var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var effectVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedFrameRoot.Children));
+        Assert.Same(effectVisual.Context, effectState.NativeDrawingContext);
+        Assert.Equal(Matrix4x4.CreateTranslation(-11f, -13f, 0f), effectState.Transform);
+
+        retainedSink.Pop();
+        Assert.True(nativeStateSource.TryGetPortableNativeDrawingContextState(out var rootState));
+        Assert.Same(retainedFrameRoot.Context, rootState.NativeDrawingContext);
+        Assert.Equal(Matrix4x4.Identity, rootState.Transform);
+    }
+
+    [Fact]
+    public void NativeDrawingContextHandoffUsesTypedPortableSeamsWithoutReflection()
+    {
+        var interopSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableNativeDrawingContext.cs"));
+        var drawingContextSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "DrawingContext.cs"));
+        var renderDataContextSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "RenderDataDrawingContext.cs"));
+        var objectSinkSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "ObjectRenderDataDrawingContextSink.cs"));
+        var drawingContextSinkSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "DrawingContextRenderDataSink.cs"));
+        var presentationCoreRef = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ref",
+            "PresentationCore.cs"));
+        var proGpuObjectContextSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfObjectRenderDataDrawingContext.cs"));
+        var commandSinkContractSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "IWpfCompositionCommandSink.cs"));
+        var directSinkSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "ProGpuCompositionCommandSink.cs"));
+        var retainedSinkSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "ProGpuRetainedCompositionCommandSink.cs"));
+
+        Assert.Contains("public interface IPortableNativeDrawingContextSource", interopSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableNativeDrawingContext(out object? nativeDrawingContext)", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableNativeDrawingContextStateSource", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public readonly struct PortableNativeDrawingContextState", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public Matrix4x4 Transform", interopSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableNativeDrawingContextSource", drawingContextSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableNativeDrawingContextStateSource", drawingContextSource, StringComparison.Ordinal);
+        Assert.Contains("protected virtual bool TryGetPortableNativeDrawingContextCore", drawingContextSource, StringComparison.Ordinal);
+        Assert.Contains("protected virtual bool TryGetPortableNativeDrawingContextStateCore", drawingContextSource, StringComparison.Ordinal);
+        Assert.Contains("protected override bool TryGetPortableNativeDrawingContextCore", renderDataContextSource, StringComparison.Ordinal);
+        Assert.Contains("protected override bool TryGetPortableNativeDrawingContextStateCore", renderDataContextSource, StringComparison.Ordinal);
+        Assert.Contains("_renderDataSink is IPortableNativeDrawingContextSource", renderDataContextSource, StringComparison.Ordinal);
+        Assert.Contains("_renderDataSink is IPortableNativeDrawingContextStateSource", renderDataContextSource, StringComparison.Ordinal);
+        Assert.Contains("_sink is IPortableNativeDrawingContextSource", objectSinkSource, StringComparison.Ordinal);
+        Assert.Contains("_sink is IPortableNativeDrawingContextStateSource", objectSinkSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableNativeDrawingContextSource)_drawingContext", drawingContextSinkSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableNativeDrawingContextStateSource)_drawingContext", drawingContextSinkSource, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Interop.IPortableNativeDrawingContextSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Interop.IPortableNativeDrawingContextStateSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableNativeDrawingContextCore", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableNativeDrawingContextStateCore", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("PortableNativeDrawingContextSource", proGpuObjectContextSource, StringComparison.Ordinal);
+        Assert.Contains("PortableNativeDrawingContextStateSource", proGpuObjectContextSource, StringComparison.Ordinal);
+        Assert.Contains("_sink is IWpfProGpuSceneDrawingContextSource", proGpuObjectContextSource, StringComparison.Ordinal);
+        Assert.Contains("internal interface IWpfProGpuSceneDrawingContextSource", commandSinkContractSource, StringComparison.Ordinal);
+        Assert.Contains("IWpfProGpuSceneDrawingContextSource.TryGetProGpuSceneDrawingContext", directSinkSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetProGpuSceneDrawingContextState", directSinkSource, StringComparison.Ordinal);
+        Assert.Contains("_visualScopes.Peek().Sink", retainedSinkSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetProGpuSceneDrawingContextState", retainedSinkSource, StringComparison.Ordinal);
+
+        string combinedSource = string.Concat(
+            interopSource,
+            drawingContextSource,
+            renderDataContextSource,
+            objectSinkSource,
+            drawingContextSinkSource,
+            proGpuObjectContextSource,
+            commandSinkContractSource,
+            directSinkSource,
+            retainedSinkSource);
+        Assert.DoesNotContain("System.Reflection", combinedSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", combinedSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", combinedSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -462,6 +694,28 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
 
     private sealed class FakeVisual
     {
+    }
+
+    private sealed class FakePortableTransform : IPortableTransformMatrixSource
+    {
+        private readonly PortableMatrix3x2 _matrix;
+
+        public FakePortableTransform(Matrix4x4 matrix)
+        {
+            _matrix = new PortableMatrix3x2(
+                matrix.M11,
+                matrix.M12,
+                matrix.M21,
+                matrix.M22,
+                matrix.M41,
+                matrix.M42);
+        }
+
+        public bool TryGetPortableTransformMatrix(out PortableMatrix3x2 matrix)
+        {
+            matrix = _matrix;
+            return true;
+        }
     }
 
     private sealed class RecordingPortableSink : IPortableRenderDataDrawingContextSink

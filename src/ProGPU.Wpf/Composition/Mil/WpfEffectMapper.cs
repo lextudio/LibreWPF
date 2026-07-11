@@ -12,7 +12,6 @@ using PortableShaderEffectSource = ProGPU.Wpf.Interop.IPortableShaderEffectSourc
 using PortableShaderSampler = ProGPU.Wpf.Interop.PortableShaderSampler;
 using PortableShaderSamplerKind = ProGPU.Wpf.Interop.PortableShaderSamplerKind;
 using PortableShaderSamplingMode = ProGPU.Wpf.Interop.PortableShaderSamplingMode;
-using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaImageSource = System.Windows.Media.ImageSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
@@ -309,10 +308,8 @@ internal static class WpfEffectMapper
         out WpfShaderEffectSampler sampler)
     {
         sampler = null!;
-        if (ResolveImageSource(imageSource, imageSourceAdapter) is MediaBitmapSource bitmapSource
-            && bitmapSource.PixelWidth > 0
-            && bitmapSource.PixelHeight > 0
-            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
+        if (ResolveImageSource(imageSource, imageSourceAdapter) is MediaImageSource resolvedImageSource
+            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(resolvedImageSource, out var texture))
         {
             sampler = new WpfShaderEffectSampler(registerIndex, texture, samplingMode);
             return true;

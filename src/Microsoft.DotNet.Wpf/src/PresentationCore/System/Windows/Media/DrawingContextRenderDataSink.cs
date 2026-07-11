@@ -4,16 +4,33 @@
 using System;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Media
 {
-    internal sealed class DrawingContextRenderDataSink : IRenderDataDrawingContextSink
+    internal sealed class DrawingContextRenderDataSink :
+        IRenderDataDrawingContextSink,
+        IPortableNativeDrawingContextSource,
+        IPortableNativeDrawingContextStateSource
     {
         private readonly DrawingContext _drawingContext;
 
         internal DrawingContextRenderDataSink(DrawingContext drawingContext)
         {
             _drawingContext = drawingContext ?? throw new ArgumentNullException(nameof(drawingContext));
+        }
+
+        bool IPortableNativeDrawingContextSource.TryGetPortableNativeDrawingContext(out object nativeDrawingContext)
+        {
+            return ((IPortableNativeDrawingContextSource)_drawingContext)
+                .TryGetPortableNativeDrawingContext(out nativeDrawingContext);
+        }
+
+        bool IPortableNativeDrawingContextStateSource.TryGetPortableNativeDrawingContextState(
+            out PortableNativeDrawingContextState state)
+        {
+            return ((IPortableNativeDrawingContextStateSource)_drawingContext)
+                .TryGetPortableNativeDrawingContextState(out state);
         }
 
         void IRenderDataDrawingContextSink.DrawLine(Pen pen, Point point0, Point point1)

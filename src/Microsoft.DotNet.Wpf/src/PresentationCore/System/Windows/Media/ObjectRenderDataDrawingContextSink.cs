@@ -8,13 +8,48 @@ using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Media
 {
-    internal sealed class ObjectRenderDataDrawingContextSink : IRenderDataDrawingContextSink
+    internal sealed class ObjectRenderDataDrawingContextSink :
+        IRenderDataDrawingContextSink,
+        IPortableNativeDrawingContextSource,
+        IPortableNativeDrawingContextStateSource
     {
         private readonly IPortableRenderDataDrawingContextSink _sink;
 
         internal ObjectRenderDataDrawingContextSink(IPortableRenderDataDrawingContextSink sink)
         {
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
+        }
+
+        bool IPortableNativeDrawingContextSource.TryGetPortableNativeDrawingContext(out object nativeDrawingContext)
+        {
+            if (_sink is IPortableNativeDrawingContextSource nativeDrawingContextSource)
+            {
+                return nativeDrawingContextSource.TryGetPortableNativeDrawingContext(out nativeDrawingContext);
+            }
+
+            nativeDrawingContext = null;
+            return false;
+        }
+
+        bool IPortableNativeDrawingContextStateSource.TryGetPortableNativeDrawingContextState(
+            out PortableNativeDrawingContextState state)
+        {
+            if (_sink is IPortableNativeDrawingContextStateSource nativeDrawingContextStateSource)
+            {
+                return nativeDrawingContextStateSource.TryGetPortableNativeDrawingContextState(out state);
+            }
+
+            if (_sink is IPortableNativeDrawingContextSource nativeDrawingContextSource
+                && nativeDrawingContextSource.TryGetPortableNativeDrawingContext(out object nativeDrawingContext))
+            {
+                state = new PortableNativeDrawingContextState(
+                    nativeDrawingContext,
+                    System.Numerics.Matrix4x4.Identity);
+                return true;
+            }
+
+            state = default;
+            return false;
         }
 
         void IRenderDataDrawingContextSink.DrawLine(Pen pen, Point point0, Point point1)

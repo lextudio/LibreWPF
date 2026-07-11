@@ -11,6 +11,8 @@
 //   the pail when we add an animated argument.
 //------------------------------------------------------------------------------
 
+using ProGPU.Wpf.Interop;
+
 namespace System.Windows.Media
 {
     /// <summary>
@@ -86,6 +88,27 @@ namespace System.Windows.Media
         /// </summary>
         /// <param name="renderData"> The render data produced by this RenderDataDrawingContext.  </param>
         protected virtual void CloseCore(RenderData renderData) {}
+
+        protected override bool TryGetPortableNativeDrawingContextCore(out object nativeDrawingContext)
+        {
+            if (_renderDataSink is IPortableNativeDrawingContextSource nativeDrawingContextSource)
+            {
+                return nativeDrawingContextSource.TryGetPortableNativeDrawingContext(out nativeDrawingContext);
+            }
+
+            return base.TryGetPortableNativeDrawingContextCore(out nativeDrawingContext);
+        }
+
+        protected override bool TryGetPortableNativeDrawingContextStateCore(
+            out PortableNativeDrawingContextState state)
+        {
+            if (_renderDataSink is IPortableNativeDrawingContextStateSource nativeDrawingContextStateSource)
+            {
+                return nativeDrawingContextStateSource.TryGetPortableNativeDrawingContextState(out state);
+            }
+
+            return base.TryGetPortableNativeDrawingContextStateCore(out state);
+        }
 
         #endregion Protected Methods
 

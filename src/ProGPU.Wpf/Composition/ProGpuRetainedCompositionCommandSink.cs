@@ -39,7 +39,8 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfNativePrimitiveCommandSink,
     IWpfNativeClipCommandSink,
     IWpfNativeGeometryCommandSink,
-    IWpfHitTestOwnerScopeCommandSink
+    IWpfHitTestOwnerScopeCommandSink,
+    IWpfProGpuSceneDrawingContextSource
 {
     private enum ScopeKind
     {
@@ -114,6 +115,28 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     }
 
     public MediaDrawingContext? DrawingContext => Current.DrawingContext;
+
+    bool IWpfProGpuSceneDrawingContextSource.TryGetProGpuSceneDrawingContext(
+        out global::ProGPU.Scene.DrawingContext? drawingContext)
+    {
+        return ((IWpfProGpuSceneDrawingContextSource)this)
+            .TryGetProGpuSceneDrawingContextState(out drawingContext, out _);
+    }
+
+    bool IWpfProGpuSceneDrawingContextSource.TryGetProGpuSceneDrawingContextState(
+        out global::ProGPU.Scene.DrawingContext? drawingContext,
+        out Matrix4x4 transform)
+    {
+        if (_isClosed || _visualScopes.Count == 0)
+        {
+            drawingContext = null;
+            transform = Matrix4x4.Identity;
+            return false;
+        }
+
+        return ((IWpfProGpuSceneDrawingContextSource)_visualScopes.Peek().Sink)
+            .TryGetProGpuSceneDrawingContextState(out drawingContext, out transform);
+    }
 
     internal ProGpuRetainedDrawingVisual RootVisual { get; }
 

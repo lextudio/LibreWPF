@@ -5747,7 +5747,7 @@ namespace System.Windows.Media
             void System.IDisposable.Dispose() { }
         }
     }
-    public abstract partial class DrawingContext : System.Windows.Threading.DispatcherObject, System.IDisposable
+    public abstract partial class DrawingContext : System.Windows.Threading.DispatcherObject, System.IDisposable, ProGPU.Wpf.Interop.IPortableNativeDrawingContextSource, ProGPU.Wpf.Interop.IPortableNativeDrawingContextStateSource
     {
         internal DrawingContext() { }
         public abstract void Close();
@@ -5777,7 +5777,11 @@ namespace System.Windows.Media
         public abstract void PushOpacity(double opacity, System.Windows.Media.Animation.AnimationClock opacityAnimations);
         public abstract void PushOpacityMask(System.Windows.Media.Brush opacityMask);
         public abstract void PushTransform(System.Windows.Media.Transform transform);
+        bool ProGPU.Wpf.Interop.IPortableNativeDrawingContextSource.TryGetPortableNativeDrawingContext(out object nativeDrawingContext) { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableNativeDrawingContextStateSource.TryGetPortableNativeDrawingContextState(out ProGPU.Wpf.Interop.PortableNativeDrawingContextState state) { throw null; }
         void System.IDisposable.Dispose() { }
+        protected virtual bool TryGetPortableNativeDrawingContextCore(out object nativeDrawingContext) { throw null; }
+        protected virtual bool TryGetPortableNativeDrawingContextStateCore(out ProGPU.Wpf.Interop.PortableNativeDrawingContextState state) { throw null; }
         protected virtual void VerifyApiNonstructuralChange() { }
     }
     public partial interface IPortableRenderDataDrawingContextSink
@@ -7953,6 +7957,13 @@ namespace System.Windows.Media
         public static void HitTest(System.Windows.Media.Visual reference, System.Windows.Media.HitTestFilterCallback filterCallback, System.Windows.Media.HitTestResultCallback resultCallback, System.Windows.Media.HitTestParameters hitTestParameters) { }
         public static System.Windows.Media.HitTestResult HitTest(System.Windows.Media.Visual reference, System.Windows.Point point) { throw null; }
         public static void SetRootDpi(System.Windows.Media.Visual visual, System.Windows.DpiScale dpiInfo) { }
+    }
+}
+namespace System.Windows.Media
+{
+    public static partial class PortableNativeImageSourceFactory
+    {
+        public static System.Windows.Media.ImageSource Create(ProGPU.Wpf.Interop.IPortableNativeImageSource nativeImageSource) { throw null; }
     }
 }
 namespace System.Windows.Media.Animation

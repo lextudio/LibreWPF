@@ -66,7 +66,8 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 
     internal static bool CanProvideGpuTexture(object imageSource)
     {
-        return imageSource is IProGpuTextureSource;
+        return imageSource is IProGpuTextureSource
+            || imageSource is IPortableNativeImageSource;
     }
 
     internal static bool TryGetGpuTexture(MediaImageSource imageSource, out GpuTexture texture)
@@ -79,6 +80,23 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             try
             {
                 if (textureSource.TryGetGpuTexture(out var resolvedTexture)
+                    && IsUsableInContext(resolvedTexture, currentContext))
+                {
+                    texture = resolvedTexture;
+                    return true;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        if (imageSource is IPortableNativeImageSource nativeImageSource)
+        {
+            try
+            {
+                if (nativeImageSource.TryGetPortableNativeImage(out object? nativeImage)
+                    && nativeImage is GpuTexture resolvedTexture
                     && IsUsableInContext(resolvedTexture, currentContext))
                 {
                     texture = resolvedTexture;

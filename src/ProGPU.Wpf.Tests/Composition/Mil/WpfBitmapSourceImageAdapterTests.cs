@@ -102,7 +102,18 @@ public sealed class WpfBitmapSourceImageAdapterTests
     public void CanProvideGpuTextureRequiresTypedBackendContract()
     {
         Assert.True(WpfBitmapSourceImageAdapter.CanProvideGpuTexture(new TypedGpuTextureSource()));
+        Assert.True(WpfBitmapSourceImageAdapter.CanProvideGpuTexture(new TypedPortableNativeImageSource()));
         Assert.False(WpfBitmapSourceImageAdapter.CanProvideGpuTexture(new DuckTypedGpuTextureSource()));
+    }
+
+    [Fact]
+    public void AdaptImageSourceKeepsTypedPortableNativeImageWithoutCopyingPixels()
+    {
+        var source = new TypedPortableMediaImageSource();
+        var adapter = new WpfBitmapSourceImageAdapter();
+
+        Assert.Same(source, adapter.AdaptImageSource(source));
+        Assert.Equal(0, source.NativeImageRequestCount);
     }
 
     [Fact]
@@ -701,6 +712,35 @@ public sealed class WpfBitmapSourceImageAdapterTests
         public bool TryGetGpuTexture(out GpuTexture texture)
         {
             texture = null!;
+            return false;
+        }
+    }
+
+    private sealed class TypedPortableNativeImageSource : IPortableNativeImageSource
+    {
+        public int PixelWidth => 1;
+
+        public int PixelHeight => 1;
+
+        public bool TryGetPortableNativeImage(out object? nativeImage)
+        {
+            nativeImage = null;
+            return false;
+        }
+    }
+
+    private sealed class TypedPortableMediaImageSource : System.Windows.Media.ImageSource, IPortableNativeImageSource
+    {
+        public int NativeImageRequestCount { get; private set; }
+
+        public int PixelWidth => 1;
+
+        public int PixelHeight => 1;
+
+        public bool TryGetPortableNativeImage(out object? nativeImage)
+        {
+            NativeImageRequestCount++;
+            nativeImage = null;
             return false;
         }
     }

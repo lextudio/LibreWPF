@@ -2303,6 +2303,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed class PortableMessageBoxRequest", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public object? Owner { get; }", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("IDisposable Register(Func<PortableMessageBoxRequest, string?> show)", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("MessageBoxServiceRegistered", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetMessageBoxService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Func<object, object> show)", messageBoxService, StringComparison.Ordinal);
         Assert.Contains("CreateInteropRequest(", messageBoxService, StringComparison.Ordinal);
@@ -2325,6 +2326,8 @@ public sealed class WpfManagedProjectGraphTests
             "MessageBox.ShowCore must try the portable service before the Win32 MessageBox call.");
 
         Assert.Contains("TryRegisterPresentationFrameworkMessageBoxService()", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.MessageBoxServiceRegistered += OnMessageBoxServiceRegistered", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("private static void OnMessageBoxServiceRegistered(IPortableMessageBoxServiceRegistrar service)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetMessageBoxService(", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("PortableMessageBoxServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("TryRegisterPresentationFrameworkMessageBoxServiceByReflection", proGpuActivation, StringComparison.Ordinal);
@@ -2751,15 +2754,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableFileDialogService.RegisterPortableInteropService();", moduleInitializer, StringComparison.Ordinal);
         Assert.Contains("public interface IPortableFileDialogServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableFileDialogRequest", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableFileDialogResult", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("IDisposable Register(Func<PortableFileDialogRequest, string?> showDialog)", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("IDisposable RegisterResult(Func<PortableFileDialogRequest, PortableFileDialogResult?> showDialog)", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public ReadOnlySpan<string> SelectedPaths", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetFileDialogService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Func<object, string> showDialog)", service, StringComparison.Ordinal);
         Assert.Contains("CreateInteropRequest(", service, StringComparison.Ordinal);
         Assert.Contains("Func<ProGPU.Wpf.Interop.PortableFileDialogRequest, string>", service, StringComparison.Ordinal);
-        Assert.Contains("internal static bool TryShowDialog(CommonItemDialog dialog, out string selectedPath)", service, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryShowDialog(CommonItemDialog dialog, out string[] selectedPaths)", service, StringComparison.Ordinal);
         Assert.Contains("internal sealed class PortableFileDialogRequest", service, StringComparison.Ordinal);
         Assert.Contains("public string Kind { get; }", service, StringComparison.Ordinal);
         Assert.Contains("public string SuggestedItemName { get; }", service, StringComparison.Ordinal);
+        Assert.Contains("public bool AllowMultipleSelection { get; }", service, StringComparison.Ordinal);
 
         Assert.Contains("itemDialog.TryRunPortableDialog(out bool? portableResult)", commonDialog, StringComparison.Ordinal);
         Assert.Contains("private bool? ShowWin32Dialog()", commonDialog, StringComparison.Ordinal);
@@ -2775,7 +2782,7 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("internal bool TryRunPortableDialog(out bool? result)", commonItemDialog, StringComparison.Ordinal);
         Assert.Contains("private protected virtual bool TryHandlePortableItemOk(out object revertState)", commonItemDialog, StringComparison.Ordinal);
-        Assert.Contains("private bool HandlePortableItemOk(string selectedPath)", commonItemDialog, StringComparison.Ordinal);
+        Assert.Contains("private bool HandlePortableItemOk(string[] selectedPaths)", commonItemDialog, StringComparison.Ordinal);
         Assert.Contains("OnItemOk(cancelArgs)", commonItemDialog, StringComparison.Ordinal);
         Assert.Contains("private protected override bool TryHandlePortableItemOk(out object restoreState)", fileDialog, StringComparison.Ordinal);
         Assert.Contains("return ProcessFileNames();", fileDialog, StringComparison.Ordinal);
@@ -2785,7 +2792,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("PortableFileDialogServiceTypeName", activation, StringComparison.Ordinal);
         Assert.DoesNotContain("TryRegisterPresentationFrameworkFileDialogServiceByReflection", activation, StringComparison.Ordinal);
         Assert.Contains("CrossPlatformWpfPlatformServices.Instance.FileDialogs", activation, StringComparison.Ordinal);
-        Assert.Contains("ShowPortableFileDialog(PortableFileDialogRequest request)", activation, StringComparison.Ordinal);
+        Assert.Contains("PortableFileDialogResult? ShowPortableFileDialog(PortableFileDialogRequest request)", activation, StringComparison.Ordinal);
+        Assert.Contains("fileDialogs.OpenFilesAsync(options)", activation, StringComparison.Ordinal);
+        Assert.Contains("fileDialogs.PickFoldersAsync(options)", activation, StringComparison.Ordinal);
         Assert.Contains("ReadFileDialogPatterns(request.Filter)", activation, StringComparison.Ordinal);
         Assert.Contains("internal static IReadOnlyList<string> ReadFileDialogPatterns(string filter)", activation, StringComparison.Ordinal);
         Assert.Contains("AddFileDialogPatterns(filter.AsSpan(segmentStart, i - segmentStart), ref patterns)", activation, StringComparison.Ordinal);
@@ -2793,6 +2802,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("tokens[i].Split(';')", activation, StringComparison.Ordinal);
         Assert.Contains("private static IReadOnlyList<string> NormalizeFileTypePatterns", processFileDialogService, StringComparison.Ordinal);
         Assert.Contains("var normalized = new List<string>(patterns.Count);", processFileDialogService, StringComparison.Ordinal);
+        Assert.Contains("FosAllowMultiSelect", processFileDialogService, StringComparison.Ordinal);
+        Assert.Contains("with multiple selections allowed", processFileDialogService, StringComparison.Ordinal);
         Assert.DoesNotContain("using System.Linq;", processFileDialogService, StringComparison.Ordinal);
         Assert.DoesNotContain("NormalizeFileTypePatterns(patterns).ToArray()", processFileDialogService, StringComparison.Ordinal);
         Assert.DoesNotContain("NormalizeFileTypePatterns(options.FileTypePatterns).ToArray()", processFileDialogService, StringComparison.Ordinal);
@@ -9177,7 +9188,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("var active = WgpuContext.ActiveContexts;", pathOps, StringComparison.Ordinal);
         Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var active)", presentationCoreGpuProvider, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var active in WgpuContext.ActiveContexts)", presentationCoreGpuProvider, StringComparison.Ordinal);
-        Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var active)", systemDrawingGpuProvider, StringComparison.Ordinal);
+        Assert.Contains("var current = WgpuContext.Current;", systemDrawingGpuProvider, StringComparison.Ordinal);
+        Assert.Contains("if (current != null && current.IsReady)", systemDrawingGpuProvider, StringComparison.Ordinal);
+        Assert.Contains("lock (s_compositorCacheScope)", systemDrawingGpuProvider, StringComparison.Ordinal);
+        Assert.Contains("_context = new WgpuContext();", systemDrawingGpuProvider, StringComparison.Ordinal);
+        Assert.DoesNotContain("WgpuContext.TryGetFirstActiveContext", systemDrawingGpuProvider, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var active in WgpuContext.ActiveContexts)", systemDrawingGpuProvider, StringComparison.Ordinal);
         Assert.Contains("WgpuContext.TryGetFirstActiveContext(out var ctx)", skiaSharp, StringComparison.Ordinal);
         Assert.DoesNotContain("var active = WgpuContext.ActiveContexts;", skiaSharp, StringComparison.Ordinal);
@@ -9407,12 +9422,22 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AppendList(DoubleBuffer, other.DoubleBuffer);", renderCommand, StringComparison.Ordinal);
         Assert.Contains("AppendList(Line3DBuffer, other.Line3DBuffer);", renderCommand, StringComparison.Ordinal);
         Assert.Contains("AppendList(FloatBuffer, other.FloatBuffer);", renderCommand, StringComparison.Ordinal);
-        Assert.Contains("AppendArray(_retainedResources, retainedResources);", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("internal sealed class RetainedResourceLease : IDisposable", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("return new RetainedResourceLease(new RetainedResourceOwner(resource, identity));", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("owner.AddRef();", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("Interlocked.Exchange(ref _owner, null)?.Release();", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("leases[i] = _retainedResources[i].AddRef();", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("var retainedResources = other.CloneRetainedResources();", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("AppendRetainedResources(retainedResources);", renderCommand, StringComparison.Ordinal);
         Assert.Contains("private static void AppendList<T>(List<T> destination, List<T> source)", renderCommand, StringComparison.Ordinal);
-        Assert.Contains("private static void AppendArray<T>(List<T> destination, T[] source)", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("private void AppendRetainedResources(RetainedResourceLease[] resources)", renderCommand, StringComparison.Ordinal);
         Assert.Contains("destination.EnsureCapacity(checked(destination.Count + sourceCount));", renderCommand, StringComparison.Ordinal);
         Assert.Contains("for (int sourceIndex = 0; sourceIndex < sourceCount; sourceIndex++)", renderCommand, StringComparison.Ordinal);
         Assert.Contains("destination.Add(source[sourceIndex]);", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("_retainedResources.EnsureCapacity(checked(_retainedResources.Count + resources.Length));", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("if (identity is not null && HasRetainedResourceIdentity(identity))", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("resource.Dispose();", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("_retainedResources.Add(resource);", renderCommand, StringComparison.Ordinal);
         Assert.Contains("for (int i = 0; i < _retainedResources.Count; i++)", renderCommand, StringComparison.Ordinal);
         Assert.Contains("_retainedResources[i].Dispose();", renderCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("return registers[..count].ToArray();", shaderPipeline, StringComparison.Ordinal);
@@ -13658,6 +13683,8 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<CopyLocalLockFileAssemblies Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'\">true</CopyLocalLockFileAssemblies>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PropertyGroup Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfEnablePortableBootstrap)' == 'true' And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe') And '$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'\">", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<DefineConstants>$(DefineConstants);PROGPU_WPF_USE_LIBREWINFORMS</DefineConstants>", portableTargets, StringComparison.Ordinal);
         Assert.Contains("$(ProGpuWpfEnablePortableBootstrap)", portableTargets, StringComparison.Ordinal);
         Assert.Contains("And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe')", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Compile Include=\"$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", portableTargets, StringComparison.Ordinal);
@@ -13726,9 +13753,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("namespace ProGPU.Wpf.Sdk;", portableBootstrap, StringComparison.Ordinal);
         Assert.Contains("internal static class ProGpuWpfSdkPortableBootstrap", portableBootstrap, StringComparison.Ordinal);
         Assert.Contains("[ModuleInitializer]", portableBootstrap, StringComparison.Ordinal);
+        Assert.Contains("#if PROGPU_WPF_USE_LIBREWINFORMS", portableBootstrap, StringComparison.Ordinal);
+        Assert.Contains("global::System.Windows.Forms.Integration.WindowsFormsHost.EnableWindowsFormsInterop();", portableBootstrap, StringComparison.Ordinal);
         Assert.Contains("if (OperatingSystem.IsWindows())", portableBootstrap, StringComparison.Ordinal);
+        Assert.True(
+            portableBootstrap.IndexOf("global::System.Windows.Forms.Integration.WindowsFormsHost.EnableWindowsFormsInterop();", StringComparison.Ordinal)
+                < portableBootstrap.IndexOf("if (OperatingSystem.IsWindows())", StringComparison.Ordinal),
+            "LibreWinForms interop must initialize before the Windows early return.");
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation()", portableBootstrap, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService()", portableBootstrap, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Reflection", portableBootstrap, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetMethod(", portableBootstrap, StringComparison.Ordinal);
+        Assert.DoesNotContain("Activator", portableBootstrap, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(Application).Assembly", portableBootstrap, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(Clipboard).Assembly", portableBootstrap, StringComparison.Ordinal);
 
@@ -14896,7 +14932,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (var i = 0; i < values.Length; i++)", wpfResourceResolver, StringComparison.Ordinal);
         Assert.Contains("var value = values[i];", wpfResourceResolver, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var value in values)", wpfResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("TryGetGpuTexture(bitmapSource", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("TryGetGpuTexture(imageSource", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("bitmapSource.GpuTexture", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("CanProvideGpuTexture(imageSource)", wpfResourceResolver, StringComparison.Ordinal);
         var wpfPooledRemovalBuffer = File.ReadAllText(FindRepoPath(

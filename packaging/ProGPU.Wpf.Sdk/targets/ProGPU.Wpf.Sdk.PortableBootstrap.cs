@@ -10,6 +10,10 @@ internal static class ProGpuWpfSdkPortableBootstrap
     [ModuleInitializer]
     internal static void Initialize()
     {
+#if PROGPU_WPF_USE_LIBREWINFORMS
+        global::System.Windows.Forms.Integration.WindowsFormsHost.EnableWindowsFormsInterop();
+#endif
+
         if (OperatingSystem.IsWindows())
         {
             return;

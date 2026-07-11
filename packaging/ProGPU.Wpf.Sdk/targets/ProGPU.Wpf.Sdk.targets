@@ -10,6 +10,10 @@
     <ProGpuWpfClearMutablePackageOutputs Condition="'$(ProGpuWpfClearMutablePackageOutputs)' == ''">false</ProGpuWpfClearMutablePackageOutputs>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfEnablePortableBootstrap)' == 'true' And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe') And '$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'">
+    <DefineConstants>$(DefineConstants);PROGPU_WPF_USE_LIBREWINFORMS</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
     <FrameworkReference Remove="Microsoft.WindowsDesktop.App.WPF" />
   </ItemGroup>

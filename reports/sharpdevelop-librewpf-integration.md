@@ -2629,3 +2629,30 @@ Shutdown                                       -> exit code 0; 5 input attaches,
 ```
 
 No SharpDevelop production workaround or ProGPU source edit was needed.
+
+## 2026-07-11 FormsDesigner manipulation and undo checkpoint
+
+SharpDevelop now validates existing-control manipulation through its real `FormsDesignerUndoEngine`. The package-mode smoke creates a `Button` through the selected toolbox item, moves it from `24,32` to `44,42`, resizes it from `120x28` to `150x48`, and verifies one location and one size change transaction. It then invokes SharpDevelop's normal `Undo()`/`Redo()` surface for resize undo, move undo, move redo, and resize redo before removing the component and restoring the sample source.
+
+LibreWinForms supplies the framework behavior: selection adorners, eight resize handles, cursor hit testing, typed move/resize transactions, component-change notifications, and a managed reflection-free `UndoEngine`. Component creation snapshots are finalized after initializer defaults, while removal snapshots are captured before parent detachment. The SDK smoke additionally covers creation and deletion undo/redo, proving restored parent/site/designer/bounds state independently of SharpDevelop.
+
+The broad smoke scheduler also no longer exposes placeholder `CompletedTask` values to dependent dialog and completion hooks. AvalonDock and WinForms context-menu tasks are assigned when scheduled through a typed dispatcher-task wrapper; the owned dialog and completion lanes now wait for the real prerequisite tasks.
+
+Fresh package-mode validation used `/private/tmp/sharpdevelop-designer-undo-nuget` and the local `0.1.0-preview.sharpdevelop.1` feed:
+
+```text
+SharpDevelop.Full.LibreWpf fresh restore/build -> succeeds
+No-restore verification build                  -> 0 warnings, 0 errors
+Focused FormsDesigner                          -> 21 components, 54 rows, Success
+Toolbox create/move/resize/undo/redo/remove    -> all true
+WPF menu/context/combo/toolbar popups           -> opened
+LineCounter solution build                      -> Success, 0 errors, 4 sample warnings
+ResX / PropertyGrid                             -> Success
+Hosted WinForms ContextMenuStrip                -> Opened, 3 items
+AvalonDock float/menu/redock/auto-hide/flyout   -> Success
+Owned ExceptionBox                              -> Success, 10 controls, owner and source valid
+AvalonEdit completion                           -> Opened, 12 items
+Shutdown                                        -> exit code 0, input teardown balanced
+```
+
+ProGPU stayed unchanged at `895fe73` (`v0.1.0-preview.6`). SharpDevelop is still not fully complete: grid/snap and palette drag/drop, extender providers, verbs/commands, inherited controls, localized designer resources, live event-handler navigation, IME, debugger functionality, and broader manual interaction remain.

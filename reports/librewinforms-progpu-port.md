@@ -491,3 +491,25 @@ Native input lifetime                     -> 5 attaches, 5 detaches
 ```
 
 Remaining work is visual selection/resize handles, moving and resizing existing controls, grid/snap lines, palette-originated drag data, parent rules, and command/undo integration.
+
+## 2026-07-11 selection, manipulation, and managed undo
+
+LibreWinForms now reuses the managed designer contracts for existing-control interaction. `PortableControlDesigner` selects a sited control, translates pointer coordinates to its parent, applies the system drag threshold, and supports move plus all eight edge/corner resize modes. Each committed drag owns one `DesignerTransaction` and emits typed `IComponentChangeService` changing/changed notifications for `Location` and/or `Size`; cancellation restores the original bounds. Runtime mouse handlers remain suppressed while the designer owns the pointer.
+
+`WindowsFormsHost` consumes the standard `ISelectionService` and renders the primary selection border plus eight resize handles. The handles participate in hit testing and expose the expected resize cursors. Selection-service discovery is cached per child/load instead of recursively scanning a large hosted tree on every render, and root-host bounds intentionally ignore the root control's own `Left`/`Top` because the root is rendered at host origin.
+
+The prior skeletal `UndoEngine` surface is replaced with a managed, reflection-free implementation based on the upstream transaction/event/undo-unit architecture. Property state uses typed `PropertyDescriptor` snapshots; component add/remove state records type, site name, parent, child index, and serializable property state. Added-component snapshots finalize when the enclosing transaction closes so `IComponentInitializer` parent/default values are included. Removal snapshots run while the control tree is intact, before `DestroyComponent(...)` detaches the parent. Undo and redo restore site, designer, parent, bounds, child order, selection, and rename/property state without private-field probing or ProGPU changes.
+
+Validation used freshly packed `0.1.0-preview.sharpdevelop.1` packages from ProGPU `895fe73` (`v0.1.0-preview.6`):
+
+```text
+LibreWinForms SDK designer smoke       -> Success
+Creation undo/redo                     -> site, parent, designer, location, size restored
+Existing control move/resize           -> two transactions and exact change events
+Move/resize undo/redo                   -> four transitions pass
+Removal undo/redo                      -> parent, site, designer, bounds restored then removed
+Reflection marker audit                -> clean for designer, undo, and WPF host sources
+LibreWinForms package lane             -> 3 packages, docs, manifest, bundle, checksum
+```
+
+ProGPU remained clean and unchanged. Remaining designer parity is grid/snap behavior, palette-originated drag data, richer parent rules, extender providers, verbs/menu commands, inherited components, localized resources, and event-handler source navigation.

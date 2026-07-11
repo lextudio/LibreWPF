@@ -75,7 +75,9 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
    - Covered now: direct host-container add/remove uses upstream-style lifecycle events and site-preserving removal; public named `DesignSurface.CreateNestedContainer(...)` is available with owner-qualified names and owner-site service inheritance.
    - Covered now: `ToolboxItem` creates host-owned controls, designers are indexed/initialized/disposed through `IDesignerHost`, attributed third-party designers use `TypeDescriptor`, root designers supply the view, and the live SharpDevelop smoke verifies default-value placement plus complete removal.
    - Covered now: selected-tool mouse down/move/up reaches the nearest parent designer, uses capture and a designer transaction, creates and sizes a host-owned control, replaces selection, resets the toolbox, and removes cleanly in both SDK and live SharpDevelop smokes.
-   - Remaining: broaden FormsDesigner/property-grid runtime behavior beyond the current build, load, mutation, nested-service, lifecycle, and interactive toolbox placement coverage. Prioritize visual selection/move/resize adorners, grid/snap behavior, palette-originated drag data, parent rules, extender providers, undo/redo transactions, verbs/menu commands, inherited components, localized resource round trips, and live event-handler source navigation.
+   - Covered now: the WPF host renders and hit-tests standard selection borders plus eight resize handles, caches `ISelectionService` lookup, and existing sited controls move or resize through one typed transaction and exact `Location`/`Size` change notifications.
+   - Covered now: the source-owned managed `UndoEngine` records transaction, property, add/remove, rename, parent, child-order, and selection state without reflection. SDK coverage includes creation, move, resize, and removal undo/redo; SharpDevelop's real `FormsDesignerUndoEngine` passes move/resize undo and redo in the live package-mode surface.
+   - Remaining: broaden FormsDesigner/property-grid runtime behavior beyond the current build, load, mutation, nested-service, lifecycle, interactive placement, manipulation, and undo coverage. Prioritize grid/snap behavior, palette-originated drag data, richer parent rules, extender providers, verbs/menu commands, inherited components, localized resource round trips, and live event-handler source navigation.
 
 7. Complete ResourceToolkit feature parity.
    - The ResourceToolkit package-mode wrapper now builds and can be included in `SharpDevelop.Full.LibreWpf` with `LibreWpfSharpDevelopIncludeResourceToolkit=true`.
@@ -105,6 +107,8 @@ SharpDevelop is not yet fully runnable as an IDE. The remaining work below is th
 - The debug-command smoke remains green and verifies the LibreWPF portable debugger service plus AddInTree-generated Debug menu Toggle Breakpoint through the live workbench `CanExecuteCommand`/`ExecuteCommand` route.
 - A ResourceToolkit-included full wrapper build remains green, `${res:...}` resource refactoring remains enabled, the ResourceToolkit smoke remains green, and feature smokes are added as BCL/strongly typed resource support and cleanup UI parity are restored.
 - AvalonDock float/auto-hide/dock restore smoke remains green, and any broader floating-window hook work keeps the ProGPU/LibreWPF path reflection-free.
+- The designer smoke keeps toolbox creation, move, resize, four manipulation undo/redo transitions, removal, 54-row PropertyGrid state, and CodeDOM flush green against freshly packed LibreWinForms binaries.
+- Broad smoke dependencies are assigned before dispatcher execution so context-menu, AvalonDock, owned-dialog, and completion validation cannot observe placeholder tasks.
 - Reports stay updated after every slice with exact commands, warning/error counts, and any remaining blocker.
 
 ## 2026-07-10 owned-dialog checkpoint
@@ -148,3 +152,11 @@ The selected-tool interaction path is now complete for current portable controls
 SharpDevelop's focused smoke now validates this path rather than direct component creation. A fresh-cache build completes with 286 warnings and 0 errors; focused and broad runs report `toolboxCreated=True`, `toolboxRemoved=True`, `flushPersisted=True`, and normal exit. The broad run also passes popups, build, ResX, PropertyGrid, AvalonDock, hosted context menu, owned dialog, and completion, with five input attaches matched by five detaches.
 
 The next designer slice should add visible selection and resize glyphs plus existing-control move/resize behavior, then connect those operations to the existing undo engine and menu commands. Palette-originated drag data and snap/grid behavior remain separate follow-ups.
+
+## 2026-07-11 FormsDesigner manipulation and undo update
+
+The prior next slice is complete. LibreWinForms renders selection adorners and eight resize handles, moves and resizes existing controls through designer-owned pointer capture and transactions, and supplies a managed reflection-free `UndoEngine`. Creation snapshots include initializer-applied parent/default state, removal snapshots preserve the intact parent relationship, and undo/redo restores site, designer, parent, bounds, child order, property state, rename state, and selection.
+
+The SDK designer smoke passes creation undo/redo, move, resize, resize undo, move undo, move redo, resize redo, and removal undo/redo. SharpDevelop's real FormsDesigner passes `toolboxCreated=True`, `toolboxMoved=True`, `toolboxResized=True`, `toolboxUndoRedo=True`, `toolboxRemoved=True`, 21 components, 54 PropertyGrid rows, and CodeDOM flush restoration. Fresh packages and the corrected broad scheduler also pass all popup, build, ResX, AvalonDock, owned-dialog, and completion gates with exit code 0.
+
+The next designer priority is grid/snap behavior and palette-originated drag data, followed by richer parent rules, extender providers, verbs/menu commands, inherited/read-only components, localized resources, and event-handler creation/source navigation. Keep these additions in LibreWinForms managed designer code; ProGPU remains unchanged unless a concrete rendering/input primitive is missing.

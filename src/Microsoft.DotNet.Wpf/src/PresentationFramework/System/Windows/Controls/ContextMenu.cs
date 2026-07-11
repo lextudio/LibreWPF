@@ -496,7 +496,8 @@ namespace System.Windows.Controls
 
             _parentPopup = new Popup
             {
-                AllowsTransparency = true
+                AllowsTransparency = true,
+                UsesSharedPortablePopupWindow = true
             };
 
             // Coerce HasDropShadow property in case popup can't be transparent

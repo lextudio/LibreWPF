@@ -568,6 +568,62 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void PlatformInputWithDifferentSourceWindowIsIgnored()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+
+        // _window is null by default here (no real Silk IWindow was created) - the SourceWindow
+        // guard in OnPlatformInputReceived only needs SourceWindow and _window to be reference-equal
+        // to decide whether to forward, so a non-null SourceWindow that can't possibly equal the
+        // host's own (null) window is enough to exercise the "different window, ignore" branch
+        // without needing a real/fake IWindow instance.
+        var popupWindow = new object();
+        var receivedCount = 0;
+        host.InputReceived += (_, _) => receivedCount++;
+
+        RaisePlatformInput(
+            host,
+            new WpfInputEventArgs(
+                WpfInputEventKind.MouseMove,
+                x: 10,
+                y: 20,
+                sourceWindow: popupWindow));
+
+        Assert.Equal(0, receivedCount);
+        Assert.Equal(0, scheduler.RequestCount);
+    }
+
+    [Fact]
+    public void PlatformInputWithMatchingSourceWindowIsForwarded()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+
+        // _window is null by default here - SourceWindow: null reference-equals it, exercising the
+        // "same window (or untagged event), forward" branch without needing a real IWindow instance.
+        var receivedCount = 0;
+        host.InputReceived += (_, _) => receivedCount++;
+
+        RaisePlatformInput(
+            host,
+            new WpfInputEventArgs(
+                WpfInputEventKind.MouseMove,
+                x: 10,
+                y: 20,
+                sourceWindow: null));
+
+        Assert.Equal(1, receivedCount);
+        Assert.Equal(1, scheduler.RequestCount);
+    }
+
+    [Fact]
     public void ShouldRenderFrameReturnsTrueWhenCoalescingIsDisabled()
     {
         using var host = new ProGpuWpfWindowHost

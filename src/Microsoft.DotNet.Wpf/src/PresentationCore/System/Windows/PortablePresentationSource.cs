@@ -1221,7 +1221,17 @@ namespace System.Windows
 
             void IInputProvider.NotifyDeactivate()
             {
-                ReleaseMouseCapture(reportInput: true);
+                // Deliberately does NOT release mouse capture. On this portable backend a Menu/
+                // ContextMenu holds Mouse.Capture (SubTree) in the MAIN window, but its dropdown is a
+                // SEPARATE native window / PresentationSource. As the cursor moves between the two,
+                // MouseDevice switches its active input source and calls NotifyDeactivate on the one
+                // being left - and Win32 WPF's HWND capture spans windows, so that source-switch never
+                // drops capture there. Releasing it here (the old behavior) tore down the Menu's
+                // capture the instant the mouse crossed into the popup (or the popup stole focus on
+                // open), which flipped MenuBase.IsMenuMode false, which cleared CurrentSelection /
+                // IsSubmenuOpen while the popup stayed visible - desyncing logical menu state from
+                // what's on screen and breaking hover-to-switch. Capture is still released on genuine
+                // teardown via Dispose(). See docs/menus.md.
             }
 
             bool IMouseInputProvider.SetCursor(Cursor cursor)

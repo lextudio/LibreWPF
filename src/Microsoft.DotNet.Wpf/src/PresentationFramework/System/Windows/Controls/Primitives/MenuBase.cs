@@ -154,6 +154,8 @@ namespace System.Windows.Controls.Primitives
             {
                 if (HasCapture)
                 {
+                    TraceMenuCapture("OnClickThrough enter button=" + e.ChangedButton + " state=" + e.ButtonState + " close=true hasCapture=" + HasCapture);
+
                     bool close = true;
 
                     if (e.ButtonState == MouseButtonState.Released)
@@ -173,8 +175,19 @@ namespace System.Windows.Controls.Primitives
 
                     if (close)
                     {
+                        DismissedByClickThrough = true;
                         IsMenuMode = false;
+                        e.Handled = true;
+
+                        DeferMenuActions = true;
+                        Dispatcher.CurrentDispatcher.BeginInvoke(
+                            DispatcherPriority.Background,
+                            new Action(() => { DeferMenuActions = false; }));
                     }
+                }
+                else
+                {
+                    TraceMenuCapture("OnClickThrough enter button=" + e.ChangedButton + " state=" + e.ButtonState + " NO CAPTURE");
                 }
             }
         }
@@ -248,11 +261,20 @@ namespace System.Windows.Controls.Primitives
         {
             base.OnIsKeyboardFocusWithinChanged(e);
 
+            TraceMenuCapture("OnIsKeyboardFocusWithinChanged focusWithin=" + IsKeyboardFocusWithin + " menuMode=" + IsMenuMode + " hasCapture=" + HasCapture);
+
             if (IsKeyboardFocusWithin)
             {
                 // When focus enters the menu, we should enter menu mode.
                 if (!IsMenuMode)
                 {
+                if (DismissedByClickThrough)
+                {
+                    TraceMenuCapture("OnIsKeyboardFocusWithinChanged dismissed by click-through, suppressing IsMenuMode");
+                    return;
+                }
+
+                    TraceMenuCapture("OnIsKeyboardFocusWithinChanged will set IsMenuMode=true");
                     IsMenuMode = true;
                     OpenOnMouseEnter = false;
                 }
@@ -332,6 +354,8 @@ namespace System.Windows.Controls.Primitives
             {
                 MenuBase menu = (MenuBase)sender;
 
+                TraceMenuCapture("OnIsSelectedChanged sender=" + menu.GetType().Name + " source=" + newSelectedMenuItem.Header + " newValue=" + e.NewValue + " currentSelection=" + (menu.CurrentSelection?.Header?.ToString() ?? "null") + " currentSubmenuOpen=" + (menu.CurrentSelection?.IsSubmenuOpen.ToString() ?? "n/a") + " dismissed=" + menu.DismissedByClickThrough);
+
                 // If the selected item is a child of ours, make it the current selection.
                 // If the selection changes from a top-level menu item with its submenu
                 // open to another, the new selection's submenu should be open.
@@ -344,6 +368,7 @@ namespace System.Windows.Controls.Primitives
                         if (menu.CurrentSelection != null)
                         {
                             wasSubmenuOpen = menu.CurrentSelection.IsSubmenuOpen;
+                            TraceMenuCapture("OnIsSelectedChanged closing previous currentSelection=" + menu.CurrentSelection.Header + " wasSubmenuOpen=" + wasSubmenuOpen);
                             menu.CurrentSelection.SetCurrentValueInternal(MenuItem.IsSubmenuOpenProperty, BooleanBoxes.FalseBox);
                         }
 
@@ -353,6 +378,7 @@ namespace System.Windows.Controls.Primitives
                             // Only open the submenu if it's a header (i.e. has items)
                             MenuItemRole role = menu.CurrentSelection.Role;
 
+                            TraceMenuCapture("OnIsSelectedChanged opening new currentSelection=" + menu.CurrentSelection.Header + " role=" + role + " wasSubmenuOpen=" + wasSubmenuOpen);
                             if (role == MenuItemRole.SubmenuHeader || role == MenuItemRole.TopLevelHeader)
                             {
                                 if (menu.CurrentSelection.IsSubmenuOpen != wasSubmenuOpen)
@@ -535,6 +561,8 @@ namespace System.Windows.Controls.Primitives
             {
                 if (e.OriginalSource == menu)
                 {
+                    bool isDescendant = Mouse.Captured != null && MenuBase.IsDescendant(menu, Mouse.Captured as DependencyObject);
+                    TraceMenuCapture("OnLostMouseCapture branch=originalSourceIsMenu capturedNow=" + (Mouse.Captured?.GetType().FullName ?? "null") + " isDescendant=" + isDescendant);
                     // If capture is null or it's not below the menu, close.
                     // More workaround for task 22022 -- check if it's a descendant (following Logical links too)
                     if (Mouse.Captured == null || !MenuBase.IsDescendant(menu, Mouse.Captured as DependencyObject))
@@ -544,7 +572,13 @@ namespace System.Windows.Controls.Primitives
                 }
                 else
                 {
-                    if (MenuBase.IsDescendant(menu, e.OriginalSource as DependencyObject))
+                    bool isDescendant = MenuBase.IsDescendant(menu, e.OriginalSource as DependencyObject);
+                    TraceMenuCapture(
+                        "OnLostMouseCapture branch=other originalSource=" + (e.OriginalSource?.GetType().FullName ?? "null") +
+                        " isDescendant=" + isDescendant +
+                        " isMenuMode=" + menu.IsMenuMode +
+                        " capturedNow=" + (Mouse.Captured?.GetType().FullName ?? "null"));
+                    if (isDescendant)
                     {
                         // Take capture if one of our children gave up capture
                         if (menu.IsMenuMode &&
@@ -811,7 +845,10 @@ namespace System.Windows.Controls.Primitives
                     if (isMenuMode)
                     {
                         // Take capture so that all mouse messages stay below the menu.
-                        if (!IsDescendant(this, Mouse.Captured as Visual) && !Mouse.Capture(this, CaptureMode.SubTree))
+                        bool isAlreadyDescendant = IsDescendant(this, Mouse.Captured as Visual);
+                        bool captureSucceeded = isAlreadyDescendant || Mouse.Capture(this, CaptureMode.SubTree);
+                        TraceMenuCapture("IsMenuMode=true isAlreadyDescendant=" + isAlreadyDescendant + " captureSucceeded=" + captureSucceeded + " capturedAfter=" + (Mouse.Captured?.GetType().FullName ?? "null"));
+                        if (!captureSucceeded)
                         {
                             // If we're unable to take capture, leave menu mode immediately.
                             isMenuMode = _bitFlags[(int)MenuBaseFlags.IsMenuMode] = false;
@@ -832,6 +869,7 @@ namespace System.Windows.Controls.Primitives
 
                     if (!isMenuMode)
                     {
+                        TraceMenuCapture("IsMenuMode=false requestedValue=" + value + " hadCapture=" + HasCapture + " capturedBefore=" + (Mouse.Captured?.GetType().FullName ?? "null") + " currentSelection=" + (CurrentSelection?.Header?.ToString() ?? "null"));
                         bool wasSubmenuOpen = false;
 
                         if (CurrentSelection != null)
@@ -877,6 +915,25 @@ namespace System.Windows.Controls.Primitives
                     // Assume menu items should open when the mouse hovers over them
                     OpenOnMouseEnter = isMenuMode;
                 }
+            }
+        }
+
+        private static void TraceMenuCapture(string message)
+        {
+            if (Environment.GetEnvironmentVariable("LIBREWPF_MENU_INPUT_LOG") != "1")
+            {
+                return;
+            }
+
+            try
+            {
+                System.IO.File.AppendAllText(
+                    "/tmp/librewpf-menu-input.log",
+                    DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) + " MENUCAPTURE " + message + Environment.NewLine);
+            }
+            catch
+            {
+                // Diagnostics only.
             }
         }
 
@@ -937,6 +994,18 @@ namespace System.Windows.Controls.Primitives
             set { _bitFlags[(int)MenuBaseFlags.IsAcquireFocusMenuMode] = value; }
         }
 
+        internal bool DismissedByClickThrough
+        {
+            get { return _bitFlags[(int)MenuBaseFlags.DismissedByClickThrough]; }
+            set { _bitFlags[(int)MenuBaseFlags.DismissedByClickThrough] = value; }
+        }
+
+        internal static bool DeferMenuActions
+        {
+            get;
+            set;
+        }
+
         private PresentationSource _pushedMenuMode;
 
         private MenuItem _currentSelection;
@@ -949,6 +1018,7 @@ namespace System.Windows.Controls.Primitives
             IsMenuMode             = 0x04,
             OpenOnMouseEnter       = 0x08,
             IsAcquireFocusMenuMode = 0x10,
+            DismissedByClickThrough = 0x20,
         }
 
         #endregion

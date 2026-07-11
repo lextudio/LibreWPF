@@ -371,7 +371,8 @@ public enum WpfWindowEventKind
     NonClientMouseMove,
     NonClientMouseDown,
     NonClientMouseUp,
-    NonClientMouseDoubleClick
+    NonClientMouseDoubleClick,
+    Moved
 }
 
 public sealed class WpfWindowEventArgs : EventArgs
@@ -386,7 +387,9 @@ public sealed class WpfWindowEventArgs : EventArgs
         WpfMouseButton button = WpfMouseButton.None,
         int hitTestCode = 0,
         int? screenX = null,
-        int? screenY = null)
+        int? screenY = null,
+        double x = 0,
+        double y = 0)
     {
         Kind = kind;
         Files = files ?? Array.Empty<string>();
@@ -398,6 +401,8 @@ public sealed class WpfWindowEventArgs : EventArgs
         HitTestCode = hitTestCode;
         ScreenX = screenX;
         ScreenY = screenY;
+        X = x;
+        Y = y;
     }
 
     public WpfWindowEventKind Kind { get; }
@@ -419,6 +424,10 @@ public sealed class WpfWindowEventArgs : EventArgs
     public int? ScreenX { get; }
 
     public int? ScreenY { get; }
+
+    public double X { get; }
+
+    public double Y { get; }
 }
 
 public enum WpfInputEventKind
@@ -465,7 +474,8 @@ public sealed class WpfInputEventArgs : EventArgs
         double deltaX = 0,
         double deltaY = 0,
         WpfMouseButton button = WpfMouseButton.None,
-        WpfInputModifiers modifiers = WpfInputModifiers.None)
+        WpfInputModifiers modifiers = WpfInputModifiers.None,
+        object? sourceWindow = null)
     {
         Kind = kind;
         Key = key;
@@ -477,6 +487,7 @@ public sealed class WpfInputEventArgs : EventArgs
         DeltaY = deltaY;
         Button = button;
         Modifiers = modifiers;
+        SourceWindow = sourceWindow;
     }
 
     public WpfInputEventKind Kind { get; }
@@ -498,6 +509,8 @@ public sealed class WpfInputEventArgs : EventArgs
     public WpfMouseButton Button { get; }
 
     public WpfInputModifiers Modifiers { get; }
+
+    public object? SourceWindow { get; }
 
     public bool Handled { get; set; }
 }

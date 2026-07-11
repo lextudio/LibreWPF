@@ -52,9 +52,18 @@ namespace MS.Internal.FontCache
             {
                 if (fontSource.IsComposite)
                 {
-                    CompositeFontInfo fontInfo = CompositeFontParser.LoadXml(fontSource.GetStream());
-                    CompositeFontFamily compositeFamily = new CompositeFontFamily(fontInfo);
-                    compositeFonts.Add(compositeFamily);
+                    try
+                    {
+                        CompositeFontInfo fontInfo = CompositeFontParser.LoadXml(fontSource.GetStream());
+                        CompositeFontFamily compositeFamily = new CompositeFontFamily(fontInfo);
+                        compositeFonts.Add(compositeFamily);
+                    }
+                    catch (System.IO.FileFormatException ex) when (!OperatingSystem.IsWindows())
+                    {
+                        // On non-Windows platforms composite font XML may reference Windows-only
+                        // OS versions that don't match, causing FileFormatException. Skip the font
+                        // source and let OS font fallback handle it.
+                    }
                 }
             }
 

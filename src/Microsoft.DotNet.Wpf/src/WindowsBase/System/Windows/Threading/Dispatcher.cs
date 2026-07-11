@@ -33,6 +33,25 @@ namespace System.Windows.Threading
             _exceptionWrapper.Filter += new ExceptionWrapper.FilterHandler(ExceptionFilterStatic);
         }
 
+        internal static event Action<Dispatcher> PortableProcessingRequested;
+
+        /// <summary>
+        /// Deliberately SEPARATE from <see cref="PortableProcessingRequested"/> (which fires on every
+        /// posted dispatcher operation and must stay a cheap fire-and-forget wake). This one is for
+        /// exactly one caller - <see cref="Window"/>'s modal <c>ShowDialog</c> wait loop - which needs
+        /// to synchronously pump one native event tick, on this same thread, because nothing else will
+        /// while it's "blocked" with no OS message queue to wait on. Wiring a synchronous pump into the
+        /// high-frequency <see cref="PortableProcessingRequested"/> path instead caused unconditional
+        /// infinite reentrant recursion (pumping posts more operations, which re-fire that event, which
+        /// pumps again, forever) - see docs/menus.md.
+        /// </summary>
+        internal static event Action PortableSynchronousPumpRequested;
+
+        internal static void RequestPortableSynchronousPump()
+        {
+            PortableSynchronousPumpRequested?.Invoke();
+        }
+
         /// <summary>
         ///     Returns the Dispatcher for the calling thread.
         /// </summary>
@@ -2405,7 +2424,14 @@ namespace System.Windows.Threading
             // can reliably check the _window field without worrying about
             // it being changed out from underneath us during shutdown.
             if (IsWindowNull())
+            {
+                if (!_useWin32MessagePump)
+                {
+                    NotifyPortableProcessingRequested();
+                }
+
                 return !_useWin32MessagePump;
+            }
 
             DispatcherPriority priority = _queue.MaxPriority;
 
@@ -2445,6 +2471,11 @@ namespace System.Windows.Threading
             }
 
             return succeeded;
+        }
+
+        private void NotifyPortableProcessingRequested()
+        {
+            PortableProcessingRequested?.Invoke(this);
         }
 
         private bool IsWindowNull() => _window is null;

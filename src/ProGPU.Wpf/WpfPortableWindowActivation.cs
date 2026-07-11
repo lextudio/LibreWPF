@@ -43,6 +43,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private static readonly Dictionary<IntPtr, WeakReference<WpfPortableWindowActivation>> s_activeActivationsByHandle = new();
     private static readonly object s_nonActivatingOwnedActivationsLock = new();
     private static readonly List<WeakReference<WpfPortableWindowActivation>> s_nonActivatingOwnedActivations = new();
+
+    // Reverse lookup from a bound portable PresentationSource to its owning window host, so a
+    // separate popup window can resolve the screen origin of the window that hosts its placement
+    // target (WPF's ClientToScreen equivalent on non-Windows platforms).
+    private static readonly ConditionalWeakTable<object, ProGpuWpfWindowHost> s_hostsByPresentationSource = new();
     private static readonly TimeSpan ApplicationIdleFlushTimeout = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan UpdateTickFlushTimeout = TimeSpan.FromMilliseconds(8);
     private static readonly TimeSpan DispatcherTimerPumpInterval = TimeSpan.FromMilliseconds(16);
@@ -76,6 +81,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Window = window;
         RootVisual = rootVisual;
         PortablePresentationSource = portablePresentationSource;
+        if (portablePresentationSource != null)
+        {
+            RegisterPresentationSourceHost(portablePresentationSource, host);
+        }
         Host.Closing += OnHostClosing;
         Host.InputReceived += OnHostInputReceived;
         Host.WindowEventReceived += OnHostWindowEventReceived;
@@ -110,6 +119,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             TryRegisterWinFormsCompatFileDialogService();
             TryRegisterWinFormsCompatColorDialogService();
             TryRegisterWinFormsCompatFontDialogService();
+            WpfPortablePopupActivation.TryRegisterPresentationFrameworkPopupActivation();
             return true;
         }
 
@@ -146,7 +156,20 @@ public sealed class WpfPortableWindowActivation : IDisposable
             dragMove: activation => ((WpfPortableWindowActivation)activation).TryDragMove(),
             getHandle: activation =>
                 ((WpfPortableWindowActivation)activation).Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero,
-            setWindowRegion: TrySetWindowRegion);
+            setWindowRegion: TrySetWindowRegion,
+            // Fire-and-forget: this fires on every dispatcher operation posted to a window-less
+            // (portable) Dispatcher, which is frequent - it must stay a cheap async wake, never a
+            // synchronous pump. (A synchronous pump was tried here to fix modal ShowDialog; it
+            // caused unconditional infinite reentrant recursion instead, since pumping itself posts
+            // more operations that re-trigger this same callback. The modal-dialog fix instead uses
+            // its own separate, narrowly-scoped hook - see Dispatcher.PortableSynchronousPumpRequested
+            // and Window.ShowHelper's dialog wait loop.)
+            requestDispatcherProcessing: activation => ((WpfPortableWindowActivation)activation).Host.TryRequestNativeLoopWakeup(),
+            // Backs Window's modal ShowDialog wait loop specifically (see PortableWindowActivationService/
+            // Dispatcher.PortableSynchronousPumpRequested's doc comments for why this must stay separate
+            // from requestDispatcherProcessing above). A single global pump is enough since PumpOnce()
+            // already services every active host, not just one window's.
+            requestSynchronousPump: ProGpuWpfWindowHost.PumpOnce);
     }
 
     public static bool TryRegisterPresentationCoreClipboardService()
@@ -186,6 +209,49 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         host = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Resolves the native OS window handle backing a WPF <see cref="Window"/> on this ProGPU/
+    /// Silk.NET-hosted platform - an NSWindow* on macOS, an HWND on Windows, or an X11 Window id
+    /// on Linux (via <see cref="Silk.NET.Core.Contexts.INativeWindow"/>). Intended for consumers
+    /// that need the real platform handle for OS-level integration (e.g. IME/NSTextInputClient)
+    /// that WPF's own <c>PresentationSource</c>/<c>HwndSource</c> doesn't provide on this host.
+    /// </summary>
+    public static bool TryGetNativeWindowHandle(object? window, out IntPtr handle)
+    {
+        handle = IntPtr.Zero;
+        if (!TryGetActiveHost(window, out var host) || host?.SilkWindow is not { } silkWindow)
+        {
+            return false;
+        }
+
+        var native = silkWindow.Native;
+        if (native is null)
+        {
+            return false;
+        }
+
+        if (native.Cocoa is { } cocoa && cocoa != IntPtr.Zero)
+        {
+            handle = cocoa;
+            return true;
+        }
+
+        // Win32 = (HWnd, HDC, HInstance); X11 = (Display, Window).
+        if (native.Win32 is { Item1: var hwnd } && hwnd != IntPtr.Zero)
+        {
+            handle = hwnd;
+            return true;
+        }
+
+        if (native.X11 is { Item2: var x11Window } && x11Window != UIntPtr.Zero)
+        {
+            handle = (IntPtr)x11Window;
+            return true;
+        }
+
         return false;
     }
 
@@ -496,8 +562,64 @@ public sealed class WpfPortableWindowActivation : IDisposable
         RemoveNonActivatingOwnedWindowRegistration();
         s_activeActivations.Remove(Window);
         UnregisterActiveActivationHandle(this);
+        if (PortablePresentationSource != null)
+        {
+            UnregisterPresentationSourceHost(PortablePresentationSource);
+        }
         Host.Dispose();
         _isDisposed = true;
+    }
+
+    /// <summary>
+    /// Registers a bound portable <c>PresentationSource</c> -&gt; owning host mapping, so
+    /// <see cref="TryGetScreenOrigin"/> can resolve it later. Used by this class's own constructor
+    /// for real WPF <c>Window</c>s, and by <see cref="WpfPortablePopupActivation"/> for popup
+    /// windows - a popup is not a <c>Window</c> and never runs through this constructor, but its
+    /// PresentationSource needs to resolve here too: <c>PortableWindowActivationService</c>'s
+    /// capture-redirection (<c>TryRedirectToCaptureSource</c>) calls <see cref="TryGetScreenOrigin"/>
+    /// for whichever window physically received an input event, and that's routinely a popup (e.g.
+    /// hovering from an open top-level menu's popup onto a sibling header) - without this
+    /// registration, the redirect can never resolve a screen origin for the popup side and silently
+    /// never fires, so hovering across sibling top-level headers never switches menus the way a
+    /// click does, even though the exact same WPF-level hover-open logic (<c>MenuItem.
+    /// MouseEnterHelper</c>/<c>OpenOnMouseEnter</c>) already handles it once given a correctly
+    /// redirected MouseMove.
+    /// </summary>
+    internal static void RegisterPresentationSourceHost(object presentationSource, ProGpuWpfWindowHost host)
+    {
+        s_hostsByPresentationSource.Remove(presentationSource);
+        s_hostsByPresentationSource.Add(presentationSource, host);
+    }
+
+    internal static void UnregisterPresentationSourceHost(object presentationSource)
+    {
+        s_hostsByPresentationSource.Remove(presentationSource);
+    }
+
+    /// <summary>
+    /// Resolves the screen origin (logical/DIP coordinates) of the window that hosts the given
+    /// bound portable <c>PresentationSource</c>, so a separate popup window can place itself
+    /// relative to a placement target living in that window.
+    /// </summary>
+    public static bool TryGetScreenOrigin(object presentationSource, out double x, out double y)
+    {
+        x = 0;
+        y = 0;
+        ProGpuWpfWindowHost? host = null;
+        bool found = presentationSource != null &&
+            s_hostsByPresentationSource.TryGetValue(presentationSource, out host);
+        if (found)
+        {
+            x = host!.Left ?? 0;
+            y = host.Top ?? 0;
+        }
+
+        if (Environment.GetEnvironmentVariable("PROGPU_WPF_TRACE_POPUP_POSITION") == "1")
+        {
+            try { System.IO.File.AppendAllText("/tmp/tooltiptest_debug.log", DateTime.Now.ToString("HH:mm:ss.fff") + $" [TRACE TryGetScreenOrigin] found={found} x={x} y={y}\n"); } catch { }
+        }
+
+        return found;
     }
 
     private static void RegisterActiveActivation(object window, WpfPortableWindowActivation activation)
@@ -943,10 +1065,37 @@ public sealed class WpfPortableWindowActivation : IDisposable
         switch (e.Kind)
         {
             case WpfWindowEventKind.Activated:
+                // Suppress spurious activation while any of this process's own popups are open, matching
+                // the Deactivated suppression below. Real Windows WPF popups are WS_EX_NOACTIVATE and
+                // never cause the owner to gain/lose focus, so the paired Activated that follows the
+                // user clicking back on the main window is equally spurious on this backend. Without
+                // this suppression, OpenDevelop's Window.Activated handler can restore focus into the
+                // Menu tree (e.g. via BeginInvoke), which then re-enters IsMenuMode=true after
+                // OnClickThrough already dismissed it — causing the File popup to appear.
+                if (WpfPortablePopupActivation.HasAnyOpenPopup)
+                {
+                    TraceMenuCaptureDismissal("Activated SUPPRESSED (popup open)");
+                    break;
+                }
+
                 DispatchPortableActivationHooks(isActive: true);
                 TrySetWindowActivationStateForHostEvent(isActive: true);
                 break;
             case WpfWindowEventKind.Deactivated:
+                // Suppress spurious deactivation while any of this process's own popups are open.
+                // A popup's native window steals real OS focus on the portable backend (Silk/GLFW
+                // has no WS_EX_NOACTIVATE equivalent), which fires a Deactivated event that would
+                // otherwise confuse MenuBase.IsMenuMode / Mouse.Capture. Real Windows WPF popups
+                // never trigger this event, so suppressing it while our own popups are open is the
+                // correct approximation (docs/menus.md, "popup windows steal native OS focus").
+                if (WpfPortablePopupActivation.HasAnyOpenPopup)
+                {
+                    TraceMenuCaptureDismissal("Deactivated SUPPRESSED (popup open)");
+                    break;
+                }
+
+                TraceMenuCaptureDismissal("Deactivated PROPAGATED (no popup)");
+
                 DispatchPortableActivationHooks(isActive: false);
                 TrySetWindowActivationStateForHostEvent(isActive: false);
                 break;
@@ -961,6 +1110,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 break;
             case WpfWindowEventKind.WindowPositionChanged:
                 DispatchPortableWindowPositionChangedHooks(e.Left, e.Top);
+                TryNotifyWindowMoved(e.Left ?? Host.Left ?? 0, e.Top ?? Host.Top ?? 0);
                 break;
             case WpfWindowEventKind.WindowSizeChanged:
                 DispatchPortableWindowSizeChangedHooks(e.Width, e.Height);
@@ -971,7 +1121,24 @@ public sealed class WpfPortableWindowActivation : IDisposable
             case WpfWindowEventKind.NonClientMouseDoubleClick:
                 DispatchPortableNonClientMouseHook(e);
                 break;
+            case WpfWindowEventKind.Moved:
+                TryNotifyWindowMoved(Host.Left ?? 0, Host.Top ?? 0);
+                break;
         }
+    }
+
+    private void TryNotifyWindowMoved(double left, double top)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        bool gotService = TryGetWindowActivationService(out var activationService);
+        bool notified = gotService && activationService.TryNotifyWindowMoved(Window, left, top);
+        System.Windows.Media.ProGPU.Platform.SilkNetWpfWindowEventService.TraceWindowMove(
+            "WpfPortableWindowActivation.TryNotifyWindowMoved left=" + left + " top=" + top +
+            " gotService=" + gotService + " notified=" + notified);
     }
 
     private void DispatchPortableActivationHooks(bool isActive)
@@ -1124,6 +1291,20 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         uint packed = (uint)(ushort)Math.Max(0, low) | ((uint)(ushort)Math.Max(0, high) << 16);
         return new IntPtr(unchecked((int)packed));
+    }
+
+    private static void TraceMenuCaptureDismissal(string message)
+    {
+        if (Environment.GetEnvironmentVariable("LIBREWPF_MENU_INPUT_LOG") != "1")
+            return;
+        try
+        {
+            System.IO.File.AppendAllText(
+                "/tmp/librewpf-menu-input.log",
+                DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) +
+                " MENUCAPTURE " + message + Environment.NewLine);
+        }
+        catch { }
     }
 
     private void TrySetWindowActivationStateForHostEvent(bool isActive)

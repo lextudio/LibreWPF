@@ -1601,11 +1601,16 @@ namespace System.Windows.Controls
                 // Compute the point a different way, and check that it agrees.  The second
                 // way uses public API, but in our case ends up doing a lot of transforms
                 // and multiplications that should simply cancel each other out.
-                System.Windows.Interop.HwndSource hwndSource = _source as System.Windows.Interop.HwndSource;
-                IInputElement rootElement = hwndSource?.RootVisual as IInputElement;
-                Debug.Assert(hwndSource != null && rootElement != null, "expect non-null hwndSource and rootElement");
-                System.Windows.Point pt2 = hwndSource.TransformToDevice(Mouse.PrimaryDevice.GetPosition(rootElement));
-                Debug.Assert(((int)pt.X == (int)Math.Round(pt2.X)) && ((int)pt.Y == (int)Math.Round(pt2.Y)), "got incorrect mouse point");
+                // Only validate on Windows where HwndSource is available; the portable
+                // backend uses PortablePresentationSource which does not cast to HwndSource.
+                if (OperatingSystem.IsWindows())
+                {
+                    System.Windows.Interop.HwndSource hwndSource = _source as System.Windows.Interop.HwndSource;
+                    IInputElement rootElement = hwndSource?.RootVisual as IInputElement;
+                    Debug.Assert(hwndSource != null && rootElement != null, "expect non-null hwndSource and rootElement");
+                    System.Windows.Point pt2 = hwndSource.TransformToDevice(Mouse.PrimaryDevice.GetPosition(rootElement));
+                    Debug.Assert(((int)pt.X == (int)Math.Round(pt2.X)) && ((int)pt.Y == (int)Math.Round(pt2.Y)), "got incorrect mouse point");
+                }
                 #endif
 
                 // check whether the point lies within the hull

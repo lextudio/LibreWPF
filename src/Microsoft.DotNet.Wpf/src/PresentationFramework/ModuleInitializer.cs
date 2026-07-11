@@ -12,6 +12,7 @@ internal static class ModuleInitializer
     public static void Initialize()
     {
         PortableWindowActivationService.RegisterPortableInteropService();
+        PortablePopupActivationService.RegisterPortableInteropService();
         PortableLauncherService.RegisterPortableInteropService();
         PortableMessageBoxService.RegisterPortableInteropService();
         PortableFileDialogService.RegisterPortableInteropService();

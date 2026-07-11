@@ -14,7 +14,7 @@ namespace System.Windows.Controls.Primitives
     /// <summary>
     ///     The root element inside a popup.
     /// </summary>
-    internal sealed class PopupRoot : FrameworkElement, IPortablePopupRootSource
+    internal sealed class PopupRoot : FrameworkElement, IPortablePopupRootSource, IPortableVisualChildrenSource
     {
         #region Constructors
 
@@ -73,6 +73,21 @@ namespace System.Windows.Controls.Primitives
             }
 
             return _transformDecorator;
+        }
+
+        // PopupRoot is hosted in a separate native surface.  The portable
+        // renderer cannot use VisualTreeHelper across that boundary, so expose
+        // the same child through the interop contract used by Visual.
+        bool IPortableVisualChildrenSource.TryGetPortableVisualChildCount(out int count)
+        {
+            count = VisualChildrenCount;
+            return true;
+        }
+
+        bool IPortableVisualChildrenSource.TryGetPortableVisualChild(int index, out object child)
+        {
+            child = GetVisualChild(index);
+            return true;
         }
         #endregion
 

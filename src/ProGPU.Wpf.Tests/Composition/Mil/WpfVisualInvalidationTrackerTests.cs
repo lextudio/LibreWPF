@@ -224,6 +224,38 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.Same(root, tracker.LastDirtySource);
     }
 
+    // Regression test for the high-cpu-hang bug: DetectVersionChanges used to compare against a
+    // persisted baseline that only ever advanced during a full SubscribeGraph rebuild, so once a
+    // real change was detected and consumed, calling DetectVersionChanges again with NO further
+    // state mutation kept re-reporting the SAME stale diff forever - which is what drove the host
+    // to 100% CPU (every frame saw "changes", never converged). After AdvancePersistedBaseline(),
+    // a second call with nothing new changed must return false.
+    [Fact]
+    public void DetectVersionChangesDoesNotReReportSameChangeOnSubsequentCall()
+    {
+        var state = new PortableVisualLayoutState
+        {
+            HasRenderSize = true,
+            RenderSize = new PortableSize(40, 20),
+            HasClipToBounds = true,
+            ClipToBounds = false
+        };
+        var root = new FakePortableLayoutVisual(state);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        state.RenderSize = new PortableSize(41, 20);
+
+        Assert.True(tracker.DetectVersionChanges());
+        tracker.ConsumeDirty();
+
+        // No further state mutation - a naive stale-baseline comparison would see the same
+        // RenderSize diff again and report true a second time.
+        Assert.False(tracker.DetectVersionChanges());
+        Assert.False(tracker.DetectVersionChanges());
+    }
+
     [Fact]
     public void PortableVisualStateChangeMarksTrackerDirtyWithoutEvent()
     {

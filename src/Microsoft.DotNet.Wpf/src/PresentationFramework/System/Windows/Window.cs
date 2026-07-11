@@ -534,10 +534,12 @@ namespace System.Windows
             EnsureDialogCommand();
             bool pushedModal = false;
 
+            TraceDialogState("ShowPortableDialog entering title=" + Title);
             try
             {
                 _showingAsDialog = true;
                 Show();
+                TraceDialogState("ShowPortableDialog Show() returned title=" + Title);
 
                 // The portable dispatcher uses short frames because the platform host owns
                 // the native event loop. Run the dialog host itself to preserve synchronous
@@ -1483,6 +1485,13 @@ namespace System.Windows
                 }
                 else
                 {
+                    TraceDialogState(
+                        "DialogResult set FAILING isVisible=" + _isVisible +
+                        " isClosing=" + _isClosing +
+                        " portableActivationNull=" + (_portableWindowActivation == null) +
+                        " sourceWindowNull=" + IsSourceWindowNull +
+                        " dispatcherFrameNull=" + (_dispatcherFrame == null) +
+                        " title=" + Title);
                     throw new InvalidOperationException(SR.DialogResultMustBeSetAfterShowDialog);
 }
             }
@@ -3219,6 +3228,51 @@ namespace System.Windows
         internal void HandlePortableInput(PortableInputEventArgs input)
         {
             PortableWindowActivationService.ProcessInput(this, input);
+        }
+
+        // Portable substitute for the WM_MOVE case in WindowFilterMessage. Real Win32 WPF derives
+        // Left/Top from GetWindowRect(hwnd) in WmMoveChanged; the portable backend has no hwnd to
+        // query, so the native host passes the moved-to position directly. From here on we reuse
+        // the exact same code WM_MOVE uses (WmMoveChangedHelper: sets Left/Top, fires LocationChanged).
+        internal void HandlePortableMove(double left, double top)
+        {
+            // Unlike WmMoveChanged, this never checks IsSourceWindowNull/IsCompositionTargetInvalid:
+            // those guard the real Win32 _swh (HwndSource) helper, which the portable backend never
+            // populates at all - it would always be true here and this method would never run.
+            bool changed = !DoubleUtil.AreClose(_actualLeft, left) || !DoubleUtil.AreClose(_actualTop, top);
+            TraceWindowMove("Window.HandlePortableMove left=" + left + " top=" + top +
+                " changed=" + changed + " captured=" + (Mouse.Captured?.GetType().FullName ?? "null"));
+
+            if (changed)
+            {
+                _actualLeft = left;
+                _actualTop = top;
+                WmMoveChangedHelper();
+
+                // Real Win32 WPF never needs to close menus/popups on owner-window move: their HWNDs
+                // are owned/child windows the OS moves in lockstep, so they stay visually attached.
+                // Portable popups are independent native windows with no such glue, so a stale popup
+                // would otherwise hang in its old screen position. Releasing capture reuses the exact
+                // same dismiss path an outside click already takes (MenuBase/Popup.OnLostMouseCapture)
+                // instead of inventing a separate "close this popup" call.
+                //
+                // But don't release capture when any of our own popups are currently open —
+                // opening a popup's native window can cause a transient host-window move
+                // (the OS repositions the owner the instant a new top-level window appears
+                // on macOS, where there is no WS_EX_NOACTIVATE).  If we released capture
+                // here, the ComboBox/Menu dropdown that JUST opened would dismiss itself
+                // immediately via its OnLostMouseCapture handler, making it look like the
+                // popup "never appeared".  The Popup.HasAnyOpenPopupInWpf check tracks popups
+                // created via the WPF-managed CreateWindow path (see
+                // Popup.s_wpfOpenPopupCount) so it correctly suppresses these spurious
+                // moves from our own popup windows, without leaking capture to
+                // unrelated windows.
+                if (Mouse.Captured != null && !System.Windows.Controls.Primitives.Popup.HasAnyOpenPopupInWpf)
+                {
+                    TraceWindowMoveCapture("HandlePortableMove RELEASE capture captured=" + (Mouse.Captured?.GetType().FullName ?? "null"));
+                    Mouse.Capture(null);
+                }
+            }
         }
 
         internal virtual void UpdateHeight(double newHeight)
@@ -5782,6 +5836,7 @@ namespace System.Windows
 
 
             // dialog functionality; start dispatcher loop to block the call
+            TraceDialogState("ShowHelper modal-check showingAsDialog=" + _showingAsDialog + " isVisible=" + _isVisible + " value=" + value + " title=" + Title);
             if ((_showingAsDialog) && (_isVisible))
             {
                 //
@@ -5797,7 +5852,40 @@ namespace System.Windows
                     ComponentDispatcher.PushModal();
 
                     _dispatcherFrame = new DispatcherFrame();
-                    Dispatcher.PushFrame(_dispatcherFrame);
+                    if (OperatingSystem.IsWindows())
+                    {
+                        Dispatcher.PushFrame(_dispatcherFrame);
+                    }
+                    else
+                    {
+                        // Portable backend: Dispatcher.PushFrame's managed pump gives up as soon as
+                        // its own operation queue is momentarily empty (there's no OS message queue
+                        // to block on the way Windows' GetMessage-based pump does), so a single call
+                        // can return long before the dialog is actually closed - clearing
+                        // _showingAsDialog while it's still visibly open and letting a later real
+                        // click crash with "DialogResult can be set only after Window is created and
+                        // shown as dialog." Loop: if PushFrame gave up but DoDialogHide hasn't nulled
+                        // out _dispatcherFrame (i.e. the dialog genuinely isn't closed yet), pump one
+                        // native event tick - synchronously, on this same thread, since nothing else
+                        // will - and go back to waiting. This is scoped to this one unbounded wait
+                        // deliberately; see Dispatcher.PortableSynchronousPumpRequested's doc comment
+                        // for why it must not be wired into the generic pump loop instead.
+                        while (true)
+                        {
+                            if (_dispatcherFrame == null)
+                            {
+                                break;
+                            }
+
+                            Dispatcher.PushFrame(_dispatcherFrame);
+                            if (_dispatcherFrame == null || !_dispatcherFrame.Continue)
+                            {
+                                break;
+                            }
+
+                            Dispatcher.RequestPortableSynchronousPump();
+                        }
+                    }
                 }
                 finally
                 {
@@ -7719,6 +7807,64 @@ namespace System.Windows
         private bool                _updateStartupLocation;
         private bool                _isVisible;
         private bool                _isVisibilitySet;           // use this to tell whether Visibility is set or not.
+
+        private static void TraceDialogState(string message)
+        {
+            if (Environment.GetEnvironmentVariable("LIBREWPF_MENU_INPUT_LOG") != "1")
+            {
+                return;
+            }
+
+            try
+            {
+                System.IO.File.AppendAllText(
+                    "/tmp/librewpf-menu-input.log",
+                    DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) + " DIALOGSTATE " + message + Environment.NewLine);
+            }
+            catch
+            {
+                // Diagnostics only.
+            }
+        }
+        private static void TraceWindowMove(string message)
+        {
+            if (Environment.GetEnvironmentVariable("LIBREWPF_WINDOW_MOVE_LOG") != "1")
+            {
+                return;
+            }
+
+            try
+            {
+                System.IO.File.AppendAllText(
+                    "/tmp/librewpf-window-move.log",
+                    DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) + " " + message + Environment.NewLine);
+            }
+            catch
+            {
+                // Diagnostics only.
+            }
+        }
+
+        private static void TraceWindowMoveCapture(string message)
+        {
+            if (Environment.GetEnvironmentVariable("LIBREWPF_MENU_INPUT_LOG") != "1")
+            {
+                return;
+            }
+
+            try
+            {
+                System.IO.File.AppendAllText(
+                    "/tmp/librewpf-menu-input.log",
+                    DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) +
+                    " WINDOWMOVECAPTURE " + message + Environment.NewLine);
+            }
+            catch
+            {
+                // Diagnostics only.
+            }
+        }
+
         private bool                _resetKeyboardCuesProperty; // true if we set ShowKeyboradCuesProperty in ShowDialog
         private bool                _previousKeyboardCuesProperty;
 

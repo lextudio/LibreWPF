@@ -30,6 +30,13 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo(BuildInfo.PresentationFrameworkSystemDrawing)]
 [assembly: InternalsVisibleTo(BuildInfo.PresentationFrameworkSystemXml)]
 [assembly: InternalsVisibleTo(BuildInfo.PresentationFrameworkSystemXmlLinq)]
+[assembly: InternalsVisibleTo(
+    "ProGPU.Wpf, PublicKey=" +
+    "002400000480000094000000060200000024000052534131000400000100010045aa5f537c126e" +
+    "38b67a4e22a49d30ad6424dc66d3e82890c03de2caa8f421736dbe5170b054610320e4a436e808" +
+    "a38b05e02998b776d1ae9133d2bf7197e5eb39e9ba6bee9ed837236a90c151c6d6e154dc8debd4" +
+    "fef44d6597f795ee9e33bf0b2a959915729166099862717525ec4bab3002d4d8f8a81d656b5c25" +
+    "c891cb91")]
 
 [assembly: TypeForwardedTo(typeof(System.Windows.Markup.ValueSerializer))]
 [assembly: TypeForwardedTo(typeof(System.Windows.Markup.ArrayExtension))]
@@ -125,4 +132,3 @@ using System.Runtime.CompilerServices;
 [assembly: System.Windows.Markup.XmlnsDefinition("http://schemas.microsoft.com/xps/2005/06", "System.Windows.Input")]
 [assembly: System.Windows.Markup.XmlnsDefinition("http://schemas.microsoft.com/xps/2005/06", "System.Windows.Media")]
 [assembly: System.Windows.Markup.XmlnsPrefix("http://schemas.microsoft.com/xps/2005/06", "metro")]
-

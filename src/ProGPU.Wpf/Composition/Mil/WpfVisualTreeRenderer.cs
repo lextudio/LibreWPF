@@ -330,9 +330,11 @@ public sealed class WpfVisualTreeRenderer
 
     private static bool ShouldSkipPortablePopupRoot(object visual, bool includePortablePopupRoots)
     {
-        return !includePortablePopupRoots &&
-            visual is PortablePopupRootSource popupRootSource &&
-            popupRootSource.IsPortablePopupRoot;
+        // Popup roots are rendered into their own native surface.  Once that
+        // surface asks for a subtree replay, the root must be traversed; the
+        // old skip also discarded the entire PopupRoot before its portable
+        // children could be visited.
+        return false;
     }
 
     private static void RegisterRetainedVisualOwner(object visual, IWpfCompositionCommandSink sink)

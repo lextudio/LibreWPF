@@ -30,6 +30,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
         {
             IDisposable subscription = Attach(
                 inputContext,
+                silkView,
                 () =>
                 {
                     lock (_sync)
@@ -41,6 +42,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
                         }
                     }
                 });
+
             lock (_sync)
             {
                 _inputContexts[silkView] = inputContext;
@@ -66,7 +68,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
 
     public IDisposable Attach(SilkInput.IInputContext inputContext)
     {
-        return Attach(inputContext, onDispose: null);
+        return Attach(inputContext, sourceWindow: null, onDispose: null);
     }
 
     bool ISilkNetWpfInputContextProvider.TryGetInputContext(object window, out SilkInput.IInputContext inputContext)
@@ -86,7 +88,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
         return false;
     }
 
-    private IDisposable Attach(SilkInput.IInputContext inputContext, Action? onDispose)
+    private IDisposable Attach(SilkInput.IInputContext inputContext, object? sourceWindow, Action? onDispose)
     {
         ArgumentNullException.ThrowIfNull(inputContext);
 
@@ -107,7 +109,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             {
                 lastPosition = position;
                 hasLastPosition = IsFinite(position);
-                OnInputReceived(CreateMouseMoveEvent(position, ReadModifiers(inputContext)));
+                OnInputReceived(CreateMouseMoveEvent(position, ReadModifiers(inputContext), sourceWindow));
             };
             Action<SilkInput.IMouse, SilkInput.MouseButton> mouseDown = (_, button) =>
             {
@@ -119,7 +121,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
                 }
 
                 pressedButtons.Add(button);
-                OnInputReceived(CreateMouseButtonEvent(WpfInputEventKind.MouseDown, button, position, ReadModifiers(inputContext)));
+                OnInputReceived(CreateMouseButtonEvent(WpfInputEventKind.MouseDown, button, position, ReadModifiers(inputContext), sourceWindow));
             };
             Action<SilkInput.IMouse, SilkInput.MouseButton> mouseUp = (_, button) =>
             {
@@ -135,7 +137,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
                     hasLastPosition = true;
                 }
 
-                OnInputReceived(CreateMouseButtonEvent(WpfInputEventKind.MouseUp, button, position, ReadModifiers(inputContext)));
+                OnInputReceived(CreateMouseButtonEvent(WpfInputEventKind.MouseUp, button, position, ReadModifiers(inputContext), sourceWindow));
             };
             Action<SilkInput.IMouse, SilkInput.ScrollWheel> scroll = (_, wheel) =>
             {
@@ -146,7 +148,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
                     hasLastPosition = true;
                 }
 
-                OnInputReceived(CreateMouseWheelEvent(wheel.X, wheel.Y, position, ReadModifiers(inputContext)));
+                OnInputReceived(CreateMouseWheelEvent(wheel.X, wheel.Y, position, ReadModifiers(inputContext), sourceWindow));
             };
 
             mouse.MouseMove += mouseMove;
@@ -183,11 +185,11 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             }
 
             Action<SilkInput.IKeyboard, SilkInput.Key, int> keyDown = (_, key, scanCode) =>
-                OnInputReceived(CreateKeyEvent(WpfInputEventKind.KeyDown, key, scanCode, ReadModifiers(inputContext)));
+                OnInputReceived(CreateKeyEvent(WpfInputEventKind.KeyDown, key, scanCode, ReadModifiers(inputContext), sourceWindow));
             Action<SilkInput.IKeyboard, SilkInput.Key, int> keyUp = (_, key, scanCode) =>
-                OnInputReceived(CreateKeyEvent(WpfInputEventKind.KeyUp, key, scanCode, ReadModifiers(inputContext)));
+                OnInputReceived(CreateKeyEvent(WpfInputEventKind.KeyUp, key, scanCode, ReadModifiers(inputContext), sourceWindow));
             Action<SilkInput.IKeyboard, char> keyChar = (_, character) =>
-                OnInputReceived(CreateTextInputEvent(character, ReadModifiers(inputContext)));
+                OnInputReceived(CreateTextInputEvent(character, ReadModifiers(inputContext), sourceWindow));
 
             keyboard.BeginInput();
             keyboard.KeyDown += keyDown;
@@ -260,7 +262,8 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
         WpfInputEventKind kind,
         SilkInput.Key key,
         int scanCode,
-        WpfInputModifiers modifiers)
+        WpfInputModifiers modifiers,
+        object? sourceWindow = null)
     {
         if (kind != WpfInputEventKind.KeyDown && kind != WpfInputEventKind.KeyUp)
         {
@@ -271,31 +274,41 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             kind,
             key: TranslateKey(key),
             scanCode: scanCode,
-            modifiers: modifiers);
+            modifiers: modifiers,
+            sourceWindow: sourceWindow);
     }
 
-    public static WpfInputEventArgs CreateTextInputEvent(char character, WpfInputModifiers modifiers)
+    public static WpfInputEventArgs CreateTextInputEvent(
+        char character,
+        WpfInputModifiers modifiers,
+        object? sourceWindow = null)
     {
         return new WpfInputEventArgs(
             WpfInputEventKind.TextInput,
             character: character,
-            modifiers: modifiers);
+            modifiers: modifiers,
+            sourceWindow: sourceWindow);
     }
 
-    public static WpfInputEventArgs CreateMouseMoveEvent(Vector2 position, WpfInputModifiers modifiers)
+    public static WpfInputEventArgs CreateMouseMoveEvent(
+        Vector2 position,
+        WpfInputModifiers modifiers,
+        object? sourceWindow = null)
     {
         return new WpfInputEventArgs(
             WpfInputEventKind.MouseMove,
             x: position.X,
             y: position.Y,
-            modifiers: modifiers);
+            modifiers: modifiers,
+            sourceWindow: sourceWindow);
     }
 
     public static WpfInputEventArgs CreateMouseButtonEvent(
         WpfInputEventKind kind,
         SilkInput.MouseButton button,
         Vector2 position,
-        WpfInputModifiers modifiers)
+        WpfInputModifiers modifiers,
+        object? sourceWindow = null)
     {
         if (kind != WpfInputEventKind.MouseDown && kind != WpfInputEventKind.MouseUp)
         {
@@ -307,14 +320,16 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             x: position.X,
             y: position.Y,
             button: TranslateMouseButton(button),
-            modifiers: modifiers);
+            modifiers: modifiers,
+            sourceWindow: sourceWindow);
     }
 
     public static WpfInputEventArgs CreateMouseWheelEvent(
         double deltaX,
         double deltaY,
         Vector2 position,
-        WpfInputModifiers modifiers)
+        WpfInputModifiers modifiers,
+        object? sourceWindow = null)
     {
         return new WpfInputEventArgs(
             WpfInputEventKind.MouseWheel,
@@ -322,7 +337,8 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             y: position.Y,
             deltaX: deltaX,
             deltaY: deltaY,
-            modifiers: modifiers);
+            modifiers: modifiers,
+            sourceWindow: sourceWindow);
     }
 
     public static WpfMouseButton TranslateMouseButton(SilkInput.MouseButton button)

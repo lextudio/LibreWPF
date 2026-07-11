@@ -1656,11 +1656,14 @@ namespace System.Windows.Controls
             //        share it amongst the controls which need it (Popup, MenuBase, ComboBox).
             if (Mouse.Captured != comboBox)
             {
+                bool isDescendant = Mouse.Captured != null && MenuBase.IsDescendant(comboBox, Mouse.Captured as DependencyObject);
+                TraceComboBoxCapture("OnLostMouseCapture captured=" + (Mouse.Captured?.GetType().Name ?? "null") + " originalSource=" + (e.OriginalSource?.GetType().Name ?? "null") + " isDescendant=" + isDescendant + " isDropDownOpen=" + comboBox.IsDropDownOpen);
+
                 if (e.OriginalSource == comboBox)
                 {
                     // If capture is null or it's not below the combobox, close.
                     // More workaround for task 22022 -- check if it's a descendant (following Logical links too)
-                    if (Mouse.Captured == null || !MenuBase.IsDescendant(comboBox, Mouse.Captured as DependencyObject))
+                    if (Mouse.Captured == null || !isDescendant)
                     {
                         comboBox.Close();
                     }
@@ -2027,5 +2030,19 @@ namespace System.Windows.Controls
         private static DependencyObjectType _dType;
 
         #endregion DTypeThemeStyleKey
+
+        private static void TraceComboBoxCapture(string message)
+        {
+            if (Environment.GetEnvironmentVariable("LIBREWPF_MENU_INPUT_LOG") != "1")
+                return;
+            try
+            {
+                System.IO.File.AppendAllText(
+                    "/tmp/librewpf-menu-input.log",
+                    DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) +
+                    " COMBOCAPTURE " + message + Environment.NewLine);
+            }
+            catch { }
+        }
     }
 }

@@ -535,7 +535,11 @@ internal sealed class WpfPortablePopupBridge : IDisposable
 
     private void PositionPopupRoot(ProGpuRetainedDrawingVisual rootVisual)
     {
-        rootVisual.Offset = new Vector2((float)LogicalX, (float)LogicalY);
+        // The native popup window is already positioned at (X, Y).  Its
+        // composition surface is local to that window, so applying the screen
+        // position here a second time moves menu and ComboBox contents away
+        // from the popup window.
+        rootVisual.Offset = Vector2.Zero;
         rootVisual.Size = new Vector2(Width, Height);
         rootVisual.Transform = Matrix4x4.Identity;
         rootVisual.Scale = Vector3.One;

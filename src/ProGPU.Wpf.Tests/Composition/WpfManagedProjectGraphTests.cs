@@ -717,11 +717,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("markerOperation.Abort()", activationService, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.PushFrame(frame)", activationService, StringComparison.Ordinal);
         Assert.Contains("using MS.Internal;", activationService, StringComparison.Ordinal);
-        Assert.Contains("Point clientPoint = ToMouseClientPoint(source, rootHitTestElement, input);", activationService, StringComparison.Ordinal);
+        Assert.Contains("clientPoint = ToMouseClientPoint(source, rootHitTestElement, input);", activationService, StringComparison.Ordinal);
         Assert.Contains("ToInputCoordinate(clientPoint.X)", activationService, StringComparison.Ordinal);
         Assert.Contains("ToInputCoordinate(clientPoint.Y)", activationService, StringComparison.Ordinal);
         Assert.Contains("private static Point ToMouseClientPoint(PresentationSource source, UIElement rootHitTestElement, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
         Assert.Contains("PointUtil.RootToClient(rootPoint, source)", activationService, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryRedirectToCaptureSource(", activationService, StringComparison.Ordinal);
+        Assert.Contains("Mouse.Captured is not DependencyObject capturedElement", activationService, StringComparison.Ordinal);
+        Assert.Contains("PortablePopupActivationService.TryGetScreenOrigin(physicalSource, out double physicalOriginX, out double physicalOriginY)", activationService, StringComparison.Ordinal);
         Assert.Contains("public interface IWpfDelayedRenderScheduler : IWpfRenderScheduler", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("void RequestRender(TimeSpan delay)", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceRegistry.TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
@@ -1080,13 +1083,15 @@ public sealed class WpfManagedProjectGraphTests
         int hostOnRender = proGpuHost.IndexOf("private void OnRender(double deltaSeconds)", StringComparison.Ordinal);
         int hostPreReplayGeometrySync = proGpuHost.IndexOf("SynchronizePortablePresentationSourceGeometry(geometry);", hostOnRender, StringComparison.Ordinal);
         int hostPreReplayDispatcherDrain = proGpuHost.IndexOf("ProcessDispatcherQueueCore();", hostPreReplayGeometrySync, StringComparison.Ordinal);
+        int hostPushCurrentGpuContext = proGpuHost.IndexOf("global::ProGPU.Backend.WgpuContext.PushCurrent(_target.Context)", hostPreReplayDispatcherDrain, StringComparison.Ordinal);
         int hostDetectWpfSourceChanges = proGpuHost.IndexOf("_target.DetectWpfSourceChanges();", hostOnRender, StringComparison.Ordinal);
         Assert.True(
             hostOnRender >= 0 &&
             hostPreReplayGeometrySync >= 0 &&
             hostPreReplayGeometrySync < hostPreReplayDispatcherDrain &&
-            hostPreReplayDispatcherDrain < hostDetectWpfSourceChanges,
-            "The Silk.NET render callback must synchronize WPF logical geometry before draining dispatcher/layout work and before polling WPF render data.");
+            hostPreReplayDispatcherDrain < hostPushCurrentGpuContext &&
+            hostPushCurrentGpuContext < hostDetectWpfSourceChanges,
+            "The Silk.NET render callback must synchronize WPF logical geometry, drain dispatcher/layout work, and then push the host GPU context before polling WPF render data.");
         Assert.Contains("_retainedWpfVisualRoot.Scale = Vector3.One", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("TrySubscribePropertyChanged(", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("TryUnsubscribePropertyChanged(", proGpuInvalidationTracker, StringComparison.Ordinal);
@@ -6356,15 +6361,15 @@ public sealed class WpfManagedProjectGraphTests
             StringComparison.Ordinal);
         Assert.Contains("CaptureVisualStateSnapshotsAndCollectVisualChildrenChanges(", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CaptureObjectVisualStateAndChildren(", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources, _structuralChangedSources)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("Dictionary<object, object?[]> previousChildren,", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private static void CollectVisualStateChanges(\n        Dictionary<object, VisualStateSnapshot> previous,\n        Dictionary<object, VisualStateSnapshot> current,", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private static void CollectRemovedVisualChildrenSources(\n        Dictionary<object, object?[]> previous,", trackerSource, StringComparison.Ordinal);
         Assert.Contains("public Dictionary<object, object?[]> PreviousChildren { get; }", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("_visualChildrenSnapshots,\n                _visualChildrenCurrentSources,\n                _changedSources,\n                _visualStateTraversalVisited)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("_visualChildrenSnapshots,\n                _visualChildrenCurrentSources,\n                _changedSources,\n                _structuralChangedSources,\n                _visualStateTraversalVisited)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("CollectRemovedVisualChildrenSources(", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("MarkDirtyListAndRefresh(_changedSources)", trackerSource, StringComparison.Ordinal);
-        Assert.Contains("private void MarkDirtyListAndRefresh(IReadOnlyList<object> sources)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("MarkDirtyList(_changedSources)", trackerSource, StringComparison.Ordinal);
+        Assert.Contains("private void MarkDirtyList(IReadOnlyList<object> sources)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < sources.Count; i++)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private bool MarkDirtyCore(object? source)", trackerSource, StringComparison.Ordinal);
         Assert.Contains("private void RaiseInvalidatedIfNeeded(bool shouldRaiseInvalidated)", trackerSource, StringComparison.Ordinal);

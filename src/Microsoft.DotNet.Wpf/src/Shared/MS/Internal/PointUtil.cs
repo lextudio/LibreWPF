@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Interop;
+using ProGPU.Wpf.Interop;
 
 using MS.Win32;
 
@@ -162,10 +163,48 @@ namespace MS.Internal
         /// </summary>
         public static Point ClientToScreen(Point pointClient, PresentationSource presentationSource)
         {
+            if (presentationSource?.CompositionTarget != null &&
+                !presentationSource.CompositionTarget.IsDisposed &&
+                presentationSource is not HwndSource &&
+                PortableWpfServiceRegistry.TryGetPopupActivationService(
+                    PortableWpfServiceKey.PresentationFramework,
+                    out IPortablePopupActivationServiceRegistrar directPopupService) &&
+                directPopupService.GetScreenOrigin != null &&
+                directPopupService.GetScreenOrigin(presentationSource, out double directOriginX, out double directOriginY))
+            {
+                Matrix toDevice = presentationSource.CompositionTarget.TransformToDevice;
+                double scaleX = toDevice.M11 != 0 ? Math.Abs(toDevice.M11) : 1.0;
+                double scaleY = toDevice.M22 != 0 ? Math.Abs(toDevice.M22) : 1.0;
+                pointClient.X += directOriginX * scaleX;
+                pointClient.Y += directOriginY * scaleY;
+                return pointClient;
+            }
+
             // For now we only know how to use HwndSource.
             HwndSource inputSource = presentationSource as HwndSource;
-            if(inputSource == null || inputSource.IsPortable)
+            if (inputSource == null)
             {
+                return pointClient;
+            }
+
+            if (inputSource.IsPortable)
+            {
+                object originSource = inputSource.PortableOwner ?? inputSource;
+                if (inputSource.CompositionTarget != null &&
+                    !inputSource.CompositionTarget.IsDisposed &&
+                    PortableWpfServiceRegistry.TryGetPopupActivationService(
+                        PortableWpfServiceKey.PresentationFramework,
+                        out IPortablePopupActivationServiceRegistrar popupService) &&
+                    popupService.GetScreenOrigin != null &&
+                    popupService.GetScreenOrigin(originSource, out double originX, out double originY))
+                {
+                    Matrix toDevice = inputSource.CompositionTarget.TransformToDevice;
+                    double scaleX = toDevice.M11 != 0 ? Math.Abs(toDevice.M11) : 1.0;
+                    double scaleY = toDevice.M22 != 0 ? Math.Abs(toDevice.M22) : 1.0;
+                    pointClient.X += originX * scaleX;
+                    pointClient.Y += originY * scaleY;
+                }
+
                 return pointClient;
             }
             HandleRef handleRef = new HandleRef(inputSource, inputSource.Handle);
@@ -184,10 +223,48 @@ namespace MS.Internal
         /// </summary>
         internal static Point ScreenToClient(Point pointScreen, PresentationSource presentationSource)
         {
+            if (presentationSource?.CompositionTarget != null &&
+                !presentationSource.CompositionTarget.IsDisposed &&
+                presentationSource is not HwndSource &&
+                PortableWpfServiceRegistry.TryGetPopupActivationService(
+                    PortableWpfServiceKey.PresentationFramework,
+                    out IPortablePopupActivationServiceRegistrar directPopupService) &&
+                directPopupService.GetScreenOrigin != null &&
+                directPopupService.GetScreenOrigin(presentationSource, out double directOriginX, out double directOriginY))
+            {
+                Matrix toDevice = presentationSource.CompositionTarget.TransformToDevice;
+                double scaleX = toDevice.M11 != 0 ? Math.Abs(toDevice.M11) : 1.0;
+                double scaleY = toDevice.M22 != 0 ? Math.Abs(toDevice.M22) : 1.0;
+                pointScreen.X -= directOriginX * scaleX;
+                pointScreen.Y -= directOriginY * scaleY;
+                return pointScreen;
+            }
+
             // For now we only know how to use HwndSource.
             HwndSource inputSource = presentationSource as HwndSource;
-            if(inputSource == null || inputSource.IsPortable)
+            if (inputSource == null)
             {
+                return pointScreen;
+            }
+
+            if (inputSource.IsPortable)
+            {
+                object originSource = inputSource.PortableOwner ?? inputSource;
+                if (inputSource.CompositionTarget != null &&
+                    !inputSource.CompositionTarget.IsDisposed &&
+                    PortableWpfServiceRegistry.TryGetPopupActivationService(
+                        PortableWpfServiceKey.PresentationFramework,
+                        out IPortablePopupActivationServiceRegistrar popupService) &&
+                    popupService.GetScreenOrigin != null &&
+                    popupService.GetScreenOrigin(originSource, out double originX, out double originY))
+                {
+                    Matrix toDevice = inputSource.CompositionTarget.TransformToDevice;
+                    double scaleX = toDevice.M11 != 0 ? Math.Abs(toDevice.M11) : 1.0;
+                    double scaleY = toDevice.M22 != 0 ? Math.Abs(toDevice.M22) : 1.0;
+                    pointScreen.X -= originX * scaleX;
+                    pointScreen.Y -= originY * scaleY;
+                }
+
                 return pointScreen;
             }
 

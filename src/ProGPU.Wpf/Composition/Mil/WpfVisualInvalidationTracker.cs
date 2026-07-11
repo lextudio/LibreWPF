@@ -37,6 +37,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private readonly Dictionary<object, object?[]> _visualChildrenSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _dirtySources = new(ReferenceEqualityComparer.Instance);
     private readonly List<object> _changedSources = new();
+    private readonly List<object> _structuralChangedSources = new();
     private readonly Dictionary<object, VisualStateSnapshot> _currentVisualStateSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _visualStateTraversalVisited = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _visualChildrenCurrentSources = new(ReferenceEqualityComparer.Instance);
@@ -187,6 +188,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         _changedSources.Clear();
+        _structuralChangedSources.Clear();
         _currentVisualStateSnapshots.Clear();
         _visualStateTraversalVisited.Clear();
         _visualChildrenCurrentSources.Clear();
@@ -198,24 +200,44 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 _visualChildrenSnapshots,
                 _visualChildrenCurrentSources,
                 _changedSources,
+                _structuralChangedSources,
                 _visualStateTraversalVisited);
-            CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources);
-            CollectRemovedVisualChildrenSources(
-                _visualChildrenSnapshots,
-                _visualChildrenCurrentSources,
-                _changedSources);
+            CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources, _structuralChangedSources);
+            CollectRemovedVisualChildrenSources(_visualChildrenSnapshots, _visualChildrenCurrentSources, _changedSources, _structuralChangedSources);
 
             if (_changedSources.Count == 0)
             {
+                // Render the persistent baselines up-to-date with the traversal we
+                // just performed so that subsequent frames only detect new changes
+                // instead of re-reporting the same diff on every tick (which would
+                // keep the host at 100% CPU).
+                AdvancePersistedBaseline();
                 return false;
             }
 
-            MarkDirtyListAndRefresh(_changedSources);
+            // Persist the freshly-captured baseline so the next idle DetectVersionChanges
+            // compares against THIS frame's state, not the stale snapshot captured at
+            // subscription time. Without this, only a full SubscribeGraph refresh would
+            // ever advance the baseline - forcing the per-frame full-graph resubscribe
+            // the tracker is expressly designed to avoid.
+            AdvancePersistedBaseline();
+
+            // Structural changes (new/removed/replaced visual children) require new
+            // subscriptions; pure value changes (offset/transform/opacity/render-size)
+            // do not - the existing event subscriptions on the same objects keep firing
+            // and MarkDirty is sufficient to drive replay.
+            MarkDirtyList(_changedSources);
+            if (_structuralChangedSources.Count > 0)
+            {
+                RequestSubscriptionRefresh();
+            }
+
             return true;
         }
         finally
         {
             _changedSources.Clear();
+            _structuralChangedSources.Clear();
             _currentVisualStateSnapshots.Clear();
             _visualStateTraversalVisited.Clear();
             _visualChildrenCurrentSources.Clear();
@@ -286,7 +308,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         RequestSubscriptionRefresh();
     }
 
-    private void MarkDirtyListAndRefresh(IReadOnlyList<object> sources)
+    private void MarkDirtyList(IReadOnlyList<object> sources)
     {
         var shouldRaiseInvalidated = false;
         for (var i = 0; i < sources.Count; i++)
@@ -295,7 +317,62 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         RaiseInvalidatedIfNeeded(shouldRaiseInvalidated);
-        RequestSubscriptionRefresh();
+    }
+
+    // Synchronise the persistent snapshotted baseline (_visualStateSnapshots /
+    // _visualChildrenSnapshots) with the state just captured in the transient
+    // traversal dictionaries (_currentVisualStateSnapshots /
+    // _visualChildrenCurrentSources) so the NEXT DetectVersionChanges() compares
+    // against THIS frame as the reference, not against the snapshot last captured
+    // by SubscribeGraph(). Without this advance, only a full SubscribeGraph()
+    // rebuild would ever update the baseline - forcing the per-frame full-graph
+    // resubscribe that the host spins at 100% CPU on. Nothing structural changes
+    // here (no subscriptions added/removed); only the persisted comparison
+    // dictionaries are refreshed.
+    private void AdvancePersistedBaseline()
+    {
+        // 1) visual-state snapshots: replace persisted with current.
+        _visualStateSnapshots.Clear();
+        var currentStateEnumerator = _currentVisualStateSnapshots.GetEnumerator();
+        while (currentStateEnumerator.MoveNext())
+        {
+            _visualStateSnapshots[currentStateEnumerator.Current.Key] = currentStateEnumerator.Current.Value;
+        }
+
+        // 2) visual-children snapshots: prune nodes no longer present and
+        //    re-capture children for nodes that still are, so the next diff sees
+        //    today's topology as the reference.
+        RemoveStaleVisualChildrenSnapshots(_visualChildrenSnapshots, _visualChildrenCurrentSources);
+
+        var currentChildrenEnumerator = _visualChildrenCurrentSources.GetEnumerator();
+        while (currentChildrenEnumerator.MoveNext())
+        {
+            var source = currentChildrenEnumerator.Current;
+            if (!TryGetPortableVisualChildrenSource(source, out var visualChildrenSource, out var count))
+            {
+                continue;
+            }
+
+            if (_visualChildrenSnapshots.TryGetValue(source, out var existing) &&
+                VisualChildrenSnapshotEquals(visualChildrenSource, count, existing))
+            {
+                continue;
+            }
+
+            if (count == 0)
+            {
+                _visualChildrenSnapshots[source] = Array.Empty<object?>();
+                continue;
+            }
+
+            var children = new object?[count];
+            for (var i = 0; i < count; i++)
+            {
+                children[i] = TryGetPortableVisualChild(visualChildrenSource, i);
+            }
+
+            _visualChildrenSnapshots[source] = children;
+        }
     }
 
     private void RequestSubscriptionRefresh()
@@ -414,6 +491,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         Dictionary<object, object?[]> previousChildren,
         HashSet<object> currentChildrenSources,
         List<object> changedSources,
+        List<object> structuralChangedSources,
         HashSet<object> visited)
     {
         snapshots.Clear();
@@ -425,6 +503,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             previousChildren,
             currentChildrenSources,
             changedSources,
+            structuralChangedSources,
             visited);
     }
 
@@ -434,6 +513,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         Dictionary<object, object?[]> previousChildren,
         HashSet<object> currentChildrenSources,
         List<object> changedSources,
+        List<object> structuralChangedSources,
         HashSet<object> visited)
     {
         if (source == null || IsTerminalValue(source) || !visited.Add(source))
@@ -452,6 +532,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             if (!previousChildren.TryGetValue(source, out var previousSnapshot) ||
                 !VisualChildrenSnapshotEquals(visualChildrenSource, count, previousSnapshot))
             {
+                // Topology change on a visual-children source: structural (so the new
+                // subtree's subscriptions get installed/retired on ConsumeDirty) AND
+                // dirty (so the changed subtree is replayed using up-to-date topology).
+                structuralChangedSources.Add(source);
                 changedSources.Add(source);
             }
         }
@@ -463,6 +547,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 previousChildren,
                 currentChildrenSources,
                 changedSources,
+                structuralChangedSources,
                 visited);
             VisitCollectionItems(collection, ref collectionState, default(CaptureVisualStateAndChildrenDependencyVisitor));
         }
@@ -472,6 +557,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             previousChildren,
             currentChildrenSources,
             changedSources,
+            structuralChangedSources,
             visited);
         VisitPortableDependencies(source, ref dependencyState, default(CaptureVisualStateAndChildrenDependencyVisitor));
     }
@@ -528,15 +614,24 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private static void CollectVisualStateChanges(
         Dictionary<object, VisualStateSnapshot> previous,
         Dictionary<object, VisualStateSnapshot> current,
-        List<object> changedSources)
+        List<object> changedSources,
+        List<object> structuralChangedSources)
     {
         var currentStateEnumerator = current.GetEnumerator();
         while (currentStateEnumerator.MoveNext())
         {
             var snapshot = currentStateEnumerator.Current;
-            if (!previous.TryGetValue(snapshot.Key, out var previousSnapshot) ||
-                !previousSnapshot.Equals(snapshot.Value))
+            if (!previous.TryGetValue(snapshot.Key, out var previousSnapshot))
             {
+                // Newly-seen node: subscription doesn't exist yet -> structural.
+                structuralChangedSources.Add(snapshot.Key);
+                changedSources.Add(snapshot.Key);
+            }
+            else if (!previousSnapshot.Equals(snapshot.Value))
+            {
+                // Pure visual-state value change (offset/transform/opacity/...): the
+                // node is already subscribed, so no subscription refresh is required -
+                // the dirty mark alone drives replay.
                 changedSources.Add(snapshot.Key);
             }
         }
@@ -547,6 +642,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             var snapshot = previousStateEnumerator.Current;
             if (!current.ContainsKey(snapshot.Key))
             {
+                // Removed node: structural AND dirty.
+                structuralChangedSources.Add(snapshot.Key);
                 changedSources.Add(snapshot.Key);
             }
         }
@@ -555,7 +652,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private static void CollectRemovedVisualChildrenSources(
         Dictionary<object, object?[]> previous,
         HashSet<object> currentSources,
-        List<object> changedSources)
+        List<object> changedSources,
+        List<object> structuralChangedSources)
     {
         var previousChildrenEnumerator = previous.GetEnumerator();
         while (previousChildrenEnumerator.MoveNext())
@@ -563,6 +661,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             var snapshot = previousChildrenEnumerator.Current;
             if (!currentSources.Contains(snapshot.Key))
             {
+                // A source that previously held visual children no longer holds any:
+                // structural (the subtree's subscriptions are now stale) and dirty
+                // (the removed subtree needs replay invalidation).
+                structuralChangedSources.Add(snapshot.Key);
                 changedSources.Add(snapshot.Key);
             }
         }
@@ -1276,12 +1378,14 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             Dictionary<object, object?[]> previousChildren,
             HashSet<object> currentChildrenSources,
             List<object> changedSources,
+            List<object> structuralChangedSources,
             HashSet<object> visited)
         {
             Snapshots = snapshots;
             PreviousChildren = previousChildren;
             CurrentChildrenSources = currentChildrenSources;
             ChangedSources = changedSources;
+            StructuralChangedSources = structuralChangedSources;
             Visited = visited;
         }
 
@@ -1292,6 +1396,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         public HashSet<object> CurrentChildrenSources { get; }
 
         public List<object> ChangedSources { get; }
+
+        public List<object> StructuralChangedSources { get; }
 
         public HashSet<object> Visited { get; }
     }
@@ -1308,6 +1414,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 state.PreviousChildren,
                 state.CurrentChildrenSources,
                 state.ChangedSources,
+                state.StructuralChangedSources,
                 state.Visited);
         }
     }

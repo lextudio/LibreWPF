@@ -26,8 +26,10 @@ public sealed class SilkNetWpfWindowEventService : IWpfWindowEventService
         Action<string[]> fileDrop = files => OnWindowEventReceived(CreateFileDropEvent(files));
         Action<Vector2D<int>> move = position =>
         {
+            TraceWindowMove("SilkNetWpfWindowEventService.Move fired x=" + position.X + " y=" + position.Y);
             OnWindowEventReceived(CreateWindowPositionChangingEvent(position.X, position.Y));
             OnWindowEventReceived(CreateWindowPositionChangedEvent(position.X, position.Y));
+            OnWindowEventReceived(CreateMovedEvent(position.X, position.Y));
         };
         Action<Vector2D<int>> resize = size => OnWindowEventReceived(CreateWindowSizeChangedEvent(size.X, size.Y));
 
@@ -105,9 +107,33 @@ public sealed class SilkNetWpfWindowEventService : IWpfWindowEventService
             screenY: screenY);
     }
 
+    public static WpfWindowEventArgs CreateMovedEvent(double x, double y)
+    {
+        return new WpfWindowEventArgs(WpfWindowEventKind.Moved, x: x, y: y);
+    }
+
     private void OnWindowEventReceived(WpfWindowEventArgs args)
     {
         WindowEventReceived?.Invoke(this, args);
+    }
+
+    internal static void TraceWindowMove(string message)
+    {
+        if (Environment.GetEnvironmentVariable("LIBREWPF_WINDOW_MOVE_LOG") != "1")
+        {
+            return;
+        }
+
+        try
+        {
+            System.IO.File.AppendAllText(
+                "/tmp/librewpf-window-move.log",
+                DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) + " " + message + Environment.NewLine);
+        }
+        catch
+        {
+            // Diagnostics only.
+        }
     }
 
     private sealed class WindowEventSubscription : IDisposable

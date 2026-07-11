@@ -1390,6 +1390,7 @@ namespace System.Windows.Controls
 
         private object InvokeClickAfterRender(object arg)
         {
+            TraceMenuClick("InvokeClickAfterRender header=" + Header);
             bool userInitiated = (bool)arg;
             RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, this));
             MS.Internal.Commands.CommandHelpers.CriticalExecuteCommandSource(this, userInitiated);
@@ -1478,7 +1479,14 @@ namespace System.Windows.Controls
 
                     if (role == MenuItemRole.TopLevelHeader || role == MenuItemRole.SubmenuHeader)
                     {
-                        ClickHeader();
+                        if (MenuBase.DeferMenuActions)
+                        {
+                            TraceMenuClick("HandleMouseDown suppressing header click after click-through dismiss header=" + Header);
+                        }
+                        else
+                        {
+                            ClickHeader();
+                        }
                     }
                 }
             }
@@ -1676,11 +1684,24 @@ namespace System.Windows.Controls
             {
                 MenuItemRole role = Role;
 
+                bool topLevel = role == MenuItemRole.TopLevelHeader || role == MenuItemRole.TopLevelItem;
+
+                // Portable backend: hovering a sibling top-level header while another top-level menu
+                // is already open should switch to the hovered one - the "menu is open, glide across
+                // the bar" behavior Win32/WPF gets for free via cross-window HWND mouse capture. On
+                // this backend that capture doesn't survive a popup opening (each popup is its own
+                // native window; see docs/menus.md), so OpenOnMouseEnter (which is gated on the menu
+                // holding Mouse.Capture / IsMenuMode) is false here. Drive the switch off the durable
+                // logical state instead - a sibling whose submenu is open - which the main window's
+                // own (correct) hover events reach via this MouseEnter. OpenHierarchy below closes the
+                // previously-open sibling through the normal CurrentSelection path.
+                bool siblingMenuOpen = topLevel && CurrentSibling is { IsSubmenuOpen: true };
+
                 // When we're a top-level menuitem we have to check if the menu has capture.
                 // If it doesn't we fall to the else below where we are just mousing around
                 // the top-level menuitems.
                 // (Note that Submenu items/headers do not have to look for capture.)
-                if (((role == MenuItemRole.TopLevelHeader || role == MenuItemRole.TopLevelItem) && OpenOnMouseEnter)
+                if ((topLevel && (OpenOnMouseEnter || siblingMenuOpen))
                     || (role == MenuItemRole.SubmenuHeader || role == MenuItemRole.SubmenuItem))
                 {
                     MouseEnterInMenuMode(role);
@@ -2158,6 +2179,23 @@ namespace System.Windows.Controls
 
             _submenuPopup?.Closed -= OnPopupClosed;
             _submenuPopup = GetTemplateChild(PopupTemplateName) as Popup;
+            if (_submenuPopup != null)
+            {
+                // Only a TOP-LEVEL menu's dropdown evicts a sibling's native popup window (switching
+                // from File to Edit needs the previous dropdown gone). Tried relying purely on
+                // MenuBase.IsMenuMode's ordinary Popup.IsOpen = false to close the old sibling
+                // instead (no sharing at all) - confirmed by hands-on testing that this leaves the
+                // old top-level dropdown's native window VISIBLE on screen (clicking File, Edit, Help
+                // in turn accumulates open popups instead of replacing one another), so whatever
+                // native-hide path Popup.IsOpen = false drives on this backend is not sufficient by
+                // itself for TOP-LEVEL siblings - root cause not yet found, see docs/menus.md.
+                // A nested/cascading submenu (e.g. File > Recent Projects) must still get its OWN,
+                // non-evicting popup window: it needs to stay on screen AT THE SAME TIME as its
+                // still-open parent. Sharing the slot there would silently dispose the parent's
+                // native window out from under it the moment its child opens.
+                _submenuPopup.UsesSharedPortablePopupWindow = Role == MenuItemRole.TopLevelHeader;
+            }
+
             _submenuPopup?.Closed += OnPopupClosed;
         }
 
@@ -2246,8 +2284,47 @@ namespace System.Windows.Controls
         {
             ClickItem(false);
         }
+        private static void TraceMenuClick(string message)
+        {
+            if (Environment.GetEnvironmentVariable("LIBREWPF_MENU_INPUT_LOG") != "1")
+            {
+                return;
+            }
+
+            try
+            {
+                System.IO.File.AppendAllText(
+                    "/tmp/librewpf-menu-input.log",
+                    DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) + " MENUCLICK " + message + Environment.NewLine);
+            }
+            catch
+            {
+                // Diagnostics only.
+            }
+        }
+
+        private static void TraceMenuOpen(string message)
+        {
+            if (Environment.GetEnvironmentVariable("LIBREWPF_MENU_INPUT_LOG") != "1")
+            {
+                return;
+            }
+
+            try
+            {
+                System.IO.File.AppendAllText(
+                    "/tmp/librewpf-menu-input.log",
+                    DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) + " MENUOPEN " + message + Environment.NewLine);
+            }
+            catch
+            {
+                // Diagnostics only.
+            }
+        }
+
         private void ClickItem(bool userInitiated)
         {
+            TraceMenuClick("ClickItem header=" + Header + " role=" + Role + " userInitiated=" + userInitiated);
             try
             {
                 OnClickCore(userInitiated);
@@ -2286,6 +2363,8 @@ namespace System.Windows.Controls
 
         internal bool OpenMenu()
         {
+            TraceMenuOpen("header=" + Header + " isSubmenuOpen=" + IsSubmenuOpen + " role=" + Role);
+
             if (!IsSubmenuOpen)
             {
                 // Verify that the parent of the MenuItem is valid;

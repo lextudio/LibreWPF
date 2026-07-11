@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Threading;
 using System.Windows.Input;
@@ -30,6 +31,10 @@ namespace System.Windows
         private static Func<object, bool> _dragMove;
         private static Func<object, IntPtr> _getHandle;
         private static Func<IntPtr, PortableWindowRegion, bool> _setWindowRegion;
+        private static Action<object> _requestDispatcherProcessing;
+        private static Action _requestSynchronousPump;
+        private static readonly object _dispatcherActivationLock = new object();
+        private static readonly Dictionary<Dispatcher, object> _dispatcherActivations = new Dictionary<Dispatcher, object>();
 
         internal static bool IsEnabled
         {
@@ -42,6 +47,15 @@ namespace System.Windows
         internal static void RegisterPortableInteropService()
         {
             s_registrarRegistration ??= PortableWpfServiceRegistry.RegisterWindowActivationService(s_registrar);
+            Dispatcher.PortableProcessingRequested -= OnPortableProcessingRequested;
+            Dispatcher.PortableProcessingRequested += OnPortableProcessingRequested;
+            Dispatcher.PortableSynchronousPumpRequested -= OnPortableSynchronousPumpRequested;
+            Dispatcher.PortableSynchronousPumpRequested += OnPortableSynchronousPumpRequested;
+        }
+
+        private static void OnPortableSynchronousPumpRequested()
+        {
+            Volatile.Read(ref _requestSynchronousPump)?.Invoke();
         }
 
         internal static void Register(
@@ -59,7 +73,9 @@ namespace System.Windows
             Action<object> dispose = null,
             Func<object, bool> dragMove = null,
             Func<object, IntPtr> getHandle = null,
-            Func<IntPtr, PortableWindowRegion, bool> setWindowRegion = null)
+            Func<IntPtr, PortableWindowRegion, bool> setWindowRegion = null,
+            Action<object> requestDispatcherProcessing = null,
+            Action requestSynchronousPump = null)
         {
             ArgumentNullException.ThrowIfNull(activate);
 
@@ -78,6 +94,8 @@ namespace System.Windows
             Volatile.Write(ref _dragMove, dragMove);
             Volatile.Write(ref _getHandle, getHandle);
             Volatile.Write(ref _setWindowRegion, setWindowRegion);
+            Volatile.Write(ref _requestDispatcherProcessing, requestDispatcherProcessing);
+            Volatile.Write(ref _requestSynchronousPump, requestSynchronousPump);
         }
 
         internal static void Clear()
@@ -97,6 +115,12 @@ namespace System.Windows
             Volatile.Write(ref _dragMove, null);
             Volatile.Write(ref _getHandle, null);
             Volatile.Write(ref _setWindowRegion, null);
+            Volatile.Write(ref _requestDispatcherProcessing, null);
+            Volatile.Write(ref _requestSynchronousPump, null);
+            lock (_dispatcherActivationLock)
+            {
+                _dispatcherActivations.Clear();
+            }
         }
 
         internal static bool TryActivate(Window window, out object activation)
@@ -115,7 +139,37 @@ namespace System.Windows
             }
 
             activation = activate(window);
-            return activation != null;
+            if (activation == null)
+            {
+                return false;
+            }
+
+            lock (_dispatcherActivationLock)
+            {
+                _dispatcherActivations[window.Dispatcher] = activation;
+            }
+
+            return true;
+        }
+
+        private static void OnPortableProcessingRequested(Dispatcher dispatcher)
+        {
+            Action<object> requestDispatcherProcessing = Volatile.Read(ref _requestDispatcherProcessing);
+            if (requestDispatcherProcessing == null)
+            {
+                return;
+            }
+
+            object activation;
+            lock (_dispatcherActivationLock)
+            {
+                if (!_dispatcherActivations.TryGetValue(dispatcher, out activation))
+                {
+                    return;
+                }
+            }
+
+            requestDispatcherProcessing(activation);
         }
 
         internal static void Show(object activation)
@@ -218,6 +272,16 @@ namespace System.Windows
             source.GetInputProvider(typeof(MouseDevice))?.NotifyDeactivate();
         }
 
+        internal static void NotifyWindowMoved(Window window, double left, double top)
+        {
+            if (OperatingSystem.IsWindows() || window == null)
+            {
+                return;
+            }
+
+            window.HandlePortableMove(left, top);
+        }
+
         internal static void ProcessInput(Window window, PortableInputEventArgs input)
         {
             if (OperatingSystem.IsWindows() || window == null || input == null)
@@ -234,7 +298,15 @@ namespace System.Windows
             input.Handled = ProcessInput(source, window, input);
         }
 
-        internal static void ProcessInput(PresentationSource source, PortableInputEventArgs input)
+        /// <summary>
+        /// Routes portable input against a bare <see cref="PresentationSource"/> that has no owning
+        /// WPF <see cref="Window"/> - specifically a Popup's separate native window (see
+        /// <c>PortablePopupActivationService</c>), whose visual tree root is a <c>PopupRoot</c>, not a
+        /// <c>Window</c>. Without this, a popup's native window (menu dropdown, ContextMenu, ToolTip)
+        /// delivers its pointer events into ProGPU but nothing feeds them into the WPF input pipeline,
+        /// so the popup's own content (menu items) never sees hover/press/click.
+        /// </summary>
+        internal static void ProcessInputForSource(PresentationSource source, PortableInputEventArgs input)
         {
             if (OperatingSystem.IsWindows() || source == null || input == null)
             {
@@ -242,6 +314,55 @@ namespace System.Windows
             }
 
             input.Handled = ProcessInput(source, source.RootVisual as UIElement, input);
+
+            // A menu item's Click (and its bound command) is deferred to a DispatcherPriority.Render
+            // operation (MenuItem.OnClickImpl -> InvokeClickAfterRender). A popup's input is pumped by
+            // the popup's own native loop, which is torn down the instant PreviewClick closes the menu,
+            // so nothing would ever pump that queued Render operation - the click would silently never
+            // fire. Flush the dispatcher up to Render priority here so the command runs.
+            //
+            // Only do this on button release: a click is only ever deferred from MenuItem's MouseUp
+            // handling, and the flush PushFrames a nested message loop - doing that on every MouseMove
+            // both wastes work and widens the window for a trailing move event to re-enter a popup
+            // that this very click is tearing down.
+            if (input.Kind == PortableInputEventKind.MouseUp)
+            {
+                FlushSourceDispatcherOperations(source);
+            }
+        }
+
+        private static void FlushSourceDispatcherOperations(PresentationSource source)
+        {
+            Dispatcher dispatcher = source?.Dispatcher;
+            if (dispatcher == null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            DispatcherFrame frame = new DispatcherFrame();
+            dispatcher.BeginInvoke(
+                DispatcherPriority.Render,
+                (DispatcherOperationCallback)delegate(object state)
+                {
+                    ((DispatcherFrame)state).Continue = false;
+                    return null;
+                },
+                frame);
+
+            // Bound so a runaway render/input chain can't wedge the input callback indefinitely.
+            DispatcherTimer timer = new DispatcherTimer(DispatcherPriority.Send, dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(250)
+            };
+            timer.Tick += delegate
+            {
+                timer.Stop();
+                frame.Continue = false;
+            };
+            timer.Start();
+
+            Dispatcher.PushFrame(frame);
+            timer.Stop();
         }
 
         internal static int ProcessDragDrop(
@@ -413,11 +534,22 @@ namespace System.Windows
                 }
             }
 
+            // Each event is processed against the source it physically arrived on (main window or a
+            // popup's own native window); we do NOT translate popup input into the captured window's
+            // space. Cross-window capture (a Menu holding SubTree capture in the main window while its
+            // dropdown lives in a separate popup source) is handled the way Win32 WPF handles it - the
+            // captured element's SubTree spans both sources via the logical tree, and MouseDevice
+            // routes accordingly - now that PortablePresentationSource.NotifyDeactivate no longer drops
+            // that capture on source switch. The old TryRedirectToCaptureSource path is retired: it
+            // relied on translating popup-local coordinates through window origins, which mismatched
+            // scale/space and produced spurious far-away hover. See docs/menus.md.
+            PresentationSource effectiveSource = source;
             Point clientPoint = ToMouseClientPoint(source, rootHitTestElement, input);
+
             RawMouseInputReport report = new RawMouseInputReport(
                 InputMode.Foreground,
                 timestamp,
-                source,
+                effectiveSource,
                 actions,
                 ToInputCoordinate(clientPoint.X),
                 ToInputCoordinate(clientPoint.Y),
@@ -846,7 +978,9 @@ namespace System.Windows
                     callbacks.Dispose,
                     callbacks.DragMove,
                     callbacks.GetHandle,
-                    callbacks.SetWindowRegion);
+                    callbacks.SetWindowRegion,
+                    callbacks.RequestDispatcherProcessing,
+                    callbacks.RequestSynchronousPump);
             }
 
             public bool TryRegisterMediaContextRenderService(
@@ -927,6 +1061,17 @@ namespace System.Windows
                 return true;
             }
 
+            public bool TryNotifyWindowMoved(object window, double x, double y)
+            {
+                if (window is not Window typedWindow)
+                {
+                    return false;
+                }
+
+                PortableWindowActivationService.NotifyWindowMoved(typedWindow, x, y);
+                return true;
+            }
+
             public bool TryBeginInvokeInput(object window, Action callback)
             {
                 if (window is not Window typedWindow ||
@@ -943,13 +1088,21 @@ namespace System.Windows
 
             public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)
             {
-                if (window is not Window typedWindow || input == null)
+                if (input == null || (window is not Window && window is not PresentationSource))
                 {
                     return false;
                 }
 
                 var mappedInput = CreatePortableInputEvent(input);
-                PortableWindowActivationService.ProcessInput(typedWindow, mappedInput);
+                if (window is Window typedWindow)
+                {
+                    PortableWindowActivationService.ProcessInput(typedWindow, mappedInput);
+                }
+                else
+                {
+                    PortableWindowActivationService.ProcessInputForSource((PresentationSource)window, mappedInput);
+                }
+
                 input.Handled = mappedInput.Handled;
                 return true;
             }
@@ -962,7 +1115,7 @@ namespace System.Windows
                 }
 
                 var mappedInput = CreatePortableInputEvent(input);
-                PortableWindowActivationService.ProcessInput(typedSource, mappedInput);
+                PortableWindowActivationService.ProcessInputForSource(typedSource, mappedInput);
                 input.Handled = mappedInput.Handled;
                 return true;
             }

@@ -36,6 +36,26 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private static readonly bool s_traceInput = IsTraceEnabled(TraceInputEnvironmentVariable);
     private static readonly bool s_traceNativeLoop = IsTraceEnabled(TraceNativeLoopEnvironmentVariable);
 
+    // Every host (the main window plus any secondary windows and popups) registers itself here so
+    // that Run()'s frame pump can drive ALL of them each tick. Without this, only the window whose
+    // Run() is on the call stack ever received Update/Render ticks - a popup created via
+    // WpfPortablePopupActivation never called Run() itself, so its own native window creation and
+    // any dispatcher work happened underneath the main window's Run() loop while the main window
+    // sat idle until that nested work finished (observed as the main window's toolbar freezing
+    // while a ToolTip/Popup was visible).
+    private static readonly object s_activeHostsLock = new();
+    private static readonly List<ProGpuWpfWindowHost> s_activeHosts = new();
+
+    // Silk.NET's IWindow.Dispose()/Reset() refuses to run while ANY window's DoEvents() is on the
+    // call stack ("You cannot call Reset inside of the render loop!"). Now that PumpAllActiveHosts
+    // drives every host's DoEvents() from a single loop, a host can legitimately get Dispose()'d
+    // reentrantly while another host's DoEvents() call is still on the stack - e.g. hovering the
+    // main window forces a ToolTip's popup host to close from inside the main host's own input
+    // processing. Track pump reentrancy so Dispose() can defer the actual native window teardown
+    // until the current pump tick fully unwinds instead of disposing mid-callback.
+    private static int s_pumpDepth;
+    private static readonly List<IWindow> s_pendingNativeWindowDisposals = new();
+
     private readonly ProGpuWpfWindowOptions _options;
     private IWindow? _window;
     private ProGpuWpfCompositionTarget? _target;
@@ -122,6 +142,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             _portablePopupService = new WpfPortablePopupService(this);
             _portablePopupServiceRegistration = PortableWpfServiceRegistry.RegisterPopupService(_portablePopupService);
+        }
+
+        lock (s_activeHostsLock)
+        {
+            s_activeHosts.Add(this);
         }
     }
 
@@ -294,6 +319,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal Func<ProGpuWpfDrawingFrame, IWpfImageSourceAdapter?, IDisposable?> RenderDataSinkProviderRegistrationFactory { get; set; } = RegisterDefaultRenderDataSinkProvider;
 
+    /// <summary>
+    /// Runs this host's native window loop, but - unlike Silk's own <c>IWindow.Run()</c> - drives
+    /// every currently active <see cref="ProGpuWpfWindowHost"/> (this window plus any secondary
+    /// windows and popups) each tick via <see cref="DoEvents"/>, so windows created while this loop
+    /// is running (e.g. a ToolTip's popup host) get their own Update/Render ticks instead of
+    /// stalling until this window's loop notices them.
+    /// </summary>
     public void Run()
     {
         ThrowIfDisposed();
@@ -335,7 +367,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             NativeLoopOwnerDoEventsCallCount++;
             try
             {
-                DoEvents();
+                PumpAllActiveHosts();
+                DrainPendingNativeWindowDisposals();
             }
             catch (ObjectDisposedException ex) when (!ShouldKeepPortableNativeRunLoopAlive())
             {
@@ -379,6 +412,84 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return !_isDisposed &&
             !_hasNativeWindowCloseStarted &&
             window != null;
+    }
+
+    /// <summary>
+    /// Runs exactly one tick of the same pump <see cref="Run"/>'s loop body performs, reentrantly if
+    /// called while already nested inside a pump (<see cref="s_pumpDepth"/> covers this - native
+    /// window teardown mid-tick already defers correctly). Used to let a modal
+    /// <c>Dispatcher.PushFrame</c> (WPF <c>Window.ShowDialog</c>) keep servicing real native input -
+    /// including the eventual click that closes the dialog - while it's "blocked": this whole stack
+    /// is single-threaded, so nothing else can pump native events for us while we wait, unlike
+    /// Win32's <c>GetMessage</c> which the OS itself keeps feeding. See docs/menus.md and
+    /// WindowsBase's <c>Dispatcher.PushManagedFrameImpl</c>.
+    /// </summary>
+    internal static void PumpOnce()
+    {
+        PumpAllActiveHosts();
+        DrainPendingNativeWindowDisposals();
+    }
+
+    private static void PumpAllActiveHosts()
+    {
+        ProGpuWpfWindowHost[] hosts;
+        lock (s_activeHostsLock)
+        {
+            hosts = s_activeHosts.ToArray();
+        }
+
+        foreach (var host in hosts)
+        {
+            if (host._isDisposed)
+            {
+                continue;
+            }
+
+            s_pumpDepth++;
+            try
+            {
+                host.DoEvents();
+            }
+            finally
+            {
+                s_pumpDepth--;
+            }
+        }
+    }
+
+    private static void DrainPendingNativeWindowDisposals()
+    {
+        if (s_pendingNativeWindowDisposals.Count == 0)
+        {
+            return;
+        }
+
+        IWindow[] pending = s_pendingNativeWindowDisposals.ToArray();
+        s_pendingNativeWindowDisposals.Clear();
+        TraceHostLifecycle("DrainPendingNativeWindowDisposals count=" + pending.Length);
+        foreach (var window in pending)
+        {
+            window.Dispose();
+        }
+    }
+
+    private static void TraceHostLifecycle(string message)
+    {
+        if (Environment.GetEnvironmentVariable("LIBREWPF_MENU_INPUT_LOG") != "1")
+        {
+            return;
+        }
+
+        try
+        {
+            System.IO.File.AppendAllText(
+                "/tmp/librewpf-menu-input.log",
+                DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture) + " HOSTLIFECYCLE " + message + Environment.NewLine);
+        }
+        catch
+        {
+            // Diagnostics only.
+        }
     }
 
     public void Initialize()
@@ -453,6 +564,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public void SetPosition(int left, int top)
     {
         ThrowIfDisposed();
+
+        if (Environment.GetEnvironmentVariable("PROGPU_WPF_TRACE_POPUP_POSITION") == "1")
+        {
+            try { System.IO.File.AppendAllText("/tmp/tooltiptest_debug.log", DateTime.Now.ToString("HH:mm:ss.fff") + $" [TRACE SetPosition] host={GetHashCode()} left={left} top={top}\n"); } catch { }
+        }
 
         _windowLeft = left;
         _windowTop = top;
@@ -626,12 +742,40 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public void DoEvents()
     {
         ThrowIfDisposed();
+
+        // Flushing the WPF dispatcher (here and via the Update/Render events below) can run
+        // arbitrary WPF code, including code that disposes THIS host reentrantly - e.g. a ToolTip's
+        // popup closing itself in response to input processed during this very tick. Dispose() runs
+        // synchronously (only the native window teardown is deferred while a pump is in progress),
+        // so `_window`/`_target` can go null partway through this method; bail out immediately after
+        // each such call instead of dereferencing a field that Dispose() already cleared.
         ProcessDispatcherQueueCore();
-        EnsureWindow();
-        _window!.IsVisible = _isHostVisible;
-        if (!_window.IsInitialized)
+        if (_isDisposed)
         {
-            _window.Initialize();
+            return;
+        }
+
+        EnsureWindow();
+
+        IWindow? window = _window;
+        if (window == null)
+        {
+            return;
+        }
+
+        // Only touch native visibility on an actual change. Silk's setter maps to a real
+        // show/order-front (or hide) call on the underlying platform window; re-asserting it every
+        // tick (harmless while nothing pumped popups in a loop) now runs ~60-90x/sec for EVERY host
+        // once PumpAllActiveHosts drives them all, and repeatedly re-showing a Topmost popup steals
+        // focus/flashes on macOS instead of just staying shown.
+        if (window.IsVisible != _isHostVisible)
+        {
+            window.IsVisible = _isHostVisible;
+        }
+
+        if (!window.IsInitialized)
+        {
+            window.Initialize();
         }
 
         if (!ShouldKeepPortableNativeRunLoopAlive())
@@ -646,16 +790,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
-        _window.DoEvents();
+        if (!ReferenceEquals(window, _window))
+        {
+            return;
+        }
+
+        window.DoEvents();
         if (!ShouldKeepPortableNativeRunLoopAlive())
         {
             DisposeDeferredNativeWindowIfNeeded();
             return;
         }
 
-        _window.DoUpdate();
+        window.DoUpdate();
         EnsureCompositionTargetLoaded();
-        _window.DoRender();
+        if (ReferenceEquals(window, _window))
+        {
+            window.DoRender();
+        }
         DisposeDeferredNativeWindowIfNeeded();
         if (_isDisposed)
         {
@@ -770,13 +922,32 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         _isDisposed = true;
 
+        lock (s_activeHostsLock)
+        {
+            s_activeHosts.Remove(this);
+        }
+
         IWindow? window = _window;
         bool deferNativeWindowDispose = window != null &&
             (_isNativeLoopRunning ||
                 _isRendering ||
                 _isProcessingDispatcherWorkWakeup ||
-                _isInNativeWindowCloseCallback);
+                _isInNativeWindowCloseCallback ||
+                s_pumpDepth > 0);
         bool disposeNativeWindow = window != null && !deferNativeWindowDispose;
+        // _isRendering means we're on THIS host's own OnRender call stack right now - e.g. OnRender's
+        // ProcessDispatcherQueueCore() drained queued WPF work that turned around and disposed this
+        // very host (a popup closing itself as a reentrant side effect of its own render pass, seen in
+        // practice when a shared-slot eviction lands here). Silk refuses window.Dispose() mid-render
+        // just like it refuses it mid-pump, so this must defer exactly like the pump-depth case below -
+        // NOT skip disposal outright. Skipping it left the native window neither hidden nor destroyed,
+        // a permanent leak that reproduced as "closed" popups staying visibly open.
+        TraceHostLifecycle(
+            "Dispose hash=" + GetHashCode() +
+            " disposeNativeWindow=" + disposeNativeWindow +
+            " deferNativeWindowDispose=" + deferNativeWindowDispose +
+            " pumpDepth=" + s_pumpDepth +
+            " isRendering=" + _isRendering);
 
         if (window != null && !deferNativeWindowDispose)
         {
@@ -799,7 +970,22 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         DisposePortablePopupService();
         DisposePortablePresentationSourceBridge();
         DisposeTarget();
-        if (disposeNativeWindow)
+        if (deferNativeWindowDispose && window != null && s_pumpDepth > 0)
+        {
+            // Deferring native teardown (Silk refuses Reset()/Dispose() mid-pump) only postpones
+            // releasing the window's resources - it must NOT stay on screen in the meantime. Without
+            // this, an evicted shared-menu-slot popup (see WpfPortablePopupActivation) keeps showing
+            // its last rendered frame until the next full pump tick drains s_pendingNativeWindowDisposals,
+            // which can be long enough (or get outraced by another eviction) that several "closed"
+            // popups appear to stay open simultaneously.
+            window!.IsVisible = false;
+            s_pendingNativeWindowDisposals.Add(window);
+            // The pending-disposal queue now owns the native window.  Clear the
+            // host reference so a re-entrant update/render callback cannot
+            // dispose the same Silk window a second time.
+            _window = null;
+        }
+        else if (disposeNativeWindow)
         {
             window!.Dispose();
         }
@@ -816,7 +1002,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void DisposeDeferredNativeWindowIfNeeded()
     {
-        if (!_disposeNativeWindowWhenLoopExits || _isNativeLoopRunning)
+        if (!_disposeNativeWindowWhenLoopExits ||
+            _isNativeLoopRunning ||
+            _isRendering ||
+            _isProcessingDispatcherWorkWakeup ||
+            _isProcessingRenderSchedulerWakeup ||
+            _isInNativeWindowCloseCallback ||
+            s_pumpDepth > 0)
         {
             return;
         }
@@ -1056,6 +1248,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return;
             }
 
+            using var currentContextScope = global::ProGPU.Backend.WgpuContext.PushCurrent(_target.Context);
+
             geometry = ResolveCurrentRenderSurfaceGeometry();
             SynchronizePortablePresentationSourceGeometry(geometry);
             var pixelWidth = geometry.PixelWidth;
@@ -1183,6 +1377,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                             activeWpfImageSourceAdapter));
                 }
 
+                TraceRenderReplayResult(wpfRootVisual, LastVisualReplayResult);
+
                 if (Draw != null)
                 {
                     using var drawingContext = drawingFrame.OpenDrawingContext();
@@ -1306,6 +1502,22 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             $"pixels {geometry.PixelWidth}x{geometry.PixelHeight}, " +
             $"viewport {ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth)}x{ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight)}@{geometry.ViewportX},{geometry.ViewportY}, " +
             $"dpi {geometry.DpiScale:0.###}");
+    }
+
+    private void TraceRenderReplayResult(object? rootVisual, WpfVisualReplayResult result)
+    {
+        if (!s_traceRenderSurface)
+        {
+            return;
+        }
+
+        Console.WriteLine(
+            "ProGPU WPF replay: " +
+            $"host={GetHashCode():x}, root={rootVisual?.GetType().Name ?? "<null>"}, " +
+            $"portableChildren={rootVisual is IPortableVisualChildrenSource}, " +
+            $"visuals={result.VisualCount}, content={result.ContentCount}, " +
+            $"renderData={result.RenderData.RecordCount}/{result.RenderData.AppliedCount}, " +
+            $"unsupported={result.UnsupportedContentCount}/{result.UnsupportedVisualStateCount}");
     }
 
     private void TraceNativeLoop(string message)
@@ -1952,6 +2164,21 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private double ResolveCurrentMonitorDpiScale()
     {
+        // Prefer the window's live framebuffer/size ratio - the true backing scale (e.g. 2.0 on a
+        // Retina display). The platform monitor service derives its scale from GLFW's
+        // VideoMode.Resolution / bounds, which on macOS returns a bogus ~1.05 for a genuine 2x
+        // display. Feeding that ~1.05 as the monitorDpiScale makes
+        // DisplayScaleResolver.ResolveDisplayScaleWithPlatformFallback short-circuit (it treats any
+        // value > 1.0 as authoritative) so it never consults the accurate Cocoa backingScaleFactor,
+        // and the resulting ~1.0 scale mis-places every popup (menu/ComboBox/ToolTip) by ~2x when
+        // the presentation source DPI happens to be synced from this path. The 1-arg overload
+        // computes FramebufferSize/Size and falls back to the native backing scale when that ratio
+        // is unavailable, so it is accurate in both cases.
+        if (_window != null && _window.Size.X > 0 && _window.FramebufferSize.X > 0)
+        {
+            return DisplayScaleResolver.ResolveWindowDisplayScale(_window);
+        }
+
         return DisplayScaleResolver.ResolveWindowDisplayScale(
             _window,
             ResolveCurrentMonitorDpiScaleFromPlatformServices());
@@ -2523,6 +2750,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
+        if (e.SourceWindow != null && !ReferenceEquals(e.SourceWindow, _window))
+        {
+            return;
+        }
+
         TraceInputEvent("native", e);
         var input = NormalizeInputEventForCurrentRenderSurface(e);
         TraceInputEvent("wpf", input);
@@ -2628,7 +2860,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             input.DeltaX,
             input.DeltaY,
             input.Button,
-            input.Modifiers)
+            input.Modifiers,
+            input.SourceWindow)
         {
             Handled = input.Handled
         };

@@ -13619,6 +13619,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("deltaY: -1.0", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP live ScrollViewer MouseWheel delta", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("TryRaiseLiveThumbDrag(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("input Thumb tab activation", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("IsMouseOver={target.IsMouseOver}", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("!ReferenceEquals(Mouse.Captured, target)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InputThumbDragStartedCount <= startedBefore", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InputThumbDragDeltaCount <= deltaBefore", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InputBubbledThumbDragDeltaCount <= bubbledDeltaBefore", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InputThumbDragCompletedCount > completedBefore", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MouseUp cleanup after incomplete drag start", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MouseUp cleanup after incomplete drag move", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP live input Thumb mouse capture released", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MouseWheel routed through SelectorScrollViewer and Thumb drag captured, moved, and released through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveKeyboardNavigationAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);

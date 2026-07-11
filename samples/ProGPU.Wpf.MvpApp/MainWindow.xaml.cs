@@ -1986,7 +1986,7 @@ public partial class MainWindow : Window
 
     private bool TryRaiseLiveThumbDrag(
         ProGpuWpfWindowHost liveHost,
-        FrameworkElement target,
+        Thumb target,
         string description,
         double horizontalDelta,
         double verticalDelta,
@@ -2017,11 +2017,62 @@ public partial class MainWindow : Window
             return false;
         }
 
+        int startedBefore = InputThumbDragStartedCount;
+        int deltaBefore = InputThumbDragDeltaCount;
+        int completedBefore = InputThumbDragCompletedCount;
+        int bubbledDeltaBefore = InputBubbledThumbDragDeltaCount;
+
         RaiseHostInput(liveHost, WpfInputEventKind.MouseMove, x: center.X, y: center.Y);
+        targetState +=
+            $", DirectlyOver={DescribeInputElement(Mouse.DirectlyOver)}, " +
+            $"IsMouseOver={target.IsMouseOver}";
+        if (!target.IsMouseOver)
+        {
+            return false;
+        }
+
         RaiseHostInput(liveHost, WpfInputEventKind.MouseDown, x: center.X, y: center.Y, button: WpfMouseButton.Left);
+        targetState +=
+            $", AfterDown.IsDragging={target.IsDragging}, " +
+            $"AfterDown.Captured={DescribeInputElement(Mouse.Captured)}, " +
+            $"AfterDown.Started={InputThumbDragStartedCount - startedBefore}";
+        if (!target.IsDragging ||
+            !ReferenceEquals(Mouse.Captured, target) ||
+            InputThumbDragStartedCount <= startedBefore)
+        {
+            RaiseHostInput(liveHost, WpfInputEventKind.MouseUp, x: center.X, y: center.Y, button: WpfMouseButton.Left);
+            targetState += ", MouseUp cleanup after incomplete drag start";
+            return false;
+        }
+
         RaiseHostInput(liveHost, WpfInputEventKind.MouseMove, x: moved.X, y: moved.Y);
+        targetState +=
+            $", AfterMove.Delta={InputThumbDragDeltaCount - deltaBefore}, " +
+            $"AfterMove.Bubbled={InputBubbledThumbDragDeltaCount - bubbledDeltaBefore}, " +
+            $"AfterMove.IsDragging={target.IsDragging}, " +
+            $"AfterMove.Captured={DescribeInputElement(Mouse.Captured)}";
+        if (!target.IsDragging ||
+            !ReferenceEquals(Mouse.Captured, target) ||
+            InputThumbDragDeltaCount <= deltaBefore ||
+            InputBubbledThumbDragDeltaCount <= bubbledDeltaBefore)
+        {
+            RaiseHostInput(liveHost, WpfInputEventKind.MouseUp, x: moved.X, y: moved.Y, button: WpfMouseButton.Left);
+            targetState += ", MouseUp cleanup after incomplete drag move";
+            return false;
+        }
+
         RaiseHostInput(liveHost, WpfInputEventKind.MouseUp, x: moved.X, y: moved.Y, button: WpfMouseButton.Left);
-        return true;
+        bool completed =
+            InputThumbDragCompletedCount > completedBefore &&
+            !target.IsDragging &&
+            Mouse.Captured is null &&
+            Mouse.LeftButton == MouseButtonState.Released;
+        targetState +=
+            $", AfterUp.Completed={InputThumbDragCompletedCount - completedBefore}, " +
+            $"AfterUp.IsDragging={target.IsDragging}, " +
+            $"AfterUp.Captured={DescribeInputElement(Mouse.Captured)}, " +
+            $"AfterUp.Left={Mouse.LeftButton}";
+        return completed;
     }
 
     private async Task<string> ValidateLiveKeyboardNavigationAsync(ProGpuWpfWindowHost liveHost)
@@ -2211,6 +2262,30 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        LivePresentedFrameState inputThumbTabFrameBefore = await CaptureLivePresentedFrameStateAsync(liveHost);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live Thumb TabControl");
+                tabControl.SelectedIndex = 4;
+                UpdateLayout();
+
+                inputThumbPanel = Require<StackPanel>(FindName("InputThumbPanel"), "MVP live input Thumb panel");
+                inputDragThumb = Require<Thumb>(FindName("InputDragThumb"), "MVP live input drag Thumb");
+                inputDragStatusText = Require<TextBlock>(FindName("InputDragStatusText"), "MVP live input drag status");
+                dragStartedBefore = InputThumbDragStartedCount;
+                dragDeltaBefore = InputThumbDragDeltaCount;
+                dragCompletedBefore = InputThumbDragCompletedCount;
+                bubbledDragDeltaBefore = InputBubbledThumbDragDeltaCount;
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await WaitForLiveInputPresentedFrameAsync(
+            liveHost,
+            inputThumbTabFrameBefore,
+            "input Thumb tab activation");
+
         bool sentDragInput = false;
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
@@ -2218,20 +2293,9 @@ public partial class MainWindow : Window
                 liveHost,
                 () =>
                 {
-                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live Thumb TabControl");
-                    tabControl.SelectedIndex = 4;
-                    UpdateLayout();
-
-                    inputThumbPanel = Require<StackPanel>(FindName("InputThumbPanel"), "MVP live input Thumb panel");
-                    inputDragThumb = Require<Thumb>(FindName("InputDragThumb"), "MVP live input drag Thumb");
-                    inputDragStatusText = Require<TextBlock>(FindName("InputDragStatusText"), "MVP live input drag status");
-                    dragStartedBefore = InputThumbDragStartedCount;
-                    dragDeltaBefore = InputThumbDragDeltaCount;
-                    dragCompletedBefore = InputThumbDragCompletedCount;
-                    bubbledDragDeltaBefore = InputBubbledThumbDragDeltaCount;
                     return TryRaiseLiveThumbDrag(
                         liveHost,
-                        inputDragThumb,
+                        Require<Thumb>(inputDragThumb, "MVP live input drag Thumb attempt"),
                         "InputDragThumb",
                         horizontalDelta: 18.0,
                         verticalDelta: 12.0,

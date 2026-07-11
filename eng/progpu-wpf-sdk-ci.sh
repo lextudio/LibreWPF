@@ -33,6 +33,7 @@ fi
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.1}"
+prepackaged_progpu_dir="${PROGPU_WPF_PREPACKAGED_PROGPU_DIR:-}"
 sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
 mkdir -p "${package_output}"
 
@@ -59,6 +60,26 @@ pack_project() {
     -v:minimal \
     -p:Version="${dev_package_version}" \
     -p:PackageVersion="${dev_package_version}"
+}
+
+stage_or_pack_progpu_project() {
+  local project="$1"
+  local package_id="$2"
+
+  if [[ -z "${prepackaged_progpu_dir}" ]]; then
+    pack_project "${project}" "${package_id}"
+    return
+  fi
+
+  local source_package="${prepackaged_progpu_dir}/${package_id}.${dev_package_version}.nupkg"
+  local destination_package="${package_output}/${package_id}.${dev_package_version}.nupkg"
+  if [[ ! -f "${source_package}" ]]; then
+    echo "Missing exact ProGPU release package ${source_package}." >&2
+    exit 1
+  fi
+
+  cp "${source_package}" "${destination_package}"
+  cmp "${source_package}" "${destination_package}"
 }
 
 build_project() {
@@ -124,21 +145,21 @@ clean_sdk_smoke_outputs() {
 
 clean_preview_package_output
 
-echo "Packing ProGPU packages for LibreWPF.Sdk feed..."
-pack_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj" "ProGPU.Backend"
-pack_project "external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj" "ProGPU.DirectX"
-pack_project "external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj" "ProGPU.Transpiler"
-pack_project "external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj" "ProGPU.Compute"
-pack_project "external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj" "ProGPU.Vector"
-pack_project "external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj" "ProGPU.Text"
-pack_project "external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj" "ProGPU.Scene"
-pack_project "external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj" "ProGPU.Layout"
-pack_project "external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj" "ProGPU.Virtualization"
-pack_project "external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj" "ProGPU.WinUI"
-pack_project "external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj" "ProGPU.Avalonia"
-pack_project "external/ProGPU/src/SkiaSharp/SkiaSharp.csproj" "ProGPU.SkiaSharp"
-pack_project "external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj" "ProGPU.System.Drawing.Common"
-pack_project "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "LibreWPF.Interop"
+echo "Staging exact ProGPU packages for the LibreWPF.Sdk feed..."
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj" "ProGPU.Backend"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj" "ProGPU.DirectX"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj" "ProGPU.Transpiler"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj" "ProGPU.Compute"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj" "ProGPU.Vector"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj" "ProGPU.Text"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj" "ProGPU.Scene"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj" "ProGPU.Layout"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj" "ProGPU.Virtualization"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj" "ProGPU.WinUI"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj" "ProGPU.Avalonia"
+stage_or_pack_progpu_project "external/ProGPU/src/SkiaSharp/SkiaSharp.csproj" "ProGPU.SkiaSharp"
+stage_or_pack_progpu_project "external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj" "ProGPU.System.Drawing.Common"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "LibreWPF.Interop"
 
 echo "Running ProGPU Avalonia package consumer smoke..."
 "${repo_root}/eng/progpu-avalonia-package-smoke.sh"

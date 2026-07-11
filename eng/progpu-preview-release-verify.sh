@@ -144,8 +144,10 @@ fi
 
 export PROGPU_WPF_PREVIEW_RELEASE_CURRENT_WPF_COMMIT
 export PROGPU_WPF_PREVIEW_RELEASE_CURRENT_PROGPU_COMMIT
+export PROGPU_WPF_PREVIEW_RELEASE_CURRENT_LIBREWINFORMS_COMMIT
 PROGPU_WPF_PREVIEW_RELEASE_CURRENT_WPF_COMMIT="$(git_commit "${repo_root}")"
 PROGPU_WPF_PREVIEW_RELEASE_CURRENT_PROGPU_COMMIT="$(git_commit "${repo_root}/external/ProGPU")"
+PROGPU_WPF_PREVIEW_RELEASE_CURRENT_LIBREWINFORMS_COMMIT="$(git_commit "${repo_root}/external/LibreWinForms")"
 
 node - "${extract_dir}" "${manifest_name}" "${dev_package_version}" "${package_ids[@]}" <<'NODE'
 const fs = require("fs");
@@ -161,21 +163,21 @@ function fail(message) {
   process.exit(1);
 }
 
-if (manifest.schemaVersion !== 2) {
-  fail(`Expected preview manifest schemaVersion 2, found ${manifest.schemaVersion}.`);
+if (manifest.schemaVersion !== 3) {
+  fail(`Expected preview manifest schemaVersion 3, found ${manifest.schemaVersion}.`);
 }
 
 if (manifest.version !== devPackageVersion) {
   fail(`Expected preview manifest version ${devPackageVersion}, found ${manifest.version}.`);
 }
 
-if (!manifest.source || !manifest.source.wpfCommit || !manifest.source.progpuCommit) {
-  fail("Preview manifest source provenance is missing WPF or ProGPU commit information.");
+if (!manifest.source || !manifest.source.wpfCommit || !manifest.source.progpuCommit || !manifest.source.libreWinFormsCommit) {
+  fail("Preview manifest source provenance is missing WPF, ProGPU, or LibreWinForms commit information.");
 }
 
 if (process.env.PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE === "1") {
-  if (manifest.source.wpfHasTrackedChanges !== false || manifest.source.progpuHasTrackedChanges !== false) {
-    fail("Preview manifest source provenance is dirty; regenerate the release bundle from clean WPF and ProGPU worktrees.");
+  if (manifest.source.wpfIsDirty !== false || manifest.source.progpuIsDirty !== false || manifest.source.libreWinFormsIsDirty !== false) {
+    fail("Preview manifest source provenance is dirty; regenerate the release bundle from clean WPF, ProGPU, and LibreWinForms worktrees.");
   }
 
   const expectedWpfCommit = process.env.PROGPU_WPF_PREVIEW_RELEASE_CURRENT_WPF_COMMIT;
@@ -186,6 +188,11 @@ if (process.env.PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE === "1") {
   const expectedProGpuCommit = process.env.PROGPU_WPF_PREVIEW_RELEASE_CURRENT_PROGPU_COMMIT;
   if (expectedProGpuCommit && expectedProGpuCommit !== "unknown" && manifest.source.progpuCommit !== expectedProGpuCommit) {
     fail(`Preview manifest ProGPU commit ${manifest.source.progpuCommit} does not match current checkout ${expectedProGpuCommit}.`);
+  }
+
+  const expectedLibreWinFormsCommit = process.env.PROGPU_WPF_PREVIEW_RELEASE_CURRENT_LIBREWINFORMS_COMMIT;
+  if (expectedLibreWinFormsCommit && expectedLibreWinFormsCommit !== "unknown" && manifest.source.libreWinFormsCommit !== expectedLibreWinFormsCommit) {
+    fail(`Preview manifest LibreWinForms commit ${manifest.source.libreWinFormsCommit} does not match current checkout ${expectedLibreWinFormsCommit}.`);
   }
 }
 

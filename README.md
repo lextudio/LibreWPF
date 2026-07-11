@@ -114,7 +114,7 @@ The preview package set is defined in `eng/progpu-preview-package-list.sh` and v
 PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.1 ./eng/progpu-wpf-sdk-ci.sh
 ```
 
-The SDK CI script builds ProGPU runtime packages, managed WPF transport assemblies, `LibreWPF.ProGPU`, and `LibreWPF.Sdk`, then audits the packages, writes the preview manifest, creates and verifies the release bundle, and runs package-mode SDK smoke tests.
+The SDK CI script stages ProGPU runtime packages, builds managed WPF transport assemblies, `LibreWPF.ProGPU`, and `LibreWPF.Sdk`, then audits the packages, writes the preview manifest, creates and verifies the release bundle, and runs package-mode SDK smoke tests. Public releases consume the hash-identical packages from the matching ProGPU GitHub release instead of repacking or republishing them.
 
 GitHub workflows:
 

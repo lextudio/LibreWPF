@@ -214,45 +214,21 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     /// <summary>
     /// Resolves the native OS window handle backing a WPF <see cref="Window"/> on this ProGPU/
-    /// Silk.NET-hosted platform - an NSWindow* on macOS, an HWND on Windows, or an X11 Window id
-    /// on Linux (via <see cref="Silk.NET.Core.Contexts.INativeWindow"/>). Intended for consumers
-    /// that need the real platform handle for OS-level integration (e.g. IME/NSTextInputClient)
-    /// that WPF's own <c>PresentationSource</c>/<c>HwndSource</c> doesn't provide on this host.
+    /// Silk.NET-hosted platform. Thin wrapper over the resolution that already lives on the
+    /// window's <see cref="WpfPortablePresentationSourceBridge.TryGetNativeHandle"/> - see that
+    /// member for what the handle actually is and why it exists alongside the portable
+    /// <c>Handle</c> WPF's <c>HwndSource</c> compat shim already exposes.
     /// </summary>
     public static bool TryGetNativeWindowHandle(object? window, out IntPtr handle)
     {
         handle = IntPtr.Zero;
-        if (!TryGetActiveHost(window, out var host) || host?.SilkWindow is not { } silkWindow)
+        if (!TryGetActiveHost(window, out var host) ||
+            host?.PortablePresentationSourceBridge is not { } bridge)
         {
             return false;
         }
 
-        var native = silkWindow.Native;
-        if (native is null)
-        {
-            return false;
-        }
-
-        if (native.Cocoa is { } cocoa && cocoa != IntPtr.Zero)
-        {
-            handle = cocoa;
-            return true;
-        }
-
-        // Win32 = (HWnd, HDC, HInstance); X11 = (Display, Window).
-        if (native.Win32 is { Item1: var hwnd } && hwnd != IntPtr.Zero)
-        {
-            handle = hwnd;
-            return true;
-        }
-
-        if (native.X11 is { Item2: var x11Window } && x11Window != UIntPtr.Zero)
-        {
-            handle = (IntPtr)x11Window;
-            return true;
-        }
-
-        return false;
+        return bridge.TryGetNativeHandle(out handle);
     }
 
     public static bool TryRegisterPresentationFrameworkLauncherService()

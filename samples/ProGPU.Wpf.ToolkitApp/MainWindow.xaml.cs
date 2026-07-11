@@ -86,6 +86,7 @@ public partial class MainWindow : Window
 
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_TOOLKIT_LIVE_VALIDATE";
     private const string LiveValidationStatusPathEnvironmentVariable = "PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_STATUS_PATH";
+    private const int LiveValidationStartupMaxAttempts = 1200;
     private const int LiveValidationMaxAttempts = 400;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
     private static readonly string[] AvalonDockThemeNames = ["Aero", "Metro", "VS2010"];
@@ -3722,7 +3723,7 @@ public partial class MainWindow : Window
 
     private async Task ValidateRequiredLiveToolkitAsync()
     {
-        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        for (int attempt = 0; attempt < LiveValidationStartupMaxAttempts; attempt++)
         {
             await Task.Delay(LiveValidationRetryDelay);
             if (!ProGpuWpfDiagnostics.TryGetWindowHost(this, out var liveHost) || liveHost == null)

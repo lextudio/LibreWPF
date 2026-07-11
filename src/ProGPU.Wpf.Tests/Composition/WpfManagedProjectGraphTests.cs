@@ -10133,6 +10133,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RoundTripLayout", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_STATUS_PATH", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LiveValidationStartupMaxAttempts = 1200", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("WriteLiveValidationStatus", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF Toolkit live input validation details:", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF Toolkit live input validation succeeded:", mainWindowCodeBehind, StringComparison.Ordinal);

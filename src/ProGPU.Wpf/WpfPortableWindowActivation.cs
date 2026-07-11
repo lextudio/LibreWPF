@@ -60,6 +60,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     static WpfPortableWindowActivation()
     {
         PortableWpfServiceRegistry.ClipboardServiceRegistered += OnClipboardServiceRegistered;
+        PortableWpfServiceRegistry.MessageBoxServiceRegistered += OnMessageBoxServiceRegistered;
         PortableWpfServiceRegistry.FileDialogServiceRegistered += OnFileDialogServiceRegistered;
         PortableWpfServiceRegistry.ColorDialogServiceRegistered += OnColorDialogServiceRegistered;
         PortableWpfServiceRegistry.FontDialogServiceRegistered += OnFontDialogServiceRegistered;
@@ -105,6 +106,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             TryRegisterPresentationFrameworkMessageBoxService();
             TryRegisterPresentationFrameworkFileDialogService();
             TryRegisterWinFormsCompatClipboardService();
+            TryRegisterWinFormsCompatMessageBoxService();
             TryRegisterWinFormsCompatFileDialogService();
             TryRegisterWinFormsCompatColorDialogService();
             TryRegisterWinFormsCompatFontDialogService();
@@ -213,13 +215,26 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
+    public static bool TryRegisterWinFormsCompatMessageBoxService()
+    {
+        if (PortableWpfServiceRegistry.TryGetMessageBoxService(
+                PortableWpfServiceKey.WinForms,
+                out var messageBoxService))
+        {
+            messageBoxService.Register(ShowPortableMessageBox);
+            return true;
+        }
+
+        return false;
+    }
+
     public static bool TryRegisterPresentationFrameworkFileDialogService()
     {
         if (PortableWpfServiceRegistry.TryGetFileDialogService(
                 PortableWpfServiceKey.PresentationFramework,
                 out var fileDialogService))
         {
-            fileDialogService.Register(ShowPortableFileDialog);
+            fileDialogService.RegisterResult(ShowPortableFileDialog);
             return true;
         }
 
@@ -232,7 +247,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 PortableWpfServiceKey.WinForms,
                 out var fileDialogService))
         {
-            fileDialogService.Register(ShowPortableFileDialog);
+            fileDialogService.RegisterResult(ShowPortableFileDialog);
             return true;
         }
 
@@ -274,12 +289,21 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
+    private static void OnMessageBoxServiceRegistered(IPortableMessageBoxServiceRegistrar service)
+    {
+        if (service.ServiceKey == PortableWpfServiceKey.PresentationFramework ||
+            service.ServiceKey == PortableWpfServiceKey.WinForms)
+        {
+            service.Register(ShowPortableMessageBox);
+        }
+    }
+
     private static void OnFileDialogServiceRegistered(IPortableFileDialogServiceRegistrar service)
     {
         if (service.ServiceKey == PortableWpfServiceKey.PresentationFramework ||
             service.ServiceKey == PortableWpfServiceKey.WinForms)
         {
-            service.Register(ShowPortableFileDialog);
+            service.RegisterResult(ShowPortableFileDialog);
         }
     }
 
@@ -1563,6 +1587,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         var options = new WpfMessageBoxOptions
         {
+            Owner = request.Owner,
             MessageBoxText = request.MessageBoxText,
             Caption = request.Caption,
             Button = request.Button,
@@ -1661,25 +1686,43 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
-    private static string? ShowPortableFileDialog(PortableFileDialogRequest request)
+    private static PortableFileDialogResult? ShowPortableFileDialog(PortableFileDialogRequest request)
     {
         string kind = request.Kind;
         var options = new WpfFileDialogOptions
         {
             Title = request.Title,
             SuggestedFileName = request.SuggestedItemName,
-            FileTypePatterns = ReadFileDialogPatterns(request.Filter)
+            FileTypePatterns = ReadFileDialogPatterns(request.Filter),
+            AllowMultipleSelection = request.AllowMultipleSelection
         };
 
         try
         {
             var fileDialogs = CrossPlatformWpfPlatformServices.Instance.FileDialogs;
-            return kind switch
+            if (kind == "OpenFile" && request.AllowMultipleSelection)
+            {
+                string[]? selectedPaths = fileDialogs.OpenFilesAsync(options).AsTask().GetAwaiter().GetResult();
+                return selectedPaths is { Length: > 0 }
+                    ? new PortableFileDialogResult(selectedPaths)
+                    : null;
+            }
+
+
+            if (kind == "PickFolder")
+            {
+                string[]? selectedPaths = fileDialogs.PickFoldersAsync(options).AsTask().GetAwaiter().GetResult();
+                return selectedPaths is { Length: > 0 }
+                    ? new PortableFileDialogResult(selectedPaths)
+                    : null;
+            }
+
+            string? selectedPath = kind switch
             {
                 "SaveFile" => fileDialogs.SaveFileAsync(options).AsTask().GetAwaiter().GetResult(),
-                "PickFolder" => fileDialogs.PickFolderAsync().AsTask().GetAwaiter().GetResult(),
                 _ => fileDialogs.OpenFileAsync(options).AsTask().GetAwaiter().GetResult()
             };
+            return selectedPath == null ? null : new PortableFileDialogResult(selectedPath);
         }
         catch (PlatformNotSupportedException)
         {

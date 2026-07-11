@@ -3116,22 +3116,25 @@ public abstract class FileDialog : Component
 
     protected virtual string DialogKind => "OpenFile";
 
+    protected virtual bool AllowMultipleSelection => false;
+
     public virtual DialogResult ShowDialog()
     {
-        string? selectedPath = PortableWinFormsDialogService.ShowFileDialog(
+        PortableFileDialogResult? result = PortableWinFormsDialogService.ShowFileDialog(
             DialogKind,
             Title,
             InitialDirectory,
             suggestedItemName: FileName,
             defaultExtension: DefaultExt,
             Filter,
-            FilterIndex);
-        if (string.IsNullOrEmpty(selectedPath))
+            FilterIndex,
+            AllowMultipleSelection);
+        if (result == null || result.SelectedPathCount == 0 || string.IsNullOrEmpty(result.SelectedPath))
         {
             return DialogResult.Cancel;
         }
 
-        SetSelectedPath(selectedPath);
+        SetSelectedPaths(result.SelectedPaths);
         return DialogResult.OK;
     }
 
@@ -3140,9 +3143,9 @@ public abstract class FileDialog : Component
         return ShowDialog();
     }
 
-    protected virtual void SetSelectedPath(string selectedPath)
+    protected virtual void SetSelectedPaths(ReadOnlySpan<string> selectedPaths)
     {
-        FileName = selectedPath;
+        FileName = selectedPaths[0];
     }
 }
 
@@ -3150,14 +3153,17 @@ public class OpenFileDialog : FileDialog
 {
     protected override string DialogKind => "OpenFile";
 
+    protected override bool AllowMultipleSelection => Multiselect;
+
     public bool Multiselect { get; set; }
 
     public string[] FileNames { get; set; } = Array.Empty<string>();
 
-    protected override void SetSelectedPath(string selectedPath)
+    protected override void SetSelectedPaths(ReadOnlySpan<string> selectedPaths)
     {
-        FileName = selectedPath;
-        FileNames = new[] { selectedPath };
+        int selectedPathCount = Multiselect ? selectedPaths.Length : 1;
+        FileNames = selectedPaths[..selectedPathCount].ToArray();
+        FileName = FileNames[0];
     }
 }
 
@@ -3209,7 +3215,7 @@ public class FolderBrowserDialog : Component
 
     public DialogResult ShowDialog()
     {
-        string? selectedPath = PortableWinFormsDialogService.ShowFileDialog(
+        PortableFileDialogResult? result = PortableWinFormsDialogService.ShowFileDialog(
             "PickFolder",
             Description,
             SelectedPath,
@@ -3217,12 +3223,12 @@ public class FolderBrowserDialog : Component
             defaultExtension: string.Empty,
             filter: string.Empty,
             filterIndex: 1);
-        if (string.IsNullOrEmpty(selectedPath))
+        if (result == null || string.IsNullOrEmpty(result.SelectedPath))
         {
             return DialogResult.Cancel;
         }
 
-        SelectedPath = selectedPath;
+        SelectedPath = result.SelectedPath;
         return DialogResult.OK;
     }
 

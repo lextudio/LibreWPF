@@ -66,6 +66,13 @@ public sealed class UnsupportedWpfPlatformServices : IWpfPlatformServices
         {
             throw new PlatformNotSupportedException("Folder picker services are not configured for this WPF ProGPU host.");
         }
+
+        public ValueTask<string[]?> PickFoldersAsync(
+            WpfFileDialogOptions options,
+            CancellationToken cancellationToken = default)
+        {
+            throw new PlatformNotSupportedException("Folder picker services are not configured for this WPF ProGPU host.");
+        }
     }
 
     private sealed class UnsupportedColorDialogService : IWpfColorDialogService

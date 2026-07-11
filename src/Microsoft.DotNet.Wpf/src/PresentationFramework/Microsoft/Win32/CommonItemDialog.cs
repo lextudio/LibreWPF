@@ -286,12 +286,12 @@ namespace Microsoft.Win32
         internal bool TryRunPortableDialog(out bool? result)
         {
             result = null;
-            if (!PortableFileDialogService.TryShowDialog(this, out string selectedPath))
+            if (!PortableFileDialogService.TryShowDialog(this, out string[] selectedPaths))
             {
                 return false;
             }
 
-            result = selectedPath != null && HandlePortableItemOk(selectedPath);
+            result = selectedPaths != null && HandlePortableItemOk(selectedPaths);
             return true;
         }
 
@@ -605,7 +605,7 @@ namespace Microsoft.Win32
             return ok;
         }
 
-        private bool HandlePortableItemOk(string selectedPath)
+        private bool HandlePortableItemOk(string[] selectedPaths)
         {
             string[] saveItemNames = _itemNames;
             object saveState = null;
@@ -613,7 +613,7 @@ namespace Microsoft.Win32
 
             try
             {
-                _itemNames = new[] { selectedPath };
+                _itemNames = selectedPaths;
 
                 if (TryHandlePortableItemOk(out saveState))
                 {

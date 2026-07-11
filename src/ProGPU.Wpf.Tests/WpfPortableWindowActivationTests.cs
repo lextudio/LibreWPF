@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
@@ -80,7 +81,51 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(fileDialogRegisterCountBefore + 1, fileDialogService.RegisterCount);
         Assert.NotNull(launcherService.Launch);
         Assert.NotNull(messageBoxService.Show);
-        Assert.NotNull(fileDialogService.ShowDialog);
+        Assert.NotNull(fileDialogService.ShowDialogResult);
+    }
+
+    [Fact]
+    public void WinFormsMessageBoxRegistrationUsesTypedInteropServiceOnly()
+    {
+        var service = new TestMessageBoxServiceRegistrar(PortableWpfServiceKey.WinForms);
+        using var registration = PortableWpfServiceRegistry.RegisterMessageBoxService(service);
+        var registerCountBefore = service.RegisterCount;
+
+        var registered = WpfPortableWindowActivation.TryRegisterWinFormsCompatMessageBoxService();
+
+        Assert.True(registered);
+        Assert.Equal(registerCountBefore + 1, service.RegisterCount);
+        Assert.NotNull(service.Show);
+    }
+
+    [Fact]
+    public void LateWinFormsMessageBoxRegistrationIsBoundByTypedRegistryEvent()
+    {
+        RuntimeHelpers.RunClassConstructor(typeof(WpfPortableWindowActivation).TypeHandle);
+        var service = new TestMessageBoxServiceRegistrar(PortableWpfServiceKey.WinForms);
+        var observedRegistrationCount = 0;
+
+        void ObserveRegistration(IPortableMessageBoxServiceRegistrar registeredService)
+        {
+            if (ReferenceEquals(registeredService, service))
+            {
+                observedRegistrationCount++;
+            }
+        }
+
+        PortableWpfServiceRegistry.MessageBoxServiceRegistered += ObserveRegistration;
+        try
+        {
+            using var registration = PortableWpfServiceRegistry.RegisterMessageBoxService(service);
+
+            Assert.Equal(1, observedRegistrationCount);
+            Assert.Equal(1, service.RegisterCount);
+            Assert.NotNull(service.Show);
+        }
+        finally
+        {
+            PortableWpfServiceRegistry.MessageBoxServiceRegistered -= ObserveRegistration;
+        }
     }
 
     [Fact]
@@ -93,6 +138,29 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Empty(WpfPortableWindowActivation.ReadFileDialogPatterns(string.Empty));
         Assert.Empty(WpfPortableWindowActivation.ReadFileDialogPatterns("Description only"));
         Assert.Empty(WpfPortableWindowActivation.ReadFileDialogPatterns("Empty| ; ; |Description"));
+    }
+
+    [Fact]
+    public void FileDialogResultRegistrationFallsBackToFirstPathForLegacyRegistrar()
+    {
+        var service = new TestLegacyFileDialogServiceRegistrar();
+        IPortableFileDialogServiceRegistrar registrar = service;
+        using IDisposable registration = registrar.RegisterResult(_ =>
+            new PortableFileDialogResult(["/tmp/first.cs", "/tmp/second.cs"]));
+
+        Assert.NotNull(service.ShowDialog);
+        string? selectedPath = service.ShowDialog(new PortableFileDialogRequest(
+            "OpenFile",
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            1,
+            allowMultipleSelection: true));
+
+        Assert.Equal("/tmp/first.cs", selectedPath);
     }
 
     [Fact]
@@ -2054,6 +2122,18 @@ public sealed class WpfPortableWindowActivationTests
 
     private sealed class TestMessageBoxServiceRegistrar : IPortableMessageBoxServiceRegistrar
     {
+        private readonly PortableWpfServiceKey _serviceKey;
+
+        public TestMessageBoxServiceRegistrar()
+            : this(PortableWpfServiceKey.PresentationFramework)
+        {
+        }
+
+        public TestMessageBoxServiceRegistrar(PortableWpfServiceKey serviceKey)
+        {
+            _serviceKey = serviceKey;
+        }
+
         public int RegisterCount { get; private set; }
 
         public Func<PortableMessageBoxRequest, string?>? Show { get; private set; }
@@ -2062,7 +2142,7 @@ public sealed class WpfPortableWindowActivationTests
         {
             get
             {
-                return PortableWpfServiceKey.PresentationFramework;
+                return _serviceKey;
             }
         }
 
@@ -2085,6 +2165,8 @@ public sealed class WpfPortableWindowActivationTests
 
         public Func<PortableFileDialogRequest, string?>? ShowDialog { get; private set; }
 
+        public Func<PortableFileDialogRequest, PortableFileDialogResult?>? ShowDialogResult { get; private set; }
+
         public PortableWpfServiceKey ServiceKey
         {
             get
@@ -2096,6 +2178,32 @@ public sealed class WpfPortableWindowActivationTests
         public IDisposable Register(Func<PortableFileDialogRequest, string?> showDialog)
         {
             RegisterCount++;
+            ShowDialog = showDialog;
+            return new TestPortableServiceRegistration();
+        }
+
+        public IDisposable RegisterResult(Func<PortableFileDialogRequest, PortableFileDialogResult?> showDialog)
+        {
+            RegisterCount++;
+            ShowDialogResult = showDialog;
+            return new TestPortableServiceRegistration();
+        }
+
+        public void Clear()
+        {
+            ShowDialog = null;
+            ShowDialogResult = null;
+        }
+    }
+
+    private sealed class TestLegacyFileDialogServiceRegistrar : IPortableFileDialogServiceRegistrar
+    {
+        public PortableWpfServiceKey ServiceKey => PortableWpfServiceKey.PresentationFramework;
+
+        public Func<PortableFileDialogRequest, string?>? ShowDialog { get; private set; }
+
+        public IDisposable Register(Func<PortableFileDialogRequest, string?> showDialog)
+        {
             ShowDialog = showDialog;
             return new TestPortableServiceRegistration();
         }

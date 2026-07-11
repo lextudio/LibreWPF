@@ -12,7 +12,7 @@ namespace Microsoft.Win32
         private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
         private static readonly FileDialogServiceRegistrar s_registrar = new FileDialogServiceRegistrar();
         private static IDisposable s_registrarRegistration;
-        private static Func<PortableFileDialogRequest, string> s_showDialog;
+        private static Func<PortableFileDialogRequest, ProGPU.Wpf.Interop.PortableFileDialogResult> s_showDialog;
 
         internal static bool IsEnabled
         {
@@ -38,6 +38,20 @@ namespace Microsoft.Win32
         {
             ArgumentNullException.ThrowIfNull(showDialog);
 
+            return RegisterResult(request =>
+            {
+                string selectedPath = showDialog(request);
+                return selectedPath == null
+                    ? null
+                    : new ProGPU.Wpf.Interop.PortableFileDialogResult(selectedPath);
+            });
+        }
+
+        private static IDisposable RegisterResult(
+            Func<PortableFileDialogRequest, ProGPU.Wpf.Interop.PortableFileDialogResult> showDialog)
+        {
+            ArgumentNullException.ThrowIfNull(showDialog);
+
             if (s_isWindows)
             {
                 return EmptyRegistration.Instance;
@@ -52,21 +66,34 @@ namespace Microsoft.Win32
             Volatile.Write(ref s_showDialog, null);
         }
 
-        internal static bool TryShowDialog(CommonItemDialog dialog, out string selectedPath)
+        internal static bool TryShowDialog(CommonItemDialog dialog, out string[] selectedPaths)
         {
-            selectedPath = null;
+            selectedPaths = null;
             if (s_isWindows)
             {
                 return false;
             }
 
-            Func<PortableFileDialogRequest, string> showDialog = Volatile.Read(ref s_showDialog);
+            Func<PortableFileDialogRequest, ProGPU.Wpf.Interop.PortableFileDialogResult> showDialog =
+                Volatile.Read(ref s_showDialog);
             if (showDialog == null)
             {
                 return true;
             }
 
-            selectedPath = showDialog(new PortableFileDialogRequest(dialog));
+            var request = new PortableFileDialogRequest(dialog);
+            ProGPU.Wpf.Interop.PortableFileDialogResult result = showDialog(request);
+            if (result == null || result.SelectedPathCount == 0)
+            {
+                return true;
+            }
+
+            selectedPaths = result.ToArray();
+            if (!request.AllowMultipleSelection && selectedPaths.Length > 1)
+            {
+                selectedPaths = [selectedPaths[0]];
+            }
+
             return true;
         }
 
@@ -79,6 +106,7 @@ namespace Microsoft.Win32
                 InitialDirectory = dialog.InitialDirectory;
                 DefaultDirectory = dialog.DefaultDirectory;
                 SuggestedItemName = GetSuggestedItemName(dialog);
+                AllowMultipleSelection = GetAllowMultipleSelection(dialog);
 
                 if (dialog is FileDialog fileDialog)
                 {
@@ -110,6 +138,8 @@ namespace Microsoft.Win32
 
             public int FilterIndex { get; }
 
+            public bool AllowMultipleSelection { get; }
+
             private static string GetKind(CommonItemDialog dialog)
             {
                 if (dialog is SaveFileDialog)
@@ -139,6 +169,21 @@ namespace Microsoft.Win32
 
                 return string.Empty;
             }
+
+            private static bool GetAllowMultipleSelection(CommonItemDialog dialog)
+            {
+                if (dialog is OpenFileDialog openFileDialog)
+                {
+                    return openFileDialog.Multiselect;
+                }
+
+                if (dialog is OpenFolderDialog openFolderDialog)
+                {
+                    return openFolderDialog.Multiselect;
+                }
+
+                return false;
+            }
         }
 
         private static ProGPU.Wpf.Interop.PortableFileDialogRequest CreateInteropRequest(
@@ -152,21 +197,23 @@ namespace Microsoft.Win32
                 request.SuggestedItemName,
                 request.DefaultExtension,
                 request.Filter,
-                request.FilterIndex);
+                request.FilterIndex,
+                request.AllowMultipleSelection);
         }
 
         private sealed class Registration : IDisposable
         {
-            private Func<PortableFileDialogRequest, string> _showDialog;
+            private Func<PortableFileDialogRequest, ProGPU.Wpf.Interop.PortableFileDialogResult> _showDialog;
 
-            internal Registration(Func<PortableFileDialogRequest, string> showDialog)
+            internal Registration(
+                Func<PortableFileDialogRequest, ProGPU.Wpf.Interop.PortableFileDialogResult> showDialog)
             {
                 _showDialog = showDialog;
             }
 
             public void Dispose()
             {
-                Func<PortableFileDialogRequest, string> showDialog = _showDialog;
+                Func<PortableFileDialogRequest, ProGPU.Wpf.Interop.PortableFileDialogResult> showDialog = _showDialog;
                 if (showDialog == null)
                 {
                     return;
@@ -205,6 +252,15 @@ namespace Microsoft.Win32
                 ArgumentNullException.ThrowIfNull(showDialog);
 
                 return PortableFileDialogService.Register(
+                    request => showDialog(CreateInteropRequest(request)));
+            }
+
+            public IDisposable RegisterResult(
+                Func<ProGPU.Wpf.Interop.PortableFileDialogRequest, ProGPU.Wpf.Interop.PortableFileDialogResult> showDialog)
+            {
+                ArgumentNullException.ThrowIfNull(showDialog);
+
+                return PortableFileDialogService.RegisterResult(
                     request => showDialog(CreateInteropRequest(request)));
             }
 

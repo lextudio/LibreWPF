@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ProGPU.Backend;
+using Silk.NET.Windowing;
 
 namespace System.Windows.Media.ProGPU.Platform;
 
@@ -48,7 +51,8 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        var commands = CreateStartInfos(_platformProvider(), options);
+        WpfMessageBoxPlatform platform = _platformProvider();
+        var commands = CreateStartInfos(platform, options);
         if (commands.Count == 0)
         {
             throw new PlatformNotSupportedException("Message box services are not available on this platform.");
@@ -63,7 +67,7 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
                     .AsTask()
                     .GetAwaiter()
                     .GetResult();
-                return MapProcessResult(options, result);
+                return MapProcessResult(platform, options, result);
             }
             catch (Win32Exception exception)
             {
@@ -115,13 +119,31 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
 
     private static ProcessStartInfo CreateWindowsStartInfo(WpfMessageBoxOptions options)
     {
-        var command = "Add-Type -AssemblyName System.Windows.Forms; "
-            + "[Console]::Write([System.Windows.Forms.MessageBox]::Show("
+        int messageBoxOptions = MapWindowsOptions(options.Options);
+        NativeWindowHandle owner = ResolveOwnerNativeHandle(options);
+        bool useOwner = owner.Kind == NativeWindowKind.Win32
+            && owner.IsValid
+            && CanUseWindowsOwner(messageBoxOptions);
+
+        var command = "Add-Type -AssemblyName System.Windows.Forms; ";
+        if (useOwner)
+        {
+            command += "Add-Type -TypeDefinition 'using System; using System.Windows.Forms; "
+                + "public sealed class LibreWpfMessageBoxOwner : IWin32Window { "
+                + "private readonly IntPtr handle; "
+                + "public LibreWpfMessageBoxOwner(long value) { handle = new IntPtr(value); } "
+                + "public IntPtr Handle { get { return handle; } } }' -ReferencedAssemblies System.Windows.Forms; "
+                + $"$owner = [LibreWpfMessageBoxOwner]::new({owner.Handle.ToInt64()}); ";
+        }
+
+        command += "[Console]::Write([System.Windows.Forms.MessageBox]::Show("
+            + (useOwner ? "$owner, " : string.Empty)
             + $"'{EscapePowerShellString(options.MessageBoxText)}', "
             + $"'{EscapePowerShellString(options.Caption)}', "
             + $"[System.Windows.Forms.MessageBoxButtons]::{MapWindowsButtons(options.Button)}, "
             + $"[System.Windows.Forms.MessageBoxIcon]::{MapWindowsIcon(options.Icon)}, "
-            + $"[System.Windows.Forms.MessageBoxDefaultButton]::{MapWindowsDefaultButton(options)}))";
+            + $"[System.Windows.Forms.MessageBoxDefaultButton]::{MapWindowsDefaultButton(options)}, "
+            + $"([System.Windows.Forms.MessageBoxOptions]{messageBoxOptions})))";
 
         return CreateStartInfo("powershell", "-NoProfile", "-NonInteractive", "-Command", command);
     }
@@ -159,6 +181,11 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
             $"--text={options.MessageBoxText}",
             $"--ok-label={buttonSet.PrimaryLabel}");
 
+        if (TryGetX11OwnerId(options, out string ownerId))
+        {
+            startInfo.ArgumentList.Add($"--attach={ownerId}");
+        }
+
         if (!string.Equals(MapZenityDialogKind(options), "--info", StringComparison.Ordinal))
         {
             startInfo.ArgumentList.Add($"--cancel-label={buttonSet.SecondaryLabel}");
@@ -175,12 +202,17 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
     private static ProcessStartInfo CreateLinuxKDialogStartInfo(WpfMessageBoxOptions options)
     {
         var buttonSet = GetButtonSet(options.Button);
-        var startInfo = CreateStartInfo(
-            "kdialog",
-            "--title",
-            options.Caption,
-            GetKDialogKind(options),
-            options.MessageBoxText);
+        var startInfo = CreateStartInfo("kdialog");
+        if (TryGetX11OwnerId(options, out string ownerId))
+        {
+            startInfo.ArgumentList.Add("--attach");
+            startInfo.ArgumentList.Add(ownerId);
+        }
+
+        startInfo.ArgumentList.Add("--title");
+        startInfo.ArgumentList.Add(options.Caption);
+        startInfo.ArgumentList.Add(GetKDialogKind(options));
+        startInfo.ArgumentList.Add(options.MessageBoxText);
 
         if (string.Equals(options.Button, "OK", StringComparison.Ordinal))
         {
@@ -204,7 +236,10 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
         return startInfo;
     }
 
-    private static string MapProcessResult(WpfMessageBoxOptions options, WpfMessageBoxProcessResult result)
+    private static string MapProcessResult(
+        WpfMessageBoxPlatform platform,
+        WpfMessageBoxOptions options,
+        WpfMessageBoxProcessResult result)
     {
         var buttonSet = GetButtonSet(options.Button);
         var output = result.StandardOutput.Trim();
@@ -218,6 +253,15 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
             TryParseResultName(output["button returned:".Length..].Trim(), buttonSet, out parsed))
         {
             return parsed;
+        }
+
+        if (platform == WpfMessageBoxPlatform.MacOS
+            && result.ExitCode != 0
+            && buttonSet.CancelLabel is not null
+            && (result.StandardError.Contains("(-128)", StringComparison.Ordinal)
+                || result.StandardError.Contains("User canceled", StringComparison.OrdinalIgnoreCase)))
+        {
+            return buttonSet.ResultByLabel[buttonSet.CancelLabel];
         }
 
         return result.ExitCode switch
@@ -250,7 +294,7 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
             "YesNoCancel" => ButtonSet.Create("Yes", "No", "Cancel"),
             "RetryCancel" => ButtonSet.Create("Retry", "Cancel"),
             "AbortRetryIgnore" => ButtonSet.Create("Abort", "Retry", "Ignore"),
-            "CancelTryContinue" => ButtonSet.Create("TryAgain", "Cancel", "Continue"),
+            "CancelTryContinue" => ButtonSet.Create("Cancel", "TryAgain", "Continue"),
             _ => ButtonSet.Create("OK")
         };
     }
@@ -315,6 +359,92 @@ public sealed class ProcessWpfMessageBoxService : IWpfMessageBoxService
         }
 
         return "Button1";
+    }
+
+    private static int MapWindowsOptions(string? options)
+    {
+        if (string.IsNullOrWhiteSpace(options)
+            || string.Equals(options, "None", StringComparison.Ordinal))
+        {
+            return 0;
+        }
+
+        int result = 0;
+        foreach (string option in options.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            result |= option switch
+            {
+                "DefaultDesktopOnly" => 0x00020000,
+                "RightAlign" => 0x00080000,
+                "RtlReading" => 0x00100000,
+                "ServiceNotification" => 0x00200000,
+                _ => 0
+            };
+        }
+
+        return result;
+    }
+
+    private static bool CanUseWindowsOwner(int messageBoxOptions)
+    {
+        const int desktopOrServiceNotification = 0x00020000 | 0x00200000;
+        return (messageBoxOptions & desktopOrServiceNotification) == 0;
+    }
+
+    private static bool TryGetX11OwnerId(WpfMessageBoxOptions options, out string ownerId)
+    {
+        NativeWindowHandle owner = ResolveOwnerNativeHandle(options);
+        if (owner.Kind == NativeWindowKind.X11 && owner.IsValid)
+        {
+            ownerId = unchecked((nuint)owner.Handle).ToString(CultureInfo.InvariantCulture);
+            return true;
+        }
+
+        ownerId = string.Empty;
+        return false;
+    }
+
+    private static NativeWindowHandle ResolveOwnerNativeHandle(WpfMessageBoxOptions options)
+    {
+        if (options.OwnerNativeHandle.IsValid)
+        {
+            return options.OwnerNativeHandle;
+        }
+
+        if (options.Owner is NativeWindowHandle nativeHandle && nativeHandle.IsValid)
+        {
+            return nativeHandle;
+        }
+
+        if (options.Owner is ProGpuWpfWindowHost host)
+        {
+            return ResolveHostNativeHandle(host);
+        }
+
+        if (options.Owner is IWindow window)
+        {
+            return ResolveWindowNativeHandle(window);
+        }
+
+        return WpfPortableWindowActivation.TryGetActiveHost(options.Owner, out ProGpuWpfWindowHost? activeHost)
+            ? ResolveHostNativeHandle(activeHost!)
+            : NativeWindowHandle.Empty;
+    }
+
+    private static NativeWindowHandle ResolveHostNativeHandle(ProGpuWpfWindowHost host)
+    {
+        return ResolveWindowNativeHandle(host.SilkWindow);
+    }
+
+    private static NativeWindowHandle ResolveWindowNativeHandle(IWindow? window)
+    {
+        if (window == null)
+        {
+            return NativeWindowHandle.Empty;
+        }
+
+        using var controller = new SilkWindowController(window);
+        return controller.Handle;
     }
 
     private static string MapMacIcon(string? icon)

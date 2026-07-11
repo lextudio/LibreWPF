@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Backend;
 using Xunit;
 
 namespace ProGPU.Wpf.Tests.Platform;
@@ -101,7 +102,159 @@ public sealed class ProcessWpfMessageBoxServiceTests
         Assert.Contains("Caption", command);
         Assert.Contains("MessageBoxButtons]::RetryCancel", command);
         Assert.Contains("MessageBoxIcon]::Error", command);
+        Assert.Contains("[System.Windows.Forms.MessageBoxOptions]0", command);
         Assert.False(startInfo.UseShellExecute);
+    }
+
+    [Fact]
+    public void CreateWindowsStartInfoPreservesPortableMessageBoxOptions()
+    {
+        var options = new WpfMessageBoxOptions
+        {
+            MessageBoxText = "RTL message",
+            Caption = "Caption",
+            Button = "OK",
+            Options = "RightAlign, RtlReading"
+        };
+
+        var startInfo = Assert.Single(ProcessWpfMessageBoxService.CreateStartInfos(
+            WpfMessageBoxPlatform.Windows,
+            options));
+
+        string command = startInfo.ArgumentList[^1];
+        Assert.Contains("[System.Windows.Forms.MessageBoxOptions]1572864", command);
+    }
+
+    [Fact]
+    public void CreateWindowsStartInfoUsesTypedWin32Owner()
+    {
+        var options = new WpfMessageBoxOptions
+        {
+            OwnerNativeHandle = new NativeWindowHandle(NativeWindowKind.Win32, (nint)0x1234, 0, "HWND"),
+            MessageBoxText = "Owned message",
+            Caption = "Owner"
+        };
+
+        var startInfo = Assert.Single(ProcessWpfMessageBoxService.CreateStartInfos(
+            WpfMessageBoxPlatform.Windows,
+            options));
+
+        string command = startInfo.ArgumentList[^1];
+        Assert.Contains("LibreWpfMessageBoxOwner : IWin32Window", command);
+        Assert.Contains("$owner = [LibreWpfMessageBoxOwner]::new(4660)", command);
+        Assert.Contains("MessageBox]::Show($owner, 'Owned message'", command);
+    }
+
+    [Fact]
+    public void CreateWindowsStartInfoAcceptsTypedOwnerInExistingOwnerProperty()
+    {
+        var options = new WpfMessageBoxOptions
+        {
+            Owner = new NativeWindowHandle(NativeWindowKind.Win32, (nint)0x5678, 0, "HWND")
+        };
+
+        var startInfo = Assert.Single(ProcessWpfMessageBoxService.CreateStartInfos(
+            WpfMessageBoxPlatform.Windows,
+            options));
+
+        Assert.Contains("[LibreWpfMessageBoxOwner]::new(22136)", startInfo.ArgumentList[^1]);
+    }
+
+    [Fact]
+    public void CreateWindowsStartInfoDoesNotProbeArbitraryOwnerShapes()
+    {
+        var options = new WpfMessageBoxOptions
+        {
+            Owner = new { Handle = (nint)0x1234 }
+        };
+
+        var startInfo = Assert.Single(ProcessWpfMessageBoxService.CreateStartInfos(
+            WpfMessageBoxPlatform.Windows,
+            options));
+
+        Assert.DoesNotContain("LibreWpfMessageBoxOwner", startInfo.ArgumentList[^1]);
+    }
+
+    [Theory]
+    [InlineData("DefaultDesktopOnly")]
+    [InlineData("ServiceNotification")]
+    public void CreateWindowsStartInfoDoesNotCombineOwnerWithDesktopNotificationOptions(string messageBoxOptions)
+    {
+        var options = new WpfMessageBoxOptions
+        {
+            OwnerNativeHandle = new NativeWindowHandle(NativeWindowKind.Win32, (nint)0x1234, 0, "HWND"),
+            Options = messageBoxOptions
+        };
+
+        var startInfo = Assert.Single(ProcessWpfMessageBoxService.CreateStartInfos(
+            WpfMessageBoxPlatform.Windows,
+            options));
+
+        string command = startInfo.ArgumentList[^1];
+        Assert.DoesNotContain("LibreWpfMessageBoxOwner", command);
+        Assert.DoesNotContain("Show($owner", command);
+    }
+
+    [Fact]
+    public void CreateLinuxStartInfosAttachTypedX11Owner()
+    {
+        var options = new WpfMessageBoxOptions
+        {
+            OwnerNativeHandle = new NativeWindowHandle(NativeWindowKind.X11, (nint)0x1234, (nint)0x44, "XID"),
+            MessageBoxText = "Owned Linux message"
+        };
+
+        var startInfos = ProcessWpfMessageBoxService.CreateStartInfos(
+            WpfMessageBoxPlatform.Linux,
+            options);
+
+        Assert.Contains("--attach=4660", startInfos[0].ArgumentList);
+        int attachIndex = startInfos[1].ArgumentList.IndexOf("--attach");
+        Assert.True(attachIndex >= 0);
+        Assert.Equal("4660", startInfos[1].ArgumentList[attachIndex + 1]);
+    }
+
+    [Theory]
+    [InlineData(NativeWindowKind.Cocoa)]
+    [InlineData(NativeWindowKind.Wayland)]
+    public void CreateProcessStartInfosLeaveUnsupportedCrossProcessOwnersUnparented(NativeWindowKind ownerKind)
+    {
+        var options = new WpfMessageBoxOptions
+        {
+            OwnerNativeHandle = new NativeWindowHandle(ownerKind, (nint)0x1234, (nint)0x44, "Owner")
+        };
+
+        WpfMessageBoxPlatform platform = ownerKind == NativeWindowKind.Cocoa
+            ? WpfMessageBoxPlatform.MacOS
+            : WpfMessageBoxPlatform.Linux;
+        var startInfos = ProcessWpfMessageBoxService.CreateStartInfos(platform, options);
+
+        Assert.All(startInfos, startInfo =>
+        {
+            Assert.DoesNotContain(startInfo.ArgumentList, argument => argument.Contains("--attach", StringComparison.Ordinal));
+            Assert.DoesNotContain(startInfo.ArgumentList, argument => argument.Contains("4660", StringComparison.Ordinal));
+        });
+    }
+
+    [Fact]
+    public void CreateMacStartInfoKeepsCancelTryContinueResultOrder()
+    {
+        var options = new WpfMessageBoxOptions
+        {
+            MessageBoxText = "Continue?",
+            Caption = "Operation",
+            Button = "CancelTryContinue",
+            FallbackResult = "TryAgain"
+        };
+
+        var startInfo = Assert.Single(ProcessWpfMessageBoxService.CreateStartInfos(
+            WpfMessageBoxPlatform.MacOS,
+            options));
+
+        string script = startInfo.ArgumentList[1];
+        Assert.Contains("buttons {\"Cancel\", \"TryAgain\", \"Continue\"}", script);
+        Assert.Contains("default button \"TryAgain\"", script);
+        Assert.Contains("cancel button \"Cancel\"", script);
     }
 
     [Fact]
@@ -115,6 +268,25 @@ public sealed class ProcessWpfMessageBoxServiceTests
         {
             Button = "OKCancel",
             FallbackResult = "OK"
+        });
+
+        Assert.Equal("Cancel", result);
+    }
+
+    [Fact]
+    public void ShowMapsAppleScriptUserCancellationToCancelResult()
+    {
+        var service = new ProcessWpfMessageBoxService(
+            () => WpfMessageBoxPlatform.MacOS,
+            (_, _) => ValueTask.FromResult(new WpfMessageBoxProcessResult(
+                1,
+                string.Empty,
+                "execution error: User canceled. (-128)")));
+
+        var result = service.Show(new WpfMessageBoxOptions
+        {
+            Button = "YesNoCancel",
+            FallbackResult = "No"
         });
 
         Assert.Equal("Cancel", result);

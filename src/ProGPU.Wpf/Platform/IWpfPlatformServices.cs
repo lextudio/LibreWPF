@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ProGPU.Backend;
 
 namespace System.Windows.Media.ProGPU.Platform;
 
@@ -86,9 +87,26 @@ public interface IWpfFileDialogService
 {
     ValueTask<string?> OpenFileAsync(WpfFileDialogOptions options, CancellationToken cancellationToken = default);
 
+    async ValueTask<string[]?> OpenFilesAsync(
+        WpfFileDialogOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        string? selectedPath = await OpenFileAsync(options, cancellationToken).ConfigureAwait(false);
+        return selectedPath == null ? null : [selectedPath];
+    }
+
     ValueTask<string?> SaveFileAsync(WpfFileDialogOptions options, CancellationToken cancellationToken = default);
 
     ValueTask<string?> PickFolderAsync(CancellationToken cancellationToken = default);
+
+    async ValueTask<string[]?> PickFoldersAsync(
+        WpfFileDialogOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        string? selectedPath = await PickFolderAsync(cancellationToken).ConfigureAwait(false);
+        return selectedPath == null ? null : [selectedPath];
+    }
 }
 
 public interface IWpfFontDialogService
@@ -155,10 +173,23 @@ public sealed class WpfFileDialogOptions
     public string? SuggestedFileName { get; set; }
 
     public IReadOnlyList<string> FileTypePatterns { get; set; } = Array.Empty<string>();
+
+    public bool AllowMultipleSelection { get; set; }
 }
 
 public sealed class WpfMessageBoxOptions
 {
+    public object? Owner { get; set; }
+
+    /// <summary>
+    /// Gets or sets an explicit native owner when the managed <see cref="Owner"/> cannot be
+    /// resolved to an active ProGPU window. Win32 and X11 process-backed dialogs can use this
+    /// handle for native modal ownership; Cocoa and Wayland process-backed dialogs currently
+    /// leave the dialog unparented because their native handles cannot be safely passed to a
+    /// separate dialog process.
+    /// </summary>
+    public NativeWindowHandle OwnerNativeHandle { get; set; } = NativeWindowHandle.Empty;
+
     public string MessageBoxText { get; set; } = string.Empty;
 
     public string Caption { get; set; } = string.Empty;

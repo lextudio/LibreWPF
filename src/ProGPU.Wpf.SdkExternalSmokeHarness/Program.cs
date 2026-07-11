@@ -19,6 +19,7 @@ internal static class Program
     private const string OriginalWpfSdk = "Microsoft.NET.Sdk";
     private const string OriginalWindowsDesktopWpfSdk = "Microsoft.NET.Sdk.WindowsDesktop";
     private const string SdkVersion = "0.1.0-preview.7";
+    private const string PrepackagedProGpuDirectoryEnvironmentVariable = "PROGPU_WPF_PREPACKAGED_PROGPU_DIR";
     private const string ExternalAppTargetFramework = "net10.0-windows";
     private const string AppAssemblyName = "ExternalSdkApp";
     private const string AppOutputAssemblyName = "ExternalSdkShell";
@@ -128,9 +129,14 @@ internal static class Program
         {
             string repoRoot = FindRepoRoot();
             string packageFeed = Path.Combine(repoRoot, "artifacts", "packages", "Release", "NonShipping");
+            string? prepackagedProGpuDirectory =
+                Environment.GetEnvironmentVariable(PrepackagedProGpuDirectoryEnvironmentVariable);
             RequireDirectory(packageFeed, "local package feed");
             ValidateSdkPackageLayout(packageFeed);
-            ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed);
+            ValidateLocalProGpuPackageProvenance(
+                repoRoot,
+                packageFeed,
+                prepackagedProGpuDirectory);
             ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(repoRoot, packageFeed);
 
             string workRoot = Path.Combine(Path.GetTempPath(), "ProGPU.Wpf.SdkExternalSmoke");
@@ -385,10 +391,28 @@ internal static class Program
         return new Version(11, 0, 0, 0);
     }
 
-    private static void ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(string repoRoot, string packageFeed)
+    private static void ValidateLocalProGpuPackageProvenance(
+        string repoRoot,
+        string packageFeed,
+        string? prepackagedProGpuDirectory)
     {
+        if (!string.IsNullOrWhiteSpace(prepackagedProGpuDirectory))
+        {
+            RequireDirectory(prepackagedProGpuDirectory, "exact prepackaged ProGPU package source");
+        }
+
         foreach (string assemblyName in s_requiredProGpuRuntimeAssemblies)
         {
+            if (!string.IsNullOrWhiteSpace(prepackagedProGpuDirectory) &&
+                !string.Equals(assemblyName, "ProGPU.Wpf", StringComparison.Ordinal))
+            {
+                ValidateLocalPackageMatchesPrepackagedSource(
+                    packageFeed,
+                    prepackagedProGpuDirectory,
+                    GetPackageIdForRuntimeAssembly(assemblyName));
+                continue;
+            }
+
             string repositoryAssemblyPath = GetRepositoryProGpuAssemblyPath(repoRoot, assemblyName);
             if (!File.Exists(repositoryAssemblyPath))
             {
@@ -403,6 +427,24 @@ internal static class Program
                 repositoryAssemblyPath,
                 $"repository Release {assemblyName}.dll");
         }
+    }
+
+    private static void ValidateLocalPackageMatchesPrepackagedSource(
+        string packageFeed,
+        string prepackagedProGpuDirectory,
+        string packageId)
+    {
+        string localPackagePath = Path.Combine(packageFeed, $"{packageId}.{SdkVersion}.nupkg");
+        string prepackagedSourcePath = Path.Combine(
+            prepackagedProGpuDirectory,
+            $"{packageId}.{SdkVersion}.nupkg");
+
+        RequireFile(localPackagePath, $"{packageId} local package");
+        RequireFile(prepackagedSourcePath, $"{packageId} exact prepackaged source");
+        AssertEqual(
+            ComputeFileSha256(prepackagedSourcePath),
+            ComputeFileSha256(localPackagePath),
+            $"local {packageId} package matches exact prepackaged source");
     }
 
     private static string GetPackageIdForRuntimeAssembly(string assemblyName)
@@ -17878,10 +17920,16 @@ internal static class Program
         RequireFile(Path.Combine(outputRoot, "Xceed.Wpf.AvalonDock.Themes.Metro.dll"), "external SDK output AvalonDock Metro theme asset");
         RequireFile(Path.Combine(outputRoot, "Xceed.Wpf.AvalonDock.Themes.VS2010.dll"), "external SDK output AvalonDock VS2010 theme asset");
 
-        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "LibreWPF.ProGPU", "ProGPU.Wpf", "net10.0");
-        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "LibreWPF.Interop", "ProGPU.Wpf.Interop", "net10.0");
-        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.DirectX", "ProGPU.DirectX", "net10.0");
-        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
+        foreach (string assemblyName in s_requiredProGpuRuntimeAssemblies)
+        {
+            ValidateOutputAssemblyMatchesLocalPackage(
+                outputRoot,
+                packageFeed,
+                GetPackageIdForRuntimeAssembly(assemblyName),
+                assemblyName,
+                "net10.0");
+        }
+
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies)
         {
             ValidateOutputAssemblyMatchesLocalPackage(

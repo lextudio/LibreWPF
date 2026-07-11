@@ -10996,6 +10996,9 @@ public sealed class WpfManagedProjectGraphTests
         var previewPackageAuditScriptPath = FindRepoPath(
             "eng",
             "progpu-preview-package-audit.sh");
+        var progpuNuspecRepositoryAuditScriptPath = FindRepoPath(
+            "eng",
+            "progpu-nuspec-repository-audit.mjs");
         var previewPackageListScriptPath = FindRepoPath(
             "eng",
             "progpu-preview-package-list.sh");
@@ -11429,6 +11432,7 @@ public sealed class WpfManagedProjectGraphTests
         var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
         var avaloniaPackageSmokeScript = File.ReadAllText(avaloniaPackageSmokeScriptPath);
         var previewPackageAuditScript = File.ReadAllText(previewPackageAuditScriptPath);
+        var progpuNuspecRepositoryAuditScript = File.ReadAllText(progpuNuspecRepositoryAuditScriptPath);
         var previewPackageListScript = File.ReadAllText(previewPackageListScriptPath);
         var previewPackageManifestScript = File.ReadAllText(previewPackageManifestScriptPath);
         var previewReleaseBundleScript = File.ReadAllText(previewReleaseBundleScriptPath);
@@ -12087,6 +12091,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source \"${repo_root}/eng/progpu-preview-package-list.sh\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("runtime_packages=(\"${progpu_preview_runtime_package_ids[@]}\")", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("all_packages=(\"${progpu_preview_package_ids[@]}\")", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("progpu_commit=\"$(git -C \"${repo_root}/external/ProGPU\" rev-parse --verify HEAD)\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("transport_target_framework=\"${PROGPU_WPF_TRANSPORT_TARGET_FRAMEWORK:-net10.0}\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.DoesNotContain("all_packages=(\n  LibreWPF.Transport", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("is_expected_package_artifact()", previewPackageAuditScript, StringComparison.Ordinal);
@@ -12103,6 +12108,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("dependency id=\\\"Silk.NET.WebGPU\\\" version=\\\"2.23.0\\\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("dependency id=\\\"ProGPU.WinUI\\\" version=\\\"${dev_package_version}\\\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("dependency id=\\\"Avalonia\\\" version=\\\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("require_nuspec_repository()", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("progpu-nuspec-repository-audit.mjs", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("--self-test", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("require_nuspec_repository \\", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("repositoryElements.length !== 1", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
+        Assert.Contains("[\"type\", \"git\"]", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
+        Assert.Contains("[\"url\", expectedUrl]", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
+        Assert.Contains("[\"commit\", expectedCommit]", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
+        Assert.Contains("branch=\"refs/heads/main\"", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
+        Assert.Contains("tampered commit", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
+        Assert.Contains("missing repository", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
         Assert.Contains("lib/${transport_target_framework}/PresentationFramework.dll", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("lib/${transport_target_framework}/System.Private.Windows.Core.dll", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("ref/${transport_target_framework}/PresentationFramework.dll", previewPackageAuditScript, StringComparison.Ordinal);
@@ -15471,15 +15487,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("LibraryAssemblyName = \"ProGPU.Wpf.SdkSwitchLibrary\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK switch library assembly", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RequireOutputRuntimeAssets(appOutputRoot, packageFeed)", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PrepackagedProGpuDirectoryEnvironmentVariable = \"PROGPU_WPF_PREPACKAGED_PROGPU_DIR\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Environment.GetEnvironmentVariable(PrepackagedProGpuDirectoryEnvironmentVariable)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLocalProGpuPackageProvenance(\n            repoRoot,\n            packageFeed,\n            prepackagedProGpuDirectory)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLocalPackageMatchesPrepackagedSource(", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireDirectory(prepackagedProGpuDirectory, \"exact prepackaged ProGPU package source\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ComputeFileSha256(prepackagedSourcePath)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("local {packageId} package matches exact prepackaged source", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("!string.Equals(assemblyName, \"ProGPU.Wpf\", StringComparison.Ordinal)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(wpfRoot, packageFeed)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRepositoryProGpuAssemblyPath(repoRoot, assemblyName)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("local {packageId} package matches {expectedAssemblyDescription}", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("repository WPF transport {assemblyName}.dll", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"LibreWPF.ProGPU\", \"ProGPU.Wpf\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"LibreWPF.Interop\", \"ProGPU.Wpf.Interop\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"ProGPU.DirectX\", \"ProGPU.DirectX\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("foreach (string assemblyName in ProGpuRuntimeAssemblies)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetPackageIdForRuntimeAssembly(assemblyName),\n                assemblyName,\n                \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(\n                appOutputRoot,\n                packageFeed,\n                \"LibreWPF.Transport\",\n                assemblyName,\n                \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK switch output {assemblySimpleName}.dll matches local {packageId} package", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ComputeFileSha256(outputPath)", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -17217,7 +17238,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK app compiled page source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("NuGet.config", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSdkPackageLayout(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PrepackagedProGpuDirectoryEnvironmentVariable = \"PROGPU_WPF_PREPACKAGED_PROGPU_DIR\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Environment.GetEnvironmentVariable(PrepackagedProGpuDirectoryEnvironmentVariable)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLocalProGpuPackageProvenance(\n                repoRoot,\n                packageFeed,\n                prepackagedProGpuDirectory)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLocalPackageMatchesPrepackagedSource(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireDirectory(prepackagedProGpuDirectory, \"exact prepackaged ProGPU package source\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ComputeFileSha256(prepackagedSourcePath)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("local {packageId} package matches exact prepackaged source", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("!string.Equals(assemblyName, \"ProGPU.Wpf\", StringComparison.Ordinal)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(repoRoot, packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("string dotnetPath = ResolveDotNetHost(repoRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(repoRoot, \".dotnet\", dotnetFileName)", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -17230,10 +17258,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("repository WPF transport {assemblyName}.dll", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePackageAssemblyIdentities(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateExternalOutput(outputRoot, packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"LibreWPF.ProGPU\", \"ProGPU.Wpf\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"LibreWPF.Interop\", \"ProGPU.Wpf.Interop\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"ProGPU.DirectX\", \"ProGPU.DirectX\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("foreach (string assemblyName in s_requiredProGpuRuntimeAssemblies)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetPackageIdForRuntimeAssembly(assemblyName),\n                assemblyName,\n                \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(\n                outputRoot,\n                packageFeed,\n                \"LibreWPF.Transport\",\n                assemblyName,\n                \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK output {assemblySimpleName}.dll matches local {packageId} package", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ComputeStreamSha256(packageStream)", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -12,6 +12,7 @@ using System.Security.Cryptography;
 internal static class Program
 {
     private const string PackageVersion = "0.1.0-preview.7";
+    private const string PrepackagedProGpuDirectoryEnvironmentVariable = "PROGPU_WPF_PREPACKAGED_PROGPU_DIR";
     private const string SmokeTargetFramework = "net10.0-windows";
     private const string SmokeAssemblyName = "ProGPU.Wpf.SdkSwitchSmoke";
     private const string LibraryAssemblyName = "ProGPU.Wpf.SdkSwitchLibrary";
@@ -140,23 +141,46 @@ internal static class Program
                 ? debugPackagedWpfRoot
             : Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "wpf");
         string proGpuRoot = Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "progpu");
+        string? prepackagedProGpuDirectory =
+            Environment.GetEnvironmentVariable(PrepackagedProGpuDirectoryEnvironmentVariable);
 
         RequireDirectory(packageFeed, "local package feed");
         RequireFile(smokeAssemblyPath, "SDK switch smoke assembly");
         RequireFile(
             Path.Combine(appOutputRoot, LibraryAssemblyName + ".dll"),
             "SDK switch library assembly");
-        ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed);
+        ValidateLocalProGpuPackageProvenance(
+            repoRoot,
+            packageFeed,
+            prepackagedProGpuDirectory);
         ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(wpfRoot, packageFeed);
         RequireOutputRuntimeAssets(appOutputRoot, packageFeed);
 
         return new SmokeInputs(repoRoot, appOutputRoot, smokeAssemblyPath, wpfRoot, proGpuRoot);
     }
 
-    private static void ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(string repoRoot, string packageFeed)
+    private static void ValidateLocalProGpuPackageProvenance(
+        string repoRoot,
+        string packageFeed,
+        string? prepackagedProGpuDirectory)
     {
+        if (!string.IsNullOrWhiteSpace(prepackagedProGpuDirectory))
+        {
+            RequireDirectory(prepackagedProGpuDirectory, "exact prepackaged ProGPU package source");
+        }
+
         foreach (string assemblyName in ProGpuRuntimeAssemblies)
         {
+            if (!string.IsNullOrWhiteSpace(prepackagedProGpuDirectory) &&
+                !string.Equals(assemblyName, "ProGPU.Wpf", StringComparison.Ordinal))
+            {
+                ValidateLocalPackageMatchesPrepackagedSource(
+                    packageFeed,
+                    prepackagedProGpuDirectory,
+                    GetPackageIdForRuntimeAssembly(assemblyName));
+                continue;
+            }
+
             string repositoryAssemblyPath = GetRepositoryProGpuAssemblyPath(repoRoot, assemblyName);
             if (!File.Exists(repositoryAssemblyPath))
             {
@@ -171,6 +195,24 @@ internal static class Program
                 repositoryAssemblyPath,
                 $"repository Release {assemblyName}.dll");
         }
+    }
+
+    private static void ValidateLocalPackageMatchesPrepackagedSource(
+        string packageFeed,
+        string prepackagedProGpuDirectory,
+        string packageId)
+    {
+        string localPackagePath = Path.Combine(packageFeed, $"{packageId}.{PackageVersion}.nupkg");
+        string prepackagedSourcePath = Path.Combine(
+            prepackagedProGpuDirectory,
+            $"{packageId}.{PackageVersion}.nupkg");
+
+        RequireFile(localPackagePath, $"{packageId} local package");
+        RequireFile(prepackagedSourcePath, $"{packageId} exact prepackaged source");
+        AssertEqual(
+            ComputeFileSha256(prepackagedSourcePath),
+            ComputeFileSha256(localPackagePath),
+            $"local {packageId} package matches exact prepackaged source");
     }
 
     private static void ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(string wpfRoot, string packageFeed)
@@ -271,10 +313,16 @@ internal static class Program
                 $"SDK switch output runtime asset '{assemblyName}.dll'");
         }
 
-        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "LibreWPF.ProGPU", "ProGPU.Wpf", "net10.0");
-        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "LibreWPF.Interop", "ProGPU.Wpf.Interop", "net10.0");
-        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.DirectX", "ProGPU.DirectX", "net10.0");
-        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
+        foreach (string assemblyName in ProGpuRuntimeAssemblies)
+        {
+            RequireOutputAssemblyMatchesLocalPackage(
+                appOutputRoot,
+                packageFeed,
+                GetPackageIdForRuntimeAssembly(assemblyName),
+                assemblyName,
+                "net10.0");
+        }
+
         foreach (string assemblyName in RequiredWpfRuntimeAssemblies)
         {
             RequireOutputAssemblyMatchesLocalPackage(

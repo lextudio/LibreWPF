@@ -104,8 +104,26 @@ require_nuspec_contains() {
   fi
 }
 
+require_nuspec_repository() {
+  local package_id="$1"
+  local expected_url="$2"
+  local expected_commit="$3"
+  local package_file
+  package_file="$(package_path "${package_id}")"
+
+  if ! unzip -p "${package_file}" "${package_id}.nuspec" | node \
+    "${repo_root}/eng/progpu-nuspec-repository-audit.mjs" \
+    "${package_id}" \
+    "${expected_url}" \
+    "${expected_commit}"; then
+    exit 1
+  fi
+}
+
 runtime_packages=("${progpu_preview_runtime_package_ids[@]}")
 all_packages=("${progpu_preview_package_ids[@]}")
+progpu_commit="$(git -C "${repo_root}/external/ProGPU" rev-parse --verify HEAD)"
+node "${repo_root}/eng/progpu-nuspec-repository-audit.mjs" --self-test
 
 unexpected_package_found=0
 while IFS= read -r -d '' artifact; do
@@ -128,6 +146,10 @@ done
 
 for package_id in "${runtime_packages[@]}"; do
   require_entry "${package_id}" "lib/net10.0/$(package_assembly_name "${package_id}").dll"
+  require_nuspec_repository \
+    "${package_id}" \
+    "https://github.com/wieslawsoltes/ProGPU" \
+    "${progpu_commit}"
 done
 
 require_entry LibreWPF.ProGPU "lib/net10.0/ProGPU.Wpf.dll"

@@ -1509,10 +1509,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (int dashIndex = 0; dashIndex < arcSegments.Length; dashIndex++)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("for (int layerIndex = 0; layerIndex < colorLayers.Count; layerIndex++)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var layer = colorLayers[layerIndex];", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("var layerOutlineFigures = layerOutline.Figures;", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("for (int figureIndex = 0; figureIndex < layerOutlineFigures.Count; figureIndex++)", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("var fig = layerOutlineFigures[figureIndex];", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("var seg = figureSegments[segmentIndex];", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private static PathGeometry CreatePositionedGlyphOutline(", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var figures = outline.Figures;\n        for (var figureIndex = 0; figureIndex < figures.Count; figureIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var segments = figure.Segments;\n            for (var segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var segment = figureSegments[segmentIndex];", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("var staticDrawCalls = new List<CompositorDrawCall>();", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dc in _drawCalls)", proGpuCompositor, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var dc in sb.DrawCalls)", proGpuCompositor, StringComparison.Ordinal);

@@ -88,6 +88,7 @@ internal static class Program
         "System.Security.Cryptography.ProtectedData",
         "System.Private.Windows.Core",
         "System.Windows.Extensions",
+        "OpenFontSharp",
         "StbImageSharp"
     ];
 
@@ -277,6 +278,7 @@ internal static class Program
         AssertContains(sdkProps, "<ProGpuWpfRuntimeFrameworkVersion Condition=\"'$(ProGpuWpfRuntimeFrameworkVersion)' == ''\"></ProGpuWpfRuntimeFrameworkVersion>", "SDK runtime version override hook");
         AssertContains(sdkProps, "<RuntimeFrameworkVersion Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(RuntimeFrameworkVersion)' == '' And '$(ProGpuWpfRuntimeFrameworkVersion)' != ''\">$(ProGpuWpfRuntimeFrameworkVersion)</RuntimeFrameworkVersion>", "SDK runtime version opt-in");
         AssertDoesNotContain(sdkProps, "11.0.0-preview.4.26210.111", "SDK root runtime version default");
+        AssertContains(sdkProps, "<ProGpuWpfOpenFontSharpVersion Condition=\"'$(ProGpuWpfOpenFontSharpVersion)' == ''\">1.0.0</ProGpuWpfOpenFontSharpVersion>", "SDK OpenFontSharp version default");
         AssertContains(sdkProps, "<ProGpuWpfStbImageSharpVersion Condition=\"'$(ProGpuWpfStbImageSharpVersion)' == ''\">2.30.15</ProGpuWpfStbImageSharpVersion>", "SDK StbImageSharp version default");
         AssertContains(sdkProps, "<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", "SDK root WindowsDesktop props import");
         AssertContains(sdkProps, "ProGPU.Wpf.Sdk.props", "SDK root portable props import");
@@ -292,6 +294,8 @@ internal static class Program
         AssertContains(portableProps, "<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" VersionOverride=\"$(ProGpuWpfSilkNetVersion)\" />", "SDK CPM native WebGPU package reference");
         AssertContains(portableProps, "<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", "SDK WPF support package reference");
         AssertContains(portableProps, "<PackageReference Include=\"System.IO.Packaging\" VersionOverride=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", "SDK CPM WPF support package reference");
+        AssertContains(portableProps, "<PackageReference Include=\"OpenFontSharp\" Version=\"$(ProGpuWpfOpenFontSharpVersion)\" />", "SDK OpenFontSharp package reference");
+        AssertContains(portableProps, "<PackageReference Include=\"OpenFontSharp\" VersionOverride=\"$(ProGpuWpfOpenFontSharpVersion)\" />", "SDK CPM OpenFontSharp package reference");
         AssertContains(portableProps, "<PackageReference Include=\"StbImageSharp\" Version=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK StbImageSharp package reference");
         AssertContains(portableProps, "<PackageReference Include=\"StbImageSharp\" VersionOverride=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK CPM StbImageSharp package reference");
 
@@ -17950,6 +17954,7 @@ internal static class Program
         AssertContains(depsJson, "ProGPU.DirectX", "external SDK ProGPU DirectX package dependency");
         AssertContains(depsJson, "ProGPU.Compute", "external SDK ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK ProGPU transpiler package dependency");
+        AssertContains(depsJson, "OpenFontSharp", "external SDK OpenFontSharp package dependency");
         AssertContains(depsJson, "StbImageSharp", "external SDK StbImageSharp package dependency");
         AssertContains(depsJson, "Extended.Wpf.Toolkit", "external SDK Xceed Toolkit package dependency");
         AssertContains(depsJson, "Xceed.Wpf.AvalonDock", "external SDK AvalonDock assembly dependency");
@@ -17989,6 +17994,7 @@ internal static class Program
         AssertContains(depsJson, "ProGPU.DirectX", "external SDK default-item ProGPU DirectX package dependency");
         AssertContains(depsJson, "ProGPU.Compute", "external SDK default-item ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK default-item ProGPU transpiler package dependency");
+        AssertContains(depsJson, "OpenFontSharp", "external SDK default-item OpenFontSharp package dependency");
         AssertContains(depsJson, "StbImageSharp", "external SDK default-item StbImageSharp package dependency");
         AssertContains(depsJson, DefaultItemsLibraryAssemblyName, "external SDK default-item referenced library dependency");
     }

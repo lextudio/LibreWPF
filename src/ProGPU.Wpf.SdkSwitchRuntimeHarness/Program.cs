@@ -76,7 +76,8 @@ internal static class Program
         "System.IO.Packaging",
         "System.Security.Cryptography.ProtectedData",
         "System.Private.Windows.Core",
-        "System.Windows.Extensions"
+        "System.Windows.Extensions",
+        "OpenFontSharp"
     ];
 
     public sealed class PortableClipboardJsonPayload

@@ -38,6 +38,7 @@
     <ProGpuWpfSystemFormatsNrbfVersion Condition="'$(ProGpuWpfSystemFormatsNrbfVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemFormatsNrbfVersion>
     <ProGpuWpfSystemIOPackagingVersion Condition="'$(ProGpuWpfSystemIOPackagingVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemIOPackagingVersion>
     <ProGpuWpfSystemWindowsExtensionsVersion Condition="'$(ProGpuWpfSystemWindowsExtensionsVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemWindowsExtensionsVersion>
+    <ProGpuWpfOpenFontSharpVersion Condition="'$(ProGpuWpfOpenFontSharpVersion)' == ''">1.0.0</ProGpuWpfOpenFontSharpVersion>
     <ProGpuWpfStbImageSharpVersion Condition="'$(ProGpuWpfStbImageSharpVersion)' == ''">2.30.15</ProGpuWpfStbImageSharpVersion>
   </PropertyGroup>
 

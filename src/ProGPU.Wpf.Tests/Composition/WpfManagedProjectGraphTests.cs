@@ -28,6 +28,7 @@ public sealed class WpfManagedProjectGraphTests
 
     [Theory]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontFace.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontFace.cs")]
+    [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontContainer.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontContainer.cs")]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntSimpleGlyphShaper.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntSimpleGlyphShaper.cs")]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontSubsetter.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontSubsetter.cs")]
     public void PresentationCoreIncludesProGpuTextSourceOnNonWindows(string sourcePath, string linkPath)
@@ -11578,6 +11579,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProGpuWpfSystemFormatsNrbfVersion Condition=\"'$(ProGpuWpfSystemFormatsNrbfVersion)' == ''\">11.0.0-preview.5.26302.115</ProGpuWpfSystemFormatsNrbfVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSystemIOPackagingVersion Condition=\"'$(ProGpuWpfSystemIOPackagingVersion)' == ''\">11.0.0-preview.5.26302.115</ProGpuWpfSystemIOPackagingVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSystemWindowsExtensionsVersion Condition=\"'$(ProGpuWpfSystemWindowsExtensionsVersion)' == ''\">11.0.0-preview.5.26302.115</ProGpuWpfSystemWindowsExtensionsVersion>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfOpenFontSharpVersion Condition=\"'$(ProGpuWpfOpenFontSharpVersion)' == ''\">1.0.0</ProGpuWpfOpenFontSharpVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfStbImageSharpVersion Condition=\"'$(ProGpuWpfStbImageSharpVersion)' == ''\">2.30.15</ProGpuWpfStbImageSharpVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", sdkProps, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.props", sdkProps, StringComparison.Ordinal);
@@ -13711,10 +13713,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReference Include=\"System.Formats.Nrbf\" Version=\"$(ProGpuWpfSystemFormatsNrbfVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.Windows.Extensions\" Version=\"$(ProGpuWpfSystemWindowsExtensionsVersion)\" />", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"OpenFontSharp\" Version=\"$(ProGpuWpfOpenFontSharpVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"StbImageSharp\" Version=\"$(ProGpuWpfStbImageSharpVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"Silk.NET.Input\" VersionOverride=\"$(ProGpuWpfSilkNetVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" VersionOverride=\"$(ProGpuWpfSilkNetVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.IO.Packaging\" VersionOverride=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"OpenFontSharp\" VersionOverride=\"$(ProGpuWpfOpenFontSharpVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"StbImageSharp\" VersionOverride=\"$(ProGpuWpfStbImageSharpVersion)\" />", portableProps, StringComparison.Ordinal);
 
         Assert.Contains("<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", portableTargets, StringComparison.Ordinal);
@@ -15543,6 +15547,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"ProGPU.Transpiler\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Silk.NET.Windowing.Common\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Silk.NET.WebGPU\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"OpenFontSharp\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetNativeAssetCandidates(\"wgpu\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetNativeAssetCandidates(\"glfw\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RequireAnyFile", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -17292,6 +17297,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertNoPackageEntryPrefix(package, \"lib/\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertNoPackageEntryPrefix(package, \"ref/\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyNativeRuntimeAssets", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"OpenFontSharp\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK OpenFontSharp version default", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK OpenFontSharp package reference", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK CPM OpenFontSharp package reference", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK OpenFontSharp package dependency", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK default-item OpenFontSharp package dependency", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"StbImageSharp\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK StbImageSharp package reference", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK StbImageSharp package dependency", externalSdkHarnessProgram, StringComparison.Ordinal);

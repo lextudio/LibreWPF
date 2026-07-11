@@ -10164,8 +10164,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PROGPU_WPF_TOOLKIT_RUN_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_STATUS_PATH", runScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_TIMEOUT_SECONDS", runScript, StringComparison.Ordinal);
         Assert.Contains("live_status=\"$(mktemp", runScript, StringComparison.Ordinal);
+        Assert.Contains("live_validation_timeout_seconds=\"${PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_TIMEOUT_SECONDS:-180}\"", runScript, StringComparison.Ordinal);
+        Assert.Contains("live_validation_deadline=$((SECONDS + live_validation_timeout_seconds))", runScript, StringComparison.Ordinal);
+        Assert.Contains("while (( SECONDS < live_validation_deadline )); do", runScript, StringComparison.Ordinal);
         Assert.Contains("grep -h -E \"ProGPU WPF Toolkit live input validation succeeded:\"", runScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("for _ in {1..600}; do", runScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF Toolkit live geometry validation succeeded", runScript, StringComparison.Ordinal);
     }
 

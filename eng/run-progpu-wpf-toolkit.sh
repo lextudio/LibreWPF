@@ -72,8 +72,15 @@ if [[ "${PROGPU_WPF_TOOLKIT_LIVE_VALIDATE:-0}" == "1" ]]; then
   ) >"${live_log}" 2>&1 &
   apphost_pid="$!"
 
+  live_validation_timeout_seconds="${PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_TIMEOUT_SECONDS:-180}"
+  if [[ ! "${live_validation_timeout_seconds}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Invalid PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_TIMEOUT_SECONDS value '${live_validation_timeout_seconds}'. Expected a positive integer." >&2
+    exit 1
+  fi
+
   live_validation_line=""
-  for _ in {1..600}; do
+  live_validation_deadline=$((SECONDS + live_validation_timeout_seconds))
+  while (( SECONDS < live_validation_deadline )); do
     live_validation_line="$(grep -h -E "ProGPU WPF Toolkit live input validation succeeded:" "${live_status}" "${live_log}" 2>/dev/null | tail -n 1 || true)"
     if [[ -n "${live_validation_line}" ]]; then
       break
@@ -91,7 +98,7 @@ if [[ "${PROGPU_WPF_TOOLKIT_LIVE_VALIDATE:-0}" == "1" ]]; then
       exit 1
     fi
 
-    sleep 0.05
+    sleep 0.1
   done
 
   if [[ -z "${live_validation_line}" ]]; then

@@ -175,6 +175,62 @@ internal static class WpfDrawingReplay
         return WpfDrawingReplayStatus.Unsupported;
     }
 
+    internal static bool TryReplayDrawingImage(
+        object? imageSource,
+        Rect destination,
+        IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        if (!TryGetDrawingImageDrawing(imageSource, out var drawing)
+            || !IsUsableRect(destination, out destination)
+            || !TryGetDrawingBounds(drawing, imageSourceAdapter, out var sourceBounds)
+            || !IsUsableRect(sourceBounds, out sourceBounds))
+        {
+            return false;
+        }
+
+        sink.PushClip(new MediaRectangleGeometry(destination));
+        var scaleX = destination.Width / sourceBounds.Width;
+        var scaleY = destination.Height / sourceBounds.Height;
+        var offsetX = destination.X - sourceBounds.X * scaleX;
+        var offsetY = destination.Y - sourceBounds.Y * scaleY;
+        if (sink is IWpfNativeTransformCommandSink nativeTransformSink)
+        {
+            nativeTransformSink.PushNativeTransform(new Matrix4x4(
+                (float)scaleX, 0, 0, 0,
+                0, (float)scaleY, 0, 0,
+                0, 0, 1, 0,
+                (float)offsetX, (float)offsetY, 0, 1));
+        }
+        else
+        {
+            sink.PushTransform(new MediaMatrixTransform(scaleX, 0, 0, scaleY, offsetX, offsetY));
+        }
+
+        status = Replay(drawing, sink, imageSourceAdapter);
+
+        sink.Pop();
+        sink.Pop();
+
+        return status == WpfDrawingReplayStatus.Applied
+            || status == WpfDrawingReplayStatus.PartiallyApplied;
+    }
+
+    private static bool TryGetDrawingImageDrawing(object? imageSource, out object drawing)
+    {
+        if (imageSource == null
+            || imageSource.GetType().FullName != "System.Windows.Media.DrawingImage")
+        {
+            drawing = null!;
+            return false;
+        }
+
+        drawing = imageSource.GetType().GetProperty("Drawing")?.GetValue(imageSource)!;
+        return drawing != null;
+    }
+
     private static WpfDrawingReplayStatus TryReplayGeometryDrawing(
         object drawing,
         IWpfCompositionCommandSink sink,

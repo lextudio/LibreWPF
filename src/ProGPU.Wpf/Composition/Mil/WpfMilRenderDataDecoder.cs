@@ -150,10 +150,26 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawRectangle:
                 case WpfMilCommandId.DrawRectangleAnimate:
-                    sink.DrawRectangle(
-                        ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
-                        ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
-                        ReadRect(payload, 0));
+                    var rectangle = ReadRect(payload, 0);
+                    var rectangleBrushToken = ReadUInt32(payload, 32);
+                    var rectanglePen = ResolveOptionalPen(resources, ReadUInt32(payload, 36));
+                    if (TryReplayTileBrushFill(resources, rectangleBrushToken, rectangle, sink, out var rectangleBrushStatus))
+                    {
+                        if (rectanglePen != null)
+                        {
+                            sink.DrawRectangle(null, rectanglePen, rectangle);
+                        }
+
+                        unsupportedCount += rectangleBrushStatus == WpfDrawingReplayStatus.PartiallyApplied ? 1 : 0;
+                    }
+                    else
+                    {
+                        sink.DrawRectangle(
+                            ResolveOptionalBrush(resources, rectangleBrushToken),
+                            rectanglePen,
+                            rectangle);
+                    }
+
                     appliedCount++;
                     if (commandId == WpfMilCommandId.DrawRectangleAnimate)
                     {
@@ -164,12 +180,24 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawRoundedRectangle:
                 case WpfMilCommandId.DrawRoundedRectangleAnimate:
-                    sink.DrawRoundedRectangle(
-                        ResolveOptionalBrush(resources, ReadUInt32(payload, 48)),
-                        ResolveOptionalPen(resources, ReadUInt32(payload, 52)),
-                        ReadRect(payload, 0),
-                        ReadDouble(payload, 32),
-                        ReadDouble(payload, 40));
+                    var roundedRectangle = ReadRect(payload, 0);
+                    var radiusX = ReadDouble(payload, 32);
+                    var radiusY = ReadDouble(payload, 40);
+                    var roundedBrushToken = ReadUInt32(payload, 48);
+                    var roundedPen = ResolveOptionalPen(resources, ReadUInt32(payload, 52));
+                    if (TryReplayTileBrushPrimitiveFill(resources, roundedBrushToken, new MediaRectangleGeometry(roundedRectangle, radiusX, radiusY), sink, out var roundedBrushStatus))
+                    {
+                        if (roundedPen != null)
+                        {
+                            sink.DrawRoundedRectangle(null, roundedPen, roundedRectangle, radiusX, radiusY);
+                        }
+
+                        unsupportedCount += roundedBrushStatus == WpfDrawingReplayStatus.PartiallyApplied ? 1 : 0;
+                    }
+                    else
+                    {
+                        sink.DrawRoundedRectangle(ResolveOptionalBrush(resources, roundedBrushToken), roundedPen, roundedRectangle, radiusX, radiusY);
+                    }
                     appliedCount++;
                     if (commandId == WpfMilCommandId.DrawRoundedRectangleAnimate)
                     {
@@ -195,10 +223,21 @@ public sealed class WpfMilRenderDataDecoder
                     break;
 
                 case WpfMilCommandId.DrawGeometry:
-                    var brush = ResolveOptionalBrush(resources, ReadUInt32(payload, 0));
+                    var brushToken = ReadUInt32(payload, 0);
+                    var brush = ResolveOptionalBrush(resources, brushToken);
                     var pen = ResolveOptionalPen(resources, ReadUInt32(payload, 4));
                     var geometryToken = ReadUInt32(payload, 8);
-                    if (TryDrawNativeGeometry(resources, sink, brush, pen, geometryToken))
+                    if (TryReplayTileBrushGeometryFill(resources, brushToken, geometryToken, sink, out var geometryBrushStatus))
+                    {
+                        if (pen != null && TryResolveGeometry(resources, geometryToken, out var outlineGeometry))
+                        {
+                            DrawMediaGeometry(sink, null, pen, outlineGeometry);
+                        }
+
+                        appliedCount++;
+                        unsupportedCount += geometryBrushStatus == WpfDrawingReplayStatus.PartiallyApplied ? 1 : 0;
+                    }
+                    else if (TryDrawNativeGeometry(resources, sink, brush, pen, geometryToken))
                     {
                         appliedCount++;
                     }
@@ -219,9 +258,20 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawImage:
                 case WpfMilCommandId.DrawImageAnimate:
-                    if (TryResolveImageSource(resources, ReadUInt32(payload, 32), out var imageSource))
+                    var imageRectangle = ReadRect(payload, 0);
+                    var imageToken = ReadUInt32(payload, 32);
+                    if (TryReplayDrawingImage(resources, imageToken, imageRectangle, sink, out var drawingImageStatus))
                     {
-                        sink.DrawImage(imageSource, ReadRect(payload, 0));
+                        appliedCount++;
+                        unsupportedCount += drawingImageStatus == WpfDrawingReplayStatus.PartiallyApplied ? 1 : 0;
+                        if (commandId == WpfMilCommandId.DrawImageAnimate)
+                        {
+                            unsupportedCount += CountUnsupportedAnimationHandles(payload, 36);
+                        }
+                    }
+                    else if (TryResolveImageSource(resources, imageToken, out var imageSource))
+                    {
+                        sink.DrawImage(imageSource, imageRectangle);
                         appliedCount++;
                         if (commandId == WpfMilCommandId.DrawImageAnimate)
                         {
@@ -485,10 +535,26 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawRectangle:
                 case WpfMilCommandId.DrawRectangleAnimate:
-                    nativeSink.DrawNativeRectangle(
-                        ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
-                        ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
-                        ReadReplayRect(payload, 0));
+                    var nativeRectangle = ReadRect(payload, 0);
+                    var nativeRectangleBrushToken = ReadUInt32(payload, 32);
+                    var nativeRectanglePen = ResolveOptionalPen(resources, ReadUInt32(payload, 36));
+                    if (TryReplayTileBrushFill(resources, nativeRectangleBrushToken, nativeRectangle, sink, out var nativeRectangleBrushStatus))
+                    {
+                        if (nativeRectanglePen != null)
+                        {
+                            nativeSink.DrawNativeRectangle(null, nativeRectanglePen, ReadReplayRect(payload, 0));
+                        }
+
+                        unsupportedCount += nativeRectangleBrushStatus == WpfDrawingReplayStatus.PartiallyApplied ? 1 : 0;
+                    }
+                    else
+                    {
+                        nativeSink.DrawNativeRectangle(
+                            ResolveOptionalBrush(resources, nativeRectangleBrushToken),
+                            nativeRectanglePen,
+                            ReadReplayRect(payload, 0));
+                    }
+
                     appliedCount++;
                     if (commandId == WpfMilCommandId.DrawRectangleAnimate)
                     {
@@ -499,12 +565,24 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawRoundedRectangle:
                 case WpfMilCommandId.DrawRoundedRectangleAnimate:
-                    nativeSink.DrawNativeRoundedRectangle(
-                        ResolveOptionalBrush(resources, ReadUInt32(payload, 48)),
-                        ResolveOptionalPen(resources, ReadUInt32(payload, 52)),
-                        ReadReplayRect(payload, 0),
-                        ReadDouble(payload, 32),
-                        ReadDouble(payload, 40));
+                    var nativeRoundedRectangle = ReadRect(payload, 0);
+                    var nativeRadiusX = ReadDouble(payload, 32);
+                    var nativeRadiusY = ReadDouble(payload, 40);
+                    var nativeRoundedBrushToken = ReadUInt32(payload, 48);
+                    var nativeRoundedPen = ResolveOptionalPen(resources, ReadUInt32(payload, 52));
+                    if (TryReplayTileBrushPrimitiveFill(resources, nativeRoundedBrushToken, new MediaRectangleGeometry(nativeRoundedRectangle, nativeRadiusX, nativeRadiusY), sink, out var nativeRoundedBrushStatus))
+                    {
+                        if (nativeRoundedPen != null)
+                        {
+                            nativeSink.DrawNativeRoundedRectangle(null, nativeRoundedPen, ReadReplayRect(payload, 0), nativeRadiusX, nativeRadiusY);
+                        }
+
+                        unsupportedCount += nativeRoundedBrushStatus == WpfDrawingReplayStatus.PartiallyApplied ? 1 : 0;
+                    }
+                    else
+                    {
+                        nativeSink.DrawNativeRoundedRectangle(ResolveOptionalBrush(resources, nativeRoundedBrushToken), nativeRoundedPen, ReadReplayRect(payload, 0), nativeRadiusX, nativeRadiusY);
+                    }
                     appliedCount++;
                     if (commandId == WpfMilCommandId.DrawRoundedRectangleAnimate)
                     {
@@ -530,10 +608,21 @@ public sealed class WpfMilRenderDataDecoder
                     break;
 
                 case WpfMilCommandId.DrawGeometry:
-                    var nativeBrush = ResolveOptionalBrush(resources, ReadUInt32(payload, 0));
+                    var nativeBrushToken = ReadUInt32(payload, 0);
+                    var nativeBrush = ResolveOptionalBrush(resources, nativeBrushToken);
                     var nativePen = ResolveOptionalPen(resources, ReadUInt32(payload, 4));
                     var nativeGeometryToken = ReadUInt32(payload, 8);
-                    if (TryDrawNativeGeometry(resources, sink, nativeBrush, nativePen, nativeGeometryToken))
+                    if (TryReplayTileBrushGeometryFill(resources, nativeBrushToken, nativeGeometryToken, sink, out var nativeGeometryBrushStatus))
+                    {
+                        if (nativePen != null && TryResolveGeometry(resources, nativeGeometryToken, out var nativeOutlineGeometry))
+                        {
+                            DrawMediaGeometry(sink, null, nativePen, nativeOutlineGeometry);
+                        }
+
+                        appliedCount++;
+                        unsupportedCount += nativeGeometryBrushStatus == WpfDrawingReplayStatus.PartiallyApplied ? 1 : 0;
+                    }
+                    else if (TryDrawNativeGeometry(resources, sink, nativeBrush, nativePen, nativeGeometryToken))
                     {
                         appliedCount++;
                     }
@@ -554,7 +643,18 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawImage:
                 case WpfMilCommandId.DrawImageAnimate:
-                    if (TryResolveImageSource(resources, ReadUInt32(payload, 32), out var imageSource))
+                    var nativeImageRectangle = ReadRect(payload, 0);
+                    var nativeImageToken = ReadUInt32(payload, 32);
+                    if (TryReplayDrawingImage(resources, nativeImageToken, nativeImageRectangle, sink, out var nativeDrawingImageStatus))
+                    {
+                        appliedCount++;
+                        unsupportedCount += nativeDrawingImageStatus == WpfDrawingReplayStatus.PartiallyApplied ? 1 : 0;
+                        if (commandId == WpfMilCommandId.DrawImageAnimate)
+                        {
+                            unsupportedCount += CountUnsupportedAnimationHandles(payload, 36);
+                        }
+                    }
+                    else if (TryResolveImageSource(resources, nativeImageToken, out var imageSource))
                     {
                         nativeSink.DrawNativeImage(imageSource, ReadReplayRect(payload, 0));
                         appliedCount++;
@@ -836,6 +936,58 @@ public sealed class WpfMilRenderDataDecoder
     {
         imageSource = resourceToken == 0 ? null! : resources.ResolveImageSource(resourceToken)!;
         return imageSource != null;
+    }
+
+    private static bool TryReplayDrawingImage(
+        IWpfMilResourceResolver resources,
+        uint resourceToken,
+        Rect rectangle,
+        IWpfCompositionCommandSink sink,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        return TryResolveRawResource(resources, resourceToken, out var resource)
+            && WpfDrawingReplay.TryReplayDrawingImage(resource, rectangle, sink, null, out status);
+    }
+
+    private static bool TryReplayTileBrushFill(
+        IWpfMilResourceResolver resources,
+        uint brushToken,
+        Rect rectangle,
+        IWpfCompositionCommandSink sink,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        return TryResolveRawResource(resources, brushToken, out var brush)
+            && WpfDrawingReplay.IsTileBrush(brush)
+            && WpfDrawingReplay.TryReplayTileBrushFill(brush, rectangle, sink, null, out status);
+    }
+
+    private static bool TryReplayTileBrushGeometryFill(
+        IWpfMilResourceResolver resources,
+        uint brushToken,
+        uint geometryToken,
+        IWpfCompositionCommandSink sink,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        return TryResolveRawResource(resources, brushToken, out var brush)
+            && WpfDrawingReplay.IsTileBrush(brush)
+            && TryResolveGeometry(resources, geometryToken, out var geometry)
+            && WpfDrawingReplay.TryReplayTileBrushFill(brush, geometry, sink, null, out status);
+    }
+
+    private static bool TryReplayTileBrushPrimitiveFill(
+        IWpfMilResourceResolver resources,
+        uint brushToken,
+        MediaGeometry geometry,
+        IWpfCompositionCommandSink sink,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        return TryResolveRawResource(resources, brushToken, out var brush)
+            && WpfDrawingReplay.IsTileBrush(brush)
+            && WpfDrawingReplay.TryReplayTileBrushFill(brush, geometry, sink, null, out status);
     }
 
     private static bool TryResolveGlyphRun(IWpfMilResourceResolver resources, uint resourceToken, out MediaGlyphRun glyphRun)

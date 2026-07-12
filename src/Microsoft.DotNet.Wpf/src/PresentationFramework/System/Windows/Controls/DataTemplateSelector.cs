@@ -31,6 +31,24 @@ namespace System.Windows.Controls
         /// <returns>an app-specific template to apply, or null.</returns>
         public virtual DataTemplate SelectTemplate(object item, DependencyObject container)
         {
+            return SelectTemplateCore(item, container);
+        }
+
+        /// <summary>
+        /// Override this overload instead of <see cref="SelectTemplate"/> when the container
+        /// element isn't needed (mirrors the WinUI DataTemplateSelector split).
+        /// </summary>
+        protected virtual DataTemplate SelectTemplateCore(object item, DependencyObject container)
+        {
+            return SelectTemplateCore(item);
+        }
+
+        /// <summary>
+        /// Override this overload instead of <see cref="SelectTemplate"/> when the container
+        /// element isn't needed (mirrors the WinUI DataTemplateSelector split).
+        /// </summary>
+        protected virtual DataTemplate SelectTemplateCore(object item)
+        {
             return null;
         }
     }

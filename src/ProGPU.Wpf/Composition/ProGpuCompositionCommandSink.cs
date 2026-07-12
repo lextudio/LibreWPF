@@ -1,5 +1,7 @@
 using System;
 using System.Buffers;
+using System.Collections;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -548,7 +550,6 @@ public sealed class ProGpuCompositionCommandSink :
     public void DrawImage(MediaImageSource imageSource, Rect rectangle)
     {
         ThrowIfClosed();
-
         if (WpfBitmapSourceImageAdapter.TryGetGpuTexture(imageSource, out var texture))
         {
             AddNativeCommand(new global::ProGPU.Scene.RenderCommand
@@ -2040,7 +2041,11 @@ public sealed class ProGpuCompositionCommandSink :
             case MediaGeometryGroup geometryGroup:
                 AddHash(ref hash, 5);
                 AddHash(ref hash, (int)geometryGroup.FillRule);
-                var children = geometryGroup.Children;
+                if (!TryGetGeometryGroupChildren(geometryGroup, out var children))
+                {
+                    return false;
+                }
+
                 AddHash(ref hash, children.Count);
                 for (var i = 0; i < children.Count; i++)
                 {
@@ -2070,6 +2075,29 @@ public sealed class ProGpuCompositionCommandSink :
             default:
                 return false;
         }
+    }
+
+    private static bool TryGetGeometryGroupChildren(
+        MediaGeometryGroup geometryGroup,
+        out List<MediaGeometry?> children)
+    {
+        children = new List<MediaGeometry?>();
+        if (geometryGroup.GetType().GetProperty("Children")?.GetValue(geometryGroup) is not IEnumerable values)
+        {
+            return false;
+        }
+
+        foreach (var value in values)
+        {
+            if (value != null && value is not MediaGeometry)
+            {
+                return false;
+            }
+
+            children.Add((MediaGeometry?)value);
+        }
+
+        return true;
     }
 
     private static bool AddOptionalNativeGeometryPathKey(

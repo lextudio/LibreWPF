@@ -523,6 +523,14 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Vector",
             "GpuHitTesting.cs");
+        var proGpuHitTestingShaderPath = Path.Combine(
+            Path.GetDirectoryName(proGpuHitTestingPath)!,
+            "Shaders",
+            "GpuHitTesting.wgsl");
+        var proGpuDirectoryBuildPropsPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "Directory.Build.props");
         var proGpuDashPatternPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -611,6 +619,10 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuScatterSeriesPipeline = File.ReadAllText(proGpuScatterSeriesPipelinePath);
         var proGpuHitTestCache = File.ReadAllText(proGpuHitTestCachePath);
         var proGpuHitTesting = File.ReadAllText(proGpuHitTestingPath);
+        var proGpuHitTestingShader = File.Exists(proGpuHitTestingShaderPath)
+            ? File.ReadAllText(proGpuHitTestingShaderPath)
+            : proGpuHitTesting;
+        var proGpuDirectoryBuildProps = File.ReadAllText(proGpuDirectoryBuildPropsPath);
         var proGpuDashPattern = File.ReadAllText(proGpuDashPatternPath);
         var proGpuBezierSegmentGeometry = File.ReadAllText(proGpuBezierSegmentGeometryPath);
         var proGpuArcSegmentGeometry = File.ReadAllText(proGpuArcSegmentGeometryPath);
@@ -1389,42 +1401,50 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryQueryBoundsAllRejectsCombinedPathDifferenceHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryHitTestPointAllStoresDistinctIdsAndKeepsHighestZDuplicate", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllStoresDistinctIdsAndKeepsHighestZDuplicate", proGpuHitTestingTests, StringComparison.Ordinal);
-        Assert.Contains("const QUERY_MODE_BOUNDS: u32", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("const QUERY_MODE_ELLIPSE_REGION: u32", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("const INTERSECTION_DETAIL_FULLY_INSIDE: u32", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn query_uses_ellipse_region()", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn classify_ellipse_region_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn ellipses_may_intersect(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn ellipse_stroke_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn classify_bounds_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn rect_intersects_ellipse(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn rect_intersects_ellipse_stroke(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn rect_intersects_rounded_rect(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn rect_intersects_rect_stroke(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn rounded_rect_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn rect_stroke_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn segment_intersects_rect(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("data2: vec4<f32>,", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("let direction = primitive.data2.xy;", proGpuHitTesting, StringComparison.Ordinal);
+        if (File.Exists(proGpuHitTestingShaderPath))
+        {
+            Assert.Contains("ShaderResource.Load(typeof(GpuHitTestEngine), \"GpuHitTesting.wgsl\")", proGpuHitTesting, StringComparison.Ordinal);
+            Assert.Contains(@"<EmbeddedResource Include=""Shaders/*.wgsl;Shaders/*.glsl;Shaders/*.hlsl""", proGpuDirectoryBuildProps, StringComparison.Ordinal);
+            Assert.Contains(@"LogicalName=""$(MSBuildProjectName).Shaders.%(Filename)%(Extension)""", proGpuDirectoryBuildProps, StringComparison.Ordinal);
+            Assert.DoesNotContain("const QUERY_MODE_BOUNDS: u32", proGpuHitTesting, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("const QUERY_MODE_BOUNDS: u32", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("const QUERY_MODE_ELLIPSE_REGION: u32", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("const INTERSECTION_DETAIL_FULLY_INSIDE: u32", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn query_uses_ellipse_region()", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn classify_ellipse_region_intersection_detail(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn ellipses_may_intersect(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn ellipse_stroke_intersects_ellipse_region(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn classify_bounds_intersection_detail(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn rect_intersects_ellipse(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn rect_intersects_ellipse_stroke(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn rect_intersects_rounded_rect(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn rect_intersects_rect_stroke(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn rounded_rect_intersects_ellipse_region(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn rect_stroke_intersects_ellipse_region(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn segment_intersects_rect(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("data2: vec4<f32>,", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("let direction = primitive.data2.xy;", proGpuHitTestingShader, StringComparison.Ordinal);
         Assert.Contains("CreateLineStrokeHitTestData(start, end)", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn contains_cached_ellipse(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn rect_intersects_cached_ellipse(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn line_stroke_intersects_rect(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn line_stroke_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn segment_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn path_fill_segments_intersect_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn classify_path_fill_ellipse_region_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn path_stroke_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn classify_path_fill_rect_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn path_stroke_intersects_rect(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn primitive_uses_precise_bounds_region_test(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn intersects_bounds(", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("query_result_capacity()", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("let total_count = results[0].hit + 1u;", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn stored_result_count(capacity: u32) -> u32", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("if (count >= capacity) {\n            break;\n        }\n\n        if (results[count + 1u].hit == 0u) {", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.Contains("fn find_stored_hit_slot(id: i32, stored_count: u32) -> u32", proGpuHitTesting, StringComparison.Ordinal);
-        Assert.DoesNotContain("if (count >= capacity || results[count + 1u].hit == 0u)", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn contains_cached_ellipse(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn rect_intersects_cached_ellipse(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn line_stroke_intersects_rect(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn line_stroke_intersects_ellipse_region(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn segment_intersects_ellipse_region(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn path_fill_segments_intersect_ellipse_region(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn classify_path_fill_ellipse_region_intersection_detail(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn path_stroke_intersects_ellipse_region(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn classify_path_fill_rect_intersection_detail(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn path_stroke_intersects_rect(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn primitive_uses_precise_bounds_region_test(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn intersects_bounds(", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("query_result_capacity()", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("let total_count = results[0].hit + 1u;", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn stored_result_count(capacity: u32) -> u32", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("if (count >= capacity) {\n            break;\n        }\n\n        if (results[count + 1u].hit == 0u) {", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("fn find_stored_hit_slot(id: i32, stored_count: u32) -> u32", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (count >= capacity || results[count + 1u].hit == 0u)", proGpuHitTestingShader, StringComparison.Ordinal);
         Assert.DoesNotContain("new GpuHitTestResult[requestedCount + 1]", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("stackalloc GpuHitTestResult[resultBufferElementCount]", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<GpuHitTestResult>.Shared.Rent(resultBufferElementCount)", proGpuHitTesting, StringComparison.Ordinal);

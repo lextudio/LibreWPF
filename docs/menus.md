@@ -399,6 +399,57 @@ it in the same method (`_isRendering`, mid-render). Whenever a "should already b
 claim is made in this doc, the standard going forward is: grep every call site that sets/reads the
 guarding flag, not just the one call site the current bug happens to route through.
 
+### Fixed: hovering a 2nd-level submenu header to open a 3rd level collapsed the whole chain
+
+**Symptom (user-reported):** open File ▸ Recent Files (2nd level opens fine), then hover the
+`Workspaces` submenu-header inside it to open the 3rd level — the 3rd-level flyout opens for an
+instant and then the *entire* menu chain dismisses. Reproducible with a real mouse (not just the
+DevFlow harness), and only at the 2nd→3rd transition; the 1st→2nd transition was always fine.
+
+**Root cause:** opening the 3rd-level popup (a separate native window) steals real OS focus from
+the 2nd-level popup that currently holds keyboard focus. Because that popup is a `Menu` descendant,
+losing its focus drops `Menu.IsKeyboardFocusWithin` to false *while the Menu still holds
+`Mouse.Capture`*. `MenuBase.OnIsKeyboardFocusWithinChanged`'s `else` branch reads that as "focus
+genuinely left the menu" and, since `HasCapture` is true, exits menu mode (`IsMenuMode = false`) →
+`OnLostMouseCapture` → dismissal. This is the same portable focus-steal class already suppressed
+for the owner's `Deactivated` event, just surfacing through a *different* signal (keyboard-focus-
+within vs. window-activation). It only bites at 2nd→3rd (not 1st→2nd) because 1st→2nd steals focus
+from a popup that didn't yet hold keyboard focus, so `IsKeyboardFocusWithin` never flipped. Real
+Windows WPF never sees it: popups are child HWNDs that keep focus within the owner.
+
+**Fix (`MenuBase.OnIsKeyboardFocusWithinChanged`):** on the portable backend, don't exit menu mode
+on focus-loss while we still hold capture **and** an owned submenu is open
+(`CurrentSelection is { IsSubmenuOpen: true }`) — that combination means the focus loss is our own
+nested popup stealing OS focus, not a real dismiss. Genuine dismissals still route through
+`OnLostMouseCapture` (click-outside, which loses capture first) and `OnKeyDown` (Esc/Alt), neither
+of which this guard touches. Windows behavior is unchanged (`!OperatingSystem.IsWindows()` gate).
+
+### Fixed: popup PresentationSource stuck at DPI 1.0 → synthetic/injected input hit-tested in the wrong place
+
+**Symptom:** the DevFlow hover harness (`tooltiptest/scripts/check-opendevelop-menu-hover.sh`),
+which drives menus by resolving `PresentationSource.FromVisual(menuItem)` and calling
+`ProcessInputForSource` with the item's center in root coordinates, never opened a submenu — every
+injected `MouseMove` hit-tested to `null`. Real mice worked fine. Tracing showed the resolved popup
+source reported `CompositionTarget.TransformToDevice.M11 == 1` (should be `2` on a Retina display),
+so `RootToClient` never applied the ×2 scale and the client point landed at half the intended
+location, missing all menu content.
+
+**Root cause:** `WpfPortablePopupActivation.TryCreate` created every popup's `PresentationSource`
+with a hardcoded `dpiScaleX/Y = 1.0`, relying on a *later* `OnRender` →
+`SynchronizePortablePresentationSourceGeometry` to sync it to the real backing scale. But a popup
+whose host never renders through `OnRender` on its own surface (composited via the owner, or an
+unfocused/off-Retina/headless run) keeps DPI 1.0 forever — so any coordinate math against that
+source is off by the backing-scale factor. Real mice dodged it because their coordinates arrive in
+the popup native window's own client space, self-consistent regardless of the source's reported DPI.
+
+**Fix:** seed the popup source with the window's true backing scale at creation time instead of
+1.0. Added `ProGpuWpfWindowHost.ResolveWindowBackingScaleForPortableSource()` (wraps the existing
+`ResolveCurrentMonitorDpiScale()`, which reads the native Cocoa `backingScaleFactor` and needs no
+render surface) and pass its result to `TryCreatePortablePresentationSource` in
+`WpfPortablePopupActivation.TryCreate`. This is the portable equivalent of a Win32 popup inheriting
+its owner's DPI for free. The live render-time sync still overrides it later if the scale changes
+(e.g. dragging the popup to a different-DPI monitor).
+
 ### Fixed: hovering across sibling top-level headers didn't auto-switch menus
 
 **Symptom (user-reported):** open File by clicking it, then move the mouse to Edit *without

@@ -299,7 +299,28 @@ namespace System.Windows.Controls.Primitives
                     // we have capture.
                     if (HasCapture)
                     {
-                        IsMenuMode = false;
+                        // Portable backend: each submenu popup is its own native window, and opening
+                        // a nested popup steals real OS focus from the previously-focused popup
+                        // (Silk/GLFW has no WS_EX_NOACTIVATE equivalent). That transiently drops
+                        // IsKeyboardFocusWithin here *while a submenu of ours is still open* and we
+                        // still hold capture - a false "focus left the menu" signal that would
+                        // dismiss the whole chain the instant a 2nd/3rd-level flyout opens. Real
+                        // Windows WPF never sees this because popups are child HWNDs that keep focus
+                        // within the owner. Suppress the exit while an owned submenu is open - the
+                        // same class of portable focus-steal already suppressed for the owner's
+                        // Deactivated event (docs/menus.md). A genuine dismiss (click-outside, Esc,
+                        // switching apps) still routes through OnLostMouseCapture / OnKeyDown, not
+                        // this path.
+                        bool ownedSubmenuOpen = !OperatingSystem.IsWindows() &&
+                            CurrentSelection is { IsSubmenuOpen: true };
+                        if (!ownedSubmenuOpen)
+                        {
+                            IsMenuMode = false;
+                        }
+                        else
+                        {
+                            TraceMenuCapture("OnIsKeyboardFocusWithinChanged focus-loss IGNORED (owned submenu open, portable popup focus-steal)");
+                        }
                     }
                 }
                 else

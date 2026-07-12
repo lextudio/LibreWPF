@@ -2162,6 +2162,32 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             : dpiScale;
     }
 
+    /// <summary>
+    /// Resolves this window's true backing/display scale (e.g. 2.0 on a Retina display) directly
+    /// from the native window, without requiring a render surface to have been created yet. Used to
+    /// seed a popup's PresentationSource DPI at creation time so it matches its owner immediately,
+    /// rather than defaulting to 1.0 and only syncing later when (if) the popup host renders through
+    /// <see cref="OnRender"/>. On Windows real WPF a popup inherits its owner's DPI for free; this is
+    /// the portable equivalent. Falls back to 1.0 if the native window can't report a scale yet.
+    /// </summary>
+    internal double ResolveWindowBackingScaleForPortableSource()
+    {
+        if (_isDisposed)
+        {
+            return 1.0;
+        }
+
+        try
+        {
+            double scale = ResolveCurrentMonitorDpiScale();
+            return double.IsFinite(scale) && scale >= 1.0 && scale <= 8.0 ? scale : 1.0;
+        }
+        catch
+        {
+            return 1.0;
+        }
+    }
+
     private double ResolveCurrentMonitorDpiScale()
     {
         // Prefer the window's live framebuffer/size ratio - the true backing scale (e.g. 2.0 on a

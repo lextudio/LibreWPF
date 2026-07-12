@@ -168,7 +168,16 @@ public sealed class WpfPortablePopupActivation : IDisposable
 
         host.Initialize();
 
-        if (!host.TryCreatePortablePresentationSource(rootVisual: null, dpiScaleX: 1.0, dpiScaleY: 1.0) ||
+        // Seed the popup source with the window's real backing scale (2.0 on Retina) up front,
+        // instead of defaulting to 1.0 and only syncing later if/when the popup host happens to
+        // render through OnRender. A popup that never renders on its own surface (e.g. composited
+        // via the owner, or an unfocused/headless test run) would otherwise keep DPI 1.0 forever,
+        // so RootToClient never applies the ×2 scale and every hit-test on injected/synthetic input
+        // lands in the wrong place. On Windows a popup inherits its owner's DPI for free; this is
+        // the portable equivalent. Live render sync still overrides this later if the scale changes.
+        double popupScale = host.ResolveWindowBackingScaleForPortableSource();
+
+        if (!host.TryCreatePortablePresentationSource(rootVisual: null, dpiScaleX: popupScale, dpiScaleY: popupScale) ||
             host.PortablePresentationSource is not { } presentationSource)
         {
             Interlocked.Decrement(ref s_openPopupCount);

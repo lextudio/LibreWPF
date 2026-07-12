@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 using ProGPU.Wpf.Interop;
 using System.Windows.Media.ProGPU.Platform;
@@ -1401,7 +1402,29 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
-        ProcessHostInputAndRequestRender(e);
+        try
+        {
+            ProcessHostInputAndRequestRender(e);
+        }
+        catch (Exception exception)
+        {
+            if (!TryReportInputExceptionToWindowDispatcher(exception))
+            {
+                throw;
+            }
+        }
+    }
+
+    private bool TryReportInputExceptionToWindowDispatcher(Exception exception)
+    {
+        if (!TryGetWindowActivationService(out var activationService))
+        {
+            return false;
+        }
+
+        return activationService.TryBeginInvokeInput(
+            Window,
+            () => ExceptionDispatchInfo.Capture(exception).Throw());
     }
 
     private void ProcessHostInputAndRequestRender(WpfInputEventArgs e)

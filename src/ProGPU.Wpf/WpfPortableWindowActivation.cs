@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 using ProGPU.Wpf.Interop;
 using System.Windows.Media.ProGPU.Platform;
@@ -1305,6 +1306,13 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
             ProcessHostInputAndRequestRender(e);
         }
+        catch (Exception exception)
+        {
+            if (!TryReportInputExceptionToWindowDispatcher(exception))
+            {
+                throw;
+            }
+        }
         finally
         {
             if (releaseButtonAfterDispatch)
@@ -1312,6 +1320,18 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 _pressedMouseButtons.Remove(e.Button);
             }
         }
+    }
+
+    private bool TryReportInputExceptionToWindowDispatcher(Exception exception)
+    {
+        if (!TryGetWindowActivationService(out var activationService))
+        {
+            return false;
+        }
+
+        return activationService.TryBeginInvokeInput(
+            Window,
+            () => ExceptionDispatchInfo.Capture(exception).Throw());
     }
 
     private void ProcessHostInputAndRequestRender(WpfInputEventArgs e)

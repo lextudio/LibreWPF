@@ -10,32 +10,6 @@
     <_ProGpuReferenceRoot Condition="'$(ProGpuReferenceRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(ProGpuReferenceRoot)'))</_ProGpuReferenceRoot>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ManagePackageVersionsCentrally)' != 'true'">
-    <PackageReference Include="Silk.NET.Input" Version="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="Silk.NET.Windowing" Version="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="Silk.NET.WebGPU" Version="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" />
-    <PackageReference Include="System.Formats.Nrbf" Version="$(ProGpuWpfSystemFormatsNrbfVersion)" />
-    <PackageReference Include="System.IO.Packaging" Version="$(ProGpuWpfSystemIOPackagingVersion)" />
-    <PackageReference Include="System.Windows.Extensions" Version="$(ProGpuWpfSystemWindowsExtensionsVersion)" />
-    <PackageReference Include="OpenFontSharp" Version="$(ProGpuWpfOpenFontSharpVersion)" />
-    <PackageReference Include="StbImageSharp" Version="$(ProGpuWpfStbImageSharpVersion)" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ManagePackageVersionsCentrally)' == 'true'">
-    <PackageReference Include="Silk.NET.Input" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="Silk.NET.Windowing" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="Silk.NET.WebGPU" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" VersionOverride="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" />
-    <PackageReference Include="System.Formats.Nrbf" VersionOverride="$(ProGpuWpfSystemFormatsNrbfVersion)" />
-    <PackageReference Include="System.IO.Packaging" VersionOverride="$(ProGpuWpfSystemIOPackagingVersion)" />
-    <PackageReference Include="System.Windows.Extensions" VersionOverride="$(ProGpuWpfSystemWindowsExtensionsVersion)" />
-    <PackageReference Include="OpenFontSharp" VersionOverride="$(ProGpuWpfOpenFontSharpVersion)" />
-    <PackageReference Include="StbImageSharp" VersionOverride="$(ProGpuWpfStbImageSharpVersion)" />
-  </ItemGroup>
-
   <ItemDefinitionGroup Condition="'$(ProGpuWpfUseWpfMarkup)' == 'true'">
     <ApplicationDefinition>
       <Generator>MSBuild:Compile</Generator>

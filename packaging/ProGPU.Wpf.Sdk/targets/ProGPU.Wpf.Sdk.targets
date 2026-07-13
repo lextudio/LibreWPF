@@ -6,9 +6,52 @@
     <ProGpuWpfManagedPackageVersion Condition="'$(ProGpuWpfManagedPackageVersion)' == ''">$(ProGpuWpfPackageVersion)</ProGpuWpfManagedPackageVersion>
     <ProGpuWpfLibreWinFormsPackageVersion Condition="'$(ProGpuWpfLibreWinFormsPackageVersion)' == ''">$(ProGpuWpfManagedPackageVersion)</ProGpuWpfLibreWinFormsPackageVersion>
     <ProGpuPackageVersion Condition="'$(ProGpuPackageVersion)' == ''">$(ProGpuWpfSdkVersion)</ProGpuPackageVersion>
+    <ProGpuWpfNet10SupportPackageVersion Condition="'$(ProGpuWpfNet10SupportPackageVersion)' == ''">10.0.9</ProGpuWpfNet10SupportPackageVersion>
+    <ProGpuWpfSystemConfigurationConfigurationManagerVersion Condition="'$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">$(ProGpuWpfNet10SupportPackageVersion)</ProGpuWpfSystemConfigurationConfigurationManagerVersion>
+    <ProGpuWpfSystemFormatsNrbfVersion Condition="'$(ProGpuWpfSystemFormatsNrbfVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">$(ProGpuWpfNet10SupportPackageVersion)</ProGpuWpfSystemFormatsNrbfVersion>
+    <ProGpuWpfSystemIOPackagingVersion Condition="'$(ProGpuWpfSystemIOPackagingVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">$(ProGpuWpfNet10SupportPackageVersion)</ProGpuWpfSystemIOPackagingVersion>
+    <ProGpuWpfSystemSecurityCryptographyXmlVersion Condition="'$(ProGpuWpfSystemSecurityCryptographyXmlVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">$(ProGpuWpfNet10SupportPackageVersion)</ProGpuWpfSystemSecurityCryptographyXmlVersion>
+    <ProGpuWpfSystemSecurityPermissionsVersion Condition="'$(ProGpuWpfSystemSecurityPermissionsVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">$(ProGpuWpfNet10SupportPackageVersion)</ProGpuWpfSystemSecurityPermissionsVersion>
+    <ProGpuWpfSystemWindowsExtensionsVersion Condition="'$(ProGpuWpfSystemWindowsExtensionsVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">$(ProGpuWpfNet10SupportPackageVersion)</ProGpuWpfSystemWindowsExtensionsVersion>
+    <ProGpuWpfSystemConfigurationConfigurationManagerVersion Condition="'$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemConfigurationConfigurationManagerVersion>
+    <ProGpuWpfSystemFormatsNrbfVersion Condition="'$(ProGpuWpfSystemFormatsNrbfVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemFormatsNrbfVersion>
+    <ProGpuWpfSystemIOPackagingVersion Condition="'$(ProGpuWpfSystemIOPackagingVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemIOPackagingVersion>
+    <ProGpuWpfSystemSecurityCryptographyXmlVersion Condition="'$(ProGpuWpfSystemSecurityCryptographyXmlVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemSecurityCryptographyXmlVersion>
+    <ProGpuWpfSystemSecurityPermissionsVersion Condition="'$(ProGpuWpfSystemSecurityPermissionsVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemSecurityPermissionsVersion>
+    <ProGpuWpfSystemWindowsExtensionsVersion Condition="'$(ProGpuWpfSystemWindowsExtensionsVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemWindowsExtensionsVersion>
     <ProGpuWpfClearMutablePackageOutputs Condition="'$(ProGpuWpfClearMutablePackageOutputs)' == '' And ('$([System.String]::Copy(`$(ProGpuWpfPackageVersion)`).Contains(`-dev`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuWpfPackageVersion)`).Contains(`-preview`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuWpfManagedPackageVersion)`).Contains(`-dev`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuWpfManagedPackageVersion)`).Contains(`-preview`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuPackageVersion)`).Contains(`-dev`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuPackageVersion)`).Contains(`-preview`))' == 'True')">true</ProGpuWpfClearMutablePackageOutputs>
     <ProGpuWpfClearMutablePackageOutputs Condition="'$(ProGpuWpfClearMutablePackageOutputs)' == ''">false</ProGpuWpfClearMutablePackageOutputs>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ManagePackageVersionsCentrally)' != 'true'">
+    <PackageReference Include="Silk.NET.Input" Version="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="Silk.NET.Windowing" Version="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="Silk.NET.WebGPU" Version="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" />
+    <PackageReference Include="System.Formats.Nrbf" Version="$(ProGpuWpfSystemFormatsNrbfVersion)" />
+    <PackageReference Include="System.IO.Packaging" Version="$(ProGpuWpfSystemIOPackagingVersion)" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="$(ProGpuWpfSystemSecurityCryptographyXmlVersion)" />
+    <PackageReference Include="System.Security.Permissions" Version="$(ProGpuWpfSystemSecurityPermissionsVersion)" />
+    <PackageReference Include="System.Windows.Extensions" Version="$(ProGpuWpfSystemWindowsExtensionsVersion)" />
+    <PackageReference Include="OpenFontSharp" Version="$(ProGpuWpfOpenFontSharpVersion)" />
+    <PackageReference Include="StbImageSharp" Version="$(ProGpuWpfStbImageSharpVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ManagePackageVersionsCentrally)' == 'true'">
+    <PackageReference Include="Silk.NET.Input" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="Silk.NET.Windowing" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="Silk.NET.WebGPU" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" VersionOverride="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" />
+    <PackageReference Include="System.Formats.Nrbf" VersionOverride="$(ProGpuWpfSystemFormatsNrbfVersion)" />
+    <PackageReference Include="System.IO.Packaging" VersionOverride="$(ProGpuWpfSystemIOPackagingVersion)" />
+    <PackageReference Include="System.Security.Cryptography.Xml" VersionOverride="$(ProGpuWpfSystemSecurityCryptographyXmlVersion)" />
+    <PackageReference Include="System.Security.Permissions" VersionOverride="$(ProGpuWpfSystemSecurityPermissionsVersion)" />
+    <PackageReference Include="System.Windows.Extensions" VersionOverride="$(ProGpuWpfSystemWindowsExtensionsVersion)" />
+    <PackageReference Include="OpenFontSharp" VersionOverride="$(ProGpuWpfOpenFontSharpVersion)" />
+    <PackageReference Include="StbImageSharp" VersionOverride="$(ProGpuWpfStbImageSharpVersion)" />
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfEnablePortableBootstrap)' == 'true' And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe') And '$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'">
     <DefineConstants>$(DefineConstants);PROGPU_WPF_USE_LIBREWINFORMS</DefineConstants>
@@ -17,6 +60,17 @@
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
     <FrameworkReference Remove="Microsoft.WindowsDesktop.App.WPF" />
   </ItemGroup>
+
+  <Target Name="_ProGpuWpfSdkRemoveTransitiveWindowsDesktopFrameworkReferences"
+          AfterTargets="ResolvePackageAssets"
+          BeforeTargets="AddTransitiveFrameworkReferences"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
+    <ItemGroup>
+      <TransitiveFrameworkReference
+        Remove="@(TransitiveFrameworkReference)"
+        Condition="'%(TransitiveFrameworkReference.Identity)' == 'Microsoft.WindowsDesktop.App' Or '%(TransitiveFrameworkReference.Identity)' == 'Microsoft.WindowsDesktop.App.WPF'" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfEnablePortableBootstrap)' == 'true' And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe')">
     <Compile Include="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs"

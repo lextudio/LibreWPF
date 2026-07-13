@@ -183,9 +183,10 @@ public sealed class PortableSystemEventsTests
         };
 
         PortableWpfServiceRegistry.SystemThemeChanged += changed;
+        IDisposable? registration = null;
         try
         {
-            IDisposable registration = PortableWpfServiceRegistry.RegisterSystemThemeSource(source);
+            registration = PortableWpfServiceRegistry.RegisterSystemThemeSource(source);
             Assert.Equal(1, changeCount);
             Assert.True(PortableWpfServiceRegistry.TryGetSystemThemeSource(serviceKey, out IPortableSystemThemeSource registered));
             Assert.Same(source, registered);
@@ -198,6 +199,7 @@ public sealed class PortableSystemEventsTests
             Assert.Equal(PortableSystemTheme.Light, theme);
 
             registration.Dispose();
+            registration = null;
             Assert.Equal(3, changeCount);
             Assert.False(PortableWpfServiceRegistry.TryGetSystemThemeSource(serviceKey, out _));
 
@@ -206,6 +208,7 @@ public sealed class PortableSystemEventsTests
         }
         finally
         {
+            registration?.Dispose();
             PortableWpfServiceRegistry.SystemThemeChanged -= changed;
         }
     }

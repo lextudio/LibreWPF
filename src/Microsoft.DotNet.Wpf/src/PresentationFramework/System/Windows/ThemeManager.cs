@@ -2,13 +2,20 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using Microsoft.Win32;
+using ProGPU.Wpf.Interop;
 using System.Windows.Appearance;
 using System.Windows.Navigation;
+using System.Windows.Threading;
 
 namespace System.Windows;
 
 internal static class ThemeManager
 {
+    static ThemeManager()
+    {
+        PortableWpfServiceRegistry.SystemThemeChanged += OnPortableSystemThemeChanged;
+    }
+
     #region Internal Methods
 
     internal static void OnSystemThemeChanged()
@@ -453,6 +460,29 @@ internal static class ThemeManager
 
     private static bool IsSystemThemeLight()
     {
+        if (PortableWpfServiceRegistry.TryGetSystemThemeSource(
+                PortableWpfServiceKey.PresentationFramework,
+                out IPortableSystemThemeSource source) &&
+            source.TryGetSystemTheme(out PortableSystemTheme theme))
+        {
+            if (theme == PortableSystemTheme.Light)
+            {
+                return true;
+            }
+
+            if (theme == PortableSystemTheme.Dark)
+            {
+                return false;
+            }
+        }
+
+        // The registry-backed setting remains the native Windows fallback. A
+        // portable host that cannot report appearance uses deterministic light.
+        if (!OperatingSystem.IsWindows())
+        {
+            return true;
+        }
+
         var useLightTheme = Registry.GetValue(RegPersonalizeKeyPath,
             "AppsUseLightTheme", null) as int?;
 
@@ -463,6 +493,35 @@ internal static class ThemeManager
         }
 
         return useLightTheme != null && useLightTheme != 0;
+    }
+
+    private static void OnPortableSystemThemeChanged(object sender, EventArgs e)
+    {
+        if (sender is IPortableSystemThemeSource source &&
+            source.ServiceKey != PortableWpfServiceKey.PresentationFramework)
+        {
+            return;
+        }
+
+        Application application = Application.Current;
+        if (application == null)
+        {
+            return;
+        }
+
+        Dispatcher dispatcher = application.Dispatcher;
+        if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        if (dispatcher.CheckAccess())
+        {
+            OnSystemThemeChanged();
+            return;
+        }
+
+        dispatcher.BeginInvoke(DispatcherPriority.Normal, (Action)OnSystemThemeChanged);
     }
 
     #endregion

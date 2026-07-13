@@ -228,6 +228,18 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        if (WpfDrawingReplay.TryReplayDrawingImage(
+            imageSource,
+            rectangle,
+            _sink,
+            _imageSourceAdapter,
+            out var drawingImageStatus))
+        {
+            RegisterRetainedDependencies(imageSource);
+            CountDrawingReplayStatus(drawingImageStatus);
+            return;
+        }
+
         RegisterRetainedDependencies(imageSource);
         _sink.DrawImage(imageSource, rectangle);
         CountApplied();
@@ -238,6 +250,19 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         ThrowIfClosed();
         if (imageSource == null)
         {
+            return;
+        }
+
+        if (WpfDrawingReplay.TryReplayDrawingImage(
+            imageSource,
+            rectangle,
+            _sink,
+            _imageSourceAdapter,
+            out var drawingImageStatus))
+        {
+            RegisterRetainedDependencies(imageSource);
+            CountDrawingReplayStatus(drawingImageStatus);
+            CountUnsupportedStateIfAny(rectangleAnimations);
             return;
         }
 

@@ -104,6 +104,41 @@ public sealed class WpfMilRenderDataDecoderTests
     }
 
     [Fact]
+    public void DecodeNativeDrawImageReplaysTypedDrawingImageAsVectorGeometry()
+    {
+        var portableGeometry = CreatePortableRectangleGeometry(10, 20, 20, 10);
+        var drawing = new FakeGeometryDrawing(
+            Brushes.Blue,
+            new FakePortableGeometry(portableGeometry));
+        var resolver = new TestResolver();
+        resolver.RawResources[2] = new FakeDrawingImage(drawing);
+        var sink = new NativeTestSink();
+
+        var payload = new byte[40];
+        WriteRect(payload, 0, 100, 200, 80, 60);
+        WriteUInt32(payload, 32, 2);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawImage, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(new WpfReplayRect(100, 200, 80, 60), Assert.Single(sink.NativeClipBounds));
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(4, transform.M11);
+        Assert.Equal(6, transform.M22);
+        Assert.Equal(60, transform.M41);
+        Assert.Equal(80, transform.M42);
+        var draw = Assert.Single(sink.NativeDrawGeometries);
+        Assert.Same(Brushes.Blue, draw.Brush);
+        Assert.Null(draw.Pen);
+        Assert.Same(portableGeometry, draw.Geometry);
+        Assert.Empty(sink.Images);
+        Assert.Equal(2, sink.PopCount);
+    }
+
+    [Fact]
     public void DecodeNativeDrawGeometryUsesLocalRectanglePrimitiveWithoutGenericGeometryFallback()
     {
         var brush = Brushes.Red;
@@ -691,6 +726,7 @@ public sealed class WpfMilRenderDataDecoderTests
 
     private sealed class NativeTestSink :
         TestSink,
+        IWpfNativeTransformCommandSink,
         IWpfNativePrimitiveCommandSink,
         IWpfNativeGeometryCommandSink,
         IWpfNativeClipCommandSink
@@ -703,9 +739,16 @@ public sealed class WpfMilRenderDataDecoderTests
 
         public List<WpfReplayRect> NativeClipBounds { get; } = new();
 
+        public List<System.Numerics.Matrix4x4> NativeTransforms { get; } = new();
+
         public List<PortableGeometryPath> NativeGeometryClips { get; } = new();
 
         public List<MediaGeometry> NativeMediaGeometryClips { get; } = new();
+
+        public void PushNativeTransform(System.Numerics.Matrix4x4 transform)
+        {
+            NativeTransforms.Add(transform);
+        }
 
         public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
         {
@@ -776,6 +819,32 @@ public sealed class WpfMilRenderDataDecoderTests
         {
             portablePath = path;
             return true;
+        }
+    }
+
+    private sealed class FakeGeometryDrawing(
+        object? brush,
+        object? geometry) : IPortableGeometryDrawingStateSource
+    {
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = new PortableGeometryDrawingState
+            {
+                HasBrush = brush != null,
+                Brush = brush,
+                HasGeometry = geometry != null,
+                Geometry = geometry
+            };
+            return true;
+        }
+    }
+
+    private sealed class FakeDrawingImage(object? drawing) : IPortableDrawingImageSource
+    {
+        public bool TryGetPortableDrawingImage(out object? portableDrawing)
+        {
+            portableDrawing = drawing;
+            return portableDrawing != null;
         }
     }
 

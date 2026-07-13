@@ -13,6 +13,7 @@ using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableGeometryPath = ProGPU.Wpf.Interop.PortableGeometryPath;
 using PortableGeometryPathSource = ProGPU.Wpf.Interop.IPortableGeometryPathSource;
+using PortableDrawingImageSource = ProGPU.Wpf.Interop.IPortableDrawingImageSource;
 using PortableNativeDrawingContextSource = ProGPU.Wpf.Interop.IPortableNativeDrawingContextSource;
 using PortableNativeDrawingContextState = ProGPU.Wpf.Interop.PortableNativeDrawingContextState;
 using PortableNativeDrawingContextStateSource = ProGPU.Wpf.Interop.IPortableNativeDrawingContextStateSource;
@@ -1032,6 +1033,25 @@ public sealed class WpfObjectRenderDataDrawingContext :
     public void DrawImage(object? imageSource, object? rectangle)
     {
         ThrowIfClosed();
+        if (imageSource is PortableDrawingImageSource)
+        {
+            if (!TryReadRect(rectangle, out var drawingImageRectangle))
+            {
+                CountUnsupported();
+                return;
+            }
+
+            WpfDrawingReplay.TryReplayDrawingImage(
+                imageSource,
+                drawingImageRectangle,
+                _sink,
+                _resources.AdaptImageSource,
+                out var drawingImageStatus);
+            RegisterRetainedDependencies(imageSource);
+            CountDrawingReplayStatus(drawingImageStatus);
+            return;
+        }
+
         MediaImageSource? mediaImageSource = _resources.AdaptImageSource(imageSource);
         if (mediaImageSource == null)
         {

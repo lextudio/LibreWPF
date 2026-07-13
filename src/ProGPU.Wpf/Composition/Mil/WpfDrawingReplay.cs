@@ -15,7 +15,9 @@ using MediaTransform = System.Windows.Media.Transform;
 using PortableAlignmentX = ProGPU.Wpf.Interop.PortableAlignmentX;
 using PortableAlignmentY = ProGPU.Wpf.Interop.PortableAlignmentY;
 using PortableBrushMappingMode = ProGPU.Wpf.Interop.PortableBrushMappingMode;
+using PortableDrawingBoundsSource = ProGPU.Wpf.Interop.IPortableDrawingBoundsSource;
 using PortableDrawingGroupChildrenSource = ProGPU.Wpf.Interop.IPortableDrawingGroupChildrenSource;
+using PortableDrawingImageSource = ProGPU.Wpf.Interop.IPortableDrawingImageSource;
 using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
 using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
 using PortableGlyphRunDrawingState = ProGPU.Wpf.Interop.PortableGlyphRunDrawingState;
@@ -173,6 +175,73 @@ internal static class WpfDrawingReplay
         }
 
         return WpfDrawingReplayStatus.Unsupported;
+    }
+
+    internal static bool TryReplayDrawingImage(
+        object? imageSource,
+        Rect destinationBounds,
+        IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
+        ArgumentNullException.ThrowIfNull(sink);
+
+        status = WpfDrawingReplayStatus.Skipped;
+        if (imageSource is not PortableDrawingImageSource drawingImageSource)
+        {
+            return false;
+        }
+
+        if (!drawingImageSource.TryGetPortableDrawingImage(out var drawing)
+            || drawing == null
+            || !IsUsableRect(destinationBounds, out destinationBounds))
+        {
+            return true;
+        }
+
+        if (!TryGetDrawingBounds(drawing, imageSourceAdapter, out var sourceBounds))
+        {
+            status = WpfDrawingReplayStatus.Unsupported;
+            return true;
+        }
+
+        var scaleX = destinationBounds.Width / sourceBounds.Width;
+        var scaleY = destinationBounds.Height / sourceBounds.Height;
+        var offsetX = destinationBounds.X - sourceBounds.X * scaleX;
+        var offsetY = destinationBounds.Y - sourceBounds.Y * scaleY;
+        var nativeScaleX = (float)scaleX;
+        var nativeScaleY = (float)scaleY;
+        var nativeOffsetX = (float)offsetX;
+        var nativeOffsetY = (float)offsetY;
+        if (!float.IsFinite(nativeScaleX)
+            || !float.IsFinite(nativeScaleY)
+            || !float.IsFinite(nativeOffsetX)
+            || !float.IsFinite(nativeOffsetY))
+        {
+            status = WpfDrawingReplayStatus.Unsupported;
+            return true;
+        }
+
+        PushRectangleClip(sink, destinationBounds);
+        WpfPortableCommandSinkBridge.PushTransform(
+            sink,
+            new Matrix4x4(
+                nativeScaleX, 0, 0, 0,
+                0, nativeScaleY, 0, 0,
+                0, 0, 1, 0,
+                nativeOffsetX, nativeOffsetY, 0, 1));
+
+        try
+        {
+            status = Replay(drawing, sink, imageSourceAdapter);
+        }
+        finally
+        {
+            sink.Pop();
+            sink.Pop();
+        }
+
+        return true;
     }
 
     private static WpfDrawingReplayStatus TryReplayGeometryDrawing(
@@ -757,6 +826,24 @@ internal static class WpfDrawingReplay
         switch (portableBrush.Kind)
         {
             case PortableTileBrushKind.Image:
+                if (portableBrush.Content is PortableDrawingImageSource drawingImageSource)
+                {
+                    if (!drawingImageSource.TryGetPortableDrawingImage(out var drawingImageContent)
+                        || drawingImageContent == null)
+                    {
+                        return true;
+                    }
+
+                    _ = TryReplayPortableDrawingBrushFill(
+                        portableBrush,
+                        drawingImageContent,
+                        fillGeometry,
+                        sink,
+                        imageSourceAdapter,
+                        out status);
+                    return true;
+                }
+
                 if (TryReplayPortableImageBrushFill(portableBrush, fillGeometry, sink, imageSourceAdapter))
                 {
                     status = WpfDrawingReplayStatus.Applied;
@@ -875,9 +962,26 @@ internal static class WpfDrawingReplay
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out WpfDrawingReplayStatus status)
     {
+        return TryReplayPortableDrawingBrushFill(
+            brush,
+            brush.Content,
+            geometry,
+            sink,
+            imageSourceAdapter,
+            out status);
+    }
+
+    private static bool TryReplayPortableDrawingBrushFill(
+        PortableTileBrush brush,
+        object? drawingValue,
+        TileBrushFillGeometry geometry,
+        IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
         status = WpfDrawingReplayStatus.Skipped;
-        var drawingValue = brush.Content;
-        if (!TryGetOptionalBrushTransform(brush, out var brushTransform)
+        if (drawingValue == null
+            || !TryGetOptionalBrushTransform(brush, out var brushTransform)
             || !TryGetSupportedTileMode(brush, out var tileMode)
             || !TryGetSupportedStretch(brush, out var stretch)
             || !TryGetTileBrushAlignment(brush, out var alignmentX, out var alignmentY)
@@ -1610,8 +1714,17 @@ internal static class WpfDrawingReplay
         }
 
         if (!TryGetImageDrawingImageSource(drawing, hasPortableImageDrawingState, imageDrawingState, out var imageValue)
-            || !TryGetImageDrawingRect(drawing, hasPortableImageDrawingState, imageDrawingState, out var rectangle)
-            || ResolveImageSource(imageValue, imageSourceAdapter) is not { } imageSource)
+            || !TryGetImageDrawingRect(drawing, hasPortableImageDrawingState, imageDrawingState, out var rectangle))
+        {
+            return WpfDrawingReplayStatus.Unsupported;
+        }
+
+        if (TryReplayDrawingImage(imageValue, rectangle, sink, imageSourceAdapter, out var drawingImageStatus))
+        {
+            return drawingImageStatus;
+        }
+
+        if (ResolveImageSource(imageValue, imageSourceAdapter) is not { } imageSource)
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
@@ -2892,6 +3005,19 @@ internal static class WpfDrawingReplay
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out Rect bounds)
     {
+        if (drawing is PortableDrawingBoundsSource drawingBoundsSource)
+        {
+            if (drawingBoundsSource.TryGetPortableDrawingBounds(out var portableBounds)
+                && TryReadPortableRect(portableBounds, out bounds)
+                && IsUsableRect(bounds, out bounds))
+            {
+                return true;
+            }
+
+            bounds = default;
+            return false;
+        }
+
         if (drawing is PortableDrawingGroupStateSource)
         {
             var hasPortableDrawingGroupState = TryGetPortableDrawingGroupState(
@@ -2903,7 +3029,12 @@ internal static class WpfDrawingReplay
                 return false;
             }
 
-            if (TryGetDrawingGroupBounds(drawing, hasPortableDrawingGroupState, drawingGroupState, out bounds)
+            var hasAuthoritativeBounds = TryGetDrawingGroupBounds(
+                drawing,
+                hasPortableDrawingGroupState,
+                drawingGroupState,
+                out bounds);
+            if (hasAuthoritativeBounds
                 || TryInferDrawingGroupContentBounds(
                     drawing,
                     hasPortableDrawingGroupState,
@@ -2911,11 +3042,12 @@ internal static class WpfDrawingReplay
                     imageSourceAdapter,
                     out bounds))
             {
-                if (TryGetDrawingGroupTransform(
-                    drawing,
-                    hasPortableDrawingGroupState,
-                    drawingGroupState,
-                    out var transformValue))
+                if (!hasAuthoritativeBounds
+                    && TryGetDrawingGroupTransform(
+                        drawing,
+                        hasPortableDrawingGroupState,
+                        drawingGroupState,
+                        out var transformValue))
                 {
                     if (!WpfResourceResolver.TryAdaptTransformMatrix(transformValue, out var transform))
                     {

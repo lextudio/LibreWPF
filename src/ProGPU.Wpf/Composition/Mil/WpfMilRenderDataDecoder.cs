@@ -219,9 +219,23 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawImage:
                 case WpfMilCommandId.DrawImageAnimate:
-                    if (TryResolveImageSource(resources, ReadUInt32(payload, 32), out var imageSource))
+                    var imageRect = ReadRect(payload, 0);
+                    var imageToken = ReadUInt32(payload, 32);
+                    if (TryReplayDrawingImage(resources, imageToken, imageRect, sink, out var drawingImageStatus))
                     {
-                        sink.DrawImage(imageSource, ReadRect(payload, 0));
+                        CountDrawingReplayStatus(
+                            drawingImageStatus,
+                            ref appliedCount,
+                            ref skippedCount,
+                            ref unsupportedCount);
+                        if (commandId == WpfMilCommandId.DrawImageAnimate)
+                        {
+                            unsupportedCount += CountUnsupportedAnimationHandles(payload, 36);
+                        }
+                    }
+                    else if (TryResolveImageSource(resources, imageToken, out var imageSource))
+                    {
+                        sink.DrawImage(imageSource, imageRect);
                         appliedCount++;
                         if (commandId == WpfMilCommandId.DrawImageAnimate)
                         {
@@ -554,7 +568,21 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawImage:
                 case WpfMilCommandId.DrawImageAnimate:
-                    if (TryResolveImageSource(resources, ReadUInt32(payload, 32), out var imageSource))
+                    var imageRect = ReadRect(payload, 0);
+                    var imageToken = ReadUInt32(payload, 32);
+                    if (TryReplayDrawingImage(resources, imageToken, imageRect, sink, out var drawingImageStatus))
+                    {
+                        CountDrawingReplayStatus(
+                            drawingImageStatus,
+                            ref appliedCount,
+                            ref skippedCount,
+                            ref unsupportedCount);
+                        if (commandId == WpfMilCommandId.DrawImageAnimate)
+                        {
+                            unsupportedCount += CountUnsupportedAnimationHandles(payload, 36);
+                        }
+                    }
+                    else if (TryResolveImageSource(resources, imageToken, out var imageSource))
                     {
                         nativeSink.DrawNativeImage(imageSource, ReadReplayRect(payload, 0));
                         appliedCount++;
@@ -836,6 +864,47 @@ public sealed class WpfMilRenderDataDecoder
     {
         imageSource = resourceToken == 0 ? null! : resources.ResolveImageSource(resourceToken)!;
         return imageSource != null;
+    }
+
+    private static bool TryReplayDrawingImage(
+        IWpfMilResourceResolver resources,
+        uint resourceToken,
+        Rect destinationBounds,
+        IWpfCompositionCommandSink sink,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        return TryResolveRawResource(resources, resourceToken, out var imageSource)
+            && WpfDrawingReplay.TryReplayDrawingImage(
+                imageSource,
+                destinationBounds,
+                sink,
+                null,
+                out status);
+    }
+
+    private static void CountDrawingReplayStatus(
+        WpfDrawingReplayStatus status,
+        ref int appliedCount,
+        ref int skippedCount,
+        ref int unsupportedCount)
+    {
+        switch (status)
+        {
+            case WpfDrawingReplayStatus.Applied:
+                appliedCount++;
+                break;
+            case WpfDrawingReplayStatus.PartiallyApplied:
+                appliedCount++;
+                unsupportedCount++;
+                break;
+            case WpfDrawingReplayStatus.Unsupported:
+                unsupportedCount++;
+                break;
+            case WpfDrawingReplayStatus.Skipped:
+                skippedCount++;
+                break;
+        }
     }
 
     private static bool TryResolveGlyphRun(IWpfMilResourceResolver resources, uint resourceToken, out MediaGlyphRun glyphRun)

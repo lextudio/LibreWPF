@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
 using PortableDrawingGroupChildrenSource = ProGPU.Wpf.Interop.IPortableDrawingGroupChildrenSource;
+using PortableDrawingImageSource = ProGPU.Wpf.Interop.IPortableDrawingImageSource;
 using PortableDrawingGroupState = ProGPU.Wpf.Interop.PortableDrawingGroupState;
 using PortableDrawingGroupStateSource = ProGPU.Wpf.Interop.IPortableDrawingGroupStateSource;
 using PortableGeometryDrawingStateSource = ProGPU.Wpf.Interop.IPortableGeometryDrawingStateSource;
@@ -975,6 +976,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             && drawingContent != null)
         {
             VisitPortableDependency(ref state, visitor, drawingContent);
+        }
+
+        if (source is PortableDrawingImageSource drawingImageSource
+            && drawingImageSource.TryGetPortableDrawingImage(out var drawingImageContent)
+            && drawingImageContent != null)
+        {
+            VisitPortableDependency(ref state, visitor, drawingImageContent);
         }
 
         if (source is PortableRenderDataSource renderDataSource

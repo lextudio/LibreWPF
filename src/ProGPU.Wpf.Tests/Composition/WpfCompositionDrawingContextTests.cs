@@ -888,6 +888,196 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextReplaysTypedDrawingImageCarrierIntoDestinationBounds()
+    {
+        var sink = new NativeRecordingSink();
+        var drawing = new FakeGeometryDrawing(
+            Brushes.Red,
+            null,
+            new FakeRectangleGeometry(new FakeRect(10, 20, 20, 10)));
+        var image = new FakeDrawingImageCarrier(drawing);
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+
+        context.DrawImage(image, new Rect(100, 200, 80, 60));
+
+        Assert.Equal(
+            new[] { "PushNativeClip", "PushNativeTransform", "DrawNativeGeometry", "Pop", "Pop" },
+            sink.Operations);
+        Assert.Equal(new WpfReplayRect(100, 200, 80, 60), Assert.Single(sink.NativeClips));
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(4, transform.M11);
+        Assert.Equal(6, transform.M22);
+        Assert.Equal(60, transform.M41);
+        Assert.Equal(80, transform.M42);
+        Assert.Single(sink.NativeGeometries);
+        Assert.Empty(sink.Images);
+        Assert.Empty(sink.NativeImages);
+        Assert.Contains(image, sink.VisualDependencies);
+        Assert.Contains(drawing, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextReplaysTypedDrawingImageSourceIntoDestinationBounds()
+    {
+        var sink = new NativeRecordingSink();
+        var drawing = new FakeGeometryDrawing(
+            Brushes.Blue,
+            null,
+            new FakeRectangleGeometry(new FakeRect(10, 20, 20, 10)));
+        var image = new FakeDrawingImageSource(drawing);
+        using var context = new WpfCompositionDrawingContext(sink);
+
+        context.DrawImage(image, new Rect(100, 200, 80, 60));
+
+        Assert.Equal(
+            new[] { "PushNativeClip", "PushNativeTransform", "DrawNativeGeometry", "Pop", "Pop" },
+            sink.Operations);
+        Assert.Equal(new WpfReplayRect(100, 200, 80, 60), Assert.Single(sink.NativeClips));
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(4, transform.M11);
+        Assert.Equal(6, transform.M22);
+        Assert.Equal(60, transform.M41);
+        Assert.Equal(80, transform.M42);
+        Assert.Single(sink.NativeGeometries);
+        Assert.Empty(sink.Images);
+        Assert.Empty(sink.NativeImages);
+        Assert.Contains(image, sink.VisualDependencies);
+        Assert.Contains(drawing, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextUsesStrokeInclusiveAuthoritativeDrawingBounds()
+    {
+        var sink = new NativeRecordingSink();
+        var pen = new MediaPen(Brushes.Black, 4);
+        var drawing = new FakeBoundedGeometryDrawing(
+            new PortableRect(8, 18, 24, 14),
+            Brushes.Blue,
+            pen,
+            new FakeRectangleGeometry(new FakeRect(10, 20, 20, 10)));
+        var image = new FakeDrawingImageSource(drawing);
+        using var context = new WpfCompositionDrawingContext(sink);
+
+        context.DrawImage(image, new Rect(100, 200, 120, 70));
+
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(5, transform.M11);
+        Assert.Equal(5, transform.M22);
+        Assert.Equal(60, transform.M41);
+        Assert.Equal(110, transform.M42);
+        var replayed = Assert.Single(sink.NativeGeometries);
+        Assert.Same(pen, replayed.Pen);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextDoesNotReapplyTransformToAuthoritativeDrawingGroupBounds()
+    {
+        var sink = new NativeRecordingSink();
+        var child = new FakeGeometryDrawing(
+            Brushes.Blue,
+            null,
+            new FakeRectangleGeometry(new FakeRect(10, 20, 20, 10)));
+        var groupTransform = new MatrixTransform(new Matrix
+        {
+            M11 = 1,
+            M22 = 1,
+            OffsetX = 30,
+            OffsetY = 40
+        });
+        var drawing = new FakeBoundedDrawingGroup(
+            new PortableRect(40, 60, 20, 10),
+            groupTransform,
+            child);
+        var image = new FakeDrawingImageSource(drawing);
+        using var context = new WpfCompositionDrawingContext(sink);
+
+        context.DrawImage(image, new Rect(100, 200, 80, 60));
+
+        Assert.Equal(2, sink.NativeTransforms.Count);
+        var imageTransform = sink.NativeTransforms[0];
+        Assert.Equal(4, imageTransform.M11);
+        Assert.Equal(6, imageTransform.M22);
+        Assert.Equal(-60, imageTransform.M41);
+        Assert.Equal(-160, imageTransform.M42);
+        var replayTransform = sink.NativeTransforms[1];
+        Assert.Equal(30, replayTransform.M41);
+        Assert.Equal(40, replayTransform.M42);
+        Assert.Single(sink.NativeGeometries);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextReplaysNestedImageDrawingWithoutBitmapFallback()
+    {
+        var sink = new NativeRecordingSink();
+        var innerDrawing = new FakeGeometryDrawing(
+            Brushes.Green,
+            null,
+            new FakeRectangleGeometry(new FakeRect(10, 20, 20, 10)));
+        var innerImage = new FakeDrawingImageCarrier(innerDrawing);
+        var outerDrawing = new FakeImageDrawing(innerImage, new FakeRect(30, 40, 50, 60));
+        var outerImage = new FakeDrawingImageSource(outerDrawing);
+        using var context = new WpfCompositionDrawingContext(sink);
+
+        context.DrawImage(outerImage, new Rect(100, 200, 100, 120));
+
+        Assert.Equal(2, sink.NativeTransforms.Count);
+        var outerTransform = sink.NativeTransforms[0];
+        Assert.Equal(2, outerTransform.M11);
+        Assert.Equal(2, outerTransform.M22);
+        Assert.Equal(40, outerTransform.M41);
+        Assert.Equal(120, outerTransform.M42);
+        var innerTransform = sink.NativeTransforms[1];
+        Assert.Equal(2.5f, innerTransform.M11);
+        Assert.Equal(6, innerTransform.M22);
+        Assert.Equal(5, innerTransform.M41);
+        Assert.Equal(-80, innerTransform.M42);
+        Assert.Single(sink.NativeGeometries);
+        Assert.Empty(sink.Images);
+        Assert.Empty(sink.NativeImages);
+        Assert.Contains(outerImage, sink.VisualDependencies);
+        Assert.Contains(outerDrawing, sink.VisualDependencies);
+        Assert.Contains(innerImage, sink.VisualDependencies);
+        Assert.Contains(innerDrawing, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextReplaysDrawingImageBackedImageBrushThroughDrawingTiles()
+    {
+        var sink = new NativeRecordingSink();
+        var drawing = new FakeGeometryDrawing(
+            Brushes.Green,
+            null,
+            new FakeRectangleGeometry(new FakeRect(10, 20, 20, 10)));
+        var drawingImage = new FakeDrawingImageCarrier(drawing);
+        var imageBrush = new FakeImageBrush(drawingImage);
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+
+        context.DrawRectangle(imageBrush, null, new Rect(100, 200, 80, 60));
+
+        Assert.Equal(
+            new[] { "PushNativeClip", "PushNativeTransform", "DrawNativeGeometry", "Pop", "Pop" },
+            sink.Operations);
+        Assert.Equal(new WpfReplayRect(100, 200, 80, 60), Assert.Single(sink.NativeClips));
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(4, transform.M11);
+        Assert.Equal(6, transform.M22);
+        Assert.Equal(60, transform.M41);
+        Assert.Equal(80, transform.M42);
+        Assert.Single(sink.NativeGeometries);
+        Assert.Empty(sink.Images);
+        Assert.Empty(sink.NativeImages);
+        Assert.Contains(imageBrush, sink.VisualDependencies);
+        Assert.Contains(drawingImage, sink.VisualDependencies);
+        Assert.Contains(drawing, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextReplaysImageBrushRectangleThroughImageSourceAdapter()
     {
         var sink = new RecordingSink();
@@ -2493,6 +2683,90 @@ public sealed class WpfCompositionDrawingContextTests
 
     private sealed class FakeImageSource : MediaImageSource
     {
+    }
+
+    private sealed class FakeDrawingImageSource : MediaImageSource, IPortableDrawingImageSource
+    {
+        private readonly object? _drawing;
+
+        public FakeDrawingImageSource(object? drawing)
+        {
+            _drawing = drawing;
+        }
+
+        public bool TryGetPortableDrawingImage(out object? drawing)
+        {
+            drawing = _drawing;
+            return drawing != null;
+        }
+    }
+
+    private sealed class FakeDrawingImageCarrier : IPortableDrawingImageSource
+    {
+        private readonly object? _drawing;
+
+        public FakeDrawingImageCarrier(object? drawing)
+        {
+            _drawing = drawing;
+        }
+
+        public bool TryGetPortableDrawingImage(out object? drawing)
+        {
+            drawing = _drawing;
+            return drawing != null;
+        }
+    }
+
+    private sealed class FakeBoundedGeometryDrawing(
+        PortableRect bounds,
+        object? brush,
+        object? pen,
+        object? geometry) : IPortableDrawingBoundsSource, IPortableGeometryDrawingStateSource
+    {
+        public bool TryGetPortableDrawingBounds(out PortableRect drawingBounds)
+        {
+            drawingBounds = bounds;
+            return true;
+        }
+
+        public bool TryGetPortableGeometryDrawingState(out PortableGeometryDrawingState state)
+        {
+            state = new PortableGeometryDrawingState
+            {
+                HasBrush = brush != null,
+                Brush = brush,
+                HasPen = pen != null,
+                Pen = pen,
+                HasGeometry = geometry != null,
+                Geometry = geometry
+            };
+            return true;
+        }
+    }
+
+    private sealed class FakeBoundedDrawingGroup(
+        PortableRect bounds,
+        object transform,
+        params object[] children) : IPortableDrawingBoundsSource, IPortableDrawingGroupStateSource
+    {
+        public bool TryGetPortableDrawingBounds(out PortableRect drawingBounds)
+        {
+            drawingBounds = bounds;
+            return true;
+        }
+
+        public bool TryGetPortableDrawingGroupState(out PortableDrawingGroupState state)
+        {
+            state = new PortableDrawingGroupState
+            {
+                HasBounds = true,
+                Bounds = bounds,
+                HasTransform = true,
+                Transform = transform,
+                Children = children
+            };
+            return true;
+        }
     }
 
     private sealed class PortablePathMediaGeometry : MediaGeometry, IPortableGeometryPathSource

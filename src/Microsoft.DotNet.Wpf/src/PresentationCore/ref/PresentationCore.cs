@@ -5682,12 +5682,13 @@ namespace System.Windows.Media
         public override object ConvertTo(System.ComponentModel.ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, System.Type destinationType) { throw null; }
     }
     [System.Windows.LocalizabilityAttribute(System.Windows.LocalizationCategory.None, Readability = System.Windows.Readability.Unreadable)]
-    public abstract partial class Drawing : System.Windows.Media.Animation.Animatable
+    public abstract partial class Drawing : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortableDrawingBoundsSource
     {
         internal Drawing() { }
         public System.Windows.Rect Bounds { get { throw null; } }
         public new System.Windows.Media.Drawing Clone() { throw null; }
         public new System.Windows.Media.Drawing CloneCurrentValue() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableDrawingBoundsSource.TryGetPortableDrawingBounds(out ProGPU.Wpf.Interop.PortableRect bounds) { throw null; }
     }
     public sealed partial class DrawingBrush : System.Windows.Media.TileBrush
     {
@@ -5847,7 +5848,7 @@ namespace System.Windows.Media
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
         public System.Windows.Media.DrawingContext Open() { throw null; }
     }
-    public sealed partial class DrawingImage : System.Windows.Media.ImageSource
+    public sealed partial class DrawingImage : System.Windows.Media.ImageSource, ProGPU.Wpf.Interop.IPortableDrawingImageSource
     {
         public static readonly System.Windows.DependencyProperty DrawingProperty;
         public DrawingImage() { }
@@ -5858,6 +5859,7 @@ namespace System.Windows.Media
         public override double Width { get { throw null; } }
         public new System.Windows.Media.DrawingImage Clone() { throw null; }
         public new System.Windows.Media.DrawingImage CloneCurrentValue() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableDrawingImageSource.TryGetPortableDrawingImage(out object drawing) { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
     public partial class DrawingVisual : System.Windows.Media.ContainerVisual, ProGPU.Wpf.Interop.IPortableDrawingContentSource

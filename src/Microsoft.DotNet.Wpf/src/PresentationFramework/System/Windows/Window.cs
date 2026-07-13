@@ -3267,7 +3267,19 @@ namespace System.Windows
                 // Popup.s_wpfOpenPopupCount) so it correctly suppresses these spurious
                 // moves from our own popup windows, without leaking capture to
                 // unrelated windows.
-                if (Mouse.Captured != null && !System.Windows.Controls.Primitives.Popup.HasAnyOpenPopupInWpf)
+                // Also don't release capture while a mouse button is physically held: that is an
+                // in-progress captured drag (e.g. an AvalonDock splitter Thumb), not a detached popup.
+                // Showing a transient top-level window mid-drag (the resizer-ghost overlay on
+                // DragStarted) makes the OS reposition this window, and releasing the Thumb's capture
+                // here ends the drag after a single move. A genuine popup-dismissing move never happens
+                // with a button held, so preserving capture in that case is correct.
+                bool mouseButtonHeld =
+                    Mouse.LeftButton == MouseButtonState.Pressed ||
+                    Mouse.MiddleButton == MouseButtonState.Pressed ||
+                    Mouse.RightButton == MouseButtonState.Pressed;
+
+                if (Mouse.Captured != null && !mouseButtonHeld &&
+                    !System.Windows.Controls.Primitives.Popup.HasAnyOpenPopupInWpf)
                 {
                     TraceWindowMoveCapture("HandlePortableMove RELEASE capture captured=" + (Mouse.Captured?.GetType().FullName ?? "null"));
                     Mouse.Capture(null);

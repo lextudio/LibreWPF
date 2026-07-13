@@ -3072,6 +3072,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        if (!double.IsFinite(dpiScaleX) || dpiScaleX <= 0.0 ||
+            !double.IsFinite(dpiScaleY) || dpiScaleY <= 0.0)
+        {
+            return false;
+        }
+
         if (double.IsFinite(_portablePresentationSourceDpiScaleX) &&
             double.IsFinite(_portablePresentationSourceDpiScaleY) &&
             Math.Abs(_portablePresentationSourceDpiScaleX - dpiScaleX) < double.Epsilon &&
@@ -3083,6 +3089,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         if (!_portablePresentationSourceBridge.TrySetDeviceScale(dpiScaleX, dpiScaleY))
         {
             return false;
+        }
+
+        for (int i = 0; i < _portablePopupBridges.Count; i++)
+        {
+            _portablePopupBridges[i].TrySetDeviceScale(dpiScaleX, dpiScaleY);
         }
 
         _portablePresentationSourceDpiScaleX = dpiScaleX;

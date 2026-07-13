@@ -162,7 +162,13 @@ namespace MS.Internal
         /// </summary>
         public static Point ClientToScreen(Point pointClient, PresentationSource presentationSource)
         {
-            // For now we only know how to use HwndSource.
+            if (TryGetPortablePresentationSource(presentationSource, out PortablePresentationSource portableSource))
+            {
+                Point origin = portableSource.ClientOrigin;
+                return new Point(pointClient.X + origin.X, pointClient.Y + origin.Y);
+            }
+
+            // For native sources we only know how to use HwndSource.
             HwndSource inputSource = presentationSource as HwndSource;
             if(inputSource == null || inputSource.IsPortable)
             {
@@ -184,7 +190,13 @@ namespace MS.Internal
         /// </summary>
         internal static Point ScreenToClient(Point pointScreen, PresentationSource presentationSource)
         {
-            // For now we only know how to use HwndSource.
+            if (TryGetPortablePresentationSource(presentationSource, out PortablePresentationSource portableSource))
+            {
+                Point origin = portableSource.ClientOrigin;
+                return new Point(pointScreen.X - origin.X, pointScreen.Y - origin.Y);
+            }
+
+            // For native sources we only know how to use HwndSource.
             HwndSource inputSource = presentationSource as HwndSource;
             if(inputSource == null || inputSource.IsPortable)
             {
@@ -200,6 +212,27 @@ namespace MS.Internal
             ptClient = AdjustForRightToLeft(ptClient, handleRef);
 
             return ToPoint(ptClient);
+        }
+
+        private static bool TryGetPortablePresentationSource(
+            PresentationSource presentationSource,
+            out PortablePresentationSource portableSource)
+        {
+            portableSource = presentationSource as PortablePresentationSource;
+            if (portableSource != null)
+            {
+                return true;
+            }
+
+            if (presentationSource is HwndSource hwndSource &&
+                hwndSource.IsPortable &&
+                hwndSource.PortableOwner is PortablePresentationSource portableOwner)
+            {
+                portableSource = portableOwner;
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>

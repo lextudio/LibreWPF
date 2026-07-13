@@ -16,6 +16,8 @@ internal sealed class WpfPortablePopupBridge : IDisposable
 
     private readonly ProGpuWpfWindowHost _host;
     private readonly IPortablePresentationSourceHost _source;
+    private double _dpiScaleX;
+    private double _dpiScaleY;
     private Func<double, double, object?>? _hitTestOverrideHandler;
     private Func<double, double, object?[]?>? _hitTestAllOverrideHandler;
     private PortableHitTestAllBufferOverride? _hitTestAllBufferOverrideHandler;
@@ -29,15 +31,20 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         ProGpuWpfWindowHost host,
         IPortablePresentationSourceHost source,
         int x,
-        int y)
+        int y,
+        double dpiScaleX,
+        double dpiScaleY)
     {
         _host = host;
         _source = source;
+        _dpiScaleX = dpiScaleX;
+        _dpiScaleY = dpiScaleY;
         X = x;
         Y = y;
         Width = 1;
         Height = 1;
         IsHitTestable = true;
+        _source.SetClientOrigin(x, y);
     }
 
     public object Source => _source;
@@ -73,12 +80,14 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         ArgumentNullException.ThrowIfNull(host);
         ArgumentNullException.ThrowIfNull(request);
 
+        double dpiScaleX = host.CurrentDpiScaleX;
+        double dpiScaleY = host.CurrentDpiScaleY;
         IPortablePresentationSourceHost source;
         try
         {
             source = PortablePresentationSourceFactory(
-                host.CurrentDpiScaleX,
-                host.CurrentDpiScaleY);
+                dpiScaleX,
+                dpiScaleY);
         }
         catch (PlatformNotSupportedException)
         {
@@ -86,13 +95,39 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             return false;
         }
 
-        bridge = new WpfPortablePopupBridge(host, source, request.X, request.Y);
+        bridge = new WpfPortablePopupBridge(host, source, request.X, request.Y, dpiScaleX, dpiScaleY);
         bridge.SubscribeToSource();
         bridge.InstallHitTestOverrides();
         Trace(
             "create " +
             $"x={request.X} y={request.Y} " +
             $"transparent={request.IsTransparent} child={request.IsChildPopup}");
+        return true;
+    }
+
+    public bool TrySetDeviceScale(double dpiScaleX, double dpiScaleY)
+    {
+        ThrowIfDisposed();
+        if (!double.IsFinite(dpiScaleX) || dpiScaleX <= 0.0 ||
+            !double.IsFinite(dpiScaleY) || dpiScaleY <= 0.0)
+        {
+            return false;
+        }
+
+        if (Math.Abs(_dpiScaleX - dpiScaleX) < double.Epsilon &&
+            Math.Abs(_dpiScaleY - dpiScaleY) < double.Epsilon)
+        {
+            return false;
+        }
+
+        X = ScaleDeviceCoordinate(X, _dpiScaleX, dpiScaleX);
+        Y = ScaleDeviceCoordinate(Y, _dpiScaleY, dpiScaleY);
+        _dpiScaleX = dpiScaleX;
+        _dpiScaleY = dpiScaleY;
+        _source.SetDeviceScale(dpiScaleX, dpiScaleY);
+        _source.SetClientOrigin(X, Y);
+        Trace($"dpi scale=({dpiScaleX:0.###},{dpiScaleY:0.###}) origin=({X},{Y})");
+        RequestRender();
         return true;
     }
 
@@ -106,6 +141,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
 
         X = x;
         Y = y;
+        _source.SetClientOrigin(x, y);
         Trace($"position x={x} y={y}");
         RequestRender();
         return true;
@@ -568,6 +604,22 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             WpfInputEventKind.MouseDown or
             WpfInputEventKind.MouseUp or
             WpfInputEventKind.MouseWheel;
+    }
+
+    private static int ScaleDeviceCoordinate(int coordinate, double oldScale, double newScale)
+    {
+        double value = coordinate / oldScale * newScale;
+        if (value <= int.MinValue)
+        {
+            return int.MinValue;
+        }
+
+        if (value >= int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        return (int)Math.Round(value, MidpointRounding.AwayFromZero);
     }
 
     private void ThrowIfDisposed()

@@ -26,6 +26,7 @@ namespace System.Windows
         private const int HitTestOwnerBufferCapacity = 64;
         private Visual _rootVisual;
         private Size _clientSize;
+        private Point _clientOrigin;
         private Func<double, double, object> _hostHitTestOverride;
         private Func<double, double, object[]> _hostHitTestAllOverride;
         private PortableHitTestAllBufferOverride _hostHitTestAllBufferOverride;
@@ -219,6 +220,11 @@ namespace System.Windows
             SetClientSize(width, height);
         }
 
+        void IPortablePresentationSourceHost.SetClientOrigin(double x, double y)
+        {
+            SetClientOrigin(x, y);
+        }
+
         bool IPortablePresentationSourceHost.TryUpdateRootVisualClientSize(out double width, out double height)
         {
             return TryUpdateRootVisualClientSize(out width, out height);
@@ -288,6 +294,27 @@ namespace System.Windows
             _clientSize = clientSize;
             _hasClientSize = true;
             ApplyRootVisualLayout();
+            RequestRender();
+        }
+
+        internal Point ClientOrigin
+        {
+            get { return _clientOrigin; }
+        }
+
+        internal void SetClientOrigin(double x, double y)
+        {
+            VerifyNotDisposed();
+
+            Point origin = new Point(
+                ToFiniteClientOrigin(x),
+                ToFiniteClientOrigin(y));
+            if (_clientOrigin == origin)
+            {
+                return;
+            }
+
+            _clientOrigin = origin;
             RequestRender();
         }
 
@@ -442,6 +469,11 @@ namespace System.Windows
         private static double ToPositiveFiniteClientSize(double value)
         {
             return double.IsFinite(value) && value > 0.0 ? value : 1.0;
+        }
+
+        private static double ToFiniteClientOrigin(double value)
+        {
+            return double.IsFinite(value) ? value : 0.0;
         }
 
         private void QueueContentRendered()

@@ -2731,12 +2731,8 @@ namespace System.Windows.Controls.Primitives
         {
             if (!OperatingSystem.IsWindows())
             {
-                Rect primaryScreenBounds = GetPortablePrimaryScreenBounds();
-                if (!primaryScreenBounds.IsEmpty)
-                {
-                    return primaryScreenBounds;
-                }
-
+                // Portable popups share the owner's compositor surface rather than independent
+                // native screen windows.  Keep placement and edge nudging inside that client area.
                 Rect sourceBounds = _secHelper.GetParentWindowRect();
                 return !sourceBounds.IsEmpty ? sourceBounds : boundingBox;
             }
@@ -2779,18 +2775,6 @@ namespace System.Windows.Controls.Primitives
             }
 
             return PointUtil.ToRect(rect);
-        }
-
-        private static Rect GetPortablePrimaryScreenBounds()
-        {
-            double width = SystemParameters.PrimaryScreenWidth;
-            double height = SystemParameters.PrimaryScreenHeight;
-            return double.IsFinite(width) &&
-                double.IsFinite(height) &&
-                width > 1.0 &&
-                height > 1.0
-                ? new Rect(0, 0, width, height)
-                : Rect.Empty;
         }
 
         private Rect GetMouseRect(PlacementMode placement)
@@ -3089,10 +3073,12 @@ namespace System.Windows.Controls.Primitives
                     return PointUtil.ToPoint(ClientToScreen(hwndSource, clientPoint));
                 }
 
-                CompositionTarget compositionTarget = targetWindow?.CompositionTarget;
-                if (compositionTarget != null && !compositionTarget.IsDisposed)
+                // TransformToClient already returned device-client coordinates.  PointUtil owns
+                // the remaining client-to-screen translation for portable sources; applying the
+                // composition target's DPI transform here would scale placement a second time.
+                if (targetWindow != null && !targetWindow.IsDisposed)
                 {
-                    return compositionTarget.TransformToDevice.Transform(clientPoint);
+                    return PointUtil.ClientToScreen(clientPoint, targetWindow);
                 }
 
                 return clientPoint;
@@ -3160,6 +3146,7 @@ namespace System.Windows.Controls.Primitives
                                     return ClientToScreen(hwndSource, pt);
                                 }
 
+                                pt = PointUtil.ClientToScreen(pt, presentationSource);
                                 return new NativeMethods.POINT((int)pt.X, (int)pt.Y);
                             }
                         }
@@ -3201,6 +3188,7 @@ namespace System.Windows.Controls.Primitives
 
                         Matrix transform = PointUtil.GetVisualTransform(rootVisual) * ct.TransformToDevice;
                         pt = transform.Transform(pt);
+                        pt = PointUtil.ClientToScreen(pt, presentationSource);
                     }
                 }
 
@@ -3260,7 +3248,7 @@ namespace System.Windows.Controls.Primitives
             {
                 if (!OperatingSystem.IsWindows())
                 {
-                    return GetPresentationSourceRootRect();
+                    return GetPresentationSourceRootRect(_portableOwnerPresentationSource);
                 }
 
                 NativeMethods.RECT rect = new NativeMethods.RECT(0, 0, 0, 0);
@@ -3274,9 +3262,9 @@ namespace System.Windows.Controls.Primitives
                 return PointUtil.ToRect(rect);
             }
 
-            private Rect GetPresentationSourceRootRect()
+            private static Rect GetPresentationSourceRootRect(PresentationSource source)
             {
-                CompositionTarget compositionTarget = _window?.CompositionTarget;
+                CompositionTarget compositionTarget = source?.CompositionTarget;
                 FrameworkElement rootElement = compositionTarget?.RootVisual as FrameworkElement;
                 if (rootElement == null)
                 {
@@ -3289,8 +3277,10 @@ namespace System.Windows.Controls.Primitives
                     return Rect.Empty;
                 }
 
-                Point minPoint = compositionTarget.TransformToDevice.Transform(new Point(0, 0));
-                Point maxPoint = compositionTarget.TransformToDevice.Transform(new Point(renderSize.Width, renderSize.Height));
+                Point minPoint = PointUtil.RootToClient(new Point(0, 0), source);
+                Point maxPoint = PointUtil.RootToClient(new Point(renderSize.Width, renderSize.Height), source);
+                minPoint = PointUtil.ClientToScreen(minPoint, source);
+                maxPoint = PointUtil.ClientToScreen(maxPoint, source);
                 return new Rect(minPoint, maxPoint);
             }
 
@@ -3298,7 +3288,7 @@ namespace System.Windows.Controls.Primitives
             {
                 if (!OperatingSystem.IsWindows())
                 {
-                    return GetPresentationSourceRootRect();
+                    return GetPresentationSourceRootRect(_window);
                 }
 
                 NativeMethods.RECT rect = new NativeMethods.RECT(0, 0, 0, 0);
@@ -3747,6 +3737,7 @@ namespace System.Windows.Controls.Primitives
                 // Do this first to prevent infinite loops in dispose
                 PresentationSource source = _window;
                 _window = null;
+                _portableOwnerPresentationSource = null;
 
                 if (source == null || source.IsDisposed)
                 {
@@ -3786,13 +3777,13 @@ namespace System.Windows.Controls.Primitives
                     return false;
                 }
 
-                Visual mainTreeVisual = placementTarget;
-                if (IsChildPopup)
-                {
-                    mainTreeVisual = FindMainTreeVisual(placementTarget);
-                }
+                // Portable popups are composited into one native owner surface.  Resolve through
+                // any PopupRoot ancestors even though the Win32 child-popup flag is not active, so
+                // nested menus use the main tree's presentation source and client bounds.
+                Visual mainTreeVisual = FindMainTreeVisual(placementTarget) ?? placementTarget;
 
                 PresentationSource ownerPresentationSource = GetPresentationSource(mainTreeVisual);
+                _portableOwnerPresentationSource = ownerPresentationSource;
                 var request = new PortablePopupCreateRequest(
                     placementTarget,
                     ownerPresentationSource,
@@ -3949,6 +3940,7 @@ namespace System.Windows.Controls.Primitives
 
             private PresentationSource _window;
             private IPortablePopupServiceRegistrar _portablePopupService;
+            private PresentationSource _portableOwnerPresentationSource;
 
             private const string WebOCWindowClassName = "Shell Embedding";
         }

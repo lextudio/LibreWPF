@@ -17391,6 +17391,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK ProGPU WPF composition render delegates to viewport render surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor canvas pixel width explicit render target", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU compositor physical render delegates to the retryable render core", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render pass viewport application", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor physical render target viewport", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RenderPassEncoderSetViewport", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -17444,6 +17445,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK ProGPU WPF composition render delegates to viewport render surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor canvas pixel width explicit render target", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU compositor physical render delegates to the retryable render core", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render pass viewport application", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor physical render target viewport", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RenderPassEncoderSetViewport", runtimeHarnessProgram, StringComparison.Ordinal);

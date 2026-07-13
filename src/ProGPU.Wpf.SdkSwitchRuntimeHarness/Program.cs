@@ -792,12 +792,20 @@ internal static class Program
             compositorType,
             "RenderScene",
             ["root", "width", "height", "targetView"]);
+        MethodInfo compositorPhysicalRenderSceneCore = FindMethodByParameterNames(
+            compositorType,
+            "RenderSceneCore",
+            ["root", "width", "height", "targetView"]);
         MethodInfo applyRenderPassViewport = FindMethodByNameAndParameterCount(
             compositorType,
             "ApplyRenderPassViewport",
             4);
-        AssertMethodCallsMethod(
+        AssertMethodCallsSpecificMethod(
             compositorPhysicalRenderScene,
+            compositorPhysicalRenderSceneCore,
+            "SDK ProGPU compositor physical render delegates to the retryable render core");
+        AssertMethodCallsMethod(
+            compositorPhysicalRenderSceneCore,
             compositorType.FullName ?? string.Empty,
             "ApplyRenderPassViewport",
             "SDK ProGPU compositor render pass viewport application");

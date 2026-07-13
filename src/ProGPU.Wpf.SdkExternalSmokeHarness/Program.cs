@@ -290,14 +290,14 @@ internal static class Program
         AssertContains(portableProps, "<EnableDefaultResourceItems Condition=\"'$(EnableDefaultResourceItems)' == ''\">true</EnableDefaultResourceItems>", "SDK default resource item switch");
         AssertContains(portableProps, "<ApplicationDefinition Include=\"App.xaml\"", "SDK default app XAML item");
         AssertContains(portableProps, "<Page Include=\"**/*.xaml\"", "SDK default page XAML item");
-        AssertContains(portableProps, "<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", "SDK native WebGPU package reference");
-        AssertContains(portableProps, "<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" VersionOverride=\"$(ProGpuWpfSilkNetVersion)\" />", "SDK CPM native WebGPU package reference");
-        AssertContains(portableProps, "<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", "SDK WPF support package reference");
-        AssertContains(portableProps, "<PackageReference Include=\"System.IO.Packaging\" VersionOverride=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", "SDK CPM WPF support package reference");
-        AssertContains(portableProps, "<PackageReference Include=\"OpenFontSharp\" Version=\"$(ProGpuWpfOpenFontSharpVersion)\" />", "SDK OpenFontSharp package reference");
-        AssertContains(portableProps, "<PackageReference Include=\"OpenFontSharp\" VersionOverride=\"$(ProGpuWpfOpenFontSharpVersion)\" />", "SDK CPM OpenFontSharp package reference");
-        AssertContains(portableProps, "<PackageReference Include=\"StbImageSharp\" Version=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK StbImageSharp package reference");
-        AssertContains(portableProps, "<PackageReference Include=\"StbImageSharp\" VersionOverride=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK CPM StbImageSharp package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", "SDK native WebGPU package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" VersionOverride=\"$(ProGpuWpfSilkNetVersion)\" />", "SDK CPM native WebGPU package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", "SDK WPF support package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"System.IO.Packaging\" VersionOverride=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", "SDK CPM WPF support package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"OpenFontSharp\" Version=\"$(ProGpuWpfOpenFontSharpVersion)\" />", "SDK OpenFontSharp package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"OpenFontSharp\" VersionOverride=\"$(ProGpuWpfOpenFontSharpVersion)\" />", "SDK CPM OpenFontSharp package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"StbImageSharp\" Version=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK StbImageSharp package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"StbImageSharp\" VersionOverride=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK CPM StbImageSharp package reference");
 
         AssertContains(portableTargets, "<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", "SDK WindowsDesktop framework suppression");
         AssertContains(portableTargets, "_ProGpuWpfSdkRemoveNetCoreSystemDrawingFacade", "SDK System.Drawing facade suppression target");

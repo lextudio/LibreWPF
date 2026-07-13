@@ -40,6 +40,43 @@
     </ItemGroup>
   </Target>
 
+  <!--
+    Microsoft.NETCore.App.Ref supplies System.Drawing.dll as a facade whose forwarded
+    System.Drawing.Common identity uses the platform public key.  ProGPU's portable
+    implementation deliberately has its own strong-name identity, so retaining that
+    facade makes forwarded drawing types bind to an assembly that is not present.
+
+    Remove only that targeting-pack facade when the ProGPU implementation is actually
+    resolved.  Running before ResolveAssemblyReferences also cleans the ReferencePath
+    snapshot passed to WPF's generated temporary markup-compilation project.
+  -->
+  <Target Name="_ProGpuWpfSdkRemoveNetCoreSystemDrawingFacade"
+          BeforeTargets="ResolveAssemblyReferences;GenerateTemporaryTargetAssembly;CoreCompile"
+          DependsOnTargets="ResolveTargetingPackAssets;ResolveLockFileReferences"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
+    <ItemGroup>
+      <_ProGpuWpfSystemDrawingCommonReference Remove="@(_ProGpuWpfSystemDrawingCommonReference)" />
+      <_ProGpuWpfSystemDrawingCommonReference
+        Include="@(ReferencePath)"
+        Condition="'%(ReferencePath.Filename)' == 'System.Drawing.Common' And ('%(ReferencePath.NuGetPackageId)' == 'ProGPU.System.Drawing.Common' Or $([System.String]::Copy('%(ReferencePath.Identity)').ToLowerInvariant().Contains('progpu.system.drawing.common')))" />
+      <_ProGpuWpfSystemDrawingCommonReference
+        Include="@(Reference)"
+        Condition="'%(Reference.Filename)' == 'System.Drawing.Common' And ('%(Reference.NuGetPackageId)' == 'ProGPU.System.Drawing.Common' Or $([System.String]::Copy('%(Reference.HintPath)').ToLowerInvariant().Contains('progpu.system.drawing.common')))" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'@(_ProGpuWpfSystemDrawingCommonReference)' != ''">
+      <Reference
+        Remove="@(Reference)"
+        Condition="'%(Reference.Filename)' == 'System.Drawing' And $([System.String]::Copy('%(Reference.RootDir)%(Reference.Directory)').ToLowerInvariant().Contains('microsoft.netcore.app.ref'))" />
+      <ReferencePath
+        Remove="@(ReferencePath)"
+        Condition="'%(ReferencePath.Filename)' == 'System.Drawing' And $([System.String]::Copy('%(ReferencePath.RootDir)%(ReferencePath.Directory)').ToLowerInvariant().Contains('microsoft.netcore.app.ref'))" />
+      <ReferencePathWithRefAssemblies
+        Remove="@(ReferencePathWithRefAssemblies)"
+        Condition="'%(ReferencePathWithRefAssemblies.Filename)' == 'System.Drawing' And $([System.String]::Copy('%(ReferencePathWithRefAssemblies.RootDir)%(ReferencePathWithRefAssemblies.Directory)').ToLowerInvariant().Contains('microsoft.netcore.app.ref'))" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package' And '$(ManagePackageVersionsCentrally)' != 'true'">
     <PackageReference Include="$(ProGpuWpfManagedPackageId)" Version="$(ProGpuWpfManagedPackageVersion)" />
     <PackageReference Include="LibreWPF.ProGPU" Version="$(ProGpuWpfPackageVersion)" />

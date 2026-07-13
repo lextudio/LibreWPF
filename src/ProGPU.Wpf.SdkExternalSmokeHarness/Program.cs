@@ -300,6 +300,11 @@ internal static class Program
         AssertContains(portableProps, "<PackageReference Include=\"StbImageSharp\" VersionOverride=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK CPM StbImageSharp package reference");
 
         AssertContains(portableTargets, "<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", "SDK WindowsDesktop framework suppression");
+        AssertContains(portableTargets, "_ProGpuWpfSdkRemoveNetCoreSystemDrawingFacade", "SDK System.Drawing facade suppression target");
+        AssertContains(portableTargets, "DependsOnTargets=\"ResolveTargetingPackAssets;ResolveLockFileReferences\"", "SDK System.Drawing facade suppression timing");
+        AssertContains(portableTargets, "'%(ReferencePath.NuGetPackageId)' == 'ProGPU.System.Drawing.Common'", "SDK ProGPU System.Drawing reference detection");
+        AssertContains(portableTargets, "<ReferencePathWithRefAssemblies", "SDK compiler System.Drawing facade suppression");
+        AssertContains(portableTargets, "microsoft.netcore.app.ref", "SDK targeting-pack System.Drawing facade filter");
         AssertContains(portableTargets, "<_ProGpuWpfDefaultResourceItem Include=\"**/*.bmp;**/*.cur;**/*.gif;**/*.ico;**/*.jpg;**/*.jpeg;**/*.png;**/*.tif;**/*.tiff;**/*.wdp;**/*.webp\"", "SDK default image resource item");
         AssertContains(portableTargets, "<Resource Include=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource include");
         AssertContains(portableTargets, "<None Remove=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource None removal");
@@ -755,6 +760,7 @@ internal static class Program
                 <None Include="App.config" />
                 <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
                 <PackageReference Include="Extended.Wpf.Toolkit" Version="5.1.2" />
+                <PackageReference Include="ProGPU.System.Drawing.Common" Version="{SdkVersion}" />
                 <Resource Include="Assets/ExternalResource.txt" />
                 <Resource Include="Assets/ExternalImage.png" />
                 <SplashScreen Include="Assets/ExternalSplash.png" />
@@ -763,6 +769,22 @@ internal static class Program
                   <TargetPath>Assets/ExternalContent.txt</TargetPath>
                 </Content>
               </ItemGroup>
+
+              <Target Name="ValidatePortableSystemDrawingCompilerReferences"
+                      BeforeTargets="CoreCompile">
+                <ItemGroup>
+                  <_ExternalProGpuSystemDrawingReference
+                    Include="@(ReferencePathWithRefAssemblies)"
+                    Condition="'%(ReferencePathWithRefAssemblies.Filename)' == 'System.Drawing.Common' And ('%(ReferencePathWithRefAssemblies.NuGetPackageId)' == 'ProGPU.System.Drawing.Common' Or $([System.String]::Copy('%(ReferencePathWithRefAssemblies.Identity)').ToLowerInvariant().Contains('progpu.system.drawing.common')))" />
+                  <_ExternalNetCoreSystemDrawingFacade
+                    Include="@(ReferencePathWithRefAssemblies)"
+                    Condition="'%(ReferencePathWithRefAssemblies.Filename)' == 'System.Drawing' And $([System.String]::Copy('%(ReferencePathWithRefAssemblies.RootDir)%(ReferencePathWithRefAssemblies.Directory)').ToLowerInvariant().Contains('microsoft.netcore.app.ref'))" />
+                </ItemGroup>
+                <Error Condition="'@(_ExternalProGpuSystemDrawingReference)' == ''"
+                       Text="The external SDK smoke did not resolve ProGPU.System.Drawing.Common." />
+                <Error Condition="'@(_ExternalNetCoreSystemDrawingFacade)' != ''"
+                       Text="The external SDK smoke retained the Microsoft.NETCore.App.Ref System.Drawing facade: @(_ExternalNetCoreSystemDrawingFacade)." />
+              </Target>
             </Project>
             """,
                 OriginalWindowsDesktopWpfSdk,
@@ -821,6 +843,24 @@ internal static class Program
 
             public partial class App : Application
             {
+            }
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "PortableDrawingContract.cs"),
+            """
+            using System.Drawing;
+
+            namespace ExternalSdkApp;
+
+            internal static class PortableDrawingContract
+            {
+                internal static Color ReadPixel()
+                {
+                    using var bitmap = new Bitmap(1, 1);
+                    bitmap.SetPixel(0, 0, Color.FromArgb(255, 37, 73, 109));
+                    return bitmap.GetPixel(0, 0);
+                }
             }
             """);
 

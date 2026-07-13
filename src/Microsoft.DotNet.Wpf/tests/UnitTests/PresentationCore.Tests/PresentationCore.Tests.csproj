@@ -30,6 +30,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="$(WpfSourceDir)PresentationCore\Fonts\LibreWPF.FluentSymbols\LibreWPF.FluentSymbols.ttf"
+          Link="LibreWPF\Fonts\LibreWPF.FluentSymbols.ttf"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AwesomeAssertions" Version="$(AwesomeAssertionsVersion)" />
     <PackageReference Include="Moq" Version="$(MoqPackageVersion)" />
     <PackageReference Include="xunit.stafact" Version="$(XUnitStaFactPackageVersion)" />

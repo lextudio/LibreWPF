@@ -23,6 +23,22 @@
   <ItemGroup>
     <PackagingContent Include="README.md" SubFolder="root" />
     <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="LibreWPF.Transport.targets" Pack="true" PackagePath="buildTransitive" />
+    <None Include="..\..\src\Microsoft.DotNet.Wpf\src\PresentationCore\Fonts\LibreWPF.FluentSymbols\LibreWPF.FluentSymbols.ttf"
+          Pack="true"
+          PackagePath="buildTransitive/assets/LibreWPF/Fonts" />
+    <None Include="..\..\src\Microsoft.DotNet.Wpf\src\PresentationCore\Fonts\LibreWPF.FluentSymbols\NOTICE.md"
+          Pack="true"
+          PackagePath="notices/LibreWPF.FluentSymbols" />
+    <None Include="..\..\src\Microsoft.DotNet.Wpf\src\PresentationCore\Fonts\LibreWPF.FluentSymbols\SOURCE-MANIFEST.json"
+          Pack="true"
+          PackagePath="notices/LibreWPF.FluentSymbols" />
+    <None Include="..\..\src\Microsoft.DotNet.Wpf\src\PresentationCore\Fonts\LibreWPF.FluentSymbols\LegacyFluentGlyphMap.json"
+          Pack="true"
+          PackagePath="notices/LibreWPF.FluentSymbols" />
+    <None Include="..\..\src\Microsoft.DotNet.Wpf\src\PresentationCore\Fonts\LibreWPF.FluentSymbols\licenses\*"
+          Pack="true"
+          PackagePath="notices/LibreWPF.FluentSymbols/licenses" />
   </ItemGroup>
 
   <Target Name="RemoveStaleLibreWpfTransportPayload"

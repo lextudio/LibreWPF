@@ -80,6 +80,28 @@ require_entry_contains() {
   fi
 }
 
+sha256_stdin() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum | awk '{print $1}'
+  else
+    shasum -a 256 | awk '{print $1}'
+  fi
+}
+
+require_entry_sha256() {
+  local package_id="$1"
+  local entry="$2"
+  local expected="$3"
+  local package_file
+  local actual
+  package_file="$(package_path "${package_id}")"
+  actual="$(unzip -p "${package_file}" "${entry}" | sha256_stdin)"
+  if [[ "${actual}" != "${expected}" ]]; then
+    echo "Package ${package_id} entry '${entry}' has SHA-256 ${actual}, expected ${expected}." >&2
+    exit 1
+  fi
+}
+
 reject_entry() {
   local package_id="$1"
   local entry="$2"
@@ -207,11 +229,39 @@ transport_entries=(
   "ref/${transport_target_framework}/System.Windows.Controls.Ribbon.dll"
   "ref/${transport_target_framework}/System.Printing.dll"
   "ref/${transport_target_framework}/UIAutomationTypes.dll"
+  "buildTransitive/LibreWPF.Transport.targets"
+  "buildTransitive/assets/LibreWPF/Fonts/LibreWPF.FluentSymbols.ttf"
+  "notices/LibreWPF.FluentSymbols/NOTICE.md"
+  "notices/LibreWPF.FluentSymbols/SOURCE-MANIFEST.json"
+  "notices/LibreWPF.FluentSymbols/LegacyFluentGlyphMap.json"
+  "notices/LibreWPF.FluentSymbols/licenses/Uno.Fonts-APACHE-2.0.txt"
+  "notices/LibreWPF.FluentSymbols/licenses/FluentSystemIcons-MIT.txt"
+  "notices/LibreWPF.FluentSymbols/licenses/WPF-Samples-MIT.txt"
 )
 
 for entry in "${transport_entries[@]}"; do
   require_entry LibreWPF.Transport "${entry}"
 done
+
+symbol_manifest_entry="notices/LibreWPF.FluentSymbols/SOURCE-MANIFEST.json"
+symbol_manifest_json="$(unzip -p "$(package_path LibreWPF.Transport)" "${symbol_manifest_entry}")"
+symbol_font_hash="$(node -e 'const value = JSON.parse(process.argv[1]); process.stdout.write(value.generatedFont.sha256);' "${symbol_manifest_json}")"
+symbol_mapping_path="$(node -e 'const value = JSON.parse(process.argv[1]); process.stdout.write(value.mapping.path);' "${symbol_manifest_json}")"
+symbol_mapping_hash="$(node -e 'const value = JSON.parse(process.argv[1]); process.stdout.write(value.mapping.sha256);' "${symbol_manifest_json}")"
+symbol_notice_path="$(node -e 'const value = JSON.parse(process.argv[1]); process.stdout.write(value.notice.path);' "${symbol_manifest_json}")"
+symbol_notice_hash="$(node -e 'const value = JSON.parse(process.argv[1]); process.stdout.write(value.notice.sha256);' "${symbol_manifest_json}")"
+require_entry_sha256 LibreWPF.Transport "buildTransitive/assets/LibreWPF/Fonts/LibreWPF.FluentSymbols.ttf" "${symbol_font_hash}"
+require_entry_sha256 LibreWPF.Transport "notices/LibreWPF.FluentSymbols/${symbol_mapping_path}" "${symbol_mapping_hash}"
+require_entry_contains LibreWPF.Transport "buildTransitive/LibreWPF.Transport.targets" "LibreWPF.FluentSymbols/LegacyFluentGlyphMap.json"
+require_entry_sha256 LibreWPF.Transport "notices/LibreWPF.FluentSymbols/${symbol_notice_path}" "${symbol_notice_hash}"
+while IFS='|' read -r license_path license_hash; do
+  require_entry_sha256 LibreWPF.Transport "notices/LibreWPF.FluentSymbols/${license_path}" "${license_hash}"
+done < <(node -e '
+  const value = JSON.parse(process.argv[1]);
+  for (const source of value.sources) {
+    process.stdout.write(`${source.licenseFile}|${source.licenseSha256}\n`);
+  }
+' "${symbol_manifest_json}")
 
 reject_entry LibreWPF.Transport "lib/${transport_target_framework}/WindowsFormsIntegration.dll"
 reject_entry LibreWPF.Transport "ref/${transport_target_framework}/WindowsFormsIntegration.dll"

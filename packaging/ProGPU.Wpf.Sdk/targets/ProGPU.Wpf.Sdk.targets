@@ -209,6 +209,7 @@
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Luna.dll" TargetPath="PresentationFramework.Luna.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Luna.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Royale.dll" TargetPath="PresentationFramework.Royale.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Royale.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Controls.Ribbon.dll" TargetPath="System.Windows.Controls.Ribbon.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Controls.Ribbon.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)LibreWPF/Fonts/LibreWPF.FluentSymbols.ttf" TargetPath="LibreWPF/Fonts/LibreWPF.FluentSymbols.ttf" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)LibreWPF/Fonts/LibreWPF.FluentSymbols.ttf')" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuReferenceRoot)' != ''">

@@ -406,6 +406,16 @@ namespace MS.Internal.Text.TextInterface
 
         private static IEnumerable<Uri> GetSystemFontUris()
         {
+            string bundledSymbolFont = Path.Combine(
+                AppContext.BaseDirectory,
+                "LibreWPF",
+                "Fonts",
+                "LibreWPF.FluentSymbols.ttf");
+            if (File.Exists(bundledSymbolFont))
+            {
+                yield return new Uri(bundledSymbolFont, UriKind.Absolute);
+            }
+
             foreach (string directory in GetSystemFontDirectories())
             {
                 if (!Directory.Exists(directory))
@@ -472,6 +482,8 @@ namespace MS.Internal.Text.TextInterface
             ("Segoe UI", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
             ("Segoe UI Light", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
             ("Segoe UI Semibold", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
+            ("Segoe Fluent Icons", new[] { "LibreWPF Fluent Symbols" }),
+            ("Segoe MDL2 Assets", new[] { "LibreWPF Fluent Symbols" }),
             ("Calibri", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
             ("Cambria", new[] { "Georgia", "Times New Roman", "Times", "Liberation Serif", "DejaVu Serif", "Noto Serif" }),
             ("Consolas", new[] { "Menlo", "Monaco", "Courier New", "Courier", "Liberation Mono", "DejaVu Sans Mono", "Noto Sans Mono" }),

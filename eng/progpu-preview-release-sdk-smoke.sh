@@ -48,6 +48,7 @@ cat >"${project_dir}/BundleSdkSmoke.csproj" <<PROJECT
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>${sdk_sample_target_framework}</TargetFramework>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <UseWPF>true</UseWPF>
     <AssemblyName>BundleSdkSmoke</AssemblyName>
     <RootNamespace>BundleSdkSmoke</RootNamespace>

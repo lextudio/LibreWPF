@@ -24,6 +24,8 @@ LibreWPF is packaged as an MSBuild SDK so normal WPF apps can move to the ProGPU
 
 `LibreWPF.Sdk` sets `EnableWindowsTargeting` when needed, so cross-platform builds can still use the Windows-shaped WPF API surface while running through the portable ProGPU host.
 
+Windows is a supported LibreWPF runtime target alongside macOS and Linux. The `net10.0-windows` target framework preserves the WPF API contract; it does not select the Windows-only MIL renderer. Windows RIDs consume the same portable `LibreWPF.Transport` package and ProGPU/Silk.NET runtime graph, without RID-split `runtime.win-*` LibreWPF companion packages.
+
 3. Change only the project SDK.
 
 Before:

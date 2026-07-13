@@ -17,10 +17,28 @@
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>
+    <PlatformIndependentPackage>true</PlatformIndependentPackage>
   </PropertyGroup>
 
   <ItemGroup>
     <PackagingContent Include="README.md" SubFolder="root" />
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
+
+  <Target Name="RemoveStaleLibreWpfTransportPayload"
+          BeforeTargets="CreateContentFolder"
+          Condition="'$(IsPackable)' == 'true'">
+    <ItemGroup>
+      <_StaleLibreWpfTransportPayload
+        Include="$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\**\*"
+        Exclude="$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\$(TargetFramework)\**\*" />
+      <_StaleLibreWpfTransportPayload
+        Include="$(ArtifactsPackagingDir)$(NormalizedPackageName)\ref\**\*"
+        Exclude="$(ArtifactsPackagingDir)$(NormalizedPackageName)\ref\$(TargetFramework)\**\*" />
+      <_StaleLibreWpfTransportPayload
+        Include="$(ArtifactsPackagingDir)$(NormalizedPackageName)\runtime.json" />
+    </ItemGroup>
+
+    <Delete Files="@(_StaleLibreWpfTransportPayload)" />
+  </Target>
 </Project>

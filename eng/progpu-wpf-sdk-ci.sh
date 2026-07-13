@@ -145,6 +145,11 @@ clean_sdk_smoke_outputs() {
 
 clean_preview_package_output
 
+# Managed WPF projects aggregate their package payload into one shared staging
+# directory. Clear that directory before the first project builds so a prior
+# target framework or a removed assembly cannot leak into this package run.
+rm -rf "${repo_root}/artifacts/packaging/Release/LibreWPF.Transport"
+
 echo "Staging exact ProGPU packages for the LibreWPF.Sdk feed..."
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj" "ProGPU.Backend"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj" "ProGPU.DirectX"

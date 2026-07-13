@@ -213,7 +213,17 @@ done
 
 reject_entry LibreWPF.Transport "lib/${transport_target_framework}/WindowsFormsIntegration.dll"
 reject_entry LibreWPF.Transport "ref/${transport_target_framework}/WindowsFormsIntegration.dll"
-require_entry LibreWPF.Transport "runtime.json"
+reject_entry LibreWPF.Transport "runtime.json"
+if unzip -Z -1 "$(package_path LibreWPF.Transport)" \
+    | grep -E '^(lib|ref)/' \
+    | grep -Ev "^(lib|ref)/${transport_target_framework}/" \
+    | grep -q .; then
+  echo "Package LibreWPF.Transport contains payload for a target framework other than ${transport_target_framework}." >&2
+  unzip -Z -1 "$(package_path LibreWPF.Transport)" \
+    | grep -E '^(lib|ref)/' \
+    | grep -Ev "^(lib|ref)/${transport_target_framework}/" >&2
+  exit 1
+fi
 require_nuspec_contains LibreWPF.Transport "<group targetFramework=\"${transport_target_framework}\" />"
 
 echo "LibreWPF preview package audit succeeded for ${dev_package_version}."

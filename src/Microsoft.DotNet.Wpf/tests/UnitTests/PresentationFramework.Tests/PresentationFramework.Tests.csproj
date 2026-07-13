@@ -24,6 +24,8 @@
     <ProjectReference Include="$(WpfSourceDir)WindowsBase\WindowsBase.csproj" />
     <ProjectReference Include="$(WpfSourceDir)System.Xaml\System.Xaml.csproj" />
     <ProjectReference Include="$(WpfSourceDir)Extensions\PresentationFramework-SystemDrawing\PresentationFramework-SystemDrawing.csproj" />
+    <ProjectReference Include="..\..\TestAssets\PresentationFramework.ResourceShadow\PresentationFramework.ResourceShadow.csproj"
+                      ReferenceOutputAssembly="false" />
     <ProjectReference Include="$(WpfSourceDir)UIAutomation\UIAutomationTypes\UIAutomationTypes.csproj" />
   </ItemGroup>
 
@@ -50,5 +52,15 @@
   <ItemGroup>
     <Page Include="System\Windows\Resources\SampleResourceDictionary.xaml" Generator="MSBuild:Compile" CopyToOutputDirectory="Always" />
   </ItemGroup>
+
+  <Target Name="CopyPresentationFrameworkResourceShadow" AfterTargets="Build">
+    <MSBuild Projects="..\..\TestAssets\PresentationFramework.ResourceShadow\PresentationFramework.ResourceShadow.csproj"
+             Targets="GetTargetPath"
+             Properties="Configuration=$(Configuration);TargetFramework=$(ProGpuWpfTargetFramework)">
+      <Output TaskParameter="TargetOutputs" ItemName="_PresentationFrameworkResourceShadowPath" />
+    </MSBuild>
+    <Copy SourceFiles="@(_PresentationFrameworkResourceShadowPath)"
+          DestinationFiles="$(TargetDir)PresentationFramework.Tests.Shadow.dll" />
+  </Target>
 
 </Project>

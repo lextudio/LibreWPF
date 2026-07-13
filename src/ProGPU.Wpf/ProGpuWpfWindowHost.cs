@@ -36,6 +36,102 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private static readonly bool s_traceInput = IsTraceEnabled(TraceInputEnvironmentVariable);
     private static readonly bool s_traceNativeLoop = IsTraceEnabled(TraceNativeLoopEnvironmentVariable);
 
+    // Guard against the spurious GLFW MouseUp that showing another of our own native windows induces
+    // on the previously-focused window while a mouse button is physically held down. On the portable
+    // (Silk/GLFW) backend, showing a window steals OS focus, and the OS ends the current button
+    // "session" on the old window by delivering a real button-up (same position, no movement). That
+    // phantom up prematurely ends an in-progress Thumb/splitter drag - see
+    // OpenDevelop src/Libraries/AvalonDock/docs/librewpf.md. We arm this guard only when a button is
+    // actually pressed at the moment a window is shown (so hover/release-driven menus and tooltips,
+    // which don't hold a button, never arm it), and swallow only an up that matches the phantom's
+    // fingerprint: same window, at the press position, with no drag movement since the down, within
+    // a short window after the show.
+    private const long SpuriousUpAfterWindowShowMs = 250;
+    // GLFW_MOUSE_PASSTHROUGH (GLFW 3.4). Not in Silk.NET.GLFW 2.23's WindowAttributeSetter enum
+    // (which stops at FocusOnShow=0x2000C), but the native glfwSetWindowAttrib accepts the raw
+    // value; on macOS/Cocoa it maps to NSWindow.ignoresMouseEvents.
+    private const int GlfwMousePassthroughAttrib = 0x0002000D;
+    private static long s_lastWindowShownTicks = long.MinValue;
+    private static bool s_mouseButtonPressedSomewhere;
+    // Windows we made mouse-passthrough for the duration of the current press (drag), so their
+    // native windows don't steal the in-progress drag from the window that owns the capture.
+    private static readonly List<ProGpuWpfWindowHost> s_dragPassthroughHosts = new();
+
+    private bool _mouseButtonDownSeen;
+    private bool _mouseMovedSinceDown;
+    private double _mouseDownX;
+    private double _mouseDownY;
+    private bool _dragPassthroughApplied;
+
+    private void NoteWindowShownForSpuriousUpGuard()
+    {
+        // Only act while a button is actually held - otherwise a click landing right as an
+        // unrelated popup/tooltip appears could be wrongly affected.
+        if (!s_mouseButtonPressedSomewhere)
+        {
+            return;
+        }
+
+        // (1) Arm the spurious-up swallow (below), and (2) make this transient window
+        // mouse-passthrough so the drag keeps flowing to the window that owns the press instead of
+        // this overlay stealing it (LibreWPF has no cross-window mouse capture; showing a window
+        // mid-drag otherwise both injects a phantom up and hijacks subsequent moves). Cleared on
+        // release. See OpenDevelop src/Libraries/AvalonDock/docs/librewpf.md.
+        s_lastWindowShownTicks = Environment.TickCount64;
+        if (!_dragPassthroughApplied)
+        {
+            _dragPassthroughApplied = true;
+            if (!s_dragPassthroughHosts.Contains(this))
+            {
+                s_dragPassthroughHosts.Add(this);
+            }
+        }
+        TrySetMousePassthrough(true);
+    }
+
+    private unsafe void TrySetMousePassthrough(bool enabled)
+    {
+        if (_window?.Native?.Glfw is not { } handle || handle == IntPtr.Zero)
+        {
+            return; // handle not ready yet (see OnLoad) or non-GLFW backend
+        }
+
+        try
+        {
+            var glfw = Silk.NET.GLFW.Glfw.GetApi();
+            glfw.SetWindowAttrib(
+                (Silk.NET.GLFW.WindowHandle*)handle,
+                (Silk.NET.GLFW.WindowAttributeSetter)GlfwMousePassthroughAttrib,
+                enabled);
+            if (s_traceInput)
+            {
+                Console.WriteLine(
+                    $"ProGPU WPF: mouse-passthrough {(enabled ? "ON" : "OFF")} " +
+                    $"window#{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(_window)}");
+            }
+        }
+        catch
+        {
+            // Best-effort: never let a cursor/passthrough tweak break input processing.
+        }
+    }
+
+    private static void ClearDragPassthroughHosts()
+    {
+        if (s_dragPassthroughHosts.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var host in s_dragPassthroughHosts)
+        {
+            host._dragPassthroughApplied = false;
+            host.TrySetMousePassthrough(false);
+        }
+
+        s_dragPassthroughHosts.Clear();
+    }
+
     // Every host (the main window plus any secondary windows and popups) registers itself here so
     // that Run()'s frame pump can drive ALL of them each tick. Without this, only the window whose
     // Run() is on the call stack ever received Update/Render ticks - a popup created via
@@ -512,6 +608,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         if (_window != null)
         {
             _window.IsVisible = true;
+            NoteWindowShownForSpuriousUpGuard();
         }
     }
 
@@ -1077,6 +1174,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private void OnLoad()
     {
         EnsureCompositionTargetLoaded();
+
+        // If this window was shown during an active press before its native GLFW handle existed,
+        // apply the deferred mouse-passthrough now that the handle is available.
+        if (_dragPassthroughApplied)
+        {
+            TrySetMousePassthrough(true);
+        }
     }
 
     private bool EnsureCompositionTargetLoaded()
@@ -2778,7 +2882,78 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         if (e.SourceWindow != null && !ReferenceEquals(e.SourceWindow, _window))
         {
+            // This window host only processes input tagged to its own native window. There is no
+            // cross-window mouse-capture escape hatch here: even when Mouse.Captured points at an
+            // element in THIS window, input physically over a *different* native window (e.g. an
+            // AvalonDock resizer-ghost overlay Window shown mid-splitter-drag) is dropped here
+            // rather than redirected to the capture owner. That's why a splitter drag stalls once
+            // the overlay appears (DragDelta/Up never reach the captured Thumb). See the drop trace
+            // below; PROGPU_WPF_TRACE_INPUT=1 makes it visible.
+            if (s_traceInput
+                && (e.Kind == WpfInputEventKind.MouseMove
+                    || e.Kind == WpfInputEventKind.MouseDown
+                    || e.Kind == WpfInputEventKind.MouseUp))
+            {
+                // Capture owner (Mouse.Captured) isn't referenceable from this host layer - read it
+                // on the app side (tooltiptest splitter log / AvalonDock avd.input.query). The
+                // decisive fact here is that THIS window is dropping a mouse event that belongs to a
+                // different native window while a drag is in progress.
+                Console.WriteLine(
+                    "ProGPU WPF input drop (cross-window): " +
+                    $"{e.Kind} x {e.X:0.###}, y {e.Y:0.###}, " +
+                    $"sourceWindow#{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(e.SourceWindow)} " +
+                    $"hostWindow#{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(_window)}");
+            }
+
             return;
+        }
+
+        // Track this window's own press/move state and swallow the spurious post-window-show button-up
+        // (see NoteWindowShownForSpuriousUpGuard). Runs before forwarding so the phantom up never
+        // reaches WPF's input system and can't end an in-progress capture/drag.
+        switch (e.Kind)
+        {
+            case WpfInputEventKind.MouseDown:
+                _mouseButtonDownSeen = true;
+                _mouseMovedSinceDown = false;
+                _mouseDownX = e.X;
+                _mouseDownY = e.Y;
+                s_mouseButtonPressedSomewhere = true;
+                break;
+
+            case WpfInputEventKind.MouseMove:
+                if (_mouseButtonDownSeen)
+                {
+                    _mouseMovedSinceDown = true;
+                }
+                break;
+
+            case WpfInputEventKind.MouseUp:
+                if (_mouseButtonDownSeen
+                    && !_mouseMovedSinceDown
+                    && Environment.TickCount64 - s_lastWindowShownTicks <= SpuriousUpAfterWindowShowMs
+                    && Math.Abs(e.X - _mouseDownX) < 2.0
+                    && Math.Abs(e.Y - _mouseDownY) < 2.0)
+                {
+                    // Phantom up induced by another window being shown while this button was held.
+                    // Consume it (button stays logically pressed so the drag continues), and disarm
+                    // so only the first such up is swallowed.
+                    s_lastWindowShownTicks = long.MinValue;
+                    if (s_traceInput)
+                    {
+                        Console.WriteLine(
+                            "ProGPU WPF input: swallowed spurious post-window-show MouseUp " +
+                            $"x {e.X:0.###}, y {e.Y:0.###}");
+                    }
+                    return;
+                }
+
+                _mouseButtonDownSeen = false;
+                s_mouseButtonPressedSomewhere = false;
+                // Real release: undo any mouse-passthrough we applied to transient windows shown
+                // during this press.
+                ClearDragPassthroughHosts();
+                break;
         }
 
         TraceInputEvent("native", e);
@@ -3598,6 +3773,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _isHostVisible = true;
         EnsureWindow();
         _window!.IsVisible = true;
+        NoteWindowShownForSpuriousUpGuard();
 
         if (!_window.IsInitialized)
         {

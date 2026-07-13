@@ -167,6 +167,7 @@
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuWpfManagedReferenceRoot)' != ''">
     <Reference Include="WindowsBase" HintPath="$(_ProGpuWpfManagedReferenceRoot)WindowsBase.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)WindowsBase.dll')" />
+    <Reference Include="Microsoft.Win32.SystemEvents" HintPath="$(_ProGpuWpfManagedReferenceRoot)Microsoft.Win32.SystemEvents.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)Microsoft.Win32.SystemEvents.dll')" />
     <Reference Include="System.Xaml" HintPath="$(_ProGpuWpfManagedReferenceRoot)System.Xaml.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Xaml.dll')" />
     <Reference Include="PresentationCore" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationCore.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationCore.dll')" />
     <Reference Include="PresentationFramework" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.dll')" />
@@ -189,6 +190,7 @@
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuWpfManagedReferenceRoot)' != ''">
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)WindowsBase.dll" TargetPath="WindowsBase.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)WindowsBase.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)Microsoft.Win32.SystemEvents.dll" TargetPath="Microsoft.Win32.SystemEvents.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)Microsoft.Win32.SystemEvents.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)System.Xaml.dll" TargetPath="System.Xaml.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Xaml.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationCore.dll" TargetPath="PresentationCore.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationCore.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.dll" TargetPath="PresentationFramework.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.dll')" />

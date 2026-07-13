@@ -189,6 +189,7 @@ require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.Win32Compat.c"
 
 transport_entries=(
   "lib/${transport_target_framework}/WindowsBase.dll"
+  "lib/${transport_target_framework}/Microsoft.Win32.SystemEvents.dll"
   "lib/${transport_target_framework}/PresentationCore.dll"
   "lib/${transport_target_framework}/PresentationFramework.dll"
   "lib/${transport_target_framework}/PresentationFramework.Fluent.dll"
@@ -198,6 +199,7 @@ transport_entries=(
   "lib/${transport_target_framework}/UIAutomationTypes.dll"
   "lib/${transport_target_framework}/System.Private.Windows.Core.dll"
   "ref/${transport_target_framework}/WindowsBase.dll"
+  "ref/${transport_target_framework}/Microsoft.Win32.SystemEvents.dll"
   "ref/${transport_target_framework}/PresentationCore.dll"
   "ref/${transport_target_framework}/PresentationFramework.dll"
   "ref/${transport_target_framework}/PresentationFramework.Fluent.dll"

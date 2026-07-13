@@ -12122,6 +12122,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source \"${repo_root}/eng/progpu-preview-package-list.sh\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("runtime_packages=(\"${progpu_preview_runtime_package_ids[@]}\")", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("all_packages=(\"${progpu_preview_package_ids[@]}\")", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("wpf_repository_packages=(LibreWPF.Transport LibreWPF.ProGPU LibreWPF.Sdk)", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("wpf_commit=\"$(git -C \"${repo_root}\" rev-parse --verify HEAD)\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("progpu_commit=\"$(git -C \"${repo_root}/external/ProGPU\" rev-parse --verify HEAD)\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("transport_target_framework=\"${PROGPU_WPF_TRANSPORT_TARGET_FRAMEWORK:-net10.0}\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.DoesNotContain("all_packages=(\n  LibreWPF.Transport", previewPackageAuditScript, StringComparison.Ordinal);
@@ -12143,6 +12145,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("progpu-nuspec-repository-audit.mjs", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("--self-test", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("require_nuspec_repository \\", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("for package_id in \"${wpf_repository_packages[@]}\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("\"https://github.com/wieslawsoltes/wpf\"", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("\"${wpf_commit}\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("repositoryElements.length !== 1", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
         Assert.Contains("[\"type\", \"git\"]", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
         Assert.Contains("[\"url\", expectedUrl]", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
@@ -14582,6 +14587,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<SignAssembly>true</SignAssembly>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains(@"<AssemblyOriginatorKeyFile>..\..\external\ProGPU\eng\ProGPU.snk</AssemblyOriginatorKeyFile>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("<VersionPrefix Condition=\"'$(VersionPrefix)' == ''\">0.1.0</VersionPrefix>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageProjectUrl Condition=\"'$(PackageProjectUrl)' == ''\">https://github.com/wieslawsoltes/wpf</PackageProjectUrl>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<RepositoryUrl Condition=\"'$(RepositoryUrl)' == ''\">https://github.com/wieslawsoltes/wpf</RepositoryUrl>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<RepositoryType Condition=\"'$(RepositoryType)' == ''\">git</RepositoryType>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<VersionSuffix Condition=\"'$(VersionSuffix)' == ''\">preview.11</VersionSuffix>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<Version Condition=\"'$(Version)' == ''\">$(VersionPrefix)-$(VersionSuffix)</Version>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<PackageVersion Condition=\"'$(PackageVersion)' == ''\">$(Version)</PackageVersion>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);

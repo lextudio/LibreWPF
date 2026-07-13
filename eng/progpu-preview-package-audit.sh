@@ -122,6 +122,8 @@ require_nuspec_repository() {
 
 runtime_packages=("${progpu_preview_runtime_package_ids[@]}")
 all_packages=("${progpu_preview_package_ids[@]}")
+wpf_repository_packages=(LibreWPF.Transport LibreWPF.ProGPU LibreWPF.Sdk)
+wpf_commit="$(git -C "${repo_root}" rev-parse --verify HEAD)"
 progpu_commit="$(git -C "${repo_root}/external/ProGPU" rev-parse --verify HEAD)"
 node "${repo_root}/eng/progpu-nuspec-repository-audit.mjs" --self-test
 
@@ -150,6 +152,13 @@ for package_id in "${runtime_packages[@]}"; do
     "${package_id}" \
     "https://github.com/wieslawsoltes/ProGPU" \
     "${progpu_commit}"
+done
+
+for package_id in "${wpf_repository_packages[@]}"; do
+  require_nuspec_repository \
+    "${package_id}" \
+    "https://github.com/wieslawsoltes/wpf" \
+    "${wpf_commit}"
 done
 
 require_entry LibreWPF.ProGPU "lib/net10.0/ProGPU.Wpf.dll"

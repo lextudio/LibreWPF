@@ -918,16 +918,26 @@ namespace MS.Internal.Text.TextInterface
         private const uint TagPost = 0x706F7374;
         private const uint TagCff = 0x43464620;
 
-        private readonly byte[] _data;
-        private readonly ProGpuSfntFontFace _sfntFace;
+        private byte[] _data;
+        private volatile ProGpuSfntFontFace _sfntFace;
+        private readonly IFontSource _fontSource;
+        private readonly object _fontDataLock = new object();
         private readonly Dictionary<uint, TableRecord> _tables = new Dictionary<uint, TableRecord>();
         private readonly Dictionary<ushort, LocalizedStrings> _nameStrings = new Dictionary<ushort, LocalizedStrings>();
         private readonly uint _faceOffset;
         private readonly bool _isCollection;
 
-        private PortableFontData(byte[] data, Uri sourceUri, uint faceIndex, uint faceOffset, bool isCollection)
+        private PortableFontData(
+            byte[] data,
+            Uri sourceUri,
+            IFontSource fontSource,
+            uint faceIndex,
+            uint faceOffset,
+            bool isCollection,
+            bool retainFontData)
         {
             _data = data;
+            _fontSource = fontSource;
             SourceUri = sourceUri;
             FaceIndex = faceIndex;
             _faceOffset = faceOffset;
@@ -947,6 +957,52 @@ namespace MS.Internal.Text.TextInterface
             FaceType = _isCollection ? FontFaceType.TrueTypeCollection : (_tables.ContainsKey(TagCff) ? FontFaceType.CFF : FontFaceType.TrueType);
             GlyphCount = ParseGlyphCount();
             IsSymbolFont = _sfntFace.UsesSymbolCharacterMap;
+
+            // System font discovery needs only the compact metadata captured above. Keeping every
+            // complete font file resident made the portable catalog retain hundreds of megabytes
+            // (and multi-gigabyte TTC files on some systems). Rehydrate only the selected faces.
+            if (!retainFontData)
+            {
+                _sfntFace = null;
+                _data = null;
+            }
+        }
+
+        private PortableFontData(
+            Uri sourceUri,
+            IFontSource fontSource,
+            uint faceIndex,
+            uint faceOffset,
+            bool isCollection,
+            CatalogFaceMetadata metadata)
+        {
+            SourceUri = sourceUri;
+            FaceIndex = faceIndex;
+            _faceOffset = faceOffset;
+            _isCollection = isCollection;
+            _fontSource = fontSource;
+
+            foreach (KeyValuePair<uint, TableRecord> table in metadata.Tables)
+            {
+                _tables.Add(table.Key, table.Value);
+            }
+
+            foreach (KeyValuePair<ushort, LocalizedStrings> name in metadata.NameStrings)
+            {
+                _nameStrings.Add(name.Key, name.Value);
+            }
+
+            FamilyName = metadata.FamilyName;
+            FaceName = metadata.FaceName;
+            FullName = metadata.FullName;
+            Metrics = metadata.Metrics;
+            Weight = metadata.Weight;
+            Stretch = metadata.Stretch;
+            Style = metadata.Style;
+            FaceType = metadata.FaceType;
+            GlyphCount = metadata.GlyphCount;
+            IsSymbolFont = metadata.IsSymbolFont;
+            Version = metadata.Version;
         }
 
         internal Uri SourceUri { get; }
@@ -975,6 +1031,8 @@ namespace MS.Internal.Text.TextInterface
 
         internal double Version { get; }
 
+        internal bool IsFontDataResident => _data != null && _sfntFace != null;
+
         internal static bool IsSupportedFontPath(string path)
         {
             string extension = Path.GetExtension(path);
@@ -985,6 +1043,11 @@ namespace MS.Internal.Text.TextInterface
 
         internal static IReadOnlyList<PortableFontData> LoadFaces(Uri uri, IFontSource fontSource)
         {
+            if ((fontSource != null && fontSource.IsFile) || (fontSource == null && uri.IsFile))
+            {
+                return LoadFileCatalogFaces(uri, fontSource);
+            }
+
             byte[] data = ReadFontBytes(uri, fontSource);
             List<uint> faceOffsets = GetFaceOffsets(data);
             List<PortableFontData> faces = new List<PortableFontData>(faceOffsets.Count);
@@ -992,7 +1055,42 @@ namespace MS.Internal.Text.TextInterface
 
             for (int i = 0; i < faceOffsets.Count; i++)
             {
-                faces.Add(CreateFace(data, uri, checked((uint)i), faceOffsets[i], isCollection));
+                faces.Add(CreateFace(
+                    data,
+                    uri,
+                    fontSource,
+                    checked((uint)i),
+                    faceOffsets[i],
+                    isCollection,
+                    retainFontData: false));
+            }
+
+            return faces;
+        }
+
+        private static IReadOnlyList<PortableFontData> LoadFileCatalogFaces(Uri uri, IFontSource fontSource)
+        {
+            string path = fontSource != null ? fontSource.Uri.LocalPath : uri.LocalPath;
+            using var stream = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize: 4096,
+                FileOptions.RandomAccess);
+
+            (uint[] faceOffsets, bool isCollection) = ReadFileFaceOffsets(stream, uri);
+            var faces = new List<PortableFontData>(faceOffsets.Length);
+            for (int index = 0; index < faceOffsets.Length; index++)
+            {
+                CatalogFaceMetadata metadata = ReadCatalogFaceMetadata(stream, uri, faceOffsets[index], isCollection);
+                faces.Add(new PortableFontData(
+                    uri,
+                    fontSource,
+                    checked((uint)index),
+                    faceOffsets[index],
+                    isCollection,
+                    metadata));
             }
 
             return faces;
@@ -1005,7 +1103,14 @@ namespace MS.Internal.Text.TextInterface
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(faceIndex, checked((uint)faceOffsets.Count), nameof(faceIndex));
 
             bool isCollection = ReadUInt(data, 0) == TagTrueTypeCollection;
-            return CreateFace(data, uri, faceIndex, faceOffsets[checked((int)faceIndex)], isCollection);
+            return CreateFace(
+                data,
+                uri,
+                fontSource,
+                faceIndex,
+                faceOffsets[checked((int)faceIndex)],
+                isCollection,
+                retainFontData: true);
         }
 
         internal static LocalizedStrings CreateInvariantStrings(string value)
@@ -1073,7 +1178,7 @@ namespace MS.Internal.Text.TextInterface
 
         internal ushort GetGlyphIndex(uint codePoint)
         {
-            return _sfntFace.TryGetGlyphIndex(codePoint, out ushort glyphIndex)
+            return GetSfntFace().TryGetGlyphIndex(codePoint, out ushort glyphIndex)
                 ? glyphIndex
                 : (ushort)0;
         }
@@ -1085,10 +1190,11 @@ namespace MS.Internal.Text.TextInterface
                 throw new ArgumentOutOfRangeException(nameof(glyphIndex));
             }
 
-            ProGpuSfntHorizontalGlyphMetrics horizontalMetrics = _sfntFace.TryGetHorizontalGlyphMetrics(glyphIndex, out ProGpuSfntHorizontalGlyphMetrics metrics)
+            ProGpuSfntFontFace sfntFace = GetSfntFace();
+            ProGpuSfntHorizontalGlyphMetrics horizontalMetrics = sfntFace.TryGetHorizontalGlyphMetrics(glyphIndex, out ProGpuSfntHorizontalGlyphMetrics metrics)
                 ? metrics
                 : new ProGpuSfntHorizontalGlyphMetrics(checked((ushort)(Metrics.DesignUnitsPerEm / 2)), 0);
-            ProGpuSfntGlyphBounds bounds = _sfntFace.TryGetGlyphBounds(glyphIndex, out ProGpuSfntGlyphBounds glyphBounds)
+            ProGpuSfntGlyphBounds bounds = sfntFace.TryGetGlyphBounds(glyphIndex, out ProGpuSfntGlyphBounds glyphBounds)
                 ? glyphBounds
                 : default;
 
@@ -1113,7 +1219,7 @@ namespace MS.Internal.Text.TextInterface
 
         internal bool TryGetTable(uint tag, out byte[] tableData)
         {
-            if (_sfntFace.TryGetTable(TagToString(tag), out ReadOnlyMemory<byte> tableDataMemory))
+            if (GetSfntFace().TryGetTable(TagToString(tag), out ReadOnlyMemory<byte> tableDataMemory))
             {
                 tableData = tableDataMemory.ToArray();
                 return true;
@@ -1121,8 +1227,9 @@ namespace MS.Internal.Text.TextInterface
 
             if (_tables.TryGetValue(tag, out TableRecord table))
             {
+                byte[] data = GetFontData();
                 tableData = new byte[table.Length];
-                Array.Copy(_data, checked((int)table.Offset), tableData, 0, checked((int)table.Length));
+                Array.Copy(data, checked((int)table.Offset), tableData, 0, checked((int)table.Length));
                 return true;
             }
 
@@ -1132,14 +1239,21 @@ namespace MS.Internal.Text.TextInterface
 
         internal bool TryGetEmbeddingRights(out ushort fsType)
         {
-            return _sfntFace.TryGetEmbeddingRights(out fsType);
+            return GetSfntFace().TryGetEmbeddingRights(out fsType);
         }
 
-        private static PortableFontData CreateFace(byte[] data, Uri uri, uint faceIndex, uint faceOffset, bool isCollection)
+        private static PortableFontData CreateFace(
+            byte[] data,
+            Uri uri,
+            IFontSource fontSource,
+            uint faceIndex,
+            uint faceOffset,
+            bool isCollection,
+            bool retainFontData)
         {
             try
             {
-                return new PortableFontData(data, uri, faceIndex, faceOffset, isCollection);
+                return new PortableFontData(data, uri, fontSource, faceIndex, faceOffset, isCollection, retainFontData);
             }
             catch (Exception ex) when (ex is ArgumentException || ex is FormatException || ex is IndexOutOfRangeException || ex is OverflowException)
             {
@@ -1151,13 +1265,23 @@ namespace MS.Internal.Text.TextInterface
         {
             if (fontSource != null)
             {
-                fontSource.TestFileOpenable();
-                using (Stream stream = fontSource.GetStream())
-                using (MemoryStream memoryStream = new MemoryStream())
+                if (fontSource.IsFile)
                 {
-                    stream.CopyTo(memoryStream);
-                    return memoryStream.ToArray();
+                    return File.ReadAllBytes(fontSource.Uri.LocalPath);
                 }
+
+                using Stream stream = fontSource.GetStream();
+                if (stream.CanSeek)
+                {
+                    long remainingLength = checked(stream.Length - stream.Position);
+                    byte[] data = GC.AllocateUninitializedArray<byte>(checked((int)remainingLength));
+                    stream.ReadExactly(data);
+                    return data;
+                }
+
+                using MemoryStream memoryStream = new MemoryStream();
+                stream.CopyTo(memoryStream);
+                return memoryStream.ToArray();
             }
 
             if (!uri.IsFile)
@@ -1166,6 +1290,397 @@ namespace MS.Internal.Text.TextInterface
             }
 
             return File.ReadAllBytes(uri.LocalPath);
+        }
+
+        private static (uint[] faceOffsets, bool isCollection) ReadFileFaceOffsets(Stream stream, Uri uri)
+        {
+            Span<byte> header = stackalloc byte[12];
+            ReadExactly(stream, 0, header, uri);
+            if (ReadSpanUInt(header, 0) != TagTrueTypeCollection)
+            {
+                return (new[] { 0u }, false);
+            }
+
+            uint faceCountValue = ReadSpanUInt(header, 8);
+            if (faceCountValue == 0 || faceCountValue > 4096)
+            {
+                throw new FileFormatException(uri.AbsoluteUri);
+            }
+
+            var faceOffsets = new uint[checked((int)faceCountValue)];
+            Span<byte> offsetBytes = stackalloc byte[4];
+            for (int index = 0; index < faceOffsets.Length; index++)
+            {
+                ReadExactly(stream, 12L + (index * 4L), offsetBytes, uri);
+                faceOffsets[index] = ReadSpanUInt(offsetBytes, 0);
+            }
+
+            return (faceOffsets, true);
+        }
+
+        private static CatalogFaceMetadata ReadCatalogFaceMetadata(Stream stream, Uri uri, uint faceOffset, bool isCollection)
+        {
+            Span<byte> header = stackalloc byte[12];
+            ReadExactly(stream, faceOffset, header, uri);
+            uint sfntVersion = ReadSpanUInt(header, 0);
+            if (sfntVersion != 0x00010000 && sfntVersion != 0x4F54544F)
+            {
+                throw new FileFormatException(uri.AbsoluteUri);
+            }
+
+            ushort tableCount = ReadSpanUShort(header, 4);
+            if (tableCount > 4096)
+            {
+                throw new FileFormatException(uri.AbsoluteUri);
+            }
+
+            var tables = new Dictionary<uint, TableRecord>(tableCount);
+            Span<byte> recordBytes = stackalloc byte[16];
+            for (int index = 0; index < tableCount; index++)
+            {
+                ReadExactly(stream, checked((long)faceOffset + 12L + (index * 16L)), recordBytes, uri);
+                uint tag = ReadSpanUInt(recordBytes, 0);
+                uint offset = ReadSpanUInt(recordBytes, 8);
+                uint length = ReadSpanUInt(recordBytes, 12);
+                EnsureFileRange(stream, offset, length, uri);
+                tables[tag] = new TableRecord(offset, length);
+            }
+
+            TableRecord head = RequireCatalogTable(tables, TagHead, uri);
+            TableRecord hhea = RequireCatalogTable(tables, TagHhea, uri);
+            TableRecord maxp = RequireCatalogTable(tables, TagMaxp, uri);
+            _ = RequireCatalogTable(tables, TagHmtx, uri);
+            TableRecord cmap = RequireCatalogTable(tables, TagCmap, uri);
+
+            byte[] headData = ReadTablePrefix(stream, head, 54, uri);
+            byte[] hheaData = ReadTablePrefix(stream, hhea, 12, uri);
+            byte[] maxpData = ReadTablePrefix(stream, maxp, 6, uri);
+            if (headData.Length < 54 || hheaData.Length < 12 || maxpData.Length < 6)
+            {
+                throw new FileFormatException(uri.AbsoluteUri);
+            }
+
+            byte[] os2Data = tables.TryGetValue(TagOs2, out TableRecord os2)
+                ? ReadTablePrefix(stream, os2, 90, uri)
+                : Array.Empty<byte>();
+            byte[] postData = tables.TryGetValue(TagPost, out TableRecord post)
+                ? ReadTablePrefix(stream, post, 12, uri)
+                : Array.Empty<byte>();
+
+            var metrics = new FontMetrics
+            {
+                DesignUnitsPerEm = ReadSpanUShort(headData, 18),
+                Ascent = ToPositiveMetric(unchecked((short)ReadSpanUShort(hheaData, 4))),
+                Descent = ToPositiveMetric(unchecked((short)ReadSpanUShort(hheaData, 6))),
+                LineGap = unchecked((short)ReadSpanUShort(hheaData, 8)),
+                CapHeight = 0,
+                XHeight = 0,
+                UnderlinePosition = 0,
+                UnderlineThickness = 0,
+                StrikethroughPosition = 0,
+                StrikethroughThickness = 0
+            };
+            if (metrics.DesignUnitsPerEm == 0)
+            {
+                metrics.DesignUnitsPerEm = 1;
+            }
+
+            if (os2Data.Length >= 30)
+            {
+                metrics.StrikethroughThickness = ReadSpanUShort(os2Data, 26);
+                metrics.StrikethroughPosition = unchecked((short)ReadSpanUShort(os2Data, 28));
+            }
+
+            if (os2Data.Length >= 90)
+            {
+                metrics.XHeight = ToPositiveMetric(unchecked((short)ReadSpanUShort(os2Data, 86)));
+                metrics.CapHeight = ToPositiveMetric(unchecked((short)ReadSpanUShort(os2Data, 88)));
+            }
+
+            if (postData.Length >= 12)
+            {
+                metrics.UnderlinePosition = unchecked((short)ReadSpanUShort(postData, 8));
+                metrics.UnderlineThickness = ToPositiveMetric(unchecked((short)ReadSpanUShort(postData, 10)));
+            }
+
+            if (metrics.CapHeight == 0)
+            {
+                metrics.CapHeight = checked((ushort)Math.Max(1, (metrics.DesignUnitsPerEm * 7) / 10));
+            }
+
+            if (metrics.XHeight == 0)
+            {
+                metrics.XHeight = checked((ushort)Math.Max(1, metrics.DesignUnitsPerEm / 2));
+            }
+
+            if (metrics.UnderlineThickness == 0)
+            {
+                metrics.UnderlineThickness = checked((ushort)Math.Max(1, metrics.DesignUnitsPerEm / 20));
+            }
+
+            FontWeight weight = FontWeight.Normal;
+            FontStretch stretch = FontStretch.Normal;
+            FontStyle style = FontStyle.Normal;
+            if (os2Data.Length >= 10)
+            {
+                weight = (FontWeight)Math.Clamp((int)ReadSpanUShort(os2Data, 4), 1, 1000);
+                ushort widthClass = ReadSpanUShort(os2Data, 6);
+                if (widthClass is >= 1 and <= 9)
+                {
+                    stretch = (FontStretch)widthClass;
+                }
+            }
+
+            if (os2Data.Length >= 64 && (ReadSpanUShort(os2Data, 62) & 0x0001) != 0)
+            {
+                style = FontStyle.Italic;
+            }
+
+            ushort macStyle = ReadSpanUShort(headData, 44);
+            if ((macStyle & 0x0002) != 0)
+            {
+                style = FontStyle.Italic;
+            }
+
+            if ((macStyle & 0x0001) != 0 && (int)weight < (int)FontWeight.Bold)
+            {
+                weight = FontWeight.Bold;
+            }
+
+            var nameStrings = new Dictionary<ushort, LocalizedStrings>();
+            if (tables.TryGetValue(TagName, out TableRecord name))
+            {
+                ParseCatalogNames(ReadTable(stream, name, uri), nameStrings);
+            }
+
+            string fallbackName = Path.GetFileNameWithoutExtension(uri.IsFile ? uri.LocalPath : uri.AbsoluteUri);
+            string familyName = GetFirstCatalogName(nameStrings, NameIdPreferredFamily, NameIdFamily) ?? fallbackName;
+            string faceName = GetFirstCatalogName(nameStrings, NameIdPreferredSubfamily, NameIdSubfamily) ?? "Regular";
+            string fullName = GetFirstCatalogName(nameStrings, NameIdFullName) ?? string.Concat(familyName, " ", faceName).Trim();
+
+            return new CatalogFaceMetadata(
+                tables,
+                nameStrings,
+                familyName,
+                faceName,
+                fullName,
+                metrics,
+                weight,
+                stretch,
+                style,
+                isCollection ? FontFaceType.TrueTypeCollection : (tables.ContainsKey(TagCff) ? FontFaceType.CFF : FontFaceType.TrueType),
+                ReadSpanUShort(maxpData, 4),
+                HasSymbolCharacterMap(stream, cmap, uri),
+                unchecked((short)ReadSpanUShort(headData, 4)) + (ReadSpanUShort(headData, 6) / 65536.0));
+        }
+
+        private static void ParseCatalogNames(byte[] table, Dictionary<ushort, LocalizedStrings> nameStrings)
+        {
+            if (table.Length < 6)
+            {
+                return;
+            }
+
+            ushort count = ReadSpanUShort(table, 2);
+            ushort stringOffset = ReadSpanUShort(table, 4);
+            for (int index = 0; index < count; index++)
+            {
+                int recordOffset = checked(6 + (index * 12));
+                if (recordOffset > table.Length - 12)
+                {
+                    break;
+                }
+
+                ushort platformId = ReadSpanUShort(table, recordOffset);
+                ushort languageId = ReadSpanUShort(table, recordOffset + 4);
+                ushort nameId = ReadSpanUShort(table, recordOffset + 6);
+                ushort length = ReadSpanUShort(table, recordOffset + 8);
+                ushort nameOffset = ReadSpanUShort(table, recordOffset + 10);
+                int valueOffset = checked(stringOffset + nameOffset);
+                if (valueOffset < 0 || valueOffset > table.Length || length > table.Length - valueOffset)
+                {
+                    continue;
+                }
+
+                string value = DecodeName(table.AsSpan(valueOffset, length), platformId);
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                if (!nameStrings.TryGetValue(nameId, out LocalizedStrings strings))
+                {
+                    strings = new LocalizedStrings();
+                    nameStrings[nameId] = strings;
+                }
+
+                CultureInfo culture = GetCulture(platformId, languageId);
+                if (!strings.ContainsKey(culture))
+                {
+                    strings[culture] = value.Trim();
+                }
+            }
+        }
+
+        private static string GetFirstCatalogName(Dictionary<ushort, LocalizedStrings> nameStrings, params ushort[] nameIds)
+        {
+            foreach (ushort nameId in nameIds)
+            {
+                if (!nameStrings.TryGetValue(nameId, out LocalizedStrings strings))
+                {
+                    continue;
+                }
+
+                if (strings.TryGetValue(CultureInfo.GetCultureInfo("en-US"), out string english) && !string.IsNullOrEmpty(english))
+                {
+                    return english;
+                }
+
+                foreach (string value in strings.Values)
+                {
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        return value;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static bool HasSymbolCharacterMap(Stream stream, TableRecord cmap, Uri uri)
+        {
+            byte[] header = ReadTablePrefix(stream, cmap, 4, uri);
+            if (header.Length < 4)
+            {
+                return false;
+            }
+
+            ushort subtableCount = ReadSpanUShort(header, 2);
+            int prefixLength = checked(4 + (subtableCount * 8));
+            byte[] records = ReadTablePrefix(stream, cmap, prefixLength, uri);
+            if (records.Length < prefixLength)
+            {
+                return false;
+            }
+
+            bool hasUnicodeFormat4 = false;
+            bool hasSymbolFormat4 = false;
+            Span<byte> formatBytes = stackalloc byte[2];
+            for (int index = 0; index < subtableCount; index++)
+            {
+                int offset = 4 + (index * 8);
+                ushort platformId = ReadSpanUShort(records, offset);
+                ushort encodingId = ReadSpanUShort(records, offset + 2);
+                uint subtableOffset = ReadSpanUInt(records, offset + 4);
+                if (subtableOffset > cmap.Length || cmap.Length - subtableOffset < 2)
+                {
+                    continue;
+                }
+
+                ReadExactly(stream, checked((long)cmap.Offset + subtableOffset), formatBytes, uri);
+                ushort format = ReadSpanUShort(formatBytes, 0);
+                bool isUnicode = platformId == 0 || (platformId == 3 && encodingId is 1 or 10);
+                hasUnicodeFormat4 |= format == 4 && isUnicode;
+                hasSymbolFormat4 |= format == 4 && platformId == 3 && encodingId == 0;
+            }
+
+            return !hasUnicodeFormat4 && hasSymbolFormat4;
+        }
+
+        private static TableRecord RequireCatalogTable(Dictionary<uint, TableRecord> tables, uint tag, Uri uri)
+        {
+            if (tables.TryGetValue(tag, out TableRecord table))
+            {
+                return table;
+            }
+
+            throw new FileFormatException(uri.AbsoluteUri);
+        }
+
+        private static byte[] ReadTable(Stream stream, TableRecord table, Uri uri)
+        {
+            byte[] data = GC.AllocateUninitializedArray<byte>(checked((int)table.Length));
+            ReadExactly(stream, table.Offset, data, uri);
+            return data;
+        }
+
+        private static byte[] ReadTablePrefix(Stream stream, TableRecord table, int maximumLength, Uri uri)
+        {
+            int length = checked((int)Math.Min(table.Length, checked((uint)maximumLength)));
+            byte[] data = GC.AllocateUninitializedArray<byte>(length);
+            ReadExactly(stream, table.Offset, data, uri);
+            return data;
+        }
+
+        private static void EnsureFileRange(Stream stream, uint offset, uint length, Uri uri)
+        {
+            if (offset > stream.Length || length > stream.Length - offset)
+            {
+                throw new FileFormatException(uri.AbsoluteUri);
+            }
+        }
+
+        private static void ReadExactly(Stream stream, long offset, Span<byte> destination, Uri uri)
+        {
+            if (offset < 0 || offset > stream.Length || destination.Length > stream.Length - offset)
+            {
+                throw new FileFormatException(uri.AbsoluteUri);
+            }
+
+            stream.Position = offset;
+            stream.ReadExactly(destination);
+        }
+
+        private static ushort ReadSpanUShort(ReadOnlySpan<byte> data, int offset)
+        {
+            return (ushort)((data[offset] << 8) | data[offset + 1]);
+        }
+
+        private static uint ReadSpanUInt(ReadOnlySpan<byte> data, int offset)
+        {
+            return ((uint)data[offset] << 24)
+                | ((uint)data[offset + 1] << 16)
+                | ((uint)data[offset + 2] << 8)
+                | data[offset + 3];
+        }
+
+        private static string DecodeName(ReadOnlySpan<byte> bytes, ushort platformId)
+        {
+            string value = platformId == 0 || platformId == 3
+                ? Encoding.BigEndianUnicode.GetString(bytes)
+                : Encoding.Latin1.GetString(bytes);
+
+            return value.Replace("\0", string.Empty);
+        }
+
+        private ProGpuSfntFontFace GetSfntFace()
+        {
+            ProGpuSfntFontFace sfntFace = _sfntFace;
+            if (sfntFace != null)
+            {
+                return sfntFace;
+            }
+
+            lock (_fontDataLock)
+            {
+                sfntFace = _sfntFace;
+                if (sfntFace == null)
+                {
+                    byte[] data = ReadFontBytes(SourceUri, _fontSource);
+                    sfntFace = ProGpuSfntFontFace.Load(data, checked((int)FaceIndex));
+                    _data = data;
+                    _sfntFace = sfntFace;
+                }
+            }
+
+            return sfntFace;
+        }
+
+        private byte[] GetFontData()
+        {
+            _ = GetSfntFace();
+            return _data;
         }
 
         private static List<uint> GetFaceOffsets(byte[] data)
@@ -1503,6 +2018,53 @@ namespace MS.Internal.Text.TextInterface
                 (char)((tag >> 8) & 0xFF),
                 (char)(tag & 0xFF)
             });
+        }
+
+        private sealed class CatalogFaceMetadata
+        {
+            internal CatalogFaceMetadata(
+                Dictionary<uint, TableRecord> tables,
+                Dictionary<ushort, LocalizedStrings> nameStrings,
+                string familyName,
+                string faceName,
+                string fullName,
+                FontMetrics metrics,
+                FontWeight weight,
+                FontStretch stretch,
+                FontStyle style,
+                FontFaceType faceType,
+                ushort glyphCount,
+                bool isSymbolFont,
+                double version)
+            {
+                Tables = tables;
+                NameStrings = nameStrings;
+                FamilyName = familyName;
+                FaceName = faceName;
+                FullName = fullName;
+                Metrics = metrics;
+                Weight = weight;
+                Stretch = stretch;
+                Style = style;
+                FaceType = faceType;
+                GlyphCount = glyphCount;
+                IsSymbolFont = isSymbolFont;
+                Version = version;
+            }
+
+            internal Dictionary<uint, TableRecord> Tables { get; }
+            internal Dictionary<ushort, LocalizedStrings> NameStrings { get; }
+            internal string FamilyName { get; }
+            internal string FaceName { get; }
+            internal string FullName { get; }
+            internal FontMetrics Metrics { get; }
+            internal FontWeight Weight { get; }
+            internal FontStretch Stretch { get; }
+            internal FontStyle Style { get; }
+            internal FontFaceType FaceType { get; }
+            internal ushort GlyphCount { get; }
+            internal bool IsSymbolFont { get; }
+            internal double Version { get; }
         }
 
         private readonly struct TableRecord

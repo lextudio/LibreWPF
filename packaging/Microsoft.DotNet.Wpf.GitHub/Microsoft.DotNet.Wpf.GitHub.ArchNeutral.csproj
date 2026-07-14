@@ -21,7 +21,6 @@
     <LibreWpfWindowsDesktopRuntimeVersion Condition="'$(LibreWpfWindowsDesktopRuntimeVersion)' == ''">$(ProGpuWpfNet10SupportPackageVersion)</LibreWpfWindowsDesktopRuntimeVersion>
     <LibreWpfWindowsDesktopRuntimeVersion Condition="'$(LibreWpfWindowsDesktopRuntimeVersion)' == ''">10.0.9</LibreWpfWindowsDesktopRuntimeVersion>
     <_LibreWpfNuGetPackageRoot>$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_LibreWpfNuGetPackageRoot>
-    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_IncludeLibreWpfWindowsDesktopNativeAssets</TargetsForTfmSpecificContentInPackage>
   </PropertyGroup>
 
   <ItemGroup>
@@ -49,21 +48,29 @@
 
   </ItemGroup>
 
-  <Target Name="_IncludeLibreWpfWindowsDesktopNativeAssets">
-    <ItemGroup>
-      <TfmSpecificPackageFile Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x86/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-x86/native/*.dll">
-        <PackagePath>runtimes/win-x86/native/</PackagePath>
-      </TfmSpecificPackageFile>
-      <TfmSpecificPackageFile Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x64/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-x64/native/*.dll">
-        <PackagePath>runtimes/win-x64/native/</PackagePath>
-      </TfmSpecificPackageFile>
-      <TfmSpecificPackageFile Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-arm64/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-arm64/native/*.dll">
-        <PackagePath>runtimes/win-arm64/native/</PackagePath>
-      </TfmSpecificPackageFile>
-      <TfmSpecificPackageFile Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x64/$(LibreWpfWindowsDesktopRuntimeVersion)/LICENSE">
-        <PackagePath>notices/Microsoft.WindowsDesktop.App.Runtime/LICENSE</PackagePath>
-      </TfmSpecificPackageFile>
-    </ItemGroup>
+  <ItemGroup>
+    <_LibreWpfWinX86Native Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x86/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-x86/native/*.dll" />
+    <_LibreWpfWinX64Native Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x64/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-x64/native/*.dll" />
+    <_LibreWpfWinArm64Native Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-arm64/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-arm64/native/*.dll" />
+    <_LibreWpfWindowsDesktopLicense Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x64/$(LibreWpfWindowsDesktopRuntimeVersion)/LICENSE" />
+
+    <!-- These are NuGet pack items, independent of WPF Arcade's single-platform staging folder. -->
+    <None Include="@(_LibreWpfWinX86Native)" Pack="true" PackagePath="runtimes/win-x86/native" />
+    <None Include="@(_LibreWpfWinX64Native)" Pack="true" PackagePath="runtimes/win-x64/native" />
+    <None Include="@(_LibreWpfWinArm64Native)" Pack="true" PackagePath="runtimes/win-arm64/native" />
+    <None Include="@(_LibreWpfWindowsDesktopLicense)" Pack="true" PackagePath="notices/Microsoft.WindowsDesktop.App.Runtime" />
+  </ItemGroup>
+
+  <Target Name="_ValidateLibreWpfWindowsDesktopNativeAssets"
+          BeforeTargets="GenerateNuspec">
+    <Error Condition="'@(_LibreWpfWinX86Native)' == ''"
+           Text="Microsoft.WindowsDesktop.App.Runtime.win-x86 $(LibreWpfWindowsDesktopRuntimeVersion) native assets were not restored." />
+    <Error Condition="'@(_LibreWpfWinX64Native)' == ''"
+           Text="Microsoft.WindowsDesktop.App.Runtime.win-x64 $(LibreWpfWindowsDesktopRuntimeVersion) native assets were not restored." />
+    <Error Condition="'@(_LibreWpfWinArm64Native)' == ''"
+           Text="Microsoft.WindowsDesktop.App.Runtime.win-arm64 $(LibreWpfWindowsDesktopRuntimeVersion) native assets were not restored." />
+    <Error Condition="'@(_LibreWpfWindowsDesktopLicense)' == ''"
+           Text="Microsoft.WindowsDesktop.App.Runtime $(LibreWpfWindowsDesktopRuntimeVersion) license was not restored." />
   </Target>
 
   <ItemGroup>

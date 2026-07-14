@@ -44,6 +44,12 @@ public partial class MainWindow : Window
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
     private bool _liveValidationStarted;
 
+    private readonly record struct LivePopupSurfaceSnapshot(
+        bool IsReady,
+        bool HasPortableSnapshot,
+        ProGpuWpfDiagnostics.CompositionLayerSnapshot Composition,
+        ProGpuWpfDiagnostics.PortablePopupSnapshot Portable);
+
     internal int EditorPasswordChangedCount { get; private set; }
 
     internal int DataObjectRoundTripCount { get; private set; }
@@ -1516,9 +1522,11 @@ public partial class MainWindow : Window
             var comboSnapshot = await ValidateLiveComboBoxPopupSurfaceAsync(liveHost);
             var directPopupSnapshot = await ValidateLiveDirectPopupSurfaceAsync(liveHost);
             return
-                "Menu, ComboBox dropdown, and direct Popup opened through the ProGPU retained popup layer " +
-                $"above the main drawing layer (popup children {menuSnapshot.PopupLayerChildCount}/" +
-                $"{comboSnapshot.PopupLayerChildCount}/{directPopupSnapshot.PopupLayerChildCount})";
+                "Menu, ComboBox dropdown, and direct Popup opened through ProGPU popup surfaces " +
+                $"(retained children {menuSnapshot.Composition.PopupLayerChildCount}/" +
+                $"{comboSnapshot.Composition.PopupLayerChildCount}/{directPopupSnapshot.Composition.PopupLayerChildCount}; " +
+                $"native windows {menuSnapshot.Portable.NativeWindowCount}/" +
+                $"{comboSnapshot.Portable.NativeWindowCount}/{directPopupSnapshot.Portable.NativeWindowCount})";
         }
         finally
         {
@@ -1526,7 +1534,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<ProGpuWpfDiagnostics.CompositionLayerSnapshot> ValidateLiveMenuPopupSurfaceAsync(
+    private async Task<LivePopupSurfaceSnapshot> ValidateLiveMenuPopupSurfaceAsync(
         ProGpuWpfWindowHost liveHost)
     {
         bool opened = await InvokeWithLiveHostWakeAsync(
@@ -1567,7 +1575,7 @@ public partial class MainWindow : Window
         return snapshot;
     }
 
-    private async Task<ProGpuWpfDiagnostics.CompositionLayerSnapshot> ValidateLiveComboBoxPopupSurfaceAsync(
+    private async Task<LivePopupSurfaceSnapshot> ValidateLiveComboBoxPopupSurfaceAsync(
         ProGpuWpfWindowHost liveHost)
     {
         string lastState = "not checked";
@@ -1646,7 +1654,7 @@ public partial class MainWindow : Window
         return snapshot;
     }
 
-    private async Task<ProGpuWpfDiagnostics.CompositionLayerSnapshot> ValidateLiveDirectPopupSurfaceAsync(
+    private async Task<LivePopupSurfaceSnapshot> ValidateLiveDirectPopupSurfaceAsync(
         ProGpuWpfWindowHost liveHost)
     {
         string lastState = "not checked";
@@ -1750,7 +1758,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task<ProGpuWpfDiagnostics.CompositionLayerSnapshot> WaitForLivePopupLayerChildCountAsync(
+    private async Task<LivePopupSurfaceSnapshot> WaitForLivePopupLayerChildCountAsync(
         ProGpuWpfWindowHost liveHost,
         int expectedPopupChildren,
         bool exact,
@@ -1764,23 +1772,38 @@ public partial class MainWindow : Window
                 liveHost,
                 () =>
                 {
-                    if (!ProGpuWpfDiagnostics.TryGetCompositionLayerSnapshot(liveHost, out var current))
+                    if (!ProGpuWpfDiagnostics.TryGetCompositionLayerSnapshot(liveHost, out var composition))
                     {
                         lastState = $"{description}: no composition target";
                         return default;
                     }
 
+                    bool hasPortableSnapshot = ProGpuWpfDiagnostics.TryGetPortablePopupSnapshot(
+                        liveHost,
+                        out var portable);
+
                     lastState =
-                        $"{description}: scene children {current.SceneRootChildCount}, " +
-                        $"layer order retained={current.RetainedLayerIndex}, flat={current.FlatLayerIndex}, popup={current.PopupLayerIndex}, " +
-                        $"popup children {current.PopupLayerChildCount}, retained children {current.RetainedLayerChildCount}";
-                    return IsLivePopupLayerSnapshotReady(current, expectedPopupChildren, exact)
-                        ? current
-                        : default;
+                        $"{description}: scene children {composition.SceneRootChildCount}, " +
+                        $"layer order retained={composition.RetainedLayerIndex}, flat={composition.FlatLayerIndex}, popup={composition.PopupLayerIndex}, " +
+                        $"popup children {composition.PopupLayerChildCount}, retained children {composition.RetainedLayerChildCount}, " +
+                        $"portable={hasPortableSnapshot}, open={portable.OpenCount}, visible={portable.VisibleCount}, " +
+                        $"native={portable.NativeWindowCount}, presented={portable.PresentedNativeWindowCount}, " +
+                        $"gpuHitTests={portable.NativeWindowGpuHitTestCount}, gpuOwners={portable.NativeWindowGpuHitTestOwnerCount}";
+                    bool isReady = IsLivePopupSurfaceSnapshotReady(
+                        composition,
+                        hasPortableSnapshot,
+                        portable,
+                        expectedPopupChildren,
+                        exact);
+                    return new LivePopupSurfaceSnapshot(
+                        isReady,
+                        hasPortableSnapshot,
+                        composition,
+                        portable);
                 },
                 DispatcherPriority.Background);
 
-            if (snapshot.HasCompositionTarget)
+            if (snapshot.IsReady)
             {
                 return snapshot;
             }
@@ -1790,26 +1813,46 @@ public partial class MainWindow : Window
             ? $"exactly {expectedPopupChildren}"
             : $"at least {expectedPopupChildren}";
         throw new InvalidOperationException(
-            $"Expected MVP live {description} to present {expectedText} popup retained child visual(s) above the main drawing layer, but last state was: {lastState}.");
+            $"Expected MVP live {description} to present {expectedText} retained popup child visual(s) " +
+            $"or an equivalent native popup surface, but last state was: {lastState}.");
     }
 
-    private static bool IsLivePopupLayerSnapshotReady(
-        ProGpuWpfDiagnostics.CompositionLayerSnapshot snapshot,
+    private static bool IsLivePopupSurfaceSnapshotReady(
+        ProGpuWpfDiagnostics.CompositionLayerSnapshot composition,
+        bool hasPortableSnapshot,
+        ProGpuWpfDiagnostics.PortablePopupSnapshot portable,
         int expectedPopupChildren,
         bool exact)
     {
-        if (!snapshot.HasCompositionTarget ||
-            snapshot.SceneRootChildCount < 3 ||
-            snapshot.RetainedLayerIndex < 0 ||
-            snapshot.FlatLayerIndex < 0 ||
-            snapshot.PopupLayerIndex <= snapshot.FlatLayerIndex)
+        if (!composition.HasCompositionTarget ||
+            composition.SceneRootChildCount < 3 ||
+            composition.RetainedLayerIndex < 0 ||
+            composition.FlatLayerIndex < 0 ||
+            composition.PopupLayerIndex <= composition.FlatLayerIndex ||
+            !hasPortableSnapshot)
         {
             return false;
         }
 
-        return exact
-            ? snapshot.PopupLayerChildCount == expectedPopupChildren
-            : snapshot.PopupLayerChildCount >= expectedPopupChildren;
+        if (exact && expectedPopupChildren == 0)
+        {
+            return composition.PopupLayerChildCount == 0 &&
+                portable.VisibleCount == 0 &&
+                portable.NativeWindowCount == 0 &&
+                portable.PresentedNativeWindowCount == 0 &&
+                portable.NativeWindowGpuHitTestCount == 0 &&
+                portable.NativeWindowGpuHitTestOwnerCount == 0;
+        }
+
+        bool retainedReady = exact
+            ? composition.PopupLayerChildCount == expectedPopupChildren
+            : composition.PopupLayerChildCount >= expectedPopupChildren;
+        bool nativeReady = portable.VisibleCount >= expectedPopupChildren &&
+            portable.NativeWindowCount >= expectedPopupChildren &&
+            portable.PresentedNativeWindowCount >= expectedPopupChildren &&
+            portable.NativeWindowGpuHitTestCount >= expectedPopupChildren &&
+            portable.NativeWindowGpuHitTestOwnerCount >= expectedPopupChildren;
+        return retainedReady || nativeReady;
     }
 
     private async Task<string> ValidateLiveMouseBindingAsync(ProGpuWpfWindowHost liveHost)

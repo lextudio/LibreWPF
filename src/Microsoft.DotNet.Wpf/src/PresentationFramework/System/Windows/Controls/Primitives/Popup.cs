@@ -1768,9 +1768,11 @@ namespace System.Windows.Controls.Primitives
             }
 
             CancelPortableSettledPosition();
+            _portablePlacementTrackingDeadline =
+                Environment.TickCount64 + (long)PortablePlacementSettleDelay.TotalMilliseconds;
             _portableSettledPosition = new DispatcherTimer(DispatcherPriority.Render)
             {
-                Interval = PortablePlacementSettleDelay
+                Interval = PortablePlacementTrackingInterval
             };
             _portableSettledPosition.Tick += OnPortableSettledPosition;
             _portableSettledPosition.Start();
@@ -1790,8 +1792,11 @@ namespace System.Windows.Controls.Primitives
 
         private void OnPortableSettledPosition(object sender, EventArgs e)
         {
-            CancelPortableSettledPosition();
             Reposition();
+            if (Environment.TickCount64 >= _portablePlacementTrackingDeadline)
+            {
+                CancelPortableSettledPosition();
+            }
         }
 
         internal void ForceClose()
@@ -1981,6 +1986,11 @@ namespace System.Windows.Controls.Primitives
                 if (_secHelper.TryUpdatePortablePopupRootClientSize(_popupRoot, out Size clientSize))
                 {
                     OnWindowResize(_popupRoot, new AutoResizedEventArgs(clientSize));
+                    // Size can remain constant while a theme entrance animation changes
+                    // the child's transform. Native popup windows receive position updates
+                    // throughout that animation; the portable compositor has no HWND move
+                    // notifications, so keep its layer compensation synchronized here too.
+                    UpdatePosition();
                 }
                 else
                 {
@@ -3028,6 +3038,7 @@ namespace System.Windows.Controls.Primitives
 
         private const int AnimationDelay = 150;
         internal static TimeSpan AnimationDelayTime = new TimeSpan(0, 0, 0, 0, AnimationDelay);
+        private static readonly TimeSpan PortablePlacementTrackingInterval = TimeSpan.FromMilliseconds(16);
         private static readonly TimeSpan PortablePlacementSettleDelay = TimeSpan.FromMilliseconds(250);
         internal static RoutedEventHandler CloseOnUnloadedHandler;
         private static readonly UncommonField<PopupRoot> ParentPopupRootField = new UncommonField<PopupRoot>();
@@ -3038,6 +3049,7 @@ namespace System.Windows.Controls.Primitives
         private DispatcherOperation _asyncCreate;
         private DispatcherTimer _asyncDestroy;
         private DispatcherTimer _portableSettledPosition;
+        private long _portablePlacementTrackingDeadline;
         private bool _isPortablePopupRootLayoutUpdateAttached;
         private bool _isUpdatingPortablePopupRootLayout;
 

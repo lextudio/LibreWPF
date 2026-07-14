@@ -345,10 +345,12 @@ public sealed class WpfManagedProjectGraphTests
         var popup = File.ReadAllText(popupPath);
 
         Assert.Contains("SchedulePortableSettledPosition();", popup, StringComparison.Ordinal);
+        Assert.Contains("PortablePlacementTrackingInterval", popup, StringComparison.Ordinal);
         Assert.Contains("PortablePlacementSettleDelay", popup, StringComparison.Ordinal);
         Assert.Contains("_portableSettledPosition.Tick += OnPortableSettledPosition;", popup, StringComparison.Ordinal);
-        Assert.Contains("CancelPortableSettledPosition();\n            Reposition();", popup, StringComparison.Ordinal);
+        Assert.Contains("Reposition();\n            if (Environment.TickCount64 >= _portablePlacementTrackingDeadline)", popup, StringComparison.Ordinal);
         Assert.Contains("else\n                {\n                    // A portable popup shares the owner compositor", popup, StringComparison.Ordinal);
+        Assert.Contains("OnWindowResize(_popupRoot, new AutoResizedEventArgs(clientSize));\n                    // Size can remain constant", popup, StringComparison.Ordinal);
         Assert.Contains("UpdatePosition();", popup, StringComparison.Ordinal);
     }
 

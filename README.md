@@ -9,6 +9,19 @@ Current focus areas:
 - Package the runtime as a preview SDK and NuGet set that can be consumed from a local feed or NuGet.org.
 - Keep third-party validation active through basic WPF apps, Xceed Toolkit/AvalonDock, Xceed paid Toolkit/DataGrid, SciChart MVP, ProGPU Avalonia package smoke, and no-source-change SDK smoke tests.
 
+## Upstream WPF Synchronization
+
+The current LibreWPF development line includes `dotnet/wpf` through upstream commit
+[`1131ae499da9687fcd7c5b25cea7ac37f5885c61`](https://github.com/dotnet/wpf/commit/1131ae499da9687fcd7c5b25cea7ac37f5885c61)
+(`Source code updates from dotnet/dotnet (#11770)`, 2026-07-10). This pinned commit is the
+auditable upstream baseline for the next preview; later upstream commits are not implied.
+
+Upstream updates are integrated periodically on `progpu-rendering-port` as explicit merge/sync
+commits. Each update must preserve the portable typed contracts, pass the full LibreWPF SDK and
+package-mode application gates, and update the baseline recorded here. Published preview tags remain
+immutable, so a consumer can combine the LibreWPF tag commit with this recorded upstream baseline to
+identify the exact managed WPF source lineage.
+
 ## Getting Started: Switch From WPF To LibreWPF
 
 LibreWPF is packaged as an MSBuild SDK so normal WPF apps can move to the ProGPU/Silk.NET platform through the project file first. Keep your application code, XAML, resources, and existing package references unchanged unless the app uses Windows-only interop or unsupported native graphics APIs.

@@ -8790,6 +8790,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(winEventHandler, "if (OperatingSystem.IsWindows())", "UnsafeNativeMethods.UnhookWinEvent");
         AssertGuardBefore(moveSizeWinEventHandler, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetParent");
         Assert.Contains("return window.IsEnabled", textEditorDragDrop, StringComparison.Ordinal);
+        Assert.Contains("DragDrop.IsPortableDragSource(_textEditor.UiScope)", textEditorDragDrop, StringComparison.Ordinal);
         AssertGuardBefore(textEditorDragDrop, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.IsWindowEnabled");
         AssertGuardBefore(textEditorDragDrop, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SetForegroundWindow");
         Assert.Contains("ClipToPresentationSourceRoot(source, This.UiScope", textEditorContextMenu, StringComparison.Ordinal);

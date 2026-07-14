@@ -143,6 +143,15 @@ namespace System.Windows.Documents
                     return false; // false means that drag is not involved at all - selection extension should continue
                 }
 
+                // Portable hosts have no synchronous OLE source-drag loop.  Treat a drag
+                // that begins inside the current selection as ordinary selection extension
+                // instead of entering the Windows-only OLE path.
+                if (DragDrop.IsPortableDragSource(_textEditor.UiScope))
+                {
+                    _dragStarted = false;
+                    return false;
+                }
+
                 // Check the mouse drag to start DragDrop operation.
                 if (!InitialThresholdCrossed(mouseMovePoint))
                 {

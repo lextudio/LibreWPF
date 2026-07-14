@@ -401,8 +401,14 @@ namespace System.Windows
                 dataObject = new DataObject(data);
             }
 
-            // Call OleDoDragDrop with DataObject.
-            DragDropEffects ret = OleDoDragDrop(dragSource, dataObject, allowedEffects);
+            // Portable presentation sources do not own an HWND/OLE message pump.  Calling
+            // OleDoDragDrop from their Silk.NET input callback would require a Windows STA
+            // and crashes on non-Windows hosts.  Fail closed until a portable source-drag
+            // service is available; incoming portable drops continue to use the typed
+            // ProcessPortableDragDrop path below.
+            DragDropEffects ret = IsPortableDragSource(dragSource)
+                ? DragDropEffects.None
+                : OleDoDragDrop(dragSource, dataObject, allowedEffects);
 
             args = new RoutedEventArgs(DragDropCompletedEvent, dragSource);
             
@@ -533,6 +539,12 @@ namespace System.Windows
             }
 
             return true;
+        }
+
+        internal static bool IsPortableDragSource(DependencyObject dragSource)
+        {
+            return dragSource != null &&
+                PresentationSource.CriticalFromVisual(dragSource) is PortablePresentationSource;
         }
 
         internal static DragDropEffects ProcessPortableDrop(

@@ -41,6 +41,29 @@ public class PortablePresentationSourceTests
         root.PointToScreen(new Point()).Should().Be(new Point());
     }
 
+    [Fact]
+    public void PortableDragSourceDoesNotInvokeOleServices()
+    {
+        using IPortablePresentationSourceHost source = PortablePresentationSourceHost.Create();
+        var root = new HitTestElement();
+        source.RootVisual = root;
+        source.SetClientSize(200.0, 100.0);
+
+        int startedCount = 0;
+        int completedCount = 0;
+        root.AddHandler(DragDrop.DragDropStartedEvent, new RoutedEventHandler((_, _) => startedCount++));
+        root.AddHandler(DragDrop.DragDropCompletedEvent, new RoutedEventHandler((_, _) => completedCount++));
+
+        DragDropEffects result = DragDrop.DoDragDrop(
+            root,
+            "portable text",
+            DragDropEffects.Copy | DragDropEffects.Move);
+
+        result.Should().Be(DragDropEffects.None);
+        startedCount.Should().Be(1);
+        completedCount.Should().Be(1);
+    }
+
     [StaFact]
     public void ReleaseMouseCaptureReportsOnlyCancelCaptureWithoutMovingThePointer()
     {

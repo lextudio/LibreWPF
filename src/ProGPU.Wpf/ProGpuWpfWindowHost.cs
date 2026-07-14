@@ -89,6 +89,32 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         TrySetMousePassthrough(true);
     }
 
+    private unsafe void TrySetFocusOnShow(bool enabled)
+    {
+        if (_window?.Native?.Glfw is not { } handle || handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        try
+        {
+            Silk.NET.GLFW.Glfw.GetApi().SetWindowAttrib(
+                (Silk.NET.GLFW.WindowHandle*)handle,
+                Silk.NET.GLFW.WindowAttributeSetter.FocusOnShow,
+                enabled);
+            if (s_traceInput)
+            {
+                Console.WriteLine(
+                    $"ProGPU WPF: focus-on-show {(enabled ? "ON" : "OFF")} " +
+                    $"window#{System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(_window)}");
+            }
+        }
+        catch
+        {
+            // Best-effort.
+        }
+    }
+
     private unsafe void TrySetMousePassthrough(bool enabled)
     {
         if (_window?.Native?.Glfw is not { } handle || handle == IntPtr.Zero)
@@ -1153,7 +1179,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         windowOptions.Title = _windowTitle;
         windowOptions.VSync = _options.VSync;
         windowOptions.IsEventDriven = _options.IsEventDriven;
-        windowOptions.IsVisible = _isHostVisible;
+        // If a mouse button is held, a drag is in progress and this is a transient overlay window.
+        // Create it hidden so ShowCore can suppress focus-on-show (which would otherwise steal the
+        // drag-origin window's macOS mouse grab and lose the MouseUp) before making it visible.
+        windowOptions.IsVisible = _isHostVisible && !s_mouseButtonPressedSomewhere;
         windowOptions.WindowState = ToSilkWindowState(_windowState);
         windowOptions.TopMost = _windowTopmost;
         windowOptions.WindowBorder = ToSilkWindowBorder(_windowBorder);
@@ -3772,6 +3801,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         _isHostVisible = true;
         EnsureWindow();
+        // If a mouse button is held, this window is being shown during an in-progress drag (e.g. an
+        // AvalonDock overlay/floating ghost). On macOS, a window that takes key focus on show breaks
+        // the drag-origin window's implicit mouse grab, so the subsequent MouseUp never reaches it and
+        // the drag can't complete. EnsureWindow created it hidden in that case; initialize it so its
+        // native handle exists, suppress focus-on-show, then make it visible so the origin keeps grab.
+        if (s_mouseButtonPressedSomewhere && !_window!.IsVisible)
+        {
+            if (!_window.IsInitialized)
+            {
+                _window.Initialize();
+            }
+            TrySetFocusOnShow(false);
+        }
         _window!.IsVisible = true;
         NoteWindowShownForSpuriousUpGuard();
 

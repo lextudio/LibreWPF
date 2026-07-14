@@ -9030,6 +9030,19 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void PortableScreenCoordinatesStayLogicalWhileRenderingKeepsItsDeviceTransform()
+    {
+        var pointUtil = File.ReadAllText(FindRepoPath(
+            "src", "Microsoft.DotNet.Wpf", "src", "Shared", "MS", "Internal", "PointUtil.cs"));
+
+        Assert.Contains("if (!IsPortable(presentationSource))", pointUtil, StringComparison.Ordinal);
+        Assert.Contains("pointClient.X += originX;", pointUtil, StringComparison.Ordinal);
+        Assert.Contains("pointScreen.X -= originX;", pointUtil, StringComparison.Ordinal);
+        Assert.DoesNotContain("pointClient.X += originX * scaleX", pointUtil, StringComparison.Ordinal);
+        Assert.DoesNotContain("pointScreen.X -= originX * scaleX", pointUtil, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PortableTextFormatterKeepsCollapsedSimpleTextOnManagedPath()
     {
         var simpleTextLine = File.ReadAllText(FindRepoPath(

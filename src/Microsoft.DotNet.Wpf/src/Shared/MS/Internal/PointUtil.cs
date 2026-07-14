@@ -41,8 +41,11 @@ namespace MS.Internal
             // Only do if we allow throwing on error or have a valid PresentationSource and CompositionTarget.
             if (throwOnError || (presentationSource != null && presentationSource.CompositionTarget != null && !presentationSource.CompositionTarget.IsDisposed))
             {
-                // Convert from pixels into measure units.
-                point = presentationSource.CompositionTarget.TransformFromDevice.Transform(point);
+                // Portable hosts expose client coordinates in logical units. Their device
+                // transform describes the framebuffer only and must not participate in input or
+                // screen-coordinate conversion.
+                if (!IsPortable(presentationSource))
+                    point = presentationSource.CompositionTarget.TransformFromDevice.Transform(point);
 
                 // REVIEW:
                 // We need to include the root element's transform until the MIL
@@ -69,8 +72,8 @@ namespace MS.Internal
             // team fixes their APIs to do this.
             point = ApplyVisualTransform(point, presentationSource.RootVisual, false);
 
-            // Convert from measure units into pixels.
-            point = presentationSource.CompositionTarget.TransformToDevice.Transform(point);
+            if (!IsPortable(presentationSource))
+                point = presentationSource.CompositionTarget.TransformToDevice.Transform(point);
 
             return point;
         }
@@ -172,11 +175,8 @@ namespace MS.Internal
                 directPopupService.GetScreenOrigin != null &&
                 directPopupService.GetScreenOrigin(presentationSource, out double directOriginX, out double directOriginY))
             {
-                Matrix toDevice = presentationSource.CompositionTarget.TransformToDevice;
-                double scaleX = toDevice.M11 != 0 ? Math.Abs(toDevice.M11) : 1.0;
-                double scaleY = toDevice.M22 != 0 ? Math.Abs(toDevice.M22) : 1.0;
-                pointClient.X += directOriginX * scaleX;
-                pointClient.Y += directOriginY * scaleY;
+                pointClient.X += directOriginX;
+                pointClient.Y += directOriginY;
                 return pointClient;
             }
 
@@ -198,11 +198,8 @@ namespace MS.Internal
                     popupService.GetScreenOrigin != null &&
                     popupService.GetScreenOrigin(originSource, out double originX, out double originY))
                 {
-                    Matrix toDevice = inputSource.CompositionTarget.TransformToDevice;
-                    double scaleX = toDevice.M11 != 0 ? Math.Abs(toDevice.M11) : 1.0;
-                    double scaleY = toDevice.M22 != 0 ? Math.Abs(toDevice.M22) : 1.0;
-                    pointClient.X += originX * scaleX;
-                    pointClient.Y += originY * scaleY;
+                    pointClient.X += originX;
+                    pointClient.Y += originY;
                 }
 
                 return pointClient;
@@ -232,11 +229,8 @@ namespace MS.Internal
                 directPopupService.GetScreenOrigin != null &&
                 directPopupService.GetScreenOrigin(presentationSource, out double directOriginX, out double directOriginY))
             {
-                Matrix toDevice = presentationSource.CompositionTarget.TransformToDevice;
-                double scaleX = toDevice.M11 != 0 ? Math.Abs(toDevice.M11) : 1.0;
-                double scaleY = toDevice.M22 != 0 ? Math.Abs(toDevice.M22) : 1.0;
-                pointScreen.X -= directOriginX * scaleX;
-                pointScreen.Y -= directOriginY * scaleY;
+                pointScreen.X -= directOriginX;
+                pointScreen.Y -= directOriginY;
                 return pointScreen;
             }
 
@@ -258,11 +252,8 @@ namespace MS.Internal
                     popupService.GetScreenOrigin != null &&
                     popupService.GetScreenOrigin(originSource, out double originX, out double originY))
                 {
-                    Matrix toDevice = inputSource.CompositionTarget.TransformToDevice;
-                    double scaleX = toDevice.M11 != 0 ? Math.Abs(toDevice.M11) : 1.0;
-                    double scaleY = toDevice.M22 != 0 ? Math.Abs(toDevice.M22) : 1.0;
-                    pointScreen.X -= originX * scaleX;
-                    pointScreen.Y -= originY * scaleY;
+                    pointScreen.X -= originX;
+                    pointScreen.Y -= originY;
                 }
 
                 return pointScreen;
@@ -277,6 +268,12 @@ namespace MS.Internal
             ptClient = AdjustForRightToLeft(ptClient, handleRef);
 
             return ToPoint(ptClient);
+        }
+
+        private static bool IsPortable(PresentationSource presentationSource)
+        {
+            return presentationSource is PortablePresentationSource ||
+                presentationSource is HwndSource hwndSource && hwndSource.IsPortable;
         }
 
         /// <summary>

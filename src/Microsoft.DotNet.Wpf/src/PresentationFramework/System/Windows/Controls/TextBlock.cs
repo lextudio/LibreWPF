@@ -1771,14 +1771,24 @@ Debug.Assert(lineCount == LineCount);
             int lineOffset = 0;
             double lineHeightOffset = 0;
             int lineCount = LineCount;
-            while (startOffset >= (lineOffset + GetLine(lineIndex).Length) && lineIndex < lineCount)
+            while (lineIndex < lineCount)
             {
-Debug.Assert(lineCount == LineCount);
-                lineOffset += GetLine(lineIndex).Length;
+                Debug.Assert(lineCount == LineCount);
+                LineMetrics lineMetrics = GetLine(lineIndex);
+                if (startOffset < lineOffset + lineMetrics.Length)
+                {
+                    break;
+                }
+
+                lineOffset += lineMetrics.Length;
+                lineHeightOffset += lineMetrics.Height;
                 lineIndex++;
-                lineHeightOffset += GetLine(lineIndex).Height;
             }
-            Debug.Assert(lineIndex < lineCount);
+
+            if (lineIndex >= lineCount)
+            {
+                return new ReadOnlyCollection<Rect>(new List<Rect>(0));
+            }
 
             int lineStart = lineOffset;
             List<Rect> rectangles = new List<Rect>();

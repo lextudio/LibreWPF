@@ -738,6 +738,8 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(
             new[] { 0x0046, 0x0047, 0x0003, 0x0046, 0x0047, 0x0005 },
             source.DispatchedHwndSourceHooks.Select(hook => hook.Message).ToArray());
+        Assert.Equal(-12, source.ClientOriginX);
+        Assert.Equal(34, source.ClientOriginY);
         Assert.Equal(PackSignedLowHigh(-12, 34), source.DispatchedHwndSourceHooks[2].LParam);
         Assert.Equal(PackUnsignedLowHigh(800, 600), source.DispatchedHwndSourceHooks[5].LParam);
     }
@@ -2524,6 +2526,10 @@ public sealed class WpfPortableWindowActivationTests
 
         public int ClientSizeChangeCount { get; private set; }
 
+        public double ClientOriginX { get; private set; }
+
+        public double ClientOriginY { get; private set; }
+
         public List<(int Message, IntPtr WParam, IntPtr LParam)> DispatchedHwndSourceHooks { get; } = new();
 
         public Dictionary<int, (IntPtr Result, bool Handled)> HwndSourceHookResponses { get; } = new();
@@ -2538,6 +2544,13 @@ public sealed class WpfPortableWindowActivationTests
             ClientWidth = width;
             ClientHeight = height;
             ClientSizeChangeCount++;
+            RenderRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetClientOrigin(double x, double y)
+        {
+            ClientOriginX = x;
+            ClientOriginY = y;
             RenderRequested?.Invoke(this, EventArgs.Empty);
         }
 

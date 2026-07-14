@@ -1691,6 +1691,67 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.NotNull(activationService.LastPresentationSourceInput);
         Assert.Equal(5, activationService.LastPresentationSourceInput!.X);
         Assert.Equal(5, activationService.LastPresentationSourceInput.Y);
+
+    }
+
+    [Fact]
+    public void PortablePopupInputSubtractsOwnerClientScreenOrigin()
+    {
+        var activationService = new TestWindowActivationServiceRegistrar();
+        using var activationRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(activationService);
+        var popupPresentationSource = new FakePortablePresentationSource();
+        using var popupSourceFactory = UsePortablePopupSourceFactory(() => popupPresentationSource);
+        using var host = new ProGpuWpfWindowHost();
+        var owner = new FakePortablePresentationSource
+        {
+            RootVisual = new object()
+        };
+        host.SetPosition(100, 200);
+        Assert.True(host.TryBindPortablePresentationSource(owner));
+
+        var request = new PortablePopupCreateRequest(
+            placementTarget: null,
+            ownerPresentationSource: owner,
+            ownerHandle: owner.Handle,
+            popupScreenDeviceX: 120,
+            popupScreenDeviceY: 230,
+            ownerClientScreenDeviceX: 100,
+            ownerClientScreenDeviceY: 200,
+            isTransparent: false,
+            isChildPopup: false);
+
+        Assert.True(host.TryCreatePortablePopup(request, out object? popupSource));
+        Assert.NotNull(popupSource);
+        Assert.True(host.TrySetPortablePopupSize(popupSource!, 100, 80));
+        Assert.True(host.TryShowPortablePopup(popupSource!));
+        Assert.Equal(100, owner.ClientOriginX);
+        Assert.Equal(200, owner.ClientOriginY);
+        Assert.Equal(120, popupPresentationSource.ClientOriginX);
+        Assert.Equal(230, popupPresentationSource.ClientOriginY);
+
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 25,
+            y: 35,
+            button: WpfMouseButton.Left);
+
+        Assert.True(host.TryProcessPortablePopupInput(input));
+        Assert.NotNull(activationService.LastPresentationSourceInput);
+        Assert.Equal(5, activationService.LastPresentationSourceInput!.X);
+        Assert.Equal(5, activationService.LastPresentationSourceInput.Y);
+
+        host.SetPosition(110, 210);
+        Assert.Equal(110, owner.ClientOriginX);
+        Assert.Equal(210, owner.ClientOriginY);
+        var movedOwnerInput = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 15,
+            y: 25,
+            button: WpfMouseButton.Left);
+
+        Assert.True(host.TryProcessPortablePopupInput(movedOwnerInput));
+        Assert.Equal(5, activationService.LastPresentationSourceInput!.X);
+        Assert.Equal(5, activationService.LastPresentationSourceInput.Y);
     }
 
     [Fact]
@@ -1761,14 +1822,17 @@ public sealed class ProGpuWpfWindowHostTests
         {
             RootVisual = new object()
         };
+        host.SetPosition(100, 200);
         Assert.True(host.TryBindPortablePresentationSource(owner));
 
         var request = new PortablePopupCreateRequest(
             placementTarget: null,
             ownerPresentationSource: owner,
             ownerHandle: owner.Handle,
-            x: 20,
-            y: 30,
+            popupScreenDeviceX: 120,
+            popupScreenDeviceY: 230,
+            ownerClientScreenDeviceX: 100,
+            ownerClientScreenDeviceY: 200,
             isTransparent: false,
             isChildPopup: false);
 
@@ -1780,8 +1844,10 @@ public sealed class ProGpuWpfWindowHostTests
 
         Assert.Equal(2.0, popupPresentationSource.DpiScaleX);
         Assert.Equal(2.0, popupPresentationSource.DpiScaleY);
-        Assert.Equal(40, popupPresentationSource.ClientOriginX);
-        Assert.Equal(60, popupPresentationSource.ClientOriginY);
+        Assert.Equal(100, owner.ClientOriginX);
+        Assert.Equal(200, owner.ClientOriginY);
+        Assert.Equal(140, popupPresentationSource.ClientOriginX);
+        Assert.Equal(260, popupPresentationSource.ClientOriginY);
         var input = new WpfInputEventArgs(
             WpfInputEventKind.MouseDown,
             x: 25,
@@ -1807,14 +1873,17 @@ public sealed class ProGpuWpfWindowHostTests
         {
             RootVisual = new object()
         };
+        host.SetPosition(100, 200);
         Assert.True(host.TryBindPortablePresentationSource(owner));
 
         var parentRequest = new PortablePopupCreateRequest(
             placementTarget: null,
             ownerPresentationSource: owner,
             ownerHandle: owner.Handle,
-            x: 40,
-            y: 30,
+            popupScreenDeviceX: 140,
+            popupScreenDeviceY: 230,
+            ownerClientScreenDeviceX: 100,
+            ownerClientScreenDeviceY: 200,
             isTransparent: false,
             isChildPopup: false);
         Assert.True(host.TryCreatePortablePopup(parentRequest, out object? parentSource));
@@ -1825,22 +1894,40 @@ public sealed class ProGpuWpfWindowHostTests
             placementTarget: null,
             ownerPresentationSource: parentSource,
             ownerHandle: IntPtr.Zero,
-            x: 130,
-            y: 70,
+            popupScreenDeviceX: 230,
+            popupScreenDeviceY: 270,
+            ownerClientScreenDeviceX: 140,
+            ownerClientScreenDeviceY: 230,
             isTransparent: false,
             isChildPopup: false);
         Assert.True(host.TryCreatePortablePopup(nestedRequest, out object? nestedSource));
         Assert.True(host.TrySetPortablePopupSize(nestedSource!, 80, 60));
         Assert.True(host.TryShowPortablePopup(nestedSource!));
 
-        Assert.Equal(130, nestedPopupSource.ClientOriginX);
-        Assert.Equal(70, nestedPopupSource.ClientOriginY);
+        Assert.Equal(230, nestedPopupSource.ClientOriginX);
+        Assert.Equal(270, nestedPopupSource.ClientOriginY);
+        Assert.True(host.TrySetPortablePopupPosition(parentSource!, 160, 250));
         var input = new WpfInputEventArgs(
             WpfInputEventKind.MouseDown,
             x: 135,
             y: 76,
             button: WpfMouseButton.Left);
         Assert.True(host.TryProcessPortablePopupInput(input));
+        Assert.Same(nestedSource, activationService.LastPresentationSourceInputSource);
+        Assert.Equal(5, activationService.LastPresentationSourceInput!.X);
+        Assert.Equal(6, activationService.LastPresentationSourceInput.Y);
+
+        Assert.True(host.UpdatePortablePresentationSourceDpiScale(2.0, 2.0));
+        Assert.Equal(220, parentPopupSource.ClientOriginX);
+        Assert.Equal(300, parentPopupSource.ClientOriginY);
+        Assert.Equal(360, nestedPopupSource.ClientOriginX);
+        Assert.Equal(340, nestedPopupSource.ClientOriginY);
+        var scaledInput = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 135,
+            y: 76,
+            button: WpfMouseButton.Left);
+        Assert.True(host.TryProcessPortablePopupInput(scaledInput));
         Assert.Same(nestedSource, activationService.LastPresentationSourceInputSource);
         Assert.Equal(5, activationService.LastPresentationSourceInput!.X);
         Assert.Equal(6, activationService.LastPresentationSourceInput.Y);

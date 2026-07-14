@@ -18,7 +18,53 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>
     <PlatformIndependentPackage>true</PlatformIndependentPackage>
+    <LibreWpfWindowsDesktopRuntimeVersion Condition="'$(LibreWpfWindowsDesktopRuntimeVersion)' == ''">$(ProGpuWpfNet10SupportPackageVersion)</LibreWpfWindowsDesktopRuntimeVersion>
+    <LibreWpfWindowsDesktopRuntimeVersion Condition="'$(LibreWpfWindowsDesktopRuntimeVersion)' == ''">10.0.9</LibreWpfWindowsDesktopRuntimeVersion>
+    <_LibreWpfNuGetPackageRoot>$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_LibreWpfNuGetPackageRoot>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_IncludeLibreWpfWindowsDesktopNativeAssets</TargetsForTfmSpecificContentInPackage>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      LibreWPF replaces the managed WindowsDesktop framework reference, so NuGet no
+      longer brings the matching WPF native runtime into an AnyCPU application.
+      Repack only the native assets. NuGet then selects the process RID at restore
+      time without exposing the stock managed WPF assemblies to the consumer.
+    -->
+    <PackageReference Include="Microsoft.WindowsDesktop.App.Runtime.win-x86"
+                      Version="$(LibreWpfWindowsDesktopRuntimeVersion)"
+                      GeneratePathProperty="true"
+                      ExcludeAssets="all"
+                      PrivateAssets="all" />
+    <PackageReference Include="Microsoft.WindowsDesktop.App.Runtime.win-x64"
+                      Version="$(LibreWpfWindowsDesktopRuntimeVersion)"
+                      GeneratePathProperty="true"
+                      ExcludeAssets="all"
+                      PrivateAssets="all" />
+    <PackageReference Include="Microsoft.WindowsDesktop.App.Runtime.win-arm64"
+                      Version="$(LibreWpfWindowsDesktopRuntimeVersion)"
+                      GeneratePathProperty="true"
+                      ExcludeAssets="all"
+                      PrivateAssets="all" />
+
+  </ItemGroup>
+
+  <Target Name="_IncludeLibreWpfWindowsDesktopNativeAssets">
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x86/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-x86/native/*.dll">
+        <PackagePath>runtimes/win-x86/native/</PackagePath>
+      </TfmSpecificPackageFile>
+      <TfmSpecificPackageFile Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x64/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-x64/native/*.dll">
+        <PackagePath>runtimes/win-x64/native/</PackagePath>
+      </TfmSpecificPackageFile>
+      <TfmSpecificPackageFile Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-arm64/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-arm64/native/*.dll">
+        <PackagePath>runtimes/win-arm64/native/</PackagePath>
+      </TfmSpecificPackageFile>
+      <TfmSpecificPackageFile Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x64/$(LibreWpfWindowsDesktopRuntimeVersion)/LICENSE">
+        <PackagePath>notices/Microsoft.WindowsDesktop.App.Runtime/LICENSE</PackagePath>
+      </TfmSpecificPackageFile>
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <PackagingContent Include="README.md" SubFolder="root" />

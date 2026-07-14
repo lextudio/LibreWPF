@@ -237,6 +237,13 @@ transport_entries=(
   "notices/LibreWPF.FluentSymbols/licenses/Uno.Fonts-APACHE-2.0.txt"
   "notices/LibreWPF.FluentSymbols/licenses/FluentSystemIcons-MIT.txt"
   "notices/LibreWPF.FluentSymbols/licenses/WPF-Samples-MIT.txt"
+  "notices/Microsoft.WindowsDesktop.App.Runtime/LICENSE"
+  "runtimes/win-x86/native/PresentationNative_cor3.dll"
+  "runtimes/win-x64/native/PresentationNative_cor3.dll"
+  "runtimes/win-arm64/native/PresentationNative_cor3.dll"
+  "runtimes/win-x86/native/wpfgfx_cor3.dll"
+  "runtimes/win-x64/native/wpfgfx_cor3.dll"
+  "runtimes/win-arm64/native/wpfgfx_cor3.dll"
 )
 
 for entry in "${transport_entries[@]}"; do

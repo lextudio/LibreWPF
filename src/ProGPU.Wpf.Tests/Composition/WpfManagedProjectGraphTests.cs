@@ -9,6 +9,7 @@ public sealed class WpfManagedProjectGraphTests
     [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj")]
     [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj")]
     [InlineData("src/Microsoft.DotNet.Wpf/src/ReachFramework/ReachFramework.csproj")]
+    [InlineData("src/Microsoft.DotNet.Wpf/tests/UnitTests/PresentationFramework.Tests/PresentationFramework.Tests.csproj")]
     public void DirectWriteForwarderReferenceIsWindowsOnly(string relativeProjectPath)
     {
         var projectPath = FindRepoPath(relativeProjectPath.Split('/'));
@@ -24,6 +25,48 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Equal("'$(OS)' == 'Windows_NT'", reference.Attribute("Condition")?.Value);
         Assert.Equal("TargetFramework;TargetFrameworks", reference.Element("UndefineProperties")?.Value);
+    }
+
+    [Fact]
+    public void PresentationFrameworkPortableTestsAvoidNativeWindowsBuildDependencies()
+    {
+        var unitTestTargetsPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "tests",
+            "UnitTests",
+            "Directory.Build.targets");
+        var unitTestTargets = XDocument.Load(unitTestTargetsPath);
+        var includeNativeDependencies = Assert.Single(
+            unitTestTargets.Descendants("Target"),
+            target => target.Attribute("Name")?.Value == "IncludeNativeDependencies");
+        Assert.Equal("'$(OS)' == 'Windows_NT'", includeNativeDependencies.Attribute("Condition")?.Value);
+
+        var nativeProjectReferences = unitTestTargets
+            .Descendants("ItemGroup")
+            .Where(itemGroup => itemGroup.Elements("ProjectReference").Any())
+            .Where(
+                itemGroup => itemGroup.Elements("ProjectReference").Any(
+                    reference => reference.Attribute("Include")?.Value.EndsWith(".vcxproj", StringComparison.OrdinalIgnoreCase) == true))
+            .ToArray();
+        Assert.NotEmpty(nativeProjectReferences);
+        Assert.All(
+            nativeProjectReferences,
+            itemGroup => Assert.Equal("'$(OS)' == 'Windows_NT'", itemGroup.Attribute("Condition")?.Value));
+
+        var presentationFrameworkTestsProjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "tests",
+            "UnitTests",
+            "PresentationFramework.Tests",
+            "PresentationFramework.Tests.csproj");
+        var presentationFrameworkTestsProject = XDocument.Load(presentationFrameworkTestsProjectPath);
+        Assert.Contains(
+            presentationFrameworkTestsProject.Descendants("ProjectReference"),
+            reference => reference.Attribute("Include")?.Value.Replace('/', '\\').EndsWith(
+                @"external\ProGPU\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj",
+                StringComparison.OrdinalIgnoreCase) == true);
     }
 
     [Theory]
@@ -647,6 +690,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed class PortableWindowActivationCallbacks", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableWindowInputEvent", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortablePopupCreateRequest", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public int PopupScreenDeviceX { get; }", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public int PopupScreenDeviceY { get; }", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public int OwnerClientScreenDeviceX { get; }", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public int OwnerClientScreenDeviceY { get; }", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public enum PortableWindowCloseResult", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public readonly record struct PortableWpfServiceKey", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("PortableWpfServiceKey ServiceKey", portableWpfServiceRegistry, StringComparison.Ordinal);
@@ -717,10 +764,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("markerOperation.Abort()", activationService, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.PushFrame(frame)", activationService, StringComparison.Ordinal);
         Assert.Contains("using MS.Internal;", activationService, StringComparison.Ordinal);
-        Assert.Contains("Point clientPoint = ToMouseClientPoint(source, rootHitTestElement, input);", activationService, StringComparison.Ordinal);
+        Assert.Contains("ResolveCapturedMouseInputRoute(", activationService, StringComparison.Ordinal);
+        Assert.Contains("inputManager.PrimaryMouseDevice?.Captured is not DependencyObject capturedElement", activationService, StringComparison.Ordinal);
+        Assert.Contains("PresentationSource.CriticalFromVisual(capturedVisual)", activationService, StringComparison.Ordinal);
+        Assert.Contains("capturedSource.RootVisual is not UIElement capturedRootHitTestElement", activationService, StringComparison.Ordinal);
+        Assert.Contains("PointUtil.ClientToScreen(reportedClientPoint, reportedSource)", activationService, StringComparison.Ordinal);
+        Assert.Contains("PointUtil.ScreenToClient(screenPoint, capturedSource)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Point clientPoint = ToMouseClientPoint(source, rootHitTestElement, rootPoint);", activationService, StringComparison.Ordinal);
         Assert.Contains("ToInputCoordinate(clientPoint.X)", activationService, StringComparison.Ordinal);
         Assert.Contains("ToInputCoordinate(clientPoint.Y)", activationService, StringComparison.Ordinal);
-        Assert.Contains("private static Point ToMouseClientPoint(PresentationSource source, UIElement rootHitTestElement, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("private static Point ToMouseClientPoint(PresentationSource source, UIElement rootHitTestElement, Point rootPoint)", activationService, StringComparison.Ordinal);
         Assert.Contains("PointUtil.RootToClient(rootPoint, source)", activationService, StringComparison.Ordinal);
         Assert.Contains("public interface IWpfDelayedRenderScheduler : IWpfRenderScheduler", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("void RequestRender(TimeSpan delay)", proGpuScheduler, StringComparison.Ordinal);
@@ -779,6 +832,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortablePresentationSourceHost.Create;", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("source = PortablePresentationSourceFactory(", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("_source.SetClientOrigin(x, y);", proGpuPortablePopupBridge, StringComparison.Ordinal);
+        Assert.Contains("(_ownerPopup?.LogicalX ?? 0.0)", proGpuPortablePopupBridge, StringComparison.Ordinal);
+        Assert.Contains("_localLogicalX = ((double)popupScreenDeviceX - ownerClientScreenDeviceX) / dpiScaleX;", proGpuPortablePopupBridge, StringComparison.Ordinal);
+        Assert.Contains("_localLogicalY = ((double)popupScreenDeviceY - ownerClientScreenDeviceY) / dpiScaleY;", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("public bool TrySetDeviceScale(double dpiScaleX, double dpiScaleY)", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("_source.SetDeviceScale(dpiScaleX, dpiScaleY);", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("_portablePopupBridges[i].TrySetDeviceScale(dpiScaleX, dpiScaleY);", proGpuHost, StringComparison.Ordinal);
@@ -8612,6 +8668,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using ProGPU.Wpf.Interop;", popup, StringComparison.Ordinal);
         Assert.Contains("private bool TryCreatePortablePopupSource(", popup, StringComparison.Ordinal);
         Assert.Contains("new PortablePopupCreateRequest(", popup, StringComparison.Ordinal);
+        Assert.Contains("PointUtil.ClientToScreen(new Point(0, 0), ownerPresentationSource)", popup, StringComparison.Ordinal);
+        Assert.Contains("popupScreenDeviceX: x", popup, StringComparison.Ordinal);
+        Assert.Contains("popupScreenDeviceY: y", popup, StringComparison.Ordinal);
+        Assert.Contains("ownerClientScreenDeviceX:", popup, StringComparison.Ordinal);
+        Assert.Contains("ownerClientScreenDeviceY:", popup, StringComparison.Ordinal);
         Assert.Contains("TrySetPortablePopupPosition(x, y);", popup, StringComparison.Ordinal);
         Assert.Contains("TrySetPortablePopupSize(width, height);", popup, StringComparison.Ordinal);
         Assert.Contains("TryShowPortablePopup();", popup, StringComparison.Ordinal);

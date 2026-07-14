@@ -12,7 +12,7 @@
     <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.1.0.0</AssemblyVersion>
     <FileVersion Condition="'$(FileVersion)' == ''">0.1.0.0</FileVersion>
     <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(Version)</InformationalVersion>
-    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Aligns LibreWPF with ProGPU preview.14, fixes portable popup ownership and hit testing, and restores macOS shortcuts and safe text selection dragging.</PackageReleaseNotes>
+    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Aligns LibreWPF with ProGPU preview.14; fixes portable popup ownership, input, movement, and animated placement; restores macOS shortcuts and safe text selection dragging; renders during native resize; and corrects multiline TextBlock navigation plus cached BitmapImage reuse.</PackageReleaseNotes>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

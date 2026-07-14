@@ -4067,52 +4067,34 @@ public partial class MainWindow : Window
             () => ActionDropDownButton.IsOpen,
             "Toolkit live DropDownButton popup open state");
 
-        await InvokeWithLiveHostWakeAsync(
+        await ValidateLivePopupOpenCloseAsync(
             liveHost,
-            () =>
-            {
-                ActionDropDownButton.IsOpen = false;
-                CategoryPicker.IsDropDownOpen = true;
-                ReminderTimePicker.IsOpen = true;
-                AccentColorPicker.IsOpen = true;
-                EstimateEditor.IsOpen = true;
-                ActionDropDownButton.IsOpen = true;
-            },
-            DispatcherPriority.Send);
-        await WaitForLiveConditionAsync(
+            () => ActionDropDownButton.IsOpen,
+            value => ActionDropDownButton.IsOpen = value,
+            "Toolkit live DropDownButton popup");
+        await ValidateLivePopupOpenCloseAsync(
             liveHost,
-            () => CategoryPicker.IsDropDownOpen &&
-                  ReminderTimePicker.IsOpen &&
-                  AccentColorPicker.IsOpen &&
-                  EstimateEditor.IsOpen &&
-                  ActionDropDownButton.IsOpen,
-            "Toolkit live popup-backed controls open state");
-        await InvokeWithLiveHostWakeAsync(
+            () => CategoryPicker.IsDropDownOpen,
+            value => CategoryPicker.IsDropDownOpen = value,
+            "Toolkit live CheckComboBox dropdown");
+        await ValidateLivePopupOpenCloseAsync(
             liveHost,
-            () => ValidateToolkitPopupState(expectedOpen: true),
-            DispatcherPriority.Send);
+            () => ReminderTimePicker.IsOpen,
+            value => ReminderTimePicker.IsOpen = value,
+            "Toolkit live TimePicker popup");
+        await ValidateLivePopupOpenCloseAsync(
+            liveHost,
+            () => AccentColorPicker.IsOpen,
+            value => AccentColorPicker.IsOpen = value,
+            "Toolkit live ColorPicker popup",
+            () => AccentColorPicker.SelectedColor = Colors.MediumSeaGreen);
+        await ValidateLivePopupOpenCloseAsync(
+            liveHost,
+            () => EstimateEditor.IsOpen,
+            value => EstimateEditor.IsOpen = value,
+            "Toolkit live CalculatorUpDown popup",
+            () => EstimateEditor.Value = 42.25m);
 
-        await InvokeWithLiveHostWakeAsync(
-            liveHost,
-            () =>
-            {
-                AccentColorPicker.SelectedColor = Colors.MediumSeaGreen;
-                EstimateEditor.Value = 42.25m;
-                CategoryPicker.IsDropDownOpen = false;
-                ReminderTimePicker.IsOpen = false;
-                AccentColorPicker.IsOpen = false;
-                EstimateEditor.IsOpen = false;
-                ActionDropDownButton.IsOpen = false;
-            },
-            DispatcherPriority.Send);
-        await WaitForLiveConditionAsync(
-            liveHost,
-            () => !CategoryPicker.IsDropDownOpen &&
-                  !ReminderTimePicker.IsOpen &&
-                  !AccentColorPicker.IsOpen &&
-                  !EstimateEditor.IsOpen &&
-                  !ActionDropDownButton.IsOpen,
-            "Toolkit live popup-backed controls closed state");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () =>
@@ -4386,6 +4368,33 @@ public partial class MainWindow : Window
                 HideAvalonDockAutoHideOverlay(ContactsPane);
             },
             DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLivePopupOpenCloseAsync(
+        ProGpuWpfWindowHost liveHost,
+        Func<bool> isOpen,
+        Action<bool> setOpen,
+        string description,
+        Action? whileOpen = null)
+    {
+        if (!await InvokeWithLiveHostWakeAsync(liveHost, isOpen, DispatcherPriority.Send))
+        {
+            await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () => setOpen(true),
+                DispatcherPriority.Send);
+        }
+
+        await WaitForLiveConditionAsync(liveHost, isOpen, $"{description} open state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                whileOpen?.Invoke();
+                setOpen(false);
+            },
+            DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(liveHost, () => !isOpen(), $"{description} closed state");
     }
 
     private async Task ValidateLiveInputEditorsAsync(ProGpuWpfWindowHost liveHost)

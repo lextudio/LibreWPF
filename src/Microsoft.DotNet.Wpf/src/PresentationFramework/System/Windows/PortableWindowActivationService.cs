@@ -364,7 +364,9 @@ namespace System.Windows
             rootHitTestElement = reportedRootHitTestElement;
             rootPoint = reportedRootPoint;
 
-            if (inputManager.PrimaryMouseDevice?.Captured is not DependencyObject capturedElement)
+            MouseDevice mouseDevice = inputManager.PrimaryMouseDevice;
+            if (mouseDevice?.CapturedMode != CaptureMode.Element ||
+                mouseDevice.Captured is not DependencyObject capturedElement)
             {
                 return;
             }

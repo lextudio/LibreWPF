@@ -24,6 +24,12 @@ public class PortableWindowActivationServiceTests
         RunInUiApartment(VerifyCapturedElementReceivesMouseInputReportedByAnotherPresentationSource);
     }
 
+    [Fact]
+    public void SubtreeCapturePreservesReportedPresentationSource()
+    {
+        RunInUiApartment(VerifySubtreeCapturePreservesReportedPresentationSource);
+    }
+
     private static void VerifyCapturedElementReceivesMouseInputReportedByAnotherPresentationSource()
     {
         RuntimeHelpers.RunModuleConstructor(typeof(Application).Module.ModuleHandle);
@@ -104,6 +110,61 @@ public class PortableWindowActivationServiceTests
         lostCaptureCount.Should().Be(1);
     }
 
+    private static void VerifySubtreeCapturePreservesReportedPresentationSource()
+    {
+        RuntimeHelpers.RunModuleConstructor(typeof(Application).Module.ModuleHandle);
+        PortableWpfServiceRegistry.TryGetWindowActivationService(
+            PortableWpfServiceKey.PresentationFramework,
+            out IPortableWindowActivationServiceRegistrar activationService).Should().BeTrue();
+
+        using IPortablePresentationSourceHost captureSourceHost = PortablePresentationSourceHost.Create();
+        using IPortablePresentationSourceHost reportedSourceHost = PortablePresentationSourceHost.Create();
+        var captureSource = (PresentationSource)captureSourceHost;
+        var reportedSource = (PresentationSource)reportedSourceHost;
+        var captureRoot = new HitTestElement();
+        var reportedRoot = new HitTestElement(captureRoot);
+        captureSourceHost.RootVisual = captureRoot;
+        reportedSourceHost.RootVisual = reportedRoot;
+        captureSourceHost.SetClientSize(500.0, 500.0);
+        reportedSourceHost.SetClientSize(500.0, 500.0);
+
+        ProcessInput(
+            activationService,
+            captureSource,
+            MouseMoveInputKind,
+            x: 20.0,
+            y: 30.0);
+        Mouse.Capture(captureRoot, CaptureMode.SubTree).Should().BeTrue();
+        Mouse.Captured.Should().BeSameAs(captureRoot);
+
+        int reportedMoveCount = 0;
+        object? originalSource = null;
+        reportedRoot.MouseMove += (_, e) =>
+        {
+            reportedMoveCount++;
+            originalSource = e.OriginalSource;
+        };
+        try
+        {
+            ProcessInput(
+                activationService,
+                reportedSource,
+                MouseMoveInputKind,
+                x: 5.0,
+                y: 7.0);
+
+            Mouse.PrimaryDevice.ActiveSource.Should().BeSameAs(reportedSource);
+            reportedMoveCount.Should().Be(1);
+            originalSource.Should().BeSameAs(reportedRoot);
+        }
+        finally
+        {
+            Mouse.Capture(null);
+        }
+
+        Mouse.Captured.Should().BeNull();
+    }
+
     private static void RunInUiApartment(Action action)
     {
         Exception? exception = null;
@@ -153,6 +214,18 @@ public class PortableWindowActivationServiceTests
 
     private sealed class HitTestElement : UIElement
     {
+        private readonly DependencyObject? _uiParent;
+
+        public HitTestElement(DependencyObject? uiParent = null)
+        {
+            _uiParent = uiParent;
+        }
+
+        protected override DependencyObject GetUIParentCore()
+        {
+            return _uiParent ?? base.GetUIParentCore();
+        }
+
         protected override HitTestResult HitTestCore(PointHitTestParameters hitTestParameters)
         {
             return new PointHitTestResult(this, hitTestParameters.HitPoint);

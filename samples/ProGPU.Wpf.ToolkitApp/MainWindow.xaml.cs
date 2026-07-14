@@ -4855,6 +4855,10 @@ public partial class MainWindow : Window
                 return;
             }
 
+            // BringIntoView can move a deeply scrolled editor after the render request that
+            // started this attempt.  Publish that new layout before retrying so the managed
+            // input tree and the retained GPU owner index agree on the click coordinate.
+            WakeLiveRenderHost(liveHost);
             await Task.Delay(LiveValidationRetryDelay);
         }
 
@@ -4864,6 +4868,9 @@ public partial class MainWindow : Window
 
     private bool TryRaiseLiveMouseClick(ProGpuWpfWindowHost liveHost, FrameworkElement target, string targetName, out string targetState)
     {
+        Point initialCenter = target.TranslatePoint(
+            new Point(Math.Max(1.0, target.ActualWidth) / 2.0, Math.Max(1.0, target.ActualHeight) / 2.0),
+            this);
         target.BringIntoView();
         target.UpdateLayout();
 
@@ -4885,6 +4892,14 @@ public partial class MainWindow : Window
         Point center = target.TranslatePoint(
             new Point(Math.Max(1.0, target.ActualWidth) / 2.0, Math.Max(1.0, target.ActualHeight) / 2.0),
             this);
+        double layoutDeltaX = center.X - initialCenter.X;
+        double layoutDeltaY = center.Y - initialCenter.Y;
+        if (Math.Abs(layoutDeltaX) > 0.5 || Math.Abs(layoutDeltaY) > 0.5)
+        {
+            targetState += $", BringIntoViewDelta=({layoutDeltaX:0.###}, {layoutDeltaY:0.###})";
+            return false;
+        }
+
         object? hit = InputHitTest(center);
         targetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
         if (!TryLiveHostGpuHitWithinTarget(liveHost, center.X, center.Y, target, out string gpuHitState))

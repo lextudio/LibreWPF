@@ -1297,7 +1297,7 @@ namespace System.Windows
                         InputMode.Foreground,
                         Environment.TickCount,
                         _source,
-                        RawMouseActions.Activate | RawMouseActions.CancelCapture,
+                        RawMouseActions.CancelCapture,
                         0,
                         0,
                         0,

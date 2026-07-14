@@ -1643,6 +1643,7 @@ namespace System.Windows.Controls.Primitives
         {
             if (_secHelper.IsWindowAlive())
             {
+                CancelPortableSettledPosition();
                 DetachPortablePopupRootLayoutUpdates();
                 _secHelper.DestroyWindow(PopupFilterMessage, OnWindowResize, OnDpiChanged);
                 return true;
@@ -1681,6 +1682,7 @@ namespace System.Windows.Controls.Primitives
                 _popupRoot.Opacity = 1.0;
 
                 SetupAnimations(true);
+                SchedulePortableSettledPosition();
 
                 // Always set hittestable for non layered windows
                 SetHitTestable(HitTestable || !IsTransparent);
@@ -1693,6 +1695,7 @@ namespace System.Windows.Controls.Primitives
         // Close the window
         private void HideWindow()
         {
+            CancelPortableSettledPosition();
             bool animating = SetupAnimations(false);
 
             SetHitTestable(false);
@@ -1755,6 +1758,40 @@ namespace System.Windows.Controls.Primitives
         {
             _asyncDestroy?.Stop();
             _asyncDestroy = null;
+        }
+
+        private void SchedulePortableSettledPosition()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            CancelPortableSettledPosition();
+            _portableSettledPosition = new DispatcherTimer(DispatcherPriority.Render)
+            {
+                Interval = PortablePlacementSettleDelay
+            };
+            _portableSettledPosition.Tick += OnPortableSettledPosition;
+            _portableSettledPosition.Start();
+        }
+
+        private void CancelPortableSettledPosition()
+        {
+            if (_portableSettledPosition == null)
+            {
+                return;
+            }
+
+            _portableSettledPosition.Stop();
+            _portableSettledPosition.Tick -= OnPortableSettledPosition;
+            _portableSettledPosition = null;
+        }
+
+        private void OnPortableSettledPosition(object sender, EventArgs e)
+        {
+            CancelPortableSettledPosition();
+            Reposition();
         }
 
         internal void ForceClose()
@@ -1944,6 +1981,14 @@ namespace System.Windows.Controls.Primitives
                 if (_secHelper.TryUpdatePortablePopupRootClientSize(_popupRoot, out Size clientSize))
                 {
                     OnWindowResize(_popupRoot, new AutoResizedEventArgs(clientSize));
+                }
+                else
+                {
+                    // A portable popup shares the owner compositor instead of receiving native
+                    // window-position updates.  Render transforms (for example Fluent's drop-down
+                    // entrance animation) and placement-target movement can change the correct
+                    // owner-relative origin without changing the popup's measured size.
+                    UpdatePosition();
                 }
             }
             finally
@@ -2983,6 +3028,7 @@ namespace System.Windows.Controls.Primitives
 
         private const int AnimationDelay = 150;
         internal static TimeSpan AnimationDelayTime = new TimeSpan(0, 0, 0, 0, AnimationDelay);
+        private static readonly TimeSpan PortablePlacementSettleDelay = TimeSpan.FromMilliseconds(250);
         internal static RoutedEventHandler CloseOnUnloadedHandler;
         private static readonly UncommonField<PopupRoot> ParentPopupRootField = new UncommonField<PopupRoot>();
 
@@ -2991,6 +3037,7 @@ namespace System.Windows.Controls.Primitives
         private PopupRoot _popupRoot;
         private DispatcherOperation _asyncCreate;
         private DispatcherTimer _asyncDestroy;
+        private DispatcherTimer _portableSettledPosition;
         private bool _isPortablePopupRootLayoutUpdateAttached;
         private bool _isUpdatingPortablePopupRootLayout;
 

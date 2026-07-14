@@ -330,6 +330,29 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void PortablePopupSettlesAnimatedPlacementAndTracksLayoutOnlyMovement()
+    {
+        var popupPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "Primitives",
+            "Popup.cs");
+        var popup = File.ReadAllText(popupPath);
+
+        Assert.Contains("SchedulePortableSettledPosition();", popup, StringComparison.Ordinal);
+        Assert.Contains("PortablePlacementSettleDelay", popup, StringComparison.Ordinal);
+        Assert.Contains("_portableSettledPosition.Tick += OnPortableSettledPosition;", popup, StringComparison.Ordinal);
+        Assert.Contains("CancelPortableSettledPosition();\n            Reposition();", popup, StringComparison.Ordinal);
+        Assert.Contains("else\n                {\n                    // A portable popup shares the owner compositor", popup, StringComparison.Ordinal);
+        Assert.Contains("UpdatePosition();", popup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MediaContextUsesPortableClockOutsideWindows()
     {
         var sourcePath = FindRepoPath(

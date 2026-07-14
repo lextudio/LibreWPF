@@ -230,6 +230,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             }
 
             _wpfRootVisual = value;
+            InvalidateWpfRootVisualForPresentationSourceGeometryChange();
             RequestRenderAndWakeNativeLoop();
         }
     }

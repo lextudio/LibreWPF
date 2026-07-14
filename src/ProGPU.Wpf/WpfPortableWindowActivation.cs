@@ -1017,6 +1017,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
+        if (left.HasValue && top.HasValue)
+        {
+            Host.UpdatePortablePresentationSourceClientOrigin(left.Value, top.Value);
+        }
+
         bridge.TryDispatchHwndSourceHook(WM_WINDOWPOSCHANGED, IntPtr.Zero, IntPtr.Zero, out _, out _);
         if (left.HasValue && top.HasValue)
         {

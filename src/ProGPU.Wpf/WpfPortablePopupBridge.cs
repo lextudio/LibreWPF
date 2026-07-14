@@ -16,8 +16,14 @@ internal sealed class WpfPortablePopupBridge : IDisposable
 
     private readonly ProGpuWpfWindowHost _host;
     private readonly IPortablePresentationSourceHost _source;
+    private readonly object? _ownerPresentationSource;
+    private readonly WpfPortablePopupBridge? _ownerPopup;
     private double _dpiScaleX;
     private double _dpiScaleY;
+    private int _ownerClientScreenDeviceX;
+    private int _ownerClientScreenDeviceY;
+    private double _localLogicalX;
+    private double _localLogicalY;
     private Func<double, double, object?>? _hitTestOverrideHandler;
     private Func<double, double, object?[]?>? _hitTestAllOverrideHandler;
     private PortableHitTestAllBufferOverride? _hitTestAllBufferOverrideHandler;
@@ -30,21 +36,31 @@ internal sealed class WpfPortablePopupBridge : IDisposable
     private WpfPortablePopupBridge(
         ProGpuWpfWindowHost host,
         IPortablePresentationSourceHost source,
-        int x,
-        int y,
+        object? ownerPresentationSource,
+        WpfPortablePopupBridge? ownerPopup,
+        int popupScreenDeviceX,
+        int popupScreenDeviceY,
+        int ownerClientScreenDeviceX,
+        int ownerClientScreenDeviceY,
         double dpiScaleX,
         double dpiScaleY)
     {
         _host = host;
         _source = source;
+        _ownerPresentationSource = ownerPresentationSource;
+        _ownerPopup = ownerPopup;
         _dpiScaleX = dpiScaleX;
         _dpiScaleY = dpiScaleY;
-        X = x;
-        Y = y;
+        _ownerClientScreenDeviceX = ownerClientScreenDeviceX;
+        _ownerClientScreenDeviceY = ownerClientScreenDeviceY;
+        X = popupScreenDeviceX;
+        Y = popupScreenDeviceY;
+        _localLogicalX = ((double)popupScreenDeviceX - ownerClientScreenDeviceX) / dpiScaleX;
+        _localLogicalY = ((double)popupScreenDeviceY - ownerClientScreenDeviceY) / dpiScaleY;
         Width = 1;
         Height = 1;
         IsHitTestable = true;
-        _source.SetClientOrigin(x, y);
+        _source.SetClientOrigin(popupScreenDeviceX, popupScreenDeviceY);
     }
 
     public object Source => _source;
@@ -68,13 +84,18 @@ internal sealed class WpfPortablePopupBridge : IDisposable
     internal static Func<double, double, IPortablePresentationSourceHost> PortablePresentationSourceFactory { get; set; } =
         PortablePresentationSourceHost.Create;
 
-    private double LogicalX => X / _host.CurrentDpiScaleX;
+    private double LogicalX =>
+        (_ownerPopup?.LogicalX ?? 0.0) +
+        _localLogicalX;
 
-    private double LogicalY => Y / _host.CurrentDpiScaleY;
+    private double LogicalY =>
+        (_ownerPopup?.LogicalY ?? 0.0) +
+        _localLogicalY;
 
     public static bool TryCreate(
         ProGpuWpfWindowHost host,
         PortablePopupCreateRequest request,
+        WpfPortablePopupBridge? ownerPopup,
         out WpfPortablePopupBridge? bridge)
     {
         ArgumentNullException.ThrowIfNull(host);
@@ -95,12 +116,23 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             return false;
         }
 
-        bridge = new WpfPortablePopupBridge(host, source, request.X, request.Y, dpiScaleX, dpiScaleY);
+        bridge = new WpfPortablePopupBridge(
+            host,
+            source,
+            request.OwnerPresentationSource,
+            ownerPopup,
+            request.PopupScreenDeviceX,
+            request.PopupScreenDeviceY,
+            request.OwnerClientScreenDeviceX,
+            request.OwnerClientScreenDeviceY,
+            dpiScaleX,
+            dpiScaleY);
         bridge.SubscribeToSource();
         bridge.InstallHitTestOverrides();
         Trace(
             "create " +
-            $"x={request.X} y={request.Y} " +
+            $"screen=({request.PopupScreenDeviceX},{request.PopupScreenDeviceY}) " +
+            $"owner=({request.OwnerClientScreenDeviceX},{request.OwnerClientScreenDeviceY}) " +
             $"transparent={request.IsTransparent} child={request.IsChildPopup}");
         return true;
     }
@@ -120,13 +152,39 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             return false;
         }
 
-        X = ScaleDeviceCoordinate(X, _dpiScaleX, dpiScaleX);
-        Y = ScaleDeviceCoordinate(Y, _dpiScaleY, dpiScaleY);
+        _ownerClientScreenDeviceX = _ownerPopup?.X ?? _ownerClientScreenDeviceX;
+        _ownerClientScreenDeviceY = _ownerPopup?.Y ?? _ownerClientScreenDeviceY;
+        X = ToScreenDeviceCoordinate(
+            _ownerClientScreenDeviceX,
+            _localLogicalX,
+            dpiScaleX);
+        Y = ToScreenDeviceCoordinate(
+            _ownerClientScreenDeviceY,
+            _localLogicalY,
+            dpiScaleY);
         _dpiScaleX = dpiScaleX;
         _dpiScaleY = dpiScaleY;
         _source.SetDeviceScale(dpiScaleX, dpiScaleY);
         _source.SetClientOrigin(X, Y);
         Trace($"dpi scale=({dpiScaleX:0.###},{dpiScaleY:0.###}) origin=({X},{Y})");
+        RequestRender();
+        return true;
+    }
+
+    public bool TrySetOwnerClientScreenOrigin(object? ownerPresentationSource, int x, int y)
+    {
+        ThrowIfDisposed();
+        if (!ReferenceEquals(_ownerPresentationSource, ownerPresentationSource) ||
+            (_ownerClientScreenDeviceX == x && _ownerClientScreenDeviceY == y))
+        {
+            return false;
+        }
+
+        _ownerClientScreenDeviceX = x;
+        _ownerClientScreenDeviceY = y;
+        _localLogicalX = ((double)X - x) / _dpiScaleX;
+        _localLogicalY = ((double)Y - y) / _dpiScaleY;
+        Trace($"owner origin x={x} y={y}");
         RequestRender();
         return true;
     }
@@ -141,6 +199,8 @@ internal sealed class WpfPortablePopupBridge : IDisposable
 
         X = x;
         Y = y;
+        _localLogicalX = ((double)x - _ownerClientScreenDeviceX) / _dpiScaleX;
+        _localLogicalY = ((double)y - _ownerClientScreenDeviceY) / _dpiScaleY;
         _source.SetClientOrigin(x, y);
         Trace($"position x={x} y={y}");
         RequestRender();
@@ -606,9 +666,9 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             WpfInputEventKind.MouseWheel;
     }
 
-    private static int ScaleDeviceCoordinate(int coordinate, double oldScale, double newScale)
+    private static int ToScreenDeviceCoordinate(int ownerCoordinate, double logicalOffset, double scale)
     {
-        double value = coordinate / oldScale * newScale;
+        double value = ownerCoordinate + (logicalOffset * scale);
         if (value <= int.MinValue)
         {
             return int.MinValue;

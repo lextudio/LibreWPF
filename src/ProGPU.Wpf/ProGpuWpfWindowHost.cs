@@ -58,6 +58,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private double _portablePresentationSourceDpiScaleY = double.NaN;
     private int _portablePresentationSourceClientWidth = -1;
     private int _portablePresentationSourceClientHeight = -1;
+    private int _portablePresentationSourceClientOriginX;
+    private int _portablePresentationSourceClientOriginY;
+    private bool _hasPortablePresentationSourceClientOrigin;
     private bool _isDisposed;
     private bool _isNativeLoopRunning;
     private bool _isLoadingCompositionTarget;
@@ -460,6 +463,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             _window.Position = new Vector2D<int>(left, top);
         }
+
+        UpdatePortablePresentationSourceClientOrigin(left, top);
 
         RequestRenderAndWakeNativeLoop();
     }
@@ -3128,6 +3133,38 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return true;
     }
 
+    internal bool UpdatePortablePresentationSourceClientOrigin(int x, int y)
+    {
+        WpfPortablePresentationSourceBridge? bridge = _portablePresentationSourceBridge;
+        if (bridge == null ||
+            (_hasPortablePresentationSourceClientOrigin &&
+                _portablePresentationSourceClientOriginX == x &&
+                _portablePresentationSourceClientOriginY == y))
+        {
+            return false;
+        }
+
+        if (!bridge.TrySetClientOrigin(x, y))
+        {
+            return false;
+        }
+
+        object ownerPresentationSource = bridge.Source;
+        for (int i = 0; i < _portablePopupBridges.Count; i++)
+        {
+            _portablePopupBridges[i].TrySetOwnerClientScreenOrigin(
+                ownerPresentationSource,
+                x,
+                y);
+        }
+
+        _portablePresentationSourceClientOriginX = x;
+        _portablePresentationSourceClientOriginY = y;
+        _hasPortablePresentationSourceClientOrigin = true;
+        RequestRenderAndWakeNativeLoop();
+        return true;
+    }
+
     private void InvalidateWpfRootVisualForPresentationSourceGeometryChange()
     {
         _forceFullWpfReplay = true;
@@ -3158,7 +3195,17 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _portablePresentationSourceDpiScaleY = dpiScaleY;
         _portablePresentationSourceClientWidth = -1;
         _portablePresentationSourceClientHeight = -1;
+        _hasPortablePresentationSourceClientOrigin = false;
         bridge.SyncHostRootVisual();
+
+        int? clientOriginX = Left;
+        int? clientOriginY = Top;
+        if (clientOriginX.HasValue && clientOriginY.HasValue)
+        {
+            UpdatePortablePresentationSourceClientOrigin(
+                clientOriginX.Value,
+                clientOriginY.Value);
+        }
     }
 
     private void DisposePortablePresentationSourceBridge()
@@ -3169,6 +3216,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _portablePresentationSourceDpiScaleY = double.NaN;
         _portablePresentationSourceClientWidth = -1;
         _portablePresentationSourceClientHeight = -1;
+        _hasPortablePresentationSourceClientOrigin = false;
     }
 
     internal bool TryCreatePortablePopup(
@@ -3183,7 +3231,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
-        if (!WpfPortablePopupBridge.TryCreate(this, request, out var bridge))
+        WpfPortablePopupBridge? ownerPopup = null;
+        if (request.OwnerPresentationSource != null)
+        {
+            TryFindPortablePopup(request.OwnerPresentationSource, out ownerPopup);
+        }
+
+        if (!WpfPortablePopupBridge.TryCreate(this, request, ownerPopup, out var bridge))
         {
             return false;
         }
@@ -3202,6 +3256,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         popup.TrySetPosition(x, y);
+        for (int i = 0; i < _portablePopupBridges.Count; i++)
+        {
+            _portablePopupBridges[i].TrySetOwnerClientScreenOrigin(
+                presentationSource,
+                x,
+                y);
+        }
         return true;
     }
 

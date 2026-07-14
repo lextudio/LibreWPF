@@ -103,6 +103,18 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         return true;
     }
 
+    public bool TrySetClientOrigin(double x, double y)
+    {
+        ThrowIfDisposed();
+        if (!double.IsFinite(x) || !double.IsFinite(y))
+        {
+            return false;
+        }
+
+        _source.SetClientOrigin(x, y);
+        return true;
+    }
+
     public bool TryDispatchHwndSourceHook(int message, IntPtr wParam, IntPtr lParam, out IntPtr result, out bool handled)
     {
         ThrowIfDisposed();

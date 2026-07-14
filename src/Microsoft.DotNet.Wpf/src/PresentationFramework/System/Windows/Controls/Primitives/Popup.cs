@@ -3784,14 +3784,17 @@ namespace System.Windows.Controls.Primitives
 
                 PresentationSource ownerPresentationSource = GetPresentationSource(mainTreeVisual);
                 _portableOwnerPresentationSource = ownerPresentationSource;
+                Point ownerClientScreenOrigin = PointUtil.ClientToScreen(new Point(0, 0), ownerPresentationSource);
                 var request = new PortablePopupCreateRequest(
                     placementTarget,
                     ownerPresentationSource,
                     GetHandle(ownerPresentationSource),
-                    x,
-                    y,
-                    transparent,
-                    IsChildPopup);
+                    popupScreenDeviceX: x,
+                    popupScreenDeviceY: y,
+                    ownerClientScreenDeviceX: DoubleUtil.DoubleToInt(ownerClientScreenOrigin.X),
+                    ownerClientScreenDeviceY: DoubleUtil.DoubleToInt(ownerClientScreenOrigin.Y),
+                    isTransparent: transparent,
+                    isChildPopup: IsChildPopup);
 
                 if (!service.TryCreatePopup(request, out object presentationSource) ||
                     presentationSource is not PresentationSource typedPresentationSource)

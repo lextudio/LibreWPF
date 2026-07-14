@@ -18,6 +18,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
     private readonly IPortablePresentationSourceHost _source;
     private readonly object? _ownerPresentationSource;
     private readonly WpfPortablePopupBridge? _ownerPopup;
+    private IWpfPortableNativePopupHost? _nativeHost;
     private double _dpiScaleX;
     private double _dpiScaleY;
     private int _ownerClientScreenDeviceX;
@@ -81,8 +82,91 @@ internal sealed class WpfPortablePopupBridge : IDisposable
 
     public bool IsHitTestable { get; private set; }
 
+    internal bool IsVisibleNativeWindow => IsVisible && _nativeHost != null;
+
+    internal bool HasPresentedNativeFrame => IsVisibleNativeWindow && _nativeHost!.HasPresentedFrame;
+
+    internal bool HasNativeGpuHitTestCache => IsVisibleNativeWindow && _nativeHost!.HasGpuHitTestCache;
+
+    internal int NativeGpuHitTestOwnerCount =>
+        IsVisibleNativeWindow &&
+        _nativeHost!.TryGetGpuHitTestCacheSnapshot(out var snapshot)
+            ? snapshot.OwnerCount
+            : 0;
+
+    internal bool TryHitTestNativeOwners(
+        double screenDeviceX,
+        double screenDeviceY,
+        Span<object?> owners,
+        out int ownerCount)
+    {
+        ownerCount = 0;
+        if (!IsVisibleNativeWindow ||
+            screenDeviceX < X || screenDeviceY < Y ||
+            screenDeviceX > X + Width * _dpiScaleX ||
+            screenDeviceY > Y + Height * _dpiScaleY)
+        {
+            return false;
+        }
+
+        double localX = (screenDeviceX - X) / _dpiScaleX;
+        double localY = (screenDeviceY - Y) / _dpiScaleY;
+        return _nativeHost!.TryHitTestOwners(localX, localY, owners, out ownerCount);
+    }
+
+    internal bool TryQueryNativeHitTestBoundsOwners(
+        double screenDeviceMinX,
+        double screenDeviceMinY,
+        double screenDeviceMaxX,
+        double screenDeviceMaxY,
+        Span<object?> owners,
+        out int ownerCount)
+    {
+        ownerCount = 0;
+        if (!IsVisibleNativeWindow ||
+            screenDeviceMaxX < X || screenDeviceMaxY < Y ||
+            screenDeviceMinX > X + Width * _dpiScaleX ||
+            screenDeviceMinY > Y + Height * _dpiScaleY)
+        {
+            return false;
+        }
+
+        double localMinX = (screenDeviceMinX - X) / _dpiScaleX;
+        double localMinY = (screenDeviceMinY - Y) / _dpiScaleY;
+        double localMaxX = (screenDeviceMaxX - X) / _dpiScaleX;
+        double localMaxY = (screenDeviceMaxY - Y) / _dpiScaleY;
+        return _nativeHost!.TryQueryHitTestBoundsOwners(
+            localMinX,
+            localMinY,
+            localMaxX,
+            localMaxY,
+            owners,
+            out ownerCount);
+    }
+
+    internal bool TryQueryAllNativeHitTestOwners(Span<object?> owners, out int ownerCount)
+    {
+        ownerCount = 0;
+        return IsVisibleNativeWindow && _nativeHost!.TryQueryHitTestBoundsOwners(
+            0,
+            0,
+            Width,
+            Height,
+            owners,
+            out ownerCount);
+    }
+
     internal static Func<double, double, IPortablePresentationSourceHost> PortablePresentationSourceFactory { get; set; } =
         PortablePresentationSourceHost.Create;
+
+    internal static Func<
+        ProGpuWpfWindowHost,
+        IPortablePresentationSourceHost,
+        PortablePopupCreateRequest,
+        double,
+        double,
+        IWpfPortableNativePopupHost?> NativePopupHostFactory { get; set; } =
+        WpfPortableNativePopupHost.TryCreate;
 
     private double LogicalX =>
         (_ownerPopup?.LogicalX ?? 0.0) +
@@ -129,6 +213,15 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             dpiScaleY);
         bridge.SubscribeToSource();
         bridge.InstallHitTestOverrides();
+        try
+        {
+            bridge._nativeHost = NativePopupHostFactory(host, source, request, dpiScaleX, dpiScaleY);
+            bridge._nativeHost?.SetInputHandler(bridge.TryProcessNativeInput);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            // A composited owner-surface popup remains the supported fallback.
+        }
         Trace(
             "create " +
             $"screen=({request.PopupScreenDeviceX},{request.PopupScreenDeviceY}) " +
@@ -166,6 +259,8 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         _dpiScaleY = dpiScaleY;
         _source.SetDeviceScale(dpiScaleX, dpiScaleY);
         _source.SetClientOrigin(X, Y);
+        _nativeHost?.SetDeviceScale(dpiScaleX, dpiScaleY);
+        _nativeHost?.SetPosition(X, Y);
         Trace($"dpi scale=({dpiScaleX:0.###},{dpiScaleY:0.###}) origin=({X},{Y})");
         RequestRender();
         return true;
@@ -185,6 +280,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         X = ToScreenDeviceCoordinate(x, _localLogicalX, _dpiScaleX);
         Y = ToScreenDeviceCoordinate(y, _localLogicalY, _dpiScaleY);
         _source.SetClientOrigin(X, Y);
+        _nativeHost?.SetPosition(X, Y);
         Trace($"owner origin x={x} y={y} popup=({X},{Y})");
         RequestRender();
         return true;
@@ -203,6 +299,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         _localLogicalX = ((double)x - _ownerClientScreenDeviceX) / _dpiScaleX;
         _localLogicalY = ((double)y - _ownerClientScreenDeviceY) / _dpiScaleY;
         _source.SetClientOrigin(x, y);
+        _nativeHost?.SetPosition(x, y);
         Trace($"position x={x} y={y}");
         RequestRender();
         return true;
@@ -221,6 +318,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         Width = normalizedWidth;
         Height = normalizedHeight;
         _source.SetClientSize(normalizedWidth, normalizedHeight);
+        _nativeHost?.SetSize(normalizedWidth, normalizedHeight);
         Trace($"size width={normalizedWidth} height={normalizedHeight}");
         RequestRender();
         return true;
@@ -235,6 +333,12 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         }
 
         IsVisible = true;
+        if (RootVisual is { } rootVisual)
+        {
+            EnsureRootLayout(rootVisual);
+            _nativeHost?.SetSize(Width, Height);
+        }
+        _nativeHost?.Show();
         Trace($"show width={Width} height={Height} root={(RootVisual is null ? "<null>" : "set")}");
         RequestRender();
         return true;
@@ -249,6 +353,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         }
 
         IsVisible = false;
+        _nativeHost?.Hide();
         Trace("hide");
         RequestRender();
         return true;
@@ -278,7 +383,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         ArgumentNullException.ThrowIfNull(drawingFrame);
 
         object? rootVisual = RootVisual;
-        if (!IsVisible || rootVisual == null)
+        if (_nativeHost != null || !IsVisible || rootVisual == null)
         {
             return default;
         }
@@ -350,6 +455,16 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         return true;
     }
 
+    private bool TryProcessNativeInput(WpfInputEventArgs input)
+    {
+        if (_isDisposed || !IsVisible || !IsHitTestable)
+        {
+            return false;
+        }
+
+        return TryRouteInputToPresentationSource(input, input.X, input.Y);
+    }
+
     public void Dispose()
     {
         if (_isDisposed)
@@ -357,6 +472,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             return;
         }
 
+        _nativeHost?.Dispose();
         _source.RenderRequested -= OnSourceRenderRequested;
         _source.CursorRequested -= OnSourceCursorRequested;
 
@@ -610,6 +726,35 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             (int)input.Modifiers);
     }
 
+    private bool TryRouteInputToPresentationSource(WpfInputEventArgs input, double localX, double localY)
+    {
+        if (!PortableWpfServiceRegistry.TryGetWindowActivationService(
+                PortableWpfServiceKey.PresentationFramework,
+                out var activationService))
+        {
+            return false;
+        }
+
+        var portableInput = new PortableWindowInputEvent(
+            (int)input.Kind,
+            input.Key,
+            input.ScanCode,
+            input.Character,
+            localX,
+            localY,
+            input.DeltaX,
+            input.DeltaY,
+            (int)input.Button,
+            (int)input.Modifiers);
+        if (!activationService.TryProcessPresentationSourceInputEvent(Source, portableInput))
+        {
+            return false;
+        }
+
+        input.Handled = portableInput.Handled;
+        return true;
+    }
+
     private void RequestRender()
     {
         _host.RequestRenderAndWakeNativeLoop();
@@ -638,6 +783,8 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         int clientHeight = (int)Math.Ceiling(height);
         Width = clientWidth;
         Height = clientHeight;
+        _source.SetClientSize(clientWidth, clientHeight);
+        _nativeHost?.SetSize(clientWidth, clientHeight);
         Trace($"layout width={clientWidth} height={clientHeight}");
     }
 

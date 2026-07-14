@@ -1156,7 +1156,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return true;
         }
 
-        return !isActive && HasVisibleNonActivatingOwnedWindow(Window);
+        return !isActive &&
+            (Host.HasVisibleNativePortablePopup || HasVisibleNonActivatingOwnedWindow(Window));
     }
 
     private static bool IsRecoverablePortableDeactivationException(Exception exception)

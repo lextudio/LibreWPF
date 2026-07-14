@@ -1,3 +1,6 @@
+using ProGPU.Backend;
+using ProGPU.Scene;
+
 namespace System.Windows.Media.ProGPU;
 
 public sealed class ProGpuWpfWindowOptions
@@ -21,6 +24,16 @@ public sealed class ProGpuWpfWindowOptions
     public bool Topmost { get; set; }
 
     public bool ShowActivated { get; set; } = true;
+
+    public bool TransparentFramebuffer { get; set; }
+
+    internal bool EnablePortablePopupService { get; set; } = true;
+
+    internal WgpuContext? SharedRenderDeviceContext { get; set; }
+
+    internal CompositorOptions? CompositorOptions { get; set; }
+
+    internal bool IncludePortablePopupRootsInWpfReplay { get; set; }
 
     public ProGpuWpfWindowBorder WindowBorder { get; set; } = ProGpuWpfWindowBorder.Resizable;
 

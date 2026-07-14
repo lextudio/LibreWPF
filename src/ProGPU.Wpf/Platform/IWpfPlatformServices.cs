@@ -157,6 +157,11 @@ public interface IWpfTimer : IDisposable
 public interface IWpfWindowDecorationService
 {
     bool TryBeginDragMove(object window);
+
+    bool TryConfigurePopupOwner(object ownerWindow, object popupWindow)
+    {
+        return false;
+    }
 }
 
 public interface IWpfWindowEventService

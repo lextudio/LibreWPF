@@ -117,14 +117,32 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     public static ProGpuWpfCompositionTarget CreateForWindow(IWindow window)
     {
+        return CreateForWindow(window, sharedDeviceContext: null, compositorOptions: null);
+    }
+
+    internal static ProGpuWpfCompositionTarget CreateForWindow(
+        IWindow window,
+        ProGpuWgpuContext? sharedDeviceContext,
+        global::ProGPU.Scene.CompositorOptions? compositorOptions)
+    {
         ArgumentNullException.ThrowIfNull(window);
 
         var context = new ProGpuWgpuContext();
-        context.Initialize(window);
+        if (sharedDeviceContext == null)
+        {
+            context.Initialize(window);
+        }
+        else
+        {
+            context.InitializeSharedDevice(window, sharedDeviceContext);
+        }
 
         return new ProGpuWpfCompositionTarget(
             context,
-            new ProGpuCompositor(context, context.SwapChainFormat),
+            new ProGpuCompositor(
+                context,
+                context.SwapChainFormat,
+                compositorOptions ?? global::ProGPU.Scene.CompositorOptions.Default),
             ownsContext: true,
             ownsCompositor: true);
     }
@@ -289,6 +307,26 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             resources,
             CreateFrameImageSourceAdapter(imageSourceAdapter ?? WpfImageSourceAdapter),
             trackInvalidationRoot: false,
+            includePortablePopupRoots);
+    }
+
+    internal WpfVisualReplayResult ReplayVisualSubtreeTracked(
+        object rootVisual,
+        IWpfCompositionCommandSink sink,
+        IWpfMilResourceResolver? resources,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        bool includePortablePopupRoots)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(rootVisual);
+        ArgumentNullException.ThrowIfNull(sink);
+
+        return ReplayVisualSubtreeCore(
+            rootVisual,
+            sink,
+            resources,
+            CreateFrameImageSourceAdapter(imageSourceAdapter ?? WpfImageSourceAdapter),
+            trackInvalidationRoot: true,
             includePortablePopupRoots);
     }
 

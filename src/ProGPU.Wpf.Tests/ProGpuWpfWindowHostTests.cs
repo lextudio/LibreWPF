@@ -1666,6 +1666,79 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void PortablePopupUsesNativeHostLifecycleAndLocalInputWhenAvailable()
+    {
+        var activationService = new TestWindowActivationServiceRegistrar();
+        using var activationRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(activationService);
+        var popupPresentationSource = new FakePortablePresentationSource();
+        var nativeHost = new FakePortableNativePopupHost();
+        var previousSourceFactory = WpfPortablePopupBridge.PortablePresentationSourceFactory;
+        var previousNativeHostFactory = WpfPortablePopupBridge.NativePopupHostFactory;
+        WpfPortablePopupBridge.PortablePresentationSourceFactory = (_, _) => popupPresentationSource;
+        WpfPortablePopupBridge.NativePopupHostFactory = (_, _, _, _, _) => nativeHost;
+        try
+        {
+            using var host = new ProGpuWpfWindowHost();
+            var owner = new FakePortablePresentationSource { RootVisual = new object() };
+            Assert.True(host.TryBindPortablePresentationSource(owner));
+            var request = new PortablePopupCreateRequest(
+                placementTarget: null,
+                ownerPresentationSource: owner,
+                ownerHandle: owner.Handle,
+                popupScreenDeviceX: 20,
+                popupScreenDeviceY: 30,
+                ownerClientScreenDeviceX: 0,
+                ownerClientScreenDeviceY: 0,
+                isTransparent: false,
+                isChildPopup: false);
+
+            Assert.True(host.TryCreatePortablePopup(request, out object? popupSource));
+            Assert.NotNull(nativeHost.InputHandler);
+            Assert.True(host.TrySetPortablePopupSize(popupSource!, 100, 80));
+            Assert.True(host.TrySetPortablePopupPosition(popupSource!, 40, 50));
+            Assert.True(host.TryShowPortablePopup(popupSource!));
+            Assert.True(host.HasVisibleNativePortablePopup);
+            host.GetPortablePopupDiagnostics(
+                out int openCount,
+                out int visibleCount,
+                out int nativeWindowCount,
+                out int presentedNativeWindowCount,
+                out int nativeWindowGpuHitTestCount,
+                out int nativeWindowGpuHitTestOwnerCount);
+            Assert.Equal(1, openCount);
+            Assert.Equal(1, visibleCount);
+            Assert.Equal(1, nativeWindowCount);
+            Assert.Equal(1, presentedNativeWindowCount);
+            Assert.Equal(1, nativeWindowGpuHitTestCount);
+            Assert.Equal(1, nativeWindowGpuHitTestOwnerCount);
+            Assert.Equal((100, 80), nativeHost.Size);
+            Assert.Equal((40, 50), nativeHost.Position);
+            Assert.Equal(1, nativeHost.ShowCount);
+
+            var input = new WpfInputEventArgs(
+                WpfInputEventKind.MouseDown,
+                x: 7,
+                y: 9,
+                button: WpfMouseButton.Left);
+            Assert.True(nativeHost.InputHandler!(input));
+            Assert.Same(popupSource, activationService.LastPresentationSourceInputSource);
+            Assert.Equal(7, activationService.LastPresentationSourceInput!.X);
+            Assert.Equal(9, activationService.LastPresentationSourceInput.Y);
+
+            Assert.True(host.TryHidePortablePopup(popupSource!));
+            Assert.False(host.HasVisibleNativePortablePopup);
+            Assert.Equal(1, nativeHost.HideCount);
+            Assert.True(host.TryDestroyPortablePopup(popupSource!));
+            Assert.True(nativeHost.IsDisposed);
+        }
+        finally
+        {
+            WpfPortablePopupBridge.PortablePresentationSourceFactory = previousSourceFactory;
+            WpfPortablePopupBridge.NativePopupHostFactory = previousNativeHostFactory;
+        }
+    }
+
+    [Fact]
     public void PortablePopupInputRoutesToPopupPresentationSourceWithLocalCoordinates()
     {
         var activationService = new TestWindowActivationServiceRegistrar();
@@ -2426,10 +2499,13 @@ public sealed class ProGpuWpfWindowHostTests
     private static IDisposable UsePortablePopupSourceFactory(Func<IPortablePresentationSourceHost> factory)
     {
         var previousFactory = WpfPortablePopupBridge.PortablePresentationSourceFactory;
+        var previousNativeHostFactory = WpfPortablePopupBridge.NativePopupHostFactory;
         WpfPortablePopupBridge.PortablePresentationSourceFactory = (_, _) => factory();
+        WpfPortablePopupBridge.NativePopupHostFactory = (_, _, _, _, _) => null;
         return new DelegateDisposable(() =>
         {
             WpfPortablePopupBridge.PortablePresentationSourceFactory = previousFactory;
+            WpfPortablePopupBridge.NativePopupHostFactory = previousNativeHostFactory;
         });
     }
 
@@ -2446,6 +2522,72 @@ public sealed class ProGpuWpfWindowHostTests
         {
             Interlocked.Exchange(ref _dispose, null)?.Invoke();
         }
+    }
+
+    private sealed class FakePortableNativePopupHost : IWpfPortableNativePopupHost
+    {
+        public bool HasPresentedFrame => true;
+
+        public bool HasGpuHitTestCache => true;
+
+        public bool TryGetGpuHitTestCacheSnapshot(out ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot snapshot)
+        {
+            snapshot = new ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot(
+                HasIndex: true,
+                HasDeviceIndex: true,
+                PrimitiveCount: 1,
+                NodeCount: 1,
+                PrimitiveIndexCount: 1,
+                PathSegmentCount: 0,
+                OwnerCount: 1);
+            return true;
+        }
+
+        public bool TryHitTestOwners(double x, double y, Span<object?> owners, out int ownerCount)
+        {
+            ownerCount = 0;
+            return false;
+        }
+
+        public bool TryQueryHitTestBoundsOwners(
+            double minX,
+            double minY,
+            double maxX,
+            double maxY,
+            Span<object?> owners,
+            out int ownerCount)
+        {
+            ownerCount = 0;
+            return false;
+        }
+
+        public Func<WpfInputEventArgs, bool>? InputHandler { get; private set; }
+
+        public (int X, int Y) Position { get; private set; }
+
+        public (int Width, int Height) Size { get; private set; }
+
+        public int ShowCount { get; private set; }
+
+        public int HideCount { get; private set; }
+
+        public bool IsDisposed { get; private set; }
+
+        public void SetInputHandler(Func<WpfInputEventArgs, bool> inputHandler) => InputHandler = inputHandler;
+
+        public void SetDeviceScale(double dpiScaleX, double dpiScaleY)
+        {
+        }
+
+        public void SetPosition(int x, int y) => Position = (x, y);
+
+        public void SetSize(int width, int height) => Size = (width, height);
+
+        public void Show() => ShowCount++;
+
+        public void Hide() => HideCount++;
+
+        public void Dispose() => IsDisposed = true;
     }
 
     private sealed class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar

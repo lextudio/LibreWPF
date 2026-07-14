@@ -35,6 +35,14 @@ public static class ProGpuWpfDiagnostics
         int RetainedLayerChildCount,
         int PopupLayerChildCount);
 
+    public readonly record struct PortablePopupSnapshot(
+        int OpenCount,
+        int VisibleCount,
+        int NativeWindowCount,
+        int PresentedNativeWindowCount,
+        int NativeWindowGpuHitTestCount,
+        int NativeWindowGpuHitTestOwnerCount);
+
     public static bool TryGetWindowHost(object? window, out ProGpuWpfWindowHost? host)
     {
         if (window is ProGpuWpfWindowHost directHost)
@@ -120,6 +128,93 @@ public static class ProGpuWpfDiagnostics
             RetainedLayerChildCount: target.RetainedWpfVisualRoot.Children.Count,
             PopupLayerChildCount: target.PopupRetainedWpfVisualRoot.Children.Count);
         return true;
+    }
+
+    public static bool TryGetPortablePopupSnapshot(object? window, out PortablePopupSnapshot snapshot)
+    {
+        snapshot = default;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        host.GetPortablePopupDiagnostics(
+            out int openCount,
+            out int visibleCount,
+            out int nativeWindowCount,
+            out int presentedNativeWindowCount,
+            out int nativeWindowGpuHitTestCount,
+            out int nativeWindowGpuHitTestOwnerCount);
+        snapshot = new PortablePopupSnapshot(
+            openCount,
+            visibleCount,
+            nativeWindowCount,
+            presentedNativeWindowCount,
+            nativeWindowGpuHitTestCount,
+            nativeWindowGpuHitTestOwnerCount);
+        return true;
+    }
+
+    public static bool TryHitTestNativePopupOwners(
+        object? window,
+        double screenDeviceX,
+        double screenDeviceY,
+        Span<object?> owners,
+        out int ownerCount)
+    {
+        ownerCount = 0;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        return host.TryHitTestNativePortablePopupOwners(
+            screenDeviceX,
+            screenDeviceY,
+            owners,
+            out ownerCount);
+    }
+
+    public static bool TryQueryNativePopupHitTestBoundsOwners(
+        object? window,
+        double screenDeviceMinX,
+        double screenDeviceMinY,
+        double screenDeviceMaxX,
+        double screenDeviceMaxY,
+        Span<object?> owners,
+        out int ownerCount)
+    {
+        ownerCount = 0;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        return host.TryQueryNativePortablePopupHitTestBoundsOwners(
+            screenDeviceMinX,
+            screenDeviceMinY,
+            screenDeviceMaxX,
+            screenDeviceMaxY,
+            owners,
+            out ownerCount);
+    }
+
+    public static bool TryQueryNativePopupOwners(
+        object? window,
+        Span<object?> owners,
+        out int ownerCount)
+    {
+        ownerCount = 0;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        return host.TryQueryNativePortablePopupOwners(owners, out ownerCount);
     }
 
     public static bool TryRaiseInput(

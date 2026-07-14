@@ -122,7 +122,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
         AttachDispatcherService(_platformServices.Dispatcher);
         AttachRenderScheduler(_wpfRenderScheduler);
-        if (!OperatingSystem.IsWindows())
+        if (!OperatingSystem.IsWindows() && _options.EnablePortablePopupService)
         {
             _portablePopupService = new WpfPortablePopupService(this);
             _portablePopupServiceRegistration = PortableWpfServiceRegistry.RegisterPopupService(_portablePopupService);
@@ -293,6 +293,131 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal bool HasGpuHitTestCache => !_isDisposed && _target?.LastGpuHitTestIndex != null;
 
+    internal bool HasVisibleNativePortablePopup
+    {
+        get
+        {
+            for (int i = 0; i < _portablePopupBridges.Count; i++)
+            {
+                if (_portablePopupBridges[i].IsVisibleNativeWindow)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    internal void GetPortablePopupDiagnostics(
+        out int openCount,
+        out int visibleCount,
+        out int nativeWindowCount,
+        out int presentedNativeWindowCount,
+        out int nativeWindowGpuHitTestCount,
+        out int nativeWindowGpuHitTestOwnerCount)
+    {
+        openCount = _portablePopupBridges.Count;
+        visibleCount = 0;
+        nativeWindowCount = 0;
+        presentedNativeWindowCount = 0;
+        nativeWindowGpuHitTestCount = 0;
+        nativeWindowGpuHitTestOwnerCount = 0;
+
+        for (int i = 0; i < _portablePopupBridges.Count; i++)
+        {
+            var popup = _portablePopupBridges[i];
+            if (!popup.IsVisible)
+            {
+                continue;
+            }
+
+            visibleCount++;
+            if (!popup.IsVisibleNativeWindow)
+            {
+                continue;
+            }
+
+            nativeWindowCount++;
+            if (popup.HasPresentedNativeFrame)
+            {
+                presentedNativeWindowCount++;
+            }
+
+            if (popup.HasNativeGpuHitTestCache)
+            {
+                nativeWindowGpuHitTestCount++;
+            }
+
+            nativeWindowGpuHitTestOwnerCount += popup.NativeGpuHitTestOwnerCount;
+        }
+    }
+
+    internal bool TryHitTestNativePortablePopupOwners(
+        double screenDeviceX,
+        double screenDeviceY,
+        Span<object?> owners,
+        out int ownerCount)
+    {
+        ownerCount = 0;
+        for (int i = _portablePopupBridges.Count - 1; i >= 0; i--)
+        {
+            if (_portablePopupBridges[i].TryHitTestNativeOwners(
+                    screenDeviceX,
+                    screenDeviceY,
+                    owners,
+                    out ownerCount))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal bool TryQueryNativePortablePopupHitTestBoundsOwners(
+        double screenDeviceMinX,
+        double screenDeviceMinY,
+        double screenDeviceMaxX,
+        double screenDeviceMaxY,
+        Span<object?> owners,
+        out int ownerCount)
+    {
+        ownerCount = 0;
+        for (int i = _portablePopupBridges.Count - 1; i >= 0; i--)
+        {
+            if (_portablePopupBridges[i].TryQueryNativeHitTestBoundsOwners(
+                    screenDeviceMinX,
+                    screenDeviceMinY,
+                    screenDeviceMaxX,
+                    screenDeviceMaxY,
+                    owners,
+                    out ownerCount))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal bool TryQueryNativePortablePopupOwners(
+        Span<object?> owners,
+        out int ownerCount)
+    {
+        ownerCount = 0;
+        for (int i = _portablePopupBridges.Count - 1; i >= 0; i--)
+        {
+            if (_portablePopupBridges[i].TryQueryAllNativeHitTestOwners(owners, out ownerCount) &&
+                ownerCount > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public Action<MediaDrawingContext, ProGpuWpfFrameEventArgs>? Draw { get; set; }
 
     public Action<WpfCompositionDrawingContext, ProGpuWpfFrameEventArgs>? WpfDraw { get; set; }
@@ -390,6 +515,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         ThrowIfDisposed();
         ShowCore(requestRenderWhenInitialized: false);
+    }
+
+    internal void InitializeHidden()
+    {
+        ThrowIfDisposed();
+        _isHostVisible = false;
+        EnsureWindow();
+        _window!.IsVisible = false;
+        if (!_window.IsInitialized)
+        {
+            _window.Initialize();
+        }
     }
 
     public void Show()
@@ -877,6 +1014,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         windowOptions.WindowState = ToSilkWindowState(_windowState);
         windowOptions.TopMost = _windowTopmost;
         windowOptions.WindowBorder = ToSilkWindowBorder(_windowBorder);
+        windowOptions.TransparentFramebuffer = _options.TransparentFramebuffer;
         if (_windowLeft.HasValue && _windowTop.HasValue)
         {
             windowOptions.Position = new Vector2D<int>(_windowLeft.Value, _windowTop.Value);
@@ -929,7 +1067,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         try
         {
             IWindow window = _window;
-            ProGpuWpfCompositionTarget target = ProGpuWpfCompositionTarget.CreateForWindow(window);
+            ProGpuWpfCompositionTarget target = ProGpuWpfCompositionTarget.CreateForWindow(
+                window,
+                _options.SharedRenderDeviceContext,
+                _options.CompositorOptions);
             if (_isDisposed || _hasNativeWindowCloseStarted || !ReferenceEquals(window, _window))
             {
                 target.Dispose();
@@ -1126,6 +1267,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             IReadOnlyList<WpfRetainedVisualBranchReplayTarget> dirtyBranchReplayTargets = Array.Empty<WpfRetainedVisualBranchReplayTarget>();
             var canReplayDirtyWpfBranches = wpfRootVisual != null &&
                 shouldReplayWpfRootVisual &&
+                !_options.IncludePortablePopupRootsInWpfReplay &&
                 !forceFullWpfReplay &&
                 _target.TryPrepareDirtyRetainedVisualBranchReplayTargets(
                     wpfRootVisual,
@@ -1174,11 +1316,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                                 drawingFrame,
                                 _target.Context,
                                 _target.Viewport3DTextureCache);
-                            LastVisualReplayResult = _target.ReplayVisualSubtree(
+                            LastVisualReplayResult = _target.ReplayVisualSubtreeTracked(
                                 wpfRootVisual,
                                 sink,
                                 WpfResourceResolver,
-                                activeWpfImageSourceAdapter);
+                                activeWpfImageSourceAdapter,
+                                _options.IncludePortablePopupRootsInWpfReplay);
                         }
                     }
                     else

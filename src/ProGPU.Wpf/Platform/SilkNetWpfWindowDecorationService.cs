@@ -45,6 +45,28 @@ public sealed class SilkNetWpfWindowDecorationService : IWpfWindowDecorationServ
         return false;
     }
 
+    public bool TryConfigurePopupOwner(object ownerWindow, object popupWindow)
+    {
+        if (ownerWindow is not IView ownerView || popupWindow is not IView popupView)
+        {
+            return false;
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return TryConfigureCocoaPopupOwner(GetCocoaWindow(ownerView), GetCocoaWindow(popupView));
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            var owner = GetX11Window(ownerView);
+            var popup = GetX11Window(popupView);
+            return TryConfigureX11PopupOwner(owner, popup);
+        }
+
+        return false;
+    }
+
     private static INativeWindow? GetNativeWindow(IView view)
     {
         if (view is not INativeWindowSource nativeWindowSource)
@@ -165,6 +187,63 @@ public sealed class SilkNetWpfWindowDecorationService : IWpfWindowDecorationServ
         }
     }
 
+    [SupportedOSPlatform("macos")]
+    private static bool TryConfigureCocoaPopupOwner(IntPtr ownerWindow, IntPtr popupWindow)
+    {
+        if (ownerWindow == IntPtr.Zero || popupWindow == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            IntPtr addChildWindow = SelRegisterName("addChildWindow:ordered:");
+            IntPtr setHidesOnDeactivate = SelRegisterName("setHidesOnDeactivate:");
+            if (addChildWindow == IntPtr.Zero || setHidesOnDeactivate == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            ObjCMsgSend(popupWindow, setHidesOnDeactivate, false);
+            ObjCMsgSend(ownerWindow, addChildWindow, popupWindow, 1);
+            return true;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    [SupportedOSPlatform("linux")]
+    private static bool TryConfigureX11PopupOwner(X11WindowHandle owner, X11WindowHandle popup)
+    {
+        if (owner.Display == IntPtr.Zero || owner.Window == UIntPtr.Zero ||
+            popup.Display == IntPtr.Zero || popup.Window == UIntPtr.Zero ||
+            owner.Display != popup.Display)
+        {
+            return false;
+        }
+
+        try
+        {
+            bool configured = XSetTransientForHint(owner.Display, popup.Window, owner.Window) != 0;
+            XFlush(owner.Display);
+            return configured;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
     [SupportedOSPlatform("linux")]
     private static bool TryBeginX11DragMove(IntPtr display, UIntPtr window)
     {
@@ -257,6 +336,12 @@ public sealed class SilkNetWpfWindowDecorationService : IWpfWindowDecorationServ
     [DllImport(ObjCLibrary, EntryPoint = "objc_msgSend")]
     private static extern void ObjCMsgSend(IntPtr receiver, IntPtr selector, IntPtr argument);
 
+    [DllImport(ObjCLibrary, EntryPoint = "objc_msgSend")]
+    private static extern void ObjCMsgSend(IntPtr receiver, IntPtr selector, [MarshalAs(UnmanagedType.Bool)] bool argument);
+
+    [DllImport(ObjCLibrary, EntryPoint = "objc_msgSend")]
+    private static extern void ObjCMsgSend(IntPtr receiver, IntPtr selector, IntPtr argument, long orderingMode);
+
     [DllImport(X11Library)]
     private static extern UIntPtr XDefaultRootWindow(IntPtr display);
 
@@ -291,6 +376,9 @@ public sealed class SilkNetWpfWindowDecorationService : IWpfWindowDecorationServ
 
     [DllImport(X11Library)]
     private static extern int XFlush(IntPtr display);
+
+    [DllImport(X11Library)]
+    private static extern int XSetTransientForHint(IntPtr display, UIntPtr window, UIntPtr ownerWindow);
 
     private readonly record struct X11WindowHandle(IntPtr Display, UIntPtr Window);
 

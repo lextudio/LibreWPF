@@ -587,7 +587,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
             s_hostsByPresentationSource.TryGetValue(presentationSource, out host);
         if (found)
         {
-            x = host!.Left ?? 0;
+            // See EnsureNativeWindowExistsForPositionQuery's doc comment: without this, a Popup
+            // opened before its owner's native window is lazily created reads Left/Top as the
+            // "never set" default instead of the real screen position.
+            host!.EnsureNativeWindowExistsForPositionQuery();
+            x = host.Left ?? 0;
             y = host.Top ?? 0;
         }
 

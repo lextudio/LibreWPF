@@ -1166,6 +1166,25 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         TryRequestNativeLoopWakeup(window.ContinueEvents);
     }
 
+    /// <summary>
+    /// Forces the native window handle into existence without changing visibility or any other
+    /// state - safe to call purely to make <see cref="Left"/>/<see cref="Top"/> resolve to the real
+    /// screen position instead of falling back to the "never set" default. Needed because a Popup can
+    /// be created and positioned (via <c>WpfPortableWindowActivation.TryGetScreenOrigin</c>) before its
+    /// owner Window's own native window has been lazily created - WPF's Loaded event fires before this
+    /// portable backend's native window creation, so an app that opens a dropdown/Popup early (e.g.
+    /// programmatically right after Loaded, or just quickly after startup) can race this. Without
+    /// forcing creation here, the popup silently used origin (0,0) instead of the owner's real screen
+    /// position, causing it to render nowhere near its actual placement target.
+    /// </summary>
+    internal void EnsureNativeWindowExistsForPositionQuery()
+    {
+        if (!_isDisposed)
+        {
+            EnsureWindow();
+        }
+    }
+
     private void EnsureWindow()
     {
         if (_window != null)

@@ -45,3 +45,28 @@ jobs:
             artifacts/packages/Release/NonShipping/README.md
             artifacts/packages/Release/NonShipping/NuGet.config
           if-no-files-found: error
+
+  windows-anycpu-smoke:
+    name: Windows AnyCPU package launch
+    needs: sdk-smoke
+    runs-on: windows-2025
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Download CI package bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: librewpf-ci-packages-${{ github.sha }}
+          path: artifacts/packages/Release/NonShipping
+
+      - name: Run clean Windows AnyCPU package smoke
+        shell: pwsh
+        run: ./eng/progpu-wpf-windows-anycpu-smoke.ps1

@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace System.Windows;
@@ -38,5 +39,93 @@ public class PortablePresentationSourceTests
         source.SetClientOrigin(double.NaN, double.PositiveInfinity);
 
         root.PointToScreen(new Point()).Should().Be(new Point());
+    }
+
+    [StaFact]
+    public void ReleaseMouseCaptureReportsOnlyCancelCaptureWithoutMovingThePointer()
+    {
+        using IPortablePresentationSourceHost source = PortablePresentationSourceHost.Create();
+        var presentationSource = (PresentationSource)source;
+        var root = new HitTestElement();
+        source.RootVisual = root;
+        source.SetClientSize(200.0, 100.0);
+
+        ReportMouseInput(
+            presentationSource,
+            RawMouseActions.Activate | RawMouseActions.AbsoluteMove,
+            x: 37,
+            y: 41);
+
+        root.CaptureMouse().Should().BeTrue();
+        Mouse.Captured.Should().BeSameAs(root);
+
+        var releaseReports = new List<RawMouseInputReport>();
+        int mouseMoveCount = 0;
+        int lostMouseCaptureCount = 0;
+        PreProcessInputEventHandler inputHandler = (_, e) =>
+        {
+            if (e.StagingItem.Input is InputReportEventArgs inputReport &&
+                inputReport.Report is RawMouseInputReport mouseReport &&
+                ReferenceEquals(mouseReport.InputSource, presentationSource))
+            {
+                releaseReports.Add(mouseReport);
+            }
+        };
+
+        root.MouseMove += (_, _) => mouseMoveCount++;
+        root.LostMouseCapture += (_, _) => lostMouseCaptureCount++;
+        InputManager.Current.PreProcessInput += inputHandler;
+        try
+        {
+            root.ReleaseMouseCapture();
+        }
+        finally
+        {
+            InputManager.Current.PreProcessInput -= inputHandler;
+        }
+
+        releaseReports.Should().Contain(report =>
+            report.Actions == RawMouseActions.CancelCapture);
+        releaseReports.Should().NotContain(report =>
+            (report.Actions & RawMouseActions.Activate) != 0);
+        releaseReports.Should().NotContain(report =>
+            (report.Actions & RawMouseActions.AbsoluteMove) != 0 &&
+            report.X == 0 &&
+            report.Y == 0);
+        mouseMoveCount.Should().Be(0);
+        lostMouseCaptureCount.Should().Be(1);
+        Mouse.Captured.Should().BeNull();
+        root.IsMouseCaptured.Should().BeFalse();
+    }
+
+    private static void ReportMouseInput(
+        PresentationSource source,
+        RawMouseActions actions,
+        int x,
+        int y)
+    {
+        var report = new RawMouseInputReport(
+            InputMode.Foreground,
+            Environment.TickCount,
+            source,
+            actions,
+            x,
+            y,
+            wheel: 0,
+            extraInformation: IntPtr.Zero);
+        var input = new InputReportEventArgs(inputDevice: null, report: report)
+        {
+            RoutedEvent = InputManager.PreviewInputReportEvent
+        };
+
+        InputManager.Current.ProcessInput(input);
+    }
+
+    private sealed class HitTestElement : UIElement
+    {
+        protected override HitTestResult HitTestCore(PointHitTestParameters hitTestParameters)
+        {
+            return new PointHitTestResult(this, hitTestParameters.HitPoint);
+        }
     }
 }

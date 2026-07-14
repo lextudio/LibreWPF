@@ -18284,7 +18284,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Keyboard.Focus(null)", portableSource, StringComparison.Ordinal);
         Assert.Contains("void IInputProvider.NotifyDeactivate()\n            {\n                ReleaseMouseCapture(reportInput: true);\n            }", portableSource, StringComparison.Ordinal);
         Assert.Contains("return _source.RequestCursor(cursor);", portableSource, StringComparison.Ordinal);
-        Assert.Contains("RawMouseActions.Activate | RawMouseActions.CancelCapture", portableSource, StringComparison.Ordinal);
+        Assert.Contains("RawMouseActions.CancelCapture,", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("RawMouseActions.Activate | RawMouseActions.CancelCapture", portableSource, StringComparison.Ordinal);
         Assert.Contains("_site.ReportInput(report)", portableSource, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\IPortablePresentationSourceHost.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortablePresentationSource.cs"" />", project, StringComparison.Ordinal);

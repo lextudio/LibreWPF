@@ -153,6 +153,7 @@ public sealed class WpfPortablePopupActivation : IDisposable
             IsVisible = false,
             Topmost = true,
             WindowBorder = ProGpuWpfWindowBorder.Hidden,
+            TransparentFramebuffer = transparent,
         };
 
         var host = new ProGpuWpfWindowHost(options);

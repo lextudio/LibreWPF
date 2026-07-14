@@ -1186,6 +1186,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         windowOptions.WindowState = ToSilkWindowState(_windowState);
         windowOptions.TopMost = _windowTopmost;
         windowOptions.WindowBorder = ToSilkWindowBorder(_windowBorder);
+        windowOptions.TransparentFramebuffer = _options.TransparentFramebuffer;
         if (_windowLeft.HasValue && _windowTop.HasValue)
         {
             windowOptions.Position = new Vector2D<int>(_windowLeft.Value, _windowTop.Value);
@@ -1254,6 +1255,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _target = target;
             target.RenderInvalidated += OnCompositionTargetRenderInvalidated;
             target.Context.VSync = _options.VSync;
+            if (_options.TransparentFramebuffer)
+            {
+                // A transparent (AllowsTransparency) window must clear to fully-transparent black
+                // instead of the compositor's default opaque dark background - otherwise the alpha
+                // channel is 1.0 everywhere and the "transparent" framebuffer still composites as an
+                // opaque dark fill. This is what makes AvalonDock's OverlayWindow / drop-target compass
+                // actually see-through on the portable (Silk.NET/GLFW) backend.
+                target.Compositor.ClearColor = new System.Numerics.Vector4(0f, 0f, 0f, 0f);
+            }
             ApplyWindowRegionToCompositionTarget();
             if (!CanFinishCompositionTargetLoad(target, window))
             {

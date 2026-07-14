@@ -129,7 +129,9 @@ namespace System.Windows
                 HasShowActivated = true,
                 ShowActivated = ShowActivated,
                 HasOwner = Owner != null,
-                Owner = Owner
+                Owner = Owner,
+                HasAllowsTransparency = true,
+                AllowsTransparency = AllowsTransparency
             };
             return true;
         }

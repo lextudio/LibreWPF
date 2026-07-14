@@ -238,6 +238,7 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Same(host, activeHost);
         Assert.False(ProGpuWpfDiagnostics.HasGpuHitTestCache(window));
         Assert.False(ProGpuWpfDiagnostics.TryHitTestOwner(window, 1, 1, out var owner));
+        Assert.False(ProGpuWpfDiagnostics.TryHitTestInputOwner(window, 1, 1, out var inputOwner));
         Assert.Null(owner);
         Assert.False(ProGpuWpfDiagnostics.TryHitTestOwners(window, 1, 1, out var owners));
         Assert.Empty(owners);

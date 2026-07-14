@@ -2,6 +2,8 @@ namespace System.Windows.Media.ProGPU;
 
 public static class ProGpuWpfDiagnostics
 {
+    private const int HitTestOwnerBufferCapacity = 64;
+
     public readonly record struct RenderSurfaceGeometrySnapshot(
         uint LogicalWidth,
         uint LogicalHeight,
@@ -168,6 +170,29 @@ public static class ProGpuWpfDiagnostics
 
         ArgumentNullException.ThrowIfNull(host);
         return host.TryHitTestOwner(x, y, out owner);
+    }
+
+    public static bool TryHitTestInputOwner(object? window, double x, double y, out object? owner)
+    {
+        owner = null;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        object?[] ownerBuffer = System.Buffers.ArrayPool<object?>.Shared.Rent(HitTestOwnerBufferCapacity);
+        try
+        {
+            return host.TryHitTestOwners(x, y, ownerBuffer, out int ownerCount)
+                && WpfPortablePresentationSourceBridge.TrySelectPointerInputOwner(
+                    ownerBuffer.AsSpan(0, ownerCount),
+                    out owner);
+        }
+        finally
+        {
+            System.Buffers.ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true);
+        }
     }
 
     public static bool TryHitTestOwners(object? window, double x, double y, out object?[] owners)

@@ -860,6 +860,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public static bool HasGpuHitTestCache(object? window)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetGpuHitTestCacheSnapshot(object? window, out GpuHitTestCacheSnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryHitTestOwner(object? window, double x, double y, out object? owner)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryHitTestInputOwner(object? window, double x, double y, out object? owner)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryHitTestOwners(object? window, double x, double y, out object?[] owners)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryHitTestOwners(object? window, double x, double y, Span<object?> owners, out int ownerCount)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryQueryHitTestBoundsOwners(", proGpuDiagnostics, StringComparison.Ordinal);
@@ -10197,6 +10198,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateLiveAvalonDockAutoHideOverlayAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryGetWindowHost(this", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryHitTestOwners(liveHost", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryHitTestInputOwner(liveHost", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ArrayPool<object?>.Shared.Rent(GpuOwnerBufferCapacity)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DescribeInputElements(owners)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("TryHitTestOwners(liveHost, x, y, out object?[] owners)", mainWindowCodeBehind, StringComparison.Ordinal);

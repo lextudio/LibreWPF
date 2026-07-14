@@ -4908,6 +4908,17 @@ public partial class MainWindow : Window
         out string state)
     {
         state = "GpuHitTest=<unavailable>";
+        if (!ProGpuWpfDiagnostics.TryHitTestInputOwner(liveHost, x, y, out object? selectedOwner))
+        {
+            return false;
+        }
+
+        state = $"GpuInputOwner={DescribeInputElement(selectedOwner)}";
+        if (selectedOwner == null || !IsInputElementWithinTarget(selectedOwner, target))
+        {
+            return false;
+        }
+
         object?[] ownerBuffer = ArrayPool<object?>.Shared.Rent(GpuOwnerBufferCapacity);
         try
         {
@@ -4917,21 +4928,13 @@ public partial class MainWindow : Window
             }
 
             var owners = ownerBuffer.AsSpan(0, ownerCount);
-            state = $"GpuHitTest=[{DescribeInputElements(owners)}]";
+            state += $", GpuHitTest=[{DescribeInputElements(owners)}]";
             if (ownerCount == 0)
             {
                 return false;
             }
 
-            foreach (var owner in owners)
-            {
-                if (owner != null && IsInputElementWithinTarget(owner, target))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return true;
         }
         finally
         {

@@ -134,7 +134,9 @@ namespace System.Windows
                 HasAllowsTransparency = true,
                 AllowsTransparency = AllowsTransparency,
                 HasOwner = Owner != null,
-                Owner = Owner
+                Owner = Owner,
+                HasAllowsTransparency = true,
+                AllowsTransparency = AllowsTransparency
             };
             return true;
         }

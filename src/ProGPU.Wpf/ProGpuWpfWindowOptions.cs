@@ -40,6 +40,8 @@ public sealed class ProGpuWpfWindowOptions
     public ProGpuWpfWindowBorder WindowBorder { get; set; } = ProGpuWpfWindowBorder.Resizable;
 
     public ProGpuWpfWindowState WindowState { get; set; } = ProGpuWpfWindowState.Normal;
+
+    public bool TransparentFramebuffer { get; set; }
 }
 
 public enum ProGpuWpfWindowState

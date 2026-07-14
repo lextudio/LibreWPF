@@ -19,8 +19,6 @@
     <ProGpuWpfUseLibreWinForms Condition="'$(ProGpuWpfUseLibreWinForms)' == ''">false</ProGpuWpfUseLibreWinForms>
     <ProGpuWpfEnablePortableBootstrap Condition="'$(ProGpuWpfEnablePortableBootstrap)' == ''">true</ProGpuWpfEnablePortableBootstrap>
     <ProGpuWpfUseCurrentRuntimeIdentifier Condition="'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == ''">true</ProGpuWpfUseCurrentRuntimeIdentifier>
-    <RuntimeIdentifier Condition="'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(RuntimeIdentifier)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)</RuntimeIdentifier>
-    <AppendRuntimeIdentifierToOutputPath Condition="'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(AppendRuntimeIdentifierToOutputPath)' == ''">false</AppendRuntimeIdentifierToOutputPath>
     <ProGpuWpfPlatform Condition="'$(ProGpuWpfPlatform)' == ''">SilkNet</ProGpuWpfPlatform>
     <ProGpuWpfRenderingBackend Condition="'$(ProGpuWpfRenderingBackend)' == ''">ProGPU</ProGpuWpfRenderingBackend>
     <ProGpuWpfSdkVersion Condition="'$(ProGpuWpfSdkVersion)' == '' And '$(_LibreWpfSdkPackageVersion)' != ''">$(_LibreWpfSdkPackageVersion)</ProGpuWpfSdkVersion>
@@ -36,6 +34,12 @@
   </PropertyGroup>
 
   <Import Sdk="Microsoft.NET.Sdk.WindowsDesktop" Project="Sdk.props" />
+
+  <PropertyGroup>
+    <RuntimeIdentifier Condition="'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(RuntimeIdentifier)' == '' And '$(NETCoreSdkRuntimeIdentifier)' != ''">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
+    <AppendRuntimeIdentifierToOutputPath Condition="'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(AppendRuntimeIdentifierToOutputPath)' == ''">false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
   <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.props" />
 
 </Project>

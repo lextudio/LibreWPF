@@ -11685,7 +11685,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<MSBuildWarningsAsMessages Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'\">$(MSBuildWarningsAsMessages);NETSDK1106</MSBuildWarningsAsMessages>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfEnablePortableBootstrap Condition=\"'$(ProGpuWpfEnablePortableBootstrap)' == ''\">true</ProGpuWpfEnablePortableBootstrap>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfUseCurrentRuntimeIdentifier Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == ''\">true</ProGpuWpfUseCurrentRuntimeIdentifier>", sdkProps, StringComparison.Ordinal);
-        Assert.Contains("<RuntimeIdentifier Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(RuntimeIdentifier)' == ''\">$([System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)</RuntimeIdentifier>", sdkProps, StringComparison.Ordinal);
+        const string windowsDesktopSdkPropsImport = "<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />";
+        const string portableRuntimeIdentifier = "<RuntimeIdentifier Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(RuntimeIdentifier)' == '' And '$(NETCoreSdkRuntimeIdentifier)' != ''\">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>";
+        Assert.Contains(portableRuntimeIdentifier, sdkProps, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Runtime.InteropServices.RuntimeInformation", sdkProps, StringComparison.Ordinal);
+        Assert.True(
+            sdkProps.IndexOf(windowsDesktopSdkPropsImport, StringComparison.Ordinal)
+                < sdkProps.IndexOf(portableRuntimeIdentifier, StringComparison.Ordinal),
+            "The SDK runtime identifier must be read only after Microsoft.NET.Sdk defines NETCoreSdkRuntimeIdentifier.");
         Assert.Contains("<AppendRuntimeIdentifierToOutputPath Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(AppendRuntimeIdentifierToOutputPath)' == ''\">false</AppendRuntimeIdentifierToOutputPath>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfPlatform Condition=\"'$(ProGpuWpfPlatform)' == ''\">SilkNet</ProGpuWpfPlatform>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfRenderingBackend Condition=\"'$(ProGpuWpfRenderingBackend)' == ''\">ProGPU</ProGpuWpfRenderingBackend>", sdkProps, StringComparison.Ordinal);
@@ -11711,7 +11718,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGpuWpfSystemWindowsExtensionsVersion", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfOpenFontSharpVersion Condition=\"'$(ProGpuWpfOpenFontSharpVersion)' == ''\">1.0.0</ProGpuWpfOpenFontSharpVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfStbImageSharpVersion Condition=\"'$(ProGpuWpfStbImageSharpVersion)' == ''\">2.30.15</ProGpuWpfStbImageSharpVersion>", sdkProps, StringComparison.Ordinal);
-        Assert.Contains("<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", sdkProps, StringComparison.Ordinal);
+        Assert.Contains(windowsDesktopSdkPropsImport, sdkProps, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.props", sdkProps, StringComparison.Ordinal);
 
         Assert.Contains("<PackageReadmeFile Condition=\"'$(PackageReadmeFile)' == '' And Exists('$(MSBuildThisFileDirectory)README.md')\">README.md</PackageReadmeFile>", proGpuDirectoryBuildProps, StringComparison.Ordinal);

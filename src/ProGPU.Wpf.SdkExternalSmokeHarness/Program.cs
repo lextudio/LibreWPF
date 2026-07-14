@@ -149,6 +149,15 @@ internal static class Program
             string defaultItemsProjectPath = PrepareExternalDefaultItemsApp(workRoot);
             string dotnetPath = ResolveDotNetHost(repoRoot);
 
+            RunProcess(
+                dotnetPath,
+                repoRoot,
+                "msbuild",
+                appProjectPath,
+                "-getProperty:RuntimeIdentifier",
+                "-p:DesignTimeBuild=true",
+                "-p:BuildingInsideVisualStudio=true",
+                "-p:SkipCompilerExecution=true");
             RunProcess(dotnetPath, repoRoot, "build", appProjectPath, "-v:minimal");
             RunProcess(dotnetPath, repoRoot, "restore", centralPackageManagementProjectPath, "-v:minimal");
             RunProcess(dotnetPath, repoRoot, "build", centralPackageManagementProjectPath, "-v:minimal", "--no-restore");
@@ -280,7 +289,17 @@ internal static class Program
         AssertDoesNotContain(sdkProps, "11.0.0-preview.4.26210.111", "SDK root runtime version default");
         AssertContains(sdkProps, "<ProGpuWpfOpenFontSharpVersion Condition=\"'$(ProGpuWpfOpenFontSharpVersion)' == ''\">1.0.0</ProGpuWpfOpenFontSharpVersion>", "SDK OpenFontSharp version default");
         AssertContains(sdkProps, "<ProGpuWpfStbImageSharpVersion Condition=\"'$(ProGpuWpfStbImageSharpVersion)' == ''\">2.30.15</ProGpuWpfStbImageSharpVersion>", "SDK StbImageSharp version default");
-        AssertContains(sdkProps, "<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", "SDK root WindowsDesktop props import");
+        const string windowsDesktopSdkPropsImport = "<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />";
+        const string portableRuntimeIdentifier = "<RuntimeIdentifier Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(RuntimeIdentifier)' == '' And '$(NETCoreSdkRuntimeIdentifier)' != ''\">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>";
+        AssertContains(sdkProps, windowsDesktopSdkPropsImport, "SDK root WindowsDesktop props import");
+        AssertContains(sdkProps, portableRuntimeIdentifier, "SDK portable runtime identifier");
+        AssertDoesNotContain(sdkProps, "System.Runtime.InteropServices.RuntimeInformation", "SDK unsupported runtime property function");
+        if (sdkProps.IndexOf(windowsDesktopSdkPropsImport, StringComparison.Ordinal)
+            >= sdkProps.IndexOf(portableRuntimeIdentifier, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "SDK portable runtime identifier must follow the WindowsDesktop SDK props import.");
+        }
         AssertContains(sdkProps, "ProGPU.Wpf.Sdk.props", "SDK root portable props import");
         AssertContains(sdkTargets, "<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.targets\" />", "SDK root WindowsDesktop targets import");
         AssertContains(sdkTargets, "ProGPU.Wpf.Sdk.targets", "SDK root portable targets import");

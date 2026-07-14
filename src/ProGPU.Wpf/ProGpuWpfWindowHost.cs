@@ -2968,8 +2968,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 break;
 
             case WpfInputEventKind.MouseUp:
+                // s_lastWindowShownTicks starts at long.MinValue ("never armed"). Environment.TickCount64
+                // - long.MinValue overflows (wraps to a huge NEGATIVE number), which satisfies "<=
+                // SpuriousUpAfterWindowShowMs" - so without the explicit sentinel check below, this
+                // branch swallowed the mouse-up of EVERY plain (non-drag) click in the app, forever,
+                // regardless of whether any window was ever actually shown. Found via
+                // Environment.TickCount64=167807597, s_lastWindowShownTicks=long.MinValue producing
+                // delta=-9223372036686968211, which is indeed "<= 250".
                 if (_mouseButtonDownSeen
                     && !_mouseMovedSinceDown
+                    && s_lastWindowShownTicks != long.MinValue
                     && Environment.TickCount64 - s_lastWindowShownTicks <= SpuriousUpAfterWindowShowMs
                     && Math.Abs(e.X - _mouseDownX) < 2.0
                     && Math.Abs(e.Y - _mouseDownY) < 2.0)

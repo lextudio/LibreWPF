@@ -1743,10 +1743,12 @@ public sealed class ProGpuWpfWindowHostTests
         host.SetPosition(110, 210);
         Assert.Equal(110, owner.ClientOriginX);
         Assert.Equal(210, owner.ClientOriginY);
+        Assert.Equal(130, popupPresentationSource.ClientOriginX);
+        Assert.Equal(240, popupPresentationSource.ClientOriginY);
         var movedOwnerInput = new WpfInputEventArgs(
             WpfInputEventKind.MouseDown,
-            x: 15,
-            y: 25,
+            x: 25,
+            y: 35,
             button: WpfMouseButton.Left);
 
         Assert.True(host.TryProcessPortablePopupInput(movedOwnerInput));
@@ -1907,10 +1909,12 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(230, nestedPopupSource.ClientOriginX);
         Assert.Equal(270, nestedPopupSource.ClientOriginY);
         Assert.True(host.TrySetPortablePopupPosition(parentSource!, 160, 250));
+        Assert.Equal(250, nestedPopupSource.ClientOriginX);
+        Assert.Equal(290, nestedPopupSource.ClientOriginY);
         var input = new WpfInputEventArgs(
             WpfInputEventKind.MouseDown,
-            x: 135,
-            y: 76,
+            x: 155,
+            y: 96,
             button: WpfMouseButton.Left);
         Assert.True(host.TryProcessPortablePopupInput(input));
         Assert.Same(nestedSource, activationService.LastPresentationSourceInputSource);
@@ -1920,12 +1924,12 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.True(host.UpdatePortablePresentationSourceDpiScale(2.0, 2.0));
         Assert.Equal(220, parentPopupSource.ClientOriginX);
         Assert.Equal(300, parentPopupSource.ClientOriginY);
-        Assert.Equal(360, nestedPopupSource.ClientOriginX);
-        Assert.Equal(340, nestedPopupSource.ClientOriginY);
+        Assert.Equal(400, nestedPopupSource.ClientOriginX);
+        Assert.Equal(380, nestedPopupSource.ClientOriginY);
         var scaledInput = new WpfInputEventArgs(
             WpfInputEventKind.MouseDown,
-            x: 135,
-            y: 76,
+            x: 155,
+            y: 96,
             button: WpfMouseButton.Left);
         Assert.True(host.TryProcessPortablePopupInput(scaledInput));
         Assert.Same(nestedSource, activationService.LastPresentationSourceInputSource);

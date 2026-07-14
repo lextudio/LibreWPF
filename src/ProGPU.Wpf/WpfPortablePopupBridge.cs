@@ -182,9 +182,10 @@ internal sealed class WpfPortablePopupBridge : IDisposable
 
         _ownerClientScreenDeviceX = x;
         _ownerClientScreenDeviceY = y;
-        _localLogicalX = ((double)X - x) / _dpiScaleX;
-        _localLogicalY = ((double)Y - y) / _dpiScaleY;
-        Trace($"owner origin x={x} y={y}");
+        X = ToScreenDeviceCoordinate(x, _localLogicalX, _dpiScaleX);
+        Y = ToScreenDeviceCoordinate(y, _localLogicalY, _dpiScaleY);
+        _source.SetClientOrigin(X, Y);
+        Trace($"owner origin x={x} y={y} popup=({X},{Y})");
         RequestRender();
         return true;
     }

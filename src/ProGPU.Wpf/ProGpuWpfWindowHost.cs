@@ -3149,14 +3149,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
-        object ownerPresentationSource = bridge.Source;
-        for (int i = 0; i < _portablePopupBridges.Count; i++)
-        {
-            _portablePopupBridges[i].TrySetOwnerClientScreenOrigin(
-                ownerPresentationSource,
-                x,
-                y);
-        }
+        UpdatePortablePopupOwnerOrigins(bridge.Source, x, y);
 
         _portablePresentationSourceClientOriginX = x;
         _portablePresentationSourceClientOriginY = y;
@@ -3256,14 +3249,28 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         popup.TrySetPosition(x, y);
+        UpdatePortablePopupOwnerOrigins(presentationSource, x, y);
+        return true;
+    }
+
+    private void UpdatePortablePopupOwnerOrigins(
+        object ownerPresentationSource,
+        int ownerClientScreenDeviceX,
+        int ownerClientScreenDeviceY)
+    {
         for (int i = 0; i < _portablePopupBridges.Count; i++)
         {
-            _portablePopupBridges[i].TrySetOwnerClientScreenOrigin(
-                presentationSource,
-                x,
-                y);
+            WpfPortablePopupBridge popup = _portablePopupBridges[i];
+            if (!popup.TrySetOwnerClientScreenOrigin(
+                    ownerPresentationSource,
+                    ownerClientScreenDeviceX,
+                    ownerClientScreenDeviceY))
+            {
+                continue;
+            }
+
+            UpdatePortablePopupOwnerOrigins(popup.Source, popup.X, popup.Y);
         }
-        return true;
     }
 
     internal bool TrySetPortablePopupSize(object presentationSource, int width, int height)

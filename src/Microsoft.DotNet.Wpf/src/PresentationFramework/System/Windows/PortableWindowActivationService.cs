@@ -302,7 +302,21 @@ namespace System.Windows
         {
             InputManager inputManager = InputManager.UnsecureCurrent;
             int timestamp = Environment.TickCount;
-            RawMouseActions mouseActivation = GetMouseActivationAction(inputManager, source);
+            PresentationSource mouseInputSource = source;
+            UIElement mouseRootHitTestElement = rootHitTestElement;
+            Point mouseRootPoint = new Point(input.X, input.Y);
+            if (IsMouseInputKind(input.Kind))
+            {
+                ResolveCapturedMouseInputRoute(
+                    inputManager,
+                    source,
+                    rootHitTestElement,
+                    mouseRootPoint,
+                    out mouseInputSource,
+                    out mouseRootHitTestElement,
+                    out mouseRootPoint);
+            }
+            RawMouseActions mouseActivation = GetMouseActivationAction(inputManager, mouseInputSource);
 
             switch (input.Kind)
             {
@@ -313,20 +327,75 @@ namespace System.Windows
                 case PortableInputEventKind.TextInput:
                     return ProcessTextInput(inputManager, source, input, timestamp);
                 case PortableInputEventKind.MouseMove:
-                    return ProcessMouseInput(inputManager, source, rootHitTestElement, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
+                    return ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
                 case PortableInputEventKind.MouseDown:
                     return TryGetMouseButtonAction(input.Button, isDown: true, out RawMouseActions mouseDownAction)
-                        && ProcessMouseInput(inputManager, source, rootHitTestElement, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
+                        && ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
                 case PortableInputEventKind.MouseUp:
                     return TryGetMouseButtonAction(input.Button, isDown: false, out RawMouseActions mouseUpAction)
-                        && ProcessMouseInput(inputManager, source, rootHitTestElement, input, timestamp, mouseActivation | mouseUpAction);
+                        && ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | mouseUpAction);
                 case PortableInputEventKind.MouseWheel:
                     int wheel = ToMouseWheelDelta(input.DeltaY);
                     return wheel != 0
-                        && ProcessMouseInput(inputManager, source, rootHitTestElement, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
+                        && ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
                 default:
                     return false;
             }
+        }
+
+        private static bool IsMouseInputKind(PortableInputEventKind kind)
+        {
+            return kind == PortableInputEventKind.MouseMove ||
+                kind == PortableInputEventKind.MouseDown ||
+                kind == PortableInputEventKind.MouseUp ||
+                kind == PortableInputEventKind.MouseWheel;
+        }
+
+        private static void ResolveCapturedMouseInputRoute(
+            InputManager inputManager,
+            PresentationSource reportedSource,
+            UIElement reportedRootHitTestElement,
+            Point reportedRootPoint,
+            out PresentationSource inputSource,
+            out UIElement rootHitTestElement,
+            out Point rootPoint)
+        {
+            inputSource = reportedSource;
+            rootHitTestElement = reportedRootHitTestElement;
+            rootPoint = reportedRootPoint;
+
+            if (inputManager.PrimaryMouseDevice?.Captured is not DependencyObject capturedElement)
+            {
+                return;
+            }
+
+            DependencyObject capturedVisual = InputElement.GetContainingVisual(capturedElement);
+            PresentationSource capturedSource = capturedVisual != null
+                ? PresentationSource.CriticalFromVisual(capturedVisual)
+                : null;
+            if (capturedSource == null ||
+                capturedSource.RootVisual is not UIElement capturedRootHitTestElement ||
+                ReferenceEquals(capturedSource, reportedSource))
+            {
+                return;
+            }
+
+            Point reportedClientPoint = PointUtil.RootToClient(reportedRootPoint, reportedSource);
+            Point screenPoint = PointUtil.ClientToScreen(reportedClientPoint, reportedSource);
+            Point capturedClientPoint = PointUtil.ScreenToClient(screenPoint, capturedSource);
+            Point capturedRootPoint = PointUtil.TryClientToRoot(
+                capturedClientPoint,
+                capturedSource,
+                throwOnError: false,
+                out bool success);
+            if (!success)
+            {
+                return;
+            }
+
+            inputSource = capturedSource;
+            rootHitTestElement = capturedRootHitTestElement;
+            rootPoint = capturedRootPoint;
         }
 
         private static RawMouseActions GetMouseActivationAction(InputManager inputManager, PresentationSource source)
@@ -395,6 +464,7 @@ namespace System.Windows
             InputManager inputManager,
             PresentationSource source,
             UIElement rootHitTestElement,
+            Point rootPoint,
             PortableInputEventArgs input,
             int timestamp,
             RawMouseActions actions,
@@ -413,7 +483,7 @@ namespace System.Windows
                 }
             }
 
-            Point clientPoint = ToMouseClientPoint(source, rootHitTestElement, input);
+            Point clientPoint = ToMouseClientPoint(source, rootHitTestElement, rootPoint);
             RawMouseInputReport report = new RawMouseInputReport(
                 InputMode.Foreground,
                 timestamp,
@@ -427,9 +497,8 @@ namespace System.Windows
             return ProcessInputReport(inputManager, report);
         }
 
-        private static Point ToMouseClientPoint(PresentationSource source, UIElement rootHitTestElement, PortableInputEventArgs input)
+        private static Point ToMouseClientPoint(PresentationSource source, UIElement rootHitTestElement, Point rootPoint)
         {
-            Point rootPoint = new Point(input.X, input.Y);
             if (source?.CompositionTarget == null)
             {
                 return rootPoint;

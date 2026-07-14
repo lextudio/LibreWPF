@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Text;
 using System.Windows;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Media.ProGPU;
 
@@ -578,6 +579,53 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         }
 
         return writeIndex;
+    }
+
+    internal static int FilterVisualOwnerSubtree(Span<object?> candidates, object? rootVisual)
+    {
+        if (rootVisual == null)
+        {
+            candidates.Clear();
+            return 0;
+        }
+
+        int writeIndex = 0;
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            object? candidate = candidates[i];
+            object? owner = candidate is PortableGeometryHitTestCandidate geometryCandidate
+                ? geometryCandidate.VisualHit
+                : candidate;
+            if (owner == null || !IsVisualOwnerDescendantOrSelf(owner, rootVisual))
+            {
+                continue;
+            }
+
+            candidates[writeIndex++] = candidate;
+        }
+
+        for (int i = writeIndex; i < candidates.Length; i++)
+        {
+            candidates[i] = null;
+        }
+
+        return writeIndex;
+    }
+
+    private static bool IsVisualOwnerDescendantOrSelf(object owner, object rootVisual)
+    {
+        object? current = owner;
+        for (int depth = 0; current != null && depth < 128; depth++)
+        {
+            if (ReferenceEquals(current, rootVisual))
+            {
+                return true;
+            }
+
+            current = TryGetVisualParent(current);
+        }
+
+        return false;
     }
 
     private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)

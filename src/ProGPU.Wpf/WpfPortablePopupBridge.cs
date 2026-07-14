@@ -507,6 +507,9 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             return _host.HasGpuHitTestCache;
         }
 
+        ownerCount = WpfPortablePresentationSourceBridge.FilterVisualOwnerSubtree(
+            owners[..ownerCount],
+            RootVisual);
         ownerCount = WpfPortablePresentationSourceBridge.FilterTransparentPointerOverlays(owners[..ownerCount]);
         return true;
     }
@@ -526,6 +529,9 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             candidates,
             out candidateCount))
         {
+            candidateCount = WpfPortablePresentationSourceBridge.FilterVisualOwnerSubtree(
+                candidates[..candidateCount],
+                RootVisual);
             return true;
         }
 
@@ -548,6 +554,9 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             candidates,
             out candidateCount))
         {
+            candidateCount = WpfPortablePresentationSourceBridge.FilterVisualOwnerSubtree(
+                candidates[..candidateCount],
+                RootVisual);
             return true;
         }
 

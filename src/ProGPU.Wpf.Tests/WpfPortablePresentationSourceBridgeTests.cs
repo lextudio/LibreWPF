@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
 using ProGPU.Vector;
+using ProGPU.Wpf.Interop;
 using Xunit;
 
 namespace ProGPU.Wpf.Tests;
@@ -266,6 +267,32 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.Empty(source.HitTestAllOverride!(10, 10)!);
         Assert.True(source.HitTestAllBufferOverride!(10, 10, new object?[4], out var bufferCount));
         Assert.Equal(0, bufferCount);
+    }
+
+    [Fact]
+    public void PopupScopeFilterKeepsOnlyVisualOwnersFromItsPresentationSourceRoot()
+    {
+        var root = new FakeVisualOwner(PortableVisualOwnerKind.PointerInfrastructure);
+        var child = new FakeVisualOwner(PortableVisualOwnerKind.Content, root);
+        var grandchild = new FakeVisualOwner(PortableVisualOwnerKind.Content, child);
+        var unrelatedRoot = new FakeVisualOwner(PortableVisualOwnerKind.PointerInfrastructure);
+        var unrelatedChild = new FakeVisualOwner(PortableVisualOwnerKind.Content, unrelatedRoot);
+        object?[] candidates =
+        [
+            unrelatedChild,
+            child,
+            new PortableGeometryHitTestCandidate(grandchild, intersectionDetail: 2),
+            null
+        ];
+
+        int count = WpfPortablePresentationSourceBridge.FilterVisualOwnerSubtree(candidates, root);
+
+        Assert.Equal(2, count);
+        Assert.Same(child, candidates[0]);
+        var geometryCandidate = Assert.IsType<PortableGeometryHitTestCandidate>(candidates[1]);
+        Assert.Same(grandchild, geometryCandidate.VisualHit);
+        Assert.Null(candidates[2]);
+        Assert.Null(candidates[3]);
     }
 
     [Fact]

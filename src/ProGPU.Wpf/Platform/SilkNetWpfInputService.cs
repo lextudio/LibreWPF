@@ -271,7 +271,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             kind,
             key: TranslateKey(key),
             scanCode: scanCode,
-            modifiers: modifiers);
+            modifiers: NormalizeModifiersForCurrentPlatform(modifiers));
     }
 
     public static WpfInputEventArgs CreateTextInputEvent(char character, WpfInputModifiers modifiers)
@@ -279,7 +279,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
         return new WpfInputEventArgs(
             WpfInputEventKind.TextInput,
             character: character,
-            modifiers: modifiers);
+            modifiers: NormalizeModifiersForCurrentPlatform(modifiers));
     }
 
     public static WpfInputEventArgs CreateMouseMoveEvent(Vector2 position, WpfInputModifiers modifiers)
@@ -288,7 +288,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             WpfInputEventKind.MouseMove,
             x: position.X,
             y: position.Y,
-            modifiers: modifiers);
+            modifiers: NormalizeModifiersForCurrentPlatform(modifiers));
     }
 
     public static WpfInputEventArgs CreateMouseButtonEvent(
@@ -307,7 +307,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             x: position.X,
             y: position.Y,
             button: TranslateMouseButton(button),
-            modifiers: modifiers);
+            modifiers: NormalizeModifiersForCurrentPlatform(modifiers));
     }
 
     public static WpfInputEventArgs CreateMouseWheelEvent(
@@ -322,7 +322,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             y: position.Y,
             deltaX: deltaX,
             deltaY: deltaY,
-            modifiers: modifiers);
+            modifiers: NormalizeModifiersForCurrentPlatform(modifiers));
     }
 
     public static WpfMouseButton TranslateMouseButton(SilkInput.MouseButton button)
@@ -354,8 +354,8 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             SilkInput.Key.ControlRight => "RightCtrl",
             SilkInput.Key.AltLeft => "LeftAlt",
             SilkInput.Key.AltRight => "RightAlt",
-            SilkInput.Key.SuperLeft => "LWin",
-            SilkInput.Key.SuperRight => "RWin",
+            SilkInput.Key.SuperLeft => OperatingSystem.IsMacOS() ? "LeftCtrl" : "LWin",
+            SilkInput.Key.SuperRight => OperatingSystem.IsMacOS() ? "RightCtrl" : "RWin",
             SilkInput.Key.Number0 => "D0",
             SilkInput.Key.Number1 => "D1",
             SilkInput.Key.Number2 => "D2",
@@ -378,6 +378,16 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             SilkInput.Key.Keypad9 => "NumPad9",
             _ => key.ToString()
         };
+    }
+
+    internal static WpfInputModifiers NormalizeModifiersForCurrentPlatform(WpfInputModifiers modifiers)
+    {
+        if (!OperatingSystem.IsMacOS() || (modifiers & WpfInputModifiers.Super) == 0)
+        {
+            return modifiers;
+        }
+
+        return (modifiers & ~WpfInputModifiers.Super) | WpfInputModifiers.Control;
     }
 
     private static WpfInputModifiers ReadModifiers(SilkInput.IInputContext inputContext)

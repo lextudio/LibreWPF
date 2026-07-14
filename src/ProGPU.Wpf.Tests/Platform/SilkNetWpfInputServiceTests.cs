@@ -42,11 +42,32 @@ public sealed class SilkNetWpfInputServiceTests
     [InlineData(Key.ControlRight, "RightCtrl")]
     [InlineData(Key.AltLeft, "LeftAlt")]
     [InlineData(Key.AltRight, "RightAlt")]
-    [InlineData(Key.SuperLeft, "LWin")]
-    [InlineData(Key.SuperRight, "RWin")]
     public void TranslateKeyMapsSilkNamesToPortableWpfKeyNames(Key silkKey, string expected)
     {
         Assert.Equal(expected, SilkNetWpfInputService.TranslateKey(silkKey));
+    }
+
+    [Theory]
+    [InlineData(Key.SuperLeft, "LeftCtrl", "LWin")]
+    [InlineData(Key.SuperRight, "RightCtrl", "RWin")]
+    public void TranslateKeyMapsMacCommandToWpfControl(Key silkKey, string macExpected, string otherExpected)
+    {
+        Assert.Equal(
+            OperatingSystem.IsMacOS() ? macExpected : otherExpected,
+            SilkNetWpfInputService.TranslateKey(silkKey));
+    }
+
+    [Fact]
+    public void NormalizeModifiersMapsMacCommandToWpfControl()
+    {
+        var normalized = SilkNetWpfInputService.NormalizeModifiersForCurrentPlatform(
+            WpfInputModifiers.Super | WpfInputModifiers.Shift);
+
+        Assert.Equal(
+            OperatingSystem.IsMacOS()
+                ? WpfInputModifiers.Control | WpfInputModifiers.Shift
+                : WpfInputModifiers.Super | WpfInputModifiers.Shift,
+            normalized);
     }
 
     [Fact]
@@ -90,7 +111,9 @@ public sealed class SilkNetWpfInputServiceTests
         Assert.Equal(WpfMouseButton.XButton1, input.Button);
         Assert.Equal(12, input.X);
         Assert.Equal(34, input.Y);
-        Assert.Equal(WpfInputModifiers.Super, input.Modifiers);
+        Assert.Equal(
+            OperatingSystem.IsMacOS() ? WpfInputModifiers.Control : WpfInputModifiers.Super,
+            input.Modifiers);
     }
 
     [Fact]

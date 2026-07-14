@@ -98,6 +98,105 @@ public class PortablePresentationSourceTests
         root.IsMouseCaptured.Should().BeFalse();
     }
 
+    [StaFact]
+    public void DeactivatingPortableSourceClearsCaptureAfterActiveSourceChanges()
+    {
+        using IPortablePresentationSourceHost firstSource = PortablePresentationSourceHost.Create();
+        using IPortablePresentationSourceHost secondSource = PortablePresentationSourceHost.Create();
+        var firstPresentationSource = (PresentationSource)firstSource;
+        var secondPresentationSource = (PresentationSource)secondSource;
+        var firstRoot = new HitTestElement();
+        var secondRoot = new HitTestElement();
+        firstSource.RootVisual = firstRoot;
+        secondSource.RootVisual = secondRoot;
+        firstSource.SetClientSize(200.0, 100.0);
+        secondSource.SetClientSize(200.0, 100.0);
+
+        ReportMouseInput(
+            firstPresentationSource,
+            RawMouseActions.Activate | RawMouseActions.AbsoluteMove,
+            x: 37,
+            y: 41);
+        firstRoot.CaptureMouse(CaptureMode.SubTree).Should().BeTrue();
+        Mouse.Captured.Should().BeSameAs(firstRoot);
+
+        var firstSourceReports = new List<RawMouseInputReport>();
+        int lostMouseCaptureCount = 0;
+        PreProcessInputEventHandler inputHandler = (_, e) =>
+        {
+            if (e.StagingItem.Input is InputReportEventArgs inputReport &&
+                inputReport.Report is RawMouseInputReport mouseReport &&
+                ReferenceEquals(mouseReport.InputSource, firstPresentationSource))
+            {
+                firstSourceReports.Add(mouseReport);
+            }
+        };
+        firstRoot.LostMouseCapture += (_, _) => lostMouseCaptureCount++;
+        InputManager.Current.PreProcessInput += inputHandler;
+        try
+        {
+            ReportMouseInput(
+                secondPresentationSource,
+                RawMouseActions.Activate | RawMouseActions.AbsoluteMove,
+                x: 37,
+                y: 41);
+        }
+        finally
+        {
+            InputManager.Current.PreProcessInput -= inputHandler;
+        }
+
+        Mouse.PrimaryDevice.ActiveSource.Should().BeSameAs(secondPresentationSource);
+        Mouse.Captured.Should().BeNull();
+        firstRoot.IsMouseCaptured.Should().BeFalse();
+        lostMouseCaptureCount.Should().Be(1);
+        firstSourceReports.Should().Contain(report => report.Actions == RawMouseActions.CancelCapture);
+        firstSourceReports.Should().NotContain(report => (report.Actions & RawMouseActions.Activate) != 0);
+    }
+
+    [StaFact]
+    public void CancelCaptureFromDifferentProviderDoesNotClearCapture()
+    {
+        using IPortablePresentationSourceHost firstSource = PortablePresentationSourceHost.Create();
+        using IPortablePresentationSourceHost secondSource = PortablePresentationSourceHost.Create();
+        var firstPresentationSource = (PresentationSource)firstSource;
+        var secondPresentationSource = (PresentationSource)secondSource;
+        var firstRoot = new HitTestElement();
+        var secondRoot = new HitTestElement();
+        firstSource.RootVisual = firstRoot;
+        secondSource.RootVisual = secondRoot;
+        firstSource.SetClientSize(200.0, 100.0);
+        secondSource.SetClientSize(200.0, 100.0);
+
+        ReportMouseInput(
+            firstPresentationSource,
+            RawMouseActions.Activate | RawMouseActions.AbsoluteMove,
+            x: 37,
+            y: 41);
+        firstRoot.CaptureMouse(CaptureMode.SubTree).Should().BeTrue();
+        Mouse.Captured.Should().BeSameAs(firstRoot);
+
+        int lostMouseCaptureCount = 0;
+        firstRoot.LostMouseCapture += (_, _) => lostMouseCaptureCount++;
+        try
+        {
+            ReportMouseInput(
+                secondPresentationSource,
+                RawMouseActions.CancelCapture,
+                x: 0,
+                y: 0);
+
+            Mouse.PrimaryDevice.ActiveSource.Should().BeSameAs(firstPresentationSource);
+            Mouse.Captured.Should().BeSameAs(firstRoot);
+            firstRoot.IsMouseCaptured.Should().BeTrue();
+            lostMouseCaptureCount.Should().Be(0);
+        }
+        finally
+        {
+            firstRoot.ReleaseMouseCapture();
+        }
+    }
+
     private static void ReportMouseInput(
         PresentationSource source,
         RawMouseActions actions,

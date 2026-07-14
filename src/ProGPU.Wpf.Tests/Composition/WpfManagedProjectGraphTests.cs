@@ -18104,6 +18104,15 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortablePresentationSource.cs");
+        var mouseDevicePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "MouseDevice.cs");
         var portableSourceHostPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -18173,6 +18182,7 @@ public sealed class WpfManagedProjectGraphTests
         var compositionTarget = File.ReadAllText(compositionTargetPath);
         var portableTarget = File.ReadAllText(portableTargetPath);
         var portableSource = File.ReadAllText(portableSourcePath);
+        var mouseDevice = File.ReadAllText(mouseDevicePath);
         var portableSourceHost = File.ReadAllText(portableSourceHostPath);
         var presentationSource = File.ReadAllText(presentationSourcePath);
         var hwndSource = File.ReadAllText(hwndSourcePath);
@@ -18287,6 +18297,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RawMouseActions.CancelCapture,", portableSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RawMouseActions.Activate | RawMouseActions.CancelCapture", portableSource, StringComparison.Ordinal);
         Assert.Contains("_site.ReportInput(report)", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("NotifyCaptureReleased", portableSource, StringComparison.Ordinal);
+        Assert.Contains("private bool IsActiveSourceOrCapturedProviderCancel(RawMouseInputReport rawMouseInputReport)", mouseDevice, StringComparison.Ordinal);
+        Assert.Contains("rawMouseInputReport.Actions != RawMouseActions.CancelCapture", mouseDevice, StringComparison.Ordinal);
+        Assert.Contains("rawMouseInputReport.InputSource == null", mouseDevice, StringComparison.Ordinal);
+        Assert.Contains("rawMouseInputReport.InputSource.GetInputProvider(typeof(MouseDevice)) as IMouseInputProvider", mouseDevice, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(inputProvider, _providerCapture)", mouseDevice, StringComparison.Ordinal);
+        Assert.Equal(
+            2,
+            mouseDevice.Split(
+                "IsActiveSourceOrCapturedProviderCancel(rawMouseInputReport)",
+                StringSplitOptions.None).Length - 1);
         Assert.Contains(@"<Compile Include=""System\Windows\IPortablePresentationSourceHost.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortablePresentationSource.cs"" />", project, StringComparison.Ordinal);
 

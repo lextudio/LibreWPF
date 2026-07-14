@@ -222,6 +222,20 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativeFramebufferResizeRendersInsideTheResizeCallback()
+    {
+        var source = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowHost.cs"));
+
+        Assert.Contains("_window.FramebufferResize += OnFramebufferResize;", source, StringComparison.Ordinal);
+        Assert.Contains("window.FramebufferResize -= OnFramebufferResize;", source, StringComparison.Ordinal);
+        Assert.Contains("private void OnFramebufferResize(Vector2D<int> size)", source, StringComparison.Ordinal);
+        Assert.Contains("OnResize(_window.Size);\n            OnRender(0d);", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SetCursorReturnsFalseBeforeWindowIsCreated()
     {
         using var host = new ProGpuWpfWindowHost();

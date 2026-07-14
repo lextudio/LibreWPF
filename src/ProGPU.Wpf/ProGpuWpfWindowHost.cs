@@ -68,6 +68,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _hasPresentedFrame;
     private bool _ownsRenderScheduler;
     private bool _isRendering;
+    private bool _isRenderingLiveResize;
     private bool _isInNativeWindowCloseCallback;
     private bool _isForwardingPlatformInput;
     private bool _isProcessingRenderSchedulerWakeup;
@@ -789,6 +790,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             window.Update -= OnUpdate;
             window.Render -= OnRender;
             window.Resize -= OnResize;
+            window.FramebufferResize -= OnFramebufferResize;
             window.Closing -= OnClosing;
         }
         else if (deferNativeWindowDispose)
@@ -837,6 +839,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         window.Update -= OnUpdate;
         window.Render -= OnRender;
         window.Resize -= OnResize;
+        window.FramebufferResize -= OnFramebufferResize;
         window.Closing -= OnClosing;
         window.Dispose();
         _window = null;
@@ -884,6 +887,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _window.Update += OnUpdate;
         _window.Render += OnRender;
         _window.Resize += OnResize;
+        _window.FramebufferResize += OnFramebufferResize;
         _window.Closing += OnClosing;
     }
 
@@ -1016,6 +1020,28 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _target.SceneRootVisual.Invalidate();
         _target.RootVisual.Invalidate();
         RequestRenderAndWakeNativeLoop();
+    }
+
+    private void OnFramebufferResize(Vector2D<int> size)
+    {
+        if (size.X <= 0 || size.Y <= 0 || _window == null || _isDisposed || _isRenderingLiveResize)
+        {
+            return;
+        }
+
+        _isRenderingLiveResize = true;
+        try
+        {
+            // Native resize tracking can keep Silk.NET's owner event loop inside
+            // DoEvents until the drag completes. Render synchronously from the
+            // framebuffer callback so layout and the swap chain follow every step.
+            OnResize(_window.Size);
+            OnRender(0d);
+        }
+        finally
+        {
+            _isRenderingLiveResize = false;
+        }
     }
 
     private void OnUpdate(double deltaSeconds)

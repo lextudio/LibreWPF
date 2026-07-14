@@ -462,11 +462,13 @@ internal sealed class WpfPortablePopupBridge : IDisposable
                 {
                     return selectedOwner;
                 }
-
-                return _host.HasGpuHitTestCache ? Source : null;
             }
 
-            return _host.HasGpuHitTestCache ? Source : null;
+            // The shared cache can still describe only the owner window while a
+            // newly opened popup is waiting for its first retained frame. Let the
+            // popup presentation source use its typed visual-tree hit test then;
+            // a handled GPU miss would make WPF treat an inside click as outside.
+            return null;
         }
         finally
         {
@@ -481,7 +483,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         {
             if (!HitTestOwners(rootX, rootY, ownerBuffer, out int ownerCount))
             {
-                return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;
+                return null;
             }
 
             if (ownerCount == 0)
@@ -505,14 +507,14 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             !_host.TryHitTestOwners(LogicalX + rootX, LogicalY + rootY, owners, out ownerCount))
         {
             ownerCount = 0;
-            return _host.HasGpuHitTestCache;
+            return false;
         }
 
         ownerCount = WpfPortablePresentationSourceBridge.FilterVisualOwnerSubtree(
             owners[..ownerCount],
             RootVisual);
         ownerCount = WpfPortablePresentationSourceBridge.FilterTransparentPointerOverlays(owners[..ownerCount]);
-        return true;
+        return ownerCount > 0;
     }
 
     private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)
@@ -533,11 +535,11 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             candidateCount = WpfPortablePresentationSourceBridge.FilterVisualOwnerSubtree(
                 candidates[..candidateCount],
                 RootVisual);
-            return true;
+            return candidateCount > 0;
         }
 
         candidateCount = 0;
-        return _host.HasGpuHitTestCache;
+        return false;
     }
 
     private object?[]? HitTestEllipseBoundsOwners(double minX, double minY, double maxX, double maxY)
@@ -558,11 +560,11 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             candidateCount = WpfPortablePresentationSourceBridge.FilterVisualOwnerSubtree(
                 candidates[..candidateCount],
                 RootVisual);
-            return true;
+            return candidateCount > 0;
         }
 
         candidateCount = 0;
-        return _host.HasGpuHitTestCache;
+        return false;
     }
 
     private object?[]? HitTestGeometryOwners(double minX, double minY, double maxX, double maxY, bool isEllipse)

@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Vector;
 using ProGPU.Wpf.Interop;
 using Silk.NET.Maths;
 using Xunit;
@@ -1695,6 +1696,55 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void PortablePopupGpuMissFallsBackToItsVisualTree()
+    {
+        var popupPresentationSource = new FakePortablePresentationSource
+        {
+            RootVisual = new object()
+        };
+        using var popupSourceFactory = UsePortablePopupSourceFactory(() => popupPresentationSource);
+        using var host = new ProGpuWpfWindowHost();
+        var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        SetPrivateField(host, "_target", target);
+        var owner = new FakePortablePresentationSource
+        {
+            RootVisual = new object()
+        };
+        Assert.True(host.TryBindPortablePresentationSource(owner));
+
+        object unrelatedOwner = new();
+        int unrelatedOwnerId = target.GpuHitTestOwnerMap.GetOrCreateId(unrelatedOwner);
+        var index = GpuHitTestIndex.Build(
+        [
+            GpuHitTestPrimitive.RectangleFill(
+                unrelatedOwnerId,
+                new System.Numerics.Vector2(20f, 30f),
+                new System.Numerics.Vector2(100f, 80f),
+                System.Numerics.Vector2.Zero,
+                zIndex: 0f)
+        ]);
+        typeof(global::ProGPU.Scene.Compositor)
+            .GetMethod("SetLastHitTestIndex", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(target.Compositor, new object[] { index });
+
+        var request = new PortablePopupCreateRequest(
+            placementTarget: null,
+            ownerPresentationSource: owner,
+            ownerHandle: owner.Handle,
+            x: 20,
+            y: 30,
+            isTransparent: false,
+            isChildPopup: false);
+        Assert.True(host.TryCreatePortablePopup(request, out object? popupSource));
+        Assert.True(host.TrySetPortablePopupSize(popupSource!, 100, 80));
+        Assert.True(host.TryShowPortablePopup(popupSource!));
+
+        Assert.Null(popupPresentationSource.HitTestOverride!(5, 5));
+        Assert.False(popupPresentationSource.HitTestAllBufferOverride!(5, 5, new object?[4], out int ownerCount));
+        Assert.Equal(0, ownerCount);
+    }
+
+    [Fact]
     public void PortablePopupInputSubtractsOwnerClientScreenOrigin()
     {
         var activationService = new TestWindowActivationServiceRegistrar();
@@ -1861,7 +1911,7 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void NestedPortablePopupKeepsAbsoluteDeviceOriginAndLocalInputCoordinates()
+    public void NestedPortablePopupTracksOwnerDeviceOriginAndKeepsLocalInputCoordinates()
     {
         var activationService = new TestWindowActivationServiceRegistrar();
         using var activationRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(activationService);

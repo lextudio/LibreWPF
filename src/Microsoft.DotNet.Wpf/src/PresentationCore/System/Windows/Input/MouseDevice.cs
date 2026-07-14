@@ -1154,6 +1154,24 @@ namespace System.Windows.Input
             }
         }
 
+        private bool IsActiveSourceOrCapturedProviderCancel(RawMouseInputReport rawMouseInputReport)
+        {
+            if ((_inputSource is not null) && (rawMouseInputReport.InputSource == _inputSource))
+            {
+                return true;
+            }
+
+            if (rawMouseInputReport.Actions != RawMouseActions.CancelCapture ||
+                _providerCapture == null ||
+                rawMouseInputReport.InputSource == null)
+            {
+                return false;
+            }
+
+            IMouseInputProvider inputProvider = rawMouseInputReport.InputSource.GetInputProvider(typeof(MouseDevice)) as IMouseInputProvider;
+            return ReferenceEquals(inputProvider, _providerCapture);
+        }
+
         private void PreProcessInput(object sender, PreProcessInputEventArgs e)
         {
             if (e.StagingItem.Input.RoutedEvent == InputManager.PreviewInputReportEvent)
@@ -1166,9 +1184,9 @@ namespace System.Windows.Input
 
 
                     // Normally we only process mouse input that is from our
-                    // active visual manager.  The only exception to this is
-                    // the activate report, which is how we change the visual
-                    // manager that is active.
+                    // active visual manager.  Activate reports change the visual
+                    // manager that is active, and an exact-provider capture
+                    // cancellation can arrive while that source is being replaced.
                     if ((rawMouseInputReport.Actions & RawMouseActions.Activate) == RawMouseActions.Activate)
                     {
                         // Console.WriteLine("RawMouseActions.Activate");
@@ -1198,8 +1216,9 @@ namespace System.Windows.Input
                             PushActivateInputReport(e, inputReportEventArgs, rawMouseInputReport, clearExtraInformation:false);
                         }
                     }
-                    // Only process mouse input that is from our active PresentationSource.
-                    else if ((_inputSource is not null) && (rawMouseInputReport.InputSource == _inputSource))
+                    // Process mouse input from our active PresentationSource, plus a pure
+                    // capture cancellation from the provider that currently owns capture.
+                    else if (IsActiveSourceOrCapturedProviderCancel(rawMouseInputReport))
                     {
                         // We need to remember the StylusDevice that generated this input.  Use the _tagStylusDevice
                         // to store this in before we take over the inputReport Device and loose it.  Any
@@ -1415,9 +1434,9 @@ namespace System.Windows.Input
                     _stylusDevice = GetStylusDevice(e.StagingItem);
 
                     // Normally we only process mouse input that is from our
-                    // active presentation source.  The only exception to this is
-                    // the activate report, which is how we change the visual
-                    // manager that is active.
+                    // active presentation source.  Activate reports change the visual
+                    // manager that is active, and an exact-provider capture
+                    // cancellation can arrive while that source is being replaced.
                     if ((rawMouseInputReport.Actions & RawMouseActions.Activate) == RawMouseActions.Activate)
                     {
                         // System.Console.WriteLine("Initializing the mouse state.");
@@ -1450,8 +1469,9 @@ namespace System.Windows.Input
                         }
                     }
 
-                    // Only process mouse input that is from our active presentation source.
-                    if ((_inputSource is not null) && (rawMouseInputReport.InputSource == _inputSource))
+                    // Process mouse input from our active presentation source, plus a pure
+                    // capture cancellation from the provider that currently owns capture.
+                    if (IsActiveSourceOrCapturedProviderCancel(rawMouseInputReport))
                     {
                         // If the input is reporting mouse deactivation, we need
                         // to break any capture we may have.  Note that we only do

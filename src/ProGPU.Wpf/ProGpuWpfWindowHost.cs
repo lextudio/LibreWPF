@@ -1164,9 +1164,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         var geometry = ResolveCurrentRenderSurfaceGeometry();
         SynchronizePortablePresentationSourceGeometry(geometry);
-        _target.Context.ConfigureSwapChain(
-            geometry.PixelWidth,
-            geometry.PixelHeight);
+        if (!_target.Context.TryConfigureSwapChain(
+                geometry.PixelWidth,
+                geometry.PixelHeight))
+        {
+            RequestRenderAndWakeNativeLoop();
+            return;
+        }
         _target.SceneRootVisual.Invalidate();
         _target.RootVisual.Invalidate();
         RequestRenderAndWakeNativeLoop();
@@ -1265,7 +1269,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return;
             }
 
-            _target.Context.ReconfigureIfNeeded(pixelWidth, pixelHeight);
+            if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight))
+            {
+                RequestRenderAndWakeNativeLoop();
+                return;
+            }
 
             object? wpfRootVisual = _wpfRootVisual;
             var forceFullWpfReplay = _forceFullWpfReplay;

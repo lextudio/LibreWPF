@@ -138,7 +138,12 @@ public partial class MainWindow : Window
         }
 
         if (!$BuildOnly) {
-            dotnet run --project (Join-Path $projectRoot "AnyCpuSmoke.csproj") --no-build -c Release
+            $appHost = Get-ChildItem -Path (Join-Path $projectRoot "bin/Release") -Filter "AnyCpuSmoke.exe" -Recurse | Select-Object -First 1
+            if ($null -eq $appHost) {
+                throw "LibreWPF Windows AnyCPU build output is missing the AnyCPU app host."
+            }
+
+            & $appHost.FullName
             if ($LASTEXITCODE -ne 0) { throw "LibreWPF Windows AnyCPU launch failed." }
         }
     }

@@ -19,6 +19,17 @@ public sealed class WindowsAnyCpuSmokeContractTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SmokeLaunchesTheBuiltAnyCpuAppHostDirectly()
+    {
+        var scriptPath = FindRepoPath("eng", "progpu-wpf-windows-anycpu-smoke.ps1");
+        var script = File.ReadAllText(scriptPath);
+
+        Assert.Contains("-Filter \"AnyCpuSmoke.exe\"", script, StringComparison.Ordinal);
+        Assert.Contains("& $appHost.FullName", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("dotnet run --project", script, StringComparison.Ordinal);
+    }
+
     private static string FindRepoPath(params string[] pathSegments)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

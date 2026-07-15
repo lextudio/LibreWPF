@@ -338,9 +338,14 @@ namespace System.Windows.Controls.Primitives
         {
             Popup popup = (Popup)d;
 
-            // This is actually the current state and not necessary the desired state (i.e. old value)
-            bool currentVisible = (popup._secHelper.IsWindowAlive() && (popup._asyncDestroy == null)) || (popup._asyncCreate != null);
             bool visible = (bool) e.NewValue;
+            // This is actually the current state and not necessary the desired state (i.e. old value).
+            // A portable PresentationSource can become disposed before WPF has removed its native popup
+            // bridge.  Treat that retained source reference as closable when IsOpen transitions to false,
+            // otherwise the bridge remains visible and hit-testable indefinitely.
+            bool hasClosableWindow = popup._secHelper.IsWindowAlive() ||
+                (!visible && !OperatingSystem.IsWindows() && popup._secHelper.HasWindowReference());
+            bool currentVisible = (hasClosableWindow && (popup._asyncDestroy == null)) || (popup._asyncCreate != null);
             PopupSecurityHelper.TracePortablePopup("is-open changed old=" + e.OldValue + " new=" + e.NewValue + " currentVisible=" + currentVisible + " child=" + (popup.Child != null));
 
             if (visible != currentVisible)
@@ -375,7 +380,9 @@ namespace System.Windows.Controls.Primitives
                     // The popup wants to hide
                     popup.CancelAsyncCreate();
 
-                    if (popup._secHelper.IsWindowAlive() && (popup._asyncDestroy == null))
+                    if ((popup._secHelper.IsWindowAlive() ||
+                         (!OperatingSystem.IsWindows() && popup._secHelper.HasWindowReference())) &&
+                        (popup._asyncDestroy == null))
                     {
                         // The popup window still exists, get rid of it
                         // There are also no other async destroy requests
@@ -1641,7 +1648,7 @@ namespace System.Windows.Controls.Primitives
         /// <returns>true if the window was destroyed, otherwise false</returns>
         private bool DestroyWindowImpl()
         {
-            if (_secHelper.IsWindowAlive())
+            if (_secHelper.CanDestroyWindow())
             {
                 CancelPortableSettledPosition();
                 DetachPortablePopupRootLayoutUpdates();
@@ -1659,7 +1666,7 @@ namespace System.Windows.Controls.Primitives
         /// </summary>
         private void DestroyWindow()
         {
-            if (_secHelper.IsWindowAlive())
+            if (_secHelper.CanDestroyWindow())
             {
                 if (DestroyWindowImpl())
                 {
@@ -3132,6 +3139,11 @@ namespace System.Windows.Controls.Primitives
 
             internal bool IsWindowAlive() => _window is not null && !_window.IsDisposed;
 
+            internal bool HasWindowReference() => _window is not null;
+
+            internal bool CanDestroyWindow() =>
+                IsWindowAlive() || (!OperatingSystem.IsWindows() && HasWindowReference());
+
             internal Point ClientToScreen(Visual rootVisual, Point clientPoint)
             {
                 // Get the HwndSource of the target element.
@@ -3808,7 +3820,26 @@ namespace System.Windows.Controls.Primitives
                 _window = null;
                 _portableOwnerPresentationSource = null;
 
-                if (source == null || source.IsDisposed)
+                if (source == null)
+                {
+                    return;
+                }
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    // Remove the host bridge even if the portable PresentationSource was already
+                    // disposed.  Its native transient window and GPU hit-test cache are owned by
+                    // that bridge, not by PresentationSource.IsDisposed.
+                    TryDestroyPortablePopup(source);
+                    if (!source.IsDisposed)
+                    {
+                        source.RootVisual = null;
+                        (source as IDisposable)?.Dispose();
+                    }
+                    return;
+                }
+
+                if (source.IsDisposed)
                 {
                     return;
                 }
@@ -3823,11 +3854,6 @@ namespace System.Windows.Controls.Primitives
                 }
                 else
                 {
-                    if (!OperatingSystem.IsWindows())
-                    {
-                        TryDestroyPortablePopup(source);
-                    }
-
                     source.RootVisual = null;
                     (source as IDisposable)?.Dispose();
                 }

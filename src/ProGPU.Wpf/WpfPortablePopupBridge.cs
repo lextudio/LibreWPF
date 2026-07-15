@@ -156,6 +156,18 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             out ownerCount);
     }
 
+    internal bool TryRaiseNativeInputForDiagnostics(WpfInputEventArgs input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (!IsVisibleNativeWindow)
+        {
+            return false;
+        }
+
+        _nativeHost!.RaiseInputForDiagnostics(input);
+        return true;
+    }
+
     internal static Func<double, double, IPortablePresentationSourceHost> PortablePresentationSourceFactory { get; set; } =
         PortablePresentationSourceHost.Create;
 
@@ -459,6 +471,19 @@ internal sealed class WpfPortablePopupBridge : IDisposable
     {
         if (_isDisposed || !IsVisible || !IsHitTestable)
         {
+            return false;
+        }
+
+        // Cocoa/GLFW can publish one transitional cursor event just outside the
+        // child window while ownership moves from the parent surface. Feeding
+        // that negative local point into WPF's popup presentation source makes
+        // StaysOpen=false controls interpret the transfer as an outside move and
+        // tear down the popup before its first in-bounds event can arrive.
+        if (IsPointerInput(input.Kind) &&
+            (input.X < 0.0 || input.Y < 0.0 || input.X > Width || input.Y > Height))
+        {
+            Trace(FormattableString.Invariant(
+                $"ignore native pointer outside local bounds point=({input.X:0.###},{input.Y:0.###}) size={Width}x{Height}"));
             return false;
         }
 

@@ -25,6 +25,8 @@ internal interface IWpfPortableNativePopupHost : IDisposable
 
     void SetInputHandler(Func<WpfInputEventArgs, bool> inputHandler);
 
+    void RaiseInputForDiagnostics(WpfInputEventArgs input);
+
     void SetDeviceScale(double dpiScaleX, double dpiScaleY);
 
     void SetPosition(int x, int y);
@@ -170,6 +172,13 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
         _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
+    }
+
+    public void RaiseInputForDiagnostics(WpfInputEventArgs input)
+    {
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
+        ArgumentNullException.ThrowIfNull(input);
+        _popupHost.RaiseInputForDiagnostics(input);
     }
 
     public void SetDeviceScale(double dpiScaleX, double dpiScaleY)

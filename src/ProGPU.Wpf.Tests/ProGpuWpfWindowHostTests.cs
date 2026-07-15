@@ -1715,12 +1715,23 @@ public sealed class ProGpuWpfWindowHostTests
             Assert.Equal((40, 50), nativeHost.Position);
             Assert.Equal(1, nativeHost.ShowCount);
 
+            var transitionalOutsideInput = new WpfInputEventArgs(
+                WpfInputEventKind.MouseMove,
+                x: 7,
+                y: -0.25);
+            Assert.False(nativeHost.InputHandler!(transitionalOutsideInput));
+            Assert.Equal(0, activationService.PresentationSourceInputCount);
+            Assert.True(ProGpuWpfDiagnostics.TryRaiseTopmostNativePopupInput(
+                host,
+                transitionalOutsideInput));
+            Assert.Equal(0, activationService.PresentationSourceInputCount);
+
             var input = new WpfInputEventArgs(
                 WpfInputEventKind.MouseDown,
                 x: 7,
                 y: 9,
                 button: WpfMouseButton.Left);
-            Assert.True(nativeHost.InputHandler!(input));
+            Assert.True(ProGpuWpfDiagnostics.TryRaiseTopmostNativePopupInput(host, input));
             Assert.Same(popupSource, activationService.LastPresentationSourceInputSource);
             Assert.Equal(7, activationService.LastPresentationSourceInput!.X);
             Assert.Equal(9, activationService.LastPresentationSourceInput.Y);
@@ -2604,6 +2615,8 @@ public sealed class ProGpuWpfWindowHostTests
         public bool IsDisposed { get; private set; }
 
         public void SetInputHandler(Func<WpfInputEventArgs, bool> inputHandler) => InputHandler = inputHandler;
+
+        public void RaiseInputForDiagnostics(WpfInputEventArgs input) => InputHandler?.Invoke(input);
 
         public void SetDeviceScale(double dpiScaleX, double dpiScaleY)
         {

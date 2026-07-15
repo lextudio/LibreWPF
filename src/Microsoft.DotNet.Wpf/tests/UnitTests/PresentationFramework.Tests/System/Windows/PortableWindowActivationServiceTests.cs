@@ -25,9 +25,9 @@ public class PortableWindowActivationServiceTests
     }
 
     [Fact]
-    public void SubtreeCapturePreservesReportedPresentationSource()
+    public void SubtreeCapturePreservesReportedPresentationSourceAndCapture()
     {
-        RunInUiApartment(VerifySubtreeCapturePreservesReportedPresentationSource);
+        RunInUiApartment(VerifySubtreeCapturePreservesReportedPresentationSourceAndCapture);
     }
 
     private static void VerifyCapturedElementReceivesMouseInputReportedByAnotherPresentationSource()
@@ -110,7 +110,7 @@ public class PortableWindowActivationServiceTests
         lostCaptureCount.Should().Be(1);
     }
 
-    private static void VerifySubtreeCapturePreservesReportedPresentationSource()
+    private static void VerifySubtreeCapturePreservesReportedPresentationSourceAndCapture()
     {
         RuntimeHelpers.RunModuleConstructor(typeof(Application).Module.ModuleHandle);
         PortableWpfServiceRegistry.TryGetWindowActivationService(
@@ -154,6 +154,7 @@ public class PortableWindowActivationServiceTests
                 y: 7.0);
 
             Mouse.PrimaryDevice.ActiveSource.Should().BeSameAs(reportedSource);
+            Mouse.Captured.Should().BeSameAs(captureRoot);
             reportedMoveCount.Should().Be(1);
             originalSource.Should().BeSameAs(reportedRoot);
         }

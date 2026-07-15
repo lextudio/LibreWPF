@@ -1558,6 +1558,64 @@ public partial class MainWindow : Window
             expectedPopupChildren: 1,
             exact: false,
             "File menu popup layer");
+
+        Point addItemCenter = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => GetLivePopupLocalCenter(
+                Require<MenuItem>(FindName("AddMenuItem"), "MVP live Add MenuItem"),
+                "MVP live Add MenuItem"),
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => RaiseTopmostNativePopupInput(
+                liveHost,
+                WpfInputEventKind.MouseMove,
+                addItemCenter.X,
+                addItemCenter.Y),
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        int itemCountBefore = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), "MVP live File MenuItem after native pointer transfer");
+                AssertEqual(true, fileMenuItem.IsSubmenuOpen, "MVP live File menu remains open after native pointer transfer");
+                return Require<MainViewModel>(DataContext, "MVP live menu view model before native click").Items.Count;
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                RaiseTopmostNativePopupInput(
+                    liveHost,
+                    WpfInputEventKind.MouseDown,
+                    addItemCenter.X,
+                    addItemCenter.Y,
+                    WpfMouseButton.Left);
+                RaiseTopmostNativePopupInput(
+                    liveHost,
+                    WpfInputEventKind.MouseUp,
+                    addItemCenter.X,
+                    addItemCenter.Y,
+                    WpfMouseButton.Left);
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(DataContext, "MVP live menu view model after native click");
+                AssertEqual(itemCountBefore + 1, model.Items.Count, "MVP live Add MenuItem native popup click item count");
+                AssertEqual(
+                    false,
+                    Require<MenuItem>(FindName("FileMenuItem"), "MVP live File MenuItem after native click").IsSubmenuOpen,
+                    "MVP live File menu closes after native item click");
+            },
+            DispatcherPriority.Send);
+
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () =>
@@ -1573,6 +1631,47 @@ public partial class MainWindow : Window
             exact: true,
             "closed File menu popup layer");
         return snapshot;
+    }
+
+    private static Point GetLivePopupLocalCenter(FrameworkElement target, string description)
+    {
+        if (!target.IsVisible ||
+            target.ActualWidth <= 1.0 ||
+            target.ActualHeight <= 1.0 ||
+            !target.IsEnabled ||
+            !target.IsHitTestVisible)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be an interactive popup element, but state was " +
+                $"IsVisible={target.IsVisible}, ActualSize={target.ActualWidth:0.###}x{target.ActualHeight:0.###}, " +
+                $"IsEnabled={target.IsEnabled}, IsHitTestVisible={target.IsHitTestVisible}.");
+        }
+
+        PresentationSource source = PresentationSource.FromVisual(target)
+            ?? throw new InvalidOperationException($"Expected {description} to have a popup presentation source.");
+        if (source.RootVisual is not UIElement root)
+        {
+            throw new InvalidOperationException($"Expected {description} popup presentation source to expose a UIElement root.");
+        }
+
+        return target.TranslatePoint(
+            new Point(target.ActualWidth / 2.0, target.ActualHeight / 2.0),
+            root);
+    }
+
+    private static void RaiseTopmostNativePopupInput(
+        ProGpuWpfWindowHost liveHost,
+        WpfInputEventKind kind,
+        double x,
+        double y,
+        WpfMouseButton button = WpfMouseButton.None)
+    {
+        var input = new WpfInputEventArgs(kind, x: x, y: y, button: button);
+        if (!ProGpuWpfDiagnostics.TryRaiseTopmostNativePopupInput(liveHost, input))
+        {
+            throw new InvalidOperationException(
+                $"Expected a visible native popup for {kind} input at ({x:0.###}, {y:0.###}).");
+        }
     }
 
     private async Task<LivePopupSurfaceSnapshot> ValidateLiveComboBoxPopupSurfaceAsync(

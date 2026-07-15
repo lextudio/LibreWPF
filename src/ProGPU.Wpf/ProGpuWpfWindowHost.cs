@@ -419,6 +419,20 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return false;
     }
 
+    internal bool TryRaiseTopmostNativePortablePopupInputForDiagnostics(WpfInputEventArgs input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        for (int i = _portablePopupBridges.Count - 1; i >= 0; i--)
+        {
+            if (_portablePopupBridges[i].TryRaiseNativeInputForDiagnostics(input))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public Action<MediaDrawingContext, ProGpuWpfFrameEventArgs>? Draw { get; set; }
 
     public Action<WpfCompositionDrawingContext, ProGpuWpfFrameEventArgs>? WpfDraw { get; set; }

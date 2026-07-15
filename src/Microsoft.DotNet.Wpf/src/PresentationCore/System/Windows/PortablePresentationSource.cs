@@ -1253,7 +1253,13 @@ namespace System.Windows
 
             void IInputProvider.NotifyDeactivate()
             {
-                ReleaseMouseCapture(reportInput: true);
+                // Changing the active presentation source is not the same as
+                // cancelling mouse capture. A captured subtree can span the
+                // owner and popup presentation sources, so releasing here
+                // closes menus and ComboBox popups as the pointer enters their
+                // native child window. The HWND provider likewise only stops
+                // source-local tracking when it is deactivated; capture is
+                // released explicitly by WPF or when this provider is disposed.
             }
 
             bool IMouseInputProvider.SetCursor(Cursor cursor)

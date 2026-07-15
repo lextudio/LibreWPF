@@ -18515,7 +18515,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private sealed class PortableMouseInputProvider : IMouseInputProvider, IDisposable", portableSource, StringComparison.Ordinal);
         Assert.Contains("InputManager.Current.RegisterInputProvider(this)", portableSource, StringComparison.Ordinal);
         Assert.Contains("Keyboard.Focus(null)", portableSource, StringComparison.Ordinal);
-        Assert.Contains("void IInputProvider.NotifyDeactivate()\n            {\n                ReleaseMouseCapture(reportInput: true);\n            }", portableSource, StringComparison.Ordinal);
+        Assert.Contains("Changing the active presentation source is not the same as", portableSource, StringComparison.Ordinal);
+        Assert.Contains("released explicitly by WPF or when this provider is disposed", portableSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("void IInputProvider.NotifyDeactivate()\n            {\n                ReleaseMouseCapture(reportInput: true);\n            }", portableSource, StringComparison.Ordinal);
         Assert.Contains("return _source.RequestCursor(cursor);", portableSource, StringComparison.Ordinal);
         Assert.Contains("RawMouseActions.CancelCapture,", portableSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RawMouseActions.Activate | RawMouseActions.CancelCapture", portableSource, StringComparison.Ordinal);

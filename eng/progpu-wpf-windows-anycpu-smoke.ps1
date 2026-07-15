@@ -116,7 +116,9 @@ public partial class MainWindow : Window
         }
 
         Console.WriteLine($"LibreWPF Windows AnyCPU smoke succeeded with {nativePath}.");
-        Application.Current.Shutdown(0);
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+            new Action(() => Application.Current.Shutdown(0)));
     }
 }
 '@ | Set-Content -Path (Join-Path $projectRoot "MainWindow.xaml.cs") -Encoding utf8

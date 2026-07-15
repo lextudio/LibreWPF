@@ -36,12 +36,12 @@ public sealed class WpfPortableTextInterfaceTests
         Assert.Contains("using ProGpuSfntSimpleGlyphRun = ProGPU.Text.SfntSimpleGlyphRun;", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntSimpleGlyphShaper = ProGPU.Text.SfntSimpleGlyphShaper;", source, StringComparison.Ordinal);
         Assert.Contains("IReadOnlyList<ProGpuSfntFontFace> faces = ProGpuSfntFontFace.LoadFaces(data);", source, StringComparison.Ordinal);
-        Assert.Contains("_sfntFace.TryGetTable(TagToString(tag), out ReadOnlyMemory<byte> tableDataMemory)", source, StringComparison.Ordinal);
+        Assert.Contains("GetSfntFace().TryGetTable(TagToString(tag), out ReadOnlyMemory<byte> tableDataMemory)", source, StringComparison.Ordinal);
         Assert.Contains("_sfntFace.TryGetGlyphCount(out ushort glyphCount)", source, StringComparison.Ordinal);
-        Assert.Contains("_sfntFace.TryGetGlyphIndex(codePoint, out ushort glyphIndex)", source, StringComparison.Ordinal);
-        Assert.Contains("_sfntFace.TryGetHorizontalGlyphMetrics(glyphIndex, out ProGpuSfntHorizontalGlyphMetrics metrics)", source, StringComparison.Ordinal);
-        Assert.Contains("_sfntFace.TryGetGlyphBounds(glyphIndex, out ProGpuSfntGlyphBounds glyphBounds)", source, StringComparison.Ordinal);
-        Assert.Contains("return _sfntFace.TryGetEmbeddingRights(out fsType);", source, StringComparison.Ordinal);
+        Assert.Contains("GetSfntFace().TryGetGlyphIndex(codePoint, out ushort glyphIndex)", source, StringComparison.Ordinal);
+        Assert.Contains("sfntFace.TryGetHorizontalGlyphMetrics(glyphIndex, out ProGpuSfntHorizontalGlyphMetrics metrics)", source, StringComparison.Ordinal);
+        Assert.Contains("sfntFace.TryGetGlyphBounds(glyphIndex, out ProGpuSfntGlyphBounds glyphBounds)", source, StringComparison.Ordinal);
+        Assert.Contains("return GetSfntFace().TryGetEmbeddingRights(out fsType);", source, StringComparison.Ordinal);
         Assert.Contains("internal ushort GetGlyphIndex(uint codePoint)", source, StringComparison.Ordinal);
         Assert.Contains("internal GlyphMetrics GetGlyphMetrics(ushort glyphIndex)", source, StringComparison.Ordinal);
         Assert.Contains("internal bool TryGetTable(uint tag, out byte[] tableData)", source, StringComparison.Ordinal);

@@ -828,7 +828,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Dispatcher.PushFrame(frame)", activationService, StringComparison.Ordinal);
         Assert.Contains("using MS.Internal;", activationService, StringComparison.Ordinal);
         Assert.Contains("ResolveCapturedMouseInputRoute(", activationService, StringComparison.Ordinal);
-        Assert.Contains("inputManager.PrimaryMouseDevice?.Captured is not DependencyObject capturedElement", activationService, StringComparison.Ordinal);
+        Assert.Contains("mouseDevice?.CapturedMode != CaptureMode.Element", activationService, StringComparison.Ordinal);
+        Assert.Contains("mouseDevice.Captured is not DependencyObject capturedElement", activationService, StringComparison.Ordinal);
         Assert.Contains("PresentationSource.CriticalFromVisual(capturedVisual)", activationService, StringComparison.Ordinal);
         Assert.Contains("capturedSource.RootVisual is not UIElement capturedRootHitTestElement", activationService, StringComparison.Ordinal);
         Assert.Contains("PointUtil.ClientToScreen(reportedClientPoint, reportedSource)", activationService, StringComparison.Ordinal);
@@ -8249,6 +8250,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "Typeface.cs"));
+        var glyphTypeface = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "GlyphTypeface.cs"));
         var uxThemeWrapper = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -8967,9 +8977,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ContainsOnlyPrivateUseCharacters", typeface, StringComparison.Ordinal);
         Assert.Contains("IsPrivateUseCharacter", typeface, StringComparison.Ordinal);
         Assert.Contains("the existing null-glyph unshaped GlyphRun path", typeface, StringComparison.Ordinal);
-        Assert.Contains("ResolvePortableMissingGlyphAliases", typeface, StringComparison.Ordinal);
-        Assert.Contains("const uint nonBreakingHyphen = 0x2011", typeface, StringComparison.Ordinal);
-        Assert.Contains("const uint asciiHyphen = 0x002D", typeface, StringComparison.Ordinal);
+        Assert.Contains("ResolvePortableMissingGlyphAliases", glyphTypeface, StringComparison.Ordinal);
+        Assert.Contains("const uint nonBreakingHyphen = 0x2011", glyphTypeface, StringComparison.Ordinal);
+        Assert.Contains("const uint asciiHyphen = 0x002D", glyphTypeface, StringComparison.Ordinal);
         AssertGuardBefore(typeface, "if (!OperatingSystem.IsWindows())", "TypographyAvailabilities typography");
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
         Assert.Contains("new ThemeState(true, \"Aero2\", \"NormalColor\")", uxThemeWrapper, StringComparison.Ordinal);
@@ -9094,8 +9104,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("int currentLineStart = 0;", textLayout, StringComparison.Ordinal);
         Assert.Contains("for (int pathIndex = 0; pathIndex < FallbackFontPaths.Length; pathIndex++)", textLayout, StringComparison.Ordinal);
         Assert.Contains("var path = FallbackFontPaths[pathIndex];", textLayout, StringComparison.Ordinal);
-        Assert.Contains("for (int fallbackIndex = 0; fallbackIndex < _fallbackFonts.Count; fallbackIndex++)", textLayout, StringComparison.Ordinal);
-        Assert.Contains("var fbFont = _fallbackFonts[fallbackIndex];", textLayout, StringComparison.Ordinal);
+        Assert.Contains("for (int fallbackIndex = 0; fallbackIndex < fallbackFontInfos.Count; fallbackIndex++)", textLayout, StringComparison.Ordinal);
+        Assert.Contains("FontInfo info = fallbackFontInfos[fallbackIndex];", textLayout, StringComparison.Ordinal);
         Assert.Contains("lastWordStartIndex = Glyphs.Count;", textLayout, StringComparison.Ordinal);
         Assert.Contains("if (lastWordStartIndex > currentLineStart)", textLayout, StringComparison.Ordinal);
         Assert.Contains("int wrapStartIndex = lastWordStartIndex;", textLayout, StringComparison.Ordinal);

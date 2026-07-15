@@ -348,6 +348,26 @@ namespace System.Windows.Controls.Primitives
             bool currentVisible = (hasClosableWindow && (popup._asyncDestroy == null)) || (popup._asyncCreate != null);
             PopupSecurityHelper.TracePortablePopup("is-open changed old=" + e.OldValue + " new=" + e.NewValue + " currentVisible=" + currentVisible + " child=" + (popup.Child != null));
 
+            // Portable popup destruction is deferred so menu click routing can finish.  A popup can
+            // be reopened while that deferred destroy is pending and subsequently close again before
+            // the old timer has observed its cancellation.  In that state currentVisible is false only
+            // because _asyncDestroy is non-null, even though the native popup bridge is still visible.
+            // Treat every portable IsOpen=false transition as authoritative: replace any stale timer,
+            // synchronously hide the native surface, and arm one fresh deferred destroy.
+            if (!visible && !OperatingSystem.IsWindows() && popup._secHelper.HasWindowReference())
+            {
+                popup.CancelAsyncCreate();
+                popup.CancelAsyncDestroy();
+                popup.HideWindow();
+
+                if (CloseOnUnloadedHandler != null)
+                {
+                    popup.Unloaded -= CloseOnUnloadedHandler;
+                }
+
+                return;
+            }
+
             if (visible != currentVisible)
             {
                 if (visible)

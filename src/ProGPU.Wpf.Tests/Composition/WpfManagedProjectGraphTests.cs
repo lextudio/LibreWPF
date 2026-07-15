@@ -8787,6 +8787,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal bool HasWindowReference() => _window is not null;", popup, StringComparison.Ordinal);
         Assert.Contains("internal bool CanDestroyWindow() =>", popup, StringComparison.Ordinal);
         Assert.Contains("(!visible && !OperatingSystem.IsWindows() && popup._secHelper.HasWindowReference())", popup, StringComparison.Ordinal);
+        Assert.Contains("popup.CancelAsyncDestroy();\n                popup.HideWindow();", popup, StringComparison.Ordinal);
+        Assert.Contains("Treat every portable IsOpen=false transition as authoritative", popup, StringComparison.Ordinal);
         Assert.Contains("// Remove the host bridge even if the portable PresentationSource was already", popup, StringComparison.Ordinal);
         Assert.Contains("TryDestroyPortablePopup(source);\n                    if (!source.IsDisposed)", popup, StringComparison.Ordinal);
         Assert.Contains("AttachPortablePopupRootLayoutUpdates();", popup, StringComparison.Ordinal);

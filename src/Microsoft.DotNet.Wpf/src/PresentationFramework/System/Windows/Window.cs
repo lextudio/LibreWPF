@@ -125,7 +125,7 @@ namespace System.Windows
                 HasResizeMode = true,
                 ResizeMode = (int)ResizeMode,
                 HasWindowStyle = true,
-                WindowStyle = (int)WindowStyle,
+                WindowStyle = (int)GetPortableWindowStyle(),
                 HasShowActivated = true,
                 ShowActivated = ShowActivated,
                 HasOwner = Owner != null,
@@ -5491,7 +5491,7 @@ namespace System.Windows
         {
             if (IsPortableWindowActive)
             {
-                PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, windowStyle);
+                PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, GetPortableWindowStyle());
                 return;
             }
 
@@ -6536,7 +6536,7 @@ namespace System.Windows
 
             if (IsPortableWindowActive)
             {
-                PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, WindowStyle);
+                PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, GetPortableWindowStyle());
                 return;
             }
 
@@ -7185,6 +7185,28 @@ namespace System.Windows
             }
         }
 
+        internal void SetPortableCustomChrome(bool enabled)
+        {
+            if (_hasPortableCustomChrome == enabled)
+            {
+                return;
+            }
+
+            _hasPortableCustomChrome = enabled;
+            if (_portableWindowActivation != null)
+            {
+                PortableWindowActivationService.SetWindowBorder(
+                    _portableWindowActivation,
+                    ResizeMode,
+                    GetPortableWindowStyle());
+            }
+        }
+
+        private WindowStyle GetPortableWindowStyle()
+        {
+            return _hasPortableCustomChrome ? WindowStyle.None : WindowStyle;
+        }
+
         private bool IsLayoutSourceUnavailable
         {
             get
@@ -7700,6 +7722,7 @@ namespace System.Windows
 
         private SourceWindowHelper  _swh;                               // object that will hold the window
         private object              _portableWindowActivation;          // object that will hold the non-Windows window
+        private bool                _hasPortableCustomChrome;
         private Window              _ownerWindow;                       // owner window
         private bool                _refreshingPortableRootVisualState;
         private bool                _updatingPortableSizeToContent;

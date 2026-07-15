@@ -268,6 +268,8 @@ namespace Microsoft.Windows.Shell
                 return;
             }
 
+            _window.SetPortableCustomChrome(_chromeInfo != null);
+
             if (_chromeInfo == null)
             {
                 _RestoreFrameworkIssueFixups();

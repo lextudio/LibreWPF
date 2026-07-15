@@ -227,6 +227,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _windowTopmost;
     private ProGpuWpfWindowBorder _windowBorder;
     private PortableWindowRegion? _windowRegion;
+    private SilkWindowController? _silkController;
 
     internal readonly record struct RenderSurfaceGeometry(
         uint LogicalWidth,
@@ -891,7 +892,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         // tick (harmless while nothing pumped popups in a loop) now runs ~60-90x/sec for EVERY host
         // once PumpAllActiveHosts drives them all, and repeatedly re-showing a Topmost popup steals
         // focus/flashes on macOS instead of just staying shown.
-        if (window.IsVisible != _isHostVisible)
+        // Also, on GLFW/macOS, `IsVisible` returns false when the window is minimized (iconified to
+        // the Dock), so re-showing it here would immediately restore the window after the user
+        // minimizes it. Skip the sync when the window is in a minimized/iconified state.
+        if (window.IsVisible != _isHostVisible && window.WindowState != SilkWindowState.Minimized)
         {
             window.IsVisible = _isHostVisible;
         }
@@ -1093,6 +1097,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         DisposePortablePopupService();
         DisposePortablePresentationSourceBridge();
         DisposeTarget();
+        _silkController?.Dispose();
         if (deferNativeWindowDispose && window != null && s_pumpDepth > 0)
         {
             // Deferring native teardown (Silk refuses Reset()/Dispose() mid-pump) only postpones
@@ -1213,6 +1218,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         _window = Window.Create(windowOptions);
         _hasNativeWindowCloseStarted = false;
+        _silkController = new SilkWindowController(_window);
+        _silkController.Attach();
         _window.Load += OnLoad;
         _window.Update += OnUpdate;
         _window.Render += OnRender;

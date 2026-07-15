@@ -1098,7 +1098,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 88, "stack panel children");
+        AssertCollectionCount(children, expected: 89, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1955,8 +1955,12 @@ internal static class Program
         object eventButton = GetField(window, "EventButton");
         Invoke(window, "UpdateLayout");
         Invoke(eventButton, "UpdateLayout");
-        (double x, double y) = GetElementCenterInWindow(presentationCore, eventButton, window);
-        object? directHit = InvokeNullable(window, "InputHitTest", GetElementCenterPointInWindow(eventButton, window));
+        (double x, double y) = GetVisibleElementInputPointInWindow(
+            presentationCore,
+            eventButton,
+            window,
+            out object windowInputPoint);
+        object? directHit = InvokeNullable(window, "InputHitTest", windowInputPoint);
 
         int initialClickCount = Convert.ToInt32(GetProperty(window, "XamlClickCount"));
         object mouseMove = CreateWpfInputEventArgs(
@@ -2030,7 +2034,11 @@ internal static class Program
         object eventButton = GetField(window, "EventButton");
         Invoke(window, "UpdateLayout");
         Invoke(eventButton, "UpdateLayout");
-        (double x, double y) = GetElementCenterInWindow(presentationCore, eventButton, window);
+        (double x, double y) = GetVisibleElementInputPointInWindow(
+            presentationCore,
+            eventButton,
+            window,
+            out _);
 
         int initialWheelCount = Convert.ToInt32(GetProperty(window, "XamlMouseWheelCount"));
         RaiseHostInput(
@@ -3253,10 +3261,11 @@ internal static class Program
     {
         object description = GetField(window, "GridShorthandDescription");
         AssertType(description, "System.Windows.Controls.TextBlock", "compiled Grid shorthand description TextBlock");
+        object firstInline = GetProperty(GetProperty(description, "Inlines"), "FirstInline");
         AssertContains(
             "comma‑separated",
-            GetProperty(description, "Text").ToString(),
-            "compiled Grid shorthand non-breaking hyphen text");
+            Convert.ToString(GetProperty(firstInline, "Text")) ?? string.Empty,
+            "compiled Grid shorthand non-breaking hyphen Run text");
 
         object drawingContent = InvokePortableTryGet(
             description,
@@ -6234,6 +6243,69 @@ internal static class Program
         object center = Activator.CreateInstance(pointType, width / 2d, height / 2d)
             ?? throw new InvalidOperationException("Failed to create a WPF Point for portable mouse input.");
         return Invoke(element, "TranslatePoint", center, window);
+    }
+
+    private static (double X, double Y) GetVisibleElementInputPointInWindow(
+        Assembly presentationCore,
+        object element,
+        object window,
+        out object windowPoint)
+    {
+        double width = Convert.ToDouble(GetProperty(element, "ActualWidth"));
+        double height = Convert.ToDouble(GetProperty(element, "ActualHeight"));
+        object renderSize = GetProperty(element, "RenderSize");
+        if (width <= 0)
+        {
+            width = Convert.ToDouble(GetProperty(renderSize, "Width"));
+        }
+
+        if (height <= 0)
+        {
+            height = Convert.ToDouble(GetProperty(renderSize, "Height"));
+        }
+
+        Type pointType = renderSize.GetType().Assembly.GetType("System.Windows.Point", throwOnError: true)
+            ?? throw new TypeLoadException("Could not load 'System.Windows.Point'.");
+        object transformToDevice = GetTransformToDevice(presentationCore, window);
+        foreach (double verticalFraction in new[] { 0.1, 0.3, 0.5, 0.7, 0.9 })
+        {
+            object localPoint = Activator.CreateInstance(pointType, width / 2d, height * verticalFraction)
+                ?? throw new InvalidOperationException("Failed to create a WPF Point for portable mouse input.");
+            object candidateWindowPoint = Invoke(element, "TranslatePoint", localPoint, window);
+            object? hit = InvokeNullable(window, "InputHitTest", candidateWindowPoint);
+            if (hit != null && IsVisualDescendantOrSelf(presentationCore, element, hit))
+            {
+                windowPoint = candidateWindowPoint;
+                return TransformPoint(transformToDevice, candidateWindowPoint);
+            }
+        }
+
+        windowPoint = GetElementCenterPointInWindow(element, window);
+        return TransformPoint(transformToDevice, windowPoint);
+    }
+
+    private static bool IsVisualDescendantOrSelf(Assembly presentationCore, object ancestor, object candidate)
+    {
+        Type visualTreeHelperType = GetRequiredType(presentationCore, "System.Windows.Media.VisualTreeHelper");
+        object? current = candidate;
+        while (current != null)
+        {
+            if (ReferenceEquals(current, ancestor))
+            {
+                return true;
+            }
+
+            try
+            {
+                current = InvokeStatic(visualTreeHelperType, "GetParent", current);
+            }
+            catch (TargetInvocationException)
+            {
+                return false;
+            }
+        }
+
+        return false;
     }
 
     private static object GetTransformToDevice(Assembly presentationCore, object visual)

@@ -5735,6 +5735,66 @@ internal static class Program
         return Invoke(element, "TranslatePoint", center, window);
     }
 
+    private static (double X, double Y) GetVisibleElementInputPointInWindow(
+        Assembly presentationCore,
+        object element,
+        object window)
+    {
+        double width = Convert.ToDouble(GetProperty(element, "ActualWidth"));
+        double height = Convert.ToDouble(GetProperty(element, "ActualHeight"));
+        object renderSize = GetProperty(element, "RenderSize");
+        if (width <= 0)
+        {
+            width = Convert.ToDouble(GetProperty(renderSize, "Width"));
+        }
+
+        if (height <= 0)
+        {
+            height = Convert.ToDouble(GetProperty(renderSize, "Height"));
+        }
+
+        Type pointType = renderSize.GetType().Assembly.GetType("System.Windows.Point", throwOnError: true)
+            ?? throw new TypeLoadException("Could not load 'System.Windows.Point'.");
+        object transformToDevice = GetTransformToDevice(presentationCore, window);
+        foreach (double verticalFraction in new[] { 0.1, 0.3, 0.5, 0.7, 0.9 })
+        {
+            object localPoint = Activator.CreateInstance(pointType, width / 2d, height * verticalFraction)
+                ?? throw new InvalidOperationException("Failed to create a WPF Point for portable mouse input.");
+            object windowPoint = Invoke(element, "TranslatePoint", localPoint, window);
+            object? hit = InvokeNullable(window, "InputHitTest", windowPoint);
+            if (hit != null && IsVisualDescendantOrSelf(presentationCore, element, hit))
+            {
+                return TransformPoint(transformToDevice, windowPoint);
+            }
+        }
+
+        return GetElementCenterInWindow(presentationCore, element, window);
+    }
+
+    private static bool IsVisualDescendantOrSelf(Assembly presentationCore, object ancestor, object candidate)
+    {
+        Type visualTreeHelperType = GetRequiredType(presentationCore, "System.Windows.Media.VisualTreeHelper");
+        object? current = candidate;
+        while (current != null)
+        {
+            if (ReferenceEquals(current, ancestor))
+            {
+                return true;
+            }
+
+            try
+            {
+                current = InvokeStatic(visualTreeHelperType, "GetParent", current);
+            }
+            catch (TargetInvocationException)
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
     private static object GetTransformToDevice(Assembly presentationCore, object visual)
     {
         Type presentationSourceType = GetRequiredType(presentationCore, "System.Windows.PresentationSource");
@@ -6905,7 +6965,7 @@ internal static class Program
             object eventButton = GetField(window, "EventButton");
             Invoke(window, "UpdateLayout");
             Invoke(eventButton, "UpdateLayout");
-            (double x, double y) = GetElementCenterInWindow(_presentationCore, eventButton, window);
+            (double x, double y) = GetVisibleElementInputPointInWindow(_presentationCore, eventButton, window);
 
             int initialClickCount = Convert.ToInt32(GetProperty(window, "XamlClickCount"));
             int initialGotCaptureCount = Convert.ToInt32(GetProperty(window, "XamlGotMouseCaptureCount"));
@@ -6915,7 +6975,11 @@ internal static class Program
             Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseMove", x: x, y: y));
             Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseDown", x: x, y: y, buttonName: "Left"));
             object capturedAfterDown = TryGetStaticProperty(mouseType, "Captured")
-                ?? throw new InvalidOperationException("Expected portable Application.Run mouse capture after mouse down.");
+                ?? throw new InvalidOperationException(
+                    $"Expected portable Application.Run mouse capture after mouse down at ({x}, {y}); " +
+                    $"DirectlyOver={DescribeInputElement(TryGetStaticProperty(mouseType, "DirectlyOver"))}, " +
+                    $"Button.IsMouseOver={GetProperty(eventButton, "IsMouseOver")}, " +
+                    $"Button.IsMouseDirectlyOver={GetProperty(eventButton, "IsMouseDirectlyOver")}.");
             AssertSame(eventButton, capturedAfterDown, "portable Application.Run mouse captured element after down");
             AssertEqual(true, GetProperty(eventButton, "IsMouseCaptured"), "portable Application.Run mouse ButtonBase IsMouseCaptured after down");
             AssertEqual(true, GetProperty(eventButton, "IsPressed"), "portable Application.Run mouse ButtonBase IsPressed after down");
@@ -6941,7 +7005,7 @@ internal static class Program
             object eventButton = GetField(window, "EventButton");
             Invoke(window, "UpdateLayout");
             Invoke(eventButton, "UpdateLayout");
-            (double x, double y) = GetElementCenterInWindow(_presentationCore, eventButton, window);
+            (double x, double y) = GetVisibleElementInputPointInWindow(_presentationCore, eventButton, window);
 
             int initialWheelCount = Convert.ToInt32(GetProperty(window, "XamlMouseWheelCount"));
             Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseWheel", x: x, y: y, deltaY: 1));

@@ -2566,6 +2566,29 @@ public partial class MainWindow : Window
         int bubbledDragDeltaBefore = 0;
         string lastTargetState = "not checked";
 
+        LivePresentedFrameState selectorTabFrameBefore = await CaptureLivePresentedFrameStateAsync(liveHost);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live wheel TabControl");
+                tabControl.SelectedIndex = 3;
+                var expander = Require<Expander>(FindName("SelectorExpander"), "MVP live wheel Expander");
+                expander.IsExpanded = true;
+                UpdateLayout();
+
+                selectorScrollViewer = Require<ScrollViewer>(
+                    FindName("SelectorScrollViewer"),
+                    "MVP live selector ScrollViewer");
+                wheelCountBefore = SelectorMouseWheelCount;
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await WaitForLiveInputPresentedFrameAsync(
+            liveHost,
+            selectorTabFrameBefore,
+            "selector wheel tab activation");
+
         bool sentWheelInput = false;
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
@@ -2573,19 +2596,9 @@ public partial class MainWindow : Window
                 liveHost,
                 () =>
                 {
-                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live wheel TabControl");
-                    tabControl.SelectedIndex = 3;
-                    var expander = Require<Expander>(FindName("SelectorExpander"), "MVP live wheel Expander");
-                    expander.IsExpanded = true;
-                    UpdateLayout();
-
-                    selectorScrollViewer = Require<ScrollViewer>(
-                        FindName("SelectorScrollViewer"),
-                        "MVP live selector ScrollViewer");
-                    wheelCountBefore = SelectorMouseWheelCount;
                     return TryRaiseLiveMouseWheel(
                         liveHost,
-                        selectorScrollViewer,
+                        Require<ScrollViewer>(selectorScrollViewer, "MVP live selector ScrollViewer before wheel input"),
                         "SelectorScrollViewer",
                         deltaY: -1.0,
                         out lastTargetState);

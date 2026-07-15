@@ -13797,8 +13797,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MVP live ToolBar refresh command count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ToolBar refresh command and toggle binding updated through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLivePopupSurfacesAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("ProGpuWpfDiagnostics.TryGetCompositionLayerSnapshot(liveHost, out var current)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("Menu, ComboBox dropdown, and direct Popup opened through the ProGPU retained popup layer", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryGetCompositionLayerSnapshot(liveHost, out var composition)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryGetPortablePopupSnapshot(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("IsLivePopupSurfaceSnapshotReady(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Menu, ComboBox dropdown, and direct Popup opened through ProGPU popup surfaces", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MouseWheel=\"OnSelectorScrollViewerMouseWheel\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectorScrollViewer.AddHandler(MouseWheelEvent", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveWheelAndCaptureInputAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);

@@ -1923,7 +1923,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         if (state.HasWindowStyle && state.WindowStyle == 0)
         {
-            return ProGpuWpfWindowBorder.Hidden;
+            return state.HasResizeMode &&
+                TryMapResizeModeValue(state.ResizeMode, out ProGpuWpfWindowBorder customChromeBorder) &&
+                customChromeBorder == ProGpuWpfWindowBorder.Resizable
+                    ? ProGpuWpfWindowBorder.HiddenResizable
+                    : ProGpuWpfWindowBorder.Hidden;
         }
 
         return state.HasResizeMode &&
@@ -1939,7 +1943,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         if (IsHiddenWindowStyle(windowStyle))
         {
-            return ProGpuWpfWindowBorder.Hidden;
+            return TryMapResizeModeToWindowBorder(resizeMode, out ProGpuWpfWindowBorder customChromeBorder) &&
+                customChromeBorder == ProGpuWpfWindowBorder.Resizable
+                    ? ProGpuWpfWindowBorder.HiddenResizable
+                    : ProGpuWpfWindowBorder.Hidden;
         }
 
         return TryMapResizeModeToWindowBorder(resizeMode, out ProGpuWpfWindowBorder mappedBorder)

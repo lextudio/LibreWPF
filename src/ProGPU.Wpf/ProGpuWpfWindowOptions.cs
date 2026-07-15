@@ -51,5 +51,6 @@ public enum ProGpuWpfWindowBorder
 {
     Resizable,
     Fixed,
-    Hidden
+    Hidden,
+    HiddenResizable
 }

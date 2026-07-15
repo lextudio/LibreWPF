@@ -971,6 +971,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_window.TopMost = topmost", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public void SetWindowBorder(ProGpuWpfWindowBorder windowBorder)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_window.WindowBorder = ToSilkWindowBorder(windowBorder)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("ApplyWindowBorderToController()", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_windowController.SetDecorations(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_windowController.SetCanResize(resizable)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfWindowBorder.HiddenResizable", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("windowOptions.WindowBorder = ToSilkWindowBorder(_windowBorder)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private static SilkWindowBorder ToSilkWindowBorder(ProGpuWpfWindowBorder windowBorder)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public enum ProGpuWpfWindowBorder", proGpuOptions, StringComparison.Ordinal);
@@ -2222,8 +2226,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.SetPosition(_portableWindowActivation, leftLogicalUnits, topLogicalUnits)", window, StringComparison.Ordinal);
         Assert.Contains("private void UpdatePortablePositionOnTopLeftChange(double leftLogicalUnits, double topLogicalUnits)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetTopmost(_portableWindowActivation, topmost)", window, StringComparison.Ordinal);
-        Assert.Contains("PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, windowStyle)", window, StringComparison.Ordinal);
-        Assert.Contains("PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, WindowStyle)", window, StringComparison.Ordinal);
+        Assert.Contains("internal void SetPortableCustomChrome(bool enabled)", window, StringComparison.Ordinal);
+        Assert.Contains("GetPortableWindowStyle()", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.GetHandle(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("&& !w.IsPortableWindowActive", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryDragMove(_portableWindowActivation)", window, StringComparison.Ordinal);
@@ -8909,6 +8913,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows() || IntPtr.Zero == _hwnd || _hwndSource == null || _hwndSource.IsDisposed)", "NativeMethods.DwmIsCompositionEnabled()");
         AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows() || _hwnd == IntPtr.Zero || _hwndSource == null)", "_hwndSource.RemoveHook(_WndProc)");
         Assert.Contains("private void _ApplyPortableCustomChrome()", windowChromeWorker, StringComparison.Ordinal);
+        Assert.Contains("_window.SetPortableCustomChrome(_chromeInfo != null)", windowChromeWorker, StringComparison.Ordinal);
         Assert.Contains("if (_chromeInfo == null || _window == null)", windowChromeWorker, StringComparison.Ordinal);
         AssertGuardBefore(jumpList, "OperatingSystem.IsWindows()\n                ? UnsafeNativeMethods.GetModuleFileName", "UnsafeNativeMethods.GetModuleFileName(new HandleRef())");
         AssertGuardBefore(jumpList, "if (!OperatingSystem.IsWindows())", "NativeMethods2.SHAddToRecentDocs(itemPath)");

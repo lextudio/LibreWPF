@@ -333,6 +333,10 @@ public sealed class WpfPortableWindowActivationTests
 
         activation.SetWindowBorder(FakeResizeMode.CanResizeWithGrip, FakeWindowStyle.None);
 
+        Assert.Equal(ProGpuWpfWindowBorder.HiddenResizable, host.WindowBorder);
+
+        activation.SetWindowBorder(FakeResizeMode.NoResize, FakeWindowStyle.None);
+
         Assert.Equal(ProGpuWpfWindowBorder.Hidden, host.WindowBorder);
         Assert.True(scheduler.RequestCount >= 3);
     }
@@ -596,7 +600,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void CreateHostOptionsMapsWindowStyleNoneToHiddenBorder()
+    public void CreateHostOptionsMapsResizableCustomChromeToHiddenResizableBorder()
     {
         var window = new FakeWindow
         {
@@ -606,7 +610,7 @@ public sealed class WpfPortableWindowActivationTests
 
         var options = WpfPortableWindowActivation.CreateHostOptions(window);
 
-        Assert.Equal(ProGpuWpfWindowBorder.Hidden, options.WindowBorder);
+        Assert.Equal(ProGpuWpfWindowBorder.HiddenResizable, options.WindowBorder);
     }
 
     [Fact]

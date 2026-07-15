@@ -88,6 +88,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private int? _windowTop;
     private bool _windowTopmost;
     private ProGpuWpfWindowBorder _windowBorder;
+    private SilkWindowController? _windowController;
     private PortableWindowRegion? _windowRegion;
 
     internal readonly record struct RenderSurfaceGeometry(
@@ -631,6 +632,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.WindowBorder = ToSilkWindowBorder(windowBorder);
         }
 
+        ApplyWindowBorderToController();
+
         RequestRenderAndWakeNativeLoop();
     }
 
@@ -944,6 +947,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         DisposePortablePopupService();
         DisposePortablePresentationSourceBridge();
         DisposeTarget();
+        _windowController?.Dispose();
+        _windowController = null;
         if (disposeNativeWindow)
         {
             window!.Dispose();
@@ -1021,6 +1026,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         _window = Window.Create(windowOptions);
+        _windowController = new SilkWindowController(_window);
+        ApplyWindowBorderToController();
         _hasNativeWindowCloseStarted = false;
         _window.Load += OnLoad;
         _window.Update += OnUpdate;
@@ -1032,6 +1039,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnLoad()
     {
+        _windowController?.Attach();
         EnsureCompositionTargetLoaded();
     }
 
@@ -3642,7 +3650,26 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             ProGpuWpfWindowBorder.Fixed => SilkWindowBorder.Fixed,
             ProGpuWpfWindowBorder.Hidden => SilkWindowBorder.Hidden,
+            ProGpuWpfWindowBorder.HiddenResizable => SilkWindowBorder.Hidden,
             _ => SilkWindowBorder.Resizable
         };
+    }
+
+    private void ApplyWindowBorderToController()
+    {
+        if (_windowController == null)
+        {
+            return;
+        }
+
+        bool hidden = _windowBorder is
+            ProGpuWpfWindowBorder.Hidden or
+            ProGpuWpfWindowBorder.HiddenResizable;
+        bool resizable = _windowBorder is
+            ProGpuWpfWindowBorder.Resizable or
+            ProGpuWpfWindowBorder.HiddenResizable;
+        _windowController.SetDecorations(
+            hidden ? NativeWindowDecorations.None : NativeWindowDecorations.Full);
+        _windowController.SetCanResize(resizable);
     }
 }

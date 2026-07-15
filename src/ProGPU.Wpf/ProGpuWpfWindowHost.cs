@@ -557,16 +557,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal void DeferShowUntilRun()
     {
         ThrowIfDisposed();
-        EnsureWindow();
-        _window!.IsVisible = false;
-        if (!_window.IsInitialized)
-        {
-            _window.Initialize();
-        }
-
-        // The native surface must exist before WPF raises Loaded so the portable
-        // presentation source already carries the real DPI and screen origin.
         _isHostVisible = true;
+        if (_window != null)
+        {
+            _window.IsVisible = false;
+        }
     }
 
     public void Hide()

@@ -5003,9 +5003,14 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.RealApplicationRunHarness",
             "Program.cs");
+        var mainWindowXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "MainWindow.xaml");
 
         var harnessProject = XDocument.Load(harnessProjectPath);
         var harnessProgram = File.ReadAllText(harnessProgramPath);
+        var mainWindowXaml = File.ReadAllText(mainWindowXamlPath);
 
         AssertPackageReference(harnessProject, "System.Configuration.ConfigurationManager");
         AssertPackageReference(harnessProject, "System.Formats.Nrbf");

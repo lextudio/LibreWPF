@@ -69,6 +69,30 @@ public sealed class WpfManagedProjectGraphTests
                 StringComparison.OrdinalIgnoreCase) == true);
     }
 
+    [Fact]
+    public void PortableMenuItemCloseSynchronizesItsTemplatePopup()
+    {
+        var menuItemPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "MenuItem.cs");
+        var menuItem = File.ReadAllText(menuItemPath);
+
+        Assert.Contains("menuItem.ClosePortableTemplatePopup();", menuItem, StringComparison.Ordinal);
+        Assert.Contains("private void ClosePortableTemplatePopup()", menuItem, StringComparison.Ordinal);
+        Assert.Contains("if (OperatingSystem.IsWindows())", menuItem, StringComparison.Ordinal);
+        Assert.Contains("if (_submenuPopup is { IsOpen: true } popup)", menuItem, StringComparison.Ordinal);
+        Assert.Contains(
+            "popup.SetCurrentValueInternal(Popup.IsOpenProperty, BooleanBoxes.FalseBox);",
+            menuItem,
+            StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontFace.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontFace.cs")]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontContainer.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontContainer.cs")]

@@ -367,6 +367,20 @@ internal static class Program
         AssertPortableSystemParameterMetric(systemParametersType, "FocusBorderHeight");
         AssertPortableSystemParameterMetric(systemParametersType, "FocusHorizontalBorderHeight");
         AssertPortableSystemParameterMetric(systemParametersType, "FocusVerticalBorderWidth");
+
+        if (!OperatingSystem.IsWindows())
+        {
+            AssertEqual(false, GetStaticProperty(systemParametersType, "HighContrast"), "portable SystemParameters.HighContrast");
+
+            Type systemColorsType = GetRequiredType(presentationFramework, "System.Windows.SystemColors");
+            AssertEqual("#FF004275", GetStaticProperty(systemColorsType, "AccentColorDark3").ToString(), "portable AccentColorDark3");
+            AssertEqual("#FF005A9E", GetStaticProperty(systemColorsType, "AccentColorDark2").ToString(), "portable AccentColorDark2");
+            AssertEqual("#FF0067B9", GetStaticProperty(systemColorsType, "AccentColorDark1").ToString(), "portable AccentColorDark1");
+            AssertEqual("#FF0078D4", GetStaticProperty(systemColorsType, "AccentColor").ToString(), "portable AccentColor");
+            AssertEqual("#FF429CE3", GetStaticProperty(systemColorsType, "AccentColorLight1").ToString(), "portable AccentColorLight1");
+            AssertEqual("#FF76B9ED", GetStaticProperty(systemColorsType, "AccentColorLight2").ToString(), "portable AccentColorLight2");
+            AssertEqual("#FFA6D8FF", GetStaticProperty(systemColorsType, "AccentColorLight3").ToString(), "portable AccentColorLight3");
+        }
     }
 
     private static void AssertPortableSystemParameterMetric(Type systemParametersType, string propertyName)

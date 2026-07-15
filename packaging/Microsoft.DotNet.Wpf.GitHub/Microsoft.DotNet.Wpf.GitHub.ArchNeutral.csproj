@@ -9,11 +9,11 @@
     <PackageName>LibreWPF.Transport$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.15</VersionSuffix>
+    <VersionSuffix>preview.16</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF transport package with portable managed presentation assemblies, references, themes, XAML build tasks, and runtime metadata.</PackageDescription>
-    <PackageReleaseNotes>Aligns LibreWPF with ProGPU preview.15; adds correctly positioned and interactive native popup surfaces; restores text selection, keyboard shortcuts, safe drag selection, and resize-time rendering; includes Windows AnyCPU native runtimes; and reduces retained-rendering memory and glyph-atlas churn.</PackageReleaseNotes>
+    <PackageReleaseNotes>Aligns LibreWPF with ProGPU preview.16; adds correctly positioned and interactive native popup surfaces; restores text selection, keyboard shortcuts, safe drag selection, and resize-time rendering; includes Windows AnyCPU native runtimes; renders accent shades, Grid shorthand text, and dashboard image-brush avatars; and reduces retained-rendering memory and glyph-atlas churn.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>

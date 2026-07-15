@@ -42,7 +42,21 @@ public partial class MainWindow : Window
     private const string LiveValidationStatusPathEnvironmentVariable = "PROGPU_WPF_MVP_LIVE_VALIDATE_STATUS_PATH";
     private const int LiveValidationMaxAttempts = 600;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
+    private static readonly FrameworkThemeDefinition[] s_frameworkThemes =
+    [
+        new("Aero", "/PresentationFramework.Aero;component/themes/Aero.NormalColor.xaml"),
+        new("Aero2", "/PresentationFramework.Aero2;component/Themes/Aero2.NormalColor.xaml"),
+        new("AeroLite", "/PresentationFramework.AeroLite;component/Themes/AeroLite.NormalColor.xaml"),
+        new("Classic", "/PresentationFramework.Classic;component/Themes/Classic.xaml"),
+        new("Fluent", "/PresentationFramework.Fluent;component/Themes/Fluent.xaml"),
+        new("Luna", "/PresentationFramework.Luna;component/Themes/Luna.NormalColor.xaml"),
+        new("Royale", "/PresentationFramework.Royale;component/Themes/Royale.NormalColor.xaml")
+    ];
     private bool _liveValidationStarted;
+    private ResourceDictionary? _activeFrameworkThemeDictionary;
+    private string _activeFrameworkThemeName = "Fluent";
+
+    private readonly record struct FrameworkThemeDefinition(string Name, string Source);
 
     private readonly record struct LivePopupSurfaceSnapshot(
         bool IsReady,
@@ -277,6 +291,7 @@ public partial class MainWindow : Window
         var viewModel = new MainViewModel();
         DataContext = viewModel;
         InitializeComponent();
+        InitializeFrameworkThemeState();
 
         SelectorScrollViewer.AddHandler(MouseWheelEvent, new MouseWheelEventHandler(OnSelectorScrollViewerMouseWheel), true);
         MvpRoutedEventScope.AddHandler(
@@ -295,6 +310,142 @@ public partial class MainWindow : Window
     private void OnMvpWindowLoaded(object sender, RoutedEventArgs e)
     {
         StartLiveValidationIfRequired();
+    }
+
+    internal static IReadOnlyList<string> FrameworkThemeNames
+    {
+        get
+        {
+            var names = new string[s_frameworkThemes.Length];
+            for (int i = 0; i < s_frameworkThemes.Length; i++)
+            {
+                names[i] = s_frameworkThemes[i].Name;
+            }
+
+            return names;
+        }
+    }
+
+    internal string ActiveFrameworkThemeName => _activeFrameworkThemeName;
+
+    internal void ApplyFrameworkTheme(string themeName)
+    {
+        FrameworkThemeDefinition theme = FindFrameworkTheme(themeName);
+        var replacement = new ResourceDictionary
+        {
+            Source = new Uri(theme.Source, UriKind.Relative)
+        };
+        var application = Application.Current
+            ?? throw new InvalidOperationException("Expected an Application while switching the MVP framework theme.");
+        Collection<ResourceDictionary> merged = application.Resources.MergedDictionaries;
+        int currentIndex = FindFrameworkThemeDictionaryIndex(merged);
+        if (currentIndex >= 0)
+        {
+            merged[currentIndex] = replacement;
+        }
+        else
+        {
+            merged.Insert(0, replacement);
+        }
+
+        _activeFrameworkThemeDictionary = replacement;
+        _activeFrameworkThemeName = theme.Name;
+        UpdateFrameworkThemeMenuChecks();
+        foreach (Window window in application.Windows)
+        {
+            window.InvalidateMeasure();
+            window.InvalidateVisual();
+        }
+    }
+
+    private void OnFrameworkThemeMenuItemClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string themeName })
+        {
+            throw new InvalidOperationException("Expected a framework theme MenuItem with a string Tag.");
+        }
+
+        ApplyFrameworkTheme(themeName);
+    }
+
+    private void InitializeFrameworkThemeState()
+    {
+        var application = Application.Current;
+        if (application == null)
+        {
+            UpdateFrameworkThemeMenuChecks();
+            return;
+        }
+
+        int index = FindFrameworkThemeDictionaryIndex(application.Resources.MergedDictionaries);
+        if (index >= 0)
+        {
+            _activeFrameworkThemeDictionary = application.Resources.MergedDictionaries[index];
+            string source = _activeFrameworkThemeDictionary.Source?.OriginalString ?? string.Empty;
+            for (int i = 0; i < s_frameworkThemes.Length; i++)
+            {
+                if (string.Equals(s_frameworkThemes[i].Source, source, StringComparison.OrdinalIgnoreCase))
+                {
+                    _activeFrameworkThemeName = s_frameworkThemes[i].Name;
+                    break;
+                }
+            }
+        }
+
+        UpdateFrameworkThemeMenuChecks();
+    }
+
+    private int FindFrameworkThemeDictionaryIndex(Collection<ResourceDictionary> merged)
+    {
+        if (_activeFrameworkThemeDictionary != null)
+        {
+            int activeIndex = merged.IndexOf(_activeFrameworkThemeDictionary);
+            if (activeIndex >= 0)
+            {
+                return activeIndex;
+            }
+        }
+
+        for (int dictionaryIndex = 0; dictionaryIndex < merged.Count; dictionaryIndex++)
+        {
+            string source = merged[dictionaryIndex].Source?.OriginalString ?? string.Empty;
+            for (int themeIndex = 0; themeIndex < s_frameworkThemes.Length; themeIndex++)
+            {
+                if (string.Equals(s_frameworkThemes[themeIndex].Source, source, StringComparison.OrdinalIgnoreCase))
+                {
+                    return dictionaryIndex;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private static FrameworkThemeDefinition FindFrameworkTheme(string themeName)
+    {
+        for (int i = 0; i < s_frameworkThemes.Length; i++)
+        {
+            if (string.Equals(s_frameworkThemes[i].Name, themeName, StringComparison.Ordinal))
+            {
+                return s_frameworkThemes[i];
+            }
+        }
+
+        throw new ArgumentOutOfRangeException(nameof(themeName), themeName, "Unknown MVP framework theme.");
+    }
+
+    private void UpdateFrameworkThemeMenuChecks()
+    {
+        for (int i = 0; i < s_frameworkThemes.Length; i++)
+        {
+            if (FindName($"{s_frameworkThemes[i].Name}ThemeMenuItem") is MenuItem item)
+            {
+                item.IsChecked = string.Equals(
+                    s_frameworkThemes[i].Name,
+                    _activeFrameworkThemeName,
+                    StringComparison.Ordinal);
+            }
+        }
     }
 
     private void StartLiveValidationIfRequired()
@@ -1152,10 +1303,11 @@ public partial class MainWindow : Window
         string mouseBindingStatus = await ValidateLiveMouseBindingAsync(liveHost);
         string discreteControlStatus = await ValidateLiveDiscreteInputControlsAsync(liveHost);
         string toolBarStatus = await ValidateLiveToolBarInputAsync(liveHost);
+        string frameworkThemeStatus = await ValidateLiveFrameworkThemesAsync(liveHost);
         string popupStatus = await ValidateLivePopupSurfacesAsync(liveHost);
         string keyboardNavigationStatus = await ValidateLiveKeyboardNavigationAsync(liveHost);
         string wheelAndCaptureStatus = await ValidateLiveWheelAndCaptureInputAsync(liveHost);
-        return $"{textInputStatus}; {controlMouseStatus}; {mouseBindingStatus}; {discreteControlStatus}; {toolBarStatus}; {popupStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
+        return $"{textInputStatus}; {controlMouseStatus}; {mouseBindingStatus}; {discreteControlStatus}; {toolBarStatus}; {frameworkThemeStatus}; {popupStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
     }
 
     private async Task<string> ValidateLiveControlMouseInputAsync(ProGpuWpfWindowHost liveHost)
@@ -1532,6 +1684,68 @@ public partial class MainWindow : Window
         {
             await CloseLivePopupSurfacesAsync(liveHost);
         }
+    }
+
+    private async Task<string> ValidateLiveFrameworkThemesAsync(ProGpuWpfWindowHost liveHost)
+    {
+        await CloseLivePopupSurfacesAsync(liveHost);
+        var validatedThemes = new List<string>(s_frameworkThemes.Length);
+        for (int i = 0; i < s_frameworkThemes.Length; i++)
+        {
+            FrameworkThemeDefinition theme = s_frameworkThemes[i];
+            await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var themeItem = Require<MenuItem>(
+                        FindName($"{theme.Name}ThemeMenuItem"),
+                        $"MVP live {theme.Name} theme MenuItem");
+                    themeItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, themeItem));
+                    UpdateLayout();
+                    AssertEqual(theme.Name, ActiveFrameworkThemeName, $"MVP live active {theme.Name} framework theme");
+                    AssertEqual(true, themeItem.IsChecked, $"MVP live checked {theme.Name} framework theme item");
+                    AssertEqual(
+                        theme.Source,
+                        _activeFrameworkThemeDictionary?.Source?.OriginalString,
+                        $"MVP live {theme.Name} framework theme source");
+
+                    var menu = Require<Menu>(FindName("MainMenu"), $"MVP live {theme.Name} main Menu");
+                    var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), $"MVP live {theme.Name} File MenuItem");
+                    var comboBox = Require<ComboBox>(FindName("SelectedValueComboBox"), $"MVP live {theme.Name} ComboBox");
+                    menu.ApplyTemplate();
+                    fileMenuItem.ApplyTemplate();
+                    comboBox.ApplyTemplate();
+                    AssertEqual(true, menu.Template != null, $"MVP live {theme.Name} Menu template available");
+                    AssertEqual(true, fileMenuItem.Template != null, $"MVP live {theme.Name} MenuItem template available");
+                    AssertEqual(true, comboBox.Template != null, $"MVP live {theme.Name} ComboBox template available");
+                    fileMenuItem.IsSubmenuOpen = true;
+                    WakeLiveRenderHost(liveHost);
+                },
+                DispatcherPriority.Send);
+
+            LivePopupSurfaceSnapshot snapshot = await WaitForLivePopupLayerChildCountAsync(
+                liveHost,
+                expectedPopupChildren: 1,
+                exact: false,
+                $"{theme.Name} File menu popup layer");
+            AssertEqual(
+                true,
+                snapshot.Portable.NativeWindowCount >= 1,
+                $"MVP live {theme.Name} native menu popup count");
+            validatedThemes.Add(theme.Name);
+            await CloseLivePopupSurfacesAsync(liveHost);
+        }
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ApplyFrameworkTheme("Fluent");
+                UpdateLayout();
+                WakeLiveRenderHost(liveHost);
+            },
+            DispatcherPriority.Send);
+        return $"runtime framework themes switched and rendered native menu popups: {string.Join(", ", validatedThemes)}";
     }
 
     private async Task<LivePopupSurfaceSnapshot> ValidateLiveMenuPopupSurfaceAsync(
@@ -3510,9 +3724,9 @@ internal static class MvpSelfTest
         ValidateAppConfiguration();
         ValidateRuntimeNameScope(window);
         var themeResources = Require<ResourceDictionary>(
-            application.Resources.MergedDictionaries.Count > 0
-                ? application.Resources.MergedDictionaries[0]
-                : null,
+            FindMergedResourceDictionary(
+                application.Resources.MergedDictionaries,
+                source => source.EndsWith("Resources/Theme.xaml", StringComparison.OrdinalIgnoreCase)),
             "app merged theme ResourceDictionary");
         AssertEqual(true, themeResources.Contains("MvpPanelBrush"), "app theme panel brush key");
         AssertEqual(true, themeResources.Contains(typeof(Button)), "app theme implicit Button style key");
@@ -3590,6 +3804,7 @@ internal static class MvpSelfTest
         var fileMenuItem = Require<MenuItem>(window.FindName("FileMenuItem"), "file MenuItem");
         var viewMenuItem = Require<MenuItem>(window.FindName("ViewMenuItem"), "view MenuItem");
         var windowMenuItem = Require<MenuItem>(window.FindName("WindowMenuItem"), "window MenuItem");
+        var themeMenuItem = Require<MenuItem>(window.FindName("ThemeMenuItem"), "theme MenuItem");
         var addMenuItem = Require<MenuItem>(window.FindName("AddMenuItem"), "add MenuItem");
         var resetMenuItem = Require<MenuItem>(window.FindName("ResetMenuItem"), "reset MenuItem");
         var aboutMenuItem = Require<MenuItem>(window.FindName("AboutMenuItem"), "about MenuItem");
@@ -4090,7 +4305,7 @@ internal static class MvpSelfTest
         var enabledCheckBox = Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
         var progressSlider = Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
-        AssertEqual(3, mainMenu.Items.Count, "main menu item count");
+        AssertEqual(4, mainMenu.Items.Count, "main menu item count");
         AssertEqual(5, fileMenuItem.Items.Count, "file menu item count");
         AssertEqual(3, viewMenuItem.Items.Count, "view menu item count");
         AssertEqual(5, windowMenuItem.Items.Count, "window menu item count");
@@ -4239,7 +4454,10 @@ internal static class MvpSelfTest
         AssertEqual("StatusText", GetBindingPath(dependencyPropertyManagerText, MvpHeaderTextBlock.HeaderTextProperty), "AddOwner header binding path");
         AssertEqual("Alpha selected, progress 35%", dependencyPropertyManagerText.HeaderText, "AddOwner initial header property");
         AssertEqual(FontWeights.SemiBold, dependencyPropertyManagerText.FontWeight, "metadata override FontWeight value");
-        AssertEqual(Brushes.DarkSlateBlue, dependencyPropertyManagerText.Foreground, "metadata override Foreground value");
+        AssertEqual(
+            Brushes.DarkSlateBlue,
+            MvpHeaderTextBlock.ForegroundProperty.GetMetadata(typeof(MvpHeaderTextBlock)).DefaultValue,
+            "metadata override Foreground default value");
         AssertEqual(new MvpTypedOffset(12.5, 24.25), dependencyPropertyManagerText.TypedOffset, "TypeConverter dependency property value");
         AssertEqual(
             BaseValueSource.Local,
@@ -4428,6 +4646,7 @@ internal static class MvpSelfTest
             requeryCommandButton,
             enabledCheckBox,
             progressSlider);
+        ValidateFrameworkThemeSwitching(window, application, themeMenuItem);
     }
 
     private static void ValidateApplicationRunState(
@@ -7855,6 +8074,73 @@ internal static class MvpSelfTest
         }
 
         throw new InvalidOperationException($"Expected {description}.");
+    }
+
+    private static void ValidateFrameworkThemeSwitching(
+        MainWindow window,
+        Application application,
+        MenuItem themeMenuItem)
+    {
+        (string Name, string Source)[] expectedThemes =
+        [
+            ("Aero", "/PresentationFramework.Aero;component/themes/Aero.NormalColor.xaml"),
+            ("Aero2", "/PresentationFramework.Aero2;component/Themes/Aero2.NormalColor.xaml"),
+            ("AeroLite", "/PresentationFramework.AeroLite;component/Themes/AeroLite.NormalColor.xaml"),
+            ("Classic", "/PresentationFramework.Classic;component/Themes/Classic.xaml"),
+            ("Fluent", "/PresentationFramework.Fluent;component/Themes/Fluent.xaml"),
+            ("Luna", "/PresentationFramework.Luna;component/Themes/Luna.NormalColor.xaml"),
+            ("Royale", "/PresentationFramework.Royale;component/Themes/Royale.NormalColor.xaml")
+        ];
+
+        AssertEqual(expectedThemes.Length, MainWindow.FrameworkThemeNames.Count, "framework theme name count");
+        AssertEqual(expectedThemes.Length, themeMenuItem.Items.Count, "framework theme menu item count");
+        for (int themeIndex = 0; themeIndex < expectedThemes.Length; themeIndex++)
+        {
+            (string name, string source) = expectedThemes[themeIndex];
+            AssertEqual(name, MainWindow.FrameworkThemeNames[themeIndex], $"framework theme name {themeIndex}");
+            window.ApplyFrameworkTheme(name);
+            window.UpdateLayout();
+
+            AssertEqual(name, window.ActiveFrameworkThemeName, $"active {name} framework theme");
+            for (int menuIndex = 0; menuIndex < expectedThemes.Length; menuIndex++)
+            {
+                MenuItem menuItem = Require<MenuItem>(
+                    window.FindName($"{expectedThemes[menuIndex].Name}ThemeMenuItem"),
+                    $"{expectedThemes[menuIndex].Name} framework theme MenuItem");
+                AssertEqual(
+                    menuIndex == themeIndex,
+                    menuItem.IsChecked,
+                    $"{expectedThemes[menuIndex].Name} framework theme checked state while {name} is active");
+            }
+
+            ResourceDictionary activeDictionary = Require<ResourceDictionary>(
+                FindMergedResourceDictionary(
+                    application.Resources.MergedDictionaries,
+                    candidate => string.Equals(candidate, source, StringComparison.OrdinalIgnoreCase)),
+                $"{name} framework theme ResourceDictionary");
+            AssertEqual(source, activeDictionary.Source?.OriginalString, $"{name} framework theme source");
+            AssertEqual(true, themeMenuItem.Template != null, $"{name} theme MenuItem template");
+        }
+
+        window.ApplyFrameworkTheme("Fluent");
+        window.UpdateLayout();
+        AssertEqual("Fluent", window.ActiveFrameworkThemeName, "restored framework theme");
+    }
+
+    private static ResourceDictionary? FindMergedResourceDictionary(
+        Collection<ResourceDictionary> mergedDictionaries,
+        Func<string, bool> sourcePredicate)
+    {
+        for (int index = 0; index < mergedDictionaries.Count; index++)
+        {
+            ResourceDictionary candidate = mergedDictionaries[index];
+            if (sourcePredicate(candidate.Source?.OriginalString ?? string.Empty))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
     private static T Require<T>(object? value, string description)

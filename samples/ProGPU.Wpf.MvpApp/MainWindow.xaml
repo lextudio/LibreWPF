@@ -279,6 +279,53 @@
                         InputGestureText="Ctrl+R" />
                 </MenuItem>
                 <MenuItem
+                    x:Name="ThemeMenuItem"
+                    Header="_Theme">
+                    <MenuItem
+                        x:Name="AeroThemeMenuItem"
+                        Click="OnFrameworkThemeMenuItemClick"
+                        Header="_Aero"
+                        IsCheckable="True"
+                        Tag="Aero" />
+                    <MenuItem
+                        x:Name="Aero2ThemeMenuItem"
+                        Click="OnFrameworkThemeMenuItemClick"
+                        Header="Aero _2"
+                        IsCheckable="True"
+                        Tag="Aero2" />
+                    <MenuItem
+                        x:Name="AeroLiteThemeMenuItem"
+                        Click="OnFrameworkThemeMenuItemClick"
+                        Header="Aero _Lite"
+                        IsCheckable="True"
+                        Tag="AeroLite" />
+                    <MenuItem
+                        x:Name="ClassicThemeMenuItem"
+                        Click="OnFrameworkThemeMenuItemClick"
+                        Header="_Classic"
+                        IsCheckable="True"
+                        Tag="Classic" />
+                    <MenuItem
+                        x:Name="FluentThemeMenuItem"
+                        Click="OnFrameworkThemeMenuItemClick"
+                        Header="_Fluent"
+                        IsCheckable="True"
+                        IsChecked="True"
+                        Tag="Fluent" />
+                    <MenuItem
+                        x:Name="LunaThemeMenuItem"
+                        Click="OnFrameworkThemeMenuItemClick"
+                        Header="L_una"
+                        IsCheckable="True"
+                        Tag="Luna" />
+                    <MenuItem
+                        x:Name="RoyaleThemeMenuItem"
+                        Click="OnFrameworkThemeMenuItemClick"
+                        Header="_Royale"
+                        IsCheckable="True"
+                        Tag="Royale" />
+                </MenuItem>
+                <MenuItem
                     x:Name="WindowMenuItem"
                     Header="_Window">
                     <MenuItem

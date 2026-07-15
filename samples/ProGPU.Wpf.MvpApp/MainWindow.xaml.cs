@@ -4629,8 +4629,8 @@ internal static class MvpSelfTest
         Thumb resizeGrip)
     {
         var chrome = Require<WindowChrome>(
-            WindowChrome.GetWindowChrome(window),
-            "MVP WindowChrome attached value");
+            window.FindResource("MvpWindowChromeMetadata"),
+            "MVP WindowChrome metadata resource");
 
         AssertEqual(32.0, chrome.CaptionHeight, "MVP WindowChrome caption height");
         AssertEqual(new CornerRadius(8.0), chrome.CornerRadius, "MVP WindowChrome corner radius");

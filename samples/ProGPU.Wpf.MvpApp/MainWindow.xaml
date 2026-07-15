@@ -15,16 +15,6 @@
     Loaded="OnMvpWindowLoaded"
     MinWidth="560"
     MinHeight="420">
-    <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome
-            CaptionHeight="32"
-            CornerRadius="8"
-            GlassFrameThickness="0"
-            NonClientFrameEdges="None"
-            ResizeBorderThickness="6"
-            UseAeroCaptionButtons="False" />
-    </shell:WindowChrome.WindowChrome>
-
     <Window.CommandBindings>
         <CommandBinding
             Command="{x:Static local:MainWindow.RefreshStatusCommand}"
@@ -59,6 +49,14 @@
             CommandTarget="{Binding ElementName=RootWindow}" />
     </Window.InputBindings>
     <Window.Resources>
+        <shell:WindowChrome
+            x:Key="MvpWindowChromeMetadata"
+            CaptionHeight="32"
+            CornerRadius="8"
+            GlassFrameThickness="0"
+            NonClientFrameEdges="None"
+            ResizeBorderThickness="6"
+            UseAeroCaptionButtons="False" />
         <local:MvpActiveTextConverter x:Key="MvpActiveTextConverter" />
         <local:MvpItemSummaryConverter x:Key="MvpItemSummaryConverter" />
         <DataTemplate
@@ -235,7 +233,7 @@
         </HierarchicalDataTemplate>
     </Window.Resources>
 
-    <Grid Margin="18">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />

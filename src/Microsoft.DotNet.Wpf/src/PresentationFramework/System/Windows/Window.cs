@@ -7202,6 +7202,20 @@ namespace System.Windows
             }
         }
 
+        internal bool TryBeginPortableChromeDrag(Point mousePosition)
+        {
+            if (!IsPortableWindowActive || !_hasPortableCustomChrome ||
+                WindowState != WindowState.Normal)
+            {
+                return false;
+            }
+
+            Shell.WindowChromeWorker chromeWorker = Shell.WindowChromeWorker.GetWindowChromeWorker(this);
+            return chromeWorker != null &&
+                chromeWorker.IsPortableCaptionHit(mousePosition) &&
+                PortableWindowActivationService.TryDragMove(_portableWindowActivation);
+        }
+
         private WindowStyle GetPortableWindowStyle()
         {
             return _hasPortableCustomChrome ? WindowStyle.None : WindowStyle;

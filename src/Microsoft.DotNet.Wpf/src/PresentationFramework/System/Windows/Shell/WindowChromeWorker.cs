@@ -210,6 +210,31 @@ namespace Microsoft.Windows.Shell
             window.SetValue(WindowChromeWorkerProperty, chrome);
         }
 
+        internal bool IsPortableCaptionHit(Point mousePosition)
+        {
+            if (_window == null || _chromeInfo == null ||
+                !double.IsFinite(mousePosition.X) || !double.IsFinite(mousePosition.Y))
+            {
+                return false;
+            }
+
+            double captionBottom = _chromeInfo.ResizeBorderThickness.Top + _chromeInfo.CaptionHeight;
+            if (mousePosition.X < 0.0 || mousePosition.X >= _window.ActualWidth ||
+                mousePosition.Y < 0.0 || mousePosition.Y >= captionBottom)
+            {
+                return false;
+            }
+
+            if (_window.InputHitTest(mousePosition) is IInputElement inputElement &&
+                (WindowChrome.GetIsHitTestVisibleInChrome(inputElement) ||
+                    WindowChrome.GetResizeGripDirection(inputElement) != ResizeGripDirection.None))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private void _OnWindowPropertyChangedThatRequiresTemplateFixup(object sender, EventArgs e)
         {
             if (_chromeInfo != null && (!OperatingSystem.IsWindows() || _hwnd != IntPtr.Zero))

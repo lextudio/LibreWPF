@@ -329,6 +329,13 @@ namespace System.Windows
                 case PortableInputEventKind.MouseMove:
                     return ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
                 case PortableInputEventKind.MouseDown:
+                    if (input.Button == PortableMouseButton.Left &&
+                        rootHitTestElement is Window window &&
+                        window.TryBeginPortableChromeDrag(mouseRootPoint))
+                    {
+                        return true;
+                    }
+
                     return TryGetMouseButtonAction(input.Button, isDown: true, out RawMouseActions mouseDownAction)
                         && ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
                 case PortableInputEventKind.MouseUp:

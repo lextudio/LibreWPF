@@ -210,6 +210,46 @@ public sealed class WpfMilRenderDataDecoderTests
     }
 
     [Fact]
+    public void DecodeNativeDrawGeometryReplaysImageBrushInsideEllipseClip()
+    {
+        var imageSource = new FakeImageSource();
+        var adaptedImageSource = new FakeImageSource();
+        var imageSourceAdapter = new RecordingImageSourceAdapter(adaptedImageSource);
+        var brush = new FakeMediaImageBrush(imageSource);
+        var geometry = new EllipseGeometry(new Point(16, 16), 16, 16);
+        var resolver = new TestResolver
+        {
+            Brush = brush,
+            Geometry = geometry
+        };
+        resolver.RawResources[2] = geometry;
+        var sink = new NativeTestSink();
+
+        var payload = new byte[16];
+        WriteUInt32(payload, 0, 1);
+        WriteUInt32(payload, 4, 0);
+        WriteUInt32(payload, 8, 2);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawGeometry, payload),
+            sink,
+            resolver,
+            imageSourceAdapter);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(0, resolver.ResolveGeometryCallCount);
+        Assert.Same(imageSource, Assert.Single(imageSourceAdapter.Sources));
+        Assert.Same(adaptedImageSource, Assert.Single(sink.Images));
+        Assert.Equal(
+            1,
+            sink.NativeGeometryClips.Count
+            + sink.NativeMediaGeometryClips.Count
+            + sink.NativeClipBounds.Count);
+        Assert.Empty(sink.NativeMediaDrawGeometries);
+        Assert.Equal(1, sink.PopCount);
+    }
+
+    [Fact]
     public void DecodePortableRectangleClipUsesNativeClipWithoutManagedResolution()
     {
         var portableGeometry = CreatePortableRectangleGeometry(5, 6, 70, 80);
@@ -850,5 +890,45 @@ public sealed class WpfMilRenderDataDecoderTests
 
     private sealed class FakeImageSource : MediaImageSource
     {
+    }
+
+    private sealed class RecordingImageSourceAdapter(MediaImageSource adaptedImageSource) : IWpfImageSourceAdapter
+    {
+        public List<object?> Sources { get; } = new();
+
+        public MediaImageSource? AdaptImageSource(object? imageSource)
+        {
+            Sources.Add(imageSource);
+            return adaptedImageSource;
+        }
+    }
+
+    private sealed class FakeMediaImageBrush(object imageSource) : MediaBrush, IPortableTileBrushSource
+    {
+        public override global::ProGPU.Vector.Brush ToNative()
+        {
+            return Brushes.Red.ToNative();
+        }
+
+        public bool TryGetPortableTileBrush(out PortableTileBrush brush)
+        {
+            brush = new PortableTileBrush(
+                PortableTileBrushKind.Image,
+                imageSource,
+                opacity: 1,
+                viewport: new PortableRect(0, 0, 1, 1),
+                viewbox: new PortableRect(0, 0, 1, 1),
+                viewportUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+                viewboxUnits: PortableBrushMappingMode.RelativeToBoundingBox,
+                tileMode: PortableTileMode.None,
+                stretch: PortableStretch.Fill,
+                alignmentX: PortableAlignmentX.Center,
+                alignmentY: PortableAlignmentY.Center,
+                hasTransform: false,
+                transform: PortableMatrix3x2.Identity,
+                hasRelativeTransform: false,
+                relativeTransform: PortableMatrix3x2.Identity);
+            return true;
+        }
     }
 }

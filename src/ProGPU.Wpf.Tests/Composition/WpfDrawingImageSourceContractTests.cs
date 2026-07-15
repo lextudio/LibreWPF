@@ -33,7 +33,8 @@ public sealed class WpfDrawingImageSourceContractTests
         Assert.Contains("portableBrush.Content is PortableDrawingImageSource drawingImageSource", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryReplayPortableDrawingBrushFill(", drawingReplay, StringComparison.Ordinal);
         Assert.Contains("WpfDrawingReplay.TryReplayDrawingImage(", objectReplay, StringComparison.Ordinal);
-        Assert.Contains("TryReplayDrawingImage(resources, imageToken, imageRect, sink", milReplay, StringComparison.Ordinal);
+        Assert.Contains("TryReplayDrawingImage(", milReplay, StringComparison.Ordinal);
+        Assert.Contains("GetImageSourceAdapter(resources, imageSourceAdapter)", milReplay, StringComparison.Ordinal);
 
         foreach (var source in new[] { drawing, drawingReplay, objectReplay, milReplay })
         {

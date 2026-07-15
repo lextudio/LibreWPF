@@ -115,6 +115,29 @@ public sealed class WpfRenderDataBridgeTests
         Assert.Equal(new Rect(1, 2, 30, 40), image.Rectangle);
     }
 
+    [Fact]
+    public void ReplayUsesExplicitImageSourceAdapterWithSuppliedResourceResolver()
+    {
+        var source = new FakeImageSource();
+        var adapter = new FakeImageSourceAdapter();
+        var record = CreateImageRecord(1);
+        var renderData = new FakeRenderData(record, record.Length, new FakeDependentResources(source));
+        var resources = WpfResourceResolver.FromDependentResources(new object?[] { source });
+        var sink = new TestSink();
+
+        var result = new WpfRenderDataBridge().Replay(
+            renderData,
+            sink,
+            resources,
+            adapter);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Same(source, adapter.LastImageSource);
+        var image = Assert.Single(sink.Images);
+        Assert.Same(adapter.AdaptedImageSource, image.ImageSource);
+        Assert.Equal(new Rect(1, 2, 30, 40), image.Rectangle);
+    }
+
     private static byte[] CreateRectangleRecord(uint brushToken, uint penToken)
     {
         var payload = new byte[40];

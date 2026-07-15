@@ -390,6 +390,30 @@ public sealed class WpfObjectRenderDataDrawingContext :
         ThrowIfClosed();
         MediaBrush? mediaBrush = WpfResourceResolver.AdaptBrush(brush);
         MediaPen? mediaPen = WpfResourceResolver.AdaptPen(pen);
+        if (brush != null
+            && WpfDrawingReplay.IsTileBrush(brush)
+            && TryReadPoint(center, out var tileCenter)
+            && TryReadDouble(radiusX, out var tileRadiusX)
+            && TryReadDouble(radiusY, out var tileRadiusY)
+            && WpfDrawingReplay.TryReplayTileBrushEllipseFill(
+                brush,
+                tileCenter,
+                tileRadiusX,
+                tileRadiusY,
+                _sink,
+                _resources.AdaptImageSource,
+                out var brushReplayStatus))
+        {
+            RegisterRetainedDependencies(brush, pen);
+            if (mediaPen != null)
+            {
+                DrawEllipsePenAfterTileBrush(mediaPen, tileCenter, tileRadiusX, tileRadiusY);
+            }
+
+            CountDrawingReplayStatus(brushReplayStatus);
+            return;
+        }
+
         if (mediaBrush == null && mediaPen == null)
         {
             CountUnsupportedIfPresent(brush, pen);
@@ -403,6 +427,17 @@ public sealed class WpfObjectRenderDataDrawingContext :
         }
 
         DrawEllipseTypedFallback(brush, pen, center, radiusX, radiusY, mediaBrush, mediaPen);
+    }
+
+    private void DrawEllipsePenAfterTileBrush(MediaPen pen, Point center, double radiusX, double radiusY)
+    {
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeEllipse(null, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY);
+            return;
+        }
+
+        _sink.DrawEllipse(null, pen, center, radiusX, radiusY);
     }
 
     private void DrawNativeEllipse(

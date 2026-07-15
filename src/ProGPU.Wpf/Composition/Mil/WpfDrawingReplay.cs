@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
 using MediaBrush = System.Windows.Media.Brush;
+using MediaEllipseGeometry = System.Windows.Media.EllipseGeometry;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
@@ -791,6 +792,34 @@ internal static class WpfDrawingReplay
         out WpfDrawingReplayStatus status)
     {
         return TryReplayTileBrushFill(brush, (object?)geometry, sink, imageSourceAdapter, out status);
+    }
+
+    internal static bool TryReplayTileBrushEllipseFill(
+        object brush,
+        Point center,
+        double radiusX,
+        double radiusY,
+        IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Skipped;
+        if (!double.IsFinite(center.X)
+            || !double.IsFinite(center.Y)
+            || !double.IsFinite(radiusX)
+            || !double.IsFinite(radiusY)
+            || radiusX <= 0
+            || radiusY <= 0)
+        {
+            return false;
+        }
+
+        return TryReplayTileBrushFill(
+            brush,
+            new MediaEllipseGeometry(center, radiusX, radiusY),
+            sink,
+            imageSourceAdapter,
+            out status);
     }
 
     internal static bool TryReplayTileBrushFill(
@@ -1595,6 +1624,14 @@ internal static class WpfDrawingReplay
 
     private static bool TryGetTileBrushFillGeometry(object? geometry, out TileBrushFillGeometry fillGeometry)
     {
+        if (TryGetPortableGeometryPath(geometry, out var portableGeometry)
+            && TryGetPortableGeometryBounds(geometry, out var portableBounds)
+            && IsUsableRect(portableBounds, out portableBounds))
+        {
+            fillGeometry = new TileBrushFillGeometry(geometry, portableBounds, null, portableGeometry, false);
+            return true;
+        }
+
         if (geometry is MediaGeometry mediaGeometry)
         {
             if (TryGetDirectPrimitiveGeometryBounds(mediaGeometry, out var mediaBounds))
@@ -1615,14 +1652,6 @@ internal static class WpfDrawingReplay
                 fillGeometry = new TileBrushFillGeometry(geometry, mediaBounds, mediaGeometry, null, false);
                 return true;
             }
-        }
-
-        if (TryGetPortableGeometryPath(geometry, out var portableGeometry)
-            && TryGetPortableGeometryBounds(geometry, out var portableBounds)
-            && IsUsableRect(portableBounds, out portableBounds))
-        {
-            fillGeometry = new TileBrushFillGeometry(geometry, portableBounds, null, portableGeometry, false);
-            return true;
         }
 
         if (geometry is Rect rect
@@ -1737,9 +1766,8 @@ internal static class WpfDrawingReplay
         object? imageSource,
         Func<object?, MediaImageSource?>? imageSourceAdapter)
     {
-        return imageSource is MediaImageSource mediaImageSource
-            ? mediaImageSource
-            : imageSourceAdapter?.Invoke(imageSource);
+        return imageSourceAdapter?.Invoke(imageSource)
+            ?? imageSource as MediaImageSource;
     }
 
     private static bool TryGetOptionalBrushTransform(

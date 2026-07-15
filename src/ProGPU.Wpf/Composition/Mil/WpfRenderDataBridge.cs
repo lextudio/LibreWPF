@@ -43,10 +43,11 @@ public sealed class WpfRenderDataBridge
         ArgumentNullException.ThrowIfNull(sink);
 
         var snapshot = Extract(renderData);
+        var decoderImageSourceAdapter = resources == null ? null : imageSourceAdapter;
         resources ??= WpfResourceResolver.FromDependentResources(
             snapshot.DependentResources,
             imageSourceAdapter);
-        return _decoder.Decode(snapshot.RenderData, sink, resources);
+        return _decoder.Decode(snapshot.RenderData, sink, resources, decoderImageSourceAdapter);
     }
 
     public WpfMilDecodeResult Replay(
@@ -58,10 +59,11 @@ public sealed class WpfRenderDataBridge
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(sink);
 
+        var decoderImageSourceAdapter = resources == null ? null : imageSourceAdapter;
         resources ??= WpfResourceResolver.FromDependentResources(
             snapshot.DependentResources,
             imageSourceAdapter);
-        return _decoder.Decode(snapshot.RenderData, sink, resources);
+        return _decoder.Decode(snapshot.RenderData, sink, resources, decoderImageSourceAdapter);
     }
 
     private static WpfRenderDataSnapshot CreateSnapshot(PortableRenderDataSnapshot portableSnapshot)

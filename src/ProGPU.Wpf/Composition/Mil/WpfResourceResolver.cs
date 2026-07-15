@@ -210,7 +210,8 @@ public sealed class WpfResourceResolver :
     IWpfMilResourceResolver,
     IWpfDrawingResourceResolver,
     IWpfGuidelineSetResourceResolver,
-    IWpfRawMilResourceResolver
+    IWpfRawMilResourceResolver,
+    IWpfImageSourceAdapter
 {
     private readonly struct WpfMatrix2D
     {

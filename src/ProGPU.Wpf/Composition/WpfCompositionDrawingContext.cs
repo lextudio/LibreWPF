@@ -150,6 +150,27 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        if (brush != null
+            && WpfDrawingReplay.IsTileBrush(brush)
+            && WpfDrawingReplay.TryReplayTileBrushEllipseFill(
+                brush,
+                center,
+                radiusX,
+                radiusY,
+                _sink,
+                _imageSourceAdapter,
+                out var brushReplayStatus))
+        {
+            RegisterRetainedDependencies(brush, pen);
+            if (pen != null)
+            {
+                DrawEllipsePenAfterTileBrush(pen, center, radiusX, radiusY);
+            }
+
+            CountDrawingReplayStatus(brushReplayStatus);
+            return;
+        }
+
         RegisterRetainedDependencies(brush, pen);
         _sink.DrawEllipse(brush, pen, center, radiusX, radiusY);
         CountApplied();
@@ -665,6 +686,17 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
 
         _sink.DrawGeometry(null, pen, geometry);
+    }
+
+    private void DrawEllipsePenAfterTileBrush(MediaPen pen, Point center, double radiusX, double radiusY)
+    {
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.DrawNativeEllipse(null, pen, new WpfReplayPoint(center.X, center.Y), radiusX, radiusY);
+            return;
+        }
+
+        _sink.DrawEllipse(null, pen, center, radiusX, radiusY);
     }
 
     private bool TryDrawPrimitiveLineGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)

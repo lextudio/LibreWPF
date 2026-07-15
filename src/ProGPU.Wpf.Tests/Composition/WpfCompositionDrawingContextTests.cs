@@ -1098,6 +1098,26 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextReplaysImageBrushEllipseThroughImageSourceAdapter()
+    {
+        var sink = new RecordingSink();
+        var imageSource = new FakeBitmapSource();
+        var imageBrush = new FakeImageBrush(imageSource);
+        var adapter = new FakeImageSourceAdapter();
+        using var context = new WpfObjectRenderDataDrawingContext(sink, adapter);
+
+        context.DrawEllipse(imageBrush, null, new Point(20, 30), 10.0, 15.0);
+
+        Assert.Equal(new[] { "PushClip", "DrawImage", "Pop" }, sink.Operations);
+        Assert.Same(imageSource, adapter.LastImageSource);
+        var replayed = Assert.Single(sink.Images);
+        Assert.Same(adapter.AdaptedImageSource, replayed.ImageSource);
+        Assert.Equal(new Rect(10, 15, 20, 30), replayed.Rectangle);
+        Assert.Contains(imageBrush, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextDrawsTileBrushRectanglePenAsNativeRectangle()
     {
         var sink = new NativeRecordingSink();
@@ -1216,6 +1236,26 @@ public sealed class WpfCompositionDrawingContextTests
         var replayed = Assert.Single(sink.Images);
         Assert.Same(adapter.AdaptedImageSource, replayed.ImageSource);
         Assert.Equal(new Rect(1, 2, 30, 40), replayed.Rectangle);
+        Assert.Contains(imageBrush, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextReplaysMediaImageBrushEllipseThroughImageSourceAdapter()
+    {
+        var sink = new RecordingSink();
+        var imageSource = new FakeBitmapSource();
+        var imageBrush = new FakeMediaImageBrush(imageSource);
+        var adapter = new FakeImageSourceAdapter();
+        using var context = new WpfCompositionDrawingContext(sink, adapter);
+
+        context.DrawEllipse(imageBrush, null, new Point(20, 30), 10, 15);
+
+        Assert.Equal(new[] { "PushClip", "DrawImage", "Pop" }, sink.Operations);
+        Assert.Same(imageSource, adapter.LastImageSource);
+        var replayed = Assert.Single(sink.Images);
+        Assert.Same(adapter.AdaptedImageSource, replayed.ImageSource);
+        Assert.Equal(new Rect(10, 15, 20, 30), replayed.Rectangle);
         Assert.Contains(imageBrush, sink.VisualDependencies);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }

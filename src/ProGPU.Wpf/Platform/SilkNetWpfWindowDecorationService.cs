@@ -45,6 +45,21 @@ public sealed class SilkNetWpfWindowDecorationService : IWpfWindowDecorationServ
         return false;
     }
 
+    public bool TryShowWithoutActivation(object window)
+    {
+        if (window is not IView view)
+        {
+            return false;
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return TryShowCocoaWithoutActivation(GetCocoaWindow(view));
+        }
+
+        return false;
+    }
+
     public bool TryConfigurePopupOwner(object ownerWindow, object popupWindow)
     {
         if (ownerWindow is not IView ownerView || popupWindow is not IView popupView)
@@ -128,6 +143,35 @@ public sealed class SilkNetWpfWindowDecorationService : IWpfWindowDecorationServ
             ReleaseCapture();
             SendMessage(hwnd, WM_SYSCOMMAND, (IntPtr)SC_MOUSEMOVE, IntPtr.Zero);
             SendMessage(hwnd, WM_LBUTTONUP, IntPtr.Zero, IntPtr.Zero);
+            return true;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    [SupportedOSPlatform("macos")]
+    private static bool TryShowCocoaWithoutActivation(IntPtr nsWindow)
+    {
+        if (nsWindow == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            IntPtr orderFront = SelRegisterName("orderFront:");
+            if (orderFront == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            ObjCMsgSend(nsWindow, orderFront, IntPtr.Zero);
             return true;
         }
         catch (DllNotFoundException)

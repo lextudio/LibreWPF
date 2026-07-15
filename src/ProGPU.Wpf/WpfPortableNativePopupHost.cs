@@ -41,6 +41,8 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
     private readonly ProGpuWpfWindowHost _ownerHost;
     private readonly ProGpuWpfWindowHost _popupHost;
     private Func<WpfInputEventArgs, bool>? _inputHandler;
+    private double _dpiScaleX;
+    private double _dpiScaleY;
     private bool _isInitialized;
     private bool _isPumping;
     private bool _disposeWhenPumpCompletes;
@@ -89,16 +91,22 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         double dpiScaleY)
     {
         _ownerHost = ownerHost;
+        _dpiScaleX = NormalizeDeviceScale(dpiScaleX);
+        _dpiScaleY = NormalizeDeviceScale(dpiScaleY);
         _popupHost = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
         {
             Title = string.Empty,
             Width = 1,
             Height = 1,
-            Left = request.PopupScreenDeviceX,
-            Top = request.PopupScreenDeviceY,
+            // WPF placement uses device-screen pixels. Silk/GLFW window positions use
+            // native logical screen coordinates, including on Retina displays.
+            Left = ToNativeLogicalScreenCoordinate(request.PopupScreenDeviceX, _dpiScaleX),
+            Top = ToNativeLogicalScreenCoordinate(request.PopupScreenDeviceY, _dpiScaleY),
             IsVisible = false,
             IsEventDriven = false,
-            Topmost = true,
+            // Native transient ownership keeps the popup above its owner. A global topmost
+            // level would incorrectly float it above other applications on macOS/X11.
+            Topmost = false,
             ShowActivated = false,
             TransparentFramebuffer = request.IsTransparent,
             WindowBorder = ProGpuWpfWindowBorder.Hidden,
@@ -167,14 +175,40 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
     public void SetDeviceScale(double dpiScaleX, double dpiScaleY)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
+        _dpiScaleX = NormalizeDeviceScale(dpiScaleX);
+        _dpiScaleY = NormalizeDeviceScale(dpiScaleY);
         _popupHost.UpdatePortablePresentationSourceDpiScale(dpiScaleX, dpiScaleY);
     }
 
     public void SetPosition(int x, int y)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
-        _popupHost.SetPosition(x, y);
+        _popupHost.SetPosition(
+            ToNativeLogicalScreenCoordinate(x, _dpiScaleX),
+            ToNativeLogicalScreenCoordinate(y, _dpiScaleY));
     }
+
+    internal static int ToNativeLogicalScreenCoordinate(int deviceCoordinate, double deviceScale)
+    {
+        double normalizedScale = NormalizeDeviceScale(deviceScale);
+        double value = deviceCoordinate / normalizedScale;
+        if (value <= int.MinValue)
+        {
+            return int.MinValue;
+        }
+
+        if (value >= int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        return (int)Math.Round(value, MidpointRounding.AwayFromZero);
+    }
+
+    private static double NormalizeDeviceScale(double deviceScale) =>
+        double.IsFinite(deviceScale) && deviceScale > 0.0
+            ? deviceScale
+            : 1.0;
 
     public void SetSize(int width, int height)
     {
@@ -186,7 +220,7 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
         EnsureInitialized();
-        _popupHost.Show();
+        _popupHost.ShowWithoutActivation();
     }
 
     public void Hide()

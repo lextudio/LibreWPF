@@ -536,15 +536,37 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         ShowCore(requestRenderWhenInitialized: true);
     }
 
-    internal void DeferShowUntilRun()
+    internal void ShowWithoutActivation()
     {
         ThrowIfDisposed();
-
         _isHostVisible = true;
-        if (_window != null)
+        EnsureWindow();
+        if (!_window!.IsInitialized)
+        {
+            _window.Initialize();
+        }
+
+        if (!PlatformServices.WindowDecorations.TryShowWithoutActivation(_window))
         {
             _window.IsVisible = true;
         }
+
+        RequestRenderAndWakeNativeLoop();
+    }
+
+    internal void DeferShowUntilRun()
+    {
+        ThrowIfDisposed();
+        EnsureWindow();
+        _window!.IsVisible = false;
+        if (!_window.IsInitialized)
+        {
+            _window.Initialize();
+        }
+
+        // The native surface must exist before WPF raises Loaded so the portable
+        // presentation source already carries the real DPI and screen origin.
+        _isHostVisible = true;
     }
 
     public void Hide()
@@ -1111,6 +1133,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             }
 
             SynchronizePortablePresentationSourceGeometry();
+            if (Left is int nativeLogicalLeft && Top is int nativeLogicalTop)
+            {
+                UpdatePortablePresentationSourceClientOrigin(nativeLogicalLeft, nativeLogicalTop);
+            }
             RequestRenderAndWakeNativeLoop();
             return true;
         }
@@ -3282,13 +3308,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        _portablePresentationSourceDpiScaleX = dpiScaleX;
+        _portablePresentationSourceDpiScaleY = dpiScaleY;
+        if (Left is int nativeLogicalLeft && Top is int nativeLogicalTop)
+        {
+            UpdatePortablePresentationSourceClientOrigin(nativeLogicalLeft, nativeLogicalTop);
+        }
+
         for (int i = 0; i < _portablePopupBridges.Count; i++)
         {
             _portablePopupBridges[i].TrySetDeviceScale(dpiScaleX, dpiScaleY);
         }
 
-        _portablePresentationSourceDpiScaleX = dpiScaleX;
-        _portablePresentationSourceDpiScaleY = dpiScaleY;
         InvalidateWpfRootVisualForPresentationSourceGeometryChange();
         return true;
     }
@@ -3322,26 +3353,47 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal bool UpdatePortablePresentationSourceClientOrigin(int x, int y)
     {
         WpfPortablePresentationSourceBridge? bridge = _portablePresentationSourceBridge;
+        int deviceX = ToDeviceScreenCoordinate(x, _portablePresentationSourceDpiScaleX);
+        int deviceY = ToDeviceScreenCoordinate(y, _portablePresentationSourceDpiScaleY);
         if (bridge == null ||
             (_hasPortablePresentationSourceClientOrigin &&
-                _portablePresentationSourceClientOriginX == x &&
-                _portablePresentationSourceClientOriginY == y))
+                _portablePresentationSourceClientOriginX == deviceX &&
+                _portablePresentationSourceClientOriginY == deviceY))
         {
             return false;
         }
 
-        if (!bridge.TrySetClientOrigin(x, y))
+        if (!bridge.TrySetClientOrigin(deviceX, deviceY))
         {
             return false;
         }
 
-        UpdatePortablePopupOwnerOrigins(bridge.Source, x, y);
+        UpdatePortablePopupOwnerOrigins(bridge.Source, deviceX, deviceY);
 
-        _portablePresentationSourceClientOriginX = x;
-        _portablePresentationSourceClientOriginY = y;
+        _portablePresentationSourceClientOriginX = deviceX;
+        _portablePresentationSourceClientOriginY = deviceY;
         _hasPortablePresentationSourceClientOrigin = true;
         RequestRenderAndWakeNativeLoop();
         return true;
+    }
+
+    internal static int ToDeviceScreenCoordinate(int nativeLogicalCoordinate, double deviceScale)
+    {
+        double normalizedScale = double.IsFinite(deviceScale) && deviceScale > 0.0
+            ? deviceScale
+            : 1.0;
+        double value = nativeLogicalCoordinate * normalizedScale;
+        if (value <= int.MinValue)
+        {
+            return int.MinValue;
+        }
+
+        if (value >= int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        return (int)Math.Round(value, MidpointRounding.AwayFromZero);
     }
 
     private void InvalidateWpfRootVisualForPresentationSourceGeometryChange()

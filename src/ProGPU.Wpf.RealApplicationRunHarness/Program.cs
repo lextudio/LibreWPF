@@ -2763,8 +2763,11 @@ internal static class Program
         object layoutGrid = GetField(window, "AttachedLayoutGrid");
         AssertType(layoutGrid, "System.Windows.Controls.Grid", "compiled attached-layout Grid");
         AssertCollectionCount(GetProperty(layoutGrid, "RowDefinitions"), expected: 2, "compiled Grid row definitions");
-        AssertCollectionCount(GetProperty(layoutGrid, "ColumnDefinitions"), expected: 2, "compiled Grid column definitions");
+        AssertCollectionCount(GetProperty(layoutGrid, "ColumnDefinitions"), expected: 3, "compiled Grid column definitions");
         AssertCollectionCount(GetProperty(layoutGrid, "Children"), expected: 2, "compiled Grid children");
+        AssertEqual("Auto", GetProperty(GetCollectionItem(GetProperty(layoutGrid, "RowDefinitions"), 0), "Height").ToString(), "compiled shorthand Grid first row");
+        AssertEqual("80", GetProperty(GetCollectionItem(GetProperty(layoutGrid, "ColumnDefinitions"), 1), "Width").ToString(), "compiled shorthand Grid fixed column");
+        AssertEqual("*", GetProperty(GetCollectionItem(GetProperty(layoutGrid, "ColumnDefinitions"), 2), "Width").ToString(), "compiled shorthand Grid star column");
 
         object firstCell = GetField(window, "GridFirstCell");
         AssertType(firstCell, "System.Windows.Controls.TextBlock", "compiled Grid first cell");

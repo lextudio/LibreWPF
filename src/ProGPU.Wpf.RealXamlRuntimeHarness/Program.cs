@@ -136,6 +136,7 @@ internal static class Program
             ValidatePostShowNavigationFrame(
                 window,
                 () => FlushDispatcherOperations(activationServiceType, window, "Render"));
+            ValidatePostShowPortableGridShorthandText(window);
             ValidatePostShowSharedSizeGridLayout(window);
             ValidatePostShowGridSplitterDrag(window);
             ValidatePostShowSliderThumbDrag(window);
@@ -3229,8 +3230,11 @@ internal static class Program
         object layoutGrid = GetField(window, "AttachedLayoutGrid");
         AssertType(layoutGrid, "System.Windows.Controls.Grid", "compiled attached-layout Grid");
         AssertCollectionCount(GetProperty(layoutGrid, "RowDefinitions"), expected: 2, "compiled Grid row definitions");
-        AssertCollectionCount(GetProperty(layoutGrid, "ColumnDefinitions"), expected: 2, "compiled Grid column definitions");
+        AssertCollectionCount(GetProperty(layoutGrid, "ColumnDefinitions"), expected: 3, "compiled Grid column definitions");
         AssertCollectionCount(GetProperty(layoutGrid, "Children"), expected: 2, "compiled Grid children");
+        AssertEqual("Auto", GetProperty(GetCollectionItem(GetProperty(layoutGrid, "RowDefinitions"), 0), "Height").ToString(), "compiled shorthand Grid first row");
+        AssertEqual("80", GetProperty(GetCollectionItem(GetProperty(layoutGrid, "ColumnDefinitions"), 1), "Width").ToString(), "compiled shorthand Grid fixed column");
+        AssertEqual("*", GetProperty(GetCollectionItem(GetProperty(layoutGrid, "ColumnDefinitions"), 2), "Width").ToString(), "compiled shorthand Grid star column");
 
         object firstCell = GetField(window, "GridFirstCell");
         AssertType(firstCell, "System.Windows.Controls.TextBlock", "compiled Grid first cell");
@@ -3243,6 +3247,64 @@ internal static class Program
         AssertEqual("grid beta", GetProperty(secondCell, "Text"), "compiled Grid second-cell text");
         AssertEqual(1, GetDependencyPropertyValue(secondCell, layoutGrid.GetType(), "RowProperty"), "compiled Grid second-cell row");
         AssertEqual(1, GetDependencyPropertyValue(secondCell, layoutGrid.GetType(), "ColumnProperty"), "compiled Grid second-cell column");
+    }
+
+    private static void ValidatePostShowPortableGridShorthandText(object window)
+    {
+        object description = GetField(window, "GridShorthandDescription");
+        AssertType(description, "System.Windows.Controls.TextBlock", "compiled Grid shorthand description TextBlock");
+        AssertContains(
+            "comma‑separated",
+            GetProperty(description, "Text").ToString(),
+            "compiled Grid shorthand non-breaking hyphen text");
+
+        object drawingContent = InvokePortableTryGet(
+            description,
+            "ProGPU.Wpf.Interop.IPortableDrawingContentSource",
+            "TryGetPortableDrawingContent",
+            "compiled Grid shorthand drawing content");
+        object renderData = InvokePortableTryGet(
+            drawingContent,
+            "ProGPU.Wpf.Interop.IPortableRenderDataSource",
+            "TryGetPortableRenderDataSnapshot",
+            "compiled Grid shorthand render-data snapshot");
+        object resources = GetProperty(renderData, "DependentResources");
+        int resourceCount = GetCollectionCount(resources);
+        bool hasVisibleGlyphRun = false;
+        for (int i = 0; i < resourceCount; i++)
+        {
+            object resource = GetCollectionItem(resources, i);
+            if (resource.GetType().FullName == "ProGPU.Wpf.Interop.PortableNativeGlyphRun" &&
+                GetCollectionCount(GetProperty(resource, "GlyphIndices")) > 0)
+            {
+                hasVisibleGlyphRun = true;
+                break;
+            }
+        }
+
+        if (!hasVisibleGlyphRun)
+        {
+            throw new InvalidOperationException("compiled Grid shorthand description did not publish a visible portable glyph run.");
+        }
+    }
+
+    private static object InvokePortableTryGet(
+        object instance,
+        string interfaceName,
+        string methodName,
+        string description)
+    {
+        Type interfaceType = instance.GetType().GetInterface(interfaceName)
+            ?? throw new InvalidOperationException($"{description} interface '{interfaceName}' is unavailable.");
+        MethodInfo method = interfaceType.GetMethod(methodName)
+            ?? throw new InvalidOperationException($"{description} method '{methodName}' is unavailable.");
+        object?[] arguments = { null };
+        if (method.Invoke(instance, arguments) is not true || arguments[0] == null)
+        {
+            throw new InvalidOperationException($"{description} was unavailable.");
+        }
+
+        return arguments[0]!;
     }
 
     private static void ValidateLayoutPanels(object window)
@@ -6778,11 +6840,14 @@ internal static class Program
 
     private static void AssertCollectionCount(object collection, int expected, string description)
     {
-        object count =
-            collection is Array array ? array.Length :
+        AssertEqual(expected, GetCollectionCount(collection), description);
+    }
+
+    private static int GetCollectionCount(object collection)
+    {
+        return collection is Array array ? array.Length :
             collection is ICollection nonGenericCollection ? nonGenericCollection.Count :
-            GetProperty(collection, "Count");
-        AssertEqual(expected, count, description);
+            Convert.ToInt32(GetProperty(collection, "Count"));
     }
 
     private static void AssertType(object instance, string expectedFullName, string description)

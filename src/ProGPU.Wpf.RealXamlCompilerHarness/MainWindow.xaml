@@ -200,6 +200,12 @@
                     MouseAction="RightClick" />
             </TextBlock.InputBindings>
         </TextBlock>
+        <TextBlock
+            x:Name="GridShorthandDescription"
+            MaxWidth="320"
+            TextWrapping="Wrap">
+            <Run>The WPF Grid supports shorthand row and column definitions. Values are comma‑separated and retain visible portable glyph runs.</Run>
+        </TextBlock>
         <Menu x:Name="SmokeMenu" Margin="0,8,0,0">
             <MenuItem
                 x:Name="FileMenuItem"
@@ -792,15 +798,9 @@
             Margin="0,8,0,0" />
         <Grid
             x:Name="AttachedLayoutGrid"
+            RowDefinitions="Auto,Auto"
+            ColumnDefinitions="Auto 80 *"
             Margin="0,8,0,0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
             <TextBlock
                 x:Name="GridFirstCell"
                 Grid.Row="0"

@@ -3566,9 +3566,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Background=\"{StaticResource UnsharedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokeUserControl", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NestedControl\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"GridShorthandDescription\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("comma‑separated", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AttachedLayoutGrid\"", mainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("Grid.RowDefinitions", mainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("Grid.ColumnDefinitions", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RowDefinitions=\"Auto,Auto\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ColumnDefinitions=\"Auto 80 *\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"GridFirstCell\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Grid.Row=\"1\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Grid.Column=\"1\"", mainWindowXaml, StringComparison.Ordinal);
@@ -4577,6 +4579,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateReadOnlyGridCollectionsAndAttachedProperties(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Grid row definitions", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDependencyPropertyValue(firstCell, layoutGrid.GetType(), \"RowProperty\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowPortableGridShorthandText(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Grid shorthand description did not publish a visible portable glyph run", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLayoutPanels(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DockPanel left attached Dock", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Canvas top attached property", harnessProgram, StringComparison.Ordinal);
@@ -5358,6 +5362,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateReadOnlyGridCollectionsAndAttachedProperties(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Grid column definitions", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDependencyPropertyValue(secondCell, layoutGrid.GetType(), \"ColumnProperty\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled shorthand Grid star column", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GridShorthandDescription", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ValidateLayoutPanels(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DockPanel right attached Dock", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Canvas left attached property", harnessProgram, StringComparison.Ordinal);
@@ -8902,6 +8908,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ContainsOnlyPrivateUseCharacters", typeface, StringComparison.Ordinal);
         Assert.Contains("IsPrivateUseCharacter", typeface, StringComparison.Ordinal);
         Assert.Contains("the existing null-glyph unshaped GlyphRun path", typeface, StringComparison.Ordinal);
+        Assert.Contains("ResolvePortableMissingGlyphAliases", typeface, StringComparison.Ordinal);
+        Assert.Contains("const uint nonBreakingHyphen = 0x2011", typeface, StringComparison.Ordinal);
+        Assert.Contains("const uint asciiHyphen = 0x002D", typeface, StringComparison.Ordinal);
         AssertGuardBefore(typeface, "if (!OperatingSystem.IsWindows())", "TypographyAvailabilities typography");
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
         Assert.Contains("new ThemeState(true, \"Aero2\", \"NormalColor\")", uxThemeWrapper, StringComparison.Ordinal);

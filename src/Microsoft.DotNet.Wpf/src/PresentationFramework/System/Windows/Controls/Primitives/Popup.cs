@@ -1730,6 +1730,16 @@ namespace System.Windows.Controls.Primitives
 
             _popupRoot.StopAnimations();
 
+            // Portable popups are independent transient native surfaces.  Keeping
+            // that surface visible while a WPF opacity animation waits for its
+            // dispatcher timer makes menus flash, remain hit-testable after close,
+            // and briefly float above their owner.  Hide the portable surface
+            // synchronously; Win32 keeps the established popup animation behavior.
+            if (!OperatingSystem.IsWindows())
+            {
+                return false;
+            }
+
             // Only animate if popup is transparent
             if (animation != PopupAnimation.None && IsTransparent)
             {

@@ -8812,6 +8812,14 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(popup, "if (IsPerMonitorDpiScalingActive && OperatingSystem.IsWindows())", "SafeNativeMethods.MonitorFromPoint");
         Assert.Contains("if (!OperatingSystem.IsWindows())\n                {\n                    if (position)", popup, StringComparison.Ordinal);
         Assert.Contains("if (!OperatingSystem.IsWindows())\n                {\n                    TryShowPortablePopup();", popup, StringComparison.Ordinal);
+        AssertGuardBefore(
+            popup,
+            "_popupRoot.StopAnimations();\n\n            // Portable popups are independent transient native surfaces.",
+            "if (animation != PopupAnimation.None && IsTransparent)");
+        Assert.Contains(
+            "if (!OperatingSystem.IsWindows())\n            {\n                return false;\n            }\n\n            // Only animate if popup is transparent",
+            popup,
+            StringComparison.Ordinal);
         Assert.Contains("return false;\n                }\n\n                IntPtr foregroundWindow", popup, StringComparison.Ordinal);
         Assert.Contains("return IntPtr.Zero;\n                }\n\n                if (source is HwndSource hwnd)", popup, StringComparison.Ordinal);
         AssertGuardBefore(menuBase, "(!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");

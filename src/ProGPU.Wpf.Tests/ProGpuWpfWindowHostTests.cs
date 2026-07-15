@@ -1983,10 +1983,10 @@ public sealed class ProGpuWpfWindowHostTests
 
         Assert.Equal(2.0, popupPresentationSource.DpiScaleX);
         Assert.Equal(2.0, popupPresentationSource.DpiScaleY);
-        Assert.Equal(100, owner.ClientOriginX);
-        Assert.Equal(200, owner.ClientOriginY);
-        Assert.Equal(140, popupPresentationSource.ClientOriginX);
-        Assert.Equal(260, popupPresentationSource.ClientOriginY);
+        Assert.Equal(200, owner.ClientOriginX);
+        Assert.Equal(400, owner.ClientOriginY);
+        Assert.Equal(240, popupPresentationSource.ClientOriginX);
+        Assert.Equal(460, popupPresentationSource.ClientOriginY);
         var input = new WpfInputEventArgs(
             WpfInputEventKind.MouseDown,
             x: 25,
@@ -2059,10 +2059,10 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(6, activationService.LastPresentationSourceInput.Y);
 
         Assert.True(host.UpdatePortablePresentationSourceDpiScale(2.0, 2.0));
-        Assert.Equal(220, parentPopupSource.ClientOriginX);
-        Assert.Equal(300, parentPopupSource.ClientOriginY);
-        Assert.Equal(400, nestedPopupSource.ClientOriginX);
-        Assert.Equal(380, nestedPopupSource.ClientOriginY);
+        Assert.Equal(320, parentPopupSource.ClientOriginX);
+        Assert.Equal(500, parentPopupSource.ClientOriginY);
+        Assert.Equal(500, nestedPopupSource.ClientOriginX);
+        Assert.Equal(580, nestedPopupSource.ClientOriginY);
         var scaledInput = new WpfInputEventArgs(
             WpfInputEventKind.MouseDown,
             x: 155,
@@ -2142,6 +2142,36 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(2.0, source.DpiScaleY);
         Assert.Equal(2, source.DeviceScaleChangeCount);
         Assert.Equal(2, scheduler.RequestCount);
+    }
+
+    [Theory]
+    [InlineData(628, 2.0, 314)]
+    [InlineData(431, 2.0, 216)]
+    [InlineData(-301, 1.5, -201)]
+    [InlineData(40, 0.0, 40)]
+    public void NativePopupConvertsDevicePixelsToLogicalScreenCoordinates(
+        int deviceCoordinate,
+        double deviceScale,
+        int expectedLogicalCoordinate)
+    {
+        Assert.Equal(
+            expectedLogicalCoordinate,
+            WpfPortableNativePopupHost.ToNativeLogicalScreenCoordinate(deviceCoordinate, deviceScale));
+    }
+
+    [Theory]
+    [InlineData(314, 2.0, 628)]
+    [InlineData(216, 2.0, 432)]
+    [InlineData(-201, 1.5, -302)]
+    [InlineData(40, double.NaN, 40)]
+    public void OwnerWindowConvertsLogicalScreenCoordinatesToDevicePixels(
+        int logicalCoordinate,
+        double deviceScale,
+        int expectedDeviceCoordinate)
+    {
+        Assert.Equal(
+            expectedDeviceCoordinate,
+            ProGpuWpfWindowHost.ToDeviceScreenCoordinate(logicalCoordinate, deviceScale));
     }
 
     [Fact]

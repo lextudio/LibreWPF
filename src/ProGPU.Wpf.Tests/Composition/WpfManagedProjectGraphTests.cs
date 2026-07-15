@@ -355,6 +355,44 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void PortableNativePopupUsesDeviceAwareTransientNonactivatingWindows()
+    {
+        var popupHost = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "WpfPortableNativePopupHost.cs"));
+        var windowHost = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowHost.cs"));
+        var platformServices = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "IWpfPlatformServices.cs"));
+        var silkDecorations = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "SilkNetWpfWindowDecorationService.cs"));
+
+        Assert.Contains("Topmost = false", popupHost, StringComparison.Ordinal);
+        Assert.Contains("ToNativeLogicalScreenCoordinate(request.PopupScreenDeviceX, _dpiScaleX)", popupHost, StringComparison.Ordinal);
+        Assert.Contains("_popupHost.ShowWithoutActivation();", popupHost, StringComparison.Ordinal);
+        Assert.Contains("internal static int ToDeviceScreenCoordinate", windowHost, StringComparison.Ordinal);
+        Assert.Contains("UpdatePortablePopupOwnerOrigins(bridge.Source, deviceX, deviceY)", windowHost, StringComparison.Ordinal);
+        Assert.Contains("internal void ShowWithoutActivation()", windowHost, StringComparison.Ordinal);
+        Assert.Contains("PlatformServices.WindowDecorations.TryShowWithoutActivation(_window)", windowHost, StringComparison.Ordinal);
+        Assert.Contains("internal void DeferShowUntilRun()", windowHost, StringComparison.Ordinal);
+        Assert.Contains("_window.Initialize();", windowHost, StringComparison.Ordinal);
+        Assert.Contains("bool TryShowWithoutActivation(object window)", platformServices, StringComparison.Ordinal);
+        Assert.Contains("TryShowCocoaWithoutActivation(GetCocoaWindow(view))", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("SelRegisterName(\"orderFront:\")", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("SelRegisterName(\"addChildWindow:ordered:\")", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("SelRegisterName(\"setHidesOnDeactivate:\")", silkDecorations, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MediaContextUsesPortableClockOutsideWindows()
     {
         var sourcePath = FindRepoPath(
@@ -2119,6 +2157,15 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortableWindowActivationService.cs");
+        var windowChromeWorkerPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Shell",
+            "WindowChromeWorker.cs");
         var portableInputPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -2137,6 +2184,7 @@ public sealed class WpfManagedProjectGraphTests
         var window = File.ReadAllText(windowPath);
         var application = File.ReadAllText(applicationPath);
         var activationService = File.ReadAllText(activationServicePath);
+        var windowChromeWorker = File.ReadAllText(windowChromeWorkerPath);
         var portableInput = File.ReadAllText(portableInputPath);
         var project = File.ReadAllText(projectPath);
 
@@ -2173,6 +2221,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source.GetInputProvider(typeof(MouseDevice))?.NotifyDeactivate()", activationService, StringComparison.Ordinal);
         Assert.Contains("window.HandleActivate(isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void ProcessInput(Window window, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("window.TryBeginPortableChromeDrag(mouseRootPoint)", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryIsCurrentApplicationMainWindow(object window, out bool isMainWindow)", activationService, StringComparison.Ordinal);
         Assert.Contains("!ReferenceEquals(application.Dispatcher, typedWindow.Dispatcher)", activationService, StringComparison.Ordinal);
         Assert.Contains("!application.Dispatcher.CheckAccess()", activationService, StringComparison.Ordinal);
@@ -2198,7 +2247,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InputManager.PreviewInputReportEvent", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableKeyboardDevice", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableMouseDevice", activationService, StringComparison.Ordinal);
-        Assert.Contains("RawMouseActions mouseActivation = GetMouseActivationAction(inputManager, source)", activationService, StringComparison.Ordinal);
+        Assert.Contains("RawMouseActions mouseActivation = GetMouseActivationAction(inputManager, mouseInputSource)", activationService, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(inputManager.PrimaryMouseDevice?.ActiveSource, source)", activationService, StringComparison.Ordinal);
         Assert.Contains("mouseActivation | mouseUpAction", activationService, StringComparison.Ordinal);
         Assert.DoesNotContain("RawMouseActions.Activate | mouseUpAction", activationService, StringComparison.Ordinal);
@@ -2227,6 +2276,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void UpdatePortablePositionOnTopLeftChange(double leftLogicalUnits, double topLogicalUnits)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetTopmost(_portableWindowActivation, topmost)", window, StringComparison.Ordinal);
         Assert.Contains("internal void SetPortableCustomChrome(bool enabled)", window, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryBeginPortableChromeDrag(Point mousePosition)", window, StringComparison.Ordinal);
+        Assert.Contains("chromeWorker.IsPortableCaptionHit(mousePosition)", window, StringComparison.Ordinal);
+        Assert.Contains("internal bool IsPortableCaptionHit(Point mousePosition)", windowChromeWorker, StringComparison.Ordinal);
+        Assert.Contains("WindowChrome.GetIsHitTestVisibleInChrome(inputElement)", windowChromeWorker, StringComparison.Ordinal);
+        Assert.Contains("WindowChrome.GetResizeGripDirection(inputElement)", windowChromeWorker, StringComparison.Ordinal);
         Assert.Contains("GetPortableWindowStyle()", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.GetHandle(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("&& !w.IsPortableWindowActive", window, StringComparison.Ordinal);

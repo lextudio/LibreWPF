@@ -22,11 +22,14 @@ public class PortablePresentationSourceTests
 
         Point screenPoint = root.PointToScreen(new Point(5.0, 7.0));
 
-        screenPoint.X.Should().BeApproximately(120.0 + 5.0 * dpiScaleX, 0.000001);
-        screenPoint.Y.Should().BeApproximately(80.0 + 7.0 * dpiScaleY, 0.000001);
+        screenPoint.X.Should().BeApproximately(125.0, 0.000001);
+        screenPoint.Y.Should().BeApproximately(87.0, 0.000001);
         Point clientPoint = root.PointFromScreen(screenPoint);
         clientPoint.X.Should().BeApproximately(5.0, 0.000001);
         clientPoint.Y.Should().BeApproximately(7.0, 0.000001);
+        CompositionTarget compositionTarget = ((PresentationSource)source).CompositionTarget;
+        compositionTarget.TransformToDevice.M11.Should().BeApproximately(dpiScaleX, 0.000001);
+        compositionTarget.TransformToDevice.M22.Should().BeApproximately(dpiScaleY, 0.000001);
     }
 
     [Fact]

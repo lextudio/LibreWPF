@@ -919,7 +919,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortablePresentationSourceFactory { get; set; } =", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("PortablePresentationSourceHost.Create;", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("source = PortablePresentationSourceFactory(", proGpuPortablePopupBridge, StringComparison.Ordinal);
-        Assert.Contains("_source.SetClientOrigin(x, y);", proGpuPortablePopupBridge, StringComparison.Ordinal);
+        Assert.Contains("private void SetSourceClientOrigin()", proGpuPortablePopupBridge, StringComparison.Ordinal);
+        Assert.Contains("ToLogicalScreenCoordinate(X, _dpiScaleX)", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("(_ownerPopup?.LogicalX ?? 0.0)", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("_localLogicalX = ((double)popupScreenDeviceX - ownerClientScreenDeviceX) / dpiScaleX;", proGpuPortablePopupBridge, StringComparison.Ordinal);
         Assert.Contains("_localLogicalY = ((double)popupScreenDeviceY - ownerClientScreenDeviceY) / dpiScaleY;", proGpuPortablePopupBridge, StringComparison.Ordinal);
@@ -8798,8 +8799,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private bool TryCreatePortablePopupSource(", popup, StringComparison.Ordinal);
         Assert.Contains("new PortablePopupCreateRequest(", popup, StringComparison.Ordinal);
         Assert.Contains("PointUtil.ClientToScreen(new Point(0, 0), ownerPresentationSource)", popup, StringComparison.Ordinal);
-        Assert.Contains("popupScreenDeviceX: x", popup, StringComparison.Ordinal);
-        Assert.Contains("popupScreenDeviceY: y", popup, StringComparison.Ordinal);
+        Assert.Contains("popupScreenDeviceX: DoubleUtil.DoubleToInt(popupScreenDevice.X)", popup, StringComparison.Ordinal);
+        Assert.Contains("popupScreenDeviceY: DoubleUtil.DoubleToInt(popupScreenDevice.Y)", popup, StringComparison.Ordinal);
+        Assert.Contains("ToPortableScreenDevicePoint(new Point(x, y), ownerPresentationSource)", popup, StringComparison.Ordinal);
         Assert.Contains("ownerClientScreenDeviceX:", popup, StringComparison.Ordinal);
         Assert.Contains("ownerClientScreenDeviceY:", popup, StringComparison.Ordinal);
         Assert.Contains("TrySetPortablePopupPosition(x, y);", popup, StringComparison.Ordinal);

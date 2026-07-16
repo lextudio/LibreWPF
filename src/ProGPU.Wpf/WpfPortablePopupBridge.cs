@@ -61,7 +61,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         Width = 1;
         Height = 1;
         IsHitTestable = true;
-        _source.SetClientOrigin(popupScreenDeviceX, popupScreenDeviceY);
+        SetSourceClientOrigin();
     }
 
     public object Source => _source;
@@ -270,7 +270,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         _dpiScaleX = dpiScaleX;
         _dpiScaleY = dpiScaleY;
         _source.SetDeviceScale(dpiScaleX, dpiScaleY);
-        _source.SetClientOrigin(X, Y);
+        SetSourceClientOrigin();
         _nativeHost?.SetDeviceScale(dpiScaleX, dpiScaleY);
         _nativeHost?.SetPosition(X, Y);
         Trace($"dpi scale=({dpiScaleX:0.###},{dpiScaleY:0.###}) origin=({X},{Y})");
@@ -291,7 +291,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         _ownerClientScreenDeviceY = y;
         X = ToScreenDeviceCoordinate(x, _localLogicalX, _dpiScaleX);
         Y = ToScreenDeviceCoordinate(y, _localLogicalY, _dpiScaleY);
-        _source.SetClientOrigin(X, Y);
+        SetSourceClientOrigin();
         _nativeHost?.SetPosition(X, Y);
         Trace($"owner origin x={x} y={y} popup=({X},{Y})");
         RequestRender();
@@ -310,11 +310,26 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         Y = y;
         _localLogicalX = ((double)x - _ownerClientScreenDeviceX) / _dpiScaleX;
         _localLogicalY = ((double)y - _ownerClientScreenDeviceY) / _dpiScaleY;
-        _source.SetClientOrigin(x, y);
+        SetSourceClientOrigin();
         _nativeHost?.SetPosition(x, y);
         Trace($"position x={x} y={y}");
         RequestRender();
         return true;
+    }
+
+    private void SetSourceClientOrigin()
+    {
+        _source.SetClientOrigin(
+            ToLogicalScreenCoordinate(X, _dpiScaleX),
+            ToLogicalScreenCoordinate(Y, _dpiScaleY));
+    }
+
+    private static double ToLogicalScreenCoordinate(int deviceCoordinate, double deviceScale)
+    {
+        double normalizedScale = double.IsFinite(deviceScale) && deviceScale > 0.0
+            ? deviceScale
+            : 1.0;
+        return deviceCoordinate / normalizedScale;
     }
 
     public bool TrySetSize(int width, int height)

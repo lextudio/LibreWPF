@@ -40,8 +40,13 @@ namespace MS.Internal
             // Only do if we allow throwing on error or have a valid PresentationSource and CompositionTarget.
             if (throwOnError || (presentationSource != null && presentationSource.CompositionTarget != null && !presentationSource.CompositionTarget.IsDisposed))
             {
-                // Convert from pixels into measure units.
-                point = presentationSource.CompositionTarget.TransformFromDevice.Transform(point);
+                // Portable windowing APIs already report client coordinates in logical units.
+                // Keep the device transform on the rendering target, but do not apply it to the
+                // public screen/client coordinate contract.
+                if (!IsPortablePresentationSource(presentationSource))
+                {
+                    point = presentationSource.CompositionTarget.TransformFromDevice.Transform(point);
+                }
 
                 // REVIEW:
                 // We need to include the root element's transform until the MIL
@@ -68,8 +73,12 @@ namespace MS.Internal
             // team fixes their APIs to do this.
             point = ApplyVisualTransform(point, presentationSource.RootVisual, false);
 
-            // Convert from measure units into pixels.
-            point = presentationSource.CompositionTarget.TransformToDevice.Transform(point);
+            // Native HWND clients use pixels.  Portable clients use the native platform's
+            // logical coordinate space (the same space as Window.Left/Top and input events).
+            if (!IsPortablePresentationSource(presentationSource))
+            {
+                point = presentationSource.CompositionTarget.TransformToDevice.Transform(point);
+            }
 
             return point;
         }
@@ -235,6 +244,11 @@ namespace MS.Internal
             return false;
         }
 
+        internal static bool IsPortablePresentationSource(PresentationSource presentationSource)
+        {
+            return TryGetPortablePresentationSource(presentationSource, out _);
+        }
+
         /// <summary>
         ///     Converts a rectangle from element co-ordinate space to that of the root visual
         /// </summary>
@@ -279,8 +293,9 @@ namespace MS.Internal
             CompositionTarget   target                  = presentationSource.CompositionTarget;
             Matrix              matrixRootTransform     = PointUtil.GetVisualTransform(target.RootVisual);
             Rect                rectRootUntransformed   = Rect.Transform(rectRoot, matrixRootTransform);
-            Matrix              matrixDPI               = target.TransformToDevice;
-            Rect                rectClient              = Rect.Transform(rectRootUntransformed, matrixDPI);
+            Rect rectClient = IsPortablePresentationSource(presentationSource)
+                ? rectRootUntransformed
+                : Rect.Transform(rectRootUntransformed, target.TransformToDevice);
 
             return rectClient;
         }

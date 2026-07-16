@@ -1932,8 +1932,8 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.NotNull(popupSource);
         Assert.True(host.TrySetPortablePopupSize(popupSource!, 100, 80));
         Assert.True(host.TryShowPortablePopup(popupSource!));
-        Assert.Equal(20, popupPresentationSource.ClientOriginX);
-        Assert.Equal(30, popupPresentationSource.ClientOriginY);
+        Assert.Equal(10, popupPresentationSource.ClientOriginX);
+        Assert.Equal(15, popupPresentationSource.ClientOriginY);
         Assert.Equal(100, popupPresentationSource.ClientWidth);
         Assert.Equal(80, popupPresentationSource.ClientHeight);
 
@@ -1994,10 +1994,10 @@ public sealed class ProGpuWpfWindowHostTests
 
         Assert.Equal(2.0, popupPresentationSource.DpiScaleX);
         Assert.Equal(2.0, popupPresentationSource.DpiScaleY);
-        Assert.Equal(200, owner.ClientOriginX);
-        Assert.Equal(400, owner.ClientOriginY);
-        Assert.Equal(240, popupPresentationSource.ClientOriginX);
-        Assert.Equal(460, popupPresentationSource.ClientOriginY);
+        Assert.Equal(100, owner.ClientOriginX);
+        Assert.Equal(200, owner.ClientOriginY);
+        Assert.Equal(120, popupPresentationSource.ClientOriginX);
+        Assert.Equal(230, popupPresentationSource.ClientOriginY);
         var input = new WpfInputEventArgs(
             WpfInputEventKind.MouseDown,
             x: 25,
@@ -2070,10 +2070,10 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(6, activationService.LastPresentationSourceInput.Y);
 
         Assert.True(host.UpdatePortablePresentationSourceDpiScale(2.0, 2.0));
-        Assert.Equal(320, parentPopupSource.ClientOriginX);
-        Assert.Equal(500, parentPopupSource.ClientOriginY);
-        Assert.Equal(500, nestedPopupSource.ClientOriginX);
-        Assert.Equal(580, nestedPopupSource.ClientOriginY);
+        Assert.Equal(160, parentPopupSource.ClientOriginX);
+        Assert.Equal(250, parentPopupSource.ClientOriginY);
+        Assert.Equal(250, nestedPopupSource.ClientOriginX);
+        Assert.Equal(290, nestedPopupSource.ClientOriginY);
         var scaledInput = new WpfInputEventArgs(
             WpfInputEventKind.MouseDown,
             x: 155,

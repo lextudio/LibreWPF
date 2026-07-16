@@ -2486,7 +2486,10 @@ namespace System.Windows.Controls.Primitives
                     placementRect = new Rect();
                 }
 
-                offset = _secHelper.GetTransformToDevice().Transform(offset);
+                if (!UsesPortableLogicalScreenCoordinates(target))
+                {
+                    offset = _secHelper.GetTransformToDevice().Transform(offset);
+                }
 
                 // Offset the rect
                 placementRect.Offset(offset);
@@ -2602,12 +2605,23 @@ namespace System.Windows.Controls.Primitives
             visualToClientTransform.Children.Add(visual.TransformToAncestor(rootVisual));
 
             // Add root and composition target's transfrom
-            visualToClientTransform.Children.Add(new MatrixTransform(
-                PointUtil.GetVisualTransform(rootVisual) *
-                PopupSecurityHelper.GetTransformToDevice(rootVisual)
-                ));
+            Matrix rootToClient = PointUtil.GetVisualTransform(rootVisual);
+            if (!UsesPortableLogicalScreenCoordinates(rootVisual))
+            {
+                rootToClient *= PopupSecurityHelper.GetTransformToDevice(rootVisual);
+            }
+
+            visualToClientTransform.Children.Add(new MatrixTransform(rootToClient));
 
             return visualToClientTransform;
+        }
+
+        private static bool UsesPortableLogicalScreenCoordinates(Visual visual)
+        {
+            PresentationSource source = visual != null
+                ? PresentationSource.CriticalFromVisual(visual)
+                : null;
+            return source != null && PointUtil.IsPortablePresentationSource(source);
         }
 
         // Gets the smallest rectangle that contains all points in the list
@@ -3174,9 +3188,8 @@ namespace System.Windows.Controls.Primitives
                     return PointUtil.ToPoint(ClientToScreen(hwndSource, clientPoint));
                 }
 
-                // TransformToClient already returned device-client coordinates.  PointUtil owns
-                // the remaining client-to-screen translation for portable sources; applying the
-                // composition target's DPI transform here would scale placement a second time.
+                // Portable clients and screens use the platform's logical coordinate space.
+                // PointUtil owns the remaining logical client-to-screen translation.
                 if (targetWindow != null && !targetWindow.IsDisposed)
                 {
                     return PointUtil.ClientToScreen(clientPoint, targetWindow);
@@ -3237,7 +3250,11 @@ namespace System.Windows.Controls.Primitives
                             {
                                 // Transform the point from the targetVisual to client device units
                                 GeneralTransform transformTo = targetVisual.TransformToAncestor(rootVisual);
-                                Matrix transform = PointUtil.GetVisualTransform(rootVisual) * ct.TransformToDevice;
+                                Matrix transform = PointUtil.GetVisualTransform(rootVisual);
+                                if (!PointUtil.IsPortablePresentationSource(presentationSource))
+                                {
+                                    transform *= ct.TransformToDevice;
+                                }
                                 transformTo.TryTransform(pt, out pt);
                                 pt = transform.Transform(pt);
 
@@ -3287,7 +3304,7 @@ namespace System.Windows.Controls.Primitives
                             transformTo.TryTransform(pt, out pt);
                         }
 
-                        Matrix transform = PointUtil.GetVisualTransform(rootVisual) * ct.TransformToDevice;
+                        Matrix transform = PointUtil.GetVisualTransform(rootVisual);
                         pt = transform.Transform(pt);
                         pt = PointUtil.ClientToScreen(pt, presentationSource);
                     }
@@ -3900,14 +3917,16 @@ namespace System.Windows.Controls.Primitives
                 PresentationSource ownerPresentationSource = GetPresentationSource(mainTreeVisual);
                 _portableOwnerPresentationSource = ownerPresentationSource;
                 Point ownerClientScreenOrigin = PointUtil.ClientToScreen(new Point(0, 0), ownerPresentationSource);
+                Point popupScreenDevice = ToPortableScreenDevicePoint(new Point(x, y), ownerPresentationSource);
+                Point ownerClientScreenDevice = ToPortableScreenDevicePoint(ownerClientScreenOrigin, ownerPresentationSource);
                 var request = new PortablePopupCreateRequest(
                     placementTarget,
                     ownerPresentationSource,
                     GetHandle(ownerPresentationSource),
-                    popupScreenDeviceX: x,
-                    popupScreenDeviceY: y,
-                    ownerClientScreenDeviceX: DoubleUtil.DoubleToInt(ownerClientScreenOrigin.X),
-                    ownerClientScreenDeviceY: DoubleUtil.DoubleToInt(ownerClientScreenOrigin.Y),
+                    popupScreenDeviceX: DoubleUtil.DoubleToInt(popupScreenDevice.X),
+                    popupScreenDeviceY: DoubleUtil.DoubleToInt(popupScreenDevice.Y),
+                    ownerClientScreenDeviceX: DoubleUtil.DoubleToInt(ownerClientScreenDevice.X),
+                    ownerClientScreenDeviceY: DoubleUtil.DoubleToInt(ownerClientScreenDevice.Y),
                     isTransparent: transparent,
                     isChildPopup: IsChildPopup);
 
@@ -3923,9 +3942,25 @@ namespace System.Windows.Controls.Primitives
 
             private bool TrySetPortablePopupPosition(int x, int y)
             {
+                Point popupScreenDevice = ToPortableScreenDevicePoint(
+                    new Point(x, y),
+                    _portableOwnerPresentationSource);
                 return TryGetPortablePopupService(out IPortablePopupServiceRegistrar service) &&
                     _window != null &&
-                    service.TrySetPopupPosition(_window, x, y);
+                    service.TrySetPopupPosition(
+                        _window,
+                        DoubleUtil.DoubleToInt(popupScreenDevice.X),
+                        DoubleUtil.DoubleToInt(popupScreenDevice.Y));
+            }
+
+            private static Point ToPortableScreenDevicePoint(
+                Point logicalScreenPoint,
+                PresentationSource presentationSource)
+            {
+                CompositionTarget target = presentationSource?.CompositionTarget;
+                return target != null && !target.IsDisposed
+                    ? target.TransformToDevice.Transform(logicalScreenPoint)
+                    : logicalScreenPoint;
             }
 
             private bool TrySetPortablePopupSize(int width, int height)

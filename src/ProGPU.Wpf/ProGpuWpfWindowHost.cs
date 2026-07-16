@@ -3362,28 +3362,32 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal bool UpdatePortablePresentationSourceClientOrigin(int x, int y)
     {
         WpfPortablePresentationSourceBridge? bridge = _portablePresentationSourceBridge;
+        if (bridge == null)
+        {
+            return false;
+        }
+
+        bool originChanged = !_hasPortablePresentationSourceClientOrigin ||
+            _portablePresentationSourceClientOriginX != x ||
+            _portablePresentationSourceClientOriginY != y;
+        if (originChanged && !bridge.TrySetClientOrigin(x, y))
+        {
+            return false;
+        }
+
         int deviceX = ToDeviceScreenCoordinate(x, _portablePresentationSourceDpiScaleX);
         int deviceY = ToDeviceScreenCoordinate(y, _portablePresentationSourceDpiScaleY);
-        if (bridge == null ||
-            (_hasPortablePresentationSourceClientOrigin &&
-                _portablePresentationSourceClientOriginX == deviceX &&
-                _portablePresentationSourceClientOriginY == deviceY))
-        {
-            return false;
-        }
-
-        if (!bridge.TrySetClientOrigin(deviceX, deviceY))
-        {
-            return false;
-        }
-
         UpdatePortablePopupOwnerOrigins(bridge.Source, deviceX, deviceY);
 
-        _portablePresentationSourceClientOriginX = deviceX;
-        _portablePresentationSourceClientOriginY = deviceY;
+        _portablePresentationSourceClientOriginX = x;
+        _portablePresentationSourceClientOriginY = y;
         _hasPortablePresentationSourceClientOrigin = true;
-        RequestRenderAndWakeNativeLoop();
-        return true;
+        if (originChanged)
+        {
+            RequestRenderAndWakeNativeLoop();
+        }
+
+        return originChanged;
     }
 
     internal static int ToDeviceScreenCoordinate(int nativeLogicalCoordinate, double deviceScale)

@@ -103,24 +103,42 @@ namespace AnyCpuSmoke;
 
 public partial class MainWindow : Window
 {
+    private readonly System.Windows.Threading.DispatcherTimer _renderLifetimeTimer;
+    private string? _nativePath;
+
     public MainWindow()
     {
         InitializeComponent();
-        Loaded += OnLoaded;
+        _renderLifetimeTimer = new System.Windows.Threading.DispatcherTimer(
+            System.Windows.Threading.DispatcherPriority.Background,
+            Dispatcher)
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        _renderLifetimeTimer.Tick += OnRenderLifetimeElapsed;
+        ContentRendered += OnContentRendered;
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private void OnContentRendered(object? sender, EventArgs e)
     {
+        ContentRendered -= OnContentRendered;
+
         string nativePath = Path.Combine(AppContext.BaseDirectory, "PresentationNative_cor3.dll");
         if (!File.Exists(nativePath))
         {
             throw new FileNotFoundException("LibreWPF did not select the native WPF runtime for the current AnyCPU process.", nativePath);
         }
 
+        _nativePath = nativePath;
+        _renderLifetimeTimer.Start();
+    }
+
+    private void OnRenderLifetimeElapsed(object? sender, EventArgs e)
+    {
+        _renderLifetimeTimer.Stop();
+        string nativePath = _nativePath ?? throw new InvalidOperationException("The rendered native runtime path was not captured.");
         Console.WriteLine($"LibreWPF Windows AnyCPU smoke succeeded with {nativePath}.");
-        Dispatcher.BeginInvoke(
-            System.Windows.Threading.DispatcherPriority.ApplicationIdle,
-            new Action(() => Application.Current.Shutdown(0)));
+        Application.Current.Shutdown(0);
     }
 }
 '@ | Set-Content -Path (Join-Path $projectRoot "MainWindow.xaml.cs") -Encoding utf8

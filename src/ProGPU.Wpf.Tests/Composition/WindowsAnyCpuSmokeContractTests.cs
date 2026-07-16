@@ -5,18 +5,20 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WindowsAnyCpuSmokeContractTests
 {
     [Fact]
-    public void SmokeDefersShutdownUntilLoadedReturns()
+    public void SmokeKeepsTextWindowAliveAfterContentIsRendered()
     {
         var scriptPath = FindRepoPath("eng", "progpu-wpf-windows-anycpu-smoke.ps1");
         var script = File.ReadAllText(scriptPath);
 
-        Assert.Contains("Dispatcher.BeginInvoke(", script, StringComparison.Ordinal);
-        Assert.Contains("System.Windows.Threading.DispatcherPriority.ApplicationIdle", script, StringComparison.Ordinal);
-        Assert.Contains("new Action(() => Application.Current.Shutdown(0))", script, StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "Console.WriteLine($\"LibreWPF Windows AnyCPU smoke succeeded with {nativePath}.\");\n        Application.Current.Shutdown(0);",
-            script,
-            StringComparison.Ordinal);
+        Assert.Contains("ContentRendered += OnContentRendered", script, StringComparison.Ordinal);
+        Assert.Contains("ContentRendered -= OnContentRendered", script, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Threading.DispatcherTimer", script, StringComparison.Ordinal);
+        Assert.Contains("Interval = TimeSpan.FromSeconds(1)", script, StringComparison.Ordinal);
+        Assert.Contains("_renderLifetimeTimer.Start();", script, StringComparison.Ordinal);
+        Assert.Contains("private void OnRenderLifetimeElapsed", script, StringComparison.Ordinal);
+        Assert.Contains("_renderLifetimeTimer.Stop();", script, StringComparison.Ordinal);
+        Assert.Contains("Application.Current.Shutdown(0);", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("DispatcherPriority.ApplicationIdle", script, StringComparison.Ordinal);
     }
 
     [Fact]

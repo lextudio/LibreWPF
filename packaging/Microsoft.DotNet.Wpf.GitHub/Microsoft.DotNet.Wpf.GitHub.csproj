@@ -9,11 +9,11 @@
     <PackageName>LibreWPF.Transport$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.18</VersionSuffix>
+    <VersionSuffix>preview.19</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF transport package for the portable managed presentation assemblies from the ProGPU port.</PackageDescription>
-    <PackageReleaseNotes>Aligns LibreWPF with ProGPU preview.18; keeps menu, context-menu, ComboBox, and direct-popup pointer transfers interactive across native popup windows; synchronizes popup closure and native title chrome; enables runtime Aero, Aero2, AeroLite, Classic, Fluent, Luna, and Royale switching in the MVP sample; restores text selection, keyboard shortcuts, safe drag selection, and resize-time rendering; and retains the memory and glyph-atlas optimizations from preview.17.</PackageReleaseNotes>
+    <PackageReleaseNotes>Aligns LibreWPF with ProGPU preview.19; fixes Windows AnyCPU text rendering lifetime failures; settles native popup placement after layout for WPF Gallery and SharpDevelop menus; preserves hosted double-click input for Project Explorer; keeps exact high-DPI logical sizing, native title chrome, resize-time rendering, text selection, keyboard shortcuts, and safe drag selection; and retains bounded GPU memory and glyph-atlas scrolling performance.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

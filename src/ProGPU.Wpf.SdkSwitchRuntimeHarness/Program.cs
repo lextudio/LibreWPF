@@ -810,9 +810,9 @@ internal static class Program
             "SDK ProGPU compositor render pass viewport application");
         AssertMethodCallsMethod(
             applyRenderPassViewport,
-            "Silk.NET.WebGPU.WebGPU",
+            "ProGPU.Backend.IWebGpuApi",
             "RenderPassEncoderSetViewport",
-            "SDK ProGPU compositor physical render target viewport");
+            "SDK ProGPU compositor backend-independent physical render target viewport");
         AssertRetainedWpfLayerUsesLogicalBoundsAndIdentityScale(proGpuWpf, proGpuScene, "SDK");
         AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(
             inputs.AppOutputRoot,

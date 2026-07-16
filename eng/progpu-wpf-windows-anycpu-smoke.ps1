@@ -2,6 +2,8 @@ param(
     [string] $PackageDirectory = "",
     [string] $Version = "",
     [string] $RuntimeIdentifier = "",
+    [ValidateSet("Debug", "Release")]
+    [string] $Configuration = "Release",
     [switch] $BuildOnly
 )
 
@@ -129,16 +131,17 @@ public partial class MainWindow : Window
         dotnet restore (Join-Path $projectRoot "AnyCpuSmoke.csproj") --configfile (Join-Path $smokeRoot "NuGet.config") --force --no-cache
         if ($LASTEXITCODE -ne 0) { throw "LibreWPF Windows AnyCPU restore failed." }
 
-        dotnet build (Join-Path $projectRoot "AnyCpuSmoke.csproj") --no-restore -c Release
+        dotnet build (Join-Path $projectRoot "AnyCpuSmoke.csproj") --no-restore -c $Configuration
         if ($LASTEXITCODE -ne 0) { throw "LibreWPF Windows AnyCPU build failed." }
 
-        $nativeAsset = Get-ChildItem -Path (Join-Path $projectRoot "bin/Release") -Filter "PresentationNative_cor3.dll" -Recurse | Select-Object -First 1
+        $configurationOutput = Join-Path $projectRoot "bin/$Configuration"
+        $nativeAsset = Get-ChildItem -Path $configurationOutput -Filter "PresentationNative_cor3.dll" -Recurse | Select-Object -First 1
         if ($null -eq $nativeAsset) {
             throw "LibreWPF Windows AnyCPU build output is missing PresentationNative_cor3.dll."
         }
 
         if (!$BuildOnly) {
-            $appHost = Get-ChildItem -Path (Join-Path $projectRoot "bin/Release") -Filter "AnyCpuSmoke.exe" -Recurse | Select-Object -First 1
+            $appHost = Get-ChildItem -Path $configurationOutput -Filter "AnyCpuSmoke.exe" -Recurse | Select-Object -First 1
             if ($null -eq $appHost) {
                 throw "LibreWPF Windows AnyCPU build output is missing the AnyCPU app host."
             }

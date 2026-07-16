@@ -69,4 +69,6 @@ jobs:
 
       - name: Run clean Windows AnyCPU package smoke
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-anycpu-smoke.ps1
+        run: |
+          ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Release
+          ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Debug

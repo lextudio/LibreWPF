@@ -140,7 +140,7 @@ public class PortablePresentationSourceTests
             RawMouseActions.Activate | RawMouseActions.AbsoluteMove,
             x: 37,
             y: 41);
-        firstRoot.CaptureMouse(CaptureMode.SubTree).Should().BeTrue();
+        Mouse.Capture(firstRoot, CaptureMode.SubTree).Should().BeTrue();
         Mouse.Captured.Should().BeSameAs(firstRoot);
 
         var firstSourceReports = new List<RawMouseInputReport>();
@@ -196,7 +196,7 @@ public class PortablePresentationSourceTests
             RawMouseActions.Activate | RawMouseActions.AbsoluteMove,
             x: 37,
             y: 41);
-        firstRoot.CaptureMouse(CaptureMode.SubTree).Should().BeTrue();
+        Mouse.Capture(firstRoot, CaptureMode.SubTree).Should().BeTrue();
         Mouse.Captured.Should().BeSameAs(firstRoot);
 
         int lostMouseCaptureCount = 0;

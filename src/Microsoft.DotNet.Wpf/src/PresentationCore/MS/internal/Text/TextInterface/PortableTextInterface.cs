@@ -479,6 +479,7 @@ namespace MS.Internal.Text.TextInterface
 
         private static readonly (string FamilyName, string[] Candidates)[] s_portableFamilyAliases =
         {
+            ("Arial", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans", "LibreWPF Fluent Symbols" }),
             ("Segoe UI", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
             ("Segoe UI Light", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),
             ("Segoe UI Semibold", new[] { "Arial", "Helvetica Neue", "Helvetica", "SF Pro Text", ".SF NS Text", "Roboto", "Liberation Sans", "DejaVu Sans", "Noto Sans" }),

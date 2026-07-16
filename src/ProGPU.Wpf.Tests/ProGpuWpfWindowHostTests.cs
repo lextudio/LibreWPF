@@ -617,7 +617,7 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void ResolveRenderSurfaceGeometryScalesLogicalFramebufferOnHighDpiMonitor()
+    public void ResolveRenderSurfaceGeometryTrustsReportedFramebufferOnHighDpiMonitor()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
             clientWidth: 420,
@@ -627,11 +627,11 @@ public sealed class ProGpuWpfWindowHostTests
 
         Assert.Equal(420u, geometry.LogicalWidth);
         Assert.Equal(840u, geometry.LogicalHeight);
-        Assert.Equal(840u, geometry.PixelWidth);
-        Assert.Equal(1680u, geometry.PixelHeight);
-        Assert.Equal(2.0, geometry.DpiScaleX);
-        Assert.Equal(2.0, geometry.DpiScaleY);
-        Assert.Equal(2.0, geometry.DpiScale);
+        Assert.Equal(420u, geometry.PixelWidth);
+        Assert.Equal(840u, geometry.PixelHeight);
+        Assert.Equal(1.0, geometry.DpiScaleX);
+        Assert.Equal(1.0, geometry.DpiScaleY);
+        Assert.Equal(1.0, geometry.DpiScale);
     }
 
     [Fact]
@@ -648,6 +648,22 @@ public sealed class ProGpuWpfWindowHostTests
             monitorDpiScale: dpiScale);
 
         Assert.Equal(2.0, dpiScale);
+        Assert.Equal(420u, geometry.LogicalWidth);
+        Assert.Equal(840u, geometry.LogicalHeight);
+        Assert.Equal(420u, geometry.PixelWidth);
+        Assert.Equal(840u, geometry.PixelHeight);
+        Assert.Equal(1.0, geometry.DpiScale);
+    }
+
+    [Fact]
+    public void ResolveRenderSurfaceGeometryUsesMonitorScaleOnlyWhenFramebufferIsMissing()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 420,
+            clientHeight: 840,
+            framebufferSize: new Vector2D<int>(0, 0),
+            monitorDpiScale: 2.0);
+
         Assert.Equal(420u, geometry.LogicalWidth);
         Assert.Equal(840u, geometry.LogicalHeight);
         Assert.Equal(840u, geometry.PixelWidth);
@@ -998,10 +1014,36 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void ResolveLogicalClientSizeKeepsDipsWhenNativeSizeReportsPhysicalFramebuffer()
+    public void ResolveLogicalClientSizeTrustsSilkLogicalClientSize()
     {
         var logicalSize = ProGpuWpfWindowHost.ResolveLogicalClientSize(
             nativeSize: new Vector2D<int>(840, 1680),
+            framebufferSize: new Vector2D<int>(840, 1680),
+            cachedWidth: 420,
+            cachedHeight: 840,
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(new Vector2D<int>(840, 1680), logicalSize);
+    }
+
+    [Fact]
+    public void ResolveLogicalClientSizeDoesNotOverrideNativeSizeWithStaleCache()
+    {
+        var logicalSize = ProGpuWpfWindowHost.ResolveLogicalClientSize(
+            nativeSize: new Vector2D<int>(840, 1680),
+            framebufferSize: new Vector2D<int>(1680, 3360),
+            cachedWidth: 420,
+            cachedHeight: 840,
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(new Vector2D<int>(840, 1680), logicalSize);
+    }
+
+    [Fact]
+    public void ResolveLogicalClientSizeUsesFramebufferFallbackWhenNativeSizeIsMissing()
+    {
+        var logicalSize = ProGpuWpfWindowHost.ResolveLogicalClientSize(
+            nativeSize: new Vector2D<int>(0, 0),
             framebufferSize: new Vector2D<int>(840, 1680),
             cachedWidth: 420,
             cachedHeight: 840,
@@ -1011,40 +1053,14 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void ResolveLogicalClientSizeKeepsCachedDipsWhenNativeSizeReportsPhysicalClient()
+    public void ResolveLogicalClientSizeUsesCacheOnlyWhenNativeAndFramebufferAreMissing()
     {
         var logicalSize = ProGpuWpfWindowHost.ResolveLogicalClientSize(
-            nativeSize: new Vector2D<int>(840, 1680),
-            framebufferSize: new Vector2D<int>(1680, 3360),
+            nativeSize: new Vector2D<int>(0, 0),
+            framebufferSize: new Vector2D<int>(0, 0),
             cachedWidth: 420,
             cachedHeight: 840,
             monitorDpiScale: 2.0);
-
-        Assert.Equal(new Vector2D<int>(420, 840), logicalSize);
-    }
-
-    [Fact]
-    public void ResolveLogicalClientSizeInfersScaleWhenMonitorScaleIsUnavailable()
-    {
-        var logicalSize = ProGpuWpfWindowHost.ResolveLogicalClientSize(
-            nativeSize: new Vector2D<int>(840, 1680),
-            framebufferSize: new Vector2D<int>(840, 1680),
-            cachedWidth: 420,
-            cachedHeight: 840,
-            monitorDpiScale: 1.0);
-
-        Assert.Equal(new Vector2D<int>(420, 840), logicalSize);
-    }
-
-    [Fact]
-    public void ResolveLogicalClientSizeInfersScaleWhenNativeClientLooksPhysicalAndFramebufferIsScaledAgain()
-    {
-        var logicalSize = ProGpuWpfWindowHost.ResolveLogicalClientSize(
-            nativeSize: new Vector2D<int>(840, 1680),
-            framebufferSize: new Vector2D<int>(1680, 3360),
-            cachedWidth: 420,
-            cachedHeight: 840,
-            monitorDpiScale: 1.0);
 
         Assert.Equal(new Vector2D<int>(420, 840), logicalSize);
     }
@@ -1063,22 +1079,22 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void ResolveCachedLogicalClientDimensionKeepsRequestedDipsWhenSourceCacheIsPhysical()
+    public void ResolveCachedLogicalClientDimensionPrefersLivePortableSource()
     {
         var dimension = ProGpuWpfWindowHost.ResolveCachedLogicalClientDimension(
             portablePresentationSourceDimension: 840,
             requestedLogicalDimension: 420,
             currentClientDimension: 420);
 
-        Assert.Equal(420, dimension);
+        Assert.Equal(840, dimension);
     }
 
     [Fact]
-    public void ResolveCachedLogicalClientDimensionKeepsPortableSourceDipsWhenRequestedCacheIsPhysical()
+    public void ResolveCachedLogicalClientDimensionFallsBackToRequestedSize()
     {
         var dimension = ProGpuWpfWindowHost.ResolveCachedLogicalClientDimension(
-            portablePresentationSourceDimension: 420,
-            requestedLogicalDimension: 840,
+            portablePresentationSourceDimension: 0,
+            requestedLogicalDimension: 420,
             currentClientDimension: 840);
 
         Assert.Equal(420, dimension);
@@ -1112,7 +1128,7 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void NativeResizeNormalizesPhysicalFramebufferSizeOnHighDpiMonitor()
+    public void NativeResizeTrustsSilkLogicalClientSizeOnHighDpiMonitor()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
         {
@@ -1120,17 +1136,17 @@ public sealed class ProGpuWpfWindowHostTests
             Height = 840
         });
 
-        Assert.False(host.UpdateClientSizeFromNativeResize(
+        Assert.True(host.UpdateClientSizeFromNativeResize(
             new Vector2D<int>(840, 1680),
             new Vector2D<int>(840, 1680),
             monitorDpiScale: 2.0));
 
-        Assert.Equal(420, host.Width);
-        Assert.Equal(840, host.Height);
+        Assert.Equal(840, host.Width);
+        Assert.Equal(1680, host.Height);
     }
 
     [Fact]
-    public void NativeResizeKeepsRequestedDipsWhenFramebufferReportIsMissing()
+    public void NativeResizeTrustsSilkLogicalClientSizeWhenFramebufferReportIsMissing()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
         {
@@ -1138,13 +1154,13 @@ public sealed class ProGpuWpfWindowHostTests
             Height = 840
         });
 
-        Assert.False(host.UpdateClientSizeFromNativeResize(
+        Assert.True(host.UpdateClientSizeFromNativeResize(
             new Vector2D<int>(840, 1680),
             new Vector2D<int>(0, 0),
             monitorDpiScale: 2.0));
 
-        Assert.Equal(420, host.Width);
-        Assert.Equal(840, host.Height);
+        Assert.Equal(840, host.Width);
+        Assert.Equal(1680, host.Height);
     }
 
     [Fact]
@@ -1166,7 +1182,7 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void NativeResizeKeepsCachedDipsWhenNativeClientSizeIsPhysical()
+    public void NativeResizeDoesNotTreatACommonDpiRatioAsPhysicalSize()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
         {
@@ -1174,17 +1190,17 @@ public sealed class ProGpuWpfWindowHostTests
             Height = 840
         });
 
-        Assert.False(host.UpdateClientSizeFromNativeResize(
+        Assert.True(host.UpdateClientSizeFromNativeResize(
             new Vector2D<int>(840, 1680),
             new Vector2D<int>(1680, 3360),
             monitorDpiScale: 2.0));
 
-        Assert.Equal(420, host.Width);
-        Assert.Equal(840, host.Height);
+        Assert.Equal(840, host.Width);
+        Assert.Equal(1680, host.Height);
     }
 
     [Fact]
-    public void NativeResizeRestoresRequestedDipsWhenPortableSourceCacheWasPhysical()
+    public void NativeResizeDoesNotLetPortableSourceCacheOverrideSilkClientSize()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
         {
@@ -1195,17 +1211,17 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.True(host.TryBindPortablePresentationSource(source));
         Assert.True(host.UpdatePortablePresentationSourceClientSize(840, 1680));
 
-        Assert.False(host.UpdateClientSizeFromNativeResize(
+        Assert.True(host.UpdateClientSizeFromNativeResize(
             new Vector2D<int>(840, 1680),
             new Vector2D<int>(840, 1680),
             monitorDpiScale: 2.0));
 
-        Assert.Equal(420, host.Width);
-        Assert.Equal(840, host.Height);
+        Assert.Equal(840, host.Width);
+        Assert.Equal(1680, host.Height);
     }
 
     [Fact]
-    public void NativeResizeKeepsCachedDipsWhenNativeClientLooksPhysicalAndFramebufferIsScaledAgain()
+    public void NativeResizeUsesSilkClientSizeWhenMonitorScaleIsUnavailable()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
         {
@@ -1213,109 +1229,43 @@ public sealed class ProGpuWpfWindowHostTests
             Height = 840
         });
 
-        Assert.False(host.UpdateClientSizeFromNativeResize(
+        Assert.True(host.UpdateClientSizeFromNativeResize(
             new Vector2D<int>(840, 1680),
             new Vector2D<int>(1680, 3360),
             monitorDpiScale: 1.0));
 
-        Assert.Equal(420, host.Width);
-        Assert.Equal(840, host.Height);
+        Assert.Equal(840, host.Width);
+        Assert.Equal(1680, host.Height);
     }
 
     [Fact]
-    public void NativeResizeRestoresRequestedDipsWhenStartupNativeCacheWasPolluted()
+    public void NativeResizeAppliesMaximizedWslgClientSizeInsteadOfStaleCache()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
         {
-            Width = 420,
-            Height = 840
+            Width = 1100,
+            Height = 700
         });
 
-        SetPrivateField(host, "_clientWidth", 840);
-        SetPrivateField(host, "_clientHeight", 1680);
-
         Assert.True(host.UpdateClientSizeFromNativeResize(
-            new Vector2D<int>(840, 1680),
-            new Vector2D<int>(1680, 3360),
+            new Vector2D<int>(1920, 1040),
+            new Vector2D<int>(1920, 1040),
             monitorDpiScale: 2.0));
 
-        Assert.Equal(420, host.Width);
-        Assert.Equal(840, host.Height);
+        Assert.Equal(1920, host.Width);
+        Assert.Equal(1040, host.Height);
 
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
             host.Width,
             host.Height,
-            framebufferSize: new Vector2D<int>(840, 1680),
+            framebufferSize: new Vector2D<int>(1920, 1040),
             monitorDpiScale: 2.0);
 
-        Assert.Equal(420u, geometry.LogicalWidth);
-        Assert.Equal(840u, geometry.LogicalHeight);
-        Assert.Equal(840u, geometry.PixelWidth);
-        Assert.Equal(1680u, geometry.PixelHeight);
-        Assert.Equal(2.0, geometry.DpiScale);
-    }
-
-    [Fact]
-    public void NativeResizeRestoresDeclaredDipsWhenRequestedCacheWasPolluted()
-    {
-        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
-        {
-            Width = 420,
-            Height = 840
-        });
-
-        SetPrivateField(host, "_clientWidth", 840);
-        SetPrivateField(host, "_clientHeight", 1680);
-        SetPrivateField(host, "_requestedLogicalClientWidth", 840);
-        SetPrivateField(host, "_requestedLogicalClientHeight", 1680);
-
-        Assert.True(host.UpdateClientSizeFromNativeResize(
-            new Vector2D<int>(840, 1680),
-            new Vector2D<int>(840, 1680),
-            monitorDpiScale: 2.0));
-
-        Assert.Equal(420, host.Width);
-        Assert.Equal(840, host.Height);
-
-        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
-            host.Width,
-            host.Height,
-            framebufferSize: new Vector2D<int>(840, 1680),
-            monitorDpiScale: 2.0);
-
-        Assert.Equal(420u, geometry.LogicalWidth);
-        Assert.Equal(840u, geometry.LogicalHeight);
-        Assert.Equal(840u, geometry.PixelWidth);
-        Assert.Equal(1680u, geometry.PixelHeight);
-        Assert.Equal(2.0, geometry.DpiScale);
-    }
-
-    [Fact]
-    public void NativeResizeRestoresRootRenderDipsWhenAllStartupCachesArePhysical()
-    {
-        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
-        {
-            Width = 420,
-            Height = 840
-        });
-        var root = new TestRootElement();
-        root.SetRenderSize(420, 840);
-        host.WpfRootVisual = root;
-
-        SetPrivateField(host, "_clientWidth", 840);
-        SetPrivateField(host, "_clientHeight", 1680);
-        SetPrivateField(host, "_requestedLogicalClientWidth", 840);
-        SetPrivateField(host, "_requestedLogicalClientHeight", 1680);
-        SetPrivateField(host, "_declaredLogicalClientWidth", 840);
-        SetPrivateField(host, "_declaredLogicalClientHeight", 1680);
-
-        Assert.True(host.UpdateClientSizeFromNativeResize(
-            new Vector2D<int>(840, 1680),
-            new Vector2D<int>(840, 1680),
-            monitorDpiScale: 2.0));
-
-        Assert.Equal(420, host.Width);
-        Assert.Equal(840, host.Height);
+        Assert.Equal(1920u, geometry.LogicalWidth);
+        Assert.Equal(1040u, geometry.LogicalHeight);
+        Assert.Equal(1920u, geometry.PixelWidth);
+        Assert.Equal(1040u, geometry.PixelHeight);
+        Assert.Equal(1.0, geometry.DpiScale);
     }
 
     [Fact]
@@ -1370,7 +1320,7 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical()
+    public void NativeResizeDoesNotLetPortablePresentationSourceOverrideSilkClientSize()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
         {
@@ -1381,13 +1331,13 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.True(host.TryBindPortablePresentationSource(source));
         Assert.True(host.UpdatePortablePresentationSourceClientSize(420, 840));
 
-        Assert.True(host.UpdateClientSizeFromNativeResize(
+        Assert.False(host.UpdateClientSizeFromNativeResize(
             new Vector2D<int>(840, 1680),
             new Vector2D<int>(1680, 3360),
             monitorDpiScale: 1.0));
 
-        Assert.Equal(420, host.Width);
-        Assert.Equal(840, host.Height);
+        Assert.Equal(840, host.Width);
+        Assert.Equal(1680, host.Height);
     }
 
     [Fact]

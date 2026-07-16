@@ -152,7 +152,7 @@ public partial class App : Application
         AssertEqual(840u, GetProperty(geometry, "ViewportWidth"), "SDK smoke Retina viewport width");
         AssertEqual(1680u, GetProperty(geometry, "ViewportHeight"), "SDK smoke Retina viewport height");
         AssertEqual(2.0, GetProperty(geometry, "DpiScale"), "SDK smoke Retina DPI scale");
-        ValidateHostRecoversDeclaredLogicalSize(hostType, vector2DIntType, dpiScale);
+        ValidateHostUsesSilkLogicalClientSize(hostType, vector2DIntType, dpiScale);
 
         ValidateRetainedOwnerBranchFillsPhysicalTarget(proGpuWpf, proGpuBackend, silkNetWebGpu);
         ValidateRetainedOwnerBranchPreservesLogicalMarkerOrigin(proGpuWpf, proGpuBackend, silkNetWebGpu);
@@ -164,7 +164,7 @@ public partial class App : Application
         ValidateRuntimeAssetMatchesLocalPackage(proGpuBackend, "ProGPU.Backend", "ProGPU.Backend", "net10.0");
     }
 
-    private static void ValidateHostRecoversDeclaredLogicalSize(
+    private static void ValidateHostUsesSilkLogicalClientSize(
         Type hostType,
         Type vector2DIntType,
         double dpiScale)
@@ -184,7 +184,9 @@ public partial class App : Application
             SetField(host, "_requestedLogicalClientWidth", 840);
             SetField(host, "_requestedLogicalClientHeight", 1680);
 
-            object nativeRetinaSize = Activator.CreateInstance(vector2DIntType, 840, 1680)
+            object nativeLogicalSize = Activator.CreateInstance(vector2DIntType, 420, 840)
+                ?? throw new InvalidOperationException("Could not create Silk.NET logical client size.");
+            object retinaFramebufferSize = Activator.CreateInstance(vector2DIntType, 840, 1680)
                 ?? throw new InvalidOperationException("Could not create Silk.NET Retina framebuffer size.");
             MethodInfo updateNativeResize = RequireMethodByParameterNames(
                 hostType,
@@ -192,10 +194,10 @@ public partial class App : Application
                 "size",
                 "framebufferSize",
                 "monitorDpiScale");
-            updateNativeResize.Invoke(host, new[] { nativeRetinaSize, nativeRetinaSize, dpiScale });
+            updateNativeResize.Invoke(host, new[] { nativeLogicalSize, retinaFramebufferSize, dpiScale });
 
-            AssertEqual(420, GetProperty(host, "Width"), "SDK smoke live host recovered logical width");
-            AssertEqual(840, GetProperty(host, "Height"), "SDK smoke live host recovered logical height");
+            AssertEqual(420, GetProperty(host, "Width"), "SDK smoke live host uses Silk logical width");
+            AssertEqual(840, GetProperty(host, "Height"), "SDK smoke live host uses Silk logical height");
         }
         finally
         {

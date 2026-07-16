@@ -18262,11 +18262,10 @@ internal static class Program
                 windowHostType,
                 "ResolveCachedLogicalClientDimension",
                 ["portablePresentationSourceDimension", "requestedLogicalDimension", "currentClientDimension"]);
-            AssertMethodCallsMethod(
-                resolveCachedLogicalDimension,
-                windowHostType.FullName ?? string.Empty,
-                "DimensionsDifferByDpiScale",
-                "external SDK ProGPU WPF host logical-size cache DPI reconciliation");
+            AssertEqual(
+                typeof(int),
+                resolveCachedLogicalDimension.ReturnType,
+                "external SDK ProGPU WPF host typed logical-size cache return type");
             MethodInfo resolveMonitorDpiScale = FindMethodByParameterNames(
                 windowHostType,
                 "ResolveMonitorDpiScaleWithPlatformFallback",
@@ -18443,7 +18442,8 @@ internal static class Program
             object dpiScale = InvokeRequired(resolveDisplayScale, [1.0, new Func<double?>(() => 2.0)]);
             AssertEqual(2.0, dpiScale, $"{descriptionPrefix} packaged Retina startup display scale");
 
-            object nativeRetinaSize = Create(vector2DIntType, 840, 1680);
+            object nativeLogicalSize = Create(vector2DIntType, 420, 840);
+            object retinaFramebufferSize = Create(vector2DIntType, 840, 1680);
             MethodInfo updateNativeResize = windowHostType.GetMethod(
                 "UpdateClientSizeFromNativeResize",
                 BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -18451,7 +18451,7 @@ internal static class Program
                 [vector2DIntType, vector2DIntType, typeof(double)],
                 modifiers: null)
                 ?? throw new MissingMethodException(windowHostType.FullName, "UpdateClientSizeFromNativeResize");
-            InvokeMethod(updateNativeResize, host, nativeRetinaSize, nativeRetinaSize, dpiScale);
+            InvokeMethod(updateNativeResize, host, nativeLogicalSize, retinaFramebufferSize, dpiScale);
             AssertEqual(420, GetProperty(host, "Width"), $"{descriptionPrefix} packaged Retina startup logical host width");
             AssertEqual(840, GetProperty(host, "Height"), $"{descriptionPrefix} packaged Retina startup logical host height");
 
@@ -18459,7 +18459,7 @@ internal static class Program
             SetField(host, "_clientHeight", 1680);
             SetField(host, "_requestedLogicalClientWidth", 840);
             SetField(host, "_requestedLogicalClientHeight", 1680);
-            InvokeMethod(updateNativeResize, host, nativeRetinaSize, nativeRetinaSize, dpiScale);
+            InvokeMethod(updateNativeResize, host, nativeLogicalSize, retinaFramebufferSize, dpiScale);
             AssertEqual(420, GetProperty(host, "Width"), $"{descriptionPrefix} packaged Retina polluted-cache logical host width");
             AssertEqual(840, GetProperty(host, "Height"), $"{descriptionPrefix} packaged Retina polluted-cache logical host height");
 
@@ -18470,7 +18470,7 @@ internal static class Program
                 [typeof(int), typeof(int), vector2DIntType, typeof(double)],
                 modifiers: null)
                 ?? throw new MissingMethodException(windowHostType.FullName, "ResolveRenderSurfaceGeometry");
-            object geometry = InvokeMethod(resolveGeometry, null, 420, 840, nativeRetinaSize, dpiScale)
+            object geometry = InvokeMethod(resolveGeometry, null, 420, 840, retinaFramebufferSize, dpiScale)
                 ?? throw new InvalidOperationException($"{descriptionPrefix} packaged Retina render surface geometry was null.");
             AssertEqual(420u, GetProperty(geometry, "LogicalWidth"), $"{descriptionPrefix} packaged Retina render logical width");
             AssertEqual(840u, GetProperty(geometry, "LogicalHeight"), $"{descriptionPrefix} packaged Retina render logical height");

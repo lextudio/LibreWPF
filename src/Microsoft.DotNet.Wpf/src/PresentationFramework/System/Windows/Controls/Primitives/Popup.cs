@@ -1807,7 +1807,12 @@ namespace System.Windows.Controls.Primitives
             CancelPortableSettledPosition();
             _portablePlacementTrackingDeadline =
                 Environment.TickCount64 + (long)PortablePlacementSettleDelay.TotalMilliseconds;
-            _portableSettledPosition = new DispatcherTimer(DispatcherPriority.Render)
+            // Menu and ComboBox Opened handlers can invalidate popup content after the
+            // initial position has already been applied.  A Render-priority tracking tick
+            // can then observe the new target state with the old PopupRoot size and expose
+            // a one-frame placement above or beside the target.  Loaded priority runs after
+            // that layout/render pass, so each native move uses one coherent layout snapshot.
+            _portableSettledPosition = new DispatcherTimer(DispatcherPriority.Loaded)
             {
                 Interval = PortablePlacementTrackingInterval
             };

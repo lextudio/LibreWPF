@@ -371,6 +371,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SchedulePortableSettledPosition();", popup, StringComparison.Ordinal);
         Assert.Contains("PortablePlacementTrackingInterval", popup, StringComparison.Ordinal);
         Assert.Contains("PortablePlacementSettleDelay", popup, StringComparison.Ordinal);
+        Assert.Contains("new DispatcherTimer(DispatcherPriority.Loaded)", popup, StringComparison.Ordinal);
+        Assert.DoesNotContain("new DispatcherTimer(DispatcherPriority.Render)\n            {\n                Interval = PortablePlacementTrackingInterval", popup, StringComparison.Ordinal);
         Assert.Contains("_portableSettledPosition.Tick += OnPortableSettledPosition;", popup, StringComparison.Ordinal);
         Assert.Contains("Reposition();\n            if (Environment.TickCount64 >= _portablePlacementTrackingDeadline)", popup, StringComparison.Ordinal);
         Assert.Contains("else\n                {\n                    // A portable popup shares the owner compositor", popup, StringComparison.Ordinal);

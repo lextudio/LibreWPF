@@ -11958,7 +11958,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("originDepthOrArrayLayer", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("Origin = new Origin3D { X = 0, Y = 0, Z = originDepthOrArrayLayer }", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("finally\n        {\n            UnmapActiveBuffer();\n        }", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
-        Assert.Contains("_context.Wgpu.BufferUnmap(_buffer);", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
+        Assert.Contains("_context.Api.BufferUnmap(_buffer);", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("_context.QueueBufferDisposal((IntPtr)_buffer)", proGpuTextureReadbackBuffer, StringComparison.Ordinal);
         Assert.Contains("GpuTextureReadbackBuffer.DefaultMapTimeoutMilliseconds / 1000", proGpuTexture, StringComparison.Ordinal);
         Assert.Contains("public const int DefaultMapTimeoutMilliseconds = 30000;", proGpuBuffer, StringComparison.Ordinal);
@@ -17747,7 +17747,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK ProGPU compositor canvas pixel width explicit render target", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor physical render delegates to the retryable render core", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render pass viewport application", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("external SDK ProGPU compositor physical render target viewport", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU compositor backend-independent physical render target viewport", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RenderPassEncoderSetViewport", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndIdentityScale(proGpuWpf, proGpuScene, \"external SDK\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -17801,7 +17801,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK ProGPU compositor canvas pixel width explicit render target", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor physical render delegates to the retryable render core", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render pass viewport application", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("SDK ProGPU compositor physical render target viewport", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU compositor backend-independent physical render target viewport", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RenderPassEncoderSetViewport", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndIdentityScale(proGpuWpf, proGpuScene, \"SDK\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);

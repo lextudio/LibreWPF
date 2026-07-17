@@ -96,6 +96,11 @@ public:
                (m_measuringMethod == DWRITE_MEASURING_MODE_GDI_NATURAL);
     }
 
+    bool HasDWriteFont() const
+    {
+        return m_pIDWriteFont != NULL;
+    }
+
  protected:
     UINT16 m_usGlyphCount;
     UINT16 m_glyphRunFlags;
@@ -137,6 +142,5 @@ public:
 
     CRectF<CoordinateSpace::LocalRendering> m_boundingRect;  // Precomputed from managed side
 };
-
 
 

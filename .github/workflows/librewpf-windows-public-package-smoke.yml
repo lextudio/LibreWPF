@@ -60,12 +60,47 @@ jobs:
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Release
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Debug
 
+      - name: Analyze Windows crash dump
+        if: ${{ failure() }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dumpDirectory = Join-Path $env:GITHUB_WORKSPACE "artifacts/crash-dumps"
+          $dump = Get-ChildItem -Path $dumpDirectory -Filter "*.dmp" | Select-Object -First 1
+          if ($null -eq $dump) {
+              throw "The failed Windows public-package smoke did not produce a crash dump."
+          }
+
+          $toolDirectory = Join-Path $env:RUNNER_TEMP "librewpf-dump-tools"
+          dotnet tool install dotnet-dump --tool-path $toolDirectory
+          if ($LASTEXITCODE -ne 0) {
+              throw "Installing dotnet-dump failed."
+          }
+
+          $managedAnalysis = Join-Path $dumpDirectory "dotnet-dump-analysis.txt"
+          & (Join-Path $toolDirectory "dotnet-dump.exe") analyze $dump.FullName -c "pe" -c "threads" -c "clrstack -all" -c "dumpstack" -c "exit" 2>&1 |
+              Tee-Object -FilePath $managedAnalysis
+
+          $cdbCandidates = @(
+              "C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe",
+              "C:\Program Files\Windows Kits\10\Debuggers\x64\cdb.exe"
+          )
+          $cdb = $cdbCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if ($null -ne $cdb) {
+              $nativeAnalysis = Join-Path $dumpDirectory "cdb-analysis.txt"
+              & $cdb -z $dump.FullName -c ".ecxr; !analyze -v; kp; lm; q" 2>&1 |
+                  Tee-Object -FilePath $nativeAnalysis
+          }
+          else {
+              "CDB was not installed on the Windows runner." | Set-Content -Path (Join-Path $dumpDirectory "cdb-analysis.txt")
+          }
+
       - name: Upload Windows crash dumps
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: librewpf-windows-crash-dumps-${{ inputs.version }}
-          path: artifacts/crash-dumps/*.dmp
+          path: artifacts/crash-dumps/*
           if-no-files-found: warn
 
       - name: Remove Windows crash-dump registration

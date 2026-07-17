@@ -260,7 +260,7 @@
   </Target>
 
   <Target Name="_ProGpuWpfSdkClearMutablePackageOutputs"
-          BeforeTargets="_ProGpuWpfSdkCopyPackageRuntimeAssets"
+          BeforeTargets="CopyFilesToOutputDirectory"
           Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package' And '$(ProGpuWpfClearMutablePackageOutputs)' == 'true'">
     <ItemGroup>
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)WindowsBase.dll" />

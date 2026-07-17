@@ -28,7 +28,11 @@ public sealed class WindowsAnyCpuSmokeContractTests
         var script = File.ReadAllText(scriptPath);
 
         Assert.Contains("-Filter \"AnyCpuSmoke.exe\"", script, StringComparison.Ordinal);
-        Assert.Contains("Start-Process -FilePath $appHost.FullName -PassThru", script, StringComparison.Ordinal);
+        Assert.Contains("$appProcess = Start-Process", script, StringComparison.Ordinal);
+        Assert.Contains("-FilePath $appHost.FullName", script, StringComparison.Ordinal);
+        Assert.Contains("-RedirectStandardOutput $stdoutPath", script, StringComparison.Ordinal);
+        Assert.Contains("-RedirectStandardError $stderrPath", script, StringComparison.Ordinal);
+        Assert.Contains("Get-Content $stderrPath", script, StringComparison.Ordinal);
         Assert.Contains("$appProcess.WaitForExit(30000)", script, StringComparison.Ordinal);
         Assert.Contains("Stop-Process -Id $appProcess.Id -Force", script, StringComparison.Ordinal);
         Assert.Contains("$appProcess.ExitCode -ne 0", script, StringComparison.Ordinal);

@@ -341,6 +341,11 @@ internal static class Program
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Transpiler\" VersionOverride=\"$(ProGpuPackageVersion)\" />", "SDK CPM ProGPU transpiler package reference");
         AssertContains(portableTargets, "<Compile Include=\"$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", "SDK portable bootstrap injection");
         AssertContains(portableTargets, "_ProGpuWpfSdkCopyManagedTransportRuntimeAssets", "SDK managed transport runtime copy target");
+        AssertContains(portableTargets, "_ProGpuWpfSdkPreserveManagedTransportRuntimeAssetsInDependencyFile", "SDK managed transport dependency target");
+        AssertContains(portableTargets, "BeforeTargets=\"GenerateBuildDependencyFile\"", "SDK managed transport dependency ordering");
+        AssertContains(portableTargets, "Exclude=\"$(_ProGpuWpfManagedTransportRuntimeRoot)PresentationCore.dll\"", "SDK managed transport RID PresentationCore exclusion");
+        AssertContains(portableTargets, "<NuGetPackageId>$(ProGpuWpfManagedPackageId)</NuGetPackageId>", "SDK managed transport dependency package identity");
+        AssertContains(portableTargets, "<PathInPackage>lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/%(Filename)%(Extension)</PathInPackage>", "SDK managed transport dependency package path");
         AssertContains(portableTargets, "BeforeTargets=\"_ProGpuWpfSdkCopyPackageRuntimeAssets\"", "SDK managed transport copy ordering");
         AssertContains(portableTargets, "librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/", "SDK managed transport package root");
         AssertContains(portableTargets, "'$(RestorePackagesPath)' != ''", "SDK isolated managed transport restore root");

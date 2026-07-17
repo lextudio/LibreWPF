@@ -56,6 +56,19 @@ public sealed class WindowsAnyCpuSmokeContractTests
     }
 
     [Fact]
+    public void SmokeRequiresManagedFrameworkInTheWindowsDependencyFile()
+    {
+        var scriptPath = FindRepoPath("eng", "progpu-wpf-windows-anycpu-smoke.ps1");
+        var script = File.ReadAllText(scriptPath);
+
+        Assert.Contains("-Filter \"PresentationFramework.dll\"", script, StringComparison.Ordinal);
+        Assert.Contains("build output is missing PresentationFramework.dll", script, StringComparison.Ordinal);
+        Assert.Contains("-Filter \"AnyCpuSmoke.deps.json\"", script, StringComparison.Ordinal);
+        Assert.Contains("lib/net10.0/PresentationFramework.dll", script, StringComparison.Ordinal);
+        Assert.Contains("dependency file does not contain PresentationFramework.dll", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TransportPackagesWindowsBuiltPresentationCoreAsRidRuntimeAssets()
     {
         var projectPath = FindRepoPath(

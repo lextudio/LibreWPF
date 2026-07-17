@@ -317,6 +317,47 @@
     before RuntimeCopyLocalItems is copied.  The latter then overwrites
     PresentationCore with the selected win-x86/win-x64/win-arm64 runtime asset.
   -->
+  <Target Name="_ProGpuWpfSdkPreserveManagedTransportRuntimeAssetsInDependencyFile"
+          AfterTargets="ResolveLockFileCopyLocalFiles"
+          BeforeTargets="GenerateBuildDependencyFile"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
+    <PropertyGroup>
+      <_ProGpuWpfNuGetPackagesEnvironment>$([System.Environment]::GetEnvironmentVariable('NUGET_PACKAGES'))</_ProGpuWpfNuGetPackagesEnvironment>
+      <_ProGpuWpfManagedTransportPackageRoot Condition="'$(RestorePackagesPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(RestorePackagesPath)'))</_ProGpuWpfManagedTransportPackageRoot>
+      <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(_ProGpuWpfNuGetPackagesEnvironment)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_ProGpuWpfNuGetPackagesEnvironment)'))</_ProGpuWpfManagedTransportPackageRoot>
+      <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(NuGetPackageRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_ProGpuWpfManagedTransportPackageRoot>
+      <_ProGpuWpfManagedTransportRuntimeTfm Condition="'$([System.String]::Copy(`$(TargetFramework)`).StartsWith(`net10.`))' == 'True'">net10.0</_ProGpuWpfManagedTransportRuntimeTfm>
+      <_ProGpuWpfManagedTransportRuntimeTfm Condition="'$(_ProGpuWpfManagedTransportRuntimeTfm)' == ''">$(TargetFramework)</_ProGpuWpfManagedTransportRuntimeTfm>
+      <_ProGpuWpfManagedTransportRuntimeRoot>$(_ProGpuWpfManagedTransportPackageRoot)librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/</_ProGpuWpfManagedTransportRuntimeRoot>
+    </PropertyGroup>
+
+    <!--
+      When a RID-specific PresentationCore exists, NuGet selects that runtime
+      target and omits every ordinary runtime asset from the same package.
+      Reintroduce the remaining managed WPF assemblies before the SDK writes
+      the deps file.  PresentationCore stays excluded here so the selected
+      win-x86/win-x64/win-arm64 runtime asset remains authoritative.
+    -->
+    <ItemGroup>
+      <_ProGpuWpfManagedTransportDependencyRuntimeAsset
+        Include="$(_ProGpuWpfManagedTransportRuntimeRoot)*.dll"
+        Exclude="$(_ProGpuWpfManagedTransportRuntimeRoot)PresentationCore.dll" />
+      <RuntimeCopyLocalItems
+        Include="@(_ProGpuWpfManagedTransportDependencyRuntimeAsset)"
+        Exclude="@(RuntimeCopyLocalItems)">
+        <NuGetPackageId>$(ProGpuWpfManagedPackageId)</NuGetPackageId>
+        <NuGetPackageVersion>$(ProGpuWpfManagedPackageVersion)</NuGetPackageVersion>
+        <AssetType>runtime</AssetType>
+        <PathInPackage>lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/%(Filename)%(Extension)</PathInPackage>
+        <DestinationSubPath>%(Filename)%(Extension)</DestinationSubPath>
+        <DestinationSubDirectory></DestinationSubDirectory>
+      </RuntimeCopyLocalItems>
+    </ItemGroup>
+
+    <Error Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' Or '@(_ProGpuWpfManagedTransportDependencyRuntimeAsset)' == ''"
+           Text="LibreWPF package mode could not preserve the managed transport dependency runtime at '$(_ProGpuWpfManagedTransportRuntimeRoot)'." />
+  </Target>
+
   <Target Name="_ProGpuWpfSdkCopyManagedTransportRuntimeAssets"
           DependsOnTargets="ResolveLockFileCopyLocalFiles"
           AfterTargets="CopyFilesToOutputDirectory"

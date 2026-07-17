@@ -194,6 +194,21 @@ public partial class MainWindow : Window
             throw "LibreWPF Windows AnyCPU build output is missing PresentationNative_cor3.dll."
         }
 
+        $managedFrameworkAsset = Get-ChildItem -Path $configurationOutput -Filter "PresentationFramework.dll" -Recurse | Select-Object -First 1
+        if ($null -eq $managedFrameworkAsset) {
+            throw "LibreWPF Windows AnyCPU build output is missing PresentationFramework.dll."
+        }
+
+        $dependencyFile = Get-ChildItem -Path $configurationOutput -Filter "AnyCpuSmoke.deps.json" -Recurse | Select-Object -First 1
+        if ($null -eq $dependencyFile) {
+            throw "LibreWPF Windows AnyCPU build output is missing AnyCpuSmoke.deps.json."
+        }
+
+        $dependencyText = Get-Content $dependencyFile.FullName -Raw
+        if (!$dependencyText.Contains('lib/net10.0/PresentationFramework.dll', [StringComparison]::Ordinal)) {
+            throw "LibreWPF Windows AnyCPU dependency file does not contain PresentationFramework.dll."
+        }
+
         if (!$BuildOnly) {
             $appHost = Get-ChildItem -Path $configurationOutput -Filter "AnyCpuSmoke.exe" -Recurse | Select-Object -First 1
             if ($null -eq $appHost) {

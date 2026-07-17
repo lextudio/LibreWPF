@@ -343,6 +343,7 @@ internal static class Program
         AssertContains(portableTargets, "_ProGpuWpfSdkCopyManagedTransportRuntimeAssets", "SDK managed transport runtime copy target");
         AssertContains(portableTargets, "BeforeTargets=\"_ProGpuWpfSdkCopyPackageRuntimeAssets\"", "SDK managed transport copy ordering");
         AssertContains(portableTargets, "librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/", "SDK managed transport package root");
+        AssertContains(portableTargets, "'$(RestorePackagesPath)' != ''", "SDK isolated managed transport restore root");
         AssertContains(portableTargets, "_ProGpuWpfSdkCopyPackageRuntimeAssets", "SDK managed runtime copy target");
         AssertContains(portableTargets, "_ProGpuWpfSdkCopyNativeRuntimeAssets", "SDK native runtime copy target");
 

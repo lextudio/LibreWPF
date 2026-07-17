@@ -14154,6 +14154,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<_ProGpuWpfManagedTransportRuntimeAsset Include=\"$(_ProGpuWpfManagedTransportRuntimeRoot)*.dll\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("DestinationFiles=\"@(_ProGpuWpfManagedTransportRuntimeAsset->'$(TargetDir)%(Filename)%(Extension)')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("package mode could not locate the managed transport runtime", portableTargets, StringComparison.Ordinal);
+        Assert.True(
+            portableTargets.IndexOf("'$(RestorePackagesPath)' != ''", StringComparison.Ordinal)
+                < portableTargets.IndexOf("'$(NuGetPackageRoot)' != ''", StringComparison.Ordinal),
+            "The managed transport copy must prefer the active isolated restore root over the global NuGet package root.");
         Assert.Contains("_ProGpuWpfSdkCopyPackageRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyNativeRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("DependsOnTargets=\"ResolveLockFileCopyLocalFiles\"", portableTargets, StringComparison.Ordinal);

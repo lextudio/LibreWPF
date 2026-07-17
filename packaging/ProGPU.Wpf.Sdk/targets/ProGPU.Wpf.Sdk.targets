@@ -324,9 +324,9 @@
           Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
     <PropertyGroup>
       <_ProGpuWpfNuGetPackagesEnvironment>$([System.Environment]::GetEnvironmentVariable('NUGET_PACKAGES'))</_ProGpuWpfNuGetPackagesEnvironment>
-      <_ProGpuWpfManagedTransportPackageRoot Condition="'$(NuGetPackageRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_ProGpuWpfManagedTransportPackageRoot>
-      <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(RestorePackagesPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(RestorePackagesPath)'))</_ProGpuWpfManagedTransportPackageRoot>
+      <_ProGpuWpfManagedTransportPackageRoot Condition="'$(RestorePackagesPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(RestorePackagesPath)'))</_ProGpuWpfManagedTransportPackageRoot>
       <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(_ProGpuWpfNuGetPackagesEnvironment)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_ProGpuWpfNuGetPackagesEnvironment)'))</_ProGpuWpfManagedTransportPackageRoot>
+      <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(NuGetPackageRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_ProGpuWpfManagedTransportPackageRoot>
       <_ProGpuWpfManagedTransportRuntimeTfm Condition="'$([System.String]::Copy(`$(TargetFramework)`).StartsWith(`net10.`))' == 'True'">net10.0</_ProGpuWpfManagedTransportRuntimeTfm>
       <_ProGpuWpfManagedTransportRuntimeTfm Condition="'$(_ProGpuWpfManagedTransportRuntimeTfm)' == ''">$(TargetFramework)</_ProGpuWpfManagedTransportRuntimeTfm>
       <_ProGpuWpfManagedTransportRuntimeRoot>$(_ProGpuWpfManagedTransportPackageRoot)librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/</_ProGpuWpfManagedTransportRuntimeRoot>

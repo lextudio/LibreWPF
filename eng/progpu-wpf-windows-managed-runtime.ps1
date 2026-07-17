@@ -15,7 +15,7 @@ New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 
 $perlCommand = (Get-Command perl.exe -ErrorAction Stop).Source
 
-function Invoke-WpfProjectBuild([string] $projectPath, [string] $platform) {
+function Invoke-WpfProjectBuild([string] $projectPath, [string] $platform, [string] $runtimeIdentifier) {
     & $buildCommand `
         -ci `
         -configuration $Configuration `
@@ -26,6 +26,7 @@ function Invoke-WpfProjectBuild([string] $projectPath, [string] $platform) {
         -excludeCIBinarylog `
         -warnAsError 0 `
         "/p:PerlCommand=$perlCommand" `
+        "/p:RuntimeIdentifier=$runtimeIdentifier" `
         /p:RunNetFrameworkApiCompat=false `
         /p:RunRefApiCompat=false
     if ($LASTEXITCODE -ne 0) {
@@ -33,7 +34,7 @@ function Invoke-WpfProjectBuild([string] $projectPath, [string] $platform) {
     }
 }
 
-Invoke-WpfProjectBuild $buildTasksProject "x86"
+Invoke-WpfProjectBuild $buildTasksProject "x86" "win-x86"
 
 $runtimePlatforms = [ordered]@{
     "win-x86" = "x86"
@@ -44,7 +45,7 @@ $runtimePlatforms = [ordered]@{
 foreach ($entry in $runtimePlatforms.GetEnumerator()) {
     $runtimeIdentifier = $entry.Key
     $platform = $entry.Value
-    Invoke-WpfProjectBuild $project $platform
+    Invoke-WpfProjectBuild $project $platform $runtimeIdentifier
 
     $presentationCore = Join-Path $repoRoot "artifacts/bin/PresentationCore/$platform/$Configuration/net10.0/PresentationCore.dll"
     if (!(Test-Path $presentationCore)) {

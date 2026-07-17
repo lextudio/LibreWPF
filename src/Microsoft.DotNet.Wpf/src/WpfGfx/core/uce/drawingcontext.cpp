@@ -1917,14 +1917,6 @@ CDrawingContext::DrawGlyphRun(
         goto Cleanup;
     }
 
-    // Portable glyph runs intentionally do not carry a DirectWrite COM font.
-    // Their retained rendering is owned by the ProGPU compositor, so the
-    // legacy native MIL pass must not enter DirectWrite with a null font.
-    if (!pGlyphRun->HasDWriteFont())
-    {
-        goto Cleanup;
-    }
-
     if (pGlyphRun->ShouldUseGeometry(&m_contextState.WorldToDevice, m_contextState.GetCurrentOrDefaultDisplaySettings()))
     {
         const CMilGeometryDuce *pGeometry = pGlyphRun->GetGeometryRes();
@@ -6119,6 +6111,5 @@ HRESULT CDrawingContext::DrawRectangleOverlay(
 Cleanup:
     RRETURN(hr);
 }
-
 
 

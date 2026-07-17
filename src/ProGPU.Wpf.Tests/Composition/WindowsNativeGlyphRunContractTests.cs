@@ -5,38 +5,83 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WindowsNativeGlyphRunContractTests
 {
     [Fact]
-    public void NativeMilSkipsPortableGlyphRunsBeforeDirectWriteAccess()
+    public void ManagedMilMarshallingSkipsPortableGlyphRunsBeforeNativeDirectWriteAccess()
     {
-        var storagePath = FindRepoPath(
+        var portableTextPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "internal",
+            "Text",
+            "TextInterface",
+            "PortableTextInterface.cs");
+        var glyphRunPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "GlyphRun.cs");
+        var renderDataPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "RenderData.cs");
+        var generatedRenderDataPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Generated",
+            "RenderData.cs");
+        var renderDataGeneratorPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
             "src",
             "WpfGfx",
-            "core",
-            "glyph",
-            "GlyphRunCore.h");
-        var drawingContextPath = FindRepoPath(
-            "src",
-            "Microsoft.DotNet.Wpf",
-            "src",
-            "WpfGfx",
-            "core",
-            "uce",
-            "drawingcontext.cpp");
+            "codegen",
+            "mcg",
+            "generators",
+            "renderdata.cs");
 
-        var storage = File.ReadAllText(storagePath);
-        var drawingContext = File.ReadAllText(drawingContextPath);
+        var portableText = File.ReadAllText(portableTextPath);
+        var glyphRun = File.ReadAllText(glyphRunPath);
+        var renderData = File.ReadAllText(renderDataPath);
+        var generatedRenderData = File.ReadAllText(generatedRenderDataPath);
+        var renderDataGenerator = File.ReadAllText(renderDataGeneratorPath);
 
-        Assert.Contains("bool HasDWriteFont() const", storage, StringComparison.Ordinal);
-        Assert.Contains("return m_pIDWriteFont != NULL;", storage, StringComparison.Ordinal);
+        Assert.Contains("internal bool HasDWriteFont => false;", portableText, StringComparison.Ordinal);
+        Assert.Contains("return _glyphTypeface.HasDWriteFont;", glyphRun, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(renderData, "resource is GlyphRun glyphRun && !glyphRun.HasDWriteFont"));
+        Assert.Contains("data.hGlyphRun = glyphRun.HasDWriteFont", generatedRenderData, StringComparison.Ordinal);
+        Assert.Contains(": 0;", generatedRenderData, StringComparison.Ordinal);
+        Assert.Contains("instruction.Name == \"DrawGlyphRun\" && field.PropertyName == \"GlyphRun\"", renderDataGenerator, StringComparison.Ordinal);
+        Assert.Contains("[[handleName]] = glyphRun.HasDWriteFont", renderDataGenerator, StringComparison.Ordinal);
+    }
 
-        var nullGlyphRunCheck = drawingContext.IndexOf("if (NULL == pGlyphRun)", StringComparison.Ordinal);
-        var portableGlyphRunCheck = drawingContext.IndexOf("if (!pGlyphRun->HasDWriteFont())", StringComparison.Ordinal);
-        var directWritePath = drawingContext.IndexOf("pGlyphRun->ShouldUseGeometry", StringComparison.Ordinal);
+    private static int CountOccurrences(string source, string value)
+    {
+        var count = 0;
+        var offset = 0;
 
-        Assert.True(nullGlyphRunCheck >= 0);
-        Assert.True(portableGlyphRunCheck > nullGlyphRunCheck);
-        Assert.True(directWritePath > portableGlyphRunCheck);
+        while ((offset = source.IndexOf(value, offset, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            offset += value.Length;
+        }
+
+        return count;
     }
 
     private static string FindRepoPath(params string[] pathSegments)

@@ -342,6 +342,11 @@ namespace System.Windows.Media
                     {
                         DUCE.IResource resource = _dependentResources[i] as DUCE.IResource;
 
+                        if (resource is GlyphRun glyphRun && !glyphRun.HasDWriteFont)
+                        {
+                            continue;
+                        }
+
                         resource?.AddRefOnChannel(channel);
                     }
 
@@ -366,6 +371,11 @@ namespace System.Windows.Media
                     for (int i = 0; i < _dependentResources.Count; i++)
                     {
                         DUCE.IResource resource = _dependentResources[i] as DUCE.IResource;
+
+                        if (resource is GlyphRun glyphRun && !glyphRun.HasDWriteFont)
+                        {
+                            continue;
+                        }
 
                         resource?.ReleaseOnChannel(channel);
                     }

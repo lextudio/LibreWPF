@@ -757,6 +757,8 @@ namespace MS.Internal.Text.TextInterface
 
         internal double Version => FontData.Version;
 
+        internal bool HasDWriteFont => false;
+
         internal IntPtr DWriteFontAddRef => IntPtr.Zero;
 
         internal bool HasCharacter(uint unicodeScalar)

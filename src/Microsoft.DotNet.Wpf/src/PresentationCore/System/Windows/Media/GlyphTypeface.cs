@@ -1653,6 +1653,15 @@ namespace System.Windows.Media
                 return _font.DWriteFontAddRef;
             }
         }
+
+        internal bool HasDWriteFont
+        {
+            get
+            {
+                CheckInitialized();
+                return _font.HasDWriteFont;
+            }
+        }
         
         #endregion Internal Properties
 

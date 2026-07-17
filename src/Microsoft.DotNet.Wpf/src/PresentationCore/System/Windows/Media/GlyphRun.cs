@@ -1775,6 +1775,15 @@ namespace System.Windows.Media
 
         private DUCE.MultiChannelResource _mcr = new DUCE.MultiChannelResource();
 
+        internal bool HasDWriteFont
+        {
+            get
+            {
+                CheckInitialized();
+                return _glyphTypeface.HasDWriteFont;
+            }
+        }
+
         /// <summary>
         /// Generate a series of requests to create or update
         /// slave glyph run resource and all depending data.

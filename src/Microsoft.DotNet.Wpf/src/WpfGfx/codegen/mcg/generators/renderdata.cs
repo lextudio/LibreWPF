@@ -950,15 +950,37 @@ namespace MS.Internal.MilCodeGen.Generators
                         {
                             string handleName = "data.h" + field.PropertyName;
 
-                            cs.Write(
-                                [[inline]]
+                            if (instruction.Name == "DrawGlyphRun" && field.PropertyName == "GlyphRun")
+                            {
+                                cs.Write(
+                                    [[inline]]
+
+                                        if ( [[handleName]] != 0 )
+                                        {
+                                            GlyphRun glyphRun = (GlyphRun)_dependentResources[(int)([[handleName]] - 1)];
+
+                                            // ProGPU replays portable glyph runs directly from the managed
+                                            // RenderData stream. Stock MIL requires a live IDWriteFont, so
+                                            // leave its glyph handle null and use its existing null draw path.
+                                            [[handleName]] = glyphRun.HasDWriteFont
+                                                ? (uint)((DUCE.IResource)glyphRun).GetHandle(channel)
+                                                : 0;
+                                        }
+                                    [[/inline]]
+                                    );
+                            }
+                            else
+                            {
+                                cs.Write(
+                                    [[inline]]
 
                                         if ( [[handleName]] != 0 )
                                         {
                                             [[handleName]] = (uint)(((DUCE.IResource)_dependentResources[ (int)( [[handleName]] - 1)]).GetHandle(channel));
                                         }
-                                [[/inline]]
-                                );
+                                    [[/inline]]
+                                    );
+                            }
                         }
                     }
 
@@ -2455,6 +2477,5 @@ namespace MS.Internal.MilCodeGen.Generators
         #endregion Public Methods
     }
 }
-
 
 

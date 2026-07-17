@@ -199,6 +199,11 @@ public partial class MainWindow : Window
             throw "LibreWPF Windows AnyCPU build output is missing PresentationFramework.dll."
         }
 
+        $directWriteForwarderAsset = Get-ChildItem -Path $configurationOutput -Filter "DirectWriteForwarder.dll" -Recurse | Select-Object -First 1
+        if ($null -eq $directWriteForwarderAsset) {
+            throw "LibreWPF Windows AnyCPU build output is missing DirectWriteForwarder.dll."
+        }
+
         $dependencyFile = Get-ChildItem -Path $configurationOutput -Filter "AnyCpuSmoke.deps.json" -Recurse | Select-Object -First 1
         if ($null -eq $dependencyFile) {
             throw "LibreWPF Windows AnyCPU build output is missing AnyCpuSmoke.deps.json."
@@ -207,6 +212,10 @@ public partial class MainWindow : Window
         $dependencyText = Get-Content $dependencyFile.FullName -Raw
         if (!$dependencyText.Contains('lib/net10.0/PresentationFramework.dll', [StringComparison]::Ordinal)) {
             throw "LibreWPF Windows AnyCPU dependency file does not contain PresentationFramework.dll."
+        }
+
+        if (!$dependencyText.Contains('DirectWriteForwarder.dll', [StringComparison]::Ordinal)) {
+            throw "LibreWPF Windows AnyCPU dependency file does not contain DirectWriteForwarder.dll."
         }
 
         if (!$BuildOnly) {

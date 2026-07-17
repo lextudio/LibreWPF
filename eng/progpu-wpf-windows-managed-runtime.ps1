@@ -106,13 +106,29 @@ foreach ($entry in $runtimePlatforms.GetEnumerator()) {
         throw "The Windows PresentationCore build did not produce $presentationCore."
     }
 
+    $directWriteForwarderRoot = Join-Path $repoRoot "artifacts/bin/DirectWriteForwarder"
+    if ($platform -ne "x86") {
+        $directWriteForwarderRoot = Join-Path $directWriteForwarderRoot $platform
+    }
+
+    $directWriteForwarder = Join-Path $directWriteForwarderRoot "$Configuration/net10.0/DirectWriteForwarder.dll"
+    if (!(Test-Path $directWriteForwarder)) {
+        throw "The Windows PresentationCore build did not produce $directWriteForwarder."
+    }
+
     $runtimeOutput = Join-Path $outputDirectory "$runtimeIdentifier/net10.0"
     New-Item -ItemType Directory -Path $runtimeOutput -Force | Out-Null
     Copy-Item $presentationCore (Join-Path $runtimeOutput "PresentationCore.dll") -Force
+    Copy-Item $directWriteForwarder (Join-Path $runtimeOutput "DirectWriteForwarder.dll") -Force
 
     $pdb = [System.IO.Path]::ChangeExtension($presentationCore, ".pdb")
     if (Test-Path $pdb) {
         Copy-Item $pdb (Join-Path $runtimeOutput "PresentationCore.pdb") -Force
+    }
+
+    $directWriteForwarderPdb = [System.IO.Path]::ChangeExtension($directWriteForwarder, ".pdb")
+    if (Test-Path $directWriteForwarderPdb) {
+        Copy-Item $directWriteForwarderPdb (Join-Path $runtimeOutput "DirectWriteForwarder.pdb") -Force
     }
 }
 

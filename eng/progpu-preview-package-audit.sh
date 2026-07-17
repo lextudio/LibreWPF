@@ -247,6 +247,9 @@ transport_entries=(
   "runtimes/win-x86/lib/${transport_target_framework}/PresentationCore.dll"
   "runtimes/win-x64/lib/${transport_target_framework}/PresentationCore.dll"
   "runtimes/win-arm64/lib/${transport_target_framework}/PresentationCore.dll"
+  "runtimes/win-x86/lib/${transport_target_framework}/DirectWriteForwarder.dll"
+  "runtimes/win-x64/lib/${transport_target_framework}/DirectWriteForwarder.dll"
+  "runtimes/win-arm64/lib/${transport_target_framework}/DirectWriteForwarder.dll"
 )
 
 for entry in "${transport_entries[@]}"; do
@@ -264,6 +267,16 @@ for rid in win-x86 win-x64 win-arm64; do
   require_entry_sha256 LibreWPF.Transport \
     "runtimes/${rid}/lib/${transport_target_framework}/PresentationCore.dll" \
     "${windows_presentation_core_hash}"
+
+  windows_direct_write_forwarder="${windows_managed_payload_dir}/${rid}/${transport_target_framework}/DirectWriteForwarder.dll"
+  if [[ ! -f "${windows_direct_write_forwarder}" ]]; then
+    echo "Windows-built DirectWriteForwarder payload is missing at ${windows_direct_write_forwarder}." >&2
+    exit 1
+  fi
+  windows_direct_write_forwarder_hash="$(sha256_stdin < "${windows_direct_write_forwarder}")"
+  require_entry_sha256 LibreWPF.Transport \
+    "runtimes/${rid}/lib/${transport_target_framework}/DirectWriteForwarder.dll" \
+    "${windows_direct_write_forwarder_hash}"
 done
 
 symbol_manifest_entry="notices/LibreWPF.FluentSymbols/SOURCE-MANIFEST.json"

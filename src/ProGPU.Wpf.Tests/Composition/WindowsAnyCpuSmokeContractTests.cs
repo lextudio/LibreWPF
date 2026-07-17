@@ -66,6 +66,9 @@ public sealed class WindowsAnyCpuSmokeContractTests
         Assert.Contains("-Filter \"AnyCpuSmoke.deps.json\"", script, StringComparison.Ordinal);
         Assert.Contains("lib/net10.0/PresentationFramework.dll", script, StringComparison.Ordinal);
         Assert.Contains("dependency file does not contain PresentationFramework.dll", script, StringComparison.Ordinal);
+        Assert.Contains("-Filter \"DirectWriteForwarder.dll\"", script, StringComparison.Ordinal);
+        Assert.Contains("build output is missing DirectWriteForwarder.dll", script, StringComparison.Ordinal);
+        Assert.Contains("dependency file does not contain DirectWriteForwarder.dll", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -106,6 +109,10 @@ public sealed class WindowsAnyCpuSmokeContractTests
         Assert.Contains("Microsoft.NETCore.App.Host.$_", buildScript, StringComparison.Ordinal);
         Assert.Contains("/p:IjwHostSourcePath=$ijwHostSourcePath", buildScript, StringComparison.Ordinal);
         Assert.Contains("net10.0/$runtimeIdentifier/PresentationCore.dll", buildScript, StringComparison.Ordinal);
+        Assert.Contains("artifacts/bin/DirectWriteForwarder", buildScript, StringComparison.Ordinal);
+        Assert.Contains("DirectWriteForwarder.dll", buildScript, StringComparison.Ordinal);
+        Assert.Contains("_LibreWpfWinX64DirectWriteForwarder", project, StringComparison.Ordinal);
+        Assert.Contains("runtimes/${rid}/lib/${transport_target_framework}/DirectWriteForwarder.dll", audit, StringComparison.Ordinal);
         Assert.Contains("RemoveProperties=\"RuntimeIdentifier\"", presentationBuildTasksTargets, StringComparison.Ordinal);
         Assert.Contains("require_entry_sha256 LibreWPF.Transport", audit, StringComparison.Ordinal);
         Assert.Contains("windows-managed-runtime:", ciWorkflow, StringComparison.Ordinal);

@@ -121,6 +121,10 @@ foreach ($entry in $runtimePlatforms.GetEnumerator()) {
     Copy-Item $presentationCore (Join-Path $runtimeOutput "PresentationCore.dll") -Force
     Copy-Item $directWriteForwarder (Join-Path $runtimeOutput "DirectWriteForwarder.dll") -Force
 
+    $nativeRuntimeOutput = Join-Path $outputDirectory "$runtimeIdentifier/native"
+    New-Item -ItemType Directory -Path $nativeRuntimeOutput -Force | Out-Null
+    Copy-Item $ijwHost (Join-Path $nativeRuntimeOutput "ijwhost.dll") -Force
+
     $pdb = [System.IO.Path]::ChangeExtension($presentationCore, ".pdb")
     if (Test-Path $pdb) {
         Copy-Item $pdb (Join-Path $runtimeOutput "PresentationCore.pdb") -Force

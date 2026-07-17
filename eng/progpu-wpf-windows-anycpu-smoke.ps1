@@ -204,6 +204,11 @@ public partial class MainWindow : Window
             throw "LibreWPF Windows AnyCPU build output is missing DirectWriteForwarder.dll."
         }
 
+        $ijwHostAsset = Get-ChildItem -Path $configurationOutput -Filter "ijwhost.dll" -Recurse | Select-Object -First 1
+        if ($null -eq $ijwHostAsset) {
+            throw "LibreWPF Windows AnyCPU build output is missing ijwhost.dll."
+        }
+
         $dependencyFile = Get-ChildItem -Path $configurationOutput -Filter "AnyCpuSmoke.deps.json" -Recurse | Select-Object -First 1
         if ($null -eq $dependencyFile) {
             throw "LibreWPF Windows AnyCPU build output is missing AnyCpuSmoke.deps.json."
@@ -216,6 +221,10 @@ public partial class MainWindow : Window
 
         if (!$dependencyText.Contains('DirectWriteForwarder.dll', [StringComparison]::Ordinal)) {
             throw "LibreWPF Windows AnyCPU dependency file does not contain DirectWriteForwarder.dll."
+        }
+
+        if (!$dependencyText.Contains('ijwhost.dll', [StringComparison]::Ordinal)) {
+            throw "LibreWPF Windows AnyCPU dependency file does not contain ijwhost.dll."
         }
 
         if (!$BuildOnly) {

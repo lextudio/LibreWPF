@@ -13,7 +13,7 @@
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF transport package with portable managed presentation assemblies, references, themes, XAML build tasks, and runtime metadata.</PackageDescription>
-    <PackageReleaseNotes>Aligns LibreWPF with ProGPU preview.21; packages architecture-specific Windows DirectWrite PresentationCore and DirectWriteForwarder runtimes for visible stock-Windows text while retaining the portable ProGPU renderer on macOS and Linux; adds a Windows package smoke that rejects blank TextBlock output; settles native popup placement after layout for WPF Gallery and SharpDevelop menus; preserves hosted double-click input, high-DPI logical sizing, native title chrome, resize-time rendering, text selection, keyboard shortcuts, and safe drag selection; and retains bounded GPU memory and glyph-atlas scrolling performance.</PackageReleaseNotes>
+    <PackageReleaseNotes>Aligns LibreWPF with ProGPU preview.21; packages architecture-specific Windows DirectWrite PresentationCore, DirectWriteForwarder, and IJW host runtimes for visible stock-Windows text while retaining the portable ProGPU renderer on macOS and Linux; adds a Windows package smoke that rejects blank TextBlock output; settles native popup placement after layout for WPF Gallery and SharpDevelop menus; preserves hosted double-click input, high-DPI logical sizing, native title chrome, resize-time rendering, text selection, keyboard shortcuts, and safe drag selection; and retains bounded GPU memory and glyph-atlas scrolling performance.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>
@@ -60,11 +60,17 @@
     <_LibreWpfWinX86DirectWriteForwarder Include="$(LibreWpfWindowsManagedPayloadDir)/win-x86/net10.0/DirectWriteForwarder.dll" />
     <_LibreWpfWinX64DirectWriteForwarder Include="$(LibreWpfWindowsManagedPayloadDir)/win-x64/net10.0/DirectWriteForwarder.dll" />
     <_LibreWpfWinArm64DirectWriteForwarder Include="$(LibreWpfWindowsManagedPayloadDir)/win-arm64/net10.0/DirectWriteForwarder.dll" />
+    <_LibreWpfWinX86IjwHost Include="$(LibreWpfWindowsManagedPayloadDir)/win-x86/native/ijwhost.dll" />
+    <_LibreWpfWinX64IjwHost Include="$(LibreWpfWindowsManagedPayloadDir)/win-x64/native/ijwhost.dll" />
+    <_LibreWpfWinArm64IjwHost Include="$(LibreWpfWindowsManagedPayloadDir)/win-arm64/native/ijwhost.dll" />
 
     <!-- These are NuGet pack items, independent of WPF Arcade's single-platform staging folder. -->
     <None Include="@(_LibreWpfWinX86Native)" Pack="true" PackagePath="runtimes/win-x86/native" />
     <None Include="@(_LibreWpfWinX64Native)" Pack="true" PackagePath="runtimes/win-x64/native" />
     <None Include="@(_LibreWpfWinArm64Native)" Pack="true" PackagePath="runtimes/win-arm64/native" />
+    <None Include="@(_LibreWpfWinX86IjwHost)" Pack="true" PackagePath="runtimes/win-x86/native" />
+    <None Include="@(_LibreWpfWinX64IjwHost)" Pack="true" PackagePath="runtimes/win-x64/native" />
+    <None Include="@(_LibreWpfWinArm64IjwHost)" Pack="true" PackagePath="runtimes/win-arm64/native" />
     <None Include="@(_LibreWpfWindowsDesktopLicense)" Pack="true" PackagePath="notices/Microsoft.WindowsDesktop.App.Runtime" />
     <!--
       PresentationCore's text implementation is selected when it is compiled:
@@ -101,6 +107,12 @@
            Text="The win-x64 DirectWriteForwarder payload is missing under $(LibreWpfWindowsManagedPayloadDir)." />
     <Error Condition="!Exists('$(LibreWpfWindowsManagedPayloadDir)/win-arm64/net10.0/DirectWriteForwarder.dll')"
            Text="The win-arm64 DirectWriteForwarder payload is missing under $(LibreWpfWindowsManagedPayloadDir)." />
+    <Error Condition="!Exists('$(LibreWpfWindowsManagedPayloadDir)/win-x86/native/ijwhost.dll')"
+           Text="The win-x86 IJW host payload is missing under $(LibreWpfWindowsManagedPayloadDir)." />
+    <Error Condition="!Exists('$(LibreWpfWindowsManagedPayloadDir)/win-x64/native/ijwhost.dll')"
+           Text="The win-x64 IJW host payload is missing under $(LibreWpfWindowsManagedPayloadDir)." />
+    <Error Condition="!Exists('$(LibreWpfWindowsManagedPayloadDir)/win-arm64/native/ijwhost.dll')"
+           Text="The win-arm64 IJW host payload is missing under $(LibreWpfWindowsManagedPayloadDir)." />
   </Target>
 
   <ItemGroup>

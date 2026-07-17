@@ -20,7 +20,7 @@
     <PlatformIndependentPackage>true</PlatformIndependentPackage>
     <LibreWpfWindowsDesktopRuntimeVersion Condition="'$(LibreWpfWindowsDesktopRuntimeVersion)' == ''">$(ProGpuWpfNet10SupportPackageVersion)</LibreWpfWindowsDesktopRuntimeVersion>
     <LibreWpfWindowsDesktopRuntimeVersion Condition="'$(LibreWpfWindowsDesktopRuntimeVersion)' == ''">10.0.9</LibreWpfWindowsDesktopRuntimeVersion>
-    <LibreWpfWindowsManagedPayloadDir Condition="'$(LibreWpfWindowsManagedPayloadDir)' == ''">$(MSBuildThisFileDirectory)..\..\artifacts\windows-managed-runtime\net10.0</LibreWpfWindowsManagedPayloadDir>
+    <LibreWpfWindowsManagedPayloadDir Condition="'$(LibreWpfWindowsManagedPayloadDir)' == ''">$(MSBuildThisFileDirectory)..\..\artifacts\windows-managed-runtime</LibreWpfWindowsManagedPayloadDir>
     <_LibreWpfNuGetPackageRoot>$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_LibreWpfNuGetPackageRoot>
   </PropertyGroup>
 
@@ -54,7 +54,9 @@
     <_LibreWpfWinX64Native Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x64/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-x64/native/*.dll" />
     <_LibreWpfWinArm64Native Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-arm64/$(LibreWpfWindowsDesktopRuntimeVersion)/runtimes/win-arm64/native/*.dll" />
     <_LibreWpfWindowsDesktopLicense Include="$(_LibreWpfNuGetPackageRoot)microsoft.windowsdesktop.app.runtime.win-x64/$(LibreWpfWindowsDesktopRuntimeVersion)/LICENSE" />
-    <_LibreWpfWindowsPresentationCore Include="$(LibreWpfWindowsManagedPayloadDir)/PresentationCore.dll" />
+    <_LibreWpfWinX86PresentationCore Include="$(LibreWpfWindowsManagedPayloadDir)/win-x86/net10.0/PresentationCore.dll" />
+    <_LibreWpfWinX64PresentationCore Include="$(LibreWpfWindowsManagedPayloadDir)/win-x64/net10.0/PresentationCore.dll" />
+    <_LibreWpfWinArm64PresentationCore Include="$(LibreWpfWindowsManagedPayloadDir)/win-arm64/net10.0/PresentationCore.dll" />
 
     <!-- These are NuGet pack items, independent of WPF Arcade's single-platform staging folder. -->
     <None Include="@(_LibreWpfWinX86Native)" Pack="true" PackagePath="runtimes/win-x86/native" />
@@ -66,9 +68,9 @@
       DirectWrite on Windows, portable SFNT elsewhere. Keep the portable build in
       lib/net10.0 and let NuGet select this AnyCPU Windows build at runtime.
     -->
-    <None Include="@(_LibreWpfWindowsPresentationCore)" Pack="true" PackagePath="runtimes/win-x86/lib/net10.0" />
-    <None Include="@(_LibreWpfWindowsPresentationCore)" Pack="true" PackagePath="runtimes/win-x64/lib/net10.0" />
-    <None Include="@(_LibreWpfWindowsPresentationCore)" Pack="true" PackagePath="runtimes/win-arm64/lib/net10.0" />
+    <None Include="@(_LibreWpfWinX86PresentationCore)" Pack="true" PackagePath="runtimes/win-x86/lib/net10.0" />
+    <None Include="@(_LibreWpfWinX64PresentationCore)" Pack="true" PackagePath="runtimes/win-x64/lib/net10.0" />
+    <None Include="@(_LibreWpfWinArm64PresentationCore)" Pack="true" PackagePath="runtimes/win-arm64/lib/net10.0" />
   </ItemGroup>
 
   <Target Name="_ValidateLibreWpfWindowsDesktopNativeAssets"
@@ -81,8 +83,12 @@
            Text="Microsoft.WindowsDesktop.App.Runtime.win-arm64 $(LibreWpfWindowsDesktopRuntimeVersion) native assets were not restored." />
     <Error Condition="'@(_LibreWpfWindowsDesktopLicense)' == ''"
            Text="Microsoft.WindowsDesktop.App.Runtime $(LibreWpfWindowsDesktopRuntimeVersion) license was not restored." />
-    <Error Condition="!Exists('$(LibreWpfWindowsManagedPayloadDir)/PresentationCore.dll')"
-           Text="The Windows-built PresentationCore payload is missing at $(LibreWpfWindowsManagedPayloadDir)/PresentationCore.dll." />
+    <Error Condition="!Exists('$(LibreWpfWindowsManagedPayloadDir)/win-x86/net10.0/PresentationCore.dll')"
+           Text="The win-x86 PresentationCore payload is missing under $(LibreWpfWindowsManagedPayloadDir)." />
+    <Error Condition="!Exists('$(LibreWpfWindowsManagedPayloadDir)/win-x64/net10.0/PresentationCore.dll')"
+           Text="The win-x64 PresentationCore payload is missing under $(LibreWpfWindowsManagedPayloadDir)." />
+    <Error Condition="!Exists('$(LibreWpfWindowsManagedPayloadDir)/win-arm64/net10.0/PresentationCore.dll')"
+           Text="The win-arm64 PresentationCore payload is missing under $(LibreWpfWindowsManagedPayloadDir)." />
   </Target>
 
   <ItemGroup>

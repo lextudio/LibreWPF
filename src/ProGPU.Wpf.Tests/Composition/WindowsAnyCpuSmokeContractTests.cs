@@ -77,6 +77,10 @@ public sealed class WindowsAnyCpuSmokeContractTests
         Assert.Contains("PresentationBuildTasks.csproj", buildScript, StringComparison.Ordinal);
         Assert.Contains("build.cmd", buildScript, StringComparison.Ordinal);
         Assert.Contains("-msbuildEngine vs", buildScript, StringComparison.Ordinal);
+        Assert.Contains("-nativeToolsOnMachine", buildScript, StringComparison.Ordinal);
+        Assert.Contains("\"win-x86\" = \"x86\"", buildScript, StringComparison.Ordinal);
+        Assert.Contains("\"win-x64\" = \"x64\"", buildScript, StringComparison.Ordinal);
+        Assert.Contains("\"win-arm64\" = \"arm64\"", buildScript, StringComparison.Ordinal);
         Assert.Contains("/p:TargetFramework=net10.0", buildScript, StringComparison.Ordinal);
         Assert.Contains("require_entry_sha256 LibreWPF.Transport", audit, StringComparison.Ordinal);
         Assert.Contains("windows-managed-runtime:", ciWorkflow, StringComparison.Ordinal);

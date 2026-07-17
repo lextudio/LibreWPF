@@ -253,13 +253,14 @@ for entry in "${transport_entries[@]}"; do
   require_entry LibreWPF.Transport "${entry}"
 done
 
-windows_presentation_core="${LIBREWPF_WINDOWS_MANAGED_PAYLOAD_DIR:-${repo_root}/artifacts/windows-managed-runtime/net10.0}/PresentationCore.dll"
-if [[ ! -f "${windows_presentation_core}" ]]; then
-  echo "Windows-built PresentationCore payload is missing at ${windows_presentation_core}." >&2
-  exit 1
-fi
-windows_presentation_core_hash="$(sha256_stdin < "${windows_presentation_core}")"
+windows_managed_payload_dir="${LIBREWPF_WINDOWS_MANAGED_PAYLOAD_DIR:-${repo_root}/artifacts/windows-managed-runtime}"
 for rid in win-x86 win-x64 win-arm64; do
+  windows_presentation_core="${windows_managed_payload_dir}/${rid}/${transport_target_framework}/PresentationCore.dll"
+  if [[ ! -f "${windows_presentation_core}" ]]; then
+    echo "Windows-built PresentationCore payload is missing at ${windows_presentation_core}." >&2
+    exit 1
+  fi
+  windows_presentation_core_hash="$(sha256_stdin < "${windows_presentation_core}")"
   require_entry_sha256 LibreWPF.Transport \
     "runtimes/${rid}/lib/${transport_target_framework}/PresentationCore.dll" \
     "${windows_presentation_core_hash}"

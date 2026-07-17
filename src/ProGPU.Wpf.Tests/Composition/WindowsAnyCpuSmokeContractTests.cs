@@ -74,6 +74,8 @@ public sealed class WindowsAnyCpuSmokeContractTests
         Assert.Contains("runtimes/win-x64/lib/net10.0", project, StringComparison.Ordinal);
         Assert.Contains("runtimes/win-arm64/lib/net10.0", project, StringComparison.Ordinal);
         Assert.Contains("PresentationCore.dll", buildScript, StringComparison.Ordinal);
+        Assert.Contains("PresentationBuildTasks.csproj", buildScript, StringComparison.Ordinal);
+        Assert.Contains("dotnet build $buildTasksProject", buildScript, StringComparison.Ordinal);
         Assert.Contains("dotnet build $project -c $Configuration -f net10.0", buildScript, StringComparison.Ordinal);
         Assert.Contains("require_entry_sha256 LibreWPF.Transport", audit, StringComparison.Ordinal);
         Assert.Contains("windows-managed-runtime:", ciWorkflow, StringComparison.Ordinal);

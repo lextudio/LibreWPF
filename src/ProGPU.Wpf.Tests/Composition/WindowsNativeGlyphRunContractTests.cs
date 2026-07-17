@@ -54,12 +54,40 @@ public sealed class WindowsNativeGlyphRunContractTests
             "mcg",
             "generators",
             "renderdata.cs");
+        var nativeFontHeaderPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "DirectWriteForwarder",
+            "CPP",
+            "DWriteWrapper",
+            "Font.h");
+        var nativeFontSourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "DirectWriteForwarder",
+            "CPP",
+            "DWriteWrapper",
+            "Font.cpp");
+        var typefaceMapPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "internal",
+            "Shaping",
+            "TypefaceMap.cs");
 
         var portableText = File.ReadAllText(portableTextPath);
         var glyphRun = File.ReadAllText(glyphRunPath);
         var renderData = File.ReadAllText(renderDataPath);
         var generatedRenderData = File.ReadAllText(generatedRenderDataPath);
         var renderDataGenerator = File.ReadAllText(renderDataGeneratorPath);
+        var nativeFontHeader = File.ReadAllText(nativeFontHeaderPath);
+        var nativeFontSource = File.ReadAllText(nativeFontSourcePath);
+        var typefaceMap = File.ReadAllText(typefaceMapPath);
 
         Assert.Contains("internal bool HasDWriteFont => false;", portableText, StringComparison.Ordinal);
         Assert.Contains("return _glyphTypeface.HasDWriteFont;", glyphRun, StringComparison.Ordinal);
@@ -68,6 +96,10 @@ public sealed class WindowsNativeGlyphRunContractTests
         Assert.Contains(": 0;", generatedRenderData, StringComparison.Ordinal);
         Assert.Contains("instruction.Name == \"DrawGlyphRun\" && field.PropertyName == \"GlyphRun\"", renderDataGenerator, StringComparison.Ordinal);
         Assert.Contains("[[handleName]] = glyphRun.HasDWriteFont", renderDataGenerator, StringComparison.Ordinal);
+        Assert.Contains("property bool HasDWriteFont", nativeFontHeader, StringComparison.Ordinal);
+        Assert.Contains("bool Font::HasDWriteFont::get()", nativeFontSource, StringComparison.Ordinal);
+        Assert.Contains("spans = new List<Span>(analyzedSpans.Count);", typefaceMap, StringComparison.Ordinal);
+        Assert.Contains("new Span(analyzedSpan.element, analyzedSpan.length)", typefaceMap, StringComparison.Ordinal);
     }
 
     private static int CountOccurrences(string source, string value)

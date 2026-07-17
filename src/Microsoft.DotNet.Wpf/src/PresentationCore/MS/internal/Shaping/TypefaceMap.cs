@@ -107,7 +107,7 @@ namespace MS.Internal.Shaping
             {
                 checked 
                 {
-                    spans = MS.Internal.Text.TextInterface.TextAnalyzer.Itemize(
+                    var analyzedSpans = MS.Internal.Text.TextInterface.TextAnalyzer.Itemize(
                         (char*)ptext.ToPointer(),
                         (uint)stringLength,
                         culture,
@@ -122,6 +122,17 @@ namespace MS.Internal.Shaping
                         UnsafeNativeMethods.GetNumberSubstitutionList,
                         UnsafeNativeMethods.CreateTextAnalysisSource
                         );
+
+                    // DirectWriteForwarder owns its native itemization DTO while
+                    // PresentationCore owns the Span values consumed by SpanVector.
+                    // Copy the two primitive fields across the assembly boundary so
+                    // the Windows build does not depend on equal-looking CLR type
+                    // identities being assignment-compatible.
+                    spans = new List<Span>(analyzedSpans.Count);
+                    foreach (var analyzedSpan in analyzedSpans)
+                    {
+                        spans.Add(new Span(analyzedSpan.element, analyzedSpan.length));
+                    }
                 }
 }
             characterBufferReference.CharacterBuffer.UnpinCharacterPointer(gcHandle);

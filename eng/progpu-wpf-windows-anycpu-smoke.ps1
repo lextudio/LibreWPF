@@ -90,7 +90,10 @@ public partial class App : Application
         Title="LibreWPF AnyCPU Smoke"
         Width="320"
         Height="180">
-  <TextBlock Text="LibreWPF AnyCPU native runtime smoke" />
+  <TextBlock x:Name="SmokeText"
+             Text="LibreWPF visible text"
+             FontSize="32"
+             Foreground="Black" />
 </Window>
 '@ | Set-Content -Path (Join-Path $projectRoot "MainWindow.xaml") -Encoding utf8
 
@@ -98,6 +101,8 @@ public partial class App : Application
 using System;
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace AnyCpuSmoke;
 
@@ -130,7 +135,38 @@ public partial class MainWindow : Window
         }
 
         _nativePath = nativePath;
+        AssertTextRendered();
         _renderLifetimeTimer.Start();
+    }
+
+    private void AssertTextRendered()
+    {
+        SmokeText.UpdateLayout();
+        int width = Math.Max(1, (int)Math.Ceiling(SmokeText.ActualWidth));
+        int height = Math.Max(1, (int)Math.Ceiling(SmokeText.ActualHeight));
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(SmokeText);
+
+        int stride = checked(width * 4);
+        byte[] pixels = new byte[checked(stride * height)];
+        bitmap.CopyPixels(pixels, stride, 0);
+
+        int coveredPixels = 0;
+        for (int index = 3; index < pixels.Length; index += 4)
+        {
+            if (pixels[index] != 0)
+            {
+                coveredPixels++;
+            }
+        }
+
+        if (coveredPixels < 32)
+        {
+            throw new InvalidOperationException(
+                $"LibreWPF rendered no visible text pixels (coverage={coveredPixels}).");
+        }
+
+        Console.WriteLine($"LibreWPF visible-text smoke rendered {coveredPixels} covered pixels.");
     }
 
     private void OnRenderLifetimeElapsed(object? sender, EventArgs e)

@@ -14,8 +14,36 @@ permissions:
   contents: read
 
 jobs:
+  windows-managed-runtime:
+    name: Windows managed runtime payload
+    runs-on: windows-2025
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build Windows PresentationCore
+        shell: pwsh
+        run: ./eng/progpu-wpf-windows-managed-runtime.ps1
+
+      - name: Upload Windows managed runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: librewpf-windows-managed-runtime-${{ github.sha }}
+          path: artifacts/windows-managed-runtime/net10.0/*
+          if-no-files-found: error
+
   sdk-smoke:
     name: SDK package and no-source-change smoke
+    needs: windows-managed-runtime
     runs-on: macos-15
     timeout-minutes: 60
 
@@ -29,6 +57,12 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+
+      - name: Download Windows managed runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: librewpf-windows-managed-runtime-${{ github.sha }}
+          path: artifacts/windows-managed-runtime/net10.0
 
       - name: Run LibreWPF SDK gate
         run: ./eng/progpu-wpf-sdk-ci.sh

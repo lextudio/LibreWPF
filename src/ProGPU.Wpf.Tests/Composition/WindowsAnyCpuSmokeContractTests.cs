@@ -36,6 +36,52 @@ public sealed class WindowsAnyCpuSmokeContractTests
         Assert.DoesNotContain("dotnet run --project", script, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void SmokeRequiresVisibleTextPixelsInsteadOfProcessSurvivalAlone()
+    {
+        var scriptPath = FindRepoPath("eng", "progpu-wpf-windows-anycpu-smoke.ps1");
+        var script = File.ReadAllText(scriptPath);
+
+        Assert.Contains("x:Name=\"SmokeText\"", script, StringComparison.Ordinal);
+        Assert.Contains("new RenderTargetBitmap", script, StringComparison.Ordinal);
+        Assert.Contains("bitmap.Render(SmokeText);", script, StringComparison.Ordinal);
+        Assert.Contains("bitmap.CopyPixels", script, StringComparison.Ordinal);
+        Assert.Contains("if (coveredPixels < 32)", script, StringComparison.Ordinal);
+        Assert.Contains("LibreWPF rendered no visible text pixels", script, StringComparison.Ordinal);
+        Assert.Contains("AssertTextRendered();", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TransportPackagesWindowsBuiltPresentationCoreAsRidRuntimeAssets()
+    {
+        var projectPath = FindRepoPath(
+            "packaging",
+            "Microsoft.DotNet.Wpf.GitHub",
+            "Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj");
+        var buildScriptPath = FindRepoPath("eng", "progpu-wpf-windows-managed-runtime.ps1");
+        var auditPath = FindRepoPath("eng", "progpu-preview-package-audit.sh");
+        var ciWorkflowPath = FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml");
+        var releaseWorkflowPath = FindRepoPath(".github", "workflows", "progpu-wpf-release.yml");
+
+        var project = File.ReadAllText(projectPath);
+        var buildScript = File.ReadAllText(buildScriptPath);
+        var audit = File.ReadAllText(auditPath);
+        var ciWorkflow = File.ReadAllText(ciWorkflowPath);
+        var releaseWorkflow = File.ReadAllText(releaseWorkflowPath);
+
+        Assert.Contains("LibreWpfWindowsManagedPayloadDir", project, StringComparison.Ordinal);
+        Assert.Contains("runtimes/win-x86/lib/net10.0", project, StringComparison.Ordinal);
+        Assert.Contains("runtimes/win-x64/lib/net10.0", project, StringComparison.Ordinal);
+        Assert.Contains("runtimes/win-arm64/lib/net10.0", project, StringComparison.Ordinal);
+        Assert.Contains("PresentationCore.dll", buildScript, StringComparison.Ordinal);
+        Assert.Contains("dotnet build $project -c $Configuration -f net10.0", buildScript, StringComparison.Ordinal);
+        Assert.Contains("require_entry_sha256 LibreWPF.Transport", audit, StringComparison.Ordinal);
+        Assert.Contains("windows-managed-runtime:", ciWorkflow, StringComparison.Ordinal);
+        Assert.Contains("needs: windows-managed-runtime", ciWorkflow, StringComparison.Ordinal);
+        Assert.Contains("windows-managed-runtime:", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("needs: windows-managed-runtime", releaseWorkflow, StringComparison.Ordinal);
+    }
+
     private static string FindRepoPath(params string[] pathSegments)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

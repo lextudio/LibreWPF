@@ -24,8 +24,37 @@ permissions:
   contents: write
 
 jobs:
+  windows-managed-runtime:
+    name: Windows managed runtime payload
+    runs-on: windows-2025
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || github.ref }}
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build Windows PresentationCore
+        shell: pwsh
+        run: ./eng/progpu-wpf-windows-managed-runtime.ps1
+
+      - name: Upload Windows managed runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: librewpf-windows-managed-runtime-${{ github.sha }}
+          path: artifacts/windows-managed-runtime/net10.0/*
+          if-no-files-found: error
+
   preview:
     name: Build preview packages
+    needs: windows-managed-runtime
     runs-on: macos-15
     timeout-minutes: 120
     outputs:
@@ -42,6 +71,12 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+
+      - name: Download Windows managed runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: librewpf-windows-managed-runtime-${{ github.sha }}
+          path: artifacts/windows-managed-runtime/net10.0
 
       - name: Resolve release version
         id: release-version

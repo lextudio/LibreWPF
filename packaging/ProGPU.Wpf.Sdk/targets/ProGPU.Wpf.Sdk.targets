@@ -310,6 +310,39 @@
           SkipUnchangedFiles="true" />
   </Target>
 
+  <!--
+    NuGet deliberately removes framework-conflict assemblies such as
+    PresentationFramework from RuntimeCopyLocalItems.  Restore the complete
+    top-level LibreWPF transport payload directly from the immutable package
+    before RuntimeCopyLocalItems is copied.  The latter then overwrites
+    PresentationCore with the selected win-x86/win-x64/win-arm64 runtime asset.
+  -->
+  <Target Name="_ProGpuWpfSdkCopyManagedTransportRuntimeAssets"
+          DependsOnTargets="ResolveLockFileCopyLocalFiles"
+          AfterTargets="CopyFilesToOutputDirectory"
+          BeforeTargets="_ProGpuWpfSdkCopyPackageRuntimeAssets"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
+    <PropertyGroup>
+      <_ProGpuWpfNuGetPackagesEnvironment>$([System.Environment]::GetEnvironmentVariable('NUGET_PACKAGES'))</_ProGpuWpfNuGetPackagesEnvironment>
+      <_ProGpuWpfManagedTransportPackageRoot Condition="'$(NuGetPackageRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_ProGpuWpfManagedTransportPackageRoot>
+      <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(RestorePackagesPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(RestorePackagesPath)'))</_ProGpuWpfManagedTransportPackageRoot>
+      <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(_ProGpuWpfNuGetPackagesEnvironment)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_ProGpuWpfNuGetPackagesEnvironment)'))</_ProGpuWpfManagedTransportPackageRoot>
+      <_ProGpuWpfManagedTransportRuntimeTfm Condition="'$([System.String]::Copy(`$(TargetFramework)`).StartsWith(`net10.`))' == 'True'">net10.0</_ProGpuWpfManagedTransportRuntimeTfm>
+      <_ProGpuWpfManagedTransportRuntimeTfm Condition="'$(_ProGpuWpfManagedTransportRuntimeTfm)' == ''">$(TargetFramework)</_ProGpuWpfManagedTransportRuntimeTfm>
+      <_ProGpuWpfManagedTransportRuntimeRoot>$(_ProGpuWpfManagedTransportPackageRoot)librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/</_ProGpuWpfManagedTransportRuntimeRoot>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_ProGpuWpfManagedTransportRuntimeAsset Include="$(_ProGpuWpfManagedTransportRuntimeRoot)*.dll" />
+    </ItemGroup>
+
+    <Error Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' Or '@(_ProGpuWpfManagedTransportRuntimeAsset)' == ''"
+           Text="LibreWPF package mode could not locate the managed transport runtime at '$(_ProGpuWpfManagedTransportRuntimeRoot)'." />
+    <Copy SourceFiles="@(_ProGpuWpfManagedTransportRuntimeAsset)"
+          DestinationFiles="@(_ProGpuWpfManagedTransportRuntimeAsset->'$(TargetDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="false" />
+  </Target>
+
   <Target Name="_ProGpuWpfSdkCopyPortableWinFormsCompatRuntimeAssets"
           DependsOnTargets="ResolveLockFileCopyLocalFiles"
           AfterTargets="_ProGpuWpfSdkCopyPackageRuntimeAssets"

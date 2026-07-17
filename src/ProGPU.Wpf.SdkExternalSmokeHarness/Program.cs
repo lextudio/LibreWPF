@@ -340,6 +340,9 @@ internal static class Program
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Transpiler\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU transpiler package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Transpiler\" VersionOverride=\"$(ProGpuPackageVersion)\" />", "SDK CPM ProGPU transpiler package reference");
         AssertContains(portableTargets, "<Compile Include=\"$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", "SDK portable bootstrap injection");
+        AssertContains(portableTargets, "_ProGpuWpfSdkCopyManagedTransportRuntimeAssets", "SDK managed transport runtime copy target");
+        AssertContains(portableTargets, "BeforeTargets=\"_ProGpuWpfSdkCopyPackageRuntimeAssets\"", "SDK managed transport copy ordering");
+        AssertContains(portableTargets, "librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/", "SDK managed transport package root");
         AssertContains(portableTargets, "_ProGpuWpfSdkCopyPackageRuntimeAssets", "SDK managed runtime copy target");
         AssertContains(portableTargets, "_ProGpuWpfSdkCopyNativeRuntimeAssets", "SDK native runtime copy target");
 

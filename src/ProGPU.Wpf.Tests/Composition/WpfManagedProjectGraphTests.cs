@@ -14148,6 +14148,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir)ProGPU.DirectX.dll\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir)ProGPU.Scene.dll\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Delete Files=\"@(_ProGpuWpfSdkExistingMutablePackageOutput)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("_ProGpuWpfSdkCopyManagedTransportRuntimeAssets", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("BeforeTargets=\"_ProGpuWpfSdkCopyPackageRuntimeAssets\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfManagedTransportRuntimeAsset Include=\"$(_ProGpuWpfManagedTransportRuntimeRoot)*.dll\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("DestinationFiles=\"@(_ProGpuWpfManagedTransportRuntimeAsset->'$(TargetDir)%(Filename)%(Extension)')\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("package mode could not locate the managed transport runtime", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyPackageRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyNativeRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("DependsOnTargets=\"ResolveLockFileCopyLocalFiles\"", portableTargets, StringComparison.Ordinal);

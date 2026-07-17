@@ -22,7 +22,7 @@ function Invoke-WpfProjectBuild([string] $projectPath, [string] $platform) {
         -msbuildEngine vs `
         -nativeToolsOnMachine `
         -excludeCIBinarylog `
-        -warnAsError false `
+        -warnAsError 0 `
         /p:TargetFramework=net10.0 `
         /p:RunNetFrameworkApiCompat=false `
         /p:RunRefApiCompat=false

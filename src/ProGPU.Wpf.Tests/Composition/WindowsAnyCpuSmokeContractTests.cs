@@ -62,12 +62,14 @@ public sealed class WindowsAnyCpuSmokeContractTests
         var auditPath = FindRepoPath("eng", "progpu-preview-package-audit.sh");
         var ciWorkflowPath = FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml");
         var releaseWorkflowPath = FindRepoPath(".github", "workflows", "progpu-wpf-release.yml");
+        var presentationBuildTasksTargetsPath = FindRepoPath("eng", "WpfArcadeSdk", "tools", "Pbt.targets");
 
         var project = File.ReadAllText(projectPath);
         var buildScript = File.ReadAllText(buildScriptPath);
         var audit = File.ReadAllText(auditPath);
         var ciWorkflow = File.ReadAllText(ciWorkflowPath);
         var releaseWorkflow = File.ReadAllText(releaseWorkflowPath);
+        var presentationBuildTasksTargets = File.ReadAllText(presentationBuildTasksTargetsPath);
 
         Assert.Contains("LibreWpfWindowsManagedPayloadDir", project, StringComparison.Ordinal);
         Assert.Contains("runtimes/win-x86/lib/net10.0", project, StringComparison.Ordinal);
@@ -87,6 +89,7 @@ public sealed class WindowsAnyCpuSmokeContractTests
         Assert.Contains("Microsoft.NETCore.App.Host.$_", buildScript, StringComparison.Ordinal);
         Assert.Contains("/p:IjwHostSourcePath=$ijwHostSourcePath", buildScript, StringComparison.Ordinal);
         Assert.Contains("net10.0/$runtimeIdentifier/PresentationCore.dll", buildScript, StringComparison.Ordinal);
+        Assert.Contains("RemoveProperties=\"RuntimeIdentifier\"", presentationBuildTasksTargets, StringComparison.Ordinal);
         Assert.Contains("require_entry_sha256 LibreWPF.Transport", audit, StringComparison.Ordinal);
         Assert.Contains("windows-managed-runtime:", ciWorkflow, StringComparison.Ordinal);
         Assert.Contains("needs: windows-managed-runtime", ciWorkflow, StringComparison.Ordinal);

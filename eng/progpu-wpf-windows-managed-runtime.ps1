@@ -54,6 +54,11 @@ finally {
 }
 
 function Invoke-WpfProjectBuild([string] $projectPath, [string] $platform, [string] $runtimeIdentifier, [string] $ijwHostSourcePath = "") {
+    $runtimeIdentifierArgument = @()
+    if (![string]::IsNullOrWhiteSpace($runtimeIdentifier)) {
+        $runtimeIdentifierArgument = "/p:RuntimeIdentifier=$runtimeIdentifier"
+    }
+
     $ijwHostArgument = @()
     if (![string]::IsNullOrWhiteSpace($ijwHostSourcePath)) {
         $ijwHostArgument = "/p:IjwHostSourcePath=$ijwHostSourcePath"
@@ -69,7 +74,7 @@ function Invoke-WpfProjectBuild([string] $projectPath, [string] $platform, [stri
         -excludeCIBinarylog `
         -warnAsError 0 `
         "/p:PerlCommand=$perlCommand" `
-        "/p:RuntimeIdentifier=$runtimeIdentifier" `
+        $runtimeIdentifierArgument `
         $ijwHostArgument `
         /p:RunNetFrameworkApiCompat=false `
         /p:RunRefApiCompat=false
@@ -78,7 +83,7 @@ function Invoke-WpfProjectBuild([string] $projectPath, [string] $platform, [stri
     }
 }
 
-Invoke-WpfProjectBuild $buildTasksProject "x86" "win-x86"
+Invoke-WpfProjectBuild $buildTasksProject "x86" ""
 
 $runtimePlatforms = [ordered]@{
     "win-x86" = "x86"

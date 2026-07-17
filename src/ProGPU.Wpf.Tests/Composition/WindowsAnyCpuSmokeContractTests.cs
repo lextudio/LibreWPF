@@ -84,6 +84,8 @@ public sealed class WindowsAnyCpuSmokeContractTests
         Assert.Contains("Get-Command perl.exe", buildScript, StringComparison.Ordinal);
         Assert.Contains("/p:PerlCommand=$perlCommand", buildScript, StringComparison.Ordinal);
         Assert.Contains("/p:RuntimeIdentifier=$runtimeIdentifier", buildScript, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.NETCore.App.Host.$_", buildScript, StringComparison.Ordinal);
+        Assert.Contains("/p:IjwHostSourcePath=$ijwHostSourcePath", buildScript, StringComparison.Ordinal);
         Assert.Contains("require_entry_sha256 LibreWPF.Transport", audit, StringComparison.Ordinal);
         Assert.Contains("windows-managed-runtime:", ciWorkflow, StringComparison.Ordinal);
         Assert.Contains("needs: windows-managed-runtime", ciWorkflow, StringComparison.Ordinal);

@@ -164,8 +164,15 @@ public partial class MainWindow : Window
                 throw "LibreWPF Windows AnyCPU build output is missing the AnyCPU app host."
             }
 
-            & $appHost.FullName
-            if ($LASTEXITCODE -ne 0) { throw "LibreWPF Windows AnyCPU launch failed." }
+            $appProcess = Start-Process -FilePath $appHost.FullName -PassThru
+            if (!$appProcess.WaitForExit(30000)) {
+                Stop-Process -Id $appProcess.Id -Force -ErrorAction SilentlyContinue
+                throw "LibreWPF Windows AnyCPU launch timed out."
+            }
+
+            if ($appProcess.ExitCode -ne 0) {
+                throw "LibreWPF Windows AnyCPU launch failed with exit code $($appProcess.ExitCode)."
+            }
         }
     }
     finally {

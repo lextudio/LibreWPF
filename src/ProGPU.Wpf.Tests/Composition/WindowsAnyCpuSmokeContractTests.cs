@@ -22,13 +22,17 @@ public sealed class WindowsAnyCpuSmokeContractTests
     }
 
     [Fact]
-    public void SmokeLaunchesTheBuiltAnyCpuAppHostDirectly()
+    public void SmokeWaitsForTheBuiltAnyCpuAppHostAndPropagatesItsExitCode()
     {
         var scriptPath = FindRepoPath("eng", "progpu-wpf-windows-anycpu-smoke.ps1");
         var script = File.ReadAllText(scriptPath);
 
         Assert.Contains("-Filter \"AnyCpuSmoke.exe\"", script, StringComparison.Ordinal);
-        Assert.Contains("& $appHost.FullName", script, StringComparison.Ordinal);
+        Assert.Contains("Start-Process -FilePath $appHost.FullName -PassThru", script, StringComparison.Ordinal);
+        Assert.Contains("$appProcess.WaitForExit(30000)", script, StringComparison.Ordinal);
+        Assert.Contains("Stop-Process -Id $appProcess.Id -Force", script, StringComparison.Ordinal);
+        Assert.Contains("$appProcess.ExitCode -ne 0", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("& $appHost.FullName", script, StringComparison.Ordinal);
         Assert.DoesNotContain("dotnet run --project", script, StringComparison.Ordinal);
     }
 

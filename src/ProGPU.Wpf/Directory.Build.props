@@ -6,13 +6,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <TargetFrameworkVersion>10.0</TargetFrameworkVersion>
     <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
-    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.20</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.21</VersionSuffix>
     <Version Condition="'$(Version)' == ''">$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion Condition="'$(PackageVersion)' == ''">$(Version)</PackageVersion>
     <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.1.0.0</AssemblyVersion>
     <FileVersion Condition="'$(FileVersion)' == ''">0.1.0.0</FileVersion>
     <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(Version)</InformationalVersion>
-    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Aligns LibreWPF with ProGPU preview.20; prevents the Windows AnyCPU text access violation by keeping portable glyph runs off legacy native DirectWrite while retaining ProGPU replay; settles native popup placement after layout for WPF Gallery and SharpDevelop menus; preserves hosted double-click input for Project Explorer; keeps exact high-DPI logical sizing, native title chrome, resize-time rendering, text selection, keyboard shortcuts, and safe drag selection; and retains bounded GPU memory and glyph-atlas scrolling performance.</PackageReleaseNotes>
+    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Aligns LibreWPF with ProGPU preview.21; packages architecture-specific Windows DirectWrite PresentationCore runtimes for visible stock-Windows text while retaining the portable ProGPU renderer on macOS and Linux; adds a Windows package smoke that rejects blank TextBlock output; settles native popup placement after layout for WPF Gallery and SharpDevelop menus; preserves hosted double-click input, high-DPI logical sizing, native title chrome, resize-time rendering, text selection, keyboard shortcuts, and safe drag selection; and retains bounded GPU memory and glyph-atlas scrolling performance.</PackageReleaseNotes>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

@@ -13,6 +13,8 @@ $outputDirectory = Join-Path $repoRoot "artifacts/windows-managed-runtime"
 Remove-Item -Path $outputDirectory -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 
+$perlCommand = (Get-Command perl.exe -ErrorAction Stop).Source
+
 function Invoke-WpfProjectBuild([string] $projectPath, [string] $platform) {
     & $buildCommand `
         -ci `
@@ -23,7 +25,7 @@ function Invoke-WpfProjectBuild([string] $projectPath, [string] $platform) {
         -nativeToolsOnMachine `
         -excludeCIBinarylog `
         -warnAsError 0 `
-        /p:TargetFramework=net10.0 `
+        "/p:PerlCommand=$perlCommand" `
         /p:RunNetFrameworkApiCompat=false `
         /p:RunRefApiCompat=false
     if ($LASTEXITCODE -ne 0) {

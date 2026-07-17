@@ -96,7 +96,7 @@ foreach ($entry in $runtimePlatforms.GetEnumerator()) {
 
     Invoke-WpfProjectBuild $project $platform $runtimeIdentifier $ijwHost
 
-    $presentationCore = Join-Path $repoRoot "artifacts/bin/PresentationCore/$platform/$Configuration/net10.0/PresentationCore.dll"
+    $presentationCore = Join-Path $repoRoot "artifacts/bin/PresentationCore/$platform/$Configuration/net10.0/$runtimeIdentifier/PresentationCore.dll"
     if (!(Test-Path $presentationCore)) {
         throw "The Windows PresentationCore build did not produce $presentationCore."
     }

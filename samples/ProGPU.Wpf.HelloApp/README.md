@@ -2,7 +2,7 @@
 
 This is the smallest runnable SDK-switched WPF app in the repo. The project file uses only:
 
-- `Project Sdk="LibreWPF.Sdk/0.1.0-preview.19"`
+- `Project Sdk="LibreWPF.Sdk/0.1.0-preview.20"`
 - `TargetFramework=net10.0-windows`
 - `UseWPF=true`
 
@@ -26,7 +26,7 @@ Run a live ProGPU/Silk.NET geometry validation through the same apphost:
 PROGPU_WPF_HELLO_LIVE_VALIDATE=1 ./eng/run-progpu-wpf-hello.sh
 ```
 
-If the local `0.1.0-preview.19` packages are stale or missing, rebuild the SDK package feed first:
+If the local `0.1.0-preview.20` packages are stale or missing, rebuild the SDK package feed first:
 
 ```bash
 PROGPU_WPF_HELLO_REBUILD_PACKAGES=1 ./eng/run-progpu-wpf-hello.sh

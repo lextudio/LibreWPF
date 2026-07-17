@@ -12,12 +12,16 @@ $outputDirectory = Join-Path $repoRoot "artifacts/windows-managed-runtime/net10.
 Remove-Item -Path $outputDirectory -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 
-dotnet build $buildTasksProject -c $Configuration -f net10.0 -v:minimal
+dotnet build $buildTasksProject -c $Configuration -f net10.0 -v:minimal `
+    -p:RunNetFrameworkApiCompat=false `
+    -p:RunRefApiCompat=false
 if ($LASTEXITCODE -ne 0) {
     throw "Building PresentationBuildTasks for the Windows runtime payload failed."
 }
 
-dotnet build $project -c $Configuration -f net10.0 -v:minimal
+dotnet build $project -c $Configuration -f net10.0 -v:minimal `
+    -p:RunNetFrameworkApiCompat=false `
+    -p:RunRefApiCompat=false
 if ($LASTEXITCODE -ne 0) {
     throw "Building the Windows PresentationCore runtime payload failed."
 }

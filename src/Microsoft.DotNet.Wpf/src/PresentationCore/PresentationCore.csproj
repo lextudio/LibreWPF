@@ -283,6 +283,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\SfntFontFace.cs"
              Link="MS\Internal\Text\TextInterface\ProGPU\SfntFontFace.cs"
              Condition="'$(OS)' != 'Windows_NT'" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\ArabicFallbackData.Generated.cs"
+             Link="MS\Internal\Text\TextInterface\ProGPU\ArabicFallbackData.Generated.cs"
+             Condition="'$(OS)' != 'Windows_NT'" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\SfntFontContainer.cs"
              Link="MS\Internal\Text\TextInterface\ProGPU\SfntFontContainer.cs"
              Condition="'$(OS)' != 'Windows_NT'" />

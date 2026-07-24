@@ -95,6 +95,7 @@ public sealed class WpfManagedProjectGraphTests
 
     [Theory]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontFace.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontFace.cs")]
+    [InlineData(@"external\ProGPU\src\ProGPU.Text\ArabicFallbackData.Generated.cs", @"MS\Internal\Text\TextInterface\ProGPU\ArabicFallbackData.Generated.cs")]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontContainer.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontContainer.cs")]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntSimpleGlyphShaper.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntSimpleGlyphShaper.cs")]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontSubsetter.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontSubsetter.cs")]

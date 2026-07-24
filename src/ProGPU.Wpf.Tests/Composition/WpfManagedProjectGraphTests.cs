@@ -14328,6 +14328,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateRuntimeAssetMatchesLocalPackage(proGpuDirectX, \"ProGPU.DirectX\", \"ProGPU.DirectX\", \"net10.0\")", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateRuntimeAssetMatchesLocalPackage(proGpuScene, \"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\")", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateRuntimeAssetMatchesLocalPackage(proGpuBackend, \"ProGPU.Backend\", \"ProGPU.Backend\", \"net10.0\")", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private const string LibreWpfPackageVersion = \"0.1.0-preview.28\";", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private const string ProGpuPackageVersion = \"0.1.0-preview.27\";", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("packageId == \"LibreWPF.ProGPU\"\n            ? LibreWpfPackageVersion\n            : ProGpuPackageVersion", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RequireProperty(hostType, \"DirectXDevice\", directXDeviceType)", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ComputeStreamSha256", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool SdkOutputGuardChecked", smokeAppCodeBehind, StringComparison.Ordinal);
@@ -15951,6 +15954,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<TargetFramework>$(ProGpuWpfRuntimeHarnessTargetFramework)</TargetFramework>", runtimeHarnessProject, StringComparison.Ordinal);
         Assert.Contains("<RuntimeFrameworkVersion Condition=\"&apos;$(ProGpuWpfRuntimeFrameworkVersion)&apos; != &apos;&apos;\">$(ProGpuWpfRuntimeFrameworkVersion)</RuntimeFrameworkVersion>", runtimeHarnessProject, StringComparison.Ordinal);
         Assert.Contains("private const string SmokeTargetFramework = \"net10.0-windows\";", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("private const string LibreWpfPackageVersion = \"0.1.0-preview.28\";", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("private const string ProGpuPackageVersion = \"0.1.0-preview.27\";", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("packageId is \"LibreWPF.Transport\" or \"LibreWPF.ProGPU\"\n            ? LibreWpfPackageVersion\n            : ProGpuPackageVersion", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>", runtimeHarnessProject, StringComparison.Ordinal);
         Assert.DoesNotContain("Microsoft.NET.Sdk.WindowsDesktop", runtimeHarnessProject, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGPU.Wpf.Sdk", runtimeHarnessProject, StringComparison.Ordinal);

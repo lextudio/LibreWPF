@@ -13,7 +13,8 @@ namespace ProGPU.Wpf.SdkSwitchSmoke;
 
 public partial class App : Application
 {
-    private const string PackageVersion = "0.1.0-preview.28";
+    private const string LibreWpfPackageVersion = "0.1.0-preview.28";
+    private const string ProGpuPackageVersion = "0.1.0-preview.27";
 
     public int StartupEventCount { get; private set; }
 
@@ -713,7 +714,10 @@ public partial class App : Application
                 $"SDK smoke output could not locate loaded assembly '{assemblySimpleName}'. Rebuild the package-mode SDK smoke output.");
         }
 
-        string packagePath = Path.Combine(packageFeed, $"{packageId}.{PackageVersion}.nupkg");
+        string packageVersion = packageId == "LibreWPF.ProGPU"
+            ? LibreWpfPackageVersion
+            : ProGpuPackageVersion;
+        string packagePath = Path.Combine(packageFeed, $"{packageId}.{packageVersion}.nupkg");
         if (!File.Exists(packagePath))
         {
             throw new InvalidOperationException(
@@ -732,7 +736,7 @@ public partial class App : Application
         if (!string.Equals(packageHash, runtimeHash, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
-                $"SDK smoke loaded '{assemblySimpleName}.dll' does not match '{packageId}.{PackageVersion}.nupkg'. Rebuild the package-mode SDK smoke output.");
+                $"SDK smoke loaded '{assemblySimpleName}.dll' does not match '{packageId}.{packageVersion}.nupkg'. Rebuild the package-mode SDK smoke output.");
         }
     }
 

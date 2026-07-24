@@ -11,7 +11,8 @@ using System.Security.Cryptography;
 
 internal static class Program
 {
-    private const string PackageVersion = "0.1.0-preview.28";
+    private const string LibreWpfPackageVersion = "0.1.0-preview.28";
+    private const string ProGpuPackageVersion = "0.1.0-preview.27";
     private const string PrepackagedProGpuDirectoryEnvironmentVariable = "PROGPU_WPF_PREPACKAGED_PROGPU_DIR";
     private const string SmokeTargetFramework = "net10.0-windows";
     private const string SmokeAssemblyName = "ProGPU.Wpf.SdkSwitchSmoke";
@@ -203,10 +204,11 @@ internal static class Program
         string prepackagedProGpuDirectory,
         string packageId)
     {
-        string localPackagePath = Path.Combine(packageFeed, $"{packageId}.{PackageVersion}.nupkg");
+        string packageVersion = GetPackageVersion(packageId);
+        string localPackagePath = Path.Combine(packageFeed, $"{packageId}.{packageVersion}.nupkg");
         string prepackagedSourcePath = Path.Combine(
             prepackagedProGpuDirectory,
-            $"{packageId}.{PackageVersion}.nupkg");
+            $"{packageId}.{packageVersion}.nupkg");
 
         RequireFile(localPackagePath, $"{packageId} local package");
         RequireFile(prepackagedSourcePath, $"{packageId} exact prepackaged source");
@@ -251,6 +253,13 @@ internal static class Program
         };
     }
 
+    private static string GetPackageVersion(string packageId)
+    {
+        return packageId is "LibreWPF.Transport" or "LibreWPF.ProGPU"
+            ? LibreWpfPackageVersion
+            : ProGpuPackageVersion;
+    }
+
     private static void ValidateLocalPackageAssemblyMatchesFile(
         string packageFeed,
         string packageId,
@@ -259,7 +268,8 @@ internal static class Program
         string expectedAssemblyPath,
         string expectedAssemblyDescription)
     {
-        string packagePath = Path.Combine(packageFeed, $"{packageId}.{PackageVersion}.nupkg");
+        string packageVersion = GetPackageVersion(packageId);
+        string packagePath = Path.Combine(packageFeed, $"{packageId}.{packageVersion}.nupkg");
         string packageEntryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
 
         RequireFile(packagePath, $"{packageId} local package");
@@ -352,7 +362,8 @@ internal static class Program
         string targetFramework)
     {
         string outputPath = Path.Combine(appOutputRoot, assemblySimpleName + ".dll");
-        string packagePath = Path.Combine(packageFeed, $"{packageId}.{PackageVersion}.nupkg");
+        string packageVersion = GetPackageVersion(packageId);
+        string packagePath = Path.Combine(packageFeed, $"{packageId}.{packageVersion}.nupkg");
         string packageEntryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
 
         RequireFile(outputPath, $"SDK switch output runtime asset '{assemblySimpleName}.dll'");

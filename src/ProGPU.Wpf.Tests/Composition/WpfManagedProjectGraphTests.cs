@@ -10297,6 +10297,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("BudgetEditor.Value", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AccentColorCanvas.SelectedColor", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("target.BringIntoView()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit live SplitButton host click status", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("XmlLayoutSerializer", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PropertyPane.Hide()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PropertyPane.Show()", mainWindowCodeBehind, StringComparison.Ordinal);

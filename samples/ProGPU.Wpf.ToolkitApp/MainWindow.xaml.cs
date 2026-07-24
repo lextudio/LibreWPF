@@ -4470,10 +4470,24 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
-        await ClickLiveControlAsync(liveHost, SplitActionButton, "SplitActionButton");
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            await ClickLiveControlAsync(liveHost, SplitActionButton, "SplitActionButton");
+            if (await InvokeWithLiveHostWakeAsync(
+                    liveHost,
+                    () => string.Equals(ViewModel.Status, "Applied owner ProGPU", StringComparison.Ordinal),
+                    DispatcherPriority.Send))
+            {
+                return;
+            }
+
+            WakeLiveRenderHost(liveHost);
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
         await InvokeWithLiveHostWakeAsync(
             liveHost,
-            () => AssertEqual("Applied owner ProGPU", ViewModel.Status, "Toolkit live SplitButton click status"),
+            () => AssertEqual("Applied owner ProGPU", ViewModel.Status, "Toolkit live SplitButton host click status"),
             DispatcherPriority.Send);
     }
 

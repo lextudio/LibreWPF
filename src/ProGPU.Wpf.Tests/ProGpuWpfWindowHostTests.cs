@@ -294,6 +294,31 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(1, wakeupCount);
     }
 
+    [Theory]
+    [InlineData(false, true, false, false, false, true)]
+    [InlineData(false, true, false, false, true, false)]
+    [InlineData(true, true, false, false, false, false)]
+    [InlineData(false, false, false, false, false, false)]
+    [InlineData(false, true, true, false, false, false)]
+    [InlineData(false, true, false, true, false, false)]
+    public void RenderSchedulerWakeupDoesNotRenderInlineInsideOwnerLoop(
+        bool isDisposed,
+        bool hasWindow,
+        bool isRendering,
+        bool isProcessingRenderSchedulerWakeup,
+        bool isNativeLoopRunning,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            ProGpuWpfWindowHost.ShouldProcessRenderSchedulerWakeupInline(
+                isDisposed,
+                hasWindow,
+                isRendering,
+                isProcessingRenderSchedulerWakeup,
+                isNativeLoopRunning));
+    }
+
     [Fact]
     public void NativeLoopWakeupInvokesContinueEventsAndCountsSuccessfulRequests()
     {

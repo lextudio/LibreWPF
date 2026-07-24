@@ -2880,7 +2880,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal bool TryProcessRenderSchedulerWakeup()
     {
-        if (_isDisposed || _window == null || _isRendering || _isProcessingRenderSchedulerWakeup)
+        var window = _window;
+        if (!ShouldProcessRenderSchedulerWakeupInline(
+                _isDisposed,
+                window != null,
+                _isRendering,
+                _isProcessingRenderSchedulerWakeup,
+                _isNativeLoopRunning))
         {
             return false;
         }
@@ -2902,7 +2908,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             try
             {
-                _window.DoRender();
+                window!.DoRender();
             }
             catch (Exception ex) when (IsRecoverableDispatcherRenderException(ex))
             {
@@ -2917,6 +2923,25 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _isProcessingRenderSchedulerWakeup = false;
             DisposeDeferredNativeWindowIfNeeded();
         }
+    }
+
+    internal static bool ShouldProcessRenderSchedulerWakeupInline(
+        bool isDisposed,
+        bool hasWindow,
+        bool isRendering,
+        bool isProcessingRenderSchedulerWakeup,
+        bool isNativeLoopRunning)
+    {
+        // The owner loop already guarantees one render opportunity per iteration.
+        // Rendering inline from a Dispatcher/MediaContext callback while that loop
+        // is active can recursively enter SurfacePresent and indefinitely starve
+        // the WPF dispatcher during native pointer drags. Wake the owner loop and
+        // let its next iteration render after dispatcher/input processing returns.
+        return !isDisposed
+            && hasWindow
+            && !isRendering
+            && !isProcessingRenderSchedulerWakeup
+            && !isNativeLoopRunning;
     }
 
     private static bool IsRecoverableDispatcherRenderException(Exception exception)

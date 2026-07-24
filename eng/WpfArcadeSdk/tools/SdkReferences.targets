@@ -18,7 +18,8 @@
                     And '$(MSBuildProjectExtension)' != '.vcxproj'
                     And '$(TargetFrameworkIdentifier)' == '.NETCoreApp'">
     <PackageReference Include="Accessibility"
-                      Version="$(AccessibilityPackageVersion)" />
+                      Version="$(AccessibilityPackageVersion)"
+                      GeneratePathProperty="true" />
   </ItemGroup>
 
   <Target Name="GeneratePathPropertyforMicrosoftWindowsDesktopApp"

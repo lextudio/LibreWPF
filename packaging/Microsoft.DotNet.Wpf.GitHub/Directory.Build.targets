@@ -91,6 +91,8 @@
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\UIAutomationProvider.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Windows.Input.Manipulations.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Windows.Primitives.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Windows.Presentation.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\Accessibility.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Aero.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Aero2.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.AeroLite.dll" />
@@ -112,6 +114,8 @@
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\UIAutomationProvider.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Input.Manipulations.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Primitives.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Presentation.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\Accessibility.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Aero.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Aero2.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.AeroLite.dll" />
@@ -125,6 +129,32 @@
     <Error
         Condition="!Exists('%(_RequiredManagedWpfTransportPayload.Identity)')"
         Text="The WPF transport package is missing required payload '%(_RequiredManagedWpfTransportPayload.Identity)'. Build the managed WPF assemblies for $(Configuration)|$(TargetFramework) before packing $(PackageName)." />
+  </Target>
+
+  <Target Name="AddManagedWpfTransportAccessibilityPayload"
+          BeforeTargets="CreateContentFolder"
+          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('LibreWPF.Transport')) And '$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true'">
+    <PropertyGroup>
+      <_ManagedWpfTransportLibRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\$(TargetFramework)</_ManagedWpfTransportLibRoot>
+      <_ManagedWpfTransportRefRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\ref\$(TargetFramework)</_ManagedWpfTransportRefRoot>
+      <_AccessibilityPackageRoot Condition="'$(PkgAccessibility)' != ''">$(PkgAccessibility)</_AccessibilityPackageRoot>
+      <_AccessibilityPackageRoot Condition="'$(_AccessibilityPackageRoot)' == ''">$(NuGetPackageRoot)accessibility\$(AccessibilityPackageVersion)</_AccessibilityPackageRoot>
+      <_AccessibilityAssembly>$(_AccessibilityPackageRoot)\lib\netcoreapp3.0\Accessibility.dll</_AccessibilityAssembly>
+    </PropertyGroup>
+
+    <Error
+        Condition="!Exists('$(_AccessibilityAssembly)')"
+        Text="Accessibility is missing '$(_AccessibilityAssembly)', which is required by PresentationFramework popup accessibility support." />
+
+    <MakeDir Directories="$(_ManagedWpfTransportLibRoot);$(_ManagedWpfTransportRefRoot)" />
+    <Copy
+        SourceFiles="$(_AccessibilityAssembly)"
+        DestinationFolder="$(_ManagedWpfTransportLibRoot)"
+        SkipUnchangedFiles="true" />
+    <Copy
+        SourceFiles="$(_AccessibilityAssembly)"
+        DestinationFolder="$(_ManagedWpfTransportRefRoot)"
+        SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="AddManagedWpfTransportSystemPrintingPayload"

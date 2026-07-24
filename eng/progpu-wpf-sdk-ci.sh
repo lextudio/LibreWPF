@@ -178,6 +178,7 @@ build_project "src/Microsoft.DotNet.Wpf/src/UIAutomation/UIAutomationTypes/UIAut
 build_project "src/Microsoft.DotNet.Wpf/src/UIAutomation/UIAutomationProvider/UIAutomationProvider.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Input.Manipulations/System.Windows.Input.Manipulations.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Primitives/System.Windows.Primitives.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Presentation/System.Windows.Presentation.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/ReachFramework/ReachFramework.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/PresentationUI/PresentationUI.csproj"

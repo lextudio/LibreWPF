@@ -12422,9 +12422,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("tampered commit", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
         Assert.Contains("missing repository", progpuNuspecRepositoryAuditScript, StringComparison.Ordinal);
         Assert.Contains("lib/${transport_target_framework}/PresentationFramework.dll", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("lib/${transport_target_framework}/System.Windows.Presentation.dll", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("lib/${transport_target_framework}/Accessibility.dll", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("lib/${transport_target_framework}/System.Private.Windows.Core.dll", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("lib/${transport_target_framework}/Microsoft.Win32.SystemEvents.dll", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("ref/${transport_target_framework}/PresentationFramework.dll", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("ref/${transport_target_framework}/System.Windows.Presentation.dll", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("ref/${transport_target_framework}/Accessibility.dll", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("ref/${transport_target_framework}/Microsoft.Win32.SystemEvents.dll", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("reject_entry LibreWPF.Transport \"runtime.json\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.DoesNotContain("require_entry LibreWPF.Transport \"runtime.json\"", previewPackageAuditScript, StringComparison.Ordinal);
@@ -15856,6 +15860,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains(@"ref\$(TargetFramework)\Microsoft.Win32.SystemEvents.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\PresentationFramework.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"ref\$(TargetFramework)\PresentationFramework.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"lib\$(TargetFramework)\System.Windows.Presentation.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"ref\$(TargetFramework)\System.Windows.Presentation.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"lib\$(TargetFramework)\Accessibility.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"ref\$(TargetFramework)\Accessibility.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\PresentationFramework.Fluent.dll", wpfTransportTargets, StringComparison.Ordinal);
         foreach (string themeAssembly in wpfThemeAssemblies)
         {
@@ -15867,10 +15875,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AddManagedWpfTransportPrivateWinFormsPayload", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("$(PkgMicrosoft_Private_Winforms)", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("AddManagedWpfTransportSystemDrawingCorePayload", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("AddManagedWpfTransportAccessibilityPayload", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("$(PkgAccessibility)", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"lib\netcoreapp3.0\Accessibility.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"$(SystemDrawingCommonPackage)\"", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("$(PkgSystem_Drawing_Common)", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("system.drawing.common\\$(SystemDrawingCommonVersion)", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\System.Private.Windows.Core.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/System.Windows.Presentation/System.Windows.Presentation.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Build the managed WPF assemblies for $(Configuration)|$(TargetFramework) before packing $(PackageName).", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<VersionPrefix Condition=\"'$(PackageVersion)' == '0.1.0-preview.21'\">0.1.0</VersionPrefix>", packagingTargets, StringComparison.Ordinal);
         Assert.Contains("<VersionSuffix Condition=\"'$(PackageVersion)' == '0.1.0-preview.21'\">preview.21</VersionSuffix>", packagingTargets, StringComparison.Ordinal);

@@ -32,7 +32,7 @@ if [[ -z "${ProGpuWpfRuntimeFrameworkVersion:-}" ]]; then
 fi
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.21}"
+dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.27}"
 prepackaged_progpu_dir="${PROGPU_WPF_PREPACKAGED_PROGPU_DIR:-}"
 sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
 mkdir -p "${package_output}"
@@ -152,6 +152,7 @@ rm -rf "${repo_root}/artifacts/packaging/Release/LibreWPF.Transport"
 
 echo "Staging exact ProGPU packages for the LibreWPF.Sdk feed..."
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj" "ProGPU.Backend"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Text.Shaping/ProGPU.Text.Shaping.csproj" "ProGPU.Text.Shaping"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj" "ProGPU.DirectX"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj" "ProGPU.Transpiler"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj" "ProGPU.Compute"

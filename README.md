@@ -56,7 +56,7 @@ Before:
 After:
 
 ```xml
-<Project Sdk="LibreWPF.Sdk/0.1.0-preview.21">
+<Project Sdk="LibreWPF.Sdk/0.1.0-preview.27">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -70,7 +70,7 @@ Older projects that still use `Microsoft.NET.Sdk.WindowsDesktop` should make the
 4. Keep existing app dependencies in place. For example, a Toolkit app only changes the SDK line:
 
 ```xml
-<Project Sdk="LibreWPF.Sdk/0.1.0-preview.21">
+<Project Sdk="LibreWPF.Sdk/0.1.0-preview.27">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -110,6 +110,7 @@ The preview package set is defined in `eng/progpu-preview-package-list.sh` and v
 | Package | NuGet | Purpose |
 | --- | --- | --- |
 | `ProGPU.Backend` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Backend.svg)](https://www.nuget.org/packages/ProGPU.Backend) | WebGPU device, swapchain, Silk.NET windowing, and platform backend services. |
+| `ProGPU.Text.Shaping` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Text.Shaping.svg)](https://www.nuget.org/packages/ProGPU.Text.Shaping) | AOT-safe OpenType shaping contracts and execution used by the text renderer. |
 | `ProGPU.DirectX` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.DirectX.svg)](https://www.nuget.org/packages/ProGPU.DirectX) | DirectX-compatible facade for SciChart and future D3D-style interop on ProGPU/WebGPU. |
 | `ProGPU.Transpiler` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Transpiler.svg)](https://www.nuget.org/packages/ProGPU.Transpiler) | Shader/source transformation helpers used by generated GPU pipelines. |
 | `ProGPU.Compute` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Compute.svg)](https://www.nuget.org/packages/ProGPU.Compute) | Compute pipeline helpers for GPU effects, indexes, and acceleration structures. |
@@ -126,7 +127,7 @@ The preview package set is defined in `eng/progpu-preview-package-list.sh` and v
 ## Build And Release
 
 ```bash
-PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.21 ./eng/progpu-wpf-sdk-ci.sh
+PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.27 ./eng/progpu-wpf-sdk-ci.sh
 ```
 
 The SDK CI script stages ProGPU runtime packages, builds managed WPF transport assemblies, `LibreWPF.ProGPU`, and `LibreWPF.Sdk`, then audits the packages, writes the preview manifest, creates and verifies the release bundle, and runs package-mode SDK smoke tests. Public releases consume the hash-identical packages from the matching ProGPU GitHub release instead of repacking or republishing them.

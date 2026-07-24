@@ -9,11 +9,11 @@
     <PackageName>LibreWPF.Transport$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.21</VersionSuffix>
+    <VersionSuffix>preview.27</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF transport package with portable managed presentation assemblies, references, themes, XAML build tasks, and runtime metadata.</PackageDescription>
-    <PackageReleaseNotes>Aligns LibreWPF with ProGPU preview.21; packages architecture-specific Windows DirectWrite PresentationCore, DirectWriteForwarder, and IJW host runtimes for visible stock-Windows text while retaining the portable ProGPU renderer on macOS and Linux; adds a Windows package smoke that rejects blank TextBlock output; settles native popup placement after layout for WPF Gallery and SharpDevelop menus; preserves hosted double-click input, high-DPI logical sizing, native title chrome, resize-time rendering, text selection, keyboard shortcuts, and safe drag selection; and retains bounded GPU memory and glyph-atlas scrolling performance.</PackageReleaseNotes>
+    <PackageReleaseNotes>Aligns LibreWPF with ProGPU preview.27 and its first-party shaping package; ships the missing System.Windows.Presentation and Accessibility runtime/reference payloads; keeps Wayland popups interactive in the owner compositor while selecting XWayland for desktop-positioned windows when available; prevents render-scheduler reentrancy from starving the WPF dispatcher after native drags; and inherits the latest ProGPU bitmap, oversized-atlas, rounded-border, text-cache, memory, and glyph-atlas fixes.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>

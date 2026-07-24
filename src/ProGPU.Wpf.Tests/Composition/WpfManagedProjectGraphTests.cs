@@ -13943,6 +13943,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DescribeLiveMouseBindingEvent", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LeftDoubleClick MouseBinding routed command through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveDiscreteInputControlsAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("discrete input controls tab activation", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"RenderingRadioButton\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"InputRepeatButton\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RadioButton group selection and RepeatButton click updated through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);

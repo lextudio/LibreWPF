@@ -1426,6 +1426,38 @@ public partial class MainWindow : Window
         int repeatClicksBefore = 0;
         string lastTargetState = "not checked";
 
+        LivePresentedFrameState inputTabFrameBefore = await CaptureLivePresentedFrameStateAsync(liveHost);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live discrete controls TabControl");
+                tabControl.SelectedIndex = 4;
+                UpdateLayout();
+
+                frameworkRadioButton = Require<RadioButton>(
+                    FindName("FrameworkRadioButton"),
+                    "MVP live Framework RadioButton");
+                renderingRadioButton = Require<RadioButton>(
+                    FindName("RenderingRadioButton"),
+                    "MVP live Rendering RadioButton");
+                inputRepeatButton = Require<RepeatButton>(
+                    FindName("InputRepeatButton"),
+                    "MVP live input RepeatButton");
+                viewModel = Require<MainViewModel>(DataContext, "MVP live discrete controls view model");
+
+                frameworkRadioButton.IsChecked = true;
+                UpdateLayout();
+                radioEventsBefore = CategoryRadioCheckedCount;
+                repeatClicksBefore = InputRepeatButtonClickCount;
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await WaitForLiveInputPresentedFrameAsync(
+            liveHost,
+            inputTabFrameBefore,
+            "discrete input controls tab activation");
+
         bool sentRenderingClick = false;
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
@@ -1433,29 +1465,9 @@ public partial class MainWindow : Window
                 liveHost,
                 () =>
                 {
-                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live discrete controls TabControl");
-                    tabControl.SelectedIndex = 4;
-                    UpdateLayout();
-
-                    frameworkRadioButton = Require<RadioButton>(
-                        FindName("FrameworkRadioButton"),
-                        "MVP live Framework RadioButton");
-                    renderingRadioButton = Require<RadioButton>(
-                        FindName("RenderingRadioButton"),
-                        "MVP live Rendering RadioButton");
-                    inputRepeatButton = Require<RepeatButton>(
-                        FindName("InputRepeatButton"),
-                        "MVP live input RepeatButton");
-                    viewModel = Require<MainViewModel>(DataContext, "MVP live discrete controls view model");
-
-                    frameworkRadioButton.IsChecked = true;
-                    UpdateLayout();
-                    radioEventsBefore = CategoryRadioCheckedCount;
-                    repeatClicksBefore = InputRepeatButtonClickCount;
-
                     return TryRaiseLiveMouseClick(
                         liveHost,
-                        renderingRadioButton,
+                        Require<RadioButton>(renderingRadioButton, "MVP live Rendering RadioButton before host click"),
                         "RenderingRadioButton",
                         out lastTargetState);
                 },

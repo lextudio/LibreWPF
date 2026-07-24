@@ -16048,6 +16048,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateExternalCentralPackageManagementProjectShape", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PackageVersion Include=\"System.Reactive\" Version=\"6.0.1\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("private const string SdkVersion = \"0.1.0-preview.28\";", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("private const string ProGpuPackageVersion = \"0.1.0-preview.27\";", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("packageId is \"LibreWPF.Sdk\" or \"LibreWPF.Transport\" or \"LibreWPF.ProGPU\"\n            ? SdkVersion\n            : ProGpuPackageVersion", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.Reactive\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("restore\", centralPackageManagementProjectPath", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("build\", centralPackageManagementProjectPath", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -16075,7 +16078,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Page Include=\"**/*.xaml\" Exclude=\"App.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<None Include=\"App.config\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"Extended.Wpf.Toolkit\" Version=\"5.1.2\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"ProGPU.System.Drawing.Common\" Version=\"{SdkVersion}\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.System.Drawing.Common\" Version=\"{ProGpuPackageVersion}\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableSystemDrawingCompilerReferences", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("_ExternalProGpuSystemDrawingReference", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("_ExternalNetCoreSystemDrawingFacade", externalSdkHarnessProgram, StringComparison.Ordinal);

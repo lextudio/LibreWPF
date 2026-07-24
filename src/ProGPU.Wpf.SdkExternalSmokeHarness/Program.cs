@@ -19,6 +19,7 @@ internal static class Program
     private const string OriginalWpfSdk = "Microsoft.NET.Sdk";
     private const string OriginalWindowsDesktopWpfSdk = "Microsoft.NET.Sdk.WindowsDesktop";
     private const string SdkVersion = "0.1.0-preview.28";
+    private const string ProGpuPackageVersion = "0.1.0-preview.27";
     private const string PrepackagedProGpuDirectoryEnvironmentVariable = "PROGPU_WPF_PREPACKAGED_PROGPU_DIR";
     private const string ExternalAppTargetFramework = "net10.0-windows";
     private const string AppAssemblyName = "ExternalSdkApp";
@@ -381,13 +382,14 @@ internal static class Program
         foreach (PackageAssemblyExpectation expectation in s_packageAssemblyExpectations)
         {
             Version expectedAssemblyVersion = GetExpectedPackageAssemblyVersion(expectation);
-            string packagePath = Path.Combine(packageFeed, $"{expectation.PackageId}.{SdkVersion}.nupkg");
+            string packageVersion = GetPackageVersion(expectation.PackageId);
+            string packagePath = Path.Combine(packageFeed, $"{expectation.PackageId}.{packageVersion}.nupkg");
             string description = $"{expectation.PackageId}/{expectation.AssemblySimpleName}";
             RequireFile(packagePath, $"{description} package");
 
             using ZipArchive package = ZipFile.OpenRead(packagePath);
             string nuspec = ReadPackageEntry(package, $"{expectation.PackageId}.nuspec", $"{description} nuspec");
-            AssertContains(nuspec, $"<version>{SdkVersion}</version>", $"{description} package version");
+            AssertContains(nuspec, $"<version>{packageVersion}</version>", $"{description} package version");
 
             string assemblyEntryName = $"lib/{expectation.TargetFramework}/{expectation.AssemblySimpleName}.dll";
             ZipArchiveEntry assemblyEntry = RequirePackageEntry(package, assemblyEntryName, $"{description} runtime assembly");
@@ -471,10 +473,11 @@ internal static class Program
         string prepackagedProGpuDirectory,
         string packageId)
     {
-        string localPackagePath = Path.Combine(packageFeed, $"{packageId}.{SdkVersion}.nupkg");
+        string packageVersion = GetPackageVersion(packageId);
+        string localPackagePath = Path.Combine(packageFeed, $"{packageId}.{packageVersion}.nupkg");
         string prepackagedSourcePath = Path.Combine(
             prepackagedProGpuDirectory,
-            $"{packageId}.{SdkVersion}.nupkg");
+            $"{packageId}.{packageVersion}.nupkg");
 
         RequireFile(localPackagePath, $"{packageId} local package");
         RequireFile(prepackagedSourcePath, $"{packageId} exact prepackaged source");
@@ -492,6 +495,13 @@ internal static class Program
             "ProGPU.Wpf.Interop" => "LibreWPF.Interop",
             _ => assemblyName
         };
+    }
+
+    private static string GetPackageVersion(string packageId)
+    {
+        return packageId is "LibreWPF.Sdk" or "LibreWPF.Transport" or "LibreWPF.ProGPU"
+            ? SdkVersion
+            : ProGpuPackageVersion;
     }
 
     private static void ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(string repoRoot, string packageFeed)
@@ -522,7 +532,8 @@ internal static class Program
         string expectedAssemblyPath,
         string expectedAssemblyDescription)
     {
-        string packagePath = Path.Combine(packageFeed, $"{packageId}.{SdkVersion}.nupkg");
+        string packageVersion = GetPackageVersion(packageId);
+        string packagePath = Path.Combine(packageFeed, $"{packageId}.{packageVersion}.nupkg");
         string packageEntryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
 
         RequireFile(packagePath, $"{packageId} local package");
@@ -788,7 +799,7 @@ internal static class Program
                 <None Include="App.config" />
                 <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
                 <PackageReference Include="Extended.Wpf.Toolkit" Version="5.1.2" />
-                <PackageReference Include="ProGPU.System.Drawing.Common" Version="{SdkVersion}" />
+                <PackageReference Include="ProGPU.System.Drawing.Common" Version="{ProGpuPackageVersion}" />
                 <Resource Include="Assets/ExternalResource.txt" />
                 <Resource Include="Assets/ExternalImage.png" />
                 <SplashScreen Include="Assets/ExternalSplash.png" />
@@ -18082,7 +18093,8 @@ internal static class Program
         string targetFramework)
     {
         string outputPath = Path.Combine(outputRoot, assemblySimpleName + ".dll");
-        string packagePath = Path.Combine(packageFeed, $"{packageId}.{SdkVersion}.nupkg");
+        string packageVersion = GetPackageVersion(packageId);
+        string packagePath = Path.Combine(packageFeed, $"{packageId}.{packageVersion}.nupkg");
         string packageEntryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
 
         RequireFile(outputPath, $"external SDK output asset '{assemblySimpleName}.dll'");

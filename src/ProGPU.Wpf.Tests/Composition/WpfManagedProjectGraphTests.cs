@@ -12437,7 +12437,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("lib/${transport_target_framework}/Microsoft.Win32.SystemEvents.dll", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("ref/${transport_target_framework}/PresentationFramework.dll", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("ref/${transport_target_framework}/System.Windows.Presentation.dll", previewPackageAuditScript, StringComparison.Ordinal);
-        Assert.Contains("ref/${transport_target_framework}/Accessibility.dll", previewPackageAuditScript, StringComparison.Ordinal);
+        Assert.Contains("reject_entry LibreWPF.Transport \"ref/${transport_target_framework}/Accessibility.dll\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("ref/${transport_target_framework}/Microsoft.Win32.SystemEvents.dll", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.Contains("reject_entry LibreWPF.Transport \"runtime.json\"", previewPackageAuditScript, StringComparison.Ordinal);
         Assert.DoesNotContain("require_entry LibreWPF.Transport \"runtime.json\"", previewPackageAuditScript, StringComparison.Ordinal);
@@ -15873,7 +15873,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains(@"lib\$(TargetFramework)\System.Windows.Presentation.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"ref\$(TargetFramework)\System.Windows.Presentation.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\Accessibility.dll", wpfTransportTargets, StringComparison.Ordinal);
-        Assert.Contains(@"ref\$(TargetFramework)\Accessibility.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"<_RequiredManagedWpfTransportPayload Include=""$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\Accessibility.dll"" />", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"<_ManagedWpfTransportAccessibilityRef>$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\Accessibility.dll</_ManagedWpfTransportAccessibilityRef>", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"<Delete Files=""$(_ManagedWpfTransportAccessibilityRef)""", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\PresentationFramework.Fluent.dll", wpfTransportTargets, StringComparison.Ordinal);
         foreach (string themeAssembly in wpfThemeAssemblies)
         {

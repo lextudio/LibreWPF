@@ -231,7 +231,6 @@ transport_entries=(
   "ref/${transport_target_framework}/System.Xaml.dll"
   "ref/${transport_target_framework}/System.Windows.Controls.Ribbon.dll"
   "ref/${transport_target_framework}/System.Windows.Presentation.dll"
-  "ref/${transport_target_framework}/Accessibility.dll"
   "ref/${transport_target_framework}/System.Printing.dll"
   "ref/${transport_target_framework}/UIAutomationTypes.dll"
   "buildTransitive/LibreWPF.Transport.targets"
@@ -319,6 +318,7 @@ done < <(node -e '
 
 reject_entry LibreWPF.Transport "lib/${transport_target_framework}/WindowsFormsIntegration.dll"
 reject_entry LibreWPF.Transport "ref/${transport_target_framework}/WindowsFormsIntegration.dll"
+reject_entry LibreWPF.Transport "ref/${transport_target_framework}/Accessibility.dll"
 reject_entry LibreWPF.Transport "runtime.json"
 if unzip -Z -1 "$(package_path LibreWPF.Transport)" \
     | grep -E '^(lib|ref)/' \

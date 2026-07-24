@@ -115,7 +115,6 @@
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Input.Manipulations.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Primitives.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Presentation.dll" />
-      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\Accessibility.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Aero.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Aero2.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.AeroLite.dll" />
@@ -135,8 +134,9 @@
           BeforeTargets="CreateContentFolder"
           Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('LibreWPF.Transport')) And '$(ProGpuWpfSkipMissingPrivateWinFormsReferences)' == 'true'">
     <PropertyGroup>
+      <_ManagedWpfTransportRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)</_ManagedWpfTransportRoot>
       <_ManagedWpfTransportLibRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\$(TargetFramework)</_ManagedWpfTransportLibRoot>
-      <_ManagedWpfTransportRefRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\ref\$(TargetFramework)</_ManagedWpfTransportRefRoot>
+      <_ManagedWpfTransportAccessibilityRef>$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\Accessibility.dll</_ManagedWpfTransportAccessibilityRef>
       <_AccessibilityPackageRoot Condition="'$(PkgAccessibility)' != ''">$(PkgAccessibility)</_AccessibilityPackageRoot>
       <_AccessibilityPackageRoot Condition="'$(_AccessibilityPackageRoot)' == ''">$(NuGetPackageRoot)accessibility\$(AccessibilityPackageVersion)</_AccessibilityPackageRoot>
       <_AccessibilityAssembly>$(_AccessibilityPackageRoot)\lib\netcoreapp3.0\Accessibility.dll</_AccessibilityAssembly>
@@ -146,14 +146,18 @@
         Condition="!Exists('$(_AccessibilityAssembly)')"
         Text="Accessibility is missing '$(_AccessibilityAssembly)', which is required by PresentationFramework popup accessibility support." />
 
-    <MakeDir Directories="$(_ManagedWpfTransportLibRoot);$(_ManagedWpfTransportRefRoot)" />
+    <!--
+      PresentationFramework loads Accessibility.dll for popup UI Automation at runtime,
+      but it is not part of the WPF compile-time contract. Exporting it under ref/ makes
+      the global Accessibility namespace shadow consumer types such as
+      ICSharpCode.NRefactory.TypeSystem.Accessibility.
+    -->
+    <Delete Files="$(_ManagedWpfTransportAccessibilityRef)"
+            Condition="Exists('$(_ManagedWpfTransportAccessibilityRef)')" />
+    <MakeDir Directories="$(_ManagedWpfTransportLibRoot)" />
     <Copy
         SourceFiles="$(_AccessibilityAssembly)"
         DestinationFolder="$(_ManagedWpfTransportLibRoot)"
-        SkipUnchangedFiles="true" />
-    <Copy
-        SourceFiles="$(_AccessibilityAssembly)"
-        DestinationFolder="$(_ManagedWpfTransportRefRoot)"
         SkipUnchangedFiles="true" />
   </Target>
 

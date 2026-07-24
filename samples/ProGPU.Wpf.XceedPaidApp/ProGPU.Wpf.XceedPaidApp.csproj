@@ -6,7 +6,7 @@
     <XceedPaidToolkitPackageVersion>5.2.26322.8434</XceedPaidToolkitPackageVersion>
     <XceedPaidDataGridPackageVersion>7.3.26322.8481</XceedPaidDataGridPackageVersion>
     <XceedPaidSystemDataSqlClientPackageVersion>4.9.1</XceedPaidSystemDataSqlClientPackageVersion>
-    <XceedPaidSystemDrawingCommonPackageVersion>10.0.9</XceedPaidSystemDrawingCommonPackageVersion>
+    <XceedPaidSystemDrawingCommonPackageVersion>10.0.10</XceedPaidSystemDrawingCommonPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>

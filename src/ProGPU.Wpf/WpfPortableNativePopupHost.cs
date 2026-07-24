@@ -156,16 +156,32 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(request);
 
-        if (OperatingSystem.IsWindows() ||
-            string.Equals(
-                Environment.GetEnvironmentVariable("PROGPU_WPF_DISABLE_NATIVE_POPUPS"),
-                "1",
-                StringComparison.Ordinal))
+        bool explicitlyDisabled = string.Equals(
+            Environment.GetEnvironmentVariable("PROGPU_WPF_DISABLE_NATIVE_POPUPS"),
+            "1",
+            StringComparison.Ordinal);
+        bool isWayland = ownerHost.SilkWindow?.Native?.Wayland is not null;
+        if (!ShouldUseNativePopup(
+                OperatingSystem.IsWindows(),
+                explicitlyDisabled,
+                isWayland))
         {
             return null;
         }
 
         return new WpfPortableNativePopupHost(ownerHost, source, request, dpiScaleX, dpiScaleY);
+    }
+
+    internal static bool ShouldUseNativePopup(
+        bool isWindows,
+        bool explicitlyDisabled,
+        bool isWayland)
+    {
+        // GLFW exposes Wayland popup surfaces as ordinary xdg_toplevel windows and
+        // cannot position them. Rendering the WPF popup in the owner surface keeps
+        // placement, pointer routing, capture, and owner motion in one logical
+        // coordinate space. X11 and Cocoa retain native transient popup windows.
+        return !isWindows && !explicitlyDisabled && !isWayland;
     }
 
     public void SetInputHandler(Func<WpfInputEventArgs, bool> inputHandler)

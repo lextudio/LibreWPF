@@ -3,7 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.27}"
+dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.28}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.27}"
 manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/librewpf-preview-packages-${dev_package_version}.json}"
 source "${repo_root}/eng/progpu-preview-package-list.sh"
 
@@ -11,7 +12,7 @@ package_ids=("${progpu_preview_package_ids[@]}")
 
 package_path() {
   local package_id="$1"
-  echo "${package_output}/${package_id}.${dev_package_version}.nupkg"
+  echo "${package_output}/$(progpu_preview_package_file_name "${package_id}")"
 }
 
 file_size() {
@@ -72,8 +73,9 @@ librewinforms_is_dirty="$(git_is_dirty "${repo_root}/external/LibreWinForms")"
 
 {
   printf '{\n'
-  printf '  "schemaVersion": 3,\n'
+  printf '  "schemaVersion": 4,\n'
   printf '  "version": "%s",\n' "$(json_escape "${dev_package_version}")"
+  printf '  "progpuVersion": "%s",\n' "$(json_escape "${progpu_package_version}")"
   printf '  "source": {\n'
   printf '    "wpfCommit": "%s",\n' "$(json_escape "${wpf_commit}")"
   printf '    "progpuCommit": "%s",\n' "$(json_escape "${progpu_commit}")"
@@ -100,6 +102,7 @@ librewinforms_is_dirty="$(git_is_dirty "${repo_root}/external/LibreWinForms")"
 
     printf '    {\n'
     printf '      "id": "%s",\n' "$(json_escape "${package_id}")"
+    printf '      "version": "%s",\n' "$(json_escape "$(progpu_preview_package_version "${package_id}")")"
     printf '      "file": "%s",\n' "$(json_escape "${package_name}")"
     printf '      "sizeBytes": %s,\n' "${package_size}"
     printf '      "sha256": "%s"\n' "${package_sha256}"

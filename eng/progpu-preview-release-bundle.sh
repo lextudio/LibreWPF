@@ -3,7 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.27}"
+dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.28}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.27}"
 sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
 manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/librewpf-preview-packages-${dev_package_version}.json}"
 bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/librewpf-preview-${dev_package_version}.tar.gz}"
@@ -42,7 +43,8 @@ This preview bundle contains the package set for running WPF applications on the
 - \`librewpf-preview-packages-${dev_package_version}.json\` records the exact package list, source commits, package sizes, and SHA-256 hashes.
 - \`LibreWPF.Transport.${dev_package_version}.nupkg\` contains the ported managed WPF transport assemblies.
 - \`LibreWPF.Sdk.${dev_package_version}.nupkg\` is the custom MSBuild SDK package.
-- \`LibreWPF.ProGPU.${dev_package_version}.nupkg\`, \`LibreWPF.Interop.${dev_package_version}.nupkg\`, and the \`ProGPU.*.${dev_package_version}.nupkg\` packages contain the bridge, compositor, rendering, DirectX, WinUI, Avalonia, and Silk.NET-backed runtime dependencies.
+- \`LibreWPF.ProGPU.${dev_package_version}.nupkg\` contains the WPF bridge.
+- \`LibreWPF.Interop.${progpu_package_version}.nupkg\` and the \`ProGPU.*.${progpu_package_version}.nupkg\` packages are the exact immutable ProGPU runtime dependencies.
 
 Verify the archive with the adjacent checksum file:
 
@@ -110,7 +112,7 @@ if [[ ! -f "${release_nuget_config_path}" ]]; then
 fi
 
 for package_id in "${package_ids[@]}"; do
-  package_name="${package_id}.${dev_package_version}.nupkg"
+  package_name="$(progpu_preview_package_file_name "${package_id}")"
   package_file="${package_output}/${package_name}"
   if [[ ! -f "${package_file}" ]]; then
     echo "Missing package ${package_file}." >&2

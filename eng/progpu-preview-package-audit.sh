@@ -3,13 +3,14 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.27}"
+dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.28}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.27}"
 transport_target_framework="${PROGPU_WPF_TRANSPORT_TARGET_FRAMEWORK:-net10.0}"
 source "${repo_root}/eng/progpu-preview-package-list.sh"
 
 package_path() {
   local package_id="$1"
-  echo "${package_output}/${package_id}.${dev_package_version}.nupkg"
+  echo "${package_output}/$(progpu_preview_package_file_name "${package_id}")"
 }
 
 package_assembly_name() {
@@ -37,7 +38,7 @@ is_expected_package_artifact() {
   local file_name="$1"
   local package_id
   for package_id in "${all_packages[@]}"; do
-    if [[ "${file_name}" == "${package_id}.${dev_package_version}.nupkg" ]]; then
+    if [[ "${file_name}" == "$(progpu_preview_package_file_name "${package_id}")" ]]; then
       return 0
     fi
   done
@@ -184,19 +185,19 @@ for package_id in "${wpf_repository_packages[@]}"; do
 done
 
 require_entry LibreWPF.ProGPU "lib/net10.0/ProGPU.Wpf.dll"
-require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Backend\" version=\"${dev_package_version}\""
-require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.DirectX\" version=\"${dev_package_version}\""
-require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Scene\" version=\"${dev_package_version}\""
-require_nuspec_contains LibreWPF.ProGPU "dependency id=\"LibreWPF.Interop\" version=\"${dev_package_version}\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Backend\" version=\"${progpu_package_version}\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.DirectX\" version=\"${progpu_package_version}\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Scene\" version=\"${progpu_package_version}\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"LibreWPF.Interop\" version=\"${progpu_package_version}\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.Input\" version=\"2.23.0\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.WebGPU\" version=\"2.23.0\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.Windowing\" version=\"2.23.0\""
 
-require_nuspec_contains ProGPU.Text "dependency id=\"ProGPU.Text.Shaping\" version=\"${dev_package_version}\""
-require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Backend\" version=\"${dev_package_version}\""
-require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Layout\" version=\"${dev_package_version}\""
-require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Scene\" version=\"${dev_package_version}\""
-require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.WinUI\" version=\"${dev_package_version}\""
+require_nuspec_contains ProGPU.Text "dependency id=\"ProGPU.Text.Shaping\" version=\"${progpu_package_version}\""
+require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Backend\" version=\"${progpu_package_version}\""
+require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Layout\" version=\"${progpu_package_version}\""
+require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Scene\" version=\"${progpu_package_version}\""
+require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.WinUI\" version=\"${progpu_package_version}\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"Avalonia\" version=\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"Silk.NET.WebGPU\" version=\"2.23.0\""
 

@@ -32,7 +32,8 @@ if [[ -z "${ProGpuWpfRuntimeFrameworkVersion:-}" ]]; then
 fi
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.27}"
+dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.28}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.27}"
 prepackaged_progpu_dir="${PROGPU_WPF_PREPACKAGED_PROGPU_DIR:-}"
 sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
 mkdir -p "${package_output}"
@@ -51,15 +52,16 @@ clean_preview_package_output() {
 pack_project() {
   local project="$1"
   local package_id="$2"
+  local package_version="${3:-${dev_package_version}}"
   rm -f \
-    "${package_output}/${package_id}.${dev_package_version}.nupkg" \
-    "${package_output}/${package_id}.${dev_package_version}.snupkg"
+    "${package_output}/${package_id}.${package_version}.nupkg" \
+    "${package_output}/${package_id}.${package_version}.snupkg"
   "${dotnet}" pack "${repo_root}/${project}" \
     -c Release \
     -o "${package_output}" \
     -v:minimal \
-    -p:Version="${dev_package_version}" \
-    -p:PackageVersion="${dev_package_version}"
+    -p:Version="${package_version}" \
+    -p:PackageVersion="${package_version}"
 }
 
 stage_or_pack_progpu_project() {
@@ -67,12 +69,12 @@ stage_or_pack_progpu_project() {
   local package_id="$2"
 
   if [[ -z "${prepackaged_progpu_dir}" ]]; then
-    pack_project "${project}" "${package_id}"
+    pack_project "${project}" "${package_id}" "${progpu_package_version}"
     return
   fi
 
-  local source_package="${prepackaged_progpu_dir}/${package_id}.${dev_package_version}.nupkg"
-  local destination_package="${package_output}/${package_id}.${dev_package_version}.nupkg"
+  local source_package="${prepackaged_progpu_dir}/${package_id}.${progpu_package_version}.nupkg"
+  local destination_package="${package_output}/${package_id}.${progpu_package_version}.nupkg"
   if [[ ! -f "${source_package}" ]]; then
     echo "Missing exact ProGPU release package ${source_package}." >&2
     exit 1

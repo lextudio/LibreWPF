@@ -11,16 +11,20 @@ export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
 export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.27}"
+dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.28}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.27}"
 bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/librewpf-preview-${dev_package_version}.tar.gz}"
+source "${repo_root}/eng/progpu-preview-package-list.sh"
 
 require_package_cache_entry() {
   local package_id="$1"
+  local package_version
+  package_version="$(progpu_preview_package_version "${package_id}")"
   local package_key
   package_key="$(printf '%s' "${package_id}" | tr '[:upper:]' '[:lower:]')"
-  local package_dir="${smoke_root}/packages/${package_key}/${dev_package_version}"
-  if [[ ! -f "${package_dir}/${package_key}.${dev_package_version}.nupkg" ]]; then
-    echo "Expected restored package ${package_id} ${dev_package_version} in ${package_dir}." >&2
+  local package_dir="${smoke_root}/packages/${package_key}/${package_version}"
+  if [[ ! -f "${package_dir}/${package_key}.${package_version}.nupkg" ]]; then
+    echo "Expected restored package ${package_id} ${package_version} in ${package_dir}." >&2
     exit 1
   fi
 }
@@ -165,7 +169,7 @@ cat >"${avalonia_project_dir}/Directory.Packages.props" <<PROJECT
 <Project>
   <Import Project="${repo_root}/external/ProGPU/Directory.Packages.props" />
   <ItemGroup>
-    <PackageVersion Include="ProGPU.Avalonia" Version="${dev_package_version}" />
+    <PackageVersion Include="ProGPU.Avalonia" Version="${progpu_package_version}" />
   </ItemGroup>
 </Project>
 PROJECT

@@ -11,7 +11,7 @@ export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
 export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.27}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.27}"
 smoke_root="${repo_root}/artifacts/nuget/ProGPU.Avalonia.PackageSmoke"
 project_dir="${smoke_root}/src"
 
@@ -19,14 +19,14 @@ pack_project() {
   local project="$1"
   local package_id="$2"
   rm -f \
-    "${package_output}/${package_id}.${dev_package_version}.nupkg" \
-    "${package_output}/${package_id}.${dev_package_version}.snupkg"
+    "${package_output}/${package_id}.${progpu_package_version}.nupkg" \
+    "${package_output}/${package_id}.${progpu_package_version}.snupkg"
   "${dotnet}" pack "${repo_root}/${project}" -c Release -o "${package_output}" -v:minimal
 }
 
 required_package_exists() {
   local package_id="$1"
-  [[ -f "${package_output}/${package_id}.${dev_package_version}.nupkg" ]]
+  [[ -f "${package_output}/${package_id}.${progpu_package_version}.nupkg" ]]
 }
 
 ensure_packages() {
@@ -76,7 +76,7 @@ cat >"${project_dir}/Directory.Packages.props" <<XML
 <Project>
   <Import Project="${repo_root}/external/ProGPU/Directory.Packages.props" />
   <ItemGroup>
-    <PackageVersion Include="ProGPU.Avalonia" Version="${dev_package_version}" />
+    <PackageVersion Include="ProGPU.Avalonia" Version="${progpu_package_version}" />
   </ItemGroup>
 </Project>
 XML
@@ -217,13 +217,13 @@ echo "Building external ProGPU Avalonia package smoke..."
 "${dotnet}" build "${project_dir}/ProGPU.Avalonia.PackageSmoke.csproj" -v:minimal /p:UseSharedCompilation=false
 
 assets_file="${project_dir}/obj/project.assets.json"
-if ! grep -q "\"ProGPU.Avalonia/${dev_package_version}\"" "${assets_file}"; then
-  echo "Expected package assets to include ProGPU.Avalonia/${dev_package_version}." >&2
+if ! grep -q "\"ProGPU.Avalonia/${progpu_package_version}\"" "${assets_file}"; then
+  echo "Expected package assets to include ProGPU.Avalonia/${progpu_package_version}." >&2
   exit 1
 fi
 
-if ! grep -q "\"ProGPU.WinUI/${dev_package_version}\"" "${assets_file}"; then
-  echo "Expected package assets to include transitive ProGPU.WinUI/${dev_package_version}." >&2
+if ! grep -q "\"ProGPU.WinUI/${progpu_package_version}\"" "${assets_file}"; then
+  echo "Expected package assets to include transitive ProGPU.WinUI/${progpu_package_version}." >&2
   exit 1
 fi
 

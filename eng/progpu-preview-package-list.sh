@@ -24,3 +24,20 @@ progpu_preview_package_ids=(
   LibreWPF.ProGPU
   LibreWPF.Sdk
 )
+
+progpu_preview_package_version() {
+  local package_id="$1"
+  case "${package_id}" in
+    LibreWPF.Transport|LibreWPF.ProGPU|LibreWPF.Sdk)
+      printf '%s\n' "${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.28}"
+      ;;
+    *)
+      printf '%s\n' "${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.27}"
+      ;;
+  esac
+}
+
+progpu_preview_package_file_name() {
+  local package_id="$1"
+  printf '%s.%s.nupkg\n' "${package_id}" "$(progpu_preview_package_version "${package_id}")"
+}

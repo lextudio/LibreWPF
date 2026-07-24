@@ -3,7 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.27}"
+dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.28}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.27}"
 manifest_path="${PROGPU_WPF_PREVIEW_PACKAGE_MANIFEST:-${package_output}/librewpf-preview-packages-${dev_package_version}.json}"
 bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/librewpf-preview-${dev_package_version}.tar.gz}"
 sidecar_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE_SHA256:-${bundle_output}.sha256}"
@@ -33,7 +34,7 @@ is_expected_release_artifact() {
   esac
 
   for package_id in "${package_ids[@]}"; do
-    if [[ "${file_name}" == "${package_id}.${dev_package_version}.nupkg" ]]; then
+    if [[ "${file_name}" == "$(progpu_preview_package_file_name "${package_id}")" ]]; then
       return 0
     fi
   done
@@ -91,7 +92,7 @@ archive_entries+=("${readme_name}")
 archive_entries+=("${nuget_config_name}")
 archive_entries+=("${manifest_name}")
 for package_id in "${package_ids[@]}"; do
-  archive_entries+=("${package_id}.${dev_package_version}.nupkg")
+  archive_entries+=("$(progpu_preview_package_file_name "${package_id}")")
 done
 
 expected_entries="$(printf '%s\n' "${archive_entries[@]}")"
@@ -149,12 +150,12 @@ PROGPU_WPF_PREVIEW_RELEASE_CURRENT_WPF_COMMIT="$(git_commit "${repo_root}")"
 PROGPU_WPF_PREVIEW_RELEASE_CURRENT_PROGPU_COMMIT="$(git_commit "${repo_root}/external/ProGPU")"
 PROGPU_WPF_PREVIEW_RELEASE_CURRENT_LIBREWINFORMS_COMMIT="$(git_commit "${repo_root}/external/LibreWinForms")"
 
-node - "${extract_dir}" "${manifest_name}" "${dev_package_version}" "${package_ids[@]}" <<'NODE'
+node - "${extract_dir}" "${manifest_name}" "${dev_package_version}" "${progpu_package_version}" "${package_ids[@]}" <<'NODE'
 const fs = require("fs");
 const crypto = require("crypto");
 const path = require("path");
 
-const [extractDirectory, manifestName, devPackageVersion, ...packageIds] = process.argv.slice(2);
+const [extractDirectory, manifestName, devPackageVersion, proGpuPackageVersion, ...packageIds] = process.argv.slice(2);
 const manifestPath = path.join(extractDirectory, manifestName);
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
@@ -163,12 +164,16 @@ function fail(message) {
   process.exit(1);
 }
 
-if (manifest.schemaVersion !== 3) {
-  fail(`Expected preview manifest schemaVersion 3, found ${manifest.schemaVersion}.`);
+if (manifest.schemaVersion !== 4) {
+  fail(`Expected preview manifest schemaVersion 4, found ${manifest.schemaVersion}.`);
 }
 
 if (manifest.version !== devPackageVersion) {
   fail(`Expected preview manifest version ${devPackageVersion}, found ${manifest.version}.`);
+}
+
+if (manifest.progpuVersion !== proGpuPackageVersion) {
+  fail(`Expected preview manifest ProGPU version ${proGpuPackageVersion}, found ${manifest.progpuVersion}.`);
 }
 
 if (!manifest.source || !manifest.source.wpfCommit || !manifest.source.progpuCommit || !manifest.source.libreWinFormsCommit) {
@@ -215,7 +220,14 @@ for (const [index, packageId] of packageIds.entries()) {
     fail(`Unexpected or duplicate preview package id ${entry.id}.`);
   }
 
-  const expectedFile = `${packageId}.${devPackageVersion}.nupkg`;
+  const expectedVersion = ["LibreWPF.Transport", "LibreWPF.ProGPU", "LibreWPF.Sdk"].includes(packageId)
+    ? devPackageVersion
+    : proGpuPackageVersion;
+  if (entry.version !== expectedVersion) {
+    fail(`Expected preview package ${packageId} version ${expectedVersion}, found ${entry.version}.`);
+  }
+
+  const expectedFile = `${packageId}.${expectedVersion}.nupkg`;
   if (entry.file !== expectedFile) {
     fail(`Expected preview package ${packageId} file ${expectedFile}, found ${entry.file}.`);
   }

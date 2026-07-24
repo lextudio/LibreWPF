@@ -9,11 +9,11 @@
     <PackageName>LibreWPF.Transport$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.27</VersionSuffix>
+    <VersionSuffix>preview.28</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF transport package with portable managed presentation assemblies, references, themes, XAML build tasks, and runtime metadata.</PackageDescription>
-    <PackageReleaseNotes>Aligns LibreWPF with ProGPU preview.27 and its first-party shaping package; ships the missing System.Windows.Presentation and Accessibility runtime/reference payloads; keeps Wayland popups interactive in the owner compositor while selecting XWayland for desktop-positioned windows when available; prevents render-scheduler reentrancy from starving the WPF dispatcher after native drags; and inherits the latest ProGPU bitmap, oversized-atlas, rounded-border, text-cache, memory, and glyph-atlas fixes.</PackageReleaseNotes>
+    <PackageReleaseNotes>Aligns LibreWPF preview.28 with ProGPU preview.27 and its first-party shaping package; ships the missing System.Windows.Presentation compile/runtime payload and Accessibility as runtime-only to preserve consumer symbol resolution; keeps Wayland popups interactive in the owner compositor while selecting XWayland for desktop-positioned windows when available; prevents render-scheduler reentrancy from starving the WPF dispatcher after native drags; and inherits the latest ProGPU bitmap, oversized-atlas, rounded-border, text-cache, memory, and glyph-atlas fixes.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>

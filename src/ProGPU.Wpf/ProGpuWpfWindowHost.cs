@@ -1039,6 +1039,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
+        SilkNetGlfwPlatformSelector.ConfigureBeforeFirstWindow();
         var windowOptions = WindowOptions.Default;
         windowOptions.API = GraphicsAPI.None;
         windowOptions.Size = new Vector2D<int>(_clientWidth, _clientHeight);

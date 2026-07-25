@@ -10,7 +10,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ProGpuWpfSdkSwitchPackageVersion>0.1.0-preview.28</ProGpuWpfSdkSwitchPackageVersion>
+    <LibreWpfSdkSwitchPackageVersion>0.1.0-preview.28</LibreWpfSdkSwitchPackageVersion>
+    <ProGpuWpfSdkSwitchPackageVersion>0.1.0-preview.27</ProGpuWpfSdkSwitchPackageVersion>
     <RestorePackagesPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke'))</RestorePackagesPath>
     <RestoreForce>true</RestoreForce>
     <RestoreForceEvaluate>true</RestoreForceEvaluate>
@@ -18,16 +19,24 @@
 
   <Target Name="_ProGpuWpfSdkSwitchClearMutablePackageCache" BeforeTargets="Restore">
     <ItemGroup>
-      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/microsoft.dotnet.wpf.github/$(ProGpuWpfSdkSwitchPackageVersion)" />
-      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/microsoft.dotnet.wpf.github.debug/$(ProGpuWpfSdkSwitchPackageVersion)" />
-      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.wpf.sdk/$(ProGpuWpfSdkSwitchPackageVersion)" />
-      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.wpf/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/librewpf.sdk/$(LibreWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/librewpf.transport/$(LibreWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/librewpf.progpu/$(LibreWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/librewpf.interop/$(ProGpuWpfSdkSwitchPackageVersion)" />
       <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.backend/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.text.shaping/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.directx/$(ProGpuWpfSdkSwitchPackageVersion)" />
       <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.scene/$(ProGpuWpfSdkSwitchPackageVersion)" />
       <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.vector/$(ProGpuWpfSdkSwitchPackageVersion)" />
       <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.text/$(ProGpuWpfSdkSwitchPackageVersion)" />
       <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.compute/$(ProGpuWpfSdkSwitchPackageVersion)" />
       <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.transpiler/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.layout/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.virtualization/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.winui/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.avalonia/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.skiasharp/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.system.drawing.common/$(ProGpuWpfSdkSwitchPackageVersion)" />
       <_ProGpuWpfSdkSwitchExistingMutablePackageCache Include="@(_ProGpuWpfSdkSwitchMutablePackageCache)" Condition="Exists('%(_ProGpuWpfSdkSwitchMutablePackageCache.Identity)')" />
     </ItemGroup>
 

@@ -35,6 +35,7 @@ package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Rel
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.28}"
 progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.27}"
 prepackaged_progpu_dir="${PROGPU_WPF_PREPACKAGED_PROGPU_DIR:-}"
+progpu_package_snapshot_dir="${repo_root}/artifacts/progpu-wpf-sdk-smoke/exact-progpu-packages"
 sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
 mkdir -p "${package_output}"
 
@@ -82,6 +83,45 @@ stage_or_pack_progpu_project() {
 
   cp "${source_package}" "${destination_package}"
   cmp "${source_package}" "${destination_package}"
+}
+
+snapshot_staged_progpu_packages() {
+  local package_id
+  local source_package
+  local snapshot_package
+
+  rm -rf "${progpu_package_snapshot_dir}"
+  mkdir -p "${progpu_package_snapshot_dir}"
+
+  for package_id in \
+    ProGPU.Backend \
+    ProGPU.Text.Shaping \
+    ProGPU.DirectX \
+    ProGPU.Transpiler \
+    ProGPU.Compute \
+    ProGPU.Vector \
+    ProGPU.Text \
+    ProGPU.Scene \
+    ProGPU.Layout \
+    ProGPU.Virtualization \
+    ProGPU.WinUI \
+    ProGPU.Avalonia \
+    ProGPU.SkiaSharp \
+    ProGPU.System.Drawing.Common \
+    LibreWPF.Interop
+  do
+    source_package="${package_output}/${package_id}.${progpu_package_version}.nupkg"
+    snapshot_package="${progpu_package_snapshot_dir}/${package_id}.${progpu_package_version}.nupkg"
+    if [[ ! -f "${source_package}" ]]; then
+      echo "Missing staged ProGPU package ${source_package}." >&2
+      exit 1
+    fi
+
+    cp "${source_package}" "${snapshot_package}"
+    cmp "${source_package}" "${snapshot_package}"
+  done
+
+  export PROGPU_WPF_PREPACKAGED_PROGPU_DIR="${progpu_package_snapshot_dir}"
 }
 
 build_project() {
@@ -168,6 +208,7 @@ stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avaloni
 stage_or_pack_progpu_project "external/ProGPU/src/SkiaSharp/SkiaSharp.csproj" "ProGPU.SkiaSharp"
 stage_or_pack_progpu_project "external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj" "ProGPU.System.Drawing.Common"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" "LibreWPF.Interop"
+snapshot_staged_progpu_packages
 
 echo "Running ProGPU Avalonia package consumer smoke..."
 "${repo_root}/eng/progpu-avalonia-package-smoke.sh"

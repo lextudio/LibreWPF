@@ -1,5 +1,7 @@
 # LibreWPF ProGPU Port
 
+[![Telegram Community](https://img.shields.io/badge/Telegram-Community-26A5E4?logo=telegram&logoColor=white)](https://t.me/+HblJUymBc544ODY0)
+
 This branch ports WPF onto the ProGPU/Silk.NET platform while reusing as much managed WPF code as possible. The public package brand is LibreWPF, with the custom SDK package `LibreWPF.Sdk`, so an existing WPF app can switch the project SDK and keep normal WPF source and XAML unchanged.
 
 Current focus areas:

@@ -1616,7 +1616,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private SmallValueStack<bool> _clipScopeIsGeometryMask;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private SmallValueStack<float> _opacityStack;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private SmallValueStack<GpuBlendMode> _blendModeStack;", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("private SmallValueStack<GpuTexture> _maskStack;", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private SmallValueStack<MaskTextureState> _maskStack;", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private readonly record struct MaskTextureState(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static T[] RentStackSnapshot<T>(in SmallValueStack<T> stack, out int count)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private static T[] RentListSnapshot<T>(List<T> list, out int count)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CollectionsMarshal.SetCount(list, count)", proGpuCompositor, StringComparison.Ordinal);
@@ -1734,7 +1735,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var effectTextureEnumerator = _effectTextures.Values.GetEnumerator();", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var allocatedLayerTextureEnumerator = _allocatedLayerTextures.GetEnumerator();", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var cachedBindGroupEnumerator = _persistentTextureBindGroups.Values.GetEnumerator();", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("var offscreenMaskBindGroupEnumerator = _maskBindGroupsOffscreen.Values.GetEnumerator();", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var maskBindGroupEnumerator = _maskBindGroups.Values.GetEnumerator();", proGpuCompositor, StringComparison.Ordinal);
+        Assert.DoesNotContain("_maskBindGroupsOffscreen", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private void DisposeMaskTexturePool()", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var pooledMaskTextures = RentListSnapshot(_maskTexturePool", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("_opacityStack.Push(_activeOpacity);", proGpuCompositor, StringComparison.Ordinal);
@@ -9677,10 +9679,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("destination.EnsureCapacity(checked(destination.Count + sourceCount));", renderCommand, StringComparison.Ordinal);
         Assert.Contains("for (int sourceIndex = 0; sourceIndex < sourceCount; sourceIndex++)", renderCommand, StringComparison.Ordinal);
         Assert.Contains("destination.Add(source[sourceIndex]);", renderCommand, StringComparison.Ordinal);
-        Assert.Contains("_retainedResources.EnsureCapacity(checked(_retainedResources.Count + resources.Length));", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("retainedResources.EnsureCapacity(\n            checked(retainedResources.Count + resources.Length));", renderCommand, StringComparison.Ordinal);
         Assert.Contains("if (identity is not null && HasRetainedResourceIdentity(identity))", renderCommand, StringComparison.Ordinal);
         Assert.Contains("resource.Dispose();", renderCommand, StringComparison.Ordinal);
-        Assert.Contains("_retainedResources.Add(resource);", renderCommand, StringComparison.Ordinal);
+        Assert.Contains("retainedResources.Add(resource);", renderCommand, StringComparison.Ordinal);
         Assert.Contains("for (int i = 0; i < _retainedResources.Count; i++)", renderCommand, StringComparison.Ordinal);
         Assert.Contains("_retainedResources[i].Dispose();", renderCommand, StringComparison.Ordinal);
         Assert.DoesNotContain("return registers[..count].ToArray();", shaderPipeline, StringComparison.Ordinal);
@@ -9833,8 +9835,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("new List<nint>()", computeAccelerator, StringComparison.Ordinal);
         Assert.DoesNotContain("bindGroupsToRelease.Add", computeAccelerator, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var bgPtr in bindGroupsToRelease)", computeAccelerator, StringComparison.Ordinal);
-        Assert.Contains("new(StringComparer.OrdinalIgnoreCase)", visual, StringComparison.Ordinal);
-        Assert.Contains("var activeAnimationEnumerator = _activeAnimations.GetEnumerator();", visual, StringComparison.Ordinal);
+        Assert.Contains("GetOrCreateColdState().ActiveAnimations ??=", visual, StringComparison.Ordinal);
+        Assert.Contains("new Dictionary<string, CompositionAnimation>(\n                StringComparer.OrdinalIgnoreCase);", visual, StringComparison.Ordinal);
+        Assert.Contains("var activeAnimationEnumerator = activeAnimations.GetEnumerator();", visual, StringComparison.Ordinal);
         Assert.Contains("while (activeAnimationEnumerator.MoveNext())", visual, StringComparison.Ordinal);
         Assert.Contains("var kvp = activeAnimationEnumerator.Current;", visual, StringComparison.Ordinal);
         Assert.Contains("IsAnimationProperty(propertyName, \"opacity\")", visual, StringComparison.Ordinal);

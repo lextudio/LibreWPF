@@ -10,11 +10,11 @@
     <PackageName>LibreWPF.Sdk$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.29</VersionSuffix>
+    <VersionSuffix>preview.30</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF MSBuild SDK for running existing desktop XAML applications on ProGPU/Silk.NET.</PackageDescription>
-    <PackageReleaseNotes>Aligns LibreWPF preview.29 with ProGPU preview.28; resolves the managed transport runtime from NuGet's authoritative restored package path; scopes ProGPU.Text source analyzer compatibility to portable PresentationCore builds; preserves the popup, native title-bar, input, drag, and render-scheduler fixes from preview.28; and inherits ProGPU's pooled retained-renderer, incremental scene, text, vector, image, and memory improvements.</PackageReleaseNotes>
+    <PackageReleaseNotes>Ships typed windowing-capability diagnostics and an Ubuntu Wayland-session/XWayland native-drag, dispatcher, menu, ComboBox, Popup, and seven-theme release gate; publishes the LibreWPF cross-platform roadmap; and remains pinned to immutable ProGPU preview.28.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;silk.net;msbuild-sdk</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

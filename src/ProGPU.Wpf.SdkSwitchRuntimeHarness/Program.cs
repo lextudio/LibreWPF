@@ -11,7 +11,7 @@ using System.Security.Cryptography;
 
 internal static class Program
 {
-    private const string LibreWpfPackageVersion = "0.1.0-preview.29";
+    private const string LibreWpfPackageVersion = "0.1.0-preview.30";
     private const string ProGpuPackageVersion = "0.1.0-preview.28";
     private const string PrepackagedProGpuDirectoryEnvironmentVariable = "PROGPU_WPF_PREPACKAGED_PROGPU_DIR";
     private const string SmokeTargetFramework = "net10.0-windows";

@@ -170,13 +170,17 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
   fi
 
   trap - EXIT
-  cleanup_live_probe >/dev/null 2>&1
-  echo "${live_validation_line}"
+  if [[ -s "${live_status}" ]]; then
+    cat "${live_status}"
+  else
+    echo "${live_validation_line}"
+  fi
   if (( has_viewport_geometry == 1 )); then
     echo "ProGPU WPF MVP live geometry validation succeeded: logical ${logical_width}x${logical_height}, pixels ${pixel_width}x${pixel_height}, viewport ${viewport_width}x${viewport_height}@${viewport_x},${viewport_y}."
   else
     echo "ProGPU WPF MVP live geometry validation succeeded: logical ${logical_width}x${logical_height}, pixels ${pixel_width}x${pixel_height}."
   fi
+  cleanup_live_probe >/dev/null 2>&1
   exit 0
 fi
 

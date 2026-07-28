@@ -56,9 +56,9 @@ xvfb-run -a --server-args="-screen 0 1280x1024x24" bash -c '
 ' bash "${repo_root}" "${smoke_log}"
 
 grep -F "ProGPU WPF MVP live input validation succeeded:" "${smoke_log}"
+grep -F "windowing backend X11, wayland session True, global position True, interactive move True, native popups True, owner-composited popups False" "${smoke_log}"
 grep -F "Menu, ComboBox dropdown, and direct Popup opened through ProGPU popup surfaces" "${smoke_log}"
 grep -F "native windows 1/1/1" "${smoke_log}"
 grep -F "runtime framework themes switched and rendered native menu popups: Aero, Aero2, AeroLite, Classic, Fluent, Luna, Royale" "${smoke_log}"
 
 echo "LibreWPF Linux Wayland-session/XWayland native drag, dispatcher, popup, and theme smoke succeeded."
-

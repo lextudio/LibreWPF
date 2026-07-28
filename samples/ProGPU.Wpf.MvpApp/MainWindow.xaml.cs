@@ -1008,11 +1008,17 @@ public partial class MainWindow : Window
                 () => ValidateLiveRenderSurfaceGeometryCore(liveHost, 760, 560),
                 DispatcherPriority.Send);
             Console.WriteLine("ProGPU WPF MVP live input validation geometry ready.");
+            string windowingStatus = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () => ValidateLiveWindowingCapabilitiesCore(liveHost),
+                DispatcherPriority.Send);
+            Console.WriteLine("ProGPU WPF MVP live windowing capabilities ready.");
             string resizeStatus = await ValidateLiveNativeResizeAsync(liveHost);
             Console.WriteLine("ProGPU WPF MVP live native resize validation ready.");
             string inputStatus = await ValidateLiveInputAsync(liveHost);
             string successStatus = $"ProGPU WPF MVP live input validation succeeded: {geometryStatus}.";
-            string detailStatus = $"ProGPU WPF MVP live input validation details: {resizeStatus}; {inputStatus}.";
+            string detailStatus =
+                $"ProGPU WPF MVP live input validation details: {windowingStatus}; {resizeStatus}; {inputStatus}.";
             Console.WriteLine(successStatus);
             Console.WriteLine(detailStatus);
             WriteLiveValidationStatus($"{successStatus}{Environment.NewLine}{detailStatus}{Environment.NewLine}");
@@ -1024,6 +1030,36 @@ public partial class MainWindow : Window
         Console.Error.WriteLine("Expected the MVP app to present a stable ProGPU frame before live input validation.");
         Console.Error.Flush();
         Environment.Exit(1);
+    }
+
+    private static string ValidateLiveWindowingCapabilitiesCore(ProGpuWpfWindowHost liveHost)
+    {
+        if (!ProGpuWpfDiagnostics.TryGetWindowingCapabilities(liveHost, out var capabilities))
+        {
+            throw new InvalidOperationException("Expected the live MVP host to publish typed windowing capabilities.");
+        }
+
+        if (OperatingSystem.IsLinux() &&
+            capabilities.IsWaylandDesktopSession &&
+            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PROGPU_WPF_LINUX_WINDOWING")))
+        {
+            AssertEqual(
+                ProGpuWpfWindowingBackend.X11,
+                capabilities.Backend,
+                "MVP live default Wayland-session backend with XWayland DISPLAY");
+            AssertEqual(true, capabilities.SupportsGlobalPosition, "MVP live XWayland global positioning");
+            AssertEqual(true, capabilities.SupportsInteractiveMove, "MVP live XWayland interactive move");
+            AssertEqual(true, capabilities.SupportsNativePopupWindows, "MVP live XWayland native popups");
+            AssertEqual(false, capabilities.UsesOwnerCompositedPopups, "MVP live XWayland owner-composited popups");
+        }
+
+        return
+            $"windowing backend {capabilities.Backend}, " +
+            $"wayland session {capabilities.IsWaylandDesktopSession}, " +
+            $"global position {capabilities.SupportsGlobalPosition}, " +
+            $"interactive move {capabilities.SupportsInteractiveMove}, " +
+            $"native popups {capabilities.SupportsNativePopupWindows}, " +
+            $"owner-composited popups {capabilities.UsesOwnerCompositedPopups}";
     }
 
     private static void WriteLiveValidationStatus(string status)

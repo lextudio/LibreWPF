@@ -1016,11 +1016,22 @@ public partial class MainWindow : Window
             Console.WriteLine("ProGPU WPF MVP live windowing capabilities ready.");
             string resizeStatus = await ValidateLiveNativeResizeAsync(liveHost);
             Console.WriteLine("ProGPU WPF MVP live native resize validation ready.");
-            string nativeDragStatus = await ValidateLiveExternalNativeDragAsync(liveHost);
-            string inputStatus = await ValidateLiveInputAsync(liveHost);
+            string inputStatus;
+            if (IsLiveExternalNativeDragRequested())
+            {
+                string nativeDragStatus = await ValidateLiveExternalNativeDragAsync(liveHost);
+                string frameworkThemeStatus = await ValidateLiveFrameworkThemesAsync(liveHost);
+                string popupStatus = await ValidateLivePopupSurfacesAsync(liveHost);
+                inputStatus = $"{nativeDragStatus}; {frameworkThemeStatus}; {popupStatus}";
+            }
+            else
+            {
+                inputStatus = await ValidateLiveInputAsync(liveHost);
+            }
+
             string successStatus = $"ProGPU WPF MVP live input validation succeeded: {geometryStatus}.";
             string detailStatus =
-                $"ProGPU WPF MVP live input validation details: {windowingStatus}; {resizeStatus}; {nativeDragStatus}; {inputStatus}.";
+                $"ProGPU WPF MVP live input validation details: {windowingStatus}; {resizeStatus}; {inputStatus}.";
             Console.WriteLine(successStatus);
             Console.WriteLine(detailStatus);
             WriteLiveValidationStatus($"{successStatus}{Environment.NewLine}{detailStatus}{Environment.NewLine}");
@@ -1124,6 +1135,12 @@ public partial class MainWindow : Window
         AssertEqual(1, dispatcherCheckpoint, "MVP live dispatcher checkpoint after external native drag");
         Console.WriteLine("ProGPU WPF MVP external native drag dispatcher checkpoint passed.");
         return "external 36-step native drag returned to dispatcher processing";
+    }
+
+    private static bool IsLiveExternalNativeDragRequested()
+    {
+        return !string.IsNullOrWhiteSpace(
+            Environment.GetEnvironmentVariable(LiveNativeDragStatusPathEnvironmentVariable));
     }
 
     private async Task<string> ValidateLiveNativeResizeAsync(ProGpuWpfWindowHost liveHost)

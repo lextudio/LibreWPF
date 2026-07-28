@@ -40,6 +40,7 @@ public partial class MainWindow : Window
 
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_MVP_LIVE_VALIDATE";
     private const string LiveValidationStatusPathEnvironmentVariable = "PROGPU_WPF_MVP_LIVE_VALIDATE_STATUS_PATH";
+    private const string LiveNativeDragStatusPathEnvironmentVariable = "PROGPU_WPF_MVP_NATIVE_DRAG_STATUS_PATH";
     private const int LiveValidationMaxAttempts = 600;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
     private static readonly FrameworkThemeDefinition[] s_frameworkThemes =
@@ -1015,10 +1016,11 @@ public partial class MainWindow : Window
             Console.WriteLine("ProGPU WPF MVP live windowing capabilities ready.");
             string resizeStatus = await ValidateLiveNativeResizeAsync(liveHost);
             Console.WriteLine("ProGPU WPF MVP live native resize validation ready.");
+            string nativeDragStatus = await ValidateLiveExternalNativeDragAsync(liveHost);
             string inputStatus = await ValidateLiveInputAsync(liveHost);
             string successStatus = $"ProGPU WPF MVP live input validation succeeded: {geometryStatus}.";
             string detailStatus =
-                $"ProGPU WPF MVP live input validation details: {windowingStatus}; {resizeStatus}; {inputStatus}.";
+                $"ProGPU WPF MVP live input validation details: {windowingStatus}; {resizeStatus}; {nativeDragStatus}; {inputStatus}.";
             Console.WriteLine(successStatus);
             Console.WriteLine(detailStatus);
             WriteLiveValidationStatus($"{successStatus}{Environment.NewLine}{detailStatus}{Environment.NewLine}");
@@ -1077,6 +1079,51 @@ public partial class MainWindow : Window
         }
 
         File.WriteAllText(statusPath, status);
+    }
+
+    private async Task<string> ValidateLiveExternalNativeDragAsync(ProGpuWpfWindowHost liveHost)
+    {
+        string? statusPath = Environment.GetEnvironmentVariable(LiveNativeDragStatusPathEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(statusPath))
+        {
+            return "external native drag not requested";
+        }
+
+        string? statusDirectory = Path.GetDirectoryName(statusPath);
+        if (!string.IsNullOrEmpty(statusDirectory))
+        {
+            Directory.CreateDirectory(statusDirectory);
+        }
+
+        File.WriteAllText(statusPath, "ready");
+        Console.WriteLine("ProGPU WPF MVP external native drag ready.");
+        Console.Out.Flush();
+
+        bool completed = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            await Task.Delay(LiveValidationRetryDelay);
+            if (File.Exists(statusPath) &&
+                string.Equals(File.ReadAllText(statusPath).Trim(), "completed", StringComparison.Ordinal))
+            {
+                completed = true;
+                break;
+            }
+        }
+
+        if (!completed)
+        {
+            throw new InvalidOperationException("Expected the external native drag driver to report completion.");
+        }
+
+        int dispatcherCheckpoint = 0;
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => dispatcherCheckpoint++,
+            DispatcherPriority.Background);
+        AssertEqual(1, dispatcherCheckpoint, "MVP live dispatcher checkpoint after external native drag");
+        Console.WriteLine("ProGPU WPF MVP external native drag dispatcher checkpoint passed.");
+        return "external 36-step native drag returned to dispatcher processing";
     }
 
     private async Task<string> ValidateLiveNativeResizeAsync(ProGpuWpfWindowHost liveHost)

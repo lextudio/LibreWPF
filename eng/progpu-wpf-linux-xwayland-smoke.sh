@@ -21,13 +21,14 @@ dotnet restore \
   -v:minimal
 
 smoke_log="$(mktemp "${TMPDIR:-/tmp}/librewpf-linux-xwayland.XXXXXX")"
+native_drag_status="$(mktemp "${TMPDIR:-/tmp}/librewpf-linux-native-drag.XXXXXX")"
 cleanup() {
   status=$?
   if ((status != 0)); then
     echo "LibreWPF Linux Wayland-session/XWayland smoke log:" >&2
     cat "${smoke_log}" >&2 || true
   fi
-  rm -f "${smoke_log}"
+  rm -f "${smoke_log}" "${native_drag_status}"
 }
 trap cleanup EXIT
 
@@ -42,6 +43,7 @@ xvfb-run -a --server-args="-screen 0 1280x1024x24" bash -c '
   PROGPU_WPF_MVP_VALIDATE=0 \
   PROGPU_WPF_MVP_RUN_VALIDATE=0 \
   PROGPU_WPF_MVP_LIVE_VALIDATE=1 \
+  PROGPU_WPF_MVP_NATIVE_DRAG_STATUS_PATH="$3" \
     "$1/eng/run-progpu-wpf-mvp.sh" >"$2" 2>&1 &
   probe_pid=$!
 
@@ -74,18 +76,41 @@ xvfb-run -a --server-args="-screen 0 1280x1024x24" bash -c '
     exit 1
   fi
 
+  native_drag_ready=0
+  for _ in $(seq 1 600); do
+    if ! kill -0 "${probe_pid}" 2>/dev/null; then
+      wait "${probe_pid}"
+      echo "LibreWPF MVP probe exited before requesting the external native drag." >&2
+      exit 1
+    fi
+
+    if [[ -f "$3" ]] && [[ "$(cat "$3")" == "ready" ]]; then
+      native_drag_ready=1
+      break
+    fi
+
+    sleep 0.05
+  done
+
+  if ((native_drag_ready == 0)); then
+    echo "LibreWPF MVP probe did not request the external native drag before timeout." >&2
+    exit 1
+  fi
+
   xdotool mousemove --window "${window_id}" 360 300
   xdotool mousedown 1
   for step in $(seq 1 36); do
     xdotool mousemove --window "${window_id}" "$((360 + step * 3))" "$((300 + step))"
   done
   xdotool mouseup 1
+  printf "completed" >"$3"
 
   wait "${probe_pid}"
   trap - EXIT
-' bash "${repo_root}" "${smoke_log}"
+' bash "${repo_root}" "${smoke_log}" "${native_drag_status}"
 
 grep -F "ProGPU WPF MVP live input validation succeeded:" "${smoke_log}"
+grep -F "external 36-step native drag returned to dispatcher processing" "${smoke_log}"
 grep -F "windowing backend X11, wayland session True, global position True, interactive move True, native popups True, owner-composited popups False" "${smoke_log}"
 grep -F "Menu, ComboBox dropdown, and direct Popup opened through ProGPU popup surfaces" "${smoke_log}"
 grep -F "native windows 1/1/1" "${smoke_log}"

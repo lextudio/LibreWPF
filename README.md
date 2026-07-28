@@ -11,6 +11,26 @@ Current focus areas:
 - Package the runtime as a preview SDK and NuGet set that can be consumed from a local feed or NuGet.org.
 - Keep third-party validation active through basic WPF apps, Xceed Toolkit/AvalonDock, Xceed paid Toolkit/DataGrid, SciChart MVP, ProGPU Avalonia package smoke, and no-source-change SDK smoke tests.
 
+The maintained cross-platform priorities, compatibility policy, and ecosystem
+status are tracked in the [LibreWPF cross-platform roadmap](roadmap.md). The
+historical upstream Microsoft WPF roadmap remains below that LibreWPF section.
+
+### Linux windowing behavior
+
+LibreWPF selects X11 when it runs in a Wayland desktop session that also exposes
+an XWayland `DISPLAY`. This preserves WPF desktop-coordinate behavior for
+`Window.Left`/`Top`, `Window.DragMove`, docking windows, and native popup
+placement. Set `PROGPU_WPF_LINUX_WINDOWING=wayland` to opt into native Wayland;
+native Wayland intentionally uses owner-composited popups because GLFW cannot
+position popup toplevels.
+
+Libraries that need to choose a docking or floating-window strategy can call
+`ProGpuWpfDiagnostics.TryGetWindowingCapabilities(...)`. The returned typed
+snapshot reports the actual backend and whether global positioning, interactive
+move, native popup windows, and owner-composited popups are available. Native
+Wayland reports global positioning and interactive movement as unsupported
+instead of silently pretending that an ignored absolute move succeeded.
+
 ## Upstream WPF Synchronization
 
 The current LibreWPF development line includes `dotnet/wpf` through upstream commit

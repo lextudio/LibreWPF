@@ -6,13 +6,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <TargetFrameworkVersion>10.0</TargetFrameworkVersion>
     <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
-    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.28</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.29</VersionSuffix>
     <Version Condition="'$(Version)' == ''">$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion Condition="'$(PackageVersion)' == ''">$(Version)</PackageVersion>
     <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.1.0.0</AssemblyVersion>
     <FileVersion Condition="'$(FileVersion)' == ''">0.1.0.0</FileVersion>
     <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(Version)</InformationalVersion>
-    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Aligns LibreWPF preview.28 with ProGPU preview.27 and its first-party shaping package; ships the missing System.Windows.Presentation compile/runtime payload and the Accessibility runtime payload without polluting consumer compilation; keeps Wayland popups interactive in the owner compositor while selecting XWayland for desktop-positioned windows when available; prevents render-scheduler reentrancy from starving the WPF dispatcher after native drags; and inherits the latest ProGPU bitmap, oversized-atlas, rounded-border, text-cache, memory, and glyph-atlas fixes.</PackageReleaseNotes>
+    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Aligns LibreWPF preview.29 with ProGPU preview.28; resolves the managed transport runtime from NuGet's authoritative restored package path; scopes ProGPU.Text source analyzer compatibility to portable PresentationCore builds; preserves the popup, native title-bar, input, drag, and render-scheduler fixes from preview.28; and inherits ProGPU's pooled retained-renderer, incremental scene, text, vector, image, and memory improvements.</PackageReleaseNotes>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

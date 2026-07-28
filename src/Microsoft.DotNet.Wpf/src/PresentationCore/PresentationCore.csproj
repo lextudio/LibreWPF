@@ -6,6 +6,10 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- SYSLIB5005: System.Formats.Nrbf is experimental -->
     <NoWarn>$(NoWarn);SYSLIB5005</NoWarn>
+    <!-- ProGPU.Text is source-linked below on portable hosts. Its public API intentionally
+         returns IReadOnlyList while its private builder returns List, which trips CA1859
+         only when recompiled under WPF's stricter analyzer policy. -->
+    <NoWarn Condition="'$(OS)' != 'Windows_NT'">$(NoWarn);CA1859</NoWarn>
     <EnablePInvokeAnalyzer>false</EnablePInvokeAnalyzer>
     <GenerateResourcesSRNamespace>MS.Internal.PresentationCore</GenerateResourcesSRNamespace>
     <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>

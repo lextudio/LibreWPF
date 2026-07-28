@@ -106,3 +106,43 @@ jobs:
         run: |
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Release
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Debug
+
+  linux-xwayland-smoke:
+    name: Linux Wayland-session XWayland input and popup smoke
+    needs: sdk-smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install native windowing dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-dri \
+            libglx-mesa0 \
+            libx11-6 \
+            libxcursor1 \
+            libxi6 \
+            libxinerama1 \
+            libxrandr2 \
+            mesa-vulkan-drivers \
+            xauth \
+            xdotool \
+            xvfb
+
+      - name: Download CI package bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: librewpf-ci-packages-${{ github.sha }}
+          path: artifacts/packages/Release/NonShipping
+
+      - name: Run Wayland-session XWayland native input and popup smoke
+        run: ./eng/progpu-wpf-linux-xwayland-smoke.sh

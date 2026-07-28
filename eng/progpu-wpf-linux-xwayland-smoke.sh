@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+for command in xvfb-run xdotool; do
+  if ! command -v "${command}" >/dev/null 2>&1; then
+    echo "Required Linux windowing smoke dependency '${command}' is unavailable." >&2
+    exit 1
+  fi
+done
+
+smoke_log="$(mktemp "${TMPDIR:-/tmp}/librewpf-linux-xwayland.XXXXXX")"
+cleanup() {
+  rm -f "${smoke_log}"
+}
+trap cleanup EXIT
+
+xvfb-run -a --server-args="-screen 0 1280x1024x24" bash -c '
+  set -euo pipefail
+
+  export XDG_SESSION_TYPE=wayland
+  export WAYLAND_DISPLAY=wayland-ci
+  unset PROGPU_WPF_LINUX_WINDOWING
+
+  PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \
+  PROGPU_WPF_MVP_VALIDATE=0 \
+  PROGPU_WPF_MVP_RUN_VALIDATE=0 \
+  PROGPU_WPF_MVP_LIVE_VALIDATE=1 \
+    "$1/eng/run-progpu-wpf-mvp.sh" >"$2" 2>&1 &
+  probe_pid=$!
+
+  cleanup_probe() {
+    if kill -0 "${probe_pid}" 2>/dev/null; then
+      kill "${probe_pid}" 2>/dev/null || true
+      wait "${probe_pid}" 2>/dev/null || true
+    fi
+  }
+  trap cleanup_probe EXIT
+
+  window_id="$(xdotool search --sync --onlyvisible --name "ProGPU WPF MVP" | head -n 1)"
+  if [[ -z "${window_id}" ]]; then
+    echo "Could not locate the live LibreWPF MVP X11 window." >&2
+    exit 1
+  fi
+
+  xdotool mousemove --window "${window_id}" 360 300
+  xdotool mousedown 1
+  for step in $(seq 1 36); do
+    xdotool mousemove --window "${window_id}" "$((360 + step * 3))" "$((300 + step))"
+  done
+  xdotool mouseup 1
+
+  wait "${probe_pid}"
+  trap - EXIT
+' bash "${repo_root}" "${smoke_log}"
+
+grep -F "ProGPU WPF MVP live input validation succeeded:" "${smoke_log}"
+grep -F "Menu, ComboBox dropdown, and direct Popup opened through ProGPU popup surfaces" "${smoke_log}"
+grep -F "native windows 1/1/1" "${smoke_log}"
+grep -F "runtime framework themes switched and rendered native menu popups: Aero, Aero2, AeroLite, Classic, Fluent, Luna, Royale" "${smoke_log}"
+
+echo "LibreWPF Linux Wayland-session/XWayland native drag, dispatcher, popup, and theme smoke succeeded."
+

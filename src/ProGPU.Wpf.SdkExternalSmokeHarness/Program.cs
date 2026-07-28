@@ -328,8 +328,8 @@ internal static class Program
         AssertContains(portableTargets, "<_ProGpuWpfDefaultResourceItem Include=\"**/*.bmp;**/*.cur;**/*.gif;**/*.ico;**/*.jpg;**/*.jpeg;**/*.png;**/*.tif;**/*.tiff;**/*.wdp;**/*.webp\"", "SDK default image resource item");
         AssertContains(portableTargets, "<Resource Include=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource include");
         AssertContains(portableTargets, "<None Remove=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource None removal");
-        AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" />", "SDK managed WPF transport package reference");
-        AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" VersionOverride=\"$(ProGpuWpfManagedPackageVersion)\" />", "SDK CPM managed WPF transport package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" GeneratePathProperty=\"true\" />", "SDK managed WPF transport package path reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" VersionOverride=\"$(ProGpuWpfManagedPackageVersion)\" GeneratePathProperty=\"true\" />", "SDK CPM managed WPF transport package path reference");
         AssertContains(portableTargets, "<PackageReference Include=\"LibreWPF.ProGPU\" Version=\"$(ProGpuWpfPackageVersion)\" />", "SDK ProGPU WPF package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"LibreWPF.ProGPU\" VersionOverride=\"$(ProGpuWpfPackageVersion)\" />", "SDK CPM ProGPU WPF package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"LibreWPF.Interop\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU WPF interop package reference");

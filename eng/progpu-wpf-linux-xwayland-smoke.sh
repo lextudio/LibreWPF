@@ -10,6 +10,16 @@ for command in xvfb-run xdotool; do
   fi
 done
 
+# The repository's WPF Arcade targets intentionally build the local
+# PresentationBuildTasks project when a source-tree sample compiles XAML.
+# Restore that project explicitly because the Linux job consumes the package
+# artifact produced by another job and therefore has not run the source build
+# that normally creates its project.assets.json.
+dotnet restore \
+  "${repo_root}/src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj" \
+  -p:TargetFramework=net10.0 \
+  -v:minimal
+
 smoke_log="$(mktemp "${TMPDIR:-/tmp}/librewpf-linux-xwayland.XXXXXX")"
 cleanup() {
   status=$?

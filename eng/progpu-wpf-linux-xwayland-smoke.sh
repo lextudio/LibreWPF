@@ -12,6 +12,11 @@ done
 
 smoke_log="$(mktemp "${TMPDIR:-/tmp}/librewpf-linux-xwayland.XXXXXX")"
 cleanup() {
+  status=$?
+  if ((status != 0)); then
+    echo "LibreWPF Linux Wayland-session/XWayland smoke log:" >&2
+    cat "${smoke_log}" >&2 || true
+  fi
   rm -f "${smoke_log}"
 }
 trap cleanup EXIT
@@ -38,9 +43,24 @@ xvfb-run -a --server-args="-screen 0 1280x1024x24" bash -c '
   }
   trap cleanup_probe EXIT
 
-  window_id="$(xdotool search --sync --onlyvisible --name "ProGPU WPF MVP" | head -n 1)"
+  window_id=""
+  for _ in $(seq 1 600); do
+    if ! kill -0 "${probe_pid}" 2>/dev/null; then
+      wait "${probe_pid}"
+      echo "LibreWPF MVP probe exited before its X11 window became visible." >&2
+      exit 1
+    fi
+
+    window_id="$(xdotool search --onlyvisible --name "ProGPU WPF MVP" 2>/dev/null | head -n 1 || true)"
+    if [[ -n "${window_id}" ]]; then
+      break
+    fi
+
+    sleep 0.25
+  done
+
   if [[ -z "${window_id}" ]]; then
-    echo "Could not locate the live LibreWPF MVP X11 window." >&2
+    echo "Could not locate the live LibreWPF MVP X11 window before timeout." >&2
     exit 1
   fi
 

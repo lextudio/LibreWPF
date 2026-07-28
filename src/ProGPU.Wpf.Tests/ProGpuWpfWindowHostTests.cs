@@ -319,6 +319,61 @@ public sealed class ProGpuWpfWindowHostTests
                 isNativeLoopRunning));
     }
 
+    [Theory]
+    [InlineData(true, false, false, true, false, false, false, false, ProGpuWpfWindowingBackend.Win32, true, true, false, true)]
+    [InlineData(false, true, false, false, true, false, false, false, ProGpuWpfWindowingBackend.Cocoa, true, true, true, false)]
+    [InlineData(false, false, true, false, false, true, false, true, ProGpuWpfWindowingBackend.X11, true, true, true, false)]
+    [InlineData(false, false, true, false, false, false, true, true, ProGpuWpfWindowingBackend.Wayland, false, false, false, true)]
+    [InlineData(false, false, true, false, false, false, false, false, ProGpuWpfWindowingBackend.Unknown, false, false, false, false)]
+    public void WindowingCapabilitiesDescribeTheActualNativeBackend(
+        bool isWindows,
+        bool isMacOS,
+        bool isLinux,
+        bool hasWin32,
+        bool hasCocoa,
+        bool hasX11,
+        bool hasWayland,
+        bool isWaylandDesktopSession,
+        ProGpuWpfWindowingBackend expectedBackend,
+        bool supportsGlobalPosition,
+        bool supportsInteractiveMove,
+        bool supportsNativePopupWindows,
+        bool usesOwnerCompositedPopups)
+    {
+        var capabilities = ProGpuWpfDiagnostics.CreateWindowingCapabilitiesSnapshot(
+            isWindows,
+            isMacOS,
+            isLinux,
+            hasWin32,
+            hasCocoa,
+            hasX11,
+            hasWayland,
+            isWaylandDesktopSession);
+
+        Assert.Equal(expectedBackend, capabilities.Backend);
+        Assert.Equal(isWaylandDesktopSession, capabilities.IsWaylandDesktopSession);
+        Assert.Equal(supportsGlobalPosition, capabilities.SupportsGlobalPosition);
+        Assert.Equal(supportsInteractiveMove, capabilities.SupportsInteractiveMove);
+        Assert.Equal(supportsNativePopupWindows, capabilities.SupportsNativePopupWindows);
+        Assert.Equal(usesOwnerCompositedPopups, capabilities.UsesOwnerCompositedPopups);
+    }
+
+    [Theory]
+    [InlineData("wayland", null, true)]
+    [InlineData("WAYLAND", "", true)]
+    [InlineData("x11", "wayland-0", true)]
+    [InlineData("x11", null, false)]
+    [InlineData(null, null, false)]
+    public void WindowingCapabilitiesDetectWaylandDesktopSession(
+        string? sessionType,
+        string? waylandDisplay,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            ProGpuWpfDiagnostics.IsWaylandDesktopSession(sessionType, waylandDisplay));
+    }
+
     [Fact]
     public void NativeLoopWakeupInvokesContinueEventsAndCountsSuccessfulRequests()
     {

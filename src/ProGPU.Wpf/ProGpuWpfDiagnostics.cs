@@ -1,5 +1,14 @@
 namespace System.Windows.Media.ProGPU;
 
+public enum ProGpuWpfWindowingBackend
+{
+    Unknown,
+    Win32,
+    Cocoa,
+    X11,
+    Wayland
+}
+
 public static class ProGpuWpfDiagnostics
 {
     private const int HitTestOwnerBufferCapacity = 64;
@@ -43,6 +52,14 @@ public static class ProGpuWpfDiagnostics
         int NativeWindowGpuHitTestCount,
         int NativeWindowGpuHitTestOwnerCount);
 
+    public readonly record struct WindowingCapabilitiesSnapshot(
+        ProGpuWpfWindowingBackend Backend,
+        bool IsWaylandDesktopSession,
+        bool SupportsGlobalPosition,
+        bool SupportsInteractiveMove,
+        bool SupportsNativePopupWindows,
+        bool UsesOwnerCompositedPopups);
+
     public static bool TryGetWindowHost(object? window, out ProGpuWpfWindowHost? host)
     {
         if (window is ProGpuWpfWindowHost directHost)
@@ -52,6 +69,73 @@ public static class ProGpuWpfDiagnostics
         }
 
         return WpfPortableWindowActivation.TryGetActiveHost(window, out host);
+    }
+
+    public static bool TryGetWindowingCapabilities(
+        object? window,
+        out WindowingCapabilitiesSnapshot capabilities)
+    {
+        capabilities = default;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        var native = host.SilkWindow?.Native;
+        capabilities = CreateWindowingCapabilitiesSnapshot(
+            OperatingSystem.IsWindows(),
+            OperatingSystem.IsMacOS(),
+            OperatingSystem.IsLinux(),
+            native?.Win32 is not null,
+            native?.Cocoa is not null,
+            native?.X11 is not null,
+            native?.Wayland is not null,
+            IsWaylandDesktopSession(
+                Environment.GetEnvironmentVariable("XDG_SESSION_TYPE"),
+                Environment.GetEnvironmentVariable("WAYLAND_DISPLAY")));
+        return native != null;
+    }
+
+    internal static WindowingCapabilitiesSnapshot CreateWindowingCapabilitiesSnapshot(
+        bool isWindows,
+        bool isMacOS,
+        bool isLinux,
+        bool hasWin32,
+        bool hasCocoa,
+        bool hasX11,
+        bool hasWayland,
+        bool isWaylandDesktopSession)
+    {
+        ProGpuWpfWindowingBackend backend =
+            isWindows && hasWin32 ? ProGpuWpfWindowingBackend.Win32 :
+            isMacOS && hasCocoa ? ProGpuWpfWindowingBackend.Cocoa :
+            isLinux && hasX11 ? ProGpuWpfWindowingBackend.X11 :
+            isLinux && hasWayland ? ProGpuWpfWindowingBackend.Wayland :
+            ProGpuWpfWindowingBackend.Unknown;
+        bool supportsDesktopPositioning =
+            backend is ProGpuWpfWindowingBackend.Win32
+                or ProGpuWpfWindowingBackend.Cocoa
+                or ProGpuWpfWindowingBackend.X11;
+        bool supportsNativePopups =
+            backend is ProGpuWpfWindowingBackend.Cocoa
+                or ProGpuWpfWindowingBackend.X11;
+
+        return new WindowingCapabilitiesSnapshot(
+            backend,
+            isWaylandDesktopSession,
+            SupportsGlobalPosition: supportsDesktopPositioning,
+            SupportsInteractiveMove: supportsDesktopPositioning,
+            SupportsNativePopupWindows: supportsNativePopups,
+            UsesOwnerCompositedPopups:
+                backend is ProGpuWpfWindowingBackend.Win32
+                    or ProGpuWpfWindowingBackend.Wayland);
+    }
+
+    internal static bool IsWaylandDesktopSession(string? sessionType, string? waylandDisplay)
+    {
+        return string.Equals(sessionType, "wayland", StringComparison.OrdinalIgnoreCase)
+            || !string.IsNullOrWhiteSpace(waylandDisplay);
     }
 
     public static bool TryRequestRender(object? window)

@@ -113,6 +113,11 @@ public sealed class WpfManagedProjectGraphTests
             });
 
         Assert.Equal("'$(OS)' != 'Windows_NT'", compileItem.Attribute("Condition")?.Value);
+
+        Assert.Contains(
+            document.Descendants("NoWarn"),
+            item => item.Value.Contains("CA1859", StringComparison.Ordinal)
+                && item.Attribute("Condition")?.Value == "'$(OS)' != 'Windows_NT'");
         Assert.Equal(linkPath, compileItem.Attribute("Link")?.Value);
     }
 
@@ -14144,7 +14149,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ReferencePathWithRefAssemblies\n        Remove=\"@(ReferencePathWithRefAssemblies)\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("'%(ReferencePathWithRefAssemblies.Filename)' == 'System.Drawing'", portableTargets, StringComparison.Ordinal);
         Assert.Contains("microsoft.netcore.app.ref", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"LibreWPF.ProGPU\" Version=\"$(ProGpuWpfPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"LibreWPF.Interop\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Backend\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
@@ -14154,7 +14159,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReference Include=\"ProGPU.Text\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Compute\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Transpiler\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" VersionOverride=\"$(ProGpuWpfManagedPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" VersionOverride=\"$(ProGpuWpfManagedPackageVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"LibreWPF.ProGPU\" VersionOverride=\"$(ProGpuWpfPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"LibreWPF.Interop\" VersionOverride=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.DirectX\" VersionOverride=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
@@ -14191,7 +14196,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir)ProGPU.Scene.dll\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Delete Files=\"@(_ProGpuWpfSdkExistingMutablePackageOutput)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkPreserveManagedTransportRuntimeAssetsInDependencyFile", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("DependsOnTargets=\"ResolveLockFileCopyLocalFiles;ResolveAssemblyReferences\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("BeforeTargets=\"GenerateBuildDependencyFile\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfManagedTransportReferenceAnchor", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("GeneratePathProperty=\"true\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("'%(ReferencePath.Filename)' == 'PresentationFramework'", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfManagedTransportReferenceAnchorPath>@(_ProGpuWpfManagedTransportReferenceAnchor)</_ProGpuWpfManagedTransportReferenceAnchorPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains(".Replace('/ref/', '/lib/').Replace('\\ref\\', '\\lib\\')", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfManagedTransportRuntimeRoot Condition=\"'$(PkgLibreWPF_Transport)' != ''\">", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfManagedTransportRuntimeRoot Condition=\"'$(_ProGpuWpfManagedTransportRuntimeRoot)' == '' And '$(_ProGpuWpfManagedTransportResolvedRuntimeDirectory)' != ''\">", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfManagedTransportRuntimeRoot Condition=\"'$(_ProGpuWpfManagedTransportRuntimeRoot)' == ''\">", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<Error Condition=\"'$(_ProGpuWpfManagedTransportRuntimeRoot)' == '' Or '@(_ProGpuWpfManagedTransportDependencyRuntimeAsset)' == ''\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Exclude=\"$(_ProGpuWpfManagedTransportRuntimeRoot)PresentationCore.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<RuntimeCopyLocalItems", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<NuGetPackageId>$(ProGpuWpfManagedPackageId)</NuGetPackageId>", portableTargets, StringComparison.Ordinal);

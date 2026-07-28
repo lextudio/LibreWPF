@@ -132,7 +132,7 @@
   </Target>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package' And '$(ManagePackageVersionsCentrally)' != 'true'">
-    <PackageReference Include="$(ProGpuWpfManagedPackageId)" Version="$(ProGpuWpfManagedPackageVersion)" />
+    <PackageReference Include="$(ProGpuWpfManagedPackageId)" Version="$(ProGpuWpfManagedPackageVersion)" GeneratePathProperty="true" />
     <PackageReference Include="LibreWPF.ProGPU" Version="$(ProGpuWpfPackageVersion)" />
     <PackageReference Include="LibreWPF.Interop" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Backend" Version="$(ProGpuPackageVersion)" />
@@ -149,7 +149,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package' And '$(ManagePackageVersionsCentrally)' == 'true'">
-    <PackageReference Include="$(ProGpuWpfManagedPackageId)" VersionOverride="$(ProGpuWpfManagedPackageVersion)" />
+    <PackageReference Include="$(ProGpuWpfManagedPackageId)" VersionOverride="$(ProGpuWpfManagedPackageVersion)" GeneratePathProperty="true" />
     <PackageReference Include="LibreWPF.ProGPU" VersionOverride="$(ProGpuWpfPackageVersion)" />
     <PackageReference Include="LibreWPF.Interop" VersionOverride="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Backend" VersionOverride="$(ProGpuPackageVersion)" />
@@ -318,17 +318,28 @@
     PresentationCore with the selected win-x86/win-x64/win-arm64 runtime asset.
   -->
   <Target Name="_ProGpuWpfSdkPreserveManagedTransportRuntimeAssetsInDependencyFile"
-          AfterTargets="ResolveLockFileCopyLocalFiles"
+          DependsOnTargets="ResolveLockFileCopyLocalFiles;ResolveAssemblyReferences"
           BeforeTargets="GenerateBuildDependencyFile"
           Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
+    <ItemGroup>
+      <_ProGpuWpfManagedTransportReferenceAnchor
+        Include="@(ReferencePath)"
+        Condition="'%(ReferencePath.Filename)' == 'PresentationFramework' And ('%(ReferencePath.NuGetPackageId)' == '$(ProGpuWpfManagedPackageId)' Or $([System.String]::Copy('%(ReferencePath.Identity)').ToLowerInvariant().Contains('librewpf.transport')))" />
+    </ItemGroup>
+
     <PropertyGroup>
+      <_ProGpuWpfManagedTransportReferenceAnchorPath>@(_ProGpuWpfManagedTransportReferenceAnchor)</_ProGpuWpfManagedTransportReferenceAnchorPath>
+      <_ProGpuWpfManagedTransportReferenceDirectory Condition="'$(_ProGpuWpfManagedTransportReferenceAnchorPath)' != ''">$([System.IO.Path]::GetDirectoryName('$(_ProGpuWpfManagedTransportReferenceAnchorPath)'))</_ProGpuWpfManagedTransportReferenceDirectory>
+      <_ProGpuWpfManagedTransportResolvedRuntimeDirectory Condition="'$(_ProGpuWpfManagedTransportReferenceDirectory)' != ''">$([System.String]::Copy('$(_ProGpuWpfManagedTransportReferenceDirectory)').Replace('/ref/', '/lib/').Replace('\ref\', '\lib\'))</_ProGpuWpfManagedTransportResolvedRuntimeDirectory>
       <_ProGpuWpfNuGetPackagesEnvironment>$([System.Environment]::GetEnvironmentVariable('NUGET_PACKAGES'))</_ProGpuWpfNuGetPackagesEnvironment>
       <_ProGpuWpfManagedTransportPackageRoot Condition="'$(RestorePackagesPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(RestorePackagesPath)'))</_ProGpuWpfManagedTransportPackageRoot>
       <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(_ProGpuWpfNuGetPackagesEnvironment)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_ProGpuWpfNuGetPackagesEnvironment)'))</_ProGpuWpfManagedTransportPackageRoot>
       <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(NuGetPackageRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_ProGpuWpfManagedTransportPackageRoot>
       <_ProGpuWpfManagedTransportRuntimeTfm Condition="'$([System.String]::Copy(`$(TargetFramework)`).StartsWith(`net10.`))' == 'True'">net10.0</_ProGpuWpfManagedTransportRuntimeTfm>
       <_ProGpuWpfManagedTransportRuntimeTfm Condition="'$(_ProGpuWpfManagedTransportRuntimeTfm)' == ''">$(TargetFramework)</_ProGpuWpfManagedTransportRuntimeTfm>
-      <_ProGpuWpfManagedTransportRuntimeRoot>$(_ProGpuWpfManagedTransportPackageRoot)librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/</_ProGpuWpfManagedTransportRuntimeRoot>
+      <_ProGpuWpfManagedTransportRuntimeRoot Condition="'$(PkgLibreWPF_Transport)' != ''">$([MSBuild]::EnsureTrailingSlash('$(PkgLibreWPF_Transport)'))lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/</_ProGpuWpfManagedTransportRuntimeRoot>
+      <_ProGpuWpfManagedTransportRuntimeRoot Condition="'$(_ProGpuWpfManagedTransportRuntimeRoot)' == '' And '$(_ProGpuWpfManagedTransportResolvedRuntimeDirectory)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_ProGpuWpfManagedTransportResolvedRuntimeDirectory)'))</_ProGpuWpfManagedTransportRuntimeRoot>
+      <_ProGpuWpfManagedTransportRuntimeRoot Condition="'$(_ProGpuWpfManagedTransportRuntimeRoot)' == ''">$(_ProGpuWpfManagedTransportPackageRoot)librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/</_ProGpuWpfManagedTransportRuntimeRoot>
     </PropertyGroup>
 
     <!--
@@ -354,30 +365,41 @@
       </RuntimeCopyLocalItems>
     </ItemGroup>
 
-    <Error Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' Or '@(_ProGpuWpfManagedTransportDependencyRuntimeAsset)' == ''"
+    <Error Condition="'$(_ProGpuWpfManagedTransportRuntimeRoot)' == '' Or '@(_ProGpuWpfManagedTransportDependencyRuntimeAsset)' == ''"
            Text="LibreWPF package mode could not preserve the managed transport dependency runtime at '$(_ProGpuWpfManagedTransportRuntimeRoot)'." />
   </Target>
 
   <Target Name="_ProGpuWpfSdkCopyManagedTransportRuntimeAssets"
-          DependsOnTargets="ResolveLockFileCopyLocalFiles"
+          DependsOnTargets="ResolveLockFileCopyLocalFiles;ResolveAssemblyReferences"
           AfterTargets="CopyFilesToOutputDirectory"
           BeforeTargets="_ProGpuWpfSdkCopyPackageRuntimeAssets"
           Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
+    <ItemGroup>
+      <_ProGpuWpfManagedTransportReferenceAnchor
+        Include="@(ReferencePath)"
+        Condition="'%(ReferencePath.Filename)' == 'PresentationFramework' And ('%(ReferencePath.NuGetPackageId)' == '$(ProGpuWpfManagedPackageId)' Or $([System.String]::Copy('%(ReferencePath.Identity)').ToLowerInvariant().Contains('librewpf.transport')))" />
+    </ItemGroup>
+
     <PropertyGroup>
+      <_ProGpuWpfManagedTransportReferenceAnchorPath>@(_ProGpuWpfManagedTransportReferenceAnchor)</_ProGpuWpfManagedTransportReferenceAnchorPath>
+      <_ProGpuWpfManagedTransportReferenceDirectory Condition="'$(_ProGpuWpfManagedTransportReferenceAnchorPath)' != ''">$([System.IO.Path]::GetDirectoryName('$(_ProGpuWpfManagedTransportReferenceAnchorPath)'))</_ProGpuWpfManagedTransportReferenceDirectory>
+      <_ProGpuWpfManagedTransportResolvedRuntimeDirectory Condition="'$(_ProGpuWpfManagedTransportReferenceDirectory)' != ''">$([System.String]::Copy('$(_ProGpuWpfManagedTransportReferenceDirectory)').Replace('/ref/', '/lib/').Replace('\ref\', '\lib\'))</_ProGpuWpfManagedTransportResolvedRuntimeDirectory>
       <_ProGpuWpfNuGetPackagesEnvironment>$([System.Environment]::GetEnvironmentVariable('NUGET_PACKAGES'))</_ProGpuWpfNuGetPackagesEnvironment>
       <_ProGpuWpfManagedTransportPackageRoot Condition="'$(RestorePackagesPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(RestorePackagesPath)'))</_ProGpuWpfManagedTransportPackageRoot>
       <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(_ProGpuWpfNuGetPackagesEnvironment)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_ProGpuWpfNuGetPackagesEnvironment)'))</_ProGpuWpfManagedTransportPackageRoot>
       <_ProGpuWpfManagedTransportPackageRoot Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' And '$(NuGetPackageRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_ProGpuWpfManagedTransportPackageRoot>
       <_ProGpuWpfManagedTransportRuntimeTfm Condition="'$([System.String]::Copy(`$(TargetFramework)`).StartsWith(`net10.`))' == 'True'">net10.0</_ProGpuWpfManagedTransportRuntimeTfm>
       <_ProGpuWpfManagedTransportRuntimeTfm Condition="'$(_ProGpuWpfManagedTransportRuntimeTfm)' == ''">$(TargetFramework)</_ProGpuWpfManagedTransportRuntimeTfm>
-      <_ProGpuWpfManagedTransportRuntimeRoot>$(_ProGpuWpfManagedTransportPackageRoot)librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/</_ProGpuWpfManagedTransportRuntimeRoot>
+      <_ProGpuWpfManagedTransportRuntimeRoot Condition="'$(PkgLibreWPF_Transport)' != ''">$([MSBuild]::EnsureTrailingSlash('$(PkgLibreWPF_Transport)'))lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/</_ProGpuWpfManagedTransportRuntimeRoot>
+      <_ProGpuWpfManagedTransportRuntimeRoot Condition="'$(_ProGpuWpfManagedTransportRuntimeRoot)' == '' And '$(_ProGpuWpfManagedTransportResolvedRuntimeDirectory)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_ProGpuWpfManagedTransportResolvedRuntimeDirectory)'))</_ProGpuWpfManagedTransportRuntimeRoot>
+      <_ProGpuWpfManagedTransportRuntimeRoot Condition="'$(_ProGpuWpfManagedTransportRuntimeRoot)' == ''">$(_ProGpuWpfManagedTransportPackageRoot)librewpf.transport/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfManagedTransportRuntimeTfm)/</_ProGpuWpfManagedTransportRuntimeRoot>
     </PropertyGroup>
 
     <ItemGroup>
       <_ProGpuWpfManagedTransportRuntimeAsset Include="$(_ProGpuWpfManagedTransportRuntimeRoot)*.dll" />
     </ItemGroup>
 
-    <Error Condition="'$(_ProGpuWpfManagedTransportPackageRoot)' == '' Or '@(_ProGpuWpfManagedTransportRuntimeAsset)' == ''"
+    <Error Condition="'$(_ProGpuWpfManagedTransportRuntimeRoot)' == '' Or '@(_ProGpuWpfManagedTransportRuntimeAsset)' == ''"
            Text="LibreWPF package mode could not locate the managed transport runtime at '$(_ProGpuWpfManagedTransportRuntimeRoot)'." />
     <Copy SourceFiles="@(_ProGpuWpfManagedTransportRuntimeAsset)"
           DestinationFiles="@(_ProGpuWpfManagedTransportRuntimeAsset->'$(TargetDir)%(Filename)%(Extension)')"

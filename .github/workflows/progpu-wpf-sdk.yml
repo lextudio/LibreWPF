@@ -15,6 +15,7 @@ permissions:
 
 env:
   PROGPU_WPF_QUALIFIED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+  PROGPU_WPF_PROGPU_PACKAGE_VERSION: 0.1.0-preview.29
 
 jobs:
   windows-managed-runtime:
@@ -68,6 +69,34 @@ jobs:
         with:
           name: librewpf-windows-managed-runtime-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/windows-managed-runtime
+
+      - name: Stage exact ProGPU release packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          progpu_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION}"
+          tag="v${progpu_version}"
+          tag_ref="refs/tags/${tag}"
+          tag_commit="$(git ls-remote https://github.com/wieslawsoltes/ProGPU.git "${tag_ref}^{}" | awk 'NR == 1 { print $1 }')"
+          if [[ -z "${tag_commit}" ]]; then
+            tag_commit="$(git ls-remote https://github.com/wieslawsoltes/ProGPU.git "${tag_ref}" | awk 'NR == 1 { print $1 }')"
+          fi
+          submodule_commit="$(git -C external/ProGPU rev-parse HEAD)"
+          if [[ -z "${tag_commit}" || "${tag_commit}" != "${submodule_commit}" ]]; then
+            echo "LibreWPF ProGPU submodule ${submodule_commit} does not match ${tag} (${tag_commit:-missing})." >&2
+            exit 1
+          fi
+
+          package_dir="${RUNNER_TEMP}/progpu-${progpu_version}"
+          mkdir -p "${package_dir}"
+          source eng/progpu-preview-package-list.sh
+          for package_id in "${progpu_preview_runtime_package_ids[@]}"; do
+            package_file="${package_id}.${progpu_version}.nupkg"
+            curl --fail --location --retry 5 --retry-all-errors \
+              --output "${package_dir}/${package_file}" \
+              "https://github.com/wieslawsoltes/ProGPU/releases/download/${tag}/${package_file}"
+          done
+          echo "PROGPU_WPF_PREPACKAGED_PROGPU_DIR=${package_dir}" >> "${GITHUB_ENV}"
 
       - name: Run LibreWPF SDK gate
         run: ./eng/progpu-wpf-sdk-ci.sh

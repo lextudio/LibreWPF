@@ -27,6 +27,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     private readonly bool _ownsContext;
     private readonly bool _ownsCompositor;
     private readonly WpfShaderEffectSamplerTextureCache _shaderEffectSamplerTextureCache;
+    private IWpfImageSourceAdapter? _frameImageSourceAdapterSource;
+    private WpfShaderEffectSamplerImageSourceAdapter? _frameImageSourceAdapter;
     private bool _isDisposed;
 
     public ProGpuWgpuContext Context { get; }
@@ -960,6 +962,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
         Viewport3DTextureCache.Dispose();
         _shaderEffectSamplerTextureCache.Dispose();
+        _frameImageSourceAdapter = null;
+        _frameImageSourceAdapterSource = null;
 
         if (_ownsCompositor)
         {
@@ -1093,9 +1097,16 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     internal IWpfImageSourceAdapter? CreateFrameImageSourceAdapter(IWpfImageSourceAdapter? imageSourceAdapter)
     {
         ThrowIfDisposed();
-        return new WpfShaderEffectSamplerImageSourceAdapter(
-            imageSourceAdapter,
-            _shaderEffectSamplerTextureCache);
+        if (_frameImageSourceAdapter == null ||
+            !ReferenceEquals(_frameImageSourceAdapterSource, imageSourceAdapter))
+        {
+            _frameImageSourceAdapterSource = imageSourceAdapter;
+            _frameImageSourceAdapter = new WpfShaderEffectSamplerImageSourceAdapter(
+                imageSourceAdapter,
+                _shaderEffectSamplerTextureCache);
+        }
+
+        return _frameImageSourceAdapter;
     }
 
     private static WpfVisualReplayResult AddReplayResults(

@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Composition;
+using System.Windows.Media.ProGPU.Composition.Mil;
 using System.Numerics;
 using ProGPU.Wpf.Interop;
 using Xunit;
@@ -23,6 +24,34 @@ namespace ProGPU.Wpf.Tests;
 [Collection(PortableRenderDataSinkProviderCollection.Name)]
 public sealed class ProGpuWpfDrawingFrameTests
 {
+    [Fact]
+    public void FrameImageSourceAdapterReuseDoesNotAllocate()
+    {
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        IWpfImageSourceAdapter? first = target.CreateFrameImageSourceAdapter(null);
+        for (var warmup = 0; warmup < 10_000; warmup++)
+        {
+            _ = target.CreateFrameImageSourceAdapter(null);
+        }
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var changedReferenceCount = 0;
+        for (var iteration = 0; iteration < 1_000_000; iteration++)
+        {
+            if (!ReferenceEquals(first, target.CreateFrameImageSourceAdapter(null)))
+            {
+                changedReferenceCount++;
+            }
+        }
+
+        long allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        Assert.Equal(0, changedReferenceCount);
+        Assert.Equal(0, allocatedBytes);
+    }
+
     [Fact]
     public void ConstructorClearsRootOnceAndSetsClampedPixelSize()
     {

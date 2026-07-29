@@ -12400,6 +12400,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("<Target Name=\"RestoreManagedTransport\">", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("<Target Name=\"BuildManagedTransport\" DependsOnTargets=\"RestoreManagedTransport\">", validationGraphs, StringComparison.Ordinal);
+        Assert.Equal(13, validationGraphs.Split("<ManagedTransportProject Include=\"$(MSBuildThisFileDirectory)", StringSplitOptions.None).Length - 1);
         Assert.Contains("-target:BuildManagedTransport", sdkCiScript, StringComparison.Ordinal);
         Assert.DoesNotContain("build_project \"src/Microsoft.DotNet.Wpf", sdkCiScript, StringComparison.Ordinal);
         foreach (string themeAssembly in wpfThemeAssemblies)

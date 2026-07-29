@@ -6,6 +6,7 @@
 extern alias WinCore;
 using System.Diagnostics.CodeAnalysis;
 using WinCore::System.Private.Windows.Ole;
+using WinCore::Windows.Win32;
 using Com = WinCore::Windows.Win32.System.Com;
 using FORMATETC = WinCore::Windows.Win32.System.Com.FORMATETC;
 using HRESULT = WinCore::Windows.Win32.Foundation.HRESULT;
@@ -23,6 +24,7 @@ internal sealed unsafe class WpfOleServices : IOleServices
 
     public static void EnsureThreadState()
     {
+        OleServicesContext.EnsureThreadState();
     }
 
     public static HRESULT GetDataHere(string format, object data, FORMATETC* pformatetc, STGMEDIUM* pmedium) =>
@@ -48,21 +50,14 @@ internal sealed unsafe class WpfOleServices : IOleServices
 
     public static IComVisibleDataObject CreateDataObject() => new DataObject();
 
-    static HRESULT IOleServices.OleGetClipboard(Com.IDataObject** dataObject)
-    {
-        if (dataObject is not null)
-        {
-            *dataObject = null;
-        }
-
-        return NotImplemented;
-    }
+    static HRESULT IOleServices.OleGetClipboard(Com.IDataObject** dataObject) =>
+        PInvokeCore.OleGetClipboard(dataObject);
 
     static HRESULT IOleServices.OleSetClipboard(Com.IDataObject* dataObject) =>
-        NotImplemented;
+        PInvokeCore.OleSetClipboard(dataObject);
 
     static HRESULT IOleServices.OleFlushClipboard() =>
-        NotImplemented;
+        PInvokeCore.OleFlushClipboard();
 }
 #else
 using System.ComponentModel;

@@ -77,6 +77,23 @@ public static class ProGpuWpfDiagnostics
         ulong CompositorIntermediateTextureBytes,
         ulong KnownWpfAndCompositorGpuBytes);
 
+    public readonly record struct PerformanceSnapshot(
+        long PresentedFrameCount,
+        double CompositorCpuFrameTimeMs,
+        double VisualTreeCompileCpuTimeMs,
+        double GpuUploadCpuTimeMs,
+        double RenderPassEncodingCpuTimeMs,
+        int DrawCallsCount,
+        int RecordedCommandCount,
+        int VectorVerticesCount,
+        int TextVerticesCount,
+        bool SceneCacheHit,
+        string? SceneCacheMissReason,
+        int PathAtlasCachedCount,
+        uint PathAtlasGrowthCount,
+        int GlyphOutlineCompiledCount,
+        ulong GlyphRasterBatchSubmissions);
+
     public static bool TryGetWindowHost(object? window, out ProGpuWpfWindowHost? host)
     {
         if (window is ProGpuWpfWindowHost directHost)
@@ -250,6 +267,25 @@ public static class ProGpuWpfDiagnostics
         return true;
     }
 
+    public static bool TryGetPerformanceSnapshot(object? window, out PerformanceSnapshot snapshot)
+    {
+        snapshot = default;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        var target = host.CompositionTarget;
+        if (target == null)
+        {
+            return false;
+        }
+
+        snapshot = CreatePerformanceSnapshot(target.Compositor.Metrics, host.PresentedFrameCount);
+        return true;
+    }
+
     internal static MemorySnapshot CreateMemorySnapshot(ProGpuWpfCompositionTarget target)
     {
         ArgumentNullException.ThrowIfNull(target);
@@ -314,6 +350,28 @@ public static class ProGpuWpfDiagnostics
             CompositorGlyphOutlineBytes: metrics.GlyphOutlineGpuBytes,
             CompositorIntermediateTextureBytes: metrics.TrackedIntermediateTextureBytes,
             KnownWpfAndCompositorGpuBytes: knownGpuBytes);
+    }
+
+    internal static PerformanceSnapshot CreatePerformanceSnapshot(
+        global::ProGPU.Scene.CompositorMetrics metrics,
+        long presentedFrameCount)
+    {
+        return new PerformanceSnapshot(
+            PresentedFrameCount: presentedFrameCount,
+            CompositorCpuFrameTimeMs: metrics.FrameTimeMs,
+            VisualTreeCompileCpuTimeMs: metrics.VisualTreeCompileTimeMs,
+            GpuUploadCpuTimeMs: metrics.GpuUploadTimeMs,
+            RenderPassEncodingCpuTimeMs: metrics.RenderPassTimeMs,
+            DrawCallsCount: metrics.DrawCallsCount,
+            RecordedCommandCount: metrics.RecordedCommandCount,
+            VectorVerticesCount: metrics.VectorVerticesCount,
+            TextVerticesCount: metrics.TextVerticesCount,
+            SceneCacheHit: metrics.SceneCacheHit,
+            SceneCacheMissReason: metrics.SceneCacheMissReason,
+            PathAtlasCachedCount: metrics.PathAtlasCachedCount,
+            PathAtlasGrowthCount: metrics.PathAtlasGrowthCount,
+            GlyphOutlineCompiledCount: metrics.GlyphOutlineCompiledCount,
+            GlyphRasterBatchSubmissions: metrics.GlyphRasterBatchSubmissions);
     }
 
     public static bool TryGetPortablePopupSnapshot(object? window, out PortablePopupSnapshot snapshot)

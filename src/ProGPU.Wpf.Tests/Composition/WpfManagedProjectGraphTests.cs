@@ -979,12 +979,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderSurfaceGeometrySnapshot", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("CompositionLayerSnapshot", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("MemorySnapshot", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("PerformanceSnapshot", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryRequestRender(object? window)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryWakeNativeLoop(object? window)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetRenderSchedulerWakeupCount(object? window, out long wakeupCount)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetRenderSurfaceGeometry(object? window, out RenderSurfaceGeometrySnapshot geometry)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetCompositionLayerSnapshot(object? window, out CompositionLayerSnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetMemorySnapshot(object? window, out MemorySnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetPerformanceSnapshot(object? window, out PerformanceSnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("host.PresentedFrameCount", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("VisualReplayCacheCapacity", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("metrics.TrackedIntermediateTextureBytes", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("PopupLayerChildCount", proGpuDiagnostics, StringComparison.Ordinal);
@@ -12460,6 +12463,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_PERFORMANCE_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_HELLO_RUN_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_HELLO_LIVE_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
@@ -14161,6 +14165,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MVP live input Thumb mouse capture released", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MouseWheel routed through SelectorScrollViewer and Thumb drag captured, moved, and released through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveKeyboardNavigationAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLivePerformanceAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PresentLivePerformanceFrameAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TryGetPerformanceSnapshot", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TryGetMemorySnapshot", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("maximumSteadyStateGpuGrowthBytes", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, WpfInputEventKind.KeyDown, key: \"Tab\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP live Tab focus moved to second target", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Tab keyboard navigation cycled focus through live host input", mvpMainWindowCodeBehind, StringComparison.Ordinal);

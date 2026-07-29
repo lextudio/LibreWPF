@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Configuration;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -39,6 +40,7 @@ public partial class MainWindow : Window
         new("Refresh status", nameof(RefreshStatusCommand), typeof(MainWindow));
 
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_MVP_LIVE_VALIDATE";
+    private const string LivePerformanceValidationEnvironmentVariable = "PROGPU_WPF_MVP_PERFORMANCE_VALIDATE";
     private const string LiveValidationStatusPathEnvironmentVariable = "PROGPU_WPF_MVP_LIVE_VALIDATE_STATUS_PATH";
     private const string LiveNativeDragStatusPathEnvironmentVariable = "PROGPU_WPF_MVP_NATIVE_DRAG_STATUS_PATH";
     private const int LiveValidationMaxAttempts = 600;
@@ -1029,9 +1031,17 @@ public partial class MainWindow : Window
                 inputStatus = await ValidateLiveInputAsync(liveHost);
             }
 
+            string performanceStatus = string.Empty;
+            if (Environment.GetEnvironmentVariable(LivePerformanceValidationEnvironmentVariable) == "1")
+            {
+                performanceStatus = await ValidateLivePerformanceAsync(liveHost);
+                Console.WriteLine(performanceStatus);
+            }
+
             string successStatus = $"ProGPU WPF MVP live input validation succeeded: {geometryStatus}.";
             string detailStatus =
-                $"ProGPU WPF MVP live input validation details: {windowingStatus}; {resizeStatus}; {inputStatus}.";
+                $"ProGPU WPF MVP live input validation details: {windowingStatus}; {resizeStatus}; {inputStatus}" +
+                (performanceStatus.Length == 0 ? "." : $"; {performanceStatus}.");
             Console.WriteLine(successStatus);
             Console.WriteLine(detailStatus);
             WriteLiveValidationStatus($"{successStatus}{Environment.NewLine}{detailStatus}{Environment.NewLine}");
@@ -2994,6 +3004,185 @@ public partial class MainWindow : Window
             throw new InvalidOperationException("Expected ProGPU WPF diagnostics to wake the live MVP native loop.");
         }
     }
+
+    private async Task<string> ValidateLivePerformanceAsync(ProGpuWpfWindowHost liveHost)
+    {
+        const int warmupFrameCount = 16;
+        const int measuredFrameCount = 120;
+        for (int frame = 0; frame < warmupFrameCount; frame++)
+        {
+            _ = await PresentLivePerformanceFrameAsync(liveHost);
+        }
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        var memoryBefore = ReadLiveMemorySnapshot(liveHost);
+        var firstFrame = await PresentLivePerformanceFrameAsync(liveHost);
+        var cpuFrameTimes = new double[measuredFrameCount];
+        var compileTimes = new double[measuredFrameCount];
+        var uploadTimes = new double[measuredFrameCount];
+        var encodeTimes = new double[measuredFrameCount];
+        long allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
+        using Process process = Process.GetCurrentProcess();
+        TimeSpan processCpuBefore = process.TotalProcessorTime;
+        var stopwatch = Stopwatch.StartNew();
+
+        LivePerformanceSnapshot lastFrame = firstFrame;
+        for (int frame = 0; frame < measuredFrameCount; frame++)
+        {
+            lastFrame = await PresentLivePerformanceFrameAsync(liveHost);
+            cpuFrameTimes[frame] = lastFrame.CompositorCpuFrameTimeMs;
+            compileTimes[frame] = lastFrame.VisualTreeCompileCpuTimeMs;
+            uploadTimes[frame] = lastFrame.GpuUploadCpuTimeMs;
+            encodeTimes[frame] = lastFrame.RenderPassEncodingCpuTimeMs;
+        }
+
+        stopwatch.Stop();
+        TimeSpan processCpuAfter = process.TotalProcessorTime;
+        long allocatedBytes = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
+        var memoryAfter = ReadLiveMemorySnapshot(liveHost);
+
+        if (lastFrame.PresentedFrameCount - firstFrame.PresentedFrameCount < measuredFrameCount)
+        {
+            throw new InvalidOperationException(
+                $"Expected {measuredFrameCount} measured MVP presentations, but observed " +
+                $"{lastFrame.PresentedFrameCount - firstFrame.PresentedFrameCount}.");
+        }
+
+        if (lastFrame.PathAtlasGrowthCount != firstFrame.PathAtlasGrowthCount)
+        {
+            throw new InvalidOperationException(
+                $"Expected the warmed MVP path atlas to remain stable, but growth count changed from " +
+                $"{firstFrame.PathAtlasGrowthCount} to {lastFrame.PathAtlasGrowthCount}.");
+        }
+
+        ulong gpuGrowthBytes = memoryAfter.KnownWpfAndCompositorGpuBytes >= memoryBefore.KnownWpfAndCompositorGpuBytes
+            ? memoryAfter.KnownWpfAndCompositorGpuBytes - memoryBefore.KnownWpfAndCompositorGpuBytes
+            : 0;
+        const ulong maximumSteadyStateGpuGrowthBytes = 1024UL * 1024UL;
+        if (gpuGrowthBytes > maximumSteadyStateGpuGrowthBytes)
+        {
+            throw new InvalidOperationException(
+                $"Expected warmed MVP tracked GPU ownership to grow by at most " +
+                $"{maximumSteadyStateGpuGrowthBytes} bytes, but it grew by {gpuGrowthBytes} bytes.");
+        }
+
+        Array.Sort(cpuFrameTimes);
+        Array.Sort(compileTimes);
+        Array.Sort(uploadTimes);
+        Array.Sort(encodeTimes);
+        double elapsedSeconds = Math.Max(stopwatch.Elapsed.TotalSeconds, double.Epsilon);
+        double processCpuSeconds = (processCpuAfter - processCpuBefore).TotalSeconds;
+        double oneCoreCpuPercent = processCpuSeconds / elapsedSeconds * 100.0;
+        double machineCpuPercent = oneCoreCpuPercent / Math.Max(1, Environment.ProcessorCount);
+        double allocatedBytesPerFrame = (double)allocatedBytes / measuredFrameCount;
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"MVP performance validation succeeded: frames {measuredFrameCount}, " +
+            $"wall {stopwatch.Elapsed.TotalMilliseconds:0.###} ms, " +
+            $"process CPU {processCpuSeconds * 1000.0:0.###} ms " +
+            $"({oneCoreCpuPercent:0.##}% of one core, {machineCpuPercent:0.##}% of machine), " +
+            $"allocated {allocatedBytes} bytes ({allocatedBytesPerFrame:0.##}/frame), " +
+            $"compositor CPU p50/p95 {Percentile(cpuFrameTimes, 0.50):0.###}/{Percentile(cpuFrameTimes, 0.95):0.###} ms, " +
+            $"compile {Percentile(compileTimes, 0.50):0.###}/{Percentile(compileTimes, 0.95):0.###} ms, " +
+            $"upload {Percentile(uploadTimes, 0.50):0.###}/{Percentile(uploadTimes, 0.95):0.###} ms, " +
+            $"encode {Percentile(encodeTimes, 0.50):0.###}/{Percentile(encodeTimes, 0.95):0.###} ms, " +
+            $"draws {lastFrame.DrawCallsCount}, commands {lastFrame.RecordedCommandCount}, " +
+            $"vertices {lastFrame.VectorVerticesCount} vector/{lastFrame.TextVerticesCount} text, " +
+            $"scene cache {(lastFrame.SceneCacheHit ? "hit" : lastFrame.SceneCacheMissReason ?? "miss")}, " +
+            $"path atlas {lastFrame.PathAtlasCachedCount} entries/{lastFrame.PathAtlasGrowthCount} growths, " +
+            $"glyph batches {lastFrame.GlyphRasterBatchSubmissions}, " +
+            $"managed heap {memoryBefore.ManagedHeapBytes}->{memoryAfter.ManagedHeapBytes}, " +
+            $"working set {memoryBefore.ProcessWorkingSetBytes}->{memoryAfter.ProcessWorkingSetBytes}, " +
+            $"tracked GPU {memoryBefore.KnownWpfAndCompositorGpuBytes}->{memoryAfter.KnownWpfAndCompositorGpuBytes} bytes.");
+    }
+
+    private static async Task<LivePerformanceSnapshot> PresentLivePerformanceFrameAsync(
+        ProGpuWpfWindowHost liveHost)
+    {
+        if (!ProGpuWpfDiagnostics.TryGetPerformanceSnapshot(liveHost, out var before))
+        {
+            throw new InvalidOperationException("Expected the live MVP host to publish typed performance diagnostics.");
+        }
+
+        WakeLiveRenderHost(liveHost);
+        for (int attempt = 0; attempt < 300; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(2));
+            if (ProGpuWpfDiagnostics.TryGetPerformanceSnapshot(liveHost, out var current) &&
+                current.PresentedFrameCount > before.PresentedFrameCount)
+            {
+                return new LivePerformanceSnapshot(
+                    current.PresentedFrameCount,
+                    current.CompositorCpuFrameTimeMs,
+                    current.VisualTreeCompileCpuTimeMs,
+                    current.GpuUploadCpuTimeMs,
+                    current.RenderPassEncodingCpuTimeMs,
+                    current.DrawCallsCount,
+                    current.RecordedCommandCount,
+                    current.VectorVerticesCount,
+                    current.TextVerticesCount,
+                    current.SceneCacheHit,
+                    current.SceneCacheMissReason,
+                    current.PathAtlasCachedCount,
+                    current.PathAtlasGrowthCount,
+                    current.GlyphRasterBatchSubmissions);
+            }
+        }
+
+        throw new InvalidOperationException("Expected the requested MVP performance frame to be presented.");
+    }
+
+    private static LiveMemorySnapshot ReadLiveMemorySnapshot(ProGpuWpfWindowHost liveHost)
+    {
+        if (!ProGpuWpfDiagnostics.TryGetMemorySnapshot(liveHost, out var snapshot))
+        {
+            throw new InvalidOperationException("Expected the live MVP host to publish typed memory diagnostics.");
+        }
+
+        return new LiveMemorySnapshot(
+            snapshot.ManagedHeapBytes,
+            snapshot.ProcessWorkingSetBytes,
+            snapshot.KnownWpfAndCompositorGpuBytes);
+    }
+
+    private static double Percentile(double[] sortedValues, double percentile)
+    {
+        if (sortedValues.Length == 0)
+        {
+            return 0.0;
+        }
+
+        int index = Math.Clamp(
+            (int)Math.Ceiling(percentile * sortedValues.Length) - 1,
+            0,
+            sortedValues.Length - 1);
+        return sortedValues[index];
+    }
+
+    private readonly record struct LivePerformanceSnapshot(
+        long PresentedFrameCount,
+        double CompositorCpuFrameTimeMs,
+        double VisualTreeCompileCpuTimeMs,
+        double GpuUploadCpuTimeMs,
+        double RenderPassEncodingCpuTimeMs,
+        int DrawCallsCount,
+        int RecordedCommandCount,
+        int VectorVerticesCount,
+        int TextVerticesCount,
+        bool SceneCacheHit,
+        string? SceneCacheMissReason,
+        int PathAtlasCachedCount,
+        uint PathAtlasGrowthCount,
+        ulong GlyphRasterBatchSubmissions);
+
+    private readonly record struct LiveMemorySnapshot(
+        long ManagedHeapBytes,
+        long ProcessWorkingSetBytes,
+        ulong KnownWpfAndCompositorGpuBytes);
 
     private static long ReadLiveRenderSchedulerWakeupCount(ProGpuWpfWindowHost liveHost)
     {

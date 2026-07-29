@@ -63,6 +63,46 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void PerformanceDiagnosticsExposeCpuSubmissionAndSceneMetrics()
+    {
+        var snapshot = ProGpuWpfDiagnostics.CreatePerformanceSnapshot(
+            new ProGPU.Scene.CompositorMetrics
+            {
+                FrameTimeMs = 7.5,
+                VisualTreeCompileTimeMs = 2.5,
+                GpuUploadTimeMs = 1.25,
+                RenderPassTimeMs = 3.75,
+                DrawCallsCount = 11,
+                RecordedCommandCount = 12,
+                VectorVerticesCount = 13,
+                TextVerticesCount = 14,
+                SceneCacheHit = true,
+                SceneCacheMissReason = "none",
+                PathAtlasCachedCount = 15,
+                PathAtlasGrowthCount = 16,
+                GlyphOutlineCompiledCount = 17,
+                GlyphRasterBatchSubmissions = 18
+            },
+            presentedFrameCount: 19);
+
+        Assert.Equal(19, snapshot.PresentedFrameCount);
+        Assert.Equal(7.5, snapshot.CompositorCpuFrameTimeMs);
+        Assert.Equal(2.5, snapshot.VisualTreeCompileCpuTimeMs);
+        Assert.Equal(1.25, snapshot.GpuUploadCpuTimeMs);
+        Assert.Equal(3.75, snapshot.RenderPassEncodingCpuTimeMs);
+        Assert.Equal(11, snapshot.DrawCallsCount);
+        Assert.Equal(12, snapshot.RecordedCommandCount);
+        Assert.Equal(13, snapshot.VectorVerticesCount);
+        Assert.Equal(14, snapshot.TextVerticesCount);
+        Assert.True(snapshot.SceneCacheHit);
+        Assert.Equal("none", snapshot.SceneCacheMissReason);
+        Assert.Equal(15, snapshot.PathAtlasCachedCount);
+        Assert.Equal(16u, snapshot.PathAtlasGrowthCount);
+        Assert.Equal(17, snapshot.GlyphOutlineCompiledCount);
+        Assert.Equal(18UL, snapshot.GlyphRasterBatchSubmissions);
+    }
+
+    [Fact]
     public void SetTitleAndClientSizeUpdateCachedWindowStateBeforeNativeWindowExists()
     {
         var scheduler = new TestRenderScheduler();
@@ -782,6 +822,20 @@ public sealed class ProGpuWpfWindowHostTests
         host.Render += (_, _) => { };
 
         Assert.True(host.ShouldPumpNativeRender());
+    }
+
+    [Fact]
+    public void PresentedFrameCountTracksActualPresentations()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+
+        Assert.Equal(0, host.PresentedFrameCount);
+
+        host.RecordPresentedFrame(frameState);
+        host.RecordPresentedFrame(frameState);
+
+        Assert.Equal(2, host.PresentedFrameCount);
     }
 
     [Fact]

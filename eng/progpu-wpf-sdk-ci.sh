@@ -330,6 +330,7 @@ PROGPU_WPF_MVP_SKIP_BUILD=1 \
 PROGPU_WPF_MVP_VALIDATE=0 \
 PROGPU_WPF_MVP_RUN_VALIDATE=0 \
 PROGPU_WPF_MVP_LIVE_VALIDATE=1 \
+PROGPU_WPF_MVP_PERFORMANCE_VALIDATE=1 \
   "${repo_root}/eng/run-progpu-wpf-mvp.sh"
 
 echo "Running Toolkit SDK app live validation..."

@@ -65,6 +65,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _isLoadingCompositionTarget;
     private bool _disposeNativeWindowWhenLoopExits;
     private bool _hasPresentedFrame;
+    private long _presentedFrameCount;
     private bool _ownsRenderScheduler;
     private bool _isRendering;
     private bool _isRenderingLiveResize;
@@ -258,6 +259,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public bool EnableFrameCoalescing { get; set; } = true;
 
     public bool HasPresentedFrame => Volatile.Read(ref _hasPresentedFrame);
+
+    public long PresentedFrameCount => Interlocked.Read(ref _presentedFrameCount);
 
     public ProGpuWpfFrameState LastPresentedFrameState { get; private set; }
 
@@ -1968,6 +1971,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal void RecordPresentedFrame(ProGpuWpfFrameState frameState)
     {
         LastPresentedFrameState = frameState;
+        Interlocked.Increment(ref _presentedFrameCount);
         Volatile.Write(ref _hasPresentedFrame, true);
     }
 
@@ -2798,6 +2802,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         target.Dispose();
         WpfRenderScheduler.Reset();
         LastPresentedFrameState = default;
+        Interlocked.Exchange(ref _presentedFrameCount, 0);
         Volatile.Write(ref _hasPresentedFrame, false);
         SkippedFrameCount = 0;
         RetainedWpfReplaySkipCount = 0;

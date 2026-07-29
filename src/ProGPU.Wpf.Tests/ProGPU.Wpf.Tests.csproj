@@ -3,6 +3,11 @@
     <IsPackable>false</IsPackable>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\external\ProGPU\eng\ProGPU.snk</AssemblyOriginatorKeyFile>
+    <!-- This focused graph reaches the same ProGPU shim projects through
+         multiple compatibility roots that share output directories. Serial
+         project-reference scheduling avoids parallel output-lock contention
+         without removing any compiler, analyzer, or test coverage. -->
+    <BuildInParallel>false</BuildInParallel>
   </PropertyGroup>
 
   <ItemGroup>

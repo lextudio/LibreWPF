@@ -5,6 +5,37 @@ namespace ProGPU.Wpf.Tests.Composition;
 
 public sealed class WpfManagedProjectGraphTests
 {
+    [Fact]
+    public void FocusedProGpuWpfGraphAvoidsSharedOutputParallelContention()
+    {
+        var project = XDocument.Load(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "ProGPU.Wpf.Tests.csproj"));
+
+        Assert.Equal("false", Assert.Single(project.Descendants("BuildInParallel")).Value);
+    }
+
+    [Fact]
+    public void ExtendedAssemblyInfoGenerationPreservesNoOpBuildTimestamps()
+    {
+        var targetsPath = FindRepoPath(
+            "eng",
+            "WpfArcadeSdk",
+            "tools",
+            "ExtendedAssemblyInfo.targets");
+        var targets = XDocument.Load(targetsPath);
+        var generationTarget = Assert.Single(
+            targets.Descendants("Target"),
+            target => target.Attribute("Name")?.Value == "CoreGenerateExtendedAssemblyInfo");
+        var write = Assert.Single(generationTarget.Descendants("WriteLinesToFile"));
+
+        Assert.Equal("true", write.Attribute("WriteOnlyWhenDifferent")?.Value);
+        Assert.DoesNotContain(
+            generationTarget.Descendants("Delete"),
+            delete => delete.Attribute("Files")?.Value == "$(GeneratedExtendedAssemblyInfoFile)");
+    }
+
     [Theory]
     [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj")]
     [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj")]

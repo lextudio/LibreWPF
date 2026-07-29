@@ -60,6 +60,22 @@ public static class ProGpuWpfDiagnostics
         bool SupportsNativePopupWindows,
         bool UsesOwnerCompositedPopups);
 
+    public readonly record struct MemorySnapshot(
+        long ManagedHeapBytes,
+        long ManagedFragmentedBytes,
+        long ProcessWorkingSetBytes,
+        int RetainedVisualBranchSourceCount,
+        int RetainedVisualBranchCount,
+        int Viewport3DTextureSetCount,
+        ulong Viewport3DTextureBytes,
+        int ShaderSamplerTextureCount,
+        ulong ShaderSamplerTextureBytes,
+        ulong CompositorPersistentBufferBytes,
+        ulong CompositorAtlasTextureBytes,
+        ulong CompositorGlyphOutlineBytes,
+        ulong CompositorIntermediateTextureBytes,
+        ulong KnownWpfAndCompositorGpuBytes);
+
     public static bool TryGetWindowHost(object? window, out ProGpuWpfWindowHost? host)
     {
         if (window is ProGpuWpfWindowHost directHost)
@@ -212,6 +228,88 @@ public static class ProGpuWpfDiagnostics
             RetainedLayerChildCount: target.RetainedWpfVisualRoot.Children.Count,
             PopupLayerChildCount: target.PopupRetainedWpfVisualRoot.Children.Count);
         return true;
+    }
+
+    public static bool TryGetMemorySnapshot(object? window, out MemorySnapshot snapshot)
+    {
+        snapshot = default;
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        var target = host.CompositionTarget;
+        if (target == null)
+        {
+            return false;
+        }
+
+        snapshot = CreateMemorySnapshot(target);
+        return true;
+    }
+
+    internal static MemorySnapshot CreateMemorySnapshot(ProGpuWpfCompositionTarget target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        target.GetWpfTextureCacheMemoryDiagnostics(
+            out int viewport3DTextureSetCount,
+            out ulong viewport3DTextureBytes,
+            out int shaderSamplerTextureCount,
+            out ulong shaderSamplerTextureBytes);
+
+        return CreateMemorySnapshot(
+            target.Compositor.Metrics,
+            target.RetainedVisualBranchSourceCount,
+            target.RetainedVisualBranchCount,
+            viewport3DTextureSetCount,
+            viewport3DTextureBytes,
+            shaderSamplerTextureCount,
+            shaderSamplerTextureBytes);
+    }
+
+    internal static MemorySnapshot CreateMemorySnapshot(
+        global::ProGPU.Scene.CompositorMetrics metrics,
+        int retainedVisualBranchSourceCount,
+        int retainedVisualBranchCount,
+        int viewport3DTextureSetCount,
+        ulong viewport3DTextureBytes,
+        int shaderSamplerTextureCount,
+        ulong shaderSamplerTextureBytes)
+    {
+        ulong persistentBufferBytes =
+            metrics.SceneBufferBytes +
+            metrics.EffectParameterBufferBytes +
+            metrics.SceneUploadArenaBytes;
+        ulong atlasTextureBytes =
+            metrics.GlyphAtlasTextureBytes +
+            metrics.ColorGlyphAtlasTextureBytes +
+            metrics.PathAtlasTextureBytes;
+        ulong knownGpuBytes =
+            persistentBufferBytes +
+            atlasTextureBytes +
+            metrics.GlyphOutlineGpuBytes +
+            metrics.TrackedIntermediateTextureBytes +
+            viewport3DTextureBytes +
+            shaderSamplerTextureBytes;
+        GCMemoryInfo gcMemory = GC.GetGCMemoryInfo();
+
+        return new MemorySnapshot(
+            ManagedHeapBytes: gcMemory.HeapSizeBytes,
+            ManagedFragmentedBytes: gcMemory.FragmentedBytes,
+            ProcessWorkingSetBytes: Environment.WorkingSet,
+            RetainedVisualBranchSourceCount: retainedVisualBranchSourceCount,
+            RetainedVisualBranchCount: retainedVisualBranchCount,
+            Viewport3DTextureSetCount: viewport3DTextureSetCount,
+            Viewport3DTextureBytes: viewport3DTextureBytes,
+            ShaderSamplerTextureCount: shaderSamplerTextureCount,
+            ShaderSamplerTextureBytes: shaderSamplerTextureBytes,
+            CompositorPersistentBufferBytes: persistentBufferBytes,
+            CompositorAtlasTextureBytes: atlasTextureBytes,
+            CompositorGlyphOutlineBytes: metrics.GlyphOutlineGpuBytes,
+            CompositorIntermediateTextureBytes: metrics.TrackedIntermediateTextureBytes,
+            KnownWpfAndCompositorGpuBytes: knownGpuBytes);
     }
 
     public static bool TryGetPortablePopupSnapshot(object? window, out PortablePopupSnapshot snapshot)

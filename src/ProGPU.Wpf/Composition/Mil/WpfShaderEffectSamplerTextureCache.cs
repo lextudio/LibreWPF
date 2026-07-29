@@ -89,6 +89,25 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         _entries.Clear();
     }
 
+    internal void GetMemoryDiagnostics(out int textureCount, out ulong textureBytes)
+    {
+        ThrowIfDisposed();
+
+        textureCount = 0;
+        textureBytes = 0;
+        foreach (var entry in _entries)
+        {
+            GpuTexture texture = entry.Value.Texture;
+            if (texture.IsDisposed)
+            {
+                continue;
+            }
+
+            textureCount++;
+            textureBytes += (ulong)texture.Width * texture.Height * 4UL;
+        }
+    }
+
     public void Dispose()
     {
         if (_isDisposed)

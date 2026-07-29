@@ -84,6 +84,20 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     internal WpfViewport3DTextureCache Viewport3DTextureCache { get; }
 
+    internal void GetWpfTextureCacheMemoryDiagnostics(
+        out int viewport3DTextureSetCount,
+        out ulong viewport3DTextureBytes,
+        out int shaderSamplerTextureCount,
+        out ulong shaderSamplerTextureBytes)
+    {
+        Viewport3DTextureCache.GetMemoryDiagnostics(
+            out viewport3DTextureSetCount,
+            out viewport3DTextureBytes);
+        _shaderEffectSamplerTextureCache.GetMemoryDiagnostics(
+            out shaderSamplerTextureCount,
+            out shaderSamplerTextureBytes);
+    }
+
     public ProGpuWpfCompositionTarget(
         ProGpuWgpuContext context,
         ProGpuCompositor compositor,

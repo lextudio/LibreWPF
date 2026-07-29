@@ -978,11 +978,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfPortableWindowActivation.TryGetActiveHost(window, out host)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("RenderSurfaceGeometrySnapshot", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("CompositionLayerSnapshot", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("MemorySnapshot", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryRequestRender(object? window)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryWakeNativeLoop(object? window)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetRenderSchedulerWakeupCount(object? window, out long wakeupCount)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetRenderSurfaceGeometry(object? window, out RenderSurfaceGeometrySnapshot geometry)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetCompositionLayerSnapshot(object? window, out CompositionLayerSnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetMemorySnapshot(object? window, out MemorySnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("metrics.TrackedIntermediateTextureBytes", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("PopupLayerChildCount", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryRaiseInput(", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool HasGpuHitTestCache(object? window)", proGpuDiagnostics, StringComparison.Ordinal);

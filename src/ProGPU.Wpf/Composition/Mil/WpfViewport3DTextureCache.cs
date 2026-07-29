@@ -91,6 +91,21 @@ internal sealed class WpfViewport3DTextureCache : IDisposable
         _entries.Clear();
     }
 
+    internal void GetMemoryDiagnostics(out int textureSetCount, out ulong textureBytes)
+    {
+        ThrowIfDisposed();
+
+        textureSetCount = 0;
+        textureBytes = 0;
+        var entryEnumerator = _entries.Values.GetEnumerator();
+        while (entryEnumerator.MoveNext())
+        {
+            TextureSet textures = entryEnumerator.Current;
+            textureSetCount++;
+            textureBytes += textures.AllocatedTextureBytes;
+        }
+    }
+
     public void Dispose()
     {
         if (_isDisposed)
@@ -133,6 +148,21 @@ internal sealed class WpfViewport3DTextureCache : IDisposable
         public GpuTexture DepthTexture { get; private set; }
 
         public ulong LastUsedFrame { get; set; }
+
+        public ulong AllocatedTextureBytes
+        {
+            get
+            {
+                ulong pixels = (ulong)ColorTexture.Width * ColorTexture.Height;
+                const ulong colorBytesPerPixel = 4;
+                const ulong multisampleCount = 4;
+                const ulong depthStencilBytesPerPixel = 4;
+                return pixels * (
+                    colorBytesPerPixel +
+                    (colorBytesPerPixel * multisampleCount) +
+                    (depthStencilBytesPerPixel * multisampleCount));
+            }
+        }
 
         public void EnsureSize(uint width, uint height)
         {

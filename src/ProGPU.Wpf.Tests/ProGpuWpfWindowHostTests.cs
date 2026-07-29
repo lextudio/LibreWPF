@@ -23,6 +23,44 @@ namespace ProGPU.Wpf.Tests;
 public sealed class ProGpuWpfWindowHostTests
 {
     [Fact]
+    public void MemoryDiagnosticsSeparateManagedProcessAndTrackedGpuOwnership()
+    {
+        var snapshot = ProGpuWpfDiagnostics.CreateMemorySnapshot(
+            new ProGPU.Scene.CompositorMetrics
+            {
+                SceneBufferBytes = 10,
+                EffectParameterBufferBytes = 2,
+                SceneUploadArenaBytes = 3,
+                GlyphAtlasTextureBytes = 4,
+                ColorGlyphAtlasTextureBytes = 5,
+                PathAtlasTextureBytes = 6,
+                GlyphOutlineGpuBytes = 7,
+                TrackedIntermediateTextureBytes = 8
+            },
+            retainedVisualBranchSourceCount: 9,
+            retainedVisualBranchCount: 10,
+            viewport3DTextureSetCount: 1,
+            viewport3DTextureBytes: 11,
+            shaderSamplerTextureCount: 2,
+            shaderSamplerTextureBytes: 13);
+
+        Assert.True(snapshot.ManagedHeapBytes >= 0);
+        Assert.True(snapshot.ManagedFragmentedBytes >= 0);
+        Assert.True(snapshot.ProcessWorkingSetBytes > 0);
+        Assert.Equal(9, snapshot.RetainedVisualBranchSourceCount);
+        Assert.Equal(10, snapshot.RetainedVisualBranchCount);
+        Assert.Equal(1, snapshot.Viewport3DTextureSetCount);
+        Assert.Equal(11UL, snapshot.Viewport3DTextureBytes);
+        Assert.Equal(2, snapshot.ShaderSamplerTextureCount);
+        Assert.Equal(13UL, snapshot.ShaderSamplerTextureBytes);
+        Assert.Equal(15UL, snapshot.CompositorPersistentBufferBytes);
+        Assert.Equal(15UL, snapshot.CompositorAtlasTextureBytes);
+        Assert.Equal(7UL, snapshot.CompositorGlyphOutlineBytes);
+        Assert.Equal(8UL, snapshot.CompositorIntermediateTextureBytes);
+        Assert.Equal(69UL, snapshot.KnownWpfAndCompositorGpuBytes);
+    }
+
+    [Fact]
     public void SetTitleAndClientSizeUpdateCachedWindowStateBeforeNativeWindowExists()
     {
         var scheduler = new TestRenderScheduler();

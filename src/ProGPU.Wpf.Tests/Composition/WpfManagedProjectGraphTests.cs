@@ -11507,6 +11507,9 @@ public sealed class WpfManagedProjectGraphTests
         var mvpRunScriptPath = FindRepoPath(
             "eng",
             "run-progpu-wpf-mvp.sh");
+        var linuxXWaylandSmokeScriptPath = FindRepoPath(
+            "eng",
+            "progpu-wpf-linux-xwayland-smoke.sh");
         var scichartProjectPath = FindRepoPath(
             "samples",
             "ProGPU.Wpf.SciChartMvpApp",
@@ -11845,6 +11848,7 @@ public sealed class WpfManagedProjectGraphTests
         var helloMainWindowCodeBehind = File.ReadAllText(helloMainWindowCodeBehindPath);
         var helloRunScript = File.ReadAllText(helloRunScriptPath);
         var mvpRunScript = File.ReadAllText(mvpRunScriptPath);
+        var linuxXWaylandSmokeScript = File.ReadAllText(linuxXWaylandSmokeScriptPath);
         var scichartProject = File.ReadAllText(scichartProjectPath);
         var scichartAppXaml = File.ReadAllText(scichartAppXamlPath);
         var scichartAppCodeBehind = File.ReadAllText(scichartAppCodeBehindPath);
@@ -13717,6 +13721,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Launching ProGPU WPF MVP apphost", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE_STATUS_PATH", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE_TIMEOUT_SECONDS", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("live_validation_timeout_seconds=\"${PROGPU_WPF_MVP_LIVE_VALIDATE_TIMEOUT_SECONDS:-30}\"", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("live_validation_deadline=$((SECONDS + live_validation_timeout_seconds))", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("while (( SECONDS < live_validation_deadline )); do", mvpRunScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("for _ in {1..600}; do", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains(
+            "PROGPU_WPF_MVP_LIVE_VALIDATE_TIMEOUT_SECONDS=90",
+            linuxXWaylandSmokeScript,
+            StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_TRACE_RENDER_SURFACE", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("export PROGPU_WPF_TRACE_RENDER_SURFACE=1", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF render surface:", mvpRunScript, StringComparison.Ordinal);

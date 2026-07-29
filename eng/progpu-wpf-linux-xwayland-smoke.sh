@@ -43,6 +43,7 @@ xvfb-run -a --server-args="-screen 0 1280x1024x24" bash -c '
   PROGPU_WPF_MVP_VALIDATE=0 \
   PROGPU_WPF_MVP_RUN_VALIDATE=0 \
   PROGPU_WPF_MVP_LIVE_VALIDATE=1 \
+  PROGPU_WPF_MVP_LIVE_VALIDATE_TIMEOUT_SECONDS=90 \
   PROGPU_WPF_MVP_NATIVE_DRAG_STATUS_PATH="$3" \
     "$1/eng/run-progpu-wpf-mvp.sh" >"$2" 2>&1 &
   probe_pid=$!

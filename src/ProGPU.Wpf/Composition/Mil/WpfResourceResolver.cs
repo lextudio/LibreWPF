@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
@@ -247,11 +246,12 @@ public sealed class WpfResourceResolver :
     }
 
     private const int MaxSupportedGradientStops = 65536;
+    private const int MaxCachedFontFilePaths = 256;
     // Retained glyph-run DTOs keep their resolved font alive. The path cache
     // should accelerate resolution without permanently retaining every custom
     // font file an application has ever previewed.
-    private static readonly ConcurrentDictionary<string, WeakReference<TtfFont>> s_fontFileCache =
-        new(StringComparer.OrdinalIgnoreCase);
+    private static readonly WpfBoundedWeakValueCache<string, TtfFont> s_fontFileCache =
+        new(MaxCachedFontFilePaths, StringComparer.OrdinalIgnoreCase);
     private static readonly ConditionalWeakTable<MediaBrush, NativeSolidBrushCache> s_nativeSolidBrushCache = new();
     private static readonly ConditionalWeakTable<MediaLinearGradientBrush, NativeLinearGradientBrushCache> s_nativeLinearGradientBrushCache = new();
     private static readonly ConditionalWeakTable<MediaRadialGradientBrush, NativeRadialGradientBrushCache> s_nativeRadialGradientBrushCache = new();
@@ -2814,35 +2814,9 @@ public sealed class WpfResourceResolver :
                 return null;
             }
 
-            while (true)
-            {
-                if (s_fontFileCache.TryGetValue(fullPath, out var cached))
-                {
-                    if (cached.TryGetTarget(out var cachedFont))
-                    {
-                        return cachedFont;
-                    }
-
-                    var loadedFont = new TtfFont(fullPath);
-                    if (s_fontFileCache.TryUpdate(
-                        fullPath,
-                        new WeakReference<TtfFont>(loadedFont),
-                        cached))
-                    {
-                        return loadedFont;
-                    }
-
-                    continue;
-                }
-
-                var newFont = new TtfFont(fullPath);
-                if (s_fontFileCache.TryAdd(
-                    fullPath,
-                    new WeakReference<TtfFont>(newFont)))
-                {
-                    return newFont;
-                }
-            }
+            return s_fontFileCache.GetOrAdd(
+                fullPath,
+                static fontPath => new TtfFont(fontPath));
         }
         catch (Exception ex) when (IsRecoverableFontLoadException(ex))
         {

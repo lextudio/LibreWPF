@@ -6,11 +6,11 @@ on:
       version:
         description: NuGet package version to build.
         required: true
-        default: 0.1.0-preview.32
+        default: 0.1.0-preview.33
       progpu_version:
         description: Exact immutable ProGPU package version consumed by LibreWPF.
         required: true
-        default: 0.1.0-preview.28
+        default: 0.1.0-preview.29
       publish:
         description: Push packages to NuGet.org after validation.
         required: true
@@ -203,7 +203,7 @@ jobs:
             version="${{ inputs.version }}"
           fi
           echo "PROGPU_WPF_DEV_PACKAGE_VERSION=${version}" >> "${GITHUB_ENV}"
-          echo "PROGPU_WPF_PROGPU_PACKAGE_VERSION=${{ inputs.progpu_version || '0.1.0-preview.28' }}" >> "${GITHUB_ENV}"
+          echo "PROGPU_WPF_PROGPU_PACKAGE_VERSION=${{ inputs.progpu_version || '0.1.0-preview.29' }}" >> "${GITHUB_ENV}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
           echo "Resolved LibreWPF package version: ${version}"
 
@@ -279,7 +279,7 @@ jobs:
       - name: Download preview packages
         uses: actions/download-artifact@v4
         with:
-          name: librewpf-packages-${{ needs.preview.outputs.version }}
+          name: librewpf-packages-${{ needs.promote-qualified-preview.outputs.version || needs.preview.outputs.version }}
           path: artifacts/packages/Release/NonShipping
 
       - name: Run clean Windows AnyCPU package smoke
@@ -307,7 +307,7 @@ jobs:
       - name: Download validated preview packages
         uses: actions/download-artifact@v4
         with:
-          name: librewpf-packages-${{ needs.preview.outputs.version }}
+          name: librewpf-packages-${{ needs.promote-qualified-preview.outputs.version || needs.preview.outputs.version }}
           path: artifacts/packages/Release/NonShipping
 
       - name: Publish to NuGet.org

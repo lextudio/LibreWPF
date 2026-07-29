@@ -12414,14 +12414,18 @@ public sealed class WpfManagedProjectGraphTests
         }
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/System.Windows.Controls.Ribbon/System.Windows.Controls.Ribbon.csproj", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("<Target Name=\"RestoreThemes\">", validationGraphs, StringComparison.Ordinal);
-        Assert.Contains("<Target Name=\"BuildThemes\" DependsOnTargets=\"RestoreThemes\">", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("<Target Name=\"BuildThemes\">", validationGraphs, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Target Name=\"BuildThemes\" DependsOnTargets=\"RestoreThemes\">", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("<Target Name=\"RestoreHarnesses\">", validationGraphs, StringComparison.Ordinal);
-        Assert.Contains("<Target Name=\"BuildHarnesses\" DependsOnTargets=\"RestoreHarnesses\">", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("<Target Name=\"BuildHarnesses\">", validationGraphs, StringComparison.Ordinal);
+        Assert.DoesNotContain("<Target Name=\"BuildHarnesses\" DependsOnTargets=\"RestoreHarnesses\">", validationGraphs, StringComparison.Ordinal);
         Assert.Equal(4, validationGraphs.Split("BuildInParallel=\"false\"", StringSplitOptions.None).Length - 1);
         Assert.Equal(2, validationGraphs.Split("BuildInParallel=\"true\"", StringSplitOptions.None).Length - 1);
         Assert.Equal(3, validationGraphs.Split("UnloadProjectsOnCompletion=\"true\"", StringSplitOptions.None).Length - 1);
+        Assert.Contains("-target:RestoreThemes", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("-target:BuildThemes", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Building real WPF validation harnesses", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("-target:RestoreHarnesses", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("-target:BuildHarnesses", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf.RealXamlCompilerHarness/ProGPU.Wpf.RealXamlCompilerHarness.csproj", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("Running real WPF XAML runtime harness", sdkCiScript, StringComparison.Ordinal);

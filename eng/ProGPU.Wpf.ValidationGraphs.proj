@@ -73,8 +73,12 @@
       Properties="Configuration=$(Configuration)" />
   </Target>
 
-  <Target Name="BuildThemes" DependsOnTargets="RestoreThemes">
-    <!-- The theme leaves are independent once the managed WPF foundation is built. -->
+  <Target Name="BuildThemes">
+    <!--
+      The theme leaves are independent once the managed WPF foundation is built.
+      Restore runs in a separate process so package-generated properties are
+      reevaluated before compilation.
+    -->
     <MSBuild
       Projects="@(ThemeProject)"
       Targets="Build"
@@ -92,8 +96,11 @@
       Properties="Configuration=$(Configuration)" />
   </Target>
 
-  <Target Name="BuildHarnesses" DependsOnTargets="RestoreHarnesses">
-    <!-- Harnesses share the qualified foundation but not build outputs. -->
+  <Target Name="BuildHarnesses">
+    <!--
+      Harnesses share the qualified foundation but not build outputs. Restore
+      runs in a separate process so package-generated properties are reevaluated.
+    -->
     <MSBuild
       Projects="@(HarnessProject)"
       Targets="Build"

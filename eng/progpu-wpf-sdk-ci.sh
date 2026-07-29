@@ -221,11 +221,21 @@ run_dotnet msbuild \
   -verbosity:minimal
 run_dotnet msbuild \
   "${repo_root}/eng/ProGPU.Wpf.ValidationGraphs.proj" \
+  -target:RestoreThemes \
+  -property:Configuration=Release \
+  -verbosity:minimal
+run_dotnet msbuild \
+  "${repo_root}/eng/ProGPU.Wpf.ValidationGraphs.proj" \
   -target:BuildThemes \
   -property:Configuration=Release \
   -verbosity:minimal
 
 echo "Building real WPF validation harnesses..."
+run_dotnet msbuild \
+  "${repo_root}/eng/ProGPU.Wpf.ValidationGraphs.proj" \
+  -target:RestoreHarnesses \
+  -property:Configuration=Release \
+  -verbosity:minimal
 run_dotnet msbuild \
   "${repo_root}/eng/ProGPU.Wpf.ValidationGraphs.proj" \
   -target:BuildHarnesses \

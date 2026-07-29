@@ -29,15 +29,13 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 public sealed class WpfVisualTreeRenderer
 {
     private const string TraceRetainedVisualsEnvironmentVariable = "PROGPU_WPF_TRACE_RETAINED_VISUALS";
+    internal const int VisualReplayCacheEntryLimit = 8192;
 
     private static readonly bool s_traceRetainedVisuals = IsRetainedVisualTraceEnabled();
     private static readonly ConditionalWeakTable<object, VisualGuidelineSetCache> s_visualGuidelineSetCache = new();
 
     [ThreadStatic]
-    private static Dictionary<object, PortableVisualState?>? s_visualStateReplayCache;
-
-    [ThreadStatic]
-    private static Dictionary<object, PortableVisualLayoutState?>? s_visualLayoutStateReplayCache;
+    private static Dictionary<object, VisualReplayStateCacheEntry>? s_visualReplayCache;
 
     [ThreadStatic]
     private static int s_visualStateReplayCacheDepth;
@@ -1277,22 +1275,24 @@ public sealed class WpfVisualTreeRenderer
     {
         if (s_visualStateReplayCacheDepth > 0)
         {
-            var cache = s_visualStateReplayCache ??= new Dictionary<object, PortableVisualState?>(ReferenceEqualityComparer.Instance);
-            if (cache.TryGetValue(visual, out var cachedState))
+            var cache = s_visualReplayCache ??=
+                new Dictionary<object, VisualReplayStateCacheEntry>(ReferenceEqualityComparer.Instance);
+            bool hasEntry = cache.TryGetValue(visual, out var entry);
+            if (hasEntry && entry.HasVisualStateResult)
             {
-                state = cachedState!;
-                return cachedState != null;
+                state = entry.VisualState!;
+                return entry.VisualState != null;
             }
 
-            if (TryReadPortableVisualStateUncached(visual, out state))
+            bool hasState = TryReadPortableVisualStateUncached(visual, out state);
+            if (hasEntry || cache.Count < VisualReplayCacheEntryLimit)
             {
-                cache[visual] = state;
-                return true;
+                entry.HasVisualStateResult = true;
+                entry.VisualState = hasState ? state : null;
+                cache[visual] = entry;
             }
 
-            cache[visual] = null;
-            state = null!;
-            return false;
+            return hasState;
         }
 
         return TryReadPortableVisualStateUncached(visual, out state);
@@ -1314,22 +1314,24 @@ public sealed class WpfVisualTreeRenderer
     {
         if (s_visualStateReplayCacheDepth > 0)
         {
-            var cache = s_visualLayoutStateReplayCache ??= new Dictionary<object, PortableVisualLayoutState?>(ReferenceEqualityComparer.Instance);
-            if (cache.TryGetValue(visual, out var cachedState))
+            var cache = s_visualReplayCache ??=
+                new Dictionary<object, VisualReplayStateCacheEntry>(ReferenceEqualityComparer.Instance);
+            bool hasEntry = cache.TryGetValue(visual, out var entry);
+            if (hasEntry && entry.HasLayoutStateResult)
             {
-                state = cachedState!;
-                return cachedState != null;
+                state = entry.LayoutState!;
+                return entry.LayoutState != null;
             }
 
-            if (TryReadPortableVisualLayoutStateUncached(visual, out state))
+            bool hasState = TryReadPortableVisualLayoutStateUncached(visual, out state);
+            if (hasEntry || cache.Count < VisualReplayCacheEntryLimit)
             {
-                cache[visual] = state;
-                return true;
+                entry.HasLayoutStateResult = true;
+                entry.LayoutState = hasState ? state : null;
+                cache[visual] = entry;
             }
 
-            cache[visual] = null;
-            state = null!;
-            return false;
+            return hasState;
         }
 
         return TryReadPortableVisualLayoutStateUncached(visual, out state);
@@ -1351,13 +1353,16 @@ public sealed class WpfVisualTreeRenderer
     {
         if (s_visualStateReplayCacheDepth == 0)
         {
-            (s_visualStateReplayCache ??= new Dictionary<object, PortableVisualState?>(ReferenceEqualityComparer.Instance)).Clear();
-            (s_visualLayoutStateReplayCache ??= new Dictionary<object, PortableVisualLayoutState?>(ReferenceEqualityComparer.Instance)).Clear();
+            (s_visualReplayCache ??=
+                new Dictionary<object, VisualReplayStateCacheEntry>(ReferenceEqualityComparer.Instance)).Clear();
         }
 
         s_visualStateReplayCacheDepth++;
         return default;
     }
+
+    internal static int VisualReplayCacheRetainedCapacity =>
+        s_visualReplayCache?.EnsureCapacity(0) ?? 0;
 
     private readonly struct VisualStateReplayCacheScope : IDisposable
     {
@@ -1371,10 +1376,20 @@ public sealed class WpfVisualTreeRenderer
             s_visualStateReplayCacheDepth--;
             if (s_visualStateReplayCacheDepth == 0)
             {
-                s_visualStateReplayCache?.Clear();
-                s_visualLayoutStateReplayCache?.Clear();
+                s_visualReplayCache?.Clear();
             }
         }
+    }
+
+    private struct VisualReplayStateCacheEntry
+    {
+        public bool HasVisualStateResult;
+
+        public PortableVisualState? VisualState;
+
+        public bool HasLayoutStateResult;
+
+        public PortableVisualLayoutState? LayoutState;
     }
 
     private static bool TryReadOffset(object visual, out double x, out double y)

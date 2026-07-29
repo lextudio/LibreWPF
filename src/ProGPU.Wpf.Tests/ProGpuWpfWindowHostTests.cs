@@ -37,6 +37,7 @@ public sealed class ProGpuWpfWindowHostTests
                 GlyphOutlineGpuBytes = 7,
                 TrackedIntermediateTextureBytes = 8
             },
+            visualReplayCacheCapacity: 17,
             retainedVisualBranchSourceCount: 9,
             retainedVisualBranchCount: 10,
             viewport3DTextureSetCount: 1,
@@ -47,6 +48,7 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.True(snapshot.ManagedHeapBytes >= 0);
         Assert.True(snapshot.ManagedFragmentedBytes >= 0);
         Assert.True(snapshot.ProcessWorkingSetBytes > 0);
+        Assert.Equal(17, snapshot.VisualReplayCacheCapacity);
         Assert.Equal(9, snapshot.RetainedVisualBranchSourceCount);
         Assert.Equal(10, snapshot.RetainedVisualBranchCount);
         Assert.Equal(1, snapshot.Viewport3DTextureSetCount);

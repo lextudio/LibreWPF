@@ -64,6 +64,7 @@ public static class ProGpuWpfDiagnostics
         long ManagedHeapBytes,
         long ManagedFragmentedBytes,
         long ProcessWorkingSetBytes,
+        int VisualReplayCacheCapacity,
         int RetainedVisualBranchSourceCount,
         int RetainedVisualBranchCount,
         int Viewport3DTextureSetCount,
@@ -261,6 +262,7 @@ public static class ProGpuWpfDiagnostics
 
         return CreateMemorySnapshot(
             target.Compositor.Metrics,
+            global::System.Windows.Media.ProGPU.Composition.Mil.WpfVisualTreeRenderer.VisualReplayCacheRetainedCapacity,
             target.RetainedVisualBranchSourceCount,
             target.RetainedVisualBranchCount,
             viewport3DTextureSetCount,
@@ -271,6 +273,7 @@ public static class ProGpuWpfDiagnostics
 
     internal static MemorySnapshot CreateMemorySnapshot(
         global::ProGPU.Scene.CompositorMetrics metrics,
+        int visualReplayCacheCapacity,
         int retainedVisualBranchSourceCount,
         int retainedVisualBranchCount,
         int viewport3DTextureSetCount,
@@ -299,6 +302,7 @@ public static class ProGpuWpfDiagnostics
             ManagedHeapBytes: gcMemory.HeapSizeBytes,
             ManagedFragmentedBytes: gcMemory.FragmentedBytes,
             ProcessWorkingSetBytes: Environment.WorkingSet,
+            VisualReplayCacheCapacity: visualReplayCacheCapacity,
             RetainedVisualBranchSourceCount: retainedVisualBranchSourceCount,
             RetainedVisualBranchCount: retainedVisualBranchCount,
             Viewport3DTextureSetCount: viewport3DTextureSetCount,

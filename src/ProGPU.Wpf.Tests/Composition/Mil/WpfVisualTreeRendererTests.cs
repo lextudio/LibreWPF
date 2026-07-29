@@ -189,6 +189,28 @@ public sealed class WpfVisualTreeRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeBoundsThreadStaticPortableStateCache()
+    {
+        int childCount = WpfVisualTreeRenderer.VisualReplayCacheEntryLimit * 2;
+        var visualState = new PortableVisualState();
+        var layoutState = new PortableVisualLayoutState();
+        var root = new FakePortableVisualStateAndLayoutVisual(visualState, layoutState);
+        for (int index = 0; index < childCount; index++)
+        {
+            root.Children.Add(new FakePortableVisualStateAndLayoutVisual(visualState, layoutState));
+        }
+
+        var result = new WpfVisualTreeRenderer().ReplaySubtree(root, new TestSink());
+
+        Assert.Equal(childCount + 1, result.VisualCount);
+        Assert.InRange(
+            WpfVisualTreeRenderer.VisualReplayCacheRetainedCapacity,
+            WpfVisualTreeRenderer.VisualReplayCacheEntryLimit,
+            (WpfVisualTreeRenderer.VisualReplayCacheEntryLimit * 2) + 1024);
+        Assert.True(WpfVisualTreeRenderer.VisualReplayCacheRetainedCapacity < childCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeReadsUiElementDrawingContent()
     {
         var brush = Brushes.Green;

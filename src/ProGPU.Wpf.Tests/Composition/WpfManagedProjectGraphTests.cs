@@ -985,6 +985,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public static bool TryGetRenderSurfaceGeometry(object? window, out RenderSurfaceGeometrySnapshot geometry)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetCompositionLayerSnapshot(object? window, out CompositionLayerSnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetMemorySnapshot(object? window, out MemorySnapshot snapshot)", proGpuDiagnostics, StringComparison.Ordinal);
+        Assert.Contains("VisualReplayCacheCapacity", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("metrics.TrackedIntermediateTextureBytes", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("PopupLayerChildCount", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryRaiseInput(", proGpuDiagnostics, StringComparison.Ordinal);
@@ -6717,8 +6718,10 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;", rendererSource, StringComparison.Ordinal);
         Assert.Contains("using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("private static Dictionary<object, PortableVisualState?>? s_visualStateReplayCache;", rendererSource, StringComparison.Ordinal);
-        Assert.Contains("private static Dictionary<object, PortableVisualLayoutState?>? s_visualLayoutStateReplayCache;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("internal const int VisualReplayCacheEntryLimit = 8192;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("private static Dictionary<object, VisualReplayStateCacheEntry>? s_visualReplayCache;", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("s_visualStateReplayCache", rendererSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("s_visualLayoutStateReplayCache", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private static VisualStateReplayCacheScope BeginVisualStateReplayCache()", rendererSource, StringComparison.Ordinal);
         Assert.Contains("using var visualStateCacheScope = BeginVisualStateReplayCache();", rendererSource, StringComparison.Ordinal);
         Assert.Contains("private readonly struct VisualStateReplayCacheScope : IDisposable", rendererSource, StringComparison.Ordinal);
@@ -6742,6 +6745,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReplaySubtreeKeepsNonRectangleClipInCommandScopeForNativeOwnerSink", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeSynthesizesCellClipFromPortableClipToBoundsState", rendererTests, StringComparison.Ordinal);
         Assert.Contains("ReplaySubtreeCachesPortableVisualAndLayoutStateDuringReplayPass", rendererTests, StringComparison.Ordinal);
+        Assert.Contains("ReplaySubtreeBoundsThreadStaticPortableStateCache", rendererTests, StringComparison.Ordinal);
         Assert.Contains("CountingPortableVisualStateAndLayoutDrawingVisual", rendererTests, StringComparison.Ordinal);
         Assert.Contains("FakeVisual : PortableVisualChildrenSource, PortableVisualBoundsSource", rendererTests, StringComparison.Ordinal);
         Assert.Contains("clip is IPortableGeometryPathSource portableGeometry", rendererSource, StringComparison.Ordinal);

@@ -35,13 +35,18 @@ if [[ "${PROGPU_WPF_MVP_REBUILD_PACKAGES:-0}" == "1" || ! -f "${sdk_package}" ]]
     "${repo_root}/eng/progpu-wpf-sdk-ci.sh"
 fi
 
-rm -rf \
-  "${repo_root}/artifacts/bin/ProGPU.Wpf.MvpApp" \
-  "${repo_root}/artifacts/obj/ProGPU.Wpf.MvpApp" \
-  "${repo_root}/artifacts/nuget/ProGPU.Wpf.MvpApp"
+if [[ "${PROGPU_WPF_MVP_SKIP_BUILD:-0}" != "1" ]]; then
+  rm -rf \
+    "${repo_root}/artifacts/bin/ProGPU.Wpf.MvpApp" \
+    "${repo_root}/artifacts/obj/ProGPU.Wpf.MvpApp" \
+    "${repo_root}/artifacts/nuget/ProGPU.Wpf.MvpApp"
 
-echo "Building ProGPU WPF MVP app..."
-"${dotnet}" build "${mvp_project}" -v:minimal
+  echo "Building ProGPU WPF MVP app..."
+  "${dotnet}" build "${mvp_project}" -v:minimal
+elif [[ ! -x "${mvp_output}/${apphost_name}" ]]; then
+  echo "Expected prebuilt MVP apphost at ${mvp_output}/${apphost_name}." >&2
+  exit 1
+fi
 
 if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
   export PROGPU_WPF_MVP_LIVE_VALIDATE

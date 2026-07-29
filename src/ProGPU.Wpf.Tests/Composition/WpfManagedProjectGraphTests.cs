@@ -12414,6 +12414,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Target Name=\"BuildHarnesses\" DependsOnTargets=\"RestoreHarnesses\">", validationGraphs, StringComparison.Ordinal);
         Assert.Equal(4, validationGraphs.Split("BuildInParallel=\"false\"", StringSplitOptions.None).Length - 1);
         Assert.Equal(2, validationGraphs.Split("BuildInParallel=\"true\"", StringSplitOptions.None).Length - 1);
+        Assert.Equal(3, validationGraphs.Split("UnloadProjectsOnCompletion=\"true\"", StringSplitOptions.None).Length - 1);
         Assert.Contains("-target:BuildThemes", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Building real WPF validation harnesses", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("-target:BuildHarnesses", sdkCiScript, StringComparison.Ordinal);
@@ -12427,7 +12428,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Running real WPF Fluent theme runtime harness", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj\" -c Release -v:minimal", sdkCiScript, StringComparison.Ordinal);
-        Assert.Equal(3, sdkCiScript.Split("run --no-build --project", StringSplitOptions.None).Length - 1);
+        Assert.Equal(7, sdkCiScript.Split("run --no-build --project", StringSplitOptions.None).Length - 1);
         Assert.Contains("packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf/ProGPU.Wpf.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
@@ -12455,12 +12456,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"./${mvp_apphost_name}\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Running MVP SDK app live geometry validation", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_REBUILD_PACKAGES=0", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_SKIP_BUILD=1", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_HELLO_RUN_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_HELLO_LIVE_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_HELLO_SKIP_BUILD=1", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/run-progpu-wpf-mvp.sh\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Running Toolkit SDK app live validation", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_REBUILD_PACKAGES=0", sdkCiScript, StringComparison.Ordinal);
@@ -14174,6 +14177,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("Enum.Parse(modifiersType, modifiers)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"./${apphost_name}\"", mvpRunScript, StringComparison.Ordinal);
         Assert.DoesNotContain("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("if [[ \"${PROGPU_WPF_MVP_SKIP_BUILD:-0}\" != \"1\" ]]", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("Expected prebuilt MVP apphost", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("if [[ \"${PROGPU_WPF_HELLO_SKIP_BUILD:-0}\" != \"1\" ]]", helloRunScript, StringComparison.Ordinal);
+        Assert.Contains("Expected prebuilt Hello apphost", helloRunScript, StringComparison.Ordinal);
         Assert.Contains("ValidateRequiredLiveHelloAsync", helloMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryGetWindowHost(this, out var liveHost)", helloMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryGetRenderSurfaceGeometry(liveHost, out var geometry)", helloMainWindowCodeBehind, StringComparison.Ordinal);

@@ -43,6 +43,7 @@
       Projects="@(ManagedTransportProject)"
       Targets="Restore"
       BuildInParallel="false"
+      UnloadProjectsOnCompletion="true"
       Properties="Configuration=$(Configuration)" />
   </Target>
 
@@ -67,6 +68,7 @@
       Projects="@(ThemeProject)"
       Targets="Restore"
       BuildInParallel="false"
+      UnloadProjectsOnCompletion="true"
       Properties="Configuration=$(Configuration)" />
   </Target>
 
@@ -85,6 +87,7 @@
       Projects="@(HarnessProject)"
       Targets="Restore"
       BuildInParallel="false"
+      UnloadProjectsOnCompletion="true"
       Properties="Configuration=$(Configuration)" />
   </Target>
 

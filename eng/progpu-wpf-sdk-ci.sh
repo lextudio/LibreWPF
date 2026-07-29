@@ -288,6 +288,7 @@ echo "Running Hello SDK app apphost Application.Run validation..."
 
 echo "Running Hello SDK app live geometry validation..."
 PROGPU_WPF_HELLO_REBUILD_PACKAGES=0 \
+PROGPU_WPF_HELLO_SKIP_BUILD=1 \
 PROGPU_WPF_HELLO_RUN_VALIDATE=0 \
 PROGPU_WPF_HELLO_LIVE_VALIDATE=1 \
   "${repo_root}/eng/run-progpu-wpf-hello.sh"
@@ -299,13 +300,13 @@ echo "Running MVP SDK app validation..."
 PROGPU_WPF_MVP_VALIDATE=1 \
 PROGPU_WPF_MVP_RUN_VALIDATE=0 \
 PROGPU_WPF_MVP_LIVE_VALIDATE=0 \
-  run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
+  run_dotnet run --no-build --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
 
 echo "Running MVP SDK app Application.Run validation..."
 PROGPU_WPF_MVP_VALIDATE=0 \
 PROGPU_WPF_MVP_RUN_VALIDATE=1 \
 PROGPU_WPF_MVP_LIVE_VALIDATE=0 \
-  run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
+  run_dotnet run --no-build --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
 
 mvp_output="${repo_root}/artifacts/bin/ProGPU.Wpf.MvpApp/Debug/${sdk_sample_target_framework}"
 mvp_apphost_name="$(apphost_name "ProGPU.Wpf.MvpApp")"
@@ -325,6 +326,7 @@ echo "Running MVP SDK app apphost Application.Run validation..."
 
 echo "Running MVP SDK app live geometry validation..."
 PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \
+PROGPU_WPF_MVP_SKIP_BUILD=1 \
 PROGPU_WPF_MVP_VALIDATE=0 \
 PROGPU_WPF_MVP_RUN_VALIDATE=0 \
 PROGPU_WPF_MVP_LIVE_VALIDATE=1 \
@@ -361,12 +363,12 @@ run_dotnet build "${repo_root}/samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciC
 echo "Running SciChart MVP SDK app renderer validation..."
 PROGPU_WPF_SCICHART_VALIDATE=1 \
 PROGPU_WPF_SCICHART_RUN_VALIDATE=0 \
-  run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj" -v:minimal
+  run_dotnet run --no-build --project "${repo_root}/samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj" -v:minimal
 
 echo "Running SciChart MVP SDK app Application.Run validation..."
 PROGPU_WPF_SCICHART_VALIDATE=0 \
 PROGPU_WPF_SCICHART_RUN_VALIDATE=1 \
-  run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj" -v:minimal
+  run_dotnet run --no-build --project "${repo_root}/samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj" -v:minimal
 
 echo "Building focused WPF graph tests..."
 run_dotnet build "${repo_root}/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj" -v:minimal

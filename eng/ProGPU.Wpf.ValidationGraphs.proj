@@ -47,10 +47,11 @@
       Properties="Configuration=$(Configuration)" />
   </Target>
 
-  <Target Name="BuildManagedTransport" DependsOnTargets="RestoreManagedTransport">
+  <Target Name="BuildManagedTransport">
     <!--
       Preserve the deliberate project order and shared packaging-output safety
-      while reusing one MSBuild process and its completed-project cache.
+      while reusing one MSBuild process and its completed-project cache. Restore
+      runs in a separate process so package-generated properties are reevaluated.
     -->
     <MSBuild
       Projects="@(ManagedTransportProject)"

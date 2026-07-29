@@ -211,6 +211,11 @@ echo "Running ProGPU Avalonia package consumer smoke..."
 echo "Building managed WPF transport payload..."
 run_dotnet msbuild \
   "${repo_root}/eng/ProGPU.Wpf.ValidationGraphs.proj" \
+  -target:RestoreManagedTransport \
+  -property:Configuration=Release \
+  -verbosity:minimal
+run_dotnet msbuild \
+  "${repo_root}/eng/ProGPU.Wpf.ValidationGraphs.proj" \
   -target:BuildManagedTransport \
   -property:Configuration=Release \
   -verbosity:minimal

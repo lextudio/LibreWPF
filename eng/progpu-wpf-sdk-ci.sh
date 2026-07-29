@@ -227,26 +227,27 @@ build_project "src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.cs
 build_project "src/Microsoft.DotNet.Wpf/src/ReachFramework/ReachFramework.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/PresentationUI/PresentationUI.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Aero/PresentationFramework.Aero.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Aero2/PresentationFramework.Aero2.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.AeroLite/PresentationFramework.AeroLite.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Classic/PresentationFramework.Classic.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Luna/PresentationFramework.Luna.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Royale/PresentationFramework.Royale.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Controls.Ribbon/System.Windows.Controls.Ribbon.csproj"
+run_dotnet msbuild \
+  "${repo_root}/eng/ProGPU.Wpf.ValidationGraphs.proj" \
+  -target:BuildThemes \
+  -property:Configuration=Release \
+  -verbosity:minimal
 
-echo "Building real WPF compiled XAML harness..."
-run_dotnet build "${repo_root}/src/ProGPU.Wpf.RealXamlCompilerHarness/ProGPU.Wpf.RealXamlCompilerHarness.csproj" -c Release -v:minimal
+echo "Building real WPF validation harnesses..."
+run_dotnet msbuild \
+  "${repo_root}/eng/ProGPU.Wpf.ValidationGraphs.proj" \
+  -target:BuildHarnesses \
+  -property:Configuration=Release \
+  -verbosity:minimal
 
 echo "Running real WPF XAML runtime harness..."
-run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.RealXamlRuntimeHarness/ProGPU.Wpf.RealXamlRuntimeHarness.csproj" -c Release -v:minimal
+run_dotnet run --no-build --project "${repo_root}/src/ProGPU.Wpf.RealXamlRuntimeHarness/ProGPU.Wpf.RealXamlRuntimeHarness.csproj" -c Release -v:minimal
 
 echo "Running real WPF Application.Run harness..."
-run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.RealApplicationRunHarness/ProGPU.Wpf.RealApplicationRunHarness.csproj" -c Release -v:minimal
+run_dotnet run --no-build --project "${repo_root}/src/ProGPU.Wpf.RealApplicationRunHarness/ProGPU.Wpf.RealApplicationRunHarness.csproj" -c Release -v:minimal
 
 echo "Running real WPF Fluent theme runtime harness..."
-run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj" -c Release -v:minimal
+run_dotnet run --no-build --project "${repo_root}/src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj" -c Release -v:minimal
 
 echo "Packing LibreWPF transport, ProGPU bridge, and custom SDK..."
 pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "LibreWPF.Transport"

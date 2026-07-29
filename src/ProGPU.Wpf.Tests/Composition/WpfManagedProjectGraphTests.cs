@@ -11278,6 +11278,9 @@ public sealed class WpfManagedProjectGraphTests
         var sdkCiScriptPath = FindRepoPath(
             "eng",
             "progpu-wpf-sdk-ci.sh");
+        var validationGraphsPath = FindRepoPath(
+            "eng",
+            "ProGPU.Wpf.ValidationGraphs.proj");
         var avaloniaPackageSmokeScriptPath = FindRepoPath(
             "eng",
             "progpu-avalonia-package-smoke.sh");
@@ -11721,6 +11724,7 @@ public sealed class WpfManagedProjectGraphTests
         var spellerInteropBase = File.ReadAllText(spellerInteropBasePath);
         var textEditorCopyPaste = File.ReadAllText(textEditorCopyPastePath);
         var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
+        var validationGraphs = File.ReadAllText(validationGraphsPath);
         var avaloniaPackageSmokeScript = File.ReadAllText(avaloniaPackageSmokeScriptPath);
         var previewPackageAuditScript = File.ReadAllText(previewPackageAuditScriptPath);
         var progpuNuspecRepositoryAuditScript = File.ReadAllText(progpuNuspecRepositoryAuditScriptPath);
@@ -12297,20 +12301,31 @@ public sealed class WpfManagedProjectGraphTests
             "The portable SystemEvents assembly must be built before managed WPF projects that consume it.");
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj", sdkCiScript, StringComparison.Ordinal);
         foreach (string themeAssembly in wpfThemeAssemblies)
         {
-            Assert.Contains($"src/Microsoft.DotNet.Wpf/src/Themes/{themeAssembly}/{themeAssembly}.csproj", sdkCiScript, StringComparison.Ordinal);
+            Assert.Contains($"src/Microsoft.DotNet.Wpf/src/Themes/{themeAssembly}/{themeAssembly}.csproj", validationGraphs, StringComparison.Ordinal);
         }
-        Assert.Contains("src/Microsoft.DotNet.Wpf/src/System.Windows.Controls.Ribbon/System.Windows.Controls.Ribbon.csproj", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("Building real WPF compiled XAML harness", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("src/ProGPU.Wpf.RealXamlCompilerHarness/ProGPU.Wpf.RealXamlCompilerHarness.csproj\" -c Release", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/System.Windows.Controls.Ribbon/System.Windows.Controls.Ribbon.csproj", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("<Target Name=\"RestoreThemes\">", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("<Target Name=\"BuildThemes\" DependsOnTargets=\"RestoreThemes\">", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("<Target Name=\"RestoreHarnesses\">", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("<Target Name=\"BuildHarnesses\" DependsOnTargets=\"RestoreHarnesses\">", validationGraphs, StringComparison.Ordinal);
+        Assert.Equal(2, validationGraphs.Split("BuildInParallel=\"false\"", StringSplitOptions.None).Length - 1);
+        Assert.Equal(2, validationGraphs.Split("BuildInParallel=\"true\"", StringSplitOptions.None).Length - 1);
+        Assert.Contains("-target:BuildThemes", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Building real WPF validation harnesses", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("-target:BuildHarnesses", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealXamlCompilerHarness/ProGPU.Wpf.RealXamlCompilerHarness.csproj", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("Running real WPF XAML runtime harness", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("src/ProGPU.Wpf.RealXamlRuntimeHarness/ProGPU.Wpf.RealXamlRuntimeHarness.csproj\" -c Release", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealXamlRuntimeHarness/ProGPU.Wpf.RealXamlRuntimeHarness.csproj", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealXamlRuntimeHarness/ProGPU.Wpf.RealXamlRuntimeHarness.csproj\" -c Release -v:minimal", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Running real WPF Application.Run harness", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("src/ProGPU.Wpf.RealApplicationRunHarness/ProGPU.Wpf.RealApplicationRunHarness.csproj\" -c Release", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealApplicationRunHarness/ProGPU.Wpf.RealApplicationRunHarness.csproj", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealApplicationRunHarness/ProGPU.Wpf.RealApplicationRunHarness.csproj\" -c Release -v:minimal", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Running real WPF Fluent theme runtime harness", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj\" -c Release", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj\" -c Release -v:minimal", sdkCiScript, StringComparison.Ordinal);
+        Assert.Equal(3, sdkCiScript.Split("run --no-build --project", StringSplitOptions.None).Length - 1);
         Assert.Contains("packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf/ProGPU.Wpf.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);

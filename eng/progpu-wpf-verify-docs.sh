@@ -14,6 +14,7 @@ require_text() {
 }
 
 require_text ".github/workflows/progpu-wpf-sdk.yml" "./eng/progpu-wpf-sdk-ci.sh"
+require_text ".github/workflows/progpu-wpf-sdk.yml" "PROGPU_WPF_PROGPU_PACKAGE_VERSION: 0.1.0-preview.29"
 require_text ".github/workflows/progpu-wpf-sdk.yml" "librewpf-ci-packages-"
 require_text ".github/workflows/progpu-wpf-sdk.yml" "if-no-files-found: error"
 require_text ".github/workflows/progpu-wpf-sdk.yml" "./eng/progpu-wpf-linux-xwayland-smoke.sh"

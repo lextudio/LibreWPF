@@ -13,6 +13,9 @@ on:
 permissions:
   contents: read
 
+env:
+  PROGPU_WPF_QUALIFIED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   windows-managed-runtime:
     name: Windows managed runtime payload
@@ -23,6 +26,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           submodules: recursive
 
       - name: Setup .NET
@@ -37,7 +41,7 @@ jobs:
       - name: Upload Windows managed runtime
         uses: actions/upload-artifact@v4
         with:
-          name: librewpf-windows-managed-runtime-${{ github.sha }}
+          name: librewpf-windows-managed-runtime-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/windows-managed-runtime/**/*
           if-no-files-found: error
 
@@ -51,6 +55,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           submodules: recursive
 
       - name: Setup .NET
@@ -61,7 +66,7 @@ jobs:
       - name: Download Windows managed runtime
         uses: actions/download-artifact@v4
         with:
-          name: librewpf-windows-managed-runtime-${{ github.sha }}
+          name: librewpf-windows-managed-runtime-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/windows-managed-runtime
 
       - name: Run LibreWPF SDK gate
@@ -70,7 +75,7 @@ jobs:
       - name: Upload CI package bundle
         uses: actions/upload-artifact@v4
         with:
-          name: librewpf-ci-packages-${{ github.sha }}
+          name: librewpf-ci-packages-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: |
             artifacts/packages/Release/NonShipping/*.nupkg
             artifacts/packages/Release/NonShipping/*.json
@@ -89,6 +94,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -98,7 +105,7 @@ jobs:
       - name: Download CI package bundle
         uses: actions/download-artifact@v4
         with:
-          name: librewpf-ci-packages-${{ github.sha }}
+          name: librewpf-ci-packages-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/packages/Release/NonShipping
 
       - name: Run clean Windows AnyCPU package smoke
@@ -116,6 +123,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -141,7 +150,7 @@ jobs:
       - name: Download CI package bundle
         uses: actions/download-artifact@v4
         with:
-          name: librewpf-ci-packages-${{ github.sha }}
+          name: librewpf-ci-packages-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/packages/Release/NonShipping
 
       - name: Run Wayland-session XWayland native input and popup smoke

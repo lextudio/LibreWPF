@@ -25,6 +25,35 @@ namespace ProGPU.Wpf.Tests;
 public sealed class ProGpuWpfDrawingFrameTests
 {
     [Fact]
+    public void CompositionTargetDisposeReleasesRetainedSceneOwnership()
+    {
+        var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var source = new object();
+        var retainedVisual = new ProGpuDrawingVisual();
+        var popupVisual = new ProGpuDrawingVisual();
+
+        target.RetainedWpfVisualRoot.AddChild(retainedVisual);
+        target.PopupRetainedWpfVisualRoot.AddChild(popupVisual);
+        target.RetainedVisualBranchMap.Register(source, retainedVisual);
+        target.GpuHitTestOwnerMap.GetOrCreateId(source);
+        target.RootVisual.Context.DrawRectangle(
+            null,
+            null,
+            new ProGPU.Scene.Rect(1, 2, 3, 4));
+
+        target.Dispose();
+        target.Dispose();
+
+        Assert.Empty(target.RootVisual.Context.Commands);
+        Assert.Empty(target.RetainedWpfVisualRoot.Children);
+        Assert.Empty(target.PopupRetainedWpfVisualRoot.Children);
+        Assert.Empty(target.SceneRootVisual.Children);
+        Assert.Equal(0, target.RetainedVisualBranchSourceCount);
+        Assert.Equal(0, target.RetainedVisualBranchCount);
+        Assert.Equal(0, target.GpuHitTestOwnerMap.Count);
+    }
+
+    [Fact]
     public void FrameImageSourceAdapterReuseDoesNotAllocate()
     {
         using var target = ProGpuWpfCompositionTarget.CreateHeadless();

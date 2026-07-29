@@ -960,10 +960,22 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             return;
         }
 
-        Viewport3DTextureCache.Dispose();
-        _shaderEffectSamplerTextureCache.Dispose();
+        WpfInvalidationTracker.Invalidated -= OnWpfSourceInvalidated;
+        WpfInvalidationTracker.Dispose();
+        RenderInvalidated = null;
+        WpfImageSourceAdapter = null;
         _frameImageSourceAdapter = null;
         _frameImageSourceAdapterSource = null;
+
+        RootVisual.Context.Clear();
+        RetainedWpfVisualRoot.ClearChildren();
+        PopupRetainedWpfVisualRoot.ClearChildren();
+        SceneRootVisual.ClearChildren();
+        RetainedVisualBranchMap.Clear();
+        GpuHitTestOwnerMap.Clear();
+
+        Viewport3DTextureCache.Dispose();
+        _shaderEffectSamplerTextureCache.Dispose();
 
         if (_ownsCompositor)
         {
@@ -975,8 +987,6 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             Context.Dispose();
         }
 
-        WpfInvalidationTracker.Invalidated -= OnWpfSourceInvalidated;
-        WpfInvalidationTracker.Dispose();
         _isDisposed = true;
         GC.SuppressFinalize(this);
     }

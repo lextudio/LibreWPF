@@ -2201,12 +2201,14 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Theory]
-    [InlineData(false, false, false, true)]
-    [InlineData(true, false, false, false)]
-    [InlineData(false, true, false, false)]
-    [InlineData(false, false, true, false)]
+    [InlineData(false, false, false, false, true)]
+    [InlineData(true, false, false, false, false)]
+    [InlineData(false, true, false, false, false)]
+    [InlineData(false, false, true, false, false)]
+    [InlineData(false, false, false, true, false)]
     public void NativePopupUsesOwnerSurfaceWhenNativePositioningIsUnavailable(
         bool isWindows,
+        bool isMacOS,
         bool explicitlyDisabled,
         bool isWayland,
         bool expected)
@@ -2215,6 +2217,7 @@ public sealed class ProGpuWpfWindowHostTests
             expected,
             WpfPortableNativePopupHost.ShouldUseNativePopup(
                 isWindows,
+                isMacOS,
                 explicitlyDisabled,
                 isWayland));
     }

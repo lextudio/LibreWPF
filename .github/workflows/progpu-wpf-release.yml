@@ -25,11 +25,120 @@ on:
       - librewpf-v*
 
 permissions:
+  actions: read
   contents: write
 
 jobs:
+  promote-qualified-preview:
+    name: Promote exact qualified preview
+    if: ${{ startsWith(github.ref, 'refs/tags/librewpf-v') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.release-version.outputs.version }}
+
+    steps:
+      - name: Checkout immutable release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Resolve release version
+        id: release-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#librewpf-v}"
+          echo "PROGPU_WPF_DEV_PACKAGE_VERSION=${version}" >> "${GITHUB_ENV}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved LibreWPF package version: ${version}"
+
+      - name: Download exact qualified Build artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$(git rev-parse HEAD)" != "${GITHUB_SHA}" ]]; then
+            echo "Checked-out release commit does not match ${GITHUB_SHA}." >&2
+            exit 1
+          fi
+
+          runs="$(
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/progpu-wpf-sdk.yml/runs?head_sha=${GITHUB_SHA}&per_page=100"
+          )"
+          run_id="$(
+            jq -r \
+              --arg sha "${GITHUB_SHA}" \
+              '[
+                .workflow_runs[]
+                | select(
+                    .head_sha == $sha
+                    and .status == "completed"
+                    and .conclusion == "success"
+                  )
+              ]
+              | sort_by(.run_started_at)
+              | last
+              | .id // empty' \
+              <<<"${runs}"
+          )"
+          if [[ -z "${run_id}" ]]; then
+            echo "No terminal-success LibreWPF Build run exists for ${GITHUB_SHA}." >&2
+            exit 1
+          fi
+
+          artifact_name="librewpf-ci-packages-${GITHUB_SHA}"
+          artifact_id="$(
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts?per_page=100" \
+              --jq ".artifacts[] | select(.name == \"${artifact_name}\" and .expired == false) | .id" \
+              | tail -n 1
+          )"
+          if [[ -z "${artifact_id}" ]]; then
+            echo "Qualified Build ${run_id} has no live ${artifact_name} artifact." >&2
+            exit 1
+          fi
+
+          destination="${GITHUB_WORKSPACE}/artifacts/packages/Release/NonShipping"
+          mkdir -p "${destination}"
+          archive="${RUNNER_TEMP}/${artifact_name}.zip"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" \
+            > "${archive}"
+          unzip -q "${archive}" -d "${destination}"
+          echo "Promoted Build run ${run_id}, artifact ${artifact_id}, for ${GITHUB_SHA}."
+
+      - name: Verify promoted release provenance
+        run: |
+          ./eng/progpu-wpf-verify-docs.sh
+          PROGPU_WPF_PREVIEW_RELEASE_REQUIRE_CLEAN_SOURCE=1 \
+            ./eng/progpu-preview-release-verify.sh
+
+      - name: Upload promoted preview packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: librewpf-packages-${{ env.PROGPU_WPF_DEV_PACKAGE_VERSION }}
+          path: |
+            artifacts/packages/Release/NonShipping/*.nupkg
+            artifacts/packages/Release/NonShipping/*.json
+            artifacts/packages/Release/NonShipping/*.tar.gz
+            artifacts/packages/Release/NonShipping/*.sha256
+            artifacts/packages/Release/NonShipping/README.md
+            artifacts/packages/Release/NonShipping/NuGet.config
+          if-no-files-found: error
+
   windows-managed-runtime:
     name: Windows managed runtime payload
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: windows-2025
     timeout-minutes: 90
 
@@ -58,6 +167,7 @@ jobs:
 
   preview:
     name: Build preview packages
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     needs: windows-managed-runtime
     runs-on: macos-15
     timeout-minutes: 120
@@ -148,11 +258,14 @@ jobs:
 
   windows-anycpu-smoke:
     name: Windows AnyCPU package launch
-    needs: preview
+    needs:
+      - preview
+      - promote-qualified-preview
+    if: ${{ always() && !cancelled() && (needs.preview.result == 'success' || needs.promote-qualified-preview.result == 'success') }}
     runs-on: windows-2025
     timeout-minutes: 30
     env:
-      PROGPU_WPF_DEV_PACKAGE_VERSION: ${{ needs.preview.outputs.version }}
+      PROGPU_WPF_DEV_PACKAGE_VERSION: ${{ needs.promote-qualified-preview.outputs.version || needs.preview.outputs.version }}
 
     steps:
       - name: Checkout
@@ -179,11 +292,13 @@ jobs:
     name: Publish validated preview
     needs:
       - preview
+      - promote-qualified-preview
       - windows-anycpu-smoke
+    if: ${{ always() && !cancelled() && needs.windows-anycpu-smoke.result == 'success' && (needs.preview.result == 'success' || needs.promote-qualified-preview.result == 'success') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      PROGPU_WPF_DEV_PACKAGE_VERSION: ${{ needs.preview.outputs.version }}
+      PROGPU_WPF_DEV_PACKAGE_VERSION: ${{ needs.promote-qualified-preview.outputs.version || needs.preview.outputs.version }}
 
     steps:
       - name: Setup .NET

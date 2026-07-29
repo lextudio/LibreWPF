@@ -27,6 +27,8 @@ require_text ".github/workflows/progpu-wpf-release.yml" 'name: librewpf-packages
 require_text ".github/workflows/progpu-wpf-release.yml" "Create GitHub Release"
 require_text ".github/workflows/progpu-wpf-release.yml" "gh release create"
 require_text ".github/workflows/progpu-wpf-release.yml" "--generate-notes"
+require_text "README.md" "Tag releases promote and re-verify the exact package artifact"
+require_text "docs/progpu-wpf-release.md" 'terminal-success `LibreWPF Build` run for the exact tagged commit'
 require_text ".github/workflows/progpu-wpf-release.yml" "Stage exact ProGPU release packages"
 require_text ".github/workflows/progpu-wpf-release.yml" "LibreWPF.Transport LibreWPF.ProGPU LibreWPF.Sdk"
 require_text ".github/workflows/progpu-wpf-docs.yml" "librewpf-docs"

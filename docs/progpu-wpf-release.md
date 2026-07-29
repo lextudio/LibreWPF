@@ -42,7 +42,8 @@ checked-out ProGPU submodule commit.
 
 - `LibreWPF Build` runs the SDK package/no-source-change smoke on macOS with submodules checked out.
 - `LibreWPF Docs` verifies that this document and README stay aligned with the preview package list.
-- `LibreWPF Release` runs the same SDK CI gate, uploads packages/bundle artifacts, publishes to NuGet.org, and creates tag-driven GitHub Releases with generated release notes.
+- `LibreWPF Release` promotes the package bundle from a terminal-success `LibreWPF Build` run for the exact tagged commit, re-verifies its source/package provenance, runs the clean Windows AnyCPU package smoke, publishes to NuGet.org, and creates tag-driven GitHub Releases with generated release notes. It fails closed when the exact commit has no live qualified artifact.
+- Manual `LibreWPF Release` dispatch remains the recovery path that rebuilds the full SDK gate for an explicitly selected immutable ref.
 
 ## NuGet Publishing
 

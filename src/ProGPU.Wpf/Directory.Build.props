@@ -6,13 +6,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <TargetFrameworkVersion>10.0</TargetFrameworkVersion>
     <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
-    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.31</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.32</VersionSuffix>
     <Version Condition="'$(Version)' == ''">$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion Condition="'$(PackageVersion)' == ''">$(Version)</PackageVersion>
     <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.1.0.0</AssemblyVersion>
     <FileVersion Condition="'$(FileVersion)' == ''">0.1.0.0</FileVersion>
     <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(Version)</InformationalVersion>
-    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Restores native Windows OLE clipboard get, set, flush, and STA initialization in LibreWPF builds that consume LibreWinForms System.Private.Windows.Core, with a package-only Windows AnyCPU clipboard round-trip gate; retains typed windowing diagnostics and the Ubuntu Wayland-session/XWayland native input, popup, and theme acceptance matrix; and remains pinned to immutable ProGPU preview.28.</PackageReleaseNotes>
+    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Keeps macOS menus, context menus, drop-downs, and other WPF popups in the owner presentation surface so Cocoa input coordinates, capture, placement, owner movement, and click handling remain coherent; retains native X11 popup windows and the Wayland owner-surface path, the native Windows OLE clipboard round-trip gate, typed windowing diagnostics, and SharpDevelop Project Explorer double-click acceptance; and remains pinned to immutable ProGPU preview.28.</PackageReleaseNotes>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

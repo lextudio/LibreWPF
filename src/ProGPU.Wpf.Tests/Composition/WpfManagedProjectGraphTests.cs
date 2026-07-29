@@ -12730,7 +12730,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal void ApplyFrameworkTheme(string themeName)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateFrameworkThemeSwitching(window, application, themeMenuItem)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveFrameworkThemesAsync(liveHost)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("runtime framework themes switched and rendered native menu popups", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"native menu popups\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"owner-surface menu popups\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("OperatingSystem.IsMacOS()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("GetLivePopupInputCenter(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseLivePopupInput(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"WindowMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"WindowMaximizeMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static wpf:SystemCommands.MaximizeWindowCommand}\"", mvpMainWindowXaml, StringComparison.Ordinal);

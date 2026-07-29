@@ -1802,6 +1802,7 @@ public partial class MainWindow : Window
     {
         await CloseLivePopupSurfacesAsync(liveHost);
         var validatedThemes = new List<string>(s_frameworkThemes.Length);
+        bool allMenusUsedNativeWindows = true;
         for (int i = 0; i < s_frameworkThemes.Length; i++)
         {
             FrameworkThemeDefinition theme = s_frameworkThemes[i];
@@ -1840,10 +1841,19 @@ public partial class MainWindow : Window
                 expectedPopupChildren: 1,
                 exact: false,
                 $"{theme.Name} File menu popup layer");
+            bool usesNativeWindow = snapshot.Portable.NativeWindowCount >= 1;
+            bool usesOwnerSurface = snapshot.Composition.PopupLayerChildCount >= 1;
             AssertEqual(
                 true,
-                snapshot.Portable.NativeWindowCount >= 1,
-                $"MVP live {theme.Name} native menu popup count");
+                usesNativeWindow || usesOwnerSurface,
+                $"MVP live {theme.Name} menu popup presentation");
+            if (OperatingSystem.IsMacOS())
+            {
+                AssertEqual(false, usesNativeWindow, $"MVP live {theme.Name} macOS native menu popup count");
+                AssertEqual(true, usesOwnerSurface, $"MVP live {theme.Name} macOS owner-surface menu popup count");
+            }
+
+            allMenusUsedNativeWindows &= usesNativeWindow;
             validatedThemes.Add(theme.Name);
             await CloseLivePopupSurfacesAsync(liveHost);
         }
@@ -1857,7 +1867,10 @@ public partial class MainWindow : Window
                 WakeLiveRenderHost(liveHost);
             },
             DispatcherPriority.Send);
-        return $"runtime framework themes switched and rendered native menu popups: {string.Join(", ", validatedThemes)}";
+        string popupMode = allMenusUsedNativeWindows
+            ? "native menu popups"
+            : "owner-surface menu popups";
+        return $"runtime framework themes switched and rendered {popupMode}: {string.Join(", ", validatedThemes)}";
     }
 
     private async Task<LivePopupSurfaceSnapshot> ValidateLiveMenuPopupSurfaceAsync(
@@ -1884,20 +1897,23 @@ public partial class MainWindow : Window
             expectedPopupChildren: 1,
             exact: false,
             "File menu popup layer");
+        bool usesNativePopup = snapshot.Portable.NativeWindowCount >= 1;
 
         Point addItemCenter = await InvokeWithLiveHostWakeAsync(
             liveHost,
-            () => GetLivePopupLocalCenter(
+            () => GetLivePopupInputCenter(
                 Require<MenuItem>(FindName("AddMenuItem"), "MVP live Add MenuItem"),
-                "MVP live Add MenuItem"),
+                "MVP live Add MenuItem",
+                usesNativePopup),
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(
             liveHost,
-            () => RaiseTopmostNativePopupInput(
+            () => RaiseLivePopupInput(
                 liveHost,
                 WpfInputEventKind.MouseMove,
                 addItemCenter.X,
-                addItemCenter.Y),
+                addItemCenter.Y,
+                usesNativePopup),
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
 
@@ -1905,26 +1921,28 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
-                var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), "MVP live File MenuItem after native pointer transfer");
-                AssertEqual(true, fileMenuItem.IsSubmenuOpen, "MVP live File menu remains open after native pointer transfer");
-                return Require<MainViewModel>(DataContext, "MVP live menu view model before native click").Items.Count;
+                var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), "MVP live File MenuItem after popup pointer transfer");
+                AssertEqual(true, fileMenuItem.IsSubmenuOpen, "MVP live File menu remains open after popup pointer transfer");
+                return Require<MainViewModel>(DataContext, "MVP live menu view model before popup click").Items.Count;
             },
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () =>
             {
-                RaiseTopmostNativePopupInput(
+                RaiseLivePopupInput(
                     liveHost,
                     WpfInputEventKind.MouseDown,
                     addItemCenter.X,
                     addItemCenter.Y,
+                    usesNativePopup,
                     WpfMouseButton.Left);
-                RaiseTopmostNativePopupInput(
+                RaiseLivePopupInput(
                     liveHost,
                     WpfInputEventKind.MouseUp,
                     addItemCenter.X,
                     addItemCenter.Y,
+                    usesNativePopup,
                     WpfMouseButton.Left);
             },
             DispatcherPriority.Send);
@@ -1933,12 +1951,12 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
-                var model = Require<MainViewModel>(DataContext, "MVP live menu view model after native click");
-                AssertEqual(itemCountBefore + 1, model.Items.Count, "MVP live Add MenuItem native popup click item count");
+                var model = Require<MainViewModel>(DataContext, "MVP live menu view model after popup click");
+                AssertEqual(itemCountBefore + 1, model.Items.Count, "MVP live Add MenuItem popup click item count");
                 AssertEqual(
                     false,
-                    Require<MenuItem>(FindName("FileMenuItem"), "MVP live File MenuItem after native click").IsSubmenuOpen,
-                    "MVP live File menu closes after native item click");
+                    Require<MenuItem>(FindName("FileMenuItem"), "MVP live File MenuItem after popup click").IsSubmenuOpen,
+                    "MVP live File menu closes after popup item click");
             },
             DispatcherPriority.Send);
 
@@ -1959,7 +1977,10 @@ public partial class MainWindow : Window
         return snapshot;
     }
 
-    private static Point GetLivePopupLocalCenter(FrameworkElement target, string description)
+    private Point GetLivePopupInputCenter(
+        FrameworkElement target,
+        string description,
+        bool usesNativePopup)
     {
         if (!target.IsVisible ||
             target.ActualWidth <= 1.0 ||
@@ -1980,18 +2001,36 @@ public partial class MainWindow : Window
             throw new InvalidOperationException($"Expected {description} popup presentation source to expose a UIElement root.");
         }
 
-        return target.TranslatePoint(
+        Point localCenter = target.TranslatePoint(
             new Point(target.ActualWidth / 2.0, target.ActualHeight / 2.0),
             root);
+        if (usesNativePopup)
+        {
+            return localCenter;
+        }
+
+        Point screenCenter = target.PointToScreen(
+            new Point(target.ActualWidth / 2.0, target.ActualHeight / 2.0));
+        Point ownerScreenOrigin = PointToScreen(new Point(0.0, 0.0));
+        return new Point(
+            screenCenter.X - ownerScreenOrigin.X,
+            screenCenter.Y - ownerScreenOrigin.Y);
     }
 
-    private static void RaiseTopmostNativePopupInput(
+    private static void RaiseLivePopupInput(
         ProGpuWpfWindowHost liveHost,
         WpfInputEventKind kind,
         double x,
         double y,
+        bool usesNativePopup,
         WpfMouseButton button = WpfMouseButton.None)
     {
+        if (!usesNativePopup)
+        {
+            RaiseHostInput(liveHost, kind, x: x, y: y, button: button);
+            return;
+        }
+
         var input = new WpfInputEventArgs(kind, x: x, y: y, button: button);
         if (!ProGpuWpfDiagnostics.TryRaiseTopmostNativePopupInput(liveHost, input))
         {

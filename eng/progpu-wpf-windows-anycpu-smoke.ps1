@@ -136,6 +136,7 @@ public partial class MainWindow : Window
 
         _nativePath = nativePath;
         AssertTextRendered();
+        AssertClipboardRoundTrip();
         _renderLifetimeTimer.Start();
     }
 
@@ -167,6 +168,21 @@ public partial class MainWindow : Window
         }
 
         Console.WriteLine($"LibreWPF visible-text smoke rendered {coveredPixels} covered pixels.");
+    }
+
+    private static void AssertClipboardRoundTrip()
+    {
+        const string expected = "LibreWPF Windows clipboard smoke";
+        Clipboard.SetText(expected);
+        string actual = Clipboard.GetText();
+        if (!Clipboard.ContainsText() || !string.Equals(actual, expected, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"LibreWPF Windows clipboard round-trip failed (actual='{actual}').");
+        }
+
+        Clipboard.Clear();
+        Console.WriteLine("LibreWPF Windows clipboard round-trip succeeded.");
     }
 
     private void OnRenderLifetimeElapsed(object? sender, EventArgs e)

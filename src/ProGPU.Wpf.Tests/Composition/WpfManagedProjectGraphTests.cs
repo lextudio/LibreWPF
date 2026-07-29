@@ -9393,8 +9393,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var textureContext = texture.Context", adapter, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(textureContext, context)", adapter, StringComparison.Ordinal);
         Assert.Contains("private sealed class AdaptedTextureCache", adapter, StringComparison.Ordinal);
-        Assert.Contains("private readonly Dictionary<WgpuContext, AdaptedTextureEntry> _texturesByContext", adapter, StringComparison.Ordinal);
-        Assert.Contains("private readonly record struct AdaptedTextureEntry", adapter, StringComparison.Ordinal);
+        Assert.Contains("private readonly ConditionalWeakTable<WgpuContext, AdaptedTextureEntry> _texturesByContext", adapter, StringComparison.Ordinal);
+        Assert.Contains("private sealed record AdaptedTextureEntry", adapter, StringComparison.Ordinal);
+        Assert.Contains("if (context == null)", adapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("Dictionary<WgpuContext, AdaptedTextureEntry>", adapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("RemoveDisposedNoLock", adapter, StringComparison.Ordinal);
 
         Assert.Contains("private bool IsTextureBindable(GpuTexture? texture)", compositor, StringComparison.Ordinal);
         Assert.Contains("var textureContext = texture?.Context", compositor, StringComparison.Ordinal);
@@ -9403,6 +9406,52 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("texture.TexturePtr != null", compositor, StringComparison.Ordinal);
         Assert.Contains("texture.ViewPtr != null", compositor, StringComparison.Ordinal);
         Assert.Contains("dc.Type == DrawCallType.Texture && IsTextureBindable(dc.Texture)", compositor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShaderSamplerTextureCacheDoesNotRetainTransientBrushes()
+    {
+        var cache = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfShaderEffectSamplerTextureCache.cs"));
+
+        Assert.Contains(
+            "ConditionalWeakTable<object, TextureEntry> _entries",
+            cache,
+            StringComparison.Ordinal);
+        Assert.Contains("_entries.TryGetValue(brush, out var entry)", cache, StringComparison.Ordinal);
+        Assert.Contains("_entries.Add(brush, entry)", cache, StringComparison.Ordinal);
+        Assert.DoesNotContain("_entries.GetValue(", cache, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Dictionary<object, TextureEntry> _entries",
+            cache,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FontFileCacheDoesNotPermanentlyRetainPreviewedFonts()
+    {
+        var resolver = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfResourceResolver.cs"));
+
+        Assert.Contains(
+            "ConcurrentDictionary<string, WeakReference<TtfFont>> s_fontFileCache",
+            resolver,
+            StringComparison.Ordinal);
+        Assert.Contains("cached.TryGetTarget(out var cachedFont)", resolver, StringComparison.Ordinal);
+        Assert.Contains("s_fontFileCache.TryUpdate(", resolver, StringComparison.Ordinal);
+        Assert.Contains("s_fontFileCache.TryAdd(", resolver, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "ConcurrentDictionary<string, TtfFont> s_fontFileCache",
+            resolver,
+            StringComparison.Ordinal);
     }
 
     [Fact]

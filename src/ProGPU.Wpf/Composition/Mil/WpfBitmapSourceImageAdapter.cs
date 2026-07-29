@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 using ProGPU.Backend;
@@ -201,21 +200,21 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
     private sealed class AdaptedTextureCache
     {
         private readonly object _gate = new();
-        private readonly Dictionary<WgpuContext, AdaptedTextureEntry> _texturesByContext = new();
+        private readonly ConditionalWeakTable<WgpuContext, AdaptedTextureEntry> _texturesByContext = new();
 
         public void Set(WgpuContext context, BitmapSourceTextureCacheKey cacheKey, GpuTexture texture)
         {
             GpuTexture? replacedTexture = null;
             lock (_gate)
             {
-                RemoveDisposedNoLock();
                 if (_texturesByContext.TryGetValue(context, out var existing)
                     && !ReferenceEquals(existing.Texture, texture))
                 {
                     replacedTexture = existing.Texture;
                 }
 
-                _texturesByContext[context] = new AdaptedTextureEntry(cacheKey, texture);
+                _texturesByContext.Remove(context);
+                _texturesByContext.Add(context, new AdaptedTextureEntry(cacheKey, texture));
             }
 
             replacedTexture?.Dispose();
@@ -225,7 +224,6 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         {
             lock (_gate)
             {
-                RemoveDisposedNoLock();
                 if (_texturesByContext.TryGetValue(context, out var entry)
                     && entry.CacheKey.Equals(cacheKey)
                     && IsUsableInContext(entry.Texture, context))
@@ -241,68 +239,28 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 
         public bool TryGet(WgpuContext? context, out GpuTexture texture)
         {
+            if (context == null)
+            {
+                texture = null!;
+                return false;
+            }
+
             lock (_gate)
             {
-                RemoveDisposedNoLock();
-
-                if (context != null)
+                if (_texturesByContext.TryGetValue(context, out var entry)
+                    && IsUsableInContext(entry.Texture, context))
                 {
-                    if (_texturesByContext.TryGetValue(context, out var entry)
-                        && IsUsableInContext(entry.Texture, context))
-                    {
-                        texture = entry.Texture;
-                        return true;
-                    }
-
-                    texture = null!;
-                    return false;
-                }
-
-                var adaptedTextureEnumerator = _texturesByContext.Values.GetEnumerator();
-                while (adaptedTextureEnumerator.MoveNext())
-                {
-                    var candidate = adaptedTextureEnumerator.Current;
-                    if (IsUsableInContext(candidate.Texture, context))
-                    {
-                        texture = candidate.Texture;
-                        return true;
-                    }
+                    texture = entry.Texture;
+                    return true;
                 }
             }
 
             texture = null!;
             return false;
         }
-
-        private void RemoveDisposedNoLock()
-        {
-            WgpuContext[]? staleContexts = null;
-            int staleContextCount = 0;
-            try
-            {
-                var contextTextureEnumerator = _texturesByContext.GetEnumerator();
-                while (contextTextureEnumerator.MoveNext())
-                {
-                    var entry = contextTextureEnumerator.Current;
-                    if (entry.Key.IsDisposed || entry.Value.Texture.IsDisposed)
-                    {
-                        WpfPooledRemovalBuffer.Add(ref staleContexts, ref staleContextCount, _texturesByContext.Count, entry.Key);
-                    }
-                }
-
-                for (int i = 0; i < staleContextCount; i++)
-                {
-                    _texturesByContext.Remove(staleContexts![i]);
-                }
-            }
-            finally
-            {
-                WpfPooledRemovalBuffer.Return(staleContexts, staleContextCount);
-            }
-        }
     }
 
-    private readonly record struct AdaptedTextureEntry(
+    private sealed record AdaptedTextureEntry(
         BitmapSourceTextureCacheKey CacheKey,
         GpuTexture Texture);
 

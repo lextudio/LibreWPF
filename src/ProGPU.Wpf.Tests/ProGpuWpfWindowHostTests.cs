@@ -198,6 +198,9 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Contains("DoEvents();", source, StringComparison.Ordinal);
         Assert.Contains("if (!EnsureCompositionTargetLoaded() || !ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("_window.DoEvents();\n        if (!ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
+        Assert.Contains("if (ShouldPumpNativeRender())", source, StringComparison.Ordinal);
+        Assert.Contains("NativeRenderPumpCount++;\n            _window.DoRender();", source, StringComparison.Ordinal);
+        Assert.Contains("SkippedNativeRenderPumpCount++;", source, StringComparison.Ordinal);
         Assert.Contains("Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest", source, StringComparison.Ordinal);
         Assert.Contains("private bool ShouldKeepPortableNativeRunLoopAlive()", source, StringComparison.Ordinal);
         Assert.Contains("if (_isLoadingCompositionTarget)", source, StringComparison.Ordinal);
@@ -694,6 +697,89 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.True(drawHost.ShouldRenderFrame(frameState));
         Assert.True(wpfDrawHost.ShouldRenderFrame(frameState));
         Assert.True(renderHost.ShouldRenderFrame(frameState));
+    }
+
+    [Fact]
+    public void NativeRenderPumpStopsAfterStaticFrameUntilRenderIsRequested()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+        var pumpedFrames = 0;
+        var skippedFrames = 0;
+
+        for (var tick = 0; tick < 600; tick++)
+        {
+            if (host.ShouldPumpNativeRender())
+            {
+                pumpedFrames++;
+                host.RecordPresentedFrame(frameState);
+                scheduler.ConsumeRenderRequest();
+            }
+            else
+            {
+                skippedFrames++;
+            }
+        }
+
+        Assert.Equal(1, pumpedFrames);
+        Assert.Equal(599, skippedFrames);
+
+        scheduler.RequestRender();
+
+        Assert.True(host.ShouldPumpNativeRender());
+    }
+
+    [Fact]
+    public void NativeRenderPumpRemainsContinuousForExplicitFrameCallbacks()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+        host.RecordPresentedFrame(frameState);
+        host.Render += (_, _) => { };
+
+        Assert.True(host.ShouldPumpNativeRender());
+    }
+
+    [Fact]
+    public void NativeRenderPumpStopsAfterHostDisposal()
+    {
+        var host = new ProGpuWpfWindowHost();
+
+        host.Dispose();
+
+        Assert.False(host.ShouldPumpNativeRender());
+    }
+
+    [Fact]
+    public void NativeRenderPumpIdlePredicateDoesNotAllocate()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        host.RecordPresentedFrame(new ProGpuWpfFrameState(100, 50, 1, 2, 3));
+        for (var warmup = 0; warmup < 10_000; warmup++)
+        {
+            _ = host.ShouldPumpNativeRender();
+        }
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var unexpectedPumpCount = 0;
+        for (var iteration = 0; iteration < 1_000_000; iteration++)
+        {
+            if (host.ShouldPumpNativeRender())
+            {
+                unexpectedPumpCount++;
+            }
+        }
+
+        var allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        Assert.Equal(0, unexpectedPumpCount);
+        Assert.Equal(0, allocatedBytes);
     }
 
     [Fact]

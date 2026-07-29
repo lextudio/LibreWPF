@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using ProGPU.Backend;
 using ProGPU.Scene;
@@ -27,7 +27,11 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
     private readonly WgpuContext _context;
     private readonly ProGpuCompositor _compositor;
     private readonly WpfViewport3DTextureCache _viewport3DTextureCache;
-    private readonly Dictionary<object, TextureEntry> _entries = new(ReferenceEqualityComparer.Instance);
+    // Shader brushes can be created transiently by templates, animations, and
+    // effects. The retained scene owns the resulting texture while it is in
+    // use, so this adapter must not independently keep every source brush alive
+    // until the entire composition target is cleared.
+    private readonly ConditionalWeakTable<object, TextureEntry> _entries = new();
     private bool _isDisposed;
 
     public WpfShaderEffectSamplerTextureCache(
@@ -77,11 +81,9 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
     {
         ThrowIfDisposed();
 
-        var entryEnumerator = _entries.Values.GetEnumerator();
-        while (entryEnumerator.MoveNext())
+        foreach (var entry in _entries)
         {
-            var entry = entryEnumerator.Current;
-            entry.Dispose();
+            entry.Value.Dispose();
         }
 
         _entries.Clear();
@@ -94,11 +96,9 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
             return;
         }
 
-        var entryEnumerator = _entries.Values.GetEnumerator();
-        while (entryEnumerator.MoveNext())
+        foreach (var entry in _entries)
         {
-            var entry = entryEnumerator.Current;
-            entry.Dispose();
+            entry.Value.Dispose();
         }
 
         _entries.Clear();

@@ -291,6 +291,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal long NativeLoopOwnerDoEventsCallCount { get; private set; }
 
+    internal long NativeRenderPumpCount { get; private set; }
+
+    internal long SkippedNativeRenderPumpCount { get; private set; }
+
     internal bool HasGpuHitTestCache => !_isDisposed && _target?.LastGpuHitTestIndex != null;
 
     internal bool HasVisibleNativePortablePopup
@@ -832,7 +836,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         _window.DoUpdate();
         EnsureCompositionTargetLoaded();
-        _window.DoRender();
+        if (ShouldPumpNativeRender())
+        {
+            NativeRenderPumpCount++;
+            _window.DoRender();
+        }
+        else
+        {
+            SkippedNativeRenderPumpCount++;
+        }
+
         DisposeDeferredNativeWindowIfNeeded();
         if (_isDisposed)
         {
@@ -1937,6 +1950,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         return !HasPresentedFrame || LastPresentedFrameState != frameState;
+    }
+
+    internal bool ShouldPumpNativeRender()
+    {
+        if (_isDisposed || _hasNativeWindowCloseStarted)
+        {
+            return false;
+        }
+
+        return !EnableFrameCoalescing ||
+            HasExplicitFrameCallbacks ||
+            !HasPresentedFrame ||
+            WpfRenderScheduler.HasPendingRenderRequest;
     }
 
     internal void RecordPresentedFrame(ProGpuWpfFrameState frameState)

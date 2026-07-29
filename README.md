@@ -158,6 +158,29 @@ PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.33 PROGPU_WPF_PROGPU_PACKAGE_VERSIO
 
 The SDK CI script stages ProGPU runtime packages, builds managed WPF transport assemblies, `LibreWPF.ProGPU`, and `LibreWPF.Sdk`, then audits the packages, writes the preview manifest, creates and verifies the release bundle, and runs package-mode SDK smoke tests. Public releases consume the hash-identical packages from the matching ProGPU GitHub release instead of repacking or republishing them.
 
+For a faster source-development loop, use the same qualified managed, theme,
+and harness project sets through the validation graph:
+
+```bash
+for target in \
+  RestoreManagedTransport BuildManagedTransport \
+  RestoreThemes BuildThemes \
+  RestoreHarnesses BuildHarnesses
+do
+  ./.dotnet/dotnet msbuild eng/ProGPU.Wpf.ValidationGraphs.proj \
+    -target:${target} -property:Configuration=Debug -verbosity:minimal
+done
+```
+
+This preserves the normal compilers, analyzers, project ordering, all seven
+themes, Ribbon, and all four real-WPF harness builds. Restore and build remain
+separate processes so generated package properties are reevaluated correctly;
+independent theme and harness leaves build in parallel. On the current Apple
+arm64 development host, a warm 13-project sequence fell from about 45.3 seconds
+to 9.5 seconds. This is the inner loop only: the complete
+`eng/progpu-wpf-sdk-ci.sh` package, provenance, third-party, runtime, and live
+GPU gates remain required before a release.
+
 GitHub workflows:
 
 - `LibreWPF Build` runs the SDK package/no-source-change smoke on macOS.

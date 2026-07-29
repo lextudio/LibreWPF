@@ -124,11 +124,6 @@ snapshot_staged_progpu_packages() {
   export PROGPU_WPF_PREPACKAGED_PROGPU_DIR="${progpu_package_snapshot_dir}"
 }
 
-build_project() {
-  local project="$1"
-  "${dotnet}" build "${repo_root}/${project}" -c Release -v:minimal
-}
-
 run_dotnet() {
   "${dotnet}" "$@"
 }
@@ -214,19 +209,11 @@ echo "Running ProGPU Avalonia package consumer smoke..."
 "${repo_root}/eng/progpu-avalonia-package-smoke.sh"
 
 echo "Building managed WPF transport payload..."
-build_project "src/Microsoft.DotNet.Wpf/src/Microsoft.Win32.SystemEvents/Microsoft.Win32.SystemEvents.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/System.Xaml/System.Xaml.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/UIAutomation/UIAutomationTypes/UIAutomationTypes.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/UIAutomation/UIAutomationProvider/UIAutomationProvider.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Input.Manipulations/System.Windows.Input.Manipulations.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Primitives/System.Windows.Primitives.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Presentation/System.Windows.Presentation.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/ReachFramework/ReachFramework.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/PresentationUI/PresentationUI.csproj"
-build_project "src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj"
+run_dotnet msbuild \
+  "${repo_root}/eng/ProGPU.Wpf.ValidationGraphs.proj" \
+  -target:BuildManagedTransport \
+  -property:Configuration=Release \
+  -verbosity:minimal
 run_dotnet msbuild \
   "${repo_root}/eng/ProGPU.Wpf.ValidationGraphs.proj" \
   -target:BuildThemes \

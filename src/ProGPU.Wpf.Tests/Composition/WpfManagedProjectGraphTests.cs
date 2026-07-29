@@ -12390,14 +12390,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external/ProGPU/src/System.Drawing.Common/System.Drawing.Common.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Building managed WPF transport payload", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("rm -rf \"${repo_root}/artifacts/packaging/Release/LibreWPF.Transport\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("src/Microsoft.DotNet.Wpf/src/Microsoft.Win32.SystemEvents/Microsoft.Win32.SystemEvents.csproj", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/Microsoft.Win32.SystemEvents/Microsoft.Win32.SystemEvents.csproj", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj", validationGraphs, StringComparison.Ordinal);
         Assert.True(
-            sdkCiScript.IndexOf("src/Microsoft.DotNet.Wpf/src/Microsoft.Win32.SystemEvents/Microsoft.Win32.SystemEvents.csproj", StringComparison.Ordinal)
-                < sdkCiScript.IndexOf("src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj", StringComparison.Ordinal),
+            validationGraphs.IndexOf("src/Microsoft.DotNet.Wpf/src/Microsoft.Win32.SystemEvents/Microsoft.Win32.SystemEvents.csproj", StringComparison.Ordinal)
+                < validationGraphs.IndexOf("src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj", StringComparison.Ordinal),
             "The portable SystemEvents assembly must be built before managed WPF projects that consume it.");
-        Assert.Contains("src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("<Target Name=\"RestoreManagedTransport\">", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("<Target Name=\"BuildManagedTransport\" DependsOnTargets=\"RestoreManagedTransport\">", validationGraphs, StringComparison.Ordinal);
+        Assert.Contains("-target:BuildManagedTransport", sdkCiScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("build_project \"src/Microsoft.DotNet.Wpf", sdkCiScript, StringComparison.Ordinal);
         foreach (string themeAssembly in wpfThemeAssemblies)
         {
             Assert.Contains($"src/Microsoft.DotNet.Wpf/src/Themes/{themeAssembly}/{themeAssembly}.csproj", validationGraphs, StringComparison.Ordinal);
@@ -12407,7 +12411,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Target Name=\"BuildThemes\" DependsOnTargets=\"RestoreThemes\">", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("<Target Name=\"RestoreHarnesses\">", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("<Target Name=\"BuildHarnesses\" DependsOnTargets=\"RestoreHarnesses\">", validationGraphs, StringComparison.Ordinal);
-        Assert.Equal(2, validationGraphs.Split("BuildInParallel=\"false\"", StringSplitOptions.None).Length - 1);
+        Assert.Equal(4, validationGraphs.Split("BuildInParallel=\"false\"", StringSplitOptions.None).Length - 1);
         Assert.Equal(2, validationGraphs.Split("BuildInParallel=\"true\"", StringSplitOptions.None).Length - 1);
         Assert.Contains("-target:BuildThemes", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Building real WPF validation harnesses", sdkCiScript, StringComparison.Ordinal);

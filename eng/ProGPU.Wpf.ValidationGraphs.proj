@@ -4,6 +4,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/Microsoft.Win32.SystemEvents/Microsoft.Win32.SystemEvents.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/System.Xaml/System.Xaml.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/UIAutomation/UIAutomationTypes/UIAutomationTypes.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/UIAutomation/UIAutomationProvider/UIAutomationProvider.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/System.Windows.Input.Manipulations/System.Windows.Input.Manipulations.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/System.Windows.Primitives/System.Windows.Primitives.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/System.Windows.Presentation/System.Windows.Presentation.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/ReachFramework/ReachFramework.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/PresentationUI/PresentationUI.csproj" />
+    <ManagedTransportProject Include="../src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj" />
+
     <ThemeProject Include="../src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Aero/PresentationFramework.Aero.csproj" />
     <ThemeProject Include="../src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Aero2/PresentationFramework.Aero2.csproj" />
     <ThemeProject Include="../src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.AeroLite/PresentationFramework.AeroLite.csproj" />
@@ -18,6 +32,31 @@
     <HarnessProject Include="../src/ProGPU.Wpf.RealApplicationRunHarness/ProGPU.Wpf.RealApplicationRunHarness.csproj" />
     <HarnessProject Include="../src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj" />
   </ItemGroup>
+
+  <Target Name="RestoreManagedTransport">
+    <!--
+      Keep restore serialized because the source-built transport projects share
+      dependency obj files. One build manager still avoids thirteen separate
+      command-line project graph evaluations.
+    -->
+    <MSBuild
+      Projects="@(ManagedTransportProject)"
+      Targets="Restore"
+      BuildInParallel="false"
+      Properties="Configuration=$(Configuration)" />
+  </Target>
+
+  <Target Name="BuildManagedTransport" DependsOnTargets="RestoreManagedTransport">
+    <!--
+      Preserve the deliberate project order and shared packaging-output safety
+      while reusing one MSBuild process and its completed-project cache.
+    -->
+    <MSBuild
+      Projects="@(ManagedTransportProject)"
+      Targets="Build"
+      BuildInParallel="false"
+      Properties="Configuration=$(Configuration)" />
+  </Target>
 
   <Target Name="RestoreThemes">
     <!--

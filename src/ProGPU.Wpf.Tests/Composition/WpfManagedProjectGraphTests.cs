@@ -17,6 +17,26 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ProGpuWpfUsesDirectSourceReferencesForConsumedVectorAndTextApis()
+    {
+        var project = XDocument.Load(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGPU.Wpf.csproj"));
+        var projectReferences = project.Descendants("ProjectReference")
+            .Select(reference => reference.Attribute("Include")?.Value)
+            .Where(include => include is not null)
+            .ToArray();
+
+        Assert.Contains(
+            projectReferences,
+            include => include!.EndsWith(@"external\ProGPU\src\ProGPU.Text\ProGPU.Text.csproj", StringComparison.Ordinal));
+        Assert.Contains(
+            projectReferences,
+            include => include!.EndsWith(@"external\ProGPU\src\ProGPU.Vector\ProGPU.Vector.csproj", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ExtendedAssemblyInfoGenerationPreservesNoOpBuildTimestamps()
     {
         var targetsPath = FindRepoPath(

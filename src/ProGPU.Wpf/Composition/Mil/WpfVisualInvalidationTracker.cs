@@ -38,7 +38,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private readonly Dictionary<object, object?[]> _visualChildrenSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _dirtySources = new(ReferenceEqualityComparer.Instance);
     private readonly List<object> _changedSources = new();
-    private readonly Dictionary<object, VisualStateSnapshot> _currentVisualStateSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _visualStateTraversalVisited = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _visualChildrenCurrentSources = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _subscriptionTraversalVisited = new(ReferenceEqualityComparer.Instance);
@@ -188,19 +187,21 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         _changedSources.Clear();
-        _currentVisualStateSnapshots.Clear();
         _visualStateTraversalVisited.Clear();
         _visualChildrenCurrentSources.Clear();
         try
         {
-            CaptureVisualStateSnapshotsAndCollectVisualChildrenChanges(
+            CollectVisualStateAndChildrenChanges(
                 _root,
-                _currentVisualStateSnapshots,
+                _visualStateSnapshots,
                 _visualChildrenSnapshots,
                 _visualChildrenCurrentSources,
                 _changedSources,
                 _visualStateTraversalVisited);
-            CollectVisualStateChanges(_visualStateSnapshots, _currentVisualStateSnapshots, _changedSources);
+            CollectRemovedVisualStateSources(
+                _visualStateSnapshots,
+                _visualStateTraversalVisited,
+                _changedSources);
             CollectRemovedVisualChildrenSources(
                 _visualChildrenSnapshots,
                 _visualChildrenCurrentSources,
@@ -217,7 +218,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         finally
         {
             _changedSources.Clear();
-            _currentVisualStateSnapshots.Clear();
             _visualStateTraversalVisited.Clear();
             _visualChildrenCurrentSources.Clear();
         }
@@ -266,7 +266,6 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         _visualChildrenSnapshots.Clear();
         _dirtySources.Clear();
         _changedSources.Clear();
-        _currentVisualStateSnapshots.Clear();
         _visualStateTraversalVisited.Clear();
         _visualChildrenCurrentSources.Clear();
         _subscriptionTraversalVisited.Clear();
@@ -409,20 +408,19 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
     }
 
-    private static void CaptureVisualStateSnapshotsAndCollectVisualChildrenChanges(
+    private static void CollectVisualStateAndChildrenChanges(
         object root,
-        Dictionary<object, VisualStateSnapshot> snapshots,
+        Dictionary<object, VisualStateSnapshot> previousStates,
         Dictionary<object, object?[]> previousChildren,
         HashSet<object> currentChildrenSources,
         List<object> changedSources,
         HashSet<object> visited)
     {
-        snapshots.Clear();
         currentChildrenSources.Clear();
         visited.Clear();
         CaptureObjectVisualStateAndChildren(
             root,
-            snapshots,
+            previousStates,
             previousChildren,
             currentChildrenSources,
             changedSources,
@@ -431,7 +429,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private static void CaptureObjectVisualStateAndChildren(
         object? source,
-        Dictionary<object, VisualStateSnapshot> snapshots,
+        Dictionary<object, VisualStateSnapshot> previousStates,
         Dictionary<object, object?[]> previousChildren,
         HashSet<object> currentChildrenSources,
         List<object> changedSources,
@@ -444,7 +442,15 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         if (TryReadVisualStateSnapshot(source, out var snapshot))
         {
-            snapshots[source] = snapshot;
+            if (!previousStates.TryGetValue(source, out var previousSnapshot) ||
+                !previousSnapshot.Equals(snapshot))
+            {
+                changedSources.Add(source);
+            }
+        }
+        else if (previousStates.ContainsKey(source))
+        {
+            changedSources.Add(source);
         }
 
         if (TryGetPortableVisualChildrenSource(source, out var visualChildrenSource, out var count))
@@ -460,7 +466,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         if (source is IEnumerable collection)
         {
             var collectionState = new CaptureVisualStateAndChildrenDependencyState(
-                snapshots,
+                previousStates,
                 previousChildren,
                 currentChildrenSources,
                 changedSources,
@@ -469,7 +475,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         var dependencyState = new CaptureVisualStateAndChildrenDependencyState(
-            snapshots,
+            previousStates,
             previousChildren,
             currentChildrenSources,
             changedSources,
@@ -526,27 +532,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return registered;
     }
 
-    private static void CollectVisualStateChanges(
+    private static void CollectRemovedVisualStateSources(
         Dictionary<object, VisualStateSnapshot> previous,
-        Dictionary<object, VisualStateSnapshot> current,
+        HashSet<object> visited,
         List<object> changedSources)
     {
-        var currentStateEnumerator = current.GetEnumerator();
-        while (currentStateEnumerator.MoveNext())
-        {
-            var snapshot = currentStateEnumerator.Current;
-            if (!previous.TryGetValue(snapshot.Key, out var previousSnapshot) ||
-                !previousSnapshot.Equals(snapshot.Value))
-            {
-                changedSources.Add(snapshot.Key);
-            }
-        }
-
         var previousStateEnumerator = previous.GetEnumerator();
         while (previousStateEnumerator.MoveNext())
         {
             var snapshot = previousStateEnumerator.Current;
-            if (!current.ContainsKey(snapshot.Key))
+            if (!visited.Contains(snapshot.Key))
             {
                 changedSources.Add(snapshot.Key);
             }

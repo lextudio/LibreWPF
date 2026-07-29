@@ -304,6 +304,28 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void PortableVisualStateRemovalMarksVisitedSourceDirty()
+    {
+        var child = new MutablePortableStateVisual(new PortableVisualState
+        {
+            HasOpacity = true,
+            Opacity = 1.0
+        });
+        var root = new FakePortableVisualChildrenOnly();
+        root.AddChild(child);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        child.PublishState = false;
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(child, tracker.LastDirtySource);
+        Assert.Contains(child, tracker.DirtySources);
+    }
+
+    [Fact]
     public void PortableVisualSourceDoesNotProbeReflectedReferenceProperties()
     {
         var effect = new FakeResource();
@@ -884,6 +906,24 @@ public sealed class WpfVisualInvalidationTrackerTests
         {
             state = _state;
             return true;
+        }
+    }
+
+    private sealed class MutablePortableStateVisual : PortableVisualStateSource
+    {
+        private readonly PortableVisualState _state;
+
+        public MutablePortableStateVisual(PortableVisualState state)
+        {
+            _state = state;
+        }
+
+        public bool PublishState { get; set; } = true;
+
+        public bool TryGetPortableVisualState(out PortableVisualState state)
+        {
+            state = _state;
+            return PublishState;
         }
     }
 

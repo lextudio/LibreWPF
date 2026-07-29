@@ -37,7 +37,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: true
 
       - name: Verify package docs
         run: ./eng/progpu-wpf-verify-docs.sh

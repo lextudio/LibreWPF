@@ -14,7 +14,7 @@
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF MSBuild SDK for running existing desktop XAML applications on ProGPU/Silk.NET.</PackageDescription>
-    <PackageReleaseNotes>Restores native Windows OLE clipboard get, set, flush, and STA initialization in LibreWPF builds that consume LibreWinForms System.Private.Windows.Core, with a package-only Windows AnyCPU clipboard round-trip gate; retains typed windowing diagnostics and the Ubuntu Wayland-session/XWayland native input, popup, and theme acceptance matrix; and remains pinned to immutable ProGPU preview.28.</PackageReleaseNotes>
+    <PackageReleaseNotes>Restores native Windows OLE clipboard get, set, flush, and STA initialization in LibreWPF builds that consume LibreWinForms System.Private.Windows.Core, with a package-only Windows AnyCPU clipboard round-trip gate; retains typed windowing and allows-transparency diagnostics plus the Ubuntu Wayland-session/XWayland native input, popup, and theme acceptance matrix; and remains pinned to immutable ProGPU preview.29.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;silk.net;msbuild-sdk</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

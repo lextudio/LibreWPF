@@ -12,7 +12,7 @@
     <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.1.0.0</AssemblyVersion>
     <FileVersion Condition="'$(FileVersion)' == ''">0.1.0.0</FileVersion>
     <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(Version)</InformationalVersion>
-    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Keeps macOS menus, context menus, drop-downs, and other WPF popups in the owner presentation surface so Cocoa input coordinates, capture, placement, owner movement, and click handling remain coherent; retains native X11 popup windows and the Wayland owner-surface path, the native Windows OLE clipboard round-trip gate, typed windowing diagnostics, and SharpDevelop Project Explorer double-click acceptance; and remains pinned to immutable ProGPU preview.28.</PackageReleaseNotes>
+    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Keeps macOS menus, context menus, drop-downs, and other WPF popups in the owner presentation surface so Cocoa input coordinates, capture, placement, owner movement, and click handling remain coherent; retains native X11 popup windows and the Wayland owner-surface path, the native Windows OLE clipboard round-trip gate, typed windowing and allows-transparency diagnostics, and SharpDevelop Project Explorer double-click acceptance; and remains pinned to immutable ProGPU preview.29.</PackageReleaseNotes>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

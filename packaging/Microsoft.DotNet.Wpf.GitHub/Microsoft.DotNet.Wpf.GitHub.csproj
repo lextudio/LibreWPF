@@ -13,7 +13,7 @@
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF transport package for the portable managed presentation assemblies from the ProGPU port.</PackageDescription>
-    <PackageReleaseNotes>Ships typed windowing-capability diagnostics and an Ubuntu Wayland-session/XWayland native-drag, dispatcher, menu, ComboBox, Popup, and seven-theme release gate; publishes the LibreWPF cross-platform roadmap; and remains pinned to immutable ProGPU preview.28.</PackageReleaseNotes>
+    <PackageReleaseNotes>Ships typed windowing-capability and allows-transparency diagnostics plus an Ubuntu Wayland-session/XWayland native-drag, dispatcher, menu, ComboBox, Popup, and seven-theme release gate; publishes the LibreWPF cross-platform roadmap; and remains pinned to immutable ProGPU preview.29.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

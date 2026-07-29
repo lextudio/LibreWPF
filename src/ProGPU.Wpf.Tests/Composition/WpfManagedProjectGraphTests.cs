@@ -977,6 +977,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static void ApplyPortableWindowState(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private void SynchronizeInitialWindowState(\n        PortableWindowState state,", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryMapPortableWindowState(state", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("options.TransparentFramebuffer = state.AllowsTransparency;", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("target.Compositor.ClearColor = System.Numerics.Vector4.Zero;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveWindowBorder(state, options.WindowBorder)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetWindowBorder(ResolveWindowBorder(state, Host.WindowBorder))", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("TryReadStringProperty", proGpuActivation, StringComparison.Ordinal);

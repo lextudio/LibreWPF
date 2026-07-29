@@ -1110,6 +1110,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 window,
                 _options.SharedRenderDeviceContext,
                 _options.CompositorOptions);
+            if (_options.TransparentFramebuffer)
+            {
+                target.Compositor.ClearColor = System.Numerics.Vector4.Zero;
+            }
+
             if (_isDisposed || _hasNativeWindowCloseStarted || !ReferenceEquals(window, _window))
             {
                 target.Dispose();

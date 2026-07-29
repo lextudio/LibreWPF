@@ -544,6 +544,7 @@ public sealed class WpfPortableWindowActivationTests
             Left = 10.4,
             Top = 20.6,
             Topmost = true,
+            AllowsTransparency = true,
             WindowState = FakeWindowState.Minimized,
             ResizeMode = FakeResizeMode.CanResizeWithGrip
         };
@@ -556,6 +557,7 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(10, options.Left);
         Assert.Equal(21, options.Top);
         Assert.True(options.Topmost);
+        Assert.True(options.TransparentFramebuffer);
         Assert.True(options.VSync);
         Assert.Equal(ProGpuWpfWindowState.Minimized, options.WindowState);
         Assert.Equal(ProGpuWpfWindowBorder.Resizable, options.WindowBorder);
@@ -1658,6 +1660,8 @@ public sealed class WpfPortableWindowActivationTests
 
         public bool ShowActivated { get; set; } = true;
 
+        public bool AllowsTransparency { get; set; }
+
         public object? Owner { get; set; }
 
         public bool CancelClose { get; set; }
@@ -1703,6 +1707,8 @@ public sealed class WpfPortableWindowActivationTests
                 WindowStyle = (int)WindowStyle,
                 HasShowActivated = true,
                 ShowActivated = ShowActivated,
+                HasAllowsTransparency = true,
+                AllowsTransparency = AllowsTransparency,
                 HasOwner = Owner != null,
                 Owner = Owner
             };

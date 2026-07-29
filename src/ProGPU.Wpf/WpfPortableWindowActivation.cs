@@ -715,6 +715,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             IsVisible = fallback.IsVisible,
             Topmost = fallback.Topmost,
             ShowActivated = fallback.ShowActivated,
+            TransparentFramebuffer = fallback.TransparentFramebuffer,
             WindowBorder = fallback.WindowBorder,
             WindowState = fallback.WindowState
         };
@@ -794,6 +795,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
         if (state.HasShowActivated)
         {
             options.ShowActivated = state.ShowActivated;
+        }
+
+        if (state.HasAllowsTransparency)
+        {
+            options.TransparentFramebuffer = state.AllowsTransparency;
         }
 
         options.WindowBorder = ResolveWindowBorder(state, options.WindowBorder);

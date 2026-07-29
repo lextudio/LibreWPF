@@ -128,6 +128,8 @@ namespace System.Windows
                 WindowStyle = (int)GetPortableWindowStyle(),
                 HasShowActivated = true,
                 ShowActivated = ShowActivated,
+                HasAllowsTransparency = true,
+                AllowsTransparency = AllowsTransparency,
                 HasOwner = Owner != null,
                 Owner = Owner
             };

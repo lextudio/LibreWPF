@@ -29,10 +29,10 @@ progpu_preview_package_version() {
   local package_id="$1"
   case "${package_id}" in
     LibreWPF.Transport|LibreWPF.ProGPU|LibreWPF.Sdk)
-      printf '%s\n' "${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.32}"
+      printf '%s\n' "${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.33}"
       ;;
     *)
-      printf '%s\n' "${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.28}"
+      printf '%s\n' "${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.29}"
       ;;
   esac
 }

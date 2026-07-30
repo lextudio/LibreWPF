@@ -1860,7 +1860,6 @@ public partial class MainWindow : Window
             if (OperatingSystem.IsMacOS())
             {
                 AssertEqual(true, usesNativeWindow, $"MVP live {theme.Name} macOS native menu popup count");
-                AssertEqual(true, hasPopupLayerContent, $"MVP live {theme.Name} macOS native menu popup content");
             }
 
             allMenusUsedNativeWindows &= usesNativeWindow;

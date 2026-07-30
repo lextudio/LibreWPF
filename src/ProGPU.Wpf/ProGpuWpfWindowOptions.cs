@@ -35,6 +35,8 @@ public sealed class ProGpuWpfWindowOptions
 
     internal bool IncludePortablePopupRootsInWpfReplay { get; set; }
 
+    internal bool NativePointerCoordinatesAreOwnerRelative { get; set; }
+
     public ProGpuWpfWindowBorder WindowBorder { get; set; } = ProGpuWpfWindowBorder.Resizable;
 
     public ProGpuWpfWindowState WindowState { get; set; } = ProGpuWpfWindowState.Normal;

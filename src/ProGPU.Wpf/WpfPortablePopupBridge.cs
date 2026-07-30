@@ -489,20 +489,56 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             return false;
         }
 
-        // Cocoa/GLFW can publish one transitional cursor event just outside the
-        // child window while ownership moves from the parent surface. Feeding
-        // that negative local point into WPF's popup presentation source makes
-        // StaysOpen=false controls interpret the transfer as an outside move and
-        // tear down the popup before its first in-bounds event can arrive.
+        double localX = input.X;
+        double localY = input.Y;
         if (IsPointerInput(input.Kind) &&
-            (input.X < 0.0 || input.Y < 0.0 || input.X > Width || input.Y > Height))
+            !TryNormalizeNativePointerCoordinates(
+                OperatingSystem.IsMacOS(),
+                input.X,
+                input.Y,
+                LogicalX,
+                LogicalY,
+                Width,
+                Height,
+                out localX,
+                out localY))
         {
             Trace(FormattableString.Invariant(
-                $"ignore native pointer outside local bounds point=({input.X:0.###},{input.Y:0.###}) size={Width}x{Height}"));
+                $"ignore native pointer outside local bounds point=({input.X:0.###},{input.Y:0.###}) origin=({LogicalX:0.###},{LogicalY:0.###}) size={Width}x{Height}"));
             return false;
         }
 
-        return TryRouteInputToPresentationSource(input, input.X, input.Y);
+        return TryRouteInputToPresentationSource(input, localX, localY);
+    }
+
+    internal static bool TryNormalizeNativePointerCoordinates(
+        bool coordinatesAreOwnerRelative,
+        double inputX,
+        double inputY,
+        double popupOwnerX,
+        double popupOwnerY,
+        double popupWidth,
+        double popupHeight,
+        out double localX,
+        out double localY)
+    {
+        // Cocoa/GLFW reports transient child-window pointer coordinates in the
+        // owner client's logical coordinate space. X11 reports popup-local points.
+        // Keep the conversion primitive and allocation-free because every popup
+        // pointer event passes through it.
+        localX = coordinatesAreOwnerRelative
+            ? inputX - popupOwnerX
+            : inputX;
+        localY = coordinatesAreOwnerRelative
+            ? inputY - popupOwnerY
+            : inputY;
+
+        return double.IsFinite(localX) &&
+            double.IsFinite(localY) &&
+            localX >= 0.0 &&
+            localY >= 0.0 &&
+            localX <= popupWidth &&
+            localY <= popupHeight;
     }
 
     public void Dispose()

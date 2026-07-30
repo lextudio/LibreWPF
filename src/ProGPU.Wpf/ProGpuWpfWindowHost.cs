@@ -2500,15 +2500,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return NormalizeInputEventForRenderSurfaceGeometry(
             input,
             geometry,
-            NativeInputCoordinatesLookPhysical(_window.Size, geometry, input));
+            NativeInputCoordinatesLookPhysical(_window.Size, geometry, input),
+            _options.NativePointerCoordinatesAreOwnerRelative);
     }
 
     internal static WpfInputEventArgs NormalizeInputEventForRenderSurfaceGeometry(
         WpfInputEventArgs input,
         RenderSurfaceGeometry geometry,
-        bool inputCoordinatesArePhysical)
+        bool inputCoordinatesArePhysical,
+        bool preserveNativePointerCoordinates = false)
     {
-        if (!inputCoordinatesArePhysical || !IsPointerInput(input.Kind))
+        if (preserveNativePointerCoordinates ||
+            !inputCoordinatesArePhysical ||
+            !IsPointerInput(input.Kind))
         {
             return input;
         }

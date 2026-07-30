@@ -1116,6 +1116,30 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NormalizeInputEventForRenderSurfaceGeometryPreservesCocoaOwnerCoordinates()
+    {
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseMove,
+            x: 304,
+            y: 192);
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 100,
+            clientHeight: 60,
+            framebufferSize: new Vector2D<int>(200, 120),
+            monitorDpiScale: 2.0);
+
+        var normalized = ProGpuWpfWindowHost.NormalizeInputEventForRenderSurfaceGeometry(
+            input,
+            geometry,
+            inputCoordinatesArePhysical: true,
+            preserveNativePointerCoordinates: true);
+
+        Assert.Same(input, normalized);
+        Assert.Equal(304.0, normalized.X);
+        Assert.Equal(192.0, normalized.Y);
+    }
+
+    [Fact]
     public void PointerInputCoordinateExceedsLogicalClientKeepsSilkLogicalRetinaCoordinates()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
@@ -2383,7 +2407,7 @@ public sealed class ProGpuWpfWindowHostTests
     [Theory]
     [InlineData(false, false, false, false, true)]
     [InlineData(true, false, false, false, false)]
-    [InlineData(false, true, false, false, false)]
+    [InlineData(false, true, false, false, true)]
     [InlineData(false, false, true, false, false)]
     [InlineData(false, false, false, true, false)]
     public void NativePopupUsesOwnerSurfaceWhenNativePositioningIsUnavailable(
@@ -2400,6 +2424,76 @@ public sealed class ProGpuWpfWindowHostTests
                 isMacOS,
                 explicitlyDisabled,
                 isWayland));
+    }
+
+    [Theory]
+    [InlineData(true, 152, 96, 120, 80, 100, 60, 32, 16, true)]
+    [InlineData(false, 32, 16, 120, 80, 100, 60, 32, 16, true)]
+    [InlineData(true, 119.75, 96, 120, 80, 100, 60, -0.25, 16, false)]
+    [InlineData(false, 32, 60.25, 120, 80, 100, 60, 32, 60.25, false)]
+    [InlineData(true, double.NaN, 96, 120, 80, 100, 60, double.NaN, 16, false)]
+    public void NativePopupNormalizesCocoaOwnerCoordinatesWithoutAllocating(
+        bool coordinatesAreOwnerRelative,
+        double inputX,
+        double inputY,
+        double popupOwnerX,
+        double popupOwnerY,
+        double popupWidth,
+        double popupHeight,
+        double expectedX,
+        double expectedY,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            WpfPortablePopupBridge.TryNormalizeNativePointerCoordinates(
+                coordinatesAreOwnerRelative,
+                inputX,
+                inputY,
+                popupOwnerX,
+                popupOwnerY,
+                popupWidth,
+                popupHeight,
+                out double localX,
+                out double localY));
+        Assert.Equal(expectedX, localX);
+        Assert.Equal(expectedY, localY);
+    }
+
+    [Fact]
+    public void NativePopupPointerCoordinateNormalizationDoesNotAllocate()
+    {
+        Assert.True(WpfPortablePopupBridge.TryNormalizeNativePointerCoordinates(
+            coordinatesAreOwnerRelative: true,
+            inputX: 152,
+            inputY: 96,
+            popupOwnerX: 120,
+            popupOwnerY: 80,
+            popupWidth: 100,
+            popupHeight: 60,
+            out _,
+            out _));
+
+        double checksum = 0;
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 1_000_000; i++)
+        {
+            bool accepted = WpfPortablePopupBridge.TryNormalizeNativePointerCoordinates(
+                coordinatesAreOwnerRelative: true,
+                inputX: 152,
+                inputY: 96,
+                popupOwnerX: 120,
+                popupOwnerY: 80,
+                popupWidth: 100,
+                popupHeight: 60,
+                out double localX,
+                out double localY);
+            checksum += accepted ? localX + localY : 0;
+        }
+
+        long allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        Assert.Equal(48_000_000, checksum);
+        Assert.Equal(0, allocatedBytes);
     }
 
     [Theory]

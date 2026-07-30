@@ -114,6 +114,7 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
             WindowBorder = ProGpuWpfWindowBorder.Hidden,
             EnablePortablePopupService = false,
             IncludePortablePopupRootsInWpfReplay = true,
+            NativePointerCoordinatesAreOwnerRelative = OperatingSystem.IsMacOS(),
             SharedRenderDeviceContext = ownerHost.CompositionTarget?.Context,
             CompositorOptions = new CompositorOptions
             {
@@ -180,13 +181,12 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         bool isWayland)
     {
         // GLFW exposes Wayland popup surfaces as ordinary xdg_toplevel windows and
-        // cannot position them. Cocoa's GLFW input context also reports owner-window
-        // pointer coordinates for transient child windows, so popup clicks arrive
-        // outside the child bounds and the popup closes before handling the input.
-        // Rendering those popups in the owner surface keeps placement, pointer
-        // routing, capture, and owner motion in one logical coordinate space.
-        // X11 retains native transient popup windows.
-        return !isWindows && !isMacOS && !explicitlyDisabled && !isWayland;
+        // cannot position them. Cocoa transient child windows are positionable and
+        // their owner-relative pointer coordinates are normalized by the popup bridge.
+        // Windows continues to use WPF's native HWND popup path. X11 and Cocoa use
+        // native transient popup windows.
+        _ = isMacOS;
+        return !isWindows && !explicitlyDisabled && !isWayland;
     }
 
     public void SetInputHandler(Func<WpfInputEventArgs, bool> inputHandler)

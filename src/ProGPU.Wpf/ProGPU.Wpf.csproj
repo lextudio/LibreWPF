@@ -48,9 +48,9 @@
       <Reference Remove="@(Reference)"
                  Condition="'%(Reference.Filename)' == 'WindowsBase' And $([System.String]::Copy('%(Reference.RootDir)%(Reference.Directory)').Contains('microsoft.netcore.app.ref'))" />
       <ReferencePath Remove="@(ReferencePath)"
-                     Condition="'%(ReferencePath.Filename)' == 'WindowsBase' And $([System.String]::Copy('%(ReferencePath.RootDir)%(ReferencePath.Directory)').Contains('microsoft.netcore.app.ref'))" />
+                     Condition="'%(ReferencePath.Filename)' == 'WindowsBase' And $([System.String]::Copy('%(ReferencePath.RootDir)%(Reference.Directory)').Contains('microsoft.netcore.app.ref'))" />
       <ReferencePathWithRefAssemblies Remove="@(ReferencePathWithRefAssemblies)"
-                                      Condition="'%(ReferencePathWithRefAssemblies.Filename)' == 'WindowsBase' And $([System.String]::Copy('%(ReferencePathWithRefAssemblies.RootDir)%(ReferencePathWithRefAssemblies.Directory)').Contains('microsoft.netcore.app.ref'))" />
+                                      Condition="'%(ReferencePathWithRefAssemblies.Filename)' == 'WindowsBase' And $([System.String]::Copy('%(ReferencePath.RootDir)%(Reference.Directory)').Contains('microsoft.netcore.app.ref'))" />
     </ItemGroup>
   </Target>
 
@@ -63,6 +63,8 @@
         Condition="'%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Backend'
           Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.DirectX'
           Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Scene'
+          Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Text'
+          Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Vector'
           Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Wpf.Interop'">
         <ProjectVersion>$(ProGpuRuntimePackageVersion)</ProjectVersion>
       </_ProjectReferencesWithVersions>

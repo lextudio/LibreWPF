@@ -2410,7 +2410,7 @@ public sealed class ProGpuWpfWindowHostTests
     [InlineData(false, true, false, false, true)]
     [InlineData(false, false, true, false, false)]
     [InlineData(false, false, false, true, false)]
-    public void NativePopupUsesOwnerSurfaceWhenNativePositioningIsUnavailable(
+    public void NativePopupUsesTransientWindowWhenPositioningIsAvailable(
         bool isWindows,
         bool isMacOS,
         bool explicitlyDisabled,

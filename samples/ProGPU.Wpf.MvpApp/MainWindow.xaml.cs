@@ -2013,11 +2013,16 @@ public partial class MainWindow : Window
         Point localCenter = target.TranslatePoint(
             new Point(target.ActualWidth / 2.0, target.ActualHeight / 2.0),
             root);
-        if (usesNativePopup)
+        if (usesNativePopup && !OperatingSystem.IsMacOS())
         {
             return localCenter;
         }
 
+        // Cocoa/GLFW reports pointer coordinates for transient child windows in
+        // the owner client's logical coordinate space. The diagnostic input must
+        // match that native contract so the popup bridge can normalize it exactly
+        // once, just as it does for a real pointer event. X11 native popups report
+        // popup-local coordinates and use localCenter above.
         Point screenCenter = target.PointToScreen(
             new Point(target.ActualWidth / 2.0, target.ActualHeight / 2.0));
         Point ownerScreenOrigin = PointToScreen(new Point(0.0, 0.0));

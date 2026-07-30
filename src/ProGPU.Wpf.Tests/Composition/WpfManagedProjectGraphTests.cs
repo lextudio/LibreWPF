@@ -16133,7 +16133,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("$(PkgSystem_Drawing_Common)", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("system.drawing.common\\$(SystemDrawingCommonVersion)", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\System.Private.Windows.Core.dll", wpfTransportTargets, StringComparison.Ordinal);
-        Assert.Contains("src/Microsoft.DotNet.Wpf/src/System.Windows.Presentation/System.Windows.Presentation.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/System.Windows.Presentation/System.Windows.Presentation.csproj", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("Build the managed WPF assemblies for $(Configuration)|$(TargetFramework) before packing $(PackageName).", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<VersionPrefix Condition=\"'$(PackageVersion)' == '0.1.0-preview.34'\">0.1.0</VersionPrefix>", packagingTargets, StringComparison.Ordinal);
         Assert.Contains("<VersionSuffix Condition=\"'$(PackageVersion)' == '0.1.0-preview.34'\">preview.34</VersionSuffix>", packagingTargets, StringComparison.Ordinal);

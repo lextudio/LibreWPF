@@ -1852,15 +1852,15 @@ public partial class MainWindow : Window
                 exact: false,
                 $"{theme.Name} File menu popup layer");
             bool usesNativeWindow = snapshot.Portable.NativeWindowCount >= 1;
-            bool usesOwnerSurface = snapshot.Composition.PopupLayerChildCount >= 1;
+            bool hasPopupLayerContent = snapshot.Composition.PopupLayerChildCount >= 1;
             AssertEqual(
                 true,
-                usesNativeWindow || usesOwnerSurface,
+                usesNativeWindow || hasPopupLayerContent,
                 $"MVP live {theme.Name} menu popup presentation");
             if (OperatingSystem.IsMacOS())
             {
-                AssertEqual(false, usesNativeWindow, $"MVP live {theme.Name} macOS native menu popup count");
-                AssertEqual(true, usesOwnerSurface, $"MVP live {theme.Name} macOS owner-surface menu popup count");
+                AssertEqual(true, usesNativeWindow, $"MVP live {theme.Name} macOS native menu popup count");
+                AssertEqual(true, hasPopupLayerContent, $"MVP live {theme.Name} macOS native menu popup content");
             }
 
             allMenusUsedNativeWindows &= usesNativeWindow;

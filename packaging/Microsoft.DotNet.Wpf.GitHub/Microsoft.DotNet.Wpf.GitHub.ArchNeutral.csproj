@@ -9,11 +9,11 @@
     <PackageName>LibreWPF.Transport$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.33</VersionSuffix>
+    <VersionSuffix>preview.34</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF transport package with portable managed presentation assemblies, references, themes, XAML build tasks, and runtime metadata.</PackageDescription>
-    <PackageReleaseNotes>Ships typed windowing-capability and allows-transparency diagnostics plus an Ubuntu Wayland-session/XWayland native-drag, dispatcher, menu, ComboBox, Popup, and seven-theme release gate; publishes the LibreWPF cross-platform roadmap; and remains pinned to immutable ProGPU preview.29.</PackageReleaseNotes>
+    <PackageReleaseNotes>Bounds bitmap, shader-sampler, viewport, custom-font, and visual-replay retention with typed CPU/GPU ownership diagnostics; releases retained scene ownership on disposal; lowers retained-state polling and shader-adapter churn; enables native Cocoa popup windows while retaining the X11/XWayland popup and seven-theme gates; and pins the transport to immutable ProGPU preview.30.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>

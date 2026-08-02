@@ -12,7 +12,7 @@
     <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.1.0.0</AssemblyVersion>
     <FileVersion Condition="'$(FileVersion)' == ''">0.1.0.0</FileVersion>
     <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(Version)</InformationalVersion>
-    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Aligns LibreWPF preview.35 with immutable ProGPU preview.38; selects alpha-capable X11/XWayland visuals for transparent windows; maps ShowActivated=false windows without stealing focus; stabilizes transient ComboBox and menu placement; stops static-frame GPU rendering and bounds retained render-resource caches; consumes the typed, reflection-free ProGPU media drawing-state bridge; and retains native Cocoa popups, Windows OLE clipboard, seven-theme, WPFGallery, and SharpDevelop designer acceptance gates.</PackageReleaseNotes>
+    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Aligns LibreWPF preview.35 with immutable ProGPU preview.39; selects alpha-capable X11/XWayland visuals for transparent windows; maps ShowActivated=false windows without stealing focus; stabilizes transient ComboBox and menu placement; stops static-frame GPU rendering and bounds retained render-resource caches; consumes the typed, reflection-free ProGPU media drawing-state bridge; and retains native Cocoa popups, Windows OLE clipboard, seven-theme, WPFGallery, and SharpDevelop designer acceptance gates.</PackageReleaseNotes>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

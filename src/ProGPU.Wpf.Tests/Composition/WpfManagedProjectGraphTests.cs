@@ -470,6 +470,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_window.Initialize();", windowHost, StringComparison.Ordinal);
         Assert.Contains("bool TryShowWithoutActivation(object window)", platformServices, StringComparison.Ordinal);
         Assert.Contains("TryShowCocoaWithoutActivation(GetCocoaWindow(view))", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("TryShowGlfwWithoutActivation(view)", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("WindowAttributeSetter.FocusOnShow", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("SelRegisterName(\"orderFront:\")", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("SelRegisterName(\"addChildWindow:ordered:\")", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("SelRegisterName(\"setHidesOnDeactivate:\")", silkDecorations, StringComparison.Ordinal);
@@ -935,6 +937,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("activationService.TryCloseWindow(window, out var typedCloseResult)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private static WpfWindowCloseResult MapCloseResult(PortableWindowCloseResult result)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TrySetActivationState(window, isActive)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.ShowWithoutActivation();", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.Run(_showActivated);", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TrySetWindowActivationState(_ownerWindow, isActive: true)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("internal void Run(bool showActivated)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("ShowNativeWindow(showActivated);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("activationService.TryBeginInvokeInput(Window, callback)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryProcessInputEvent(window, input)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.TryProcessPortablePopupInput(e)", proGpuActivation, StringComparison.Ordinal);

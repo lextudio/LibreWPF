@@ -2,11 +2,12 @@ using System;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Silk.NET.Core.Contexts;
+using Silk.NET.GLFW;
 using Silk.NET.Windowing;
 
 namespace System.Windows.Media.ProGPU.Platform;
 
-public sealed class SilkNetWpfWindowDecorationService : IWpfWindowDecorationService
+public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorationService
 {
     private const string ObjCLibrary = "/usr/lib/libobjc.A.dylib";
     private const string X11Library = "libX11.so.6";
@@ -47,7 +48,7 @@ public sealed class SilkNetWpfWindowDecorationService : IWpfWindowDecorationServ
 
     public bool TryShowWithoutActivation(object window)
     {
-        if (window is not IView view)
+        if (window is not IWindow view)
         {
             return false;
         }
@@ -57,7 +58,7 @@ public sealed class SilkNetWpfWindowDecorationService : IWpfWindowDecorationServ
             return TryShowCocoaWithoutActivation(GetCocoaWindow(view));
         }
 
-        return false;
+        return TryShowGlfwWithoutActivation(view);
     }
 
     public bool TryConfigurePopupOwner(object ownerWindow, object popupWindow)
@@ -114,6 +115,46 @@ public sealed class SilkNetWpfWindowDecorationService : IWpfWindowDecorationServ
 
         var cocoa = nativeWindow.Cocoa;
         return cocoa.GetValueOrDefault();
+    }
+
+    private static bool TryShowGlfwWithoutActivation(IWindow view)
+    {
+        var nativeWindow = GetNativeWindow(view);
+        var glfwWindow = (WindowHandle*)(nativeWindow?.Glfw ?? IntPtr.Zero);
+        if (glfwWindow == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var glfw = Glfw.GetApi();
+            glfw.SetWindowAttrib(
+                glfwWindow,
+                WindowAttributeSetter.FocusOnShow,
+                false);
+            try
+            {
+                view.IsVisible = true;
+            }
+            finally
+            {
+                glfw.SetWindowAttrib(
+                    glfwWindow,
+                    WindowAttributeSetter.FocusOnShow,
+                    true);
+            }
+
+            return true;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
     }
 
     private static X11WindowHandle GetX11Window(IView view)

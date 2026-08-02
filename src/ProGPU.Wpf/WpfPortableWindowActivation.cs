@@ -334,15 +334,19 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
-        Host.Show();
+        if (_showActivated)
+        {
+            Host.Show();
+        }
+        else
+        {
+            Host.ShowWithoutActivation();
+        }
+
         DispatchPortableShowWindowHook(isShown: true);
         if (!_showActivated)
         {
             TrySetWindowActivationState(Window, isActive: false);
-            if (_ownerWindow != null)
-            {
-                TrySetWindowActivationState(_ownerWindow, isActive: true);
-            }
         }
 
         FlushWpfDispatcherOperations("Loaded", "Render");
@@ -458,7 +462,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         StartDispatcherTimerPump();
         try
         {
-            Host.Run();
+            Host.Run(_showActivated);
         }
         finally
         {

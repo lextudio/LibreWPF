@@ -447,10 +447,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public void Run()
     {
+        Run(_options.ShowActivated);
+    }
+
+    internal void Run(bool showActivated)
+    {
         ThrowIfDisposed();
         _isHostVisible = true;
         EnsureWindow();
-        _window!.IsVisible = true;
+        ShowNativeWindow(showActivated);
         _isNativeLoopRunning = true;
         TraceNativeLoop("run entering: " + CreateNativeLoopTraceState());
         try
@@ -566,12 +571,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.Initialize();
         }
 
-        if (!PlatformServices.WindowDecorations.TryShowWithoutActivation(_window))
-        {
-            _window.IsVisible = true;
-        }
+        ShowNativeWindow(showActivated: false);
 
         RequestRenderAndWakeNativeLoop();
+    }
+
+    private void ShowNativeWindow(bool showActivated)
+    {
+        if (showActivated ||
+            !PlatformServices.WindowDecorations.TryShowWithoutActivation(_window!))
+        {
+            _window!.IsVisible = true;
+        }
     }
 
     internal void DeferShowUntilRun()

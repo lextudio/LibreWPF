@@ -2496,6 +2496,36 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(0, allocatedBytes);
     }
 
+    [Fact]
+    public void NativePopupLocalDiagnosticInputUsesPlatformCoordinateContract()
+    {
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 18,
+            y: 12,
+            button: WpfMouseButton.Left,
+            modifiers: WpfInputModifiers.Control);
+
+        WpfInputEventArgs cocoa = WpfPortablePopupBridge.CreateNativeDiagnosticInput(
+            coordinatesAreOwnerRelative: true,
+            input,
+            popupOwnerX: 54,
+            popupOwnerY: 80);
+        Assert.NotSame(input, cocoa);
+        Assert.Equal(72, cocoa.X);
+        Assert.Equal(92, cocoa.Y);
+        Assert.Equal(input.Kind, cocoa.Kind);
+        Assert.Equal(input.Button, cocoa.Button);
+        Assert.Equal(input.Modifiers, cocoa.Modifiers);
+
+        WpfInputEventArgs x11 = WpfPortablePopupBridge.CreateNativeDiagnosticInput(
+            coordinatesAreOwnerRelative: false,
+            input,
+            popupOwnerX: 54,
+            popupOwnerY: 80);
+        Assert.Same(input, x11);
+    }
+
     [Theory]
     [InlineData(314, 2.0, 628)]
     [InlineData(216, 2.0, 432)]

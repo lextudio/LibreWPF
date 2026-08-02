@@ -490,6 +490,20 @@ public static class ProGpuWpfDiagnostics
         return host.TryRaiseTopmostNativePortablePopupInputForDiagnostics(input);
     }
 
+    public static bool TryRaiseTopmostNativePopupLocalInput(
+        object? window,
+        Platform.WpfInputEventArgs input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (!TryGetWindowHost(window, out var host))
+        {
+            return false;
+        }
+
+        ArgumentNullException.ThrowIfNull(host);
+        return host.TryRaiseTopmostNativePortablePopupLocalInputForDiagnostics(input);
+    }
+
     public static bool HasGpuHitTestCache(object? window)
     {
         if (!TryGetWindowHost(window, out var host))

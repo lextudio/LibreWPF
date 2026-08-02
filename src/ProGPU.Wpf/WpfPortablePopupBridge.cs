@@ -168,6 +168,49 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         return true;
     }
 
+    internal bool TryRaiseNativeLocalInputForDiagnostics(WpfInputEventArgs input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (!IsVisibleNativeWindow)
+        {
+            return false;
+        }
+
+        WpfInputEventArgs nativeInput = CreateNativeDiagnosticInput(
+            OperatingSystem.IsMacOS(),
+            input,
+            LogicalX,
+            LogicalY);
+        _nativeHost!.RaiseInputForDiagnostics(nativeInput);
+        input.Handled = nativeInput.Handled;
+        return true;
+    }
+
+    internal static WpfInputEventArgs CreateNativeDiagnosticInput(
+        bool coordinatesAreOwnerRelative,
+        WpfInputEventArgs input,
+        double popupOwnerX,
+        double popupOwnerY)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (!coordinatesAreOwnerRelative || !IsPointerInput(input.Kind))
+        {
+            return input;
+        }
+
+        return new WpfInputEventArgs(
+            input.Kind,
+            input.Key,
+            input.ScanCode,
+            input.Character,
+            input.X + popupOwnerX,
+            input.Y + popupOwnerY,
+            input.DeltaX,
+            input.DeltaY,
+            input.Button,
+            input.Modifiers);
+    }
+
     internal static Func<double, double, IPortablePresentationSourceHost> PortablePresentationSourceFactory { get; set; } =
         PortablePresentationSourceHost.Create;
 

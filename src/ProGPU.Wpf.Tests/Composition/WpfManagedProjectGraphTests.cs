@@ -472,9 +472,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryShowCocoaWithoutActivation(GetCocoaWindow(view))", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("TryShowGlfwWithoutActivation(view)", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("WindowAttributeSetter.FocusOnShow", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("\"_NET_WM_WINDOW_TYPE_DROPDOWN_MENU\"", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("\"_NET_WM_WINDOW_TYPE_POPUP_MENU\"", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("XChangeProperty(", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("SelRegisterName(\"orderFront:\")", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("SelRegisterName(\"addChildWindow:ordered:\")", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("SelRegisterName(\"setHidesOnDeactivate:\")", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("_popupHost.SetPosition(_nativeLogicalX, _nativeLogicalY);", popupHost, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -17,6 +17,8 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
     private const int ClientMessage = 33;
     private const int NetWmMoveresizeMove = 8;
     private const int NormalApplicationSource = 1;
+    private const int PropModeReplace = 0;
+    private const nuint XaAtom = 4;
     private const long SubstructureNotifyMask = 1L << 19;
     private const long SubstructureRedirectMask = 1L << 20;
 
@@ -316,6 +318,36 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         try
         {
             bool configured = XSetTransientForHint(owner.Display, popup.Window, owner.Window) != 0;
+            var windowType = XInternAtom(
+                owner.Display,
+                "_NET_WM_WINDOW_TYPE",
+                onlyIfExists: false);
+            var dropdownMenuType = XInternAtom(
+                owner.Display,
+                "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU",
+                onlyIfExists: false);
+            var popupMenuType = XInternAtom(
+                owner.Display,
+                "_NET_WM_WINDOW_TYPE_POPUP_MENU",
+                onlyIfExists: false);
+            if (windowType != UIntPtr.Zero &&
+                dropdownMenuType != UIntPtr.Zero &&
+                popupMenuType != UIntPtr.Zero)
+            {
+                UIntPtr* popupTypes = stackalloc UIntPtr[2];
+                popupTypes[0] = dropdownMenuType;
+                popupTypes[1] = popupMenuType;
+                _ = XChangeProperty(
+                    owner.Display,
+                    popup.Window,
+                    windowType,
+                    (UIntPtr)XaAtom,
+                    format: 32,
+                    PropModeReplace,
+                    (byte*)popupTypes,
+                    elementCount: 2);
+            }
+
             XFlush(owner.Display);
             return configured;
         }
@@ -464,6 +496,17 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
 
     [DllImport(X11Library)]
     private static extern int XSetTransientForHint(IntPtr display, UIntPtr window, UIntPtr ownerWindow);
+
+    [DllImport(X11Library)]
+    private static extern int XChangeProperty(
+        IntPtr display,
+        UIntPtr window,
+        UIntPtr property,
+        UIntPtr type,
+        int format,
+        int mode,
+        byte* data,
+        int elementCount);
 
     private readonly record struct X11WindowHandle(IntPtr Display, UIntPtr Window);
 

@@ -45,6 +45,8 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
     private Func<WpfInputEventArgs, bool>? _inputHandler;
     private double _dpiScaleX;
     private double _dpiScaleY;
+    private int _nativeLogicalX;
+    private int _nativeLogicalY;
     private bool _isInitialized;
     private bool _isPumping;
     private bool _disposeWhenPumpCompletes;
@@ -95,6 +97,8 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         _ownerHost = ownerHost;
         _dpiScaleX = NormalizeDeviceScale(dpiScaleX);
         _dpiScaleY = NormalizeDeviceScale(dpiScaleY);
+        _nativeLogicalX = ToNativeLogicalScreenCoordinate(request.PopupScreenDeviceX, _dpiScaleX);
+        _nativeLogicalY = ToNativeLogicalScreenCoordinate(request.PopupScreenDeviceY, _dpiScaleY);
         _popupHost = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
         {
             Title = string.Empty,
@@ -102,8 +106,8 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
             Height = 1,
             // WPF placement uses device-screen pixels. Silk/GLFW window positions use
             // native logical screen coordinates, including on Retina displays.
-            Left = ToNativeLogicalScreenCoordinate(request.PopupScreenDeviceX, _dpiScaleX),
-            Top = ToNativeLogicalScreenCoordinate(request.PopupScreenDeviceY, _dpiScaleY),
+            Left = _nativeLogicalX,
+            Top = _nativeLogicalY,
             IsVisible = false,
             IsEventDriven = false,
             // Native transient ownership keeps the popup above its owner. A global topmost
@@ -213,9 +217,9 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
     public void SetPosition(int x, int y)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
-        _popupHost.SetPosition(
-            ToNativeLogicalScreenCoordinate(x, _dpiScaleX),
-            ToNativeLogicalScreenCoordinate(y, _dpiScaleY));
+        _nativeLogicalX = ToNativeLogicalScreenCoordinate(x, _dpiScaleX);
+        _nativeLogicalY = ToNativeLogicalScreenCoordinate(y, _dpiScaleY);
+        _popupHost.SetPosition(_nativeLogicalX, _nativeLogicalY);
     }
 
     internal static int ToNativeLogicalScreenCoordinate(int deviceCoordinate, double deviceScale)
@@ -250,6 +254,10 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
         EnsureInitialized();
+        // X11 window managers are allowed to ignore a position supplied before a
+        // transient window is mapped. Reapply the settled WPF placement after the
+        // owner/type hints exist and immediately before the nonactivating map.
+        _popupHost.SetPosition(_nativeLogicalX, _nativeLogicalY);
         _popupHost.ShowWithoutActivation();
     }
 

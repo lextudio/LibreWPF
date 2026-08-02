@@ -14,10 +14,6 @@ package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Rel
 progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.38}"
 smoke_root="${repo_root}/artifacts/nuget/ProGPU.Avalonia.PackageSmoke"
 project_dir="${smoke_root}/src"
-restore_fallback_args=()
-if [[ -n "${PROGPU_WPF_NUGET_FALLBACK_PACKAGES:-}" ]]; then
-  restore_fallback_args=(-p:RestoreFallbackFolders="${PROGPU_WPF_NUGET_FALLBACK_PACKAGES}")
-fi
 
 pack_project() {
   local project="$1"
@@ -227,12 +223,15 @@ internal static class Program
 CS
 
 echo "Building external ProGPU Avalonia package smoke..."
-"${dotnet}" build \
+set -- \
   "${project_dir}/ProGPU.Avalonia.PackageSmoke.csproj" \
   -v:minimal \
   /p:UseSharedCompilation=false \
-  /p:UsedAvaloniaProducts= \
-  "${restore_fallback_args[@]}"
+  /p:UsedAvaloniaProducts=
+if [[ -n "${PROGPU_WPF_NUGET_FALLBACK_PACKAGES:-}" ]]; then
+  set -- "$@" -p:RestoreFallbackFolders="${PROGPU_WPF_NUGET_FALLBACK_PACKAGES}"
+fi
+"${dotnet}" build "$@"
 
 assets_file="${project_dir}/obj/project.assets.json"
 if ! grep -q "\"ProGPU.Avalonia/${progpu_package_version}\"" "${assets_file}"; then

@@ -277,9 +277,9 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Contains("while (ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("DoEvents();", source, StringComparison.Ordinal);
         Assert.Contains("if (!EnsureCompositionTargetLoaded() || !ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
-        Assert.Contains("_window.DoEvents();\n        if (!ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
+        Assert.Contains("window.DoEvents();\n        if (!ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("if (ShouldPumpNativeRender())", source, StringComparison.Ordinal);
-        Assert.Contains("NativeRenderPumpCount++;\n            _window.DoRender();", source, StringComparison.Ordinal);
+        Assert.Contains("NativeRenderPumpCount++;\n            window.DoRender();", source, StringComparison.Ordinal);
         Assert.Contains("SkippedNativeRenderPumpCount++;", source, StringComparison.Ordinal);
         Assert.Contains("Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest", source, StringComparison.Ordinal);
         Assert.Contains("private bool ShouldKeepPortableNativeRunLoopAlive()", source, StringComparison.Ordinal);
@@ -1965,7 +1965,7 @@ public sealed class ProGpuWpfWindowHostTests
                 x: 7,
                 y: 9,
                 button: WpfMouseButton.Left);
-            Assert.True(ProGpuWpfDiagnostics.TryRaiseTopmostNativePopupInput(host, input));
+            Assert.True(ProGpuWpfDiagnostics.TryRaiseTopmostNativePopupLocalInput(host, input));
             Assert.Same(popupSource, activationService.LastPresentationSourceInputSource);
             Assert.Equal(7, activationService.LastPresentationSourceInput!.X);
             Assert.Equal(9, activationService.LastPresentationSourceInput.Y);

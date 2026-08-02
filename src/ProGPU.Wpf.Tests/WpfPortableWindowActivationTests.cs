@@ -39,6 +39,7 @@ public sealed class WpfPortableWindowActivationTests
         Assert.NotNull(service.Callbacks.DragMove);
         Assert.NotNull(service.Callbacks.GetHandle);
         Assert.NotNull(service.Callbacks.SetWindowRegion);
+        Assert.NotNull(service.Callbacks.RequestActivation);
     }
 
     [Fact]
@@ -1099,6 +1100,39 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(1, service.SetActivationStateCount);
         Assert.Same(ownerWindow, service.LastActivationStateWindow);
         Assert.True(service.LastActivationState);
+        Assert.Equal(1, service.InputCount);
+        Assert.Same(ownedWindow, service.LastInputWindow);
+        Assert.True(args.Handled);
+        Assert.True(scheduler.RequestCount >= 1);
+    }
+
+    [Fact]
+    public void PassivePointerInputForNonActivatingOwnedWindowPreservesCurrentActivation()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var ownerWindow = new FakeWindow();
+        var ownedWindow = new FakeWindow
+        {
+            Owner = ownerWindow,
+            ShowActivated = false
+        };
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, ownedWindow, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfInputEventArgs(WpfInputEventKind.MouseMove, x: 12, y: 24);
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(0, service.SetActivationStateCount);
         Assert.Equal(1, service.InputCount);
         Assert.Same(ownedWindow, service.LastInputWindow);
         Assert.True(args.Handled);

@@ -22,14 +22,14 @@ public sealed class SilkNetWpfWindowEventService : IWpfWindowEventService
     {
         ArgumentNullException.ThrowIfNull(window);
 
-        Action<bool> focusChanged = isFocused => OnWindowEventReceived(CreateFocusChangedEvent(isFocused));
-        Action<string[]> fileDrop = files => OnWindowEventReceived(CreateFileDropEvent(files));
+        Action<bool> focusChanged = isFocused => OnWindowEventReceived(window, CreateFocusChangedEvent(isFocused));
+        Action<string[]> fileDrop = files => OnWindowEventReceived(window, CreateFileDropEvent(files));
         Action<Vector2D<int>> move = position =>
         {
-            OnWindowEventReceived(CreateWindowPositionChangingEvent(position.X, position.Y));
-            OnWindowEventReceived(CreateWindowPositionChangedEvent(position.X, position.Y));
+            OnWindowEventReceived(window, CreateWindowPositionChangingEvent(position.X, position.Y));
+            OnWindowEventReceived(window, CreateWindowPositionChangedEvent(position.X, position.Y));
         };
-        Action<Vector2D<int>> resize = size => OnWindowEventReceived(CreateWindowSizeChangedEvent(size.X, size.Y));
+        Action<Vector2D<int>> resize = size => OnWindowEventReceived(window, CreateWindowSizeChangedEvent(size.X, size.Y));
 
         window.FocusChanged += focusChanged;
         window.FileDrop += fileDrop;
@@ -105,9 +105,9 @@ public sealed class SilkNetWpfWindowEventService : IWpfWindowEventService
             screenY: screenY);
     }
 
-    private void OnWindowEventReceived(WpfWindowEventArgs args)
+    private void OnWindowEventReceived(IWindow window, WpfWindowEventArgs args)
     {
-        WindowEventReceived?.Invoke(this, args);
+        WindowEventReceived?.Invoke(window, args);
     }
 
     private sealed class WindowEventSubscription : IDisposable

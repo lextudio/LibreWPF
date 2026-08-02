@@ -590,6 +590,11 @@ namespace System.Windows
 
             if (!OperatingSystem.IsWindows() && _portableWindowActivation != null)
             {
+                if (PortableWindowActivationService.TryRequestActivation(_portableWindowActivation))
+                {
+                    return true;
+                }
+
                 PortableWindowActivationService.SetActivationState(this, true);
                 return IsActive;
             }

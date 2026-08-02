@@ -5419,7 +5419,8 @@ internal static class Program
                 new Action<object>(recorder.Dispose),
                 new Func<object, bool>(_ => false),
                 new Func<object, IntPtr>(recorder.GetHandle),
-                null
+                null,
+                new Func<object, bool>(recorder.RequestActivation)
             });
 
         RegisterPortableMessageBox(presentationFramework);
@@ -6478,6 +6479,12 @@ internal static class Program
             var typedActivation = (RecordingActivation)activation;
             typedActivation.IsVisible = true;
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render");
+        }
+
+        public bool RequestActivation(object activation)
+        {
+            AssertSameActivation(activation);
+            return true;
         }
 
         public void Hide(object activation)

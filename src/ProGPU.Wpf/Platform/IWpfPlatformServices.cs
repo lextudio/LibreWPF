@@ -158,6 +158,11 @@ public interface IWpfWindowDecorationService
 {
     bool TryBeginDragMove(object window);
 
+    bool TryActivate(object window)
+    {
+        return false;
+    }
+
     bool TryShowWithoutActivation(object window)
     {
         return false;

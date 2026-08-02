@@ -490,6 +490,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal void DeferShowUntilRun()", windowHost, StringComparison.Ordinal);
         Assert.Contains("_window.Initialize();", windowHost, StringComparison.Ordinal);
         Assert.Contains("bool TryShowWithoutActivation(object window)", platformServices, StringComparison.Ordinal);
+        Assert.Contains("bool TryActivate(object window)", platformServices, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryActivate()", windowHost, StringComparison.Ordinal);
+        Assert.Contains("PlatformServices.WindowDecorations.TryActivate(_window!)", windowHost, StringComparison.Ordinal);
+        Assert.Contains("TryActivateCocoaWindow(GetCocoaWindow(view))", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("TryActivateWin32Window(GetWin32Hwnd(view))", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("TryActivateGlfwWindow(view)", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("TryShowCocoaWithoutActivation(GetCocoaWindow(view))", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("TryShowGlfwWithoutActivation(view)", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("WindowAttributeSetter.FocusOnShow", silkDecorations, StringComparison.Ordinal);
@@ -643,6 +649,21 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Platform",
             "SilkNetWpfMonitorService.cs");
+        var silkNetInputServicePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "SilkNetWpfInputService.cs");
+        var silkNetWindowEventServicePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "SilkNetWpfWindowEventService.cs");
+        var silkNetDragDropServicePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "SilkNetWpfDragDropService.cs");
         var proGpuHostPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -817,6 +838,9 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
         var proGpuPlatformServices = File.ReadAllText(proGpuPlatformServicesPath);
         var silkNetMonitorService = File.ReadAllText(silkNetMonitorServicePath);
+        var silkNetInputService = File.ReadAllText(silkNetInputServicePath);
+        var silkNetWindowEventService = File.ReadAllText(silkNetWindowEventServicePath);
+        var silkNetDragDropService = File.ReadAllText(silkNetDragDropServicePath);
         var proGpuHost = File.ReadAllText(proGpuHostPath);
         var proGpuPortablePresentationSourceBridge = File.ReadAllText(proGpuPortablePresentationSourceBridgePath);
         var proGpuPortablePopupBridge = File.ReadAllText(proGpuPortablePopupBridgePath);
@@ -861,6 +885,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("public interface IPortableMediaContextRenderServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.DoesNotContain("public static bool TryGetMediaContextRenderService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableWindowActivationCallbacks", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public Func<object, bool>? RequestActivation { get; }", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortableWindowInputEvent", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public sealed class PortablePopupCreateRequest", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public int PopupScreenDeviceX { get; }", portableWpfServiceRegistry, StringComparison.Ordinal);
@@ -958,6 +983,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("currentType.Assembly", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("exception.GetBaseException()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CreateWindowActivationCallbacks(hostFactory)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("requestActivation: activation =>", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("((WpfPortableWindowActivation)activation).TryActivate()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryIsCurrentApplicationMainWindow(window, out bool isMainWindow)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryCloseWindow(window, out var typedCloseResult)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private static WpfWindowCloseResult MapCloseResult(PortableWindowCloseResult result)", proGpuActivation, StringComparison.Ordinal);
@@ -969,6 +996,13 @@ public sealed class WpfManagedProjectGraphTests
             proGpuActivation,
             StringComparison.Ordinal);
         Assert.Contains("internal void Run(bool showActivated)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_isHostVisible = showActivated;\n        EnsureWindow();", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_isHostVisible = false;\n        EnsureWindow();", proGpuHost, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProcessDispatcherQueueCore();\n        EnsureWindow();\n        _window!.IsVisible = _isHostVisible;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("!IsPlatformEventForCurrentWindow(sender)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("InputReceived?.Invoke(eventSource, args)", silkNetInputService, StringComparison.Ordinal);
+        Assert.Contains("WindowEventReceived?.Invoke(window, args)", silkNetWindowEventService, StringComparison.Ordinal);
+        Assert.Contains("DragDropReceived?.Invoke(window, args)", silkNetDragDropService, StringComparison.Ordinal);
         Assert.Contains("ShowNativeWindow(showActivated);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("activationService.TryBeginInvokeInput(Window, callback)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryProcessInputEvent(window, input)", proGpuActivation, StringComparison.Ordinal);
@@ -2344,6 +2378,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Func<object, IntPtr> getHandle = null", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static IntPtr GetHandle(object activation)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetActivationState(Window window, bool isActive)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Func<object, bool> requestActivation = null", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryRequestActivation(object activation)", activationService, StringComparison.Ordinal);
+        Assert.Contains("callbacks.RequestActivation", activationService, StringComparison.Ordinal);
         Assert.Contains("NotifyPortableInputProvidersDeactivated(window)", activationService, StringComparison.Ordinal);
         Assert.Contains("source.GetInputProvider(typeof(KeyboardDevice))?.NotifyDeactivate()", activationService, StringComparison.Ordinal);
         Assert.Contains("source.GetInputProvider(typeof(MouseDevice))?.NotifyDeactivate()", activationService, StringComparison.Ordinal);
@@ -2394,6 +2431,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryCreatePortableWindowDuringShow()", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryActivate(this, out object activation)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetActivationState(this, true)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.TryRequestActivation(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.Show(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.Hide(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetWindowState(_portableWindowActivation, windowState)", window, StringComparison.Ordinal);

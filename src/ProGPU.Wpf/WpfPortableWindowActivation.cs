@@ -146,7 +146,9 @@ public sealed class WpfPortableWindowActivation : IDisposable
             dragMove: activation => ((WpfPortableWindowActivation)activation).TryDragMove(),
             getHandle: activation =>
                 ((WpfPortableWindowActivation)activation).Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero,
-            setWindowRegion: TrySetWindowRegion);
+            setWindowRegion: TrySetWindowRegion,
+            requestActivation: activation =>
+                ((WpfPortableWindowActivation)activation).TryActivate());
     }
 
     public static bool TryRegisterPresentationCoreClipboardService()
@@ -350,6 +352,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         FlushWpfDispatcherOperations("Loaded", "Render");
+    }
+
+    internal bool TryActivate()
+    {
+        ThrowIfDisposed();
+        return Host.TryActivate();
     }
 
     public void Hide()
@@ -950,6 +958,9 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
+        Host.TraceNativeActivation(
+            $"event={e.Kind}, showActivated={_showActivated}, visible={Host.IsVisible}");
+
         switch (e.Kind)
         {
             case WpfWindowEventKind.Activated:
@@ -1167,6 +1178,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return !isActive &&
+            !Host.HasRequestedNativeActivationForAnotherHost() &&
             (Host.HasVisibleNativePortablePopup || HasVisibleNonActivatingOwnedWindow(Window));
     }
 
@@ -1276,12 +1288,16 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
+        Host.TraceNativeActivation(
+            $"input={e.Kind}, showActivated={_showActivated}, visible={Host.IsVisible}");
+
         bool suppressActivation = TryDispatchPortableMouseActivateHook(e, out bool eatInput);
-        if (!suppressActivation && _showActivated)
+        bool isActivationInput = e.Kind == WpfInputEventKind.MouseDown;
+        if (isActivationInput && !suppressActivation && _showActivated)
         {
             TrySetWindowActivationState(Window, isActive: true);
         }
-        else if (!suppressActivation && _ownerWindow != null)
+        else if (isActivationInput && !suppressActivation && _ownerWindow != null)
         {
             TrySetWindowActivationState(_ownerWindow, isActive: true);
         }

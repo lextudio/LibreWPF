@@ -57,10 +57,36 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
 
         if (OperatingSystem.IsMacOS())
         {
-            return TryShowCocoaWithoutActivation(GetCocoaWindow(view));
+            return TryShowCocoaWithoutActivation(GetCocoaWindow(view)) ||
+                TryShowGlfwWithoutActivation(view);
         }
 
         return TryShowGlfwWithoutActivation(view);
+    }
+
+    public bool TryActivate(object window)
+    {
+        if (window is not IWindow view)
+        {
+            return false;
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            // Cocoa ordering and GLFW focus are complementary here. Ordering
+            // makes the NSWindow key while GLFW updates its cross-platform
+            // focused-window state and emits the matching focus callback.
+            bool cocoaActivated = TryActivateCocoaWindow(GetCocoaWindow(view));
+            bool glfwActivated = TryActivateGlfwWindow(view);
+            return cocoaActivated || glfwActivated;
+        }
+
+        if (OperatingSystem.IsWindows() && TryActivateWin32Window(GetWin32Hwnd(view)))
+        {
+            return true;
+        }
+
+        return TryActivateGlfwWindow(view);
     }
 
     public bool TryConfigurePopupOwner(object ownerWindow, object popupWindow)
@@ -159,6 +185,30 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         }
     }
 
+    private static bool TryActivateGlfwWindow(IWindow view)
+    {
+        var nativeWindow = GetNativeWindow(view);
+        var glfwWindow = (WindowHandle*)(nativeWindow?.Glfw ?? IntPtr.Zero);
+        if (glfwWindow == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            Glfw.GetApi().FocusWindow(glfwWindow);
+            return true;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
     private static X11WindowHandle GetX11Window(IView view)
     {
         var nativeWindow = GetNativeWindow(view);
@@ -198,6 +248,28 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         }
     }
 
+    [SupportedOSPlatform("windows")]
+    private static bool TryActivateWin32Window(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            return SetForegroundWindow(hwnd);
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
     [SupportedOSPlatform("macos")]
     private static bool TryShowCocoaWithoutActivation(IntPtr nsWindow)
     {
@@ -215,6 +287,35 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
             }
 
             ObjCMsgSend(nsWindow, orderFront, IntPtr.Zero);
+            return true;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    [SupportedOSPlatform("macos")]
+    private static bool TryActivateCocoaWindow(IntPtr nsWindow)
+    {
+        if (nsWindow == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            IntPtr makeKeyAndOrderFront = SelRegisterName("makeKeyAndOrderFront:");
+            if (makeKeyAndOrderFront == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            ObjCMsgSend(nsWindow, makeKeyAndOrderFront, IntPtr.Zero);
             return true;
         }
         catch (DllNotFoundException)
@@ -440,6 +541,10 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
 
     [DllImport("user32.dll")]
     private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     [DllImport(ObjCLibrary, EntryPoint = "objc_getClass")]
     private static extern IntPtr ObjCGetClass([MarshalAs(UnmanagedType.LPStr)] string name);

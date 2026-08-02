@@ -30,6 +30,7 @@ namespace System.Windows
         private static Func<object, bool> _dragMove;
         private static Func<object, IntPtr> _getHandle;
         private static Func<IntPtr, PortableWindowRegion, bool> _setWindowRegion;
+        private static Func<object, bool> _requestActivation;
 
         internal static bool IsEnabled
         {
@@ -59,7 +60,8 @@ namespace System.Windows
             Action<object> dispose = null,
             Func<object, bool> dragMove = null,
             Func<object, IntPtr> getHandle = null,
-            Func<IntPtr, PortableWindowRegion, bool> setWindowRegion = null)
+            Func<IntPtr, PortableWindowRegion, bool> setWindowRegion = null,
+            Func<object, bool> requestActivation = null)
         {
             ArgumentNullException.ThrowIfNull(activate);
 
@@ -78,6 +80,7 @@ namespace System.Windows
             Volatile.Write(ref _dragMove, dragMove);
             Volatile.Write(ref _getHandle, getHandle);
             Volatile.Write(ref _setWindowRegion, setWindowRegion);
+            Volatile.Write(ref _requestActivation, requestActivation);
         }
 
         internal static void Clear()
@@ -97,6 +100,7 @@ namespace System.Windows
             Volatile.Write(ref _dragMove, null);
             Volatile.Write(ref _getHandle, null);
             Volatile.Write(ref _setWindowRegion, null);
+            Volatile.Write(ref _requestActivation, null);
         }
 
         internal static bool TryActivate(Window window, out object activation)
@@ -121,6 +125,17 @@ namespace System.Windows
         internal static void Show(object activation)
         {
             Volatile.Read(ref _show)?.Invoke(activation);
+        }
+
+        internal static bool TryRequestActivation(object activation)
+        {
+            if (OperatingSystem.IsWindows() || activation == null)
+            {
+                return false;
+            }
+
+            Func<object, bool> requestActivation = Volatile.Read(ref _requestActivation);
+            return requestActivation != null && requestActivation(activation);
         }
 
         internal static void Hide(object activation)
@@ -924,7 +939,8 @@ namespace System.Windows
                     callbacks.Dispose,
                     callbacks.DragMove,
                     callbacks.GetHandle,
-                    callbacks.SetWindowRegion);
+                    callbacks.SetWindowRegion,
+                    callbacks.RequestActivation);
             }
 
             public bool TryRegisterMediaContextRenderService(

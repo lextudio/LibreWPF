@@ -34,6 +34,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private static readonly bool s_traceRenderSurface = IsTraceEnabled(TraceRenderSurfaceEnvironmentVariable);
     private static readonly bool s_traceInput = IsTraceEnabled(TraceInputEnvironmentVariable);
     private static readonly bool s_traceNativeLoop = IsTraceEnabled(TraceNativeLoopEnvironmentVariable);
+    private static readonly object s_nativeActivationGate = new();
+    private static WeakReference<ProGpuWpfWindowHost>? s_pendingNativeActivation;
+    private static WeakReference<ProGpuWpfWindowHost>? s_requestedNativeActivation;
 
     private readonly ProGpuWpfWindowOptions _options;
     private IWindow? _window;
@@ -467,8 +470,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal void Run(bool showActivated)
     {
         ThrowIfDisposed();
-        _isHostVisible = true;
+        // Nonactivating native windows must be created hidden. Otherwise the
+        // Cocoa/GLFW window can take focus before the platform show policy runs.
+        _isHostVisible = showActivated;
         EnsureWindow();
+        if (!_window!.IsInitialized)
+        {
+            _window.Initialize();
+        }
+
+        _isHostVisible = true;
         ShowNativeWindow(showActivated);
         _isNativeLoopRunning = true;
         TraceNativeLoop("run entering: " + CreateNativeLoopTraceState());
@@ -505,7 +516,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             NativeLoopOwnerDoEventsCallCount++;
             try
             {
+                ApplyPendingNativeActivation(consume: false);
                 DoEvents();
+                ApplyPendingNativeActivation(consume: true);
             }
             catch (ObjectDisposedException ex) when (!ShouldKeepPortableNativeRunLoopAlive())
             {
@@ -575,16 +588,135 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         ShowCore(requestRenderWhenInitialized: true);
     }
 
+    internal bool TryActivate()
+    {
+        ThrowIfDisposed();
+        EnsureWindow();
+        bool activated = PlatformServices.WindowDecorations.TryActivate(_window!);
+        if (activated)
+        {
+            QueuePendingNativeActivation(this);
+            RequestRenderAndWakeNativeLoop();
+        }
+
+        TraceNativeLoop("native activation requested: accepted=" + activated + ", " + CreateNativeLoopTraceState());
+        return activated;
+    }
+
+    private static void QueuePendingNativeActivation(ProGpuWpfWindowHost host)
+    {
+        lock (s_nativeActivationGate)
+        {
+            var request = new WeakReference<ProGpuWpfWindowHost>(host);
+            s_pendingNativeActivation = request;
+            s_requestedNativeActivation = request;
+        }
+    }
+
+    internal bool HasRequestedNativeActivationForAnotherHost()
+    {
+        lock (s_nativeActivationGate)
+        {
+            return s_requestedNativeActivation != null &&
+                s_requestedNativeActivation.TryGetTarget(out ProGpuWpfWindowHost? requestedHost) &&
+                !ReferenceEquals(requestedHost, this) &&
+                !requestedHost._isDisposed &&
+                !requestedHost._hasNativeWindowCloseStarted;
+        }
+    }
+
+    private static void ApplyPendingNativeActivation(bool consume)
+    {
+        WeakReference<ProGpuWpfWindowHost>? pending;
+        lock (s_nativeActivationGate)
+        {
+            pending = s_pendingNativeActivation;
+            if (consume)
+            {
+                s_pendingNativeActivation = null;
+            }
+        }
+
+        if (pending == null ||
+            !pending.TryGetTarget(out ProGpuWpfWindowHost? host) ||
+            host._isDisposed ||
+            host._hasNativeWindowCloseStarted ||
+            !host._isHostVisible ||
+            host._window == null)
+        {
+            if (consume && pending != null)
+            {
+                ClearRequestedNativeActivation(pending);
+            }
+
+            return;
+        }
+
+        bool activated = host.PlatformServices.WindowDecorations.TryActivate(host._window);
+        if (activated &&
+            !host._isDisposed &&
+            !host._hasNativeWindowCloseStarted)
+        {
+            // The shared GLFW poll can still contain the owner's delayed first-show
+            // activation. Drain the requested window's native focus event before the
+            // WPF dispatcher resumes and observes IsActive.
+            host._window.DoEvents();
+        }
+
+        host.TraceNativeLoop(
+            "deferred native activation requested: accepted=" + activated + ", " +
+            host.CreateNativeLoopTraceState());
+        if (consume)
+        {
+            ClearRequestedNativeActivation(pending);
+        }
+    }
+
+    private static void ClearRequestedNativeActivation(
+        WeakReference<ProGpuWpfWindowHost> request)
+    {
+        lock (s_nativeActivationGate)
+        {
+            if (ReferenceEquals(s_requestedNativeActivation, request))
+            {
+                s_requestedNativeActivation = null;
+            }
+        }
+    }
+
+    private static void ClearNativeActivationForHost(ProGpuWpfWindowHost host)
+    {
+        lock (s_nativeActivationGate)
+        {
+            if (s_pendingNativeActivation != null &&
+                s_pendingNativeActivation.TryGetTarget(out ProGpuWpfWindowHost? pendingHost) &&
+                ReferenceEquals(pendingHost, host))
+            {
+                s_pendingNativeActivation = null;
+            }
+
+            if (s_requestedNativeActivation != null &&
+                s_requestedNativeActivation.TryGetTarget(out ProGpuWpfWindowHost? requestedHost) &&
+                ReferenceEquals(requestedHost, host))
+            {
+                s_requestedNativeActivation = null;
+            }
+        }
+    }
+
     internal void ShowWithoutActivation()
     {
         ThrowIfDisposed();
-        _isHostVisible = true;
+        // Keep WindowOptions.IsVisible false through native creation, then let
+        // the platform service update Silk's visibility state with focus-on-show disabled.
+        _isHostVisible = false;
         EnsureWindow();
         if (!_window!.IsInitialized)
         {
             _window.Initialize();
         }
 
+        _isHostVisible = true;
         ShowNativeWindow(showActivated: false);
 
         RequestRenderAndWakeNativeLoop();
@@ -837,10 +969,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         ThrowIfDisposed();
         ProcessDispatcherQueueCore();
         EnsureWindow();
-        _window!.IsVisible = _isHostVisible;
-        if (!_window.IsInitialized)
+        IWindow window = _window!;
+        if (!window.IsInitialized)
         {
-            _window.Initialize();
+            window.Initialize();
         }
 
         if (!ShouldKeepPortableNativeRunLoopAlive())
@@ -855,19 +987,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
-        _window.DoEvents();
+        window.DoEvents();
         if (!ShouldKeepPortableNativeRunLoopAlive())
         {
             DisposeDeferredNativeWindowIfNeeded();
             return;
         }
 
-        _window.DoUpdate();
+        window.DoUpdate();
         EnsureCompositionTargetLoaded();
         if (ShouldPumpNativeRender())
         {
             NativeRenderPumpCount++;
-            _window.DoRender();
+            window.DoRender();
         }
         else
         {
@@ -987,6 +1119,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         _isDisposed = true;
+        ClearNativeActivationForHost(this);
 
         IWindow? window = _window;
         bool deferNativeWindowDispose = window != null &&
@@ -1600,9 +1733,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         Console.WriteLine("ProGPU WPF native loop: " + message);
     }
 
+    internal void TraceNativeActivation(string message)
+    {
+        TraceNativeLoop($"window={Title}, {message}");
+    }
+
     private string CreateNativeLoopTraceState()
     {
-        return $"disposed={_isDisposed}, closeStarted={_hasNativeWindowCloseStarted}, " +
+        return $"host={GetHashCode():x}, disposed={_isDisposed}, closeStarted={_hasNativeWindowCloseStarted}, " +
             $"hostVisible={_isHostVisible}, hasWindow={_window != null}, " +
             $"ownerActivations={NativeLoopOwnerActivationCount}, ownerDoEvents={NativeLoopOwnerDoEventsCallCount}, " +
             $"ownerIterations={NativeLoopOwnerIterationCount}";
@@ -2452,7 +2590,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnPlatformInputReceived(object? sender, WpfInputEventArgs e)
     {
-        if (_isDisposed || _isInNativeWindowCloseCallback)
+        if (_isDisposed ||
+            _isInNativeWindowCloseCallback ||
+            !IsPlatformEventForCurrentWindow(sender))
         {
             return;
         }
@@ -2709,6 +2849,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnPlatformDragDropReceived(object? sender, WpfDragDropEventArgs e)
     {
+        if (!IsPlatformEventForCurrentWindow(sender))
+        {
+            return;
+        }
+
         DragDropReceived?.Invoke(this, e);
         RequestRenderAndWakeNativeLoop();
     }
@@ -2751,8 +2896,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnPlatformWindowEventReceived(object? sender, WpfWindowEventArgs e)
     {
+        if (!IsPlatformEventForCurrentWindow(sender))
+        {
+            return;
+        }
+
         WindowEventReceived?.Invoke(this, e);
         RequestRenderAndWakeNativeLoop();
+    }
+
+    private bool IsPlatformEventForCurrentWindow(object? sender)
+    {
+        return sender is not IView || ReferenceEquals(sender, _window);
     }
 
     private bool ProcessDispatcherQueueCore()

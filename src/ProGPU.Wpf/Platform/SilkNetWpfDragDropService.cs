@@ -22,7 +22,7 @@ public sealed class SilkNetWpfDragDropService : IWpfDragDropService
     {
         ArgumentNullException.ThrowIfNull(window);
 
-        Action<string[]> fileDrop = files => OnDragDropReceived(CreateFileDropEvent(files));
+        Action<string[]> fileDrop = files => OnDragDropReceived(window, CreateFileDropEvent(files));
         window.FileDrop += fileDrop;
 
         return new DragDropSubscription(window, fileDrop);
@@ -37,9 +37,9 @@ public sealed class SilkNetWpfDragDropService : IWpfDragDropService
             WpfDragDropEffects.Copy);
     }
 
-    private void OnDragDropReceived(WpfDragDropEventArgs args)
+    private void OnDragDropReceived(IWindow window, WpfDragDropEventArgs args)
     {
-        DragDropReceived?.Invoke(this, args);
+        DragDropReceived?.Invoke(window, args);
     }
 
     private sealed class DragDropSubscription : IDisposable

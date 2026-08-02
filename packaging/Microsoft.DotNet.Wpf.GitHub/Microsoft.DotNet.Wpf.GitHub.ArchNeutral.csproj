@@ -9,11 +9,11 @@
     <PackageName>LibreWPF.Transport$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.34</VersionSuffix>
+    <VersionSuffix>preview.35</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF transport package with portable managed presentation assemblies, references, themes, XAML build tasks, and runtime metadata.</PackageDescription>
-    <PackageReleaseNotes>Bounds bitmap, shader-sampler, viewport, custom-font, and visual-replay retention with typed CPU/GPU ownership diagnostics; releases retained scene ownership on disposal; lowers retained-state polling and shader-adapter churn; enables native Cocoa popup windows while retaining the X11/XWayland popup and seven-theme gates; and pins the transport to immutable ProGPU preview.30.</PackageReleaseNotes>
+    <PackageReleaseNotes>Bounds bitmap, shader-sampler, viewport, custom-font, and visual-replay retention with typed CPU/GPU ownership diagnostics; releases retained scene ownership on disposal; suppresses idle static-frame rendering; preserves nonactivating window state and settled popup placement; enables alpha-capable X11 transparent windows and native Cocoa popups; and pins the transport to immutable ProGPU preview.37.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>

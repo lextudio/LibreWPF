@@ -1068,7 +1068,17 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         SilkNetGlfwPlatformSelector.ConfigureBeforeFirstWindow();
         var windowOptions = WindowOptions.Default;
-        windowOptions.API = GraphicsAPI.None;
+        // GLFW's X11 backend always selects the default (usually opaque)
+        // visual for GLFW_NO_API windows. Requesting a client API makes GLFW
+        // choose an XRender/GLX framebuffer configuration with an alpha
+        // channel when TransparentFramebuffer is enabled. WebGPU still owns
+        // presentation; the unused client context is never swapped.
+        windowOptions.API =
+            SilkNetGlfwPlatformSelector.RequiresClientApiForTransparentFramebuffer(
+                _options.TransparentFramebuffer)
+                ? GraphicsAPI.Default
+                : GraphicsAPI.None;
+        windowOptions.ShouldSwapAutomatically = false;
         windowOptions.Size = new Vector2D<int>(_clientWidth, _clientHeight);
         windowOptions.Title = _windowTitle;
         windowOptions.VSync = _options.VSync;

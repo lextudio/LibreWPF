@@ -54,6 +54,46 @@ internal static class SilkNetGlfwPlatformSelector
         }
     }
 
+    internal static bool RequiresClientApiForTransparentFramebuffer(
+        bool transparentFramebuffer)
+    {
+        return RequiresClientApiForTransparentFramebuffer(
+            OperatingSystem.IsLinux(),
+            transparentFramebuffer,
+            Environment.GetEnvironmentVariable("XDG_SESSION_TYPE"),
+            Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"),
+            Environment.GetEnvironmentVariable("DISPLAY"),
+            Environment.GetEnvironmentVariable(LinuxWindowingEnvironmentVariable));
+    }
+
+    internal static bool RequiresClientApiForTransparentFramebuffer(
+        bool isLinux,
+        bool transparentFramebuffer,
+        string? sessionType,
+        string? waylandDisplay,
+        string? x11Display,
+        string? configuredPreference)
+    {
+        if (!isLinux || !transparentFramebuffer)
+        {
+            return false;
+        }
+
+        LinuxGlfwPlatformPreference preference = ResolvePreference(
+            sessionType,
+            waylandDisplay,
+            x11Display,
+            configuredPreference);
+        if (preference != LinuxGlfwPlatformPreference.Any)
+        {
+            return preference == LinuxGlfwPlatformPreference.X11;
+        }
+
+        return string.Equals(sessionType, "x11", StringComparison.OrdinalIgnoreCase)
+            || (string.IsNullOrWhiteSpace(waylandDisplay)
+                && !string.IsNullOrWhiteSpace(x11Display));
+    }
+
     internal static LinuxGlfwPlatformPreference ResolvePreference(
         string? sessionType,
         string? waylandDisplay,

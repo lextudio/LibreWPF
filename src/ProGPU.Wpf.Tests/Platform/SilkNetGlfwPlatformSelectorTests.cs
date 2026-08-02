@@ -28,4 +28,34 @@ public sealed class SilkNetGlfwPlatformSelectorTests
                 x11Display,
                 configuredPreference));
     }
+
+    [Theory]
+    [InlineData(false, true, "x11", null, ":0", null, false)]
+    [InlineData(true, false, "x11", null, ":0", null, false)]
+    [InlineData(true, true, "x11", null, ":0", null, true)]
+    [InlineData(true, true, null, null, ":0", null, true)]
+    [InlineData(true, true, "wayland", "wayland-0", ":0", null, true)]
+    [InlineData(true, true, "wayland", "wayland-0", ":0", "wayland", false)]
+    [InlineData(true, true, "wayland", "wayland-0", null, null, false)]
+    [InlineData(true, true, "x11", null, ":0", "wayland", false)]
+    [InlineData(true, true, "wayland", "wayland-0", null, "x11", true)]
+    public void TransparentX11WindowsRequestAnAlphaCapableClientVisual(
+        bool isLinux,
+        bool transparentFramebuffer,
+        string? sessionType,
+        string? waylandDisplay,
+        string? x11Display,
+        string? configuredPreference,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            SilkNetGlfwPlatformSelector.RequiresClientApiForTransparentFramebuffer(
+                isLinux,
+                transparentFramebuffer,
+                sessionType,
+                waylandDisplay,
+                x11Display,
+                configuredPreference));
+    }
 }

@@ -13,7 +13,7 @@
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF transport package for the portable managed presentation assemblies from the ProGPU port.</PackageDescription>
-    <PackageReleaseNotes>Bounds bitmap, shader-sampler, viewport, custom-font, and visual-replay retention with typed CPU/GPU ownership diagnostics; releases retained scene ownership on disposal; suppresses idle static-frame rendering; preserves nonactivating window state and settled popup placement; enables alpha-capable X11 transparent windows and native Cocoa popups; and pins the transport to immutable ProGPU preview.37.</PackageReleaseNotes>
+    <PackageReleaseNotes>Bounds bitmap, shader-sampler, viewport, custom-font, and visual-replay retention with typed CPU/GPU ownership diagnostics; releases retained scene ownership on disposal; suppresses idle static-frame rendering; preserves nonactivating window state and settled popup placement; enables alpha-capable X11 transparent windows and native Cocoa popups; and pins the transport to immutable ProGPU preview.38.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

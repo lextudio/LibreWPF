@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.35}"
-progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.37}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.38}"
 transport_target_framework="${PROGPU_WPF_TRANSPORT_TARGET_FRAMEWORK:-net10.0}"
 source "${repo_root}/eng/progpu-preview-package-list.sh"
 
@@ -194,9 +194,14 @@ require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.WebGPU\" versi
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.Windowing\" version=\"2.23.0\""
 
 require_nuspec_contains ProGPU.Text "dependency id=\"ProGPU.Text.Shaping\" version=\"${progpu_package_version}\""
+require_nuspec_contains ProGPU.WinUI "dependency id=\"ProGPU.Media\" version=\"${progpu_package_version}\""
+require_nuspec_contains ProGPU.WinUI "dependency id=\"ProGPU.Media.Scene\" version=\"${progpu_package_version}\""
+require_nuspec_contains ProGPU.WinUI "dependency id=\"ProGPU.WinRT\" version=\"${progpu_package_version}\""
+require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Backend.Dawn\" version=\"${progpu_package_version}\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Backend\" version=\"${progpu_package_version}\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Layout\" version=\"${progpu_package_version}\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.Scene\" version=\"${progpu_package_version}\""
+require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.WinRT\" version=\"${progpu_package_version}\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"ProGPU.WinUI\" version=\"${progpu_package_version}\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"Avalonia\" version=\""
 require_nuspec_contains ProGPU.Avalonia "dependency id=\"Silk.NET.WebGPU\" version=\"2.23.0\""

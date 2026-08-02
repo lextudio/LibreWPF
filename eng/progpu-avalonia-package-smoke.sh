@@ -11,9 +11,13 @@ export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
 export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.37}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.38}"
 smoke_root="${repo_root}/artifacts/nuget/ProGPU.Avalonia.PackageSmoke"
 project_dir="${smoke_root}/src"
+restore_fallback_args=()
+if [[ -n "${PROGPU_WPF_NUGET_FALLBACK_PACKAGES:-}" ]]; then
+  restore_fallback_args=(-p:RestoreFallbackFolders="${PROGPU_WPF_NUGET_FALLBACK_PACKAGES}")
+fi
 
 pack_project() {
   local project="$1"
@@ -32,6 +36,10 @@ required_package_exists() {
 ensure_packages() {
   if [[ "${PROGPU_AVALONIA_PACKAGE_SMOKE_REBUILD_PACKAGES:-0}" != "1" ]] &&
      required_package_exists "ProGPU.Avalonia" &&
+     required_package_exists "ProGPU.Backend.Dawn" &&
+     required_package_exists "ProGPU.WinRT" &&
+     required_package_exists "ProGPU.Media" &&
+     required_package_exists "ProGPU.Media.Scene" &&
      required_package_exists "ProGPU.WinUI" &&
      required_package_exists "ProGPU.Virtualization" &&
      required_package_exists "ProGPU.Layout" &&
@@ -47,6 +55,7 @@ ensure_packages() {
   mkdir -p "${package_output}"
   echo "Packing ProGPU Avalonia package smoke dependencies..."
   pack_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj" "ProGPU.Backend"
+  pack_project "external/ProGPU/src/ProGPU.Backend.Dawn/ProGPU.Backend.Dawn.csproj" "ProGPU.Backend.Dawn"
   pack_project "external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj" "ProGPU.Transpiler"
   pack_project "external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj" "ProGPU.Compute"
   pack_project "external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj" "ProGPU.Vector"
@@ -54,6 +63,9 @@ ensure_packages() {
   pack_project "external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj" "ProGPU.Scene"
   pack_project "external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj" "ProGPU.Layout"
   pack_project "external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj" "ProGPU.Virtualization"
+  pack_project "external/ProGPU/src/ProGPU.WinRT/ProGPU.WinRT.csproj" "ProGPU.WinRT"
+  pack_project "external/ProGPU/src/ProGPU.Media/ProGPU.Media.csproj" "ProGPU.Media"
+  pack_project "external/ProGPU/src/ProGPU.Media.Scene/ProGPU.Media.Scene.csproj" "ProGPU.Media.Scene"
   pack_project "external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj" "ProGPU.WinUI"
   pack_project "external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj" "ProGPU.Avalonia"
 }
@@ -163,7 +175,8 @@ cat >"${project_dir}/MainWindow.axaml" <<'XML'
     <progpu:ProGpuHostControl x:Name="Host"
                               Grid.Row="1"
                               CornerRadius="4"
-                              EnableZeroCopy="False" />
+                              EnableSharedTextureMemory="False"
+                              EnableSharedImageReadback="False" />
   </Grid>
 </Window>
 XML
@@ -214,7 +227,12 @@ internal static class Program
 CS
 
 echo "Building external ProGPU Avalonia package smoke..."
-"${dotnet}" build "${project_dir}/ProGPU.Avalonia.PackageSmoke.csproj" -v:minimal /p:UseSharedCompilation=false
+"${dotnet}" build \
+  "${project_dir}/ProGPU.Avalonia.PackageSmoke.csproj" \
+  -v:minimal \
+  /p:UseSharedCompilation=false \
+  /p:UsedAvaloniaProducts= \
+  "${restore_fallback_args[@]}"
 
 assets_file="${project_dir}/obj/project.assets.json"
 if ! grep -q "\"ProGPU.Avalonia/${progpu_package_version}\"" "${assets_file}"; then

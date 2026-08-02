@@ -2,6 +2,7 @@
 
 progpu_preview_runtime_package_ids=(
   ProGPU.Backend
+  ProGPU.Backend.Dawn
   ProGPU.Text.Shaping
   ProGPU.DirectX
   ProGPU.Transpiler
@@ -11,6 +12,9 @@ progpu_preview_runtime_package_ids=(
   ProGPU.Scene
   ProGPU.Layout
   ProGPU.Virtualization
+  ProGPU.WinRT
+  ProGPU.Media
+  ProGPU.Media.Scene
   ProGPU.WinUI
   ProGPU.Avalonia
   ProGPU.SkiaSharp
@@ -32,7 +36,7 @@ progpu_preview_package_version() {
       printf '%s\n' "${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.35}"
       ;;
     *)
-      printf '%s\n' "${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.37}"
+      printf '%s\n' "${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.38}"
       ;;
   esac
 }

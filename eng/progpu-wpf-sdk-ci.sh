@@ -33,10 +33,14 @@ fi
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.35}"
-progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.37}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.38}"
 prepackaged_progpu_dir="${PROGPU_WPF_PREPACKAGED_PROGPU_DIR:-}"
 progpu_package_snapshot_dir="${repo_root}/artifacts/progpu-wpf-sdk-smoke/exact-progpu-packages"
 sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
+dotnet_build_args=()
+if [[ "${PROGPU_WPF_SERIAL_BUILD:-0}" == "1" ]]; then
+  dotnet_build_args=(-m:1 -p:UseSharedCompilation=false)
+fi
 mkdir -p "${package_output}"
 
 clean_preview_package_output() {
@@ -61,6 +65,7 @@ pack_project() {
     -c Release \
     -o "${package_output}" \
     -v:minimal \
+    "${dotnet_build_args[@]}" \
     -p:Version="${package_version}" \
     -p:PackageVersion="${package_version}"
 }
@@ -95,6 +100,7 @@ snapshot_staged_progpu_packages() {
 
   for package_id in \
     ProGPU.Backend \
+    ProGPU.Backend.Dawn \
     ProGPU.Text.Shaping \
     ProGPU.DirectX \
     ProGPU.Transpiler \
@@ -104,6 +110,9 @@ snapshot_staged_progpu_packages() {
     ProGPU.Scene \
     ProGPU.Layout \
     ProGPU.Virtualization \
+    ProGPU.WinRT \
+    ProGPU.Media \
+    ProGPU.Media.Scene \
     ProGPU.WinUI \
     ProGPU.Avalonia \
     ProGPU.SkiaSharp \
@@ -125,7 +134,16 @@ snapshot_staged_progpu_packages() {
 }
 
 run_dotnet() {
-  "${dotnet}" "$@"
+  local command="$1"
+  shift
+  case "${command}" in
+    msbuild|build|run)
+      "${dotnet}" "${command}" "${dotnet_build_args[@]}" "$@"
+      ;;
+    *)
+      "${dotnet}" "${command}" "$@"
+      ;;
+  esac
 }
 
 has_env_or_launchctl() {
@@ -189,6 +207,7 @@ rm -rf "${repo_root}/artifacts/packaging/Release/LibreWPF.Transport"
 
 echo "Staging exact ProGPU packages for the LibreWPF.Sdk feed..."
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj" "ProGPU.Backend"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Backend.Dawn/ProGPU.Backend.Dawn.csproj" "ProGPU.Backend.Dawn"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Text.Shaping/ProGPU.Text.Shaping.csproj" "ProGPU.Text.Shaping"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj" "ProGPU.DirectX"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj" "ProGPU.Transpiler"
@@ -198,6 +217,9 @@ stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj" "ProGPU.Scene"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj" "ProGPU.Layout"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj" "ProGPU.Virtualization"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.WinRT/ProGPU.WinRT.csproj" "ProGPU.WinRT"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Media/ProGPU.Media.csproj" "ProGPU.Media"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Media.Scene/ProGPU.Media.Scene.csproj" "ProGPU.Media.Scene"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.WinUI/ProGPU.WinUI.csproj" "ProGPU.WinUI"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Avalonia/ProGPU.Avalonia.csproj" "ProGPU.Avalonia"
 stage_or_pack_progpu_project "external/ProGPU/src/SkiaSharp/SkiaSharp.csproj" "ProGPU.SkiaSharp"

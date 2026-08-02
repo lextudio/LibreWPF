@@ -36,7 +36,7 @@ progpu_preview_package_version() {
       printf '%s\n' "${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.36}"
       ;;
     *)
-      printf '%s\n' "${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.40}"
+      printf '%s\n' "${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.41}"
       ;;
   esac
 }

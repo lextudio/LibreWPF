@@ -1,4 +1,4 @@
-<Project Sdk="LibreWPF.Sdk/0.1.0-preview.35">
+<Project Sdk="LibreWPF.Sdk/0.1.0-preview.36">
   <PropertyGroup>
     <TargetFramework>$(ProGpuWpfSdkSampleTargetFramework)</TargetFramework>
     <UseWPF>true</UseWPF>

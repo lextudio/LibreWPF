@@ -10,11 +10,11 @@
     <PackageName>LibreWPF.Sdk$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.35</VersionSuffix>
+    <VersionSuffix>preview.36</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF MSBuild SDK for running existing desktop XAML applications on ProGPU/Silk.NET.</PackageDescription>
-    <PackageReleaseNotes>Aligns LibreWPF preview.35 with immutable ProGPU preview.39; fixes X11 transparent visuals, nonactivating native maps, and transient popup placement; ships bounded weak render-resource caches, retained-scene disposal, static-frame render suppression, and typed memory ownership diagnostics; consumes the reflection-free media drawing-state bridge; and retains the Windows OLE clipboard and cross-platform input, popup, theme, WPFGallery, and designer gates.</PackageReleaseNotes>
+    <PackageReleaseNotes>Aligns LibreWPF preview.36 with immutable ProGPU preview.40 and its native SIMD pixel conversion; adds deterministic popup-local diagnostics through the real native input path; fixes X11 transparent visuals, nonactivating native maps, and transient popup placement; ships bounded weak render-resource caches, retained-scene disposal, static-frame render suppression, and typed memory ownership diagnostics; consumes the reflection-free media drawing-state bridge; and retains the Windows OLE clipboard and cross-platform input, popup, theme, WPFGallery, and designer gates.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;silk.net;msbuild-sdk</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

@@ -37,10 +37,6 @@ progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.38}"
 prepackaged_progpu_dir="${PROGPU_WPF_PREPACKAGED_PROGPU_DIR:-}"
 progpu_package_snapshot_dir="${repo_root}/artifacts/progpu-wpf-sdk-smoke/exact-progpu-packages"
 sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
-dotnet_build_args=()
-if [[ "${PROGPU_WPF_SERIAL_BUILD:-0}" == "1" ]]; then
-  dotnet_build_args=(-m:1 -p:UseSharedCompilation=false)
-fi
 mkdir -p "${package_output}"
 
 clean_preview_package_output() {
@@ -61,11 +57,10 @@ pack_project() {
   rm -f \
     "${package_output}/${package_id}.${package_version}.nupkg" \
     "${package_output}/${package_id}.${package_version}.snupkg"
-  "${dotnet}" pack "${repo_root}/${project}" \
+  run_dotnet pack "${repo_root}/${project}" \
     -c Release \
     -o "${package_output}" \
     -v:minimal \
-    "${dotnet_build_args[@]}" \
     -p:Version="${package_version}" \
     -p:PackageVersion="${package_version}"
 }
@@ -137,8 +132,12 @@ run_dotnet() {
   local command="$1"
   shift
   case "${command}" in
-    msbuild|build|run)
-      "${dotnet}" "${command}" "${dotnet_build_args[@]}" "$@"
+    msbuild|build|pack|run)
+      if [[ "${PROGPU_WPF_SERIAL_BUILD:-0}" == "1" ]]; then
+        "${dotnet}" "${command}" -m:1 -p:UseSharedCompilation=false "$@"
+      else
+        "${dotnet}" "${command}" "$@"
+      fi
       ;;
     *)
       "${dotnet}" "${command}" "$@"

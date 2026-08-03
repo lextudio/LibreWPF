@@ -19,7 +19,7 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $Version = "0.1.0-preview.40"
+    $Version = "0.1.0-preview.41"
 }
 
 $PackageDirectory = [System.IO.Path]::GetFullPath($PackageDirectory)

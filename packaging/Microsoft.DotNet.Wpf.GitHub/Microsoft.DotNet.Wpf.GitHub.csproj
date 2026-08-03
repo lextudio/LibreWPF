@@ -9,11 +9,11 @@
     <PackageName>LibreWPF.Transport$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.40</VersionSuffix>
+    <VersionSuffix>preview.41</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF transport package for the portable managed presentation assemblies from the ProGPU port.</PackageDescription>
-    <PackageReleaseNotes>Consumes ProGPU preview.46 retained WebGPU path operations, packed and copy-on-write path geometry, batched stroke expansion, compact paint/effect state, deferred save layers, ordered picture effects, and retained layer textures; preserves typed bitmap-flush clip rebasing and bounded bitmap, shader-sampler, viewport, custom-font, and visual-replay ownership; releases retained scenes on disposal; suppresses idle static-frame rendering; preserves nonactivating window state and settled popup placement; and retains alpha-capable X11 transparent windows and native Cocoa popups.</PackageReleaseNotes>
+    <PackageReleaseNotes>Consumes ProGPU preview.47 retained WebGPU path operations, packed and copy-on-write path geometry, batched stroke expansion, compact paint/effect state, deferred save layers, ordered picture effects, and retained layer textures; preserves typed bitmap-flush clip rebasing and bounded bitmap, shader-sampler, viewport, custom-font, and visual-replay ownership; releases retained scenes on disposal; suppresses idle static-frame rendering; preserves nonactivating window state and settled popup placement; and retains alpha-capable X11 transparent windows and native Cocoa popups.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;xaml;themes;transport</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

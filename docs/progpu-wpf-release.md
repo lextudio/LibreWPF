@@ -32,7 +32,7 @@ projects on the ProGPU/Silk.NET platform.
 ## Local Preview Build
 
 ```bash
-PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.37 PROGPU_WPF_PROGPU_PACKAGE_VERSION=0.1.0-preview.43 ./eng/progpu-wpf-sdk-ci.sh
+PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.38 PROGPU_WPF_PROGPU_PACKAGE_VERSION=0.1.0-preview.44 ./eng/progpu-wpf-sdk-ci.sh
 ```
 
 The SDK CI script stages ProGPU runtime packages, builds the managed WPF transport assemblies,
@@ -63,7 +63,7 @@ Publishing is gated by repository secret `NUGET_API_KEY`.
 Existing WPF applications should be able to switch only the project SDK:
 
 ```xml
-<Project Sdk="LibreWPF.Sdk/0.1.0-preview.37">
+<Project Sdk="LibreWPF.Sdk/0.1.0-preview.38">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>

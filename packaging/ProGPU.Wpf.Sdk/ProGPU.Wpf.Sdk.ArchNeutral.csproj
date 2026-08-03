@@ -10,11 +10,11 @@
     <PackageName>LibreWPF.Sdk$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.37</VersionSuffix>
+    <VersionSuffix>preview.38</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion>$(Version)</PackageVersion>
     <PackageDescription>LibreWPF MSBuild SDK for running existing desktop XAML applications on ProGPU/Silk.NET.</PackageDescription>
-    <PackageReleaseNotes>Aligns LibreWPF preview.37 with immutable ProGPU preview.43; consumes optimized retained canvas-state routing and typed bitmap-flush clip rebasing without adding a bridge workaround; retains typed native activation, popup-local input diagnostics, X11 transparent visuals, bounded weak render-resource caches, retained-scene disposal, static-frame render suppression, and typed memory ownership; and preserves the Windows OLE clipboard and cross-platform input, popup, theme, WPFGallery, and designer gates.</PackageReleaseNotes>
+    <PackageReleaseNotes>Aligns LibreWPF preview.38 with immutable ProGPU preview.44; consumes compact Skia paint, text, path, gradient, and rounded-rectangle hot paths, direct writable-bitmap snapshots, and same-device immutable-image texture leasing without adding a bridge workaround; retains the typed, zero-allocation media drawing-state seam, native activation, popup-local input diagnostics, bounded render-resource ownership, and static-frame render suppression; and preserves the Windows OLE clipboard and cross-platform input, popup, theme, WPFGallery, and designer gates.</PackageReleaseNotes>
     <PackageTags>librewpf;progpu;silk.net;msbuild-sdk</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

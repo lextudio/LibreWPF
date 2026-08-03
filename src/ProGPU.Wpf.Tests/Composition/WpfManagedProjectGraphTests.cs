@@ -1791,7 +1791,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var cmd = diagnosticCommands[commandIndex];", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var commands = ctx.Commands;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var commandCount = commands.Count;", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("var commands = picture.RetainedCommands;\n        for (var commandIndex = 0; commandIndex < commands.Length; commandIndex++)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("var commands = picture.RetainedCommands;\n        PreparePictureLayerCaches(commands);\n        for (var commandIndex = 0; commandIndex < commands.Length; commandIndex++)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var commands = context.Commands;\n            var commandCount = commands.Count;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("var textRecords = staticBuffer.TextRecords;\n            for (var recordIndex = 0; recordIndex < textRecords.Length; recordIndex++)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("staticBuffer.UpdateTextBuffer(CollectionsMarshal.AsSpan(_textVerticesList));", proGpuCompositor, StringComparison.Ordinal);

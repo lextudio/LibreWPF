@@ -6,13 +6,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <TargetFrameworkVersion>10.0</TargetFrameworkVersion>
     <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
-    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.36</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.37</VersionSuffix>
     <Version Condition="'$(Version)' == ''">$(VersionPrefix)-$(VersionSuffix)</Version>
     <PackageVersion Condition="'$(PackageVersion)' == ''">$(Version)</PackageVersion>
     <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.1.0.0</AssemblyVersion>
     <FileVersion Condition="'$(FileVersion)' == ''">0.1.0.0</FileVersion>
     <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(Version)</InformationalVersion>
-    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Aligns LibreWPF preview.36 with immutable ProGPU preview.42 and its native SIMD pixel conversion; adds typed native activation and deterministic popup-local diagnostics through the real native input path; selects alpha-capable X11/XWayland visuals for transparent windows; maps ShowActivated=false windows without stealing focus; stabilizes transient ComboBox and menu placement; stops static-frame GPU rendering and bounds retained render-resource caches; consumes the typed, reflection-free ProGPU media drawing-state bridge; and retains native Cocoa popups, Windows OLE clipboard, seven-theme, WPFGallery, and SharpDevelop designer acceptance gates.</PackageReleaseNotes>
+    <PackageReleaseNotes Condition="'$(PackageReleaseNotes)' == ''">Aligns LibreWPF preview.37 with immutable ProGPU preview.43; consumes optimized retained canvas-state routing and typed bitmap-flush clip rebasing without adding a bridge workaround; preserves the typed, reflection-free ProGPU media drawing-state bridge, native activation, deterministic popup-local input, transparent X11/XWayland visuals, and nonactivating windows; bounds retained render-resource caches and suppresses static-frame GPU rendering; and retains native Cocoa popups, Windows OLE clipboard, seven-theme, WPFGallery, and SharpDevelop designer acceptance gates.</PackageReleaseNotes>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

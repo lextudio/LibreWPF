@@ -10,8 +10,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <LibreWpfSdkSwitchPackageVersion>0.1.0-preview.36</LibreWpfSdkSwitchPackageVersion>
-    <ProGpuWpfSdkSwitchPackageVersion>0.1.0-preview.42</ProGpuWpfSdkSwitchPackageVersion>
+    <LibreWpfSdkSwitchPackageVersion>0.1.0-preview.37</LibreWpfSdkSwitchPackageVersion>
+    <ProGpuWpfSdkSwitchPackageVersion>0.1.0-preview.43</ProGpuWpfSdkSwitchPackageVersion>
     <RestorePackagesPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke'))</RestorePackagesPath>
     <RestoreForce>true</RestoreForce>
     <RestoreForceEvaluate>true</RestoreForceEvaluate>

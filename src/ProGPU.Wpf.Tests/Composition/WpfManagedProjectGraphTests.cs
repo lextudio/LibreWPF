@@ -18162,6 +18162,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK ProGPU WPF host window border method parameter count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Action<object, object, object>(recorder.SetWindowBorder)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Func<object, IntPtr>(recorder.GetHandle)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("null  // requestActivation", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("public IntPtr GetHandle(object activation)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetProperty(typedActivation.PresentationSource, \"Handle\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("activated SDK window live resize mode", runtimeHarnessProgram, StringComparison.Ordinal);

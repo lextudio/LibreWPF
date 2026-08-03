@@ -13,8 +13,8 @@ namespace ProGPU.Wpf.SdkSwitchSmoke;
 
 public partial class App : Application
 {
-    private const string LibreWpfPackageVersion = "0.1.0-preview.38";
-    private const string ProGpuPackageVersion = "0.1.0-preview.44";
+    private const string LibreWpfPackageVersion = "0.1.0-preview.39";
+    private const string ProGpuPackageVersion = "0.1.0-preview.45";
 
     public int StartupEventCount { get; private set; }
 

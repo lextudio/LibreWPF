@@ -32,7 +32,10 @@ public sealed class WpfPortableNativeDrawingContextStateTests
         Assert.DoesNotContain("_baseTransform = Matrix3x2.Identity;", graphics, StringComparison.Ordinal);
 
         Assert.Contains("drawingContext is IPortableNativeDrawingContextStateSource", host, StringComparison.Ordinal);
-        Assert.Contains("state.NativeDrawingContext is ProGPU.Scene.DrawingContext", host, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Scene.ProGpuDrawingContextState.TryCreate(", host, StringComparison.Ordinal);
+        Assert.Contains("nativeContext = state.DrawingContext;", host, StringComparison.Ordinal);
+        Assert.Contains("outerTransform = state.OuterTransform;", host, StringComparison.Ordinal);
+        Assert.DoesNotContain("state.NativeDrawingContext is ProGPU.Scene.DrawingContext", host, StringComparison.Ordinal);
         Assert.Contains("Matrix4x4 clientTransform = Matrix4x4.CreateTranslation", host, StringComparison.Ordinal);
         Assert.Contains("* outerTransform;", host, StringComparison.Ordinal);
         Assert.Contains("FromProGpuDrawingContext(nativeContext, clientTransform)", host, StringComparison.Ordinal);

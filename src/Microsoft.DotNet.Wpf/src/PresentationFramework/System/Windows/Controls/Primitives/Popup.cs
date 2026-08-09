@@ -2855,10 +2855,26 @@ namespace System.Windows.Controls.Primitives
         {
             if (!OperatingSystem.IsWindows())
             {
-                // Portable popups share the owner's compositor surface rather than independent
-                // native screen windows.  Keep placement and edge nudging inside that client area.
-                Rect sourceBounds = _secHelper.GetParentWindowRect();
-                return !sourceBounds.IsEmpty ? sourceBounds : boundingBox;
+                // Native transient popups are independent windows that can extend well
+                // past the owner's own client area (a cascading submenu routinely does),
+                // but this platform has no seam yet for the real monitor/work-area bounds
+                // a popup is opening on. Using the owner window's client rect here nudges
+                // and clamps every popup as if the owner window were the whole screen: a
+                // menu wider than the owner window gets pushed left of where it should
+                // render, and each further nested submenu is nudged again on top of that,
+                // compounding until it lands back on top of its own parent's bounds -
+                // which is what let the mouse hovering into a deeply nested popup resolve
+                // hit-testing against the wrong (overlapping) popup and close the chain.
+                // Report a generous bound around the placement point instead so placement
+                // and size restriction stop fighting the owner window's size; this trades
+                // away edge-of-screen avoidance for portable popups, which this rect could
+                // not provide correctly anyway.
+                const double GenerousBoundHalfExtent = 4096.0;
+                return new Rect(
+                    p.X - GenerousBoundHalfExtent,
+                    p.Y - GenerousBoundHalfExtent,
+                    GenerousBoundHalfExtent * 2.0,
+                    GenerousBoundHalfExtent * 2.0);
             }
 
             if (_secHelper.IsChildPopup)

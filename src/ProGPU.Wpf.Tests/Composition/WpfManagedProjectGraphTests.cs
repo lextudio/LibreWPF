@@ -12884,7 +12884,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<add key=\"MvpAppSetting\" value=\"MVP app config value\" />", mvpAppConfig, StringComparison.Ordinal);
         Assert.Contains("<add key=\"MvpNumericSetting\" value=\"73\" />", mvpAppConfig, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"Resources/Theme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
-        Assert.Contains("<ResourceDictionary Source=\"/PresentationFramework.Fluent;component/Themes/Fluent.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
+        // Themes/Fluent.xaml is the System-ThemeMode dictionary: it carries the control
+        // templates but none of the color resources, so merging it directly leaves every
+        // state brush (hover, selection, focus) unresolved. ThemeMode makes ThemeManager
+        // merge the matching color dictionary alongside it.
+        Assert.Contains("ThemeMode=\"System\"", mvpAppXaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ResourceDictionary Source=\"/PresentationFramework.Fluent;component/Themes/Fluent.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"/ProGPU.Wpf.MvpApp;component/Resources/ComponentTheme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpComponentPackText\"", mvpComponentThemeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpComponentPackBrush\"", mvpComponentThemeXaml, StringComparison.Ordinal);

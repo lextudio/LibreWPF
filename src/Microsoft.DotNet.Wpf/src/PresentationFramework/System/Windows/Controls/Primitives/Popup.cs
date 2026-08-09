@@ -2808,8 +2808,18 @@ namespace System.Windows.Controls.Primitives
             Size limitSize;
             GetPopupRootLimits(out targetBounds, out screenBounds, out limitSize);
 
-            // Convert from popup's space to screen space
-            desiredSize = (Size)_secHelper.GetTransformToDevice().Transform((Point)desiredSize);
+            // GetScreenBounds returns device pixels from GetMonitorInfo on Windows, but the
+            // portable branch reports the owner surface in logical units, and the interest
+            // points feeding targetBounds/limitSize are logical there too. Converting the
+            // desired size to device space as well would compare 2x Retina pixels against
+            // logical limits and clamp every popup to roughly half the room it really has,
+            // which silently clipped tall menus and engaged their scroll viewer.
+            bool boundsAreDeviceSpace = OperatingSystem.IsWindows();
+            if (boundsAreDeviceSpace)
+            {
+                // Convert from popup's space to screen space
+                desiredSize = (Size)_secHelper.GetTransformToDevice().Transform((Point)desiredSize);
+            }
 
             desiredSize.Width = Math.Min(desiredSize.Width, screenBounds.Width);
             desiredSize.Width = Math.Min(desiredSize.Width, limitSize.Width);
@@ -2820,8 +2830,11 @@ namespace System.Windows.Controls.Primitives
             desiredSize.Height = Math.Min(desiredSize.Height, maxHeight);
             desiredSize.Height = Math.Min(desiredSize.Height, limitSize.Height);
 
-            // Convert back from screen space to popup's space
-            desiredSize = (Size)_secHelper.GetTransformFromDevice().Transform((Point)desiredSize);
+            if (boundsAreDeviceSpace)
+            {
+                // Convert back from screen space to popup's space
+                desiredSize = (Size)_secHelper.GetTransformFromDevice().Transform((Point)desiredSize);
+            }
 
             return desiredSize;
         }

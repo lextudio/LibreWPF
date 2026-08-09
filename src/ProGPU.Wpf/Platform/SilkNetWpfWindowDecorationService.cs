@@ -111,6 +111,16 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         return false;
     }
 
+    public bool TryDisablePopupShadow(object popupWindow)
+    {
+        if (popupWindow is not IView popupView || !OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        return TryDisableCocoaWindowShadow(GetCocoaWindow(popupView));
+    }
+
     private static INativeWindow? GetNativeWindow(IView view)
     {
         if (view is not INativeWindowSource nativeWindowSource)
@@ -394,6 +404,46 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
 
             ObjCMsgSend(popupWindow, setHidesOnDeactivate, false);
             ObjCMsgSend(ownerWindow, addChildWindow, popupWindow, 1);
+            return true;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    // A popup surface only carries the menu chrome WPF draws itself, so AppKit's
+    // window shadow would sit outside that chrome as a second, softer frame.
+    // invalidateShadow is required because AppKit keeps the shadow it already
+    // computed for the ordered window.
+    [SupportedOSPlatform("macos")]
+    private static bool TryDisableCocoaWindowShadow(IntPtr nsWindow)
+    {
+        if (nsWindow == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            IntPtr setHasShadow = SelRegisterName("setHasShadow:");
+            if (setHasShadow == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            ObjCMsgSend(nsWindow, setHasShadow, false);
+
+            IntPtr invalidateShadow = SelRegisterName("invalidateShadow");
+            if (invalidateShadow != IntPtr.Zero)
+            {
+                ObjCMsgSend(nsWindow, invalidateShadow);
+            }
+
             return true;
         }
         catch (DllNotFoundException)

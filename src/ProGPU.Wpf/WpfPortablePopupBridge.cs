@@ -11,6 +11,15 @@ namespace System.Windows.Media.ProGPU;
 internal sealed class WpfPortablePopupBridge : IDisposable
 {
     private const int HitTestOwnerBufferCapacity = 64;
+
+    // GLFW reports cursor positions relative to the window that received the event,
+    // so a native popup window's pointer coordinates are already popup-local on every
+    // platform that uses native transient popups (Cocoa and X11 alike). Treating Cocoa
+    // as owner-relative subtracted the popup origin a second time and pushed every menu
+    // pointer event outside the popup bounds, which silently disabled hover, click, and
+    // keyboard-driven selection for macOS menus.
+    private const bool NativePointerCoordinatesAreOwnerRelative = false;
+
     private const string TracePopupEnvironmentVariable = "PROGPU_WPF_TRACE_POPUP";
     private static readonly bool s_tracePopup = IsTraceEnabled(TracePopupEnvironmentVariable);
 
@@ -177,7 +186,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         }
 
         WpfInputEventArgs nativeInput = CreateNativeDiagnosticInput(
-            OperatingSystem.IsMacOS(),
+            NativePointerCoordinatesAreOwnerRelative,
             input,
             LogicalX,
             LogicalY);
@@ -536,7 +545,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         double localY = input.Y;
         if (IsPointerInput(input.Kind) &&
             !TryNormalizeNativePointerCoordinates(
-                OperatingSystem.IsMacOS(),
+                NativePointerCoordinatesAreOwnerRelative,
                 input.X,
                 input.Y,
                 LogicalX,
@@ -565,10 +574,10 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         out double localX,
         out double localY)
     {
-        // Cocoa/GLFW reports transient child-window pointer coordinates in the
-        // owner client's logical coordinate space. X11 reports popup-local points.
-        // Keep the conversion primitive and allocation-free because every popup
-        // pointer event passes through it.
+        // Native transient popup windows report popup-local logical points, so the
+        // owner origin is only subtracted for hosts that genuinely deliver
+        // owner-relative coordinates. Keep the conversion primitive and
+        // allocation-free because every popup pointer event passes through it.
         localX = coordinatesAreOwnerRelative
             ? inputX - popupOwnerX
             : inputX;

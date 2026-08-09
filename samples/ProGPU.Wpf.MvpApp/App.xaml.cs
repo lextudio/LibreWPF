@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using LeXtudio.DevFlow.Agent.Wpf;
 
 namespace ProGPU.Wpf.MvpApp;
 
@@ -36,6 +37,19 @@ public partial class App : Application
         }
 
         base.OnStartup(e);
+        FlatMenuChrome.Install();
+        TryStartDevFlowAgent();
+    }
+
+    // Opt-in so normal runs and the packaged SDK smoke tests do not open a port.
+    private void TryStartDevFlowAgent()
+    {
+        if (Environment.GetEnvironmentVariable("MVP_DEVFLOW") != "1")
+        {
+            return;
+        }
+
+        this.AddWpfDevFlowAgent();
     }
 
     private void OnAppStartup(object sender, StartupEventArgs e)

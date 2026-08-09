@@ -172,6 +172,13 @@ public interface IWpfWindowDecorationService
     {
         return false;
     }
+
+    // Applied after the popup is ordered on screen: AppKit recomputes a window's
+    // shadow when it is shown, so clearing it at creation time does not stick.
+    bool TryDisablePopupShadow(object popupWindow)
+    {
+        return false;
+    }
 }
 
 public interface IWpfWindowEventService

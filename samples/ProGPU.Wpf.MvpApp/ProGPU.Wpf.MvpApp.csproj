@@ -5,6 +5,9 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="LeXtudio.DevFlow.Agent.LibreWpf" Version="0.2.2" />
+  </ItemGroup>
+  <ItemGroup>
     <Resource Include="Assets/MvpResource.txt" />
     <Content Include="Assets/MvpContent.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

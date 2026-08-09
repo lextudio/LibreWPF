@@ -259,6 +259,10 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         // owner/type hints exist and immediately before the nonactivating map.
         _popupHost.SetPosition(_nativeLogicalX, _nativeLogicalY);
         _popupHost.ShowWithoutActivation();
+        if (_popupHost.SilkWindow is { } popupWindow)
+        {
+            _ownerHost.PlatformServices.WindowDecorations.TryDisablePopupShadow(popupWindow);
+        }
     }
 
     public void Hide()

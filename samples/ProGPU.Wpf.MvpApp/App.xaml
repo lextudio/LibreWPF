@@ -5,11 +5,11 @@
     Startup="OnAppStartup"
     Exit="OnAppExit"
     ShutdownMode="OnMainWindowClose"
-    StartupUri="MainWindow.xaml">
+    StartupUri="MainWindow.xaml"
+    ThemeMode="System">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
                 <ResourceDictionary Source="Resources/Theme.xaml" />
                 <ResourceDictionary Source="/ProGPU.Wpf.MvpApp;component/Resources/ComponentTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>

@@ -21,6 +21,9 @@
     <ProGpuWpfSystemWindowsExtensionsVersion Condition="'$(ProGpuWpfSystemWindowsExtensionsVersion)' == ''">11.0.0-preview.5.26302.115</ProGpuWpfSystemWindowsExtensionsVersion>
     <ProGpuWpfClearMutablePackageOutputs Condition="'$(ProGpuWpfClearMutablePackageOutputs)' == '' And ('$([System.String]::Copy(`$(ProGpuWpfPackageVersion)`).Contains(`-dev`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuWpfPackageVersion)`).Contains(`-preview`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuWpfManagedPackageVersion)`).Contains(`-dev`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuWpfManagedPackageVersion)`).Contains(`-preview`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuPackageVersion)`).Contains(`-dev`))' == 'True' Or '$([System.String]::Copy(`$(ProGpuPackageVersion)`).Contains(`-preview`))' == 'True')">true</ProGpuWpfClearMutablePackageOutputs>
     <ProGpuWpfClearMutablePackageOutputs Condition="'$(ProGpuWpfClearMutablePackageOutputs)' == ''">false</ProGpuWpfClearMutablePackageOutputs>
+    <!-- Applications that provide one shared runtime payload can disable the SDK's late,
+         per-project runtime recopy while retaining the normal MSBuild copy-local pipeline. -->
+    <ProGpuWpfCopyPackageRuntimeAssets Condition="'$(ProGpuWpfCopyPackageRuntimeAssets)' == ''">true</ProGpuWpfCopyPackageRuntimeAssets>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ManagePackageVersionsCentrally)' != 'true'">
@@ -304,7 +307,7 @@
   <Target Name="_ProGpuWpfSdkCopyPackageRuntimeAssets"
           DependsOnTargets="ResolveLockFileCopyLocalFiles"
           AfterTargets="CopyFilesToOutputDirectory"
-          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '@(RuntimeCopyLocalItems)' != ''">
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfCopyPackageRuntimeAssets)' == 'true' And '@(RuntimeCopyLocalItems)' != ''">
     <Copy SourceFiles="@(RuntimeCopyLocalItems)"
           DestinationFiles="@(RuntimeCopyLocalItems->'$(TargetDir)%(DestinationSubDirectory)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
@@ -373,7 +376,7 @@
           DependsOnTargets="ResolveLockFileCopyLocalFiles;ResolveAssemblyReferences"
           AfterTargets="CopyFilesToOutputDirectory"
           BeforeTargets="_ProGpuWpfSdkCopyPackageRuntimeAssets"
-          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfCopyPackageRuntimeAssets)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
     <ItemGroup>
       <_ProGpuWpfManagedTransportReferenceAnchor
         Include="@(ReferencePath)"
@@ -409,7 +412,7 @@
   <Target Name="_ProGpuWpfSdkCopyPortableWinFormsCompatRuntimeAssets"
           DependsOnTargets="ResolveLockFileCopyLocalFiles"
           AfterTargets="_ProGpuWpfSdkCopyPackageRuntimeAssets"
-          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfUsePortableWinFormsCompat)' == 'true'">
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfCopyPackageRuntimeAssets)' == 'true' And '$(ProGpuWpfUsePortableWinFormsCompat)' == 'true'">
     <PropertyGroup>
       <_ProGpuWpfNuGetPackagesEnvironment>$([System.Environment]::GetEnvironmentVariable('NUGET_PACKAGES'))</_ProGpuWpfNuGetPackagesEnvironment>
       <_ProGpuWpfPackageRoot Condition="'$(NuGetPackageRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_ProGpuWpfPackageRoot>

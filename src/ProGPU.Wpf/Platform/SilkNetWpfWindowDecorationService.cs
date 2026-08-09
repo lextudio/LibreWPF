@@ -174,6 +174,26 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         return false;
     }
 
+    public bool TryDisablePopupShadow(object popupWindow)
+    {
+        if (popupWindow is not IView popupView || !OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        return TryDisableCocoaWindowShadow(GetCocoaWindow(popupView));
+    }
+
+    public bool TryEnableTransparentBackground(object window)
+    {
+        if (window is not IView view || !OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        return TryEnableCocoaWindowTransparency(GetCocoaWindow(view));
+    }
+
     private static INativeWindow? GetNativeWindow(IView view)
     {
         if (view is not INativeWindowSource nativeWindowSource)

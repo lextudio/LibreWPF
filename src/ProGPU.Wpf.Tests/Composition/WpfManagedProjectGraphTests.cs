@@ -8983,8 +8983,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void ForceMsaaToUiaBridgeWindows(PopupRoot popupRoot)", popup, StringComparison.Ordinal);
         AssertGuardBefore(popup, "if (!OperatingSystem.IsWindows())\n                {\n                    return;\n                }\n\n                ForceMsaaToUiaBridgeWindows(popupRoot);", "IAccessible acc");
         AssertGuardBefore(popup, "if (!OperatingSystem.IsWindows())\n                {\n                    if (TryCreatePortablePopupSource", "HwndSource newWindow = new HwndSource(param)");
-        AssertGuardBefore(popup, "if (!OperatingSystem.IsWindows())\n            {\n                // Portable popups share the owner's compositor surface", "SafeNativeMethods.MonitorFromRect");
-        Assert.Contains("Rect sourceBounds = _secHelper.GetParentWindowRect();", popup, StringComparison.Ordinal);
+        // The owner window's client rect is not a usable stand-in for the real screen: a
+        // cascading submenu routinely extends past its owner, and clamping/nudging every
+        // popup as if the owner window were the whole screen compounds across nesting
+        // levels until a deep submenu lands back on top of its own parent's bounds.
+        AssertGuardBefore(popup, "if (!OperatingSystem.IsWindows())\n            {\n                // Native transient popups are independent windows", "SafeNativeMethods.MonitorFromRect");
+        Assert.Contains("const double GenerousBoundHalfExtent = 4096.0;", popup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Rect sourceBounds = _secHelper.GetParentWindowRect();", popup, StringComparison.Ordinal);
         Assert.DoesNotContain("GetPortablePrimaryScreenBounds", popup, StringComparison.Ordinal);
         AssertGuardBefore(popup, "if (IsPerMonitorDpiScalingActive && OperatingSystem.IsWindows())", "SafeNativeMethods.MonitorFromPoint");
         Assert.Contains("if (!OperatingSystem.IsWindows())\n                {\n                    if (position)", popup, StringComparison.Ordinal);

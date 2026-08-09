@@ -40,6 +40,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private readonly ProGpuWpfWindowOptions _options;
     private IWindow? _window;
+    private bool _hasAppliedTransparentBackground;
     private ProGpuWpfCompositionTarget? _target;
     private ProGpuDirectXDevice? _directXDevice;
     private IDisposable? _inputSubscription;
@@ -1241,6 +1242,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         _window = Window.Create(windowOptions);
+        _hasAppliedTransparentBackground = false;
         _windowController = new SilkWindowController(_window);
         ApplyWindowBorderToController();
         _hasNativeWindowCloseStarted = false;
@@ -1255,7 +1257,25 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private void OnLoad()
     {
         _windowController?.Attach();
+        ApplyTransparentBackgroundToNativeWindow();
         EnsureCompositionTargetLoaded();
+    }
+
+    // Must run after the native window exists: Window.Create() only builds the managed wrapper, so
+    // the platform handle this needs (NSWindow on macOS) is null until Initialize()/Load. A
+    // transparent framebuffer alone still leaves the native window painting its own backdrop -
+    // on macOS the default is an opaque light gray - so fully transparent pixels read as a solid
+    // panel. AvalonDock's drop-target compass is the visible symptom: it covered the whole
+    // docking layout instead of floating above it.
+    private void ApplyTransparentBackgroundToNativeWindow()
+    {
+        if (!_options.TransparentFramebuffer || _window == null || _hasAppliedTransparentBackground)
+        {
+            return;
+        }
+
+        _hasAppliedTransparentBackground =
+            PlatformServices.WindowDecorations.TryEnableTransparentBackground(_window);
     }
 
     private bool EnsureCompositionTargetLoaded()
@@ -1298,6 +1318,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             {
                 target.Compositor.ClearColor = System.Numerics.Vector4.Zero;
             }
+
 
             if (_isDisposed || _hasNativeWindowCloseStarted || !ReferenceEquals(window, _window))
             {

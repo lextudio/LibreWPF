@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 
 namespace System.Windows
@@ -58,6 +60,9 @@ namespace System.Windows
         /// <see cref="UIElement"/> with a live root visual (mirrors the old fail-closed behavior
         /// for every case this doesn't (yet) support).
         /// </summary>
+        [ThreadStatic]
+        private static bool s_isRunning;
+
         internal static DragDropEffects Run(DependencyObject dragSource, DataObject dataObject, DragDropEffects allowedEffects)
         {
             if (dragSource is not UIElement dragElement)
@@ -66,7 +71,27 @@ namespace System.Windows
             if (PresentationSource.CriticalFromVisual(dragSource) is not PortablePresentationSource source || source.RootVisual == null)
                 return DragDropEffects.None;
 
-            return new PortableDragDropOperation(dragElement, source, dataObject, allowedEffects).RunCore();
+            // Once a drag is under way, NativeInputPump (see Dispatcher.NativeInputPump's doc
+            // comment) keeps routing every subsequent native mouse-move through WPF's normal
+            // event system while nested inside this same operation's blocking wait - which means
+            // any OTHER handler still subscribed to the drag source's PreviewMouseMove (e.g. the
+            // very code that called DoDragDrop in the first place, like WpfToolbox's own
+            // OnPreviewMouseMove, which has no "already dragging" guard because real OLE's native
+            // modal loop would never let a second MouseMove reach it mid-drag) sees that event
+            // too and calls DoDragDrop again, recursively, before this operation ever gets to
+            // process it itself. Fail the reentrant call closed instead of nesting indefinitely.
+            if (s_isRunning)
+                return DragDropEffects.None;
+
+            s_isRunning = true;
+            try
+            {
+                return new PortableDragDropOperation(dragElement, source, dataObject, allowedEffects).RunCore();
+            }
+            finally
+            {
+                s_isRunning = false;
+            }
         }
 
         private DragDropEffects RunCore()
@@ -188,15 +213,47 @@ namespace System.Windows
 
         // Mirrors DragDrop.GetCurrentTarget's single-hit check (no ancestor walk) so a portable
         // drag targets exactly what a real Windows/OLE drag would - see OleDropTarget.GetCurrentTarget.
+        // Real OLE's GetCurrentTarget checks only the immediate hit, with no ancestor walk - that
+        // works on Windows because AllowDrop-enabled elements there are typically reached via a
+        // registered-HWND-wide hit test that lands on them directly. Here, the immediate hit is
+        // very often an adorner (resize/move handles, which sit on top of everything precisely so
+        // they ARE hit first) or the design surface's own root content element, neither of which
+        // is AllowDrop - the actual AllowDrop element (DesignPanel's EatAllHitTestRequests overlay,
+        // or an ancestor Panel a real click-then-hit-test sequence would normally reach once
+        // CreateComponentTool's own DragOver handler flips IsAdornerLayerHitTestVisible) is further
+        // up the tree. Walk up to find it instead of giving up on the first miss.
+        //
+        // Stop at the FIRST (innermost) AllowDrop match, matching real OLE's GetCurrentTarget as
+        // closely as this can - an "outermost" walk was tried and made things worse (walked past
+        // the real target, e.g. DesignPanel, to something even further out with no Drop
+        // subscriber either). Some intermediate elements can still end up AllowDrop=true for
+        // reasons unrelated to actually handling Drop (e.g. WpfDesign's PanelMoveAdorner, via a
+        // generic shared style) - if that turns out to matter in practice, the fix belongs at the
+        // caller/coordinate-choice level (pick a drop point that avoids hitting such an element),
+        // not by guessing at tree depth here.
         private static DependencyObject ResolveDropTarget(DependencyObject hit)
         {
-            return hit switch
+            for (DependencyObject current = hit; current != null; current = GetVisualOrLogicalParent(current))
             {
-                UIElement { AllowDrop: true } uiElement => uiElement,
-                ContentElement { AllowDrop: true } contentElement => contentElement,
-                UIElement3D { AllowDrop: true } uiElement3D => uiElement3D,
-                _ => null
-            };
+                switch (current)
+                {
+                    case UIElement { AllowDrop: true } uiElement:
+                        return uiElement;
+                    case ContentElement { AllowDrop: true } contentElement:
+                        return contentElement;
+                    case UIElement3D { AllowDrop: true } uiElement3D:
+                        return uiElement3D;
+                }
+            }
+            return null;
+        }
+
+        private static DependencyObject GetVisualOrLogicalParent(DependencyObject current)
+        {
+            // LogicalTreeHelper lives in PresentationFramework, not reachable from here - a
+            // visual-tree-only walk is enough for design-surface hit testing (adorners and
+            // DesignPanel's own overlay are all plain Visuals).
+            return current is Visual || current is Visual3D ? VisualTreeHelper.GetParent(current) : null;
         }
 
         private static DragDropKeyStates GetCurrentKeyStates()

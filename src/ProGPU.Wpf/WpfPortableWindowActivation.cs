@@ -177,6 +177,35 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return false;
     }
 
+    /// <summary>
+    /// Every currently-tracked window's host, for a caller that needs to pump native events
+    /// across all of them (e.g. wiring up System.Windows.Threading.Dispatcher.NativeInputPump -
+    /// see that property's doc comment in WindowsBase for why a nested Dispatcher.PushFrame needs
+    /// this). Deliberately takes no dependency on System.Windows.Threading itself: this project
+    /// only sees a minimal WPF-shaped compile-time stub (external/ProGPU/src/WindowsBase), not the
+    /// real Microsoft.DotNet.Wpf-based WindowsBase this actually runs against - the caller wiring
+    /// Dispatcher.NativeInputPump has to be a project that references the real one instead.
+    /// </summary>
+    public static ProGpuWpfWindowHost[] GetActiveHosts()
+    {
+        WeakReference<WpfPortableWindowActivation>[] activations;
+        lock (s_activeActivationsByHandleLock)
+        {
+            activations = new WeakReference<WpfPortableWindowActivation>[s_activeActivationsByHandle.Count];
+            s_activeActivationsByHandle.Values.CopyTo(activations, 0);
+        }
+
+        var hosts = new List<ProGpuWpfWindowHost>(activations.Length);
+        foreach (var weakActivation in activations)
+        {
+            if (weakActivation.TryGetTarget(out var activation) && !activation._isDisposed)
+            {
+                hosts.Add(activation.Host);
+            }
+        }
+        return hosts.ToArray();
+    }
+
     internal static bool TryGetActiveHost(object? window, out ProGpuWpfWindowHost? host)
     {
         if (window != null &&

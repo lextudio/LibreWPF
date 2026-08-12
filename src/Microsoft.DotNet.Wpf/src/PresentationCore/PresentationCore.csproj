@@ -301,6 +301,7 @@
              Condition="'$(OS)' != 'Windows_NT'" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\DashPattern.cs"
              Link="MS\Internal\Media\ProGPU\DashPattern.cs" />
+    <Compile Include="MS\Internal\Media\ProGPU\ProGpuVectorStrokeContracts.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\BoundsHitTesting.cs"
              Link="MS\Internal\Media\ProGPU\BoundsHitTesting.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\LineGeometryHitTesting.cs"

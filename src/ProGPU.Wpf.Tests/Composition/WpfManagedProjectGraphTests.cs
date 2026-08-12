@@ -7993,6 +7993,16 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "PresentationCore",
             "PresentationCore.csproj"));
+        var proGpuVectorStrokeContracts = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "Internal",
+            "Media",
+            "ProGPU",
+            "ProGpuVectorStrokeContracts.cs"));
         var geometry = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -8862,6 +8872,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TransformManagedPoint", geometry, StringComparison.Ordinal);
         Assert.Contains("PROGPU_VECTOR_INTERNAL", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\DashPattern.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains(@"MS\Internal\Media\ProGPU\ProGpuVectorStrokeContracts.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains("internal enum PenLineCap", proGpuVectorStrokeContracts, StringComparison.Ordinal);
+        Assert.Contains("Flat = 0", proGpuVectorStrokeContracts, StringComparison.Ordinal);
+        Assert.Contains("Square = 1", proGpuVectorStrokeContracts, StringComparison.Ordinal);
+        Assert.Contains("Round = 2", proGpuVectorStrokeContracts, StringComparison.Ordinal);
+        Assert.Contains("Triangle = 3", proGpuVectorStrokeContracts, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\ArcSegmentGeometry.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\PathGeometry.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\TransformMetrics.cs", presentationCoreProject, StringComparison.Ordinal);

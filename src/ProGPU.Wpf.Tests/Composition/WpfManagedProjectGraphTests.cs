@@ -14520,6 +14520,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<_ProGpuWpfManagedTransportRuntimeAsset Include=\"$(_ProGpuWpfManagedTransportRuntimeRoot)*.dll\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("DestinationFiles=\"@(_ProGpuWpfManagedTransportRuntimeAsset->'$(TargetDir)%(Filename)%(Extension)')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("package mode could not locate the managed transport runtime", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("_ProGpuWpfSdkPublishManagedTransportRuntimeAssets", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("DependsOnTargets=\"_ProGpuWpfSdkPreserveManagedTransportRuntimeAssetsInDependencyFile\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("AfterTargets=\"ComputeFilesToPublish\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<ResolvedFileToPublish", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("Include=\"@(_ProGpuWpfManagedTransportDependencyRuntimeAsset)\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<RelativePath>%(Filename)%(Extension)</RelativePath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<ExcludeFromSingleFile>false</ExcludeFromSingleFile>", portableTargets, StringComparison.Ordinal);
         Assert.True(
             portableTargets.IndexOf("'$(RestorePackagesPath)' != ''", StringComparison.Ordinal)
                 < portableTargets.IndexOf("'$(NuGetPackageRoot)' != ''", StringComparison.Ordinal),

@@ -406,6 +406,29 @@
           SkipUnchangedFiles="false" />
   </Target>
 
+  <!--
+    Publish computes its own file list and does not consume the build-output
+    copy target above. NuGet also suppresses framework-conflict assemblies
+    from the normal publish list when a RID-specific PresentationCore asset is
+    selected. Publish the remaining managed LibreWPF transport explicitly so
+    folder, self-contained, and single-file profiles keep the same complete
+    framework payload recorded in the dependency file.
+  -->
+  <Target Name="_ProGpuWpfSdkPublishManagedTransportRuntimeAssets"
+          DependsOnTargets="_ProGpuWpfSdkPreserveManagedTransportRuntimeAssetsInDependencyFile"
+          AfterTargets="ComputeFilesToPublish"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
+    <ItemGroup>
+      <ResolvedFileToPublish
+        Include="@(_ProGpuWpfManagedTransportDependencyRuntimeAsset)"
+        Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
   <Target Name="_ProGpuWpfSdkCopyPortableWinFormsCompatRuntimeAssets"
           DependsOnTargets="ResolveLockFileCopyLocalFiles"
           AfterTargets="_ProGpuWpfSdkCopyPackageRuntimeAssets"

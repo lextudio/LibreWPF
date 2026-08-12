@@ -501,11 +501,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WindowAttributeSetter.FocusOnShow", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("\"_NET_WM_WINDOW_TYPE_DROPDOWN_MENU\"", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("\"_NET_WM_WINDOW_TYPE_POPUP_MENU\"", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("CWOverrideRedirect", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("XChangeWindowAttributes(", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("XChangeProperty(", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("SelRegisterName(\"orderFront:\")", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("SelRegisterName(\"addChildWindow:ordered:\")", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("SelRegisterName(\"setHidesOnDeactivate:\")", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("_popupHost.SetPosition(_nativeLogicalX, _nativeLogicalY);", popupHost, StringComparison.Ordinal);
+        Assert.Contains("ShouldPumpEvents(_isDisposed, _isInitialized, _isVisible, _isPumping)", popupHost, StringComparison.Ordinal);
     }
 
     [Fact]

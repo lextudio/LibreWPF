@@ -48,6 +48,7 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
     private int _nativeLogicalX;
     private int _nativeLogicalY;
     private bool _isInitialized;
+    private bool _isVisible;
     private bool _isPumping;
     private bool _disposeWhenPumpCompletes;
     private bool _isDisposed;
@@ -258,12 +259,22 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         // transient window is mapped. Reapply the settled WPF placement after the
         // owner/type hints exist and immediately before the nonactivating map.
         _popupHost.SetPosition(_nativeLogicalX, _nativeLogicalY);
-        _popupHost.ShowWithoutActivation();
+        _isVisible = true;
+        try
+        {
+            _popupHost.ShowWithoutActivation();
+        }
+        catch
+        {
+            _isVisible = false;
+            throw;
+        }
     }
 
     public void Hide()
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
+        _isVisible = false;
         _popupHost.Hide();
     }
 
@@ -305,7 +316,7 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
 
     private void OnOwnerUpdateTick(object? sender, EventArgs e)
     {
-        if (_isDisposed || !_isInitialized || _isPumping)
+        if (!ShouldPumpEvents(_isDisposed, _isInitialized, _isVisible, _isPumping))
         {
             return;
         }
@@ -328,6 +339,13 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
             }
         }
     }
+
+    internal static bool ShouldPumpEvents(
+        bool isDisposed,
+        bool isInitialized,
+        bool isVisible,
+        bool isPumping) =>
+        !isDisposed && isInitialized && isVisible && !isPumping;
 
     private void OnPopupInputReceived(object? sender, WpfInputEventArgs e)
     {

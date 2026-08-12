@@ -2427,6 +2427,28 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Theory]
+    [InlineData(false, true, true, false, true)]
+    [InlineData(false, true, false, false, false)]
+    [InlineData(false, false, true, false, false)]
+    [InlineData(true, true, true, false, false)]
+    [InlineData(false, true, true, true, false)]
+    public void NativePopupPumpsOnlyWhileVisible(
+        bool isDisposed,
+        bool isInitialized,
+        bool isVisible,
+        bool isPumping,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            WpfPortableNativePopupHost.ShouldPumpEvents(
+                isDisposed,
+                isInitialized,
+                isVisible,
+                isPumping));
+    }
+
+    [Theory]
     [InlineData(true, 152, 96, 120, 80, 100, 60, 32, 16, true)]
     [InlineData(false, 32, 16, 120, 80, 100, 60, 32, 16, true)]
     [InlineData(true, 119.75, 96, 120, 80, 100, 60, -0.25, 16, false)]

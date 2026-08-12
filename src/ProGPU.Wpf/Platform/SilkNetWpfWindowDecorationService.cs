@@ -21,6 +21,7 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
     private const nuint XaAtom = 4;
     private const long SubstructureNotifyMask = 1L << 19;
     private const long SubstructureRedirectMask = 1L << 20;
+    private const nuint CWOverrideRedirect = 1u << 9;
 
     public bool TryBeginDragMove(object window)
     {
@@ -419,6 +420,20 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         try
         {
             bool configured = XSetTransientForHint(owner.Display, popup.Window, owner.Window) != 0;
+            // WPF computes popup placement in device-screen coordinates. A managed
+            // X11 toplevel lets Mutter/KWin/WSLg reposition a menu after mapping,
+            // which makes its visual and input bounds diverge. Native X11 menus use
+            // override-redirect for the same reason: the owner controls placement,
+            // while the transient/type hints still describe lifetime and semantics.
+            var attributes = new XSetWindowAttributes
+            {
+                OverrideRedirect = 1
+            };
+            configured |= XChangeWindowAttributes(
+                owner.Display,
+                popup.Window,
+                CWOverrideRedirect,
+                ref attributes) != 0;
             var windowType = XInternAtom(
                 owner.Display,
                 "_NET_WM_WINDOW_TYPE",
@@ -603,6 +618,13 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
     private static extern int XSetTransientForHint(IntPtr display, UIntPtr window, UIntPtr ownerWindow);
 
     [DllImport(X11Library)]
+    private static extern int XChangeWindowAttributes(
+        IntPtr display,
+        UIntPtr window,
+        nuint valueMask,
+        ref XSetWindowAttributes attributes);
+
+    [DllImport(X11Library)]
     private static extern int XChangeProperty(
         IntPtr display,
         UIntPtr window,
@@ -614,6 +636,26 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         int elementCount);
 
     private readonly record struct X11WindowHandle(IntPtr Display, UIntPtr Window);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct XSetWindowAttributes
+    {
+        public UIntPtr BackgroundPixmap;
+        public UIntPtr BackgroundPixel;
+        public UIntPtr BorderPixmap;
+        public UIntPtr BorderPixel;
+        public int BitGravity;
+        public int WinGravity;
+        public int BackingStore;
+        public UIntPtr BackingPlanes;
+        public UIntPtr BackingPixel;
+        public int SaveUnder;
+        public nint EventMask;
+        public nint DoNotPropagateMask;
+        public int OverrideRedirect;
+        public UIntPtr Colormap;
+        public UIntPtr Cursor;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct XClientMessageEvent

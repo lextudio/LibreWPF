@@ -489,6 +489,46 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         }
     }
 
+    // A popup surface only carries the menu chrome WPF draws itself, so AppKit's
+    // window shadow would sit outside that chrome as a second, softer frame.
+    // invalidateShadow is required because AppKit keeps the shadow it already
+    // computed for the ordered window.
+    [SupportedOSPlatform("macos")]
+    private static bool TryDisableCocoaWindowShadow(IntPtr nsWindow)
+    {
+        if (nsWindow == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            IntPtr setHasShadow = SelRegisterName("setHasShadow:");
+            if (setHasShadow == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            ObjCMsgSend(nsWindow, setHasShadow, false);
+
+            IntPtr invalidateShadow = SelRegisterName("invalidateShadow");
+            if (invalidateShadow != IntPtr.Zero)
+            {
+                ObjCMsgSend(nsWindow, invalidateShadow);
+            }
+
+            return true;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
     [SupportedOSPlatform("linux")]
     private static bool TryConfigureX11PopupOwner(X11WindowHandle owner, X11WindowHandle popup)
     {

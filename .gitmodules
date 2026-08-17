@@ -4,5 +4,5 @@
 	branch = main
 [submodule "external/LibreWinForms"]
 	path = external/LibreWinForms
-	url = ../winforms
+	url = ../librewinforms
 	branch = librewinforms-progpu-port

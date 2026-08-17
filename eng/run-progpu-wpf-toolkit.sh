@@ -7,6 +7,10 @@ if [[ ! -x "${dotnet}" ]]; then
   dotnet="dotnet"
 fi
 
+if [[ "${dotnet}" == "${repo_root}/.dotnet/dotnet" ]]; then
+  export DOTNET_ROOT="${DOTNET_ROOT:-${repo_root}/.dotnet}"
+fi
+
 export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
 export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
 
@@ -46,6 +50,30 @@ rm -rf \
 
 echo "Building ProGPU WPF Toolkit app..."
 "${dotnet}" build "${toolkit_project}" -v:minimal
+
+if [[ "$(uname -s 2>/dev/null || echo unknown)" == "Linux" ]]; then
+  case "$(uname -m 2>/dev/null || echo unknown)" in
+    x86_64)
+      native_runtime_id="linux-x64"
+      ;;
+    aarch64|arm64)
+      native_runtime_id="linux-arm64"
+      ;;
+    armv7l|armv8l)
+      native_runtime_id="linux-arm"
+      ;;
+    *)
+      native_runtime_id=""
+      ;;
+  esac
+
+  if [[ -n "${native_runtime_id}" ]]; then
+    native_runtime_dir="${toolkit_output}/runtimes/${native_runtime_id}/native"
+    if [[ -d "${native_runtime_dir}" ]]; then
+      export LD_LIBRARY_PATH="${native_runtime_dir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+    fi
+  fi
+fi
 
 if [[ "${PROGPU_WPF_TOOLKIT_LIVE_VALIDATE:-0}" == "1" ]]; then
   export PROGPU_WPF_TOOLKIT_LIVE_VALIDATE

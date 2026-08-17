@@ -459,6 +459,31 @@ namespace System.Windows.Interop
             OnDpiChangedAfterParent(e);
         }
 
+        internal bool SetPortableDeviceScale(double dpiScaleX, double dpiScaleY)
+        {
+            if (_portableOwner == null || _hwndTarget == null)
+            {
+                throw new InvalidOperationException("Portable device scale can only be set on a portable HwndSource.");
+            }
+
+            DpiScale oldDpi = _hwndTarget.CurrentDpiScale;
+            DpiScale newDpi = new DpiScale(dpiScaleX, dpiScaleY);
+            if (oldDpi.Equals(newDpi))
+            {
+                return true;
+            }
+
+            var args = new HwndDpiChangedEventArgs(oldDpi, newDpi, Rect.Empty);
+            DpiChanged?.Invoke(this, args);
+            if (args.Handled)
+            {
+                return false;
+            }
+
+            _hwndTarget.SetPortableDeviceScale(dpiScaleX, dpiScaleY);
+            return true;
+        }
+
         /// <summary>
         ///     Announces when the DPI is going to change for the window. If the user handles this event,
         ///     WPF does not scale any visual.

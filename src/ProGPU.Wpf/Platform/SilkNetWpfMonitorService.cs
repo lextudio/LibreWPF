@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 
@@ -12,7 +13,7 @@ public sealed class SilkNetWpfMonitorService : IWpfMonitorService
     private readonly Func<IMonitor, double?>? _getDpiScale;
 
     public SilkNetWpfMonitorService()
-        : this(GetDefaultMonitors, GetDefaultMainMonitor)
+        : this(GetDefaultMonitors, GetDefaultMainMonitor, TryGetGlfwMonitorContentScale)
     {
     }
 
@@ -22,6 +23,7 @@ public sealed class SilkNetWpfMonitorService : IWpfMonitorService
 
         _getMonitors = platform.GetMonitors;
         _getMainMonitor = platform.GetMainMonitor;
+        _getDpiScale = TryGetGlfwMonitorContentScale;
     }
 
     public SilkNetWpfMonitorService(
@@ -150,6 +152,42 @@ public sealed class SilkNetWpfMonitorService : IWpfMonitorService
         catch (Exception exception)
         {
             throw new PlatformNotSupportedException("Silk.NET monitor enumeration is not available on this platform.", exception);
+        }
+    }
+
+    private static unsafe double? TryGetGlfwMonitorContentScale(IMonitor monitor)
+    {
+        ArgumentNullException.ThrowIfNull(monitor);
+
+        try
+        {
+            Glfw glfw = GlfwProvider.GLFW.Value;
+            Silk.NET.GLFW.Monitor** nativeMonitors = glfw.GetMonitors(out int monitorCount);
+            if (nativeMonitors == null || monitor.Index < 0 || monitor.Index >= monitorCount)
+            {
+                return null;
+            }
+
+            glfw.GetMonitorContentScale(nativeMonitors[monitor.Index], out float scaleX, out float scaleY);
+            return SilkNetGlfwDpiService.TryNormalizeContentScale(scaleX, scaleY, out WpfDeviceScale scale)
+                ? scale.Average
+                : null;
+        }
+        catch (DllNotFoundException)
+        {
+            return null;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return null;
+        }
+        catch (BadImageFormatException)
+        {
+            return null;
+        }
+        catch (GlfwException)
+        {
+            return null;
         }
     }
 }

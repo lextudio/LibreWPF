@@ -9,6 +9,51 @@ namespace System.Windows;
 [Collection("Sequential")]
 public class PortablePresentationSourceTests
 {
+    [Fact]
+    public void InitialDeviceScaleIsAppliedToRootVisual()
+    {
+        using IPortablePresentationSourceHost source = PortablePresentationSourceHost.Create(2.0, 1.5);
+        var root = new DpiTrackingElement();
+
+        source.RootVisual = root;
+        source.SetClientSize(400.0, 300.0);
+
+        DpiScale dpi = VisualTreeHelper.GetDpi(root);
+        dpi.DpiScaleX.Should().BeApproximately(2.0, 0.000001);
+        dpi.DpiScaleY.Should().BeApproximately(1.5, 0.000001);
+        root.DpiChangedCount.Should().Be(1);
+        root.MeasureCount.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void DeviceScaleChangeUpdatesVisualDpiLayoutAndHwndSource()
+    {
+        using IPortablePresentationSourceHost source = PortablePresentationSourceHost.Create();
+        var portableSource = (PortablePresentationSource)(PresentationSource)source;
+        var root = new DpiTrackingElement();
+        int hwndDpiChangedCount = 0;
+        portableSource.HwndSource.DpiChanged += (_, e) =>
+        {
+            hwndDpiChangedCount++;
+            e.OldDpi.DpiScaleX.Should().BeApproximately(1.0, 0.000001);
+            e.NewDpi.DpiScaleX.Should().BeApproximately(2.0, 0.000001);
+        };
+        source.RootVisual = root;
+        source.SetClientSize(400.0, 300.0);
+        int measureCountBeforeDpiChange = root.MeasureCount;
+
+        source.SetDeviceScale(2.0, 1.5);
+
+        CompositionTarget compositionTarget = ((PresentationSource)source).CompositionTarget;
+        compositionTarget.TransformToDevice.M11.Should().BeApproximately(2.0, 0.000001);
+        compositionTarget.TransformToDevice.M22.Should().BeApproximately(1.5, 0.000001);
+        VisualTreeHelper.GetDpi(root).DpiScaleX.Should().BeApproximately(2.0, 0.000001);
+        VisualTreeHelper.GetDpi(root).DpiScaleY.Should().BeApproximately(1.5, 0.000001);
+        root.DpiChangedCount.Should().Be(1);
+        root.MeasureCount.Should().BeGreaterThan(measureCountBeforeDpiChange);
+        hwndDpiChangedCount.Should().Be(1);
+    }
+
     [Theory]
     [InlineData(1.0, 1.0)]
     [InlineData(2.0, 2.0)]
@@ -251,6 +296,25 @@ public class PortablePresentationSourceTests
         protected override HitTestResult HitTestCore(PointHitTestParameters hitTestParameters)
         {
             return new PointHitTestResult(this, hitTestParameters.HitPoint);
+        }
+    }
+
+    private sealed class DpiTrackingElement : UIElement
+    {
+        internal int DpiChangedCount { get; private set; }
+
+        internal int MeasureCount { get; private set; }
+
+        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+        {
+            DpiChangedCount++;
+            base.OnDpiChanged(oldDpi, newDpi);
+        }
+
+        protected override Size MeasureCore(Size availableSize)
+        {
+            MeasureCount++;
+            return new Size(100.0, 50.0);
         }
     }
 }

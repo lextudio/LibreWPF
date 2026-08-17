@@ -1203,7 +1203,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("System.Reflection.TargetInvocationException", proGpuHost, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("exception.GetBaseException()", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("UpdateClientSizeFromNativeResize(size, framebufferSize, monitorDpiScale);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("WpfDeviceScale contentScale = ResolveCurrentWindowContentScale();", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("UsesMonitorScaledWindowCoordinates());", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var clientSize = _window.Size;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var framebufferSize = _window.FramebufferSize;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("UpdatePortablePresentationSourceClientSize((uint)_clientWidth, (uint)_clientHeight);", proGpuHost, StringComparison.Ordinal);
@@ -1220,9 +1221,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var logicalSize = ResolveLogicalClientSize(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalWidth = (uint)Math.Max(1, clientWidth);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalHeight = (uint)Math.Max(1, clientHeight);", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("var fallbackScale = NormalizeMonitorDpiScale(monitorDpiScale);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var fallbackScaleX = NormalizeMonitorDpiScale(contentScale.X);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var fallbackScaleY = NormalizeMonitorDpiScale(contentScale.Y);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("framebufferSize.X > 0", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("Math.Ceiling(logicalWidth * fallbackScale)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("Math.Ceiling(logicalWidth * fallbackScaleX)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("PlatformServices.Monitors.GetMonitors()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("using ProGPU.Backend;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveMonitorDpiScaleWithPlatformFallback(", proGpuHost, StringComparison.Ordinal);
@@ -1247,7 +1249,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("sel_registerName(\"screen\")", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("NativeResizeAppliesMaximizedWslgClientSizeInsteadOfStaleCache", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeDoesNotUseStaleRootRenderSizeForRealLogicalResize", proGpuWindowHostTests, StringComparison.Ordinal);
-        Assert.Contains("Silk.NET's IWindow.Size contract is the logical client size", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("GLFW_SCALE_TO_MONITOR is different on X11", proGpuHost, StringComparison.Ordinal);
         Assert.DoesNotContain("backingScaleFactor", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleX = pixelWidth / (double)logicalWidth", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
@@ -1268,6 +1270,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("NormalizeInputEventForCurrentRenderSurface(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("NormalizeInputEventForRenderSurfaceGeometry(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("NativeInputCoordinatesLookPhysical(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("NativeInputCoordinatesArePhysical(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal event EventHandler? UpdateTick;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("UpdateTick?.Invoke(this, EventArgs.Empty);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryRequestNativeLoopWakeup()", proGpuHost, StringComparison.Ordinal);

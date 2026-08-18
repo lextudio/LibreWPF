@@ -273,7 +273,20 @@ namespace System.Windows
         internal void SetDeviceScale(double dpiScaleX, double dpiScaleY)
         {
             VerifyNotDisposed();
+            Matrix currentTransform = _compositionTarget.TransformToDevice;
+            if (currentTransform.M11 == dpiScaleX && currentTransform.M22 == dpiScaleY)
+            {
+                return;
+            }
+
+            if (!_portableHwndSource.SetPortableDeviceScale(dpiScaleX, dpiScaleY))
+            {
+                return;
+            }
+
             _compositionTarget.SetDeviceScale(dpiScaleX, dpiScaleY);
+            ApplyRootVisualDpi(dpiScaleX, dpiScaleY);
+            ApplyRootVisualLayout();
             RequestRender();
         }
 
@@ -389,6 +402,8 @@ namespace System.Windows
                 }
 
                 _compositionTarget.RootVisual = rootVisual;
+                Matrix transformToDevice = _compositionTarget.TransformToDevice;
+                ApplyRootVisualDpi(transformToDevice.M11, transformToDevice.M22);
                 UIElement.PropagateResumeLayout(null, rootVisual);
                 ApplyRootVisualLayout();
             }
@@ -426,6 +441,41 @@ namespace System.Windows
             rootUIElement.Measure(_clientSize);
             rootUIElement.Arrange(new Rect(new Point(), _clientSize));
             rootUIElement.UpdateLayout();
+        }
+
+        private void ApplyRootVisualDpi(double dpiScaleX, double dpiScaleY)
+        {
+            if (_rootVisual == null)
+            {
+                return;
+            }
+
+            DpiScale newDpi = new DpiScale(dpiScaleX, dpiScaleY);
+            if (VisualTreeHelper.GetDpi(_rootVisual).Equals(newDpi))
+            {
+                return;
+            }
+
+            VisualTreeHelper.SetRootDpi(_rootVisual, newDpi);
+            InvalidateDpiMeasure(_rootVisual);
+        }
+
+        private static void InvalidateDpiMeasure(DependencyObject dependencyObject)
+        {
+            int childCount = VisualTreeHelper.GetChildrenCount(dependencyObject);
+            for (int i = 0; i < childCount; i++)
+            {
+                DependencyObject child = VisualTreeHelper.GetChild(dependencyObject, i);
+                if (child != null)
+                {
+                    InvalidateDpiMeasure(child);
+                }
+            }
+
+            if (dependencyObject is UIElement element)
+            {
+                element.InvalidateMeasure();
+            }
         }
 
         private bool TryUpdateRootVisualClientSize(out double width, out double height)

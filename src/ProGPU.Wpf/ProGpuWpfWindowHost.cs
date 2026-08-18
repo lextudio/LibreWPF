@@ -48,6 +48,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private IWpfDragDropService? _attachedDragDropService;
     private IDisposable? _windowEventSubscription;
     private IWpfWindowEventService? _attachedWindowEventService;
+    private IDisposable? _nativeDpiSubscription;
     private IWpfDispatcherService? _attachedDispatcherService;
     private IWpfPlatformServices _platformServices = CrossPlatformWpfPlatformServices.Instance;
     private IWpfRenderScheduler _wpfRenderScheduler;
@@ -79,6 +80,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _forceFullWpfReplay;
     private bool _isHostVisible;
     private bool _hasNativeWindowCloseStarted;
+    private bool _dpiWindowHintsConfigured;
+    private bool _hasPendingNativeDpiChange;
+    private double _nativeWindowContentScaleX = double.NaN;
+    private double _nativeWindowContentScaleY = double.NaN;
     private ProGpuWpfWindowState _windowState;
     private string _windowTitle;
     private int _clientWidth;
@@ -1131,6 +1136,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         if (window != null && !deferNativeWindowDispose)
         {
+            DetachNativeDpiService();
             window.Load -= OnLoad;
             window.Update -= OnUpdate;
             window.Render -= OnRender;
@@ -1188,6 +1194,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         window.Resize -= OnResize;
         window.FramebufferResize -= OnFramebufferResize;
         window.Closing -= OnClosing;
+        DetachNativeDpiService();
         window.Dispose();
         _window = null;
     }
@@ -1241,6 +1248,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         _window = Window.Create(windowOptions);
+        _dpiWindowHintsConfigured = SilkNetGlfwDpiService.TryConfigureDpiWindowHints();
         _windowController = new SilkWindowController(_window);
         ApplyWindowBorderToController();
         _hasNativeWindowCloseStarted = false;
@@ -1254,6 +1262,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnLoad()
     {
+        AttachNativeDpiService();
         _windowController?.Attach();
         EnsureCompositionTargetLoaded();
     }
@@ -1376,8 +1385,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         else
         {
             var framebufferSize = _window.FramebufferSize;
-            var monitorDpiScale = ResolveCurrentMonitorDpiScale();
-            UpdateClientSizeFromNativeResize(size, framebufferSize, monitorDpiScale);
+            WpfDeviceScale contentScale = ResolveCurrentWindowContentScale();
+            UpdateClientSizeFromNativeResize(
+                size,
+                framebufferSize,
+                contentScale,
+                UsesMonitorScaledWindowCoordinates());
         }
 
         if (_target == null || _window == null)
@@ -1422,6 +1435,62 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
+    private void AttachNativeDpiService()
+    {
+        DetachNativeDpiService();
+        if (_window == null || _isDisposed)
+        {
+            return;
+        }
+
+        if (SilkNetGlfwDpiService.TryGetWindowContentScale(_window, out WpfDeviceScale scale))
+        {
+            CacheNativeWindowContentScale(scale);
+        }
+
+        _nativeDpiSubscription = SilkNetGlfwDpiService.TrySubscribeToWindowContentScale(
+            _window,
+            OnNativeWindowContentScaleChanged);
+    }
+
+    private void DetachNativeDpiService()
+    {
+        _nativeDpiSubscription?.Dispose();
+        _nativeDpiSubscription = null;
+        _hasPendingNativeDpiChange = false;
+        _nativeWindowContentScaleX = double.NaN;
+        _nativeWindowContentScaleY = double.NaN;
+    }
+
+    private void OnNativeWindowContentScaleChanged(WpfDeviceScale scale)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        CacheNativeWindowContentScale(scale);
+        _hasPendingNativeDpiChange = true;
+        RequestRenderAndWakeNativeLoop();
+    }
+
+    private void CacheNativeWindowContentScale(WpfDeviceScale scale)
+    {
+        _nativeWindowContentScaleX = scale.X;
+        _nativeWindowContentScaleY = scale.Y;
+    }
+
+    private void ProcessPendingNativeDpiChange()
+    {
+        if (!_hasPendingNativeDpiChange || _window == null || _isDisposed)
+        {
+            return;
+        }
+
+        _hasPendingNativeDpiChange = false;
+        OnResize(_window.Size);
+    }
+
     private void OnUpdate(double deltaSeconds)
     {
         if (_isDisposed)
@@ -1430,6 +1499,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
+        ProcessPendingNativeDpiChange();
         TryProcessDispatcherWorkWakeup();
         UpdateTick?.Invoke(this, EventArgs.Empty);
         DisposeDeferredNativeWindowIfNeeded();
@@ -1789,15 +1859,29 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         Vector2D<int> framebufferSize,
         double monitorDpiScale)
     {
+        return ResolveRenderSurfaceGeometry(
+            clientWidth,
+            clientHeight,
+            framebufferSize,
+            new WpfDeviceScale(monitorDpiScale, monitorDpiScale));
+    }
+
+    private static RenderSurfaceGeometry ResolveRenderSurfaceGeometry(
+        int clientWidth,
+        int clientHeight,
+        Vector2D<int> framebufferSize,
+        WpfDeviceScale contentScale)
+    {
         var logicalWidth = (uint)Math.Max(1, clientWidth);
         var logicalHeight = (uint)Math.Max(1, clientHeight);
-        var fallbackScale = NormalizeMonitorDpiScale(monitorDpiScale);
+        var fallbackScaleX = NormalizeMonitorDpiScale(contentScale.X);
+        var fallbackScaleY = NormalizeMonitorDpiScale(contentScale.Y);
         var pixelWidth = framebufferSize.X > 0
             ? (uint)framebufferSize.X
-            : (uint)Math.Max(1, (int)Math.Ceiling(logicalWidth * fallbackScale));
+            : (uint)Math.Max(1, (int)Math.Ceiling(logicalWidth * fallbackScaleX));
         var pixelHeight = framebufferSize.Y > 0
             ? (uint)framebufferSize.Y
-            : (uint)Math.Max(1, (int)Math.Ceiling(logicalHeight * fallbackScale));
+            : (uint)Math.Max(1, (int)Math.Ceiling(logicalHeight * fallbackScaleY));
 
         var dpiScaleX = pixelWidth / (double)logicalWidth;
         var dpiScaleY = pixelHeight / (double)logicalHeight;
@@ -1832,18 +1916,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         var clientSize = _window.Size;
         var framebufferSize = _window.FramebufferSize;
-        var monitorDpiScale = ResolveCurrentMonitorDpiScale();
+        WpfDeviceScale contentScale = ResolveCurrentWindowContentScale();
         var logicalSize = ResolveLogicalClientSize(
             clientSize,
             framebufferSize,
             cachedLogicalClientWidth,
             cachedLogicalClientHeight,
-            monitorDpiScale);
+            contentScale,
+            UsesMonitorScaledWindowCoordinates());
         geometry = ResolveRenderSurfaceGeometry(
             logicalSize.X,
             logicalSize.Y,
             framebufferSize,
-            monitorDpiScale);
+            contentScale);
         LastResolvedRenderSurfaceGeometry = geometry;
         return geometry;
     }
@@ -1896,12 +1981,26 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         Vector2D<int> framebufferSize,
         double monitorDpiScale)
     {
+        return UpdateClientSizeFromNativeResize(
+            size,
+            framebufferSize,
+            new WpfDeviceScale(monitorDpiScale, monitorDpiScale),
+            windowSizeIsScaledByContentScale: false);
+    }
+
+    private bool UpdateClientSizeFromNativeResize(
+        Vector2D<int> size,
+        Vector2D<int> framebufferSize,
+        WpfDeviceScale contentScale,
+        bool windowSizeIsScaledByContentScale)
+    {
         var logicalSize = ResolveLogicalClientSize(
             size,
             framebufferSize,
             GetCachedLogicalClientWidth(),
             GetCachedLogicalClientHeight(),
-            monitorDpiScale);
+            contentScale,
+            windowSizeIsScaledByContentScale);
         var clientWidth = logicalSize.X;
         var clientHeight = logicalSize.Y;
         if (_clientWidth == clientWidth && _clientHeight == clientHeight)
@@ -1966,38 +2065,69 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         int cachedHeight,
         double monitorDpiScale)
     {
+        return ResolveLogicalClientSize(
+            nativeSize,
+            framebufferSize,
+            cachedWidth,
+            cachedHeight,
+            new WpfDeviceScale(monitorDpiScale, monitorDpiScale),
+            windowSizeIsScaledByContentScale: false);
+    }
+
+    internal static Vector2D<int> ResolveLogicalClientSize(
+        Vector2D<int> nativeSize,
+        Vector2D<int> framebufferSize,
+        int cachedWidth,
+        int cachedHeight,
+        WpfDeviceScale contentScale,
+        bool windowSizeIsScaledByContentScale)
+    {
         return new Vector2D<int>(
             ResolveLogicalClientDimension(
                 nativeSize.X,
                 framebufferSize.X,
                 cachedWidth,
-                monitorDpiScale),
+                contentScale.X,
+                windowSizeIsScaledByContentScale),
             ResolveLogicalClientDimension(
                 nativeSize.Y,
                 framebufferSize.Y,
                 cachedHeight,
-                monitorDpiScale));
+                contentScale.Y,
+                windowSizeIsScaledByContentScale));
     }
 
     private static int ResolveLogicalClientDimension(
         int nativeDimension,
         int framebufferDimension,
         int cachedDimension,
-        double monitorDpiScale)
+        double contentScale,
+        bool windowSizeIsScaledByContentScale)
     {
-        // Silk.NET's IWindow.Size contract is the logical client size.  The
-        // framebuffer is the independently reported physical render surface.
-        // A previous cache/scale heuristic treated ordinary maximized sizes as
-        // physical whenever their ratio happened to resemble 1.5x, 1.75x, or
-        // 2x.  That kept stale layout bounds and offset pointer input on WSLg.
+        // Silk.NET normally exposes logical window coordinates independently
+        // from framebuffer pixels. GLFW_SCALE_TO_MONITOR is different on X11
+        // and Win32: GLFW enlarges the native content area because those
+        // platforms map window coordinates to pixels 1:1. Only divide by the
+        // authoritative GLFW content scale when that hint is active on one of
+        // those backends; ordinary Wayland/macOS and unscaled WSLg sizes remain
+        // logical and must not be inferred from a coincidental size ratio.
         if (nativeDimension > 0)
         {
+            if (windowSizeIsScaledByContentScale)
+            {
+                return Math.Max(
+                    1,
+                    (int)Math.Round(
+                        nativeDimension / NormalizeMonitorDpiScale(contentScale),
+                        MidpointRounding.AwayFromZero));
+            }
+
             return nativeDimension;
         }
 
         if (framebufferDimension > 0)
         {
-            double dpiScale = NormalizeMonitorDpiScale(monitorDpiScale);
+            double dpiScale = NormalizeMonitorDpiScale(contentScale);
             return Math.Max(
                 1,
                 (int)Math.Round(
@@ -2008,11 +2138,34 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return Math.Max(1, cachedDimension);
     }
 
-    private double ResolveCurrentMonitorDpiScale()
+    private WpfDeviceScale ResolveCurrentWindowContentScale()
     {
-        return DisplayScaleResolver.ResolveWindowDisplayScale(
+        if (SilkNetGlfwDpiService.TryGetWindowContentScale(_window, out WpfDeviceScale nativeScale))
+        {
+            CacheNativeWindowContentScale(nativeScale);
+            return nativeScale;
+        }
+
+        if (SilkNetGlfwDpiService.TryNormalizeContentScale(
+                _nativeWindowContentScaleX,
+                _nativeWindowContentScaleY,
+                out WpfDeviceScale cachedScale))
+        {
+            return cachedScale;
+        }
+
+        double fallbackScale = DisplayScaleResolver.ResolveWindowDisplayScale(
             _window,
             ResolveCurrentMonitorDpiScaleFromPlatformServices());
+        return new WpfDeviceScale(fallbackScale, fallbackScale);
+    }
+
+    private bool UsesMonitorScaledWindowCoordinates()
+    {
+        return SilkNetGlfwDpiService.UsesMonitorScaledWindowCoordinates(
+            _dpiWindowHintsConfigured,
+            _window?.Native?.X11 is not null,
+            _window?.Native?.Win32 is not null);
     }
 
     private double ResolveCurrentMonitorDpiScaleFromPlatformServices()
@@ -2598,7 +2751,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         TraceInputEvent("native", e);
-        var input = NormalizeInputEventForCurrentRenderSurface(e);
+        var input = NormalizeInputEventForCurrentRenderSurface(e, sender != null);
         TraceInputEvent("wpf", input);
         _isForwardingPlatformInput = true;
         try
@@ -2664,7 +2817,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return Environment.GetEnvironmentVariable(environmentVariable) == "1";
     }
 
-    private WpfInputEventArgs NormalizeInputEventForCurrentRenderSurface(WpfInputEventArgs input)
+    private WpfInputEventArgs NormalizeInputEventForCurrentRenderSurface(
+        WpfInputEventArgs input,
+        bool isNativePlatformEvent)
     {
         if (!IsPointerInput(input.Kind) || _window == null)
         {
@@ -2675,8 +2830,27 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return NormalizeInputEventForRenderSurfaceGeometry(
             input,
             geometry,
-            NativeInputCoordinatesLookPhysical(_window.Size, geometry, input),
+            NativeInputCoordinatesArePhysical(
+                isNativePlatformEvent,
+                UsesMonitorScaledWindowCoordinates(),
+                _window.Size,
+                geometry,
+                input),
             _options.NativePointerCoordinatesAreOwnerRelative);
+    }
+
+    internal static bool NativeInputCoordinatesArePhysical(
+        bool isNativePlatformEvent,
+        bool usesMonitorScaledWindowCoordinates,
+        Vector2D<int> nativeSize,
+        RenderSurfaceGeometry geometry,
+        WpfInputEventArgs input)
+    {
+        return (isNativePlatformEvent &&
+                usesMonitorScaledWindowCoordinates &&
+                geometry.DpiScale > 1.0 + double.Epsilon &&
+                IsPointerInput(input.Kind)) ||
+            NativeInputCoordinatesLookPhysical(nativeSize, geometry, input);
     }
 
     internal static WpfInputEventArgs NormalizeInputEventForRenderSurfaceGeometry(

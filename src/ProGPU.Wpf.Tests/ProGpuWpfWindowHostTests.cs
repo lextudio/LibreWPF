@@ -1273,6 +1273,52 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativeInputCoordinatesArePhysicalConvertsScaledX11PlatformInputInsideLogicalBounds()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 320,
+            y: 180,
+            button: WpfMouseButton.Left);
+
+        Assert.True(
+            ProGpuWpfWindowHost.NativeInputCoordinatesArePhysical(
+                isNativePlatformEvent: true,
+                usesMonitorScaledWindowCoordinates: true,
+                new Vector2D<int>(1520, 1120),
+                geometry,
+                input));
+    }
+
+    [Fact]
+    public void NativeInputCoordinatesArePhysicalKeepsDiagnosticInputLogical()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 320,
+            y: 180,
+            button: WpfMouseButton.Left);
+
+        Assert.False(
+            ProGpuWpfWindowHost.NativeInputCoordinatesArePhysical(
+                isNativePlatformEvent: false,
+                usesMonitorScaledWindowCoordinates: true,
+                new Vector2D<int>(1520, 1120),
+                geometry,
+                input));
+    }
+
+    [Fact]
     public void NormalizeInputEventForRenderSurfaceGeometryLeavesKeyboardInputUnchanged()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
@@ -1360,6 +1406,34 @@ public sealed class ProGpuWpfWindowHostTests
             monitorDpiScale: 2.0);
 
         Assert.Equal(new Vector2D<int>(420, 840), logicalSize);
+    }
+
+    [Fact]
+    public void ResolveLogicalClientSizeConvertsScaledX11CoordinatesToDips()
+    {
+        var logicalSize = ProGpuWpfWindowHost.ResolveLogicalClientSize(
+            nativeSize: new Vector2D<int>(1960, 1280),
+            framebufferSize: new Vector2D<int>(1960, 1280),
+            cachedWidth: 980,
+            cachedHeight: 640,
+            contentScale: new WpfDeviceScale(2.0, 2.0),
+            windowSizeIsScaledByContentScale: true);
+
+        Assert.Equal(new Vector2D<int>(980, 640), logicalSize);
+    }
+
+    [Fact]
+    public void ResolveLogicalClientSizeKeepsWaylandAndMacOsCoordinatesInDips()
+    {
+        var logicalSize = ProGpuWpfWindowHost.ResolveLogicalClientSize(
+            nativeSize: new Vector2D<int>(980, 640),
+            framebufferSize: new Vector2D<int>(1960, 1280),
+            cachedWidth: 980,
+            cachedHeight: 640,
+            contentScale: new WpfDeviceScale(2.0, 2.0),
+            windowSizeIsScaledByContentScale: false);
+
+        Assert.Equal(new Vector2D<int>(980, 640), logicalSize);
     }
 
     [Fact]

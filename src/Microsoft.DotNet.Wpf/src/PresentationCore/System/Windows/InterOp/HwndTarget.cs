@@ -333,6 +333,37 @@ namespace System.Windows.Interop
                     0, 0));
         }
 
+        internal void SetPortableDeviceScale(double dpiScaleX, double dpiScaleY)
+        {
+            if (!_isPortable)
+            {
+                throw new InvalidOperationException("Portable device scale can only be set on a portable HwndTarget.");
+            }
+
+            DpiScale2 oldDpi = CurrentDpiScale;
+            DpiScale2 newDpi = DpiScale2.FromPixelsPerInch(
+                ToPositiveFiniteScale(dpiScaleX) * DpiUtil.DefaultPixelsPerInch,
+                ToPositiveFiniteScale(dpiScaleY) * DpiUtil.DefaultPixelsPerInch);
+            if (oldDpi.Equals(newDpi))
+            {
+                return;
+            }
+
+            CurrentDpiScale = newDpi;
+            _worldTransform = new MatrixTransform(
+                new Matrix(
+                    newDpi.DpiScaleX, 0,
+                    0, newDpi.DpiScaleY,
+                    0, 0));
+            PropagateDpiChangeToRootVisual(oldDpi, newDpi);
+            StateChangedCallback(new object[]
+            {
+                HostStateFlags.WorldTransform,
+                _worldTransform.Matrix,
+                Rect.Empty
+            });
+        }
+
         private static double ToPositiveFiniteScale(double value)
         {
             return double.IsFinite(value) && value > 0.0 ? value : 1.0;

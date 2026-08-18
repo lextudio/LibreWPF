@@ -270,6 +270,144 @@ public sealed class WpfPortablePresentationSourceBridgeTests
     }
 
     [Fact]
+    public void GpuHitTestPointOverridePreservesTopmostSiblingOrderOverVisualDepth()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var source = new FakePortablePresentationSource();
+        var window = new FakeVisualOwner(PortableVisualOwnerKind.Window);
+        var comboBox = new FakeVisualOwner(PortableVisualOwnerKind.Content, window);
+        var layout = new FakeVisualOwner(PortableVisualOwnerKind.PointerInfrastructure, comboBox);
+        var toggleButton = new FakeVisualOwner(PortableVisualOwnerKind.Content, layout);
+        var editableTextBox = new FakeVisualOwner(PortableVisualOwnerKind.Content, layout);
+        var textView = new FakeVisualOwner(PortableVisualOwnerKind.Content, editableTextBox);
+        int toggleButtonId = target.GpuHitTestOwnerMap.GetOrCreateId(toggleButton);
+        int textViewId = target.GpuHitTestOwnerMap.GetOrCreateId(textView);
+        var index = GpuHitTestIndex.Build(
+            [
+                GpuHitTestPrimitive.RectangleFill(
+                    toggleButtonId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 2f),
+                GpuHitTestPrimitive.RectangleFill(
+                    textViewId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 1f)
+            ]);
+        InstallCompositionTarget(host, target);
+        InstallGpuHitTestCache(target, index);
+
+        Assert.True(WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge));
+        Assert.NotNull(bridge);
+
+        Assert.Same(toggleButton, source.HitTestOverride!(10, 10));
+        Assert.Equal([toggleButton, textView], source.HitTestAllOverride!(10, 10));
+    }
+
+    [Fact]
+    public void GpuHitTestPointOverridePrefersDescendantOverEarlierAncestorHits()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var source = new FakePortablePresentationSource();
+        var window = new FakeVisualOwner(PortableVisualOwnerKind.Window);
+        var dockManager = new FakeVisualOwner(PortableVisualOwnerKind.Content, window);
+        var autoHideArea = new FakeVisualOwner(PortableVisualOwnerKind.PointerInfrastructure, dockManager);
+        var filterTextBox = new FakeVisualOwner(PortableVisualOwnerKind.Content, dockManager);
+        var textView = new FakeVisualOwner(PortableVisualOwnerKind.Content, filterTextBox);
+        int dockManagerId = target.GpuHitTestOwnerMap.GetOrCreateId(dockManager);
+        int autoHideAreaId = target.GpuHitTestOwnerMap.GetOrCreateId(autoHideArea);
+        int textViewId = target.GpuHitTestOwnerMap.GetOrCreateId(textView);
+        var index = GpuHitTestIndex.Build(
+            [
+                GpuHitTestPrimitive.RectangleFill(
+                    dockManagerId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 3f),
+                GpuHitTestPrimitive.RectangleFill(
+                    autoHideAreaId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 2f),
+                GpuHitTestPrimitive.RectangleFill(
+                    textViewId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 1f)
+            ]);
+        InstallCompositionTarget(host, target);
+        InstallGpuHitTestCache(target, index);
+
+        Assert.True(WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge));
+        Assert.NotNull(bridge);
+
+        Assert.Same(textView, source.HitTestOverride!(10, 10));
+        Assert.Equal(
+            [dockManager, autoHideArea, textView],
+            source.HitTestAllOverride!(10, 10));
+    }
+
+    [Fact]
+    public void GpuHitTestPointOverrideSkipsInputDisabledOverlayBeforeTopmostEnabledSibling()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var source = new FakePortablePresentationSource();
+        var window = new FakeVisualOwner(PortableVisualOwnerKind.Window);
+        var comboBox = new FakeVisualOwner(PortableVisualOwnerKind.Content, window);
+        var layout = new FakeVisualOwner(PortableVisualOwnerKind.PointerInfrastructure, comboBox);
+        var disabledChevron = new FakeVisualOwner(
+            PortableVisualOwnerKind.Content,
+            layout,
+            isInputEnabled: false);
+        var toggleButton = new FakeVisualOwner(PortableVisualOwnerKind.Content, layout);
+        var editableTextBox = new FakeVisualOwner(PortableVisualOwnerKind.Content, layout);
+        var textView = new FakeVisualOwner(PortableVisualOwnerKind.Content, editableTextBox);
+        int disabledChevronId = target.GpuHitTestOwnerMap.GetOrCreateId(disabledChevron);
+        int toggleButtonId = target.GpuHitTestOwnerMap.GetOrCreateId(toggleButton);
+        int textViewId = target.GpuHitTestOwnerMap.GetOrCreateId(textView);
+        var index = GpuHitTestIndex.Build(
+            [
+                GpuHitTestPrimitive.RectangleFill(
+                    disabledChevronId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 3f),
+                GpuHitTestPrimitive.RectangleFill(
+                    toggleButtonId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 2f),
+                GpuHitTestPrimitive.RectangleFill(
+                    textViewId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 1f)
+            ]);
+        InstallCompositionTarget(host, target);
+        InstallGpuHitTestCache(target, index);
+
+        Assert.True(WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge));
+        Assert.NotNull(bridge);
+
+        Assert.Same(toggleButton, source.HitTestOverride!(10, 10));
+        Assert.Equal(
+            [disabledChevron, toggleButton, textView],
+            source.HitTestAllOverride!(10, 10));
+    }
+
+    [Fact]
     public void PopupScopeFilterKeepsOnlyVisualOwnersFromItsPresentationSourceRoot()
     {
         var root = new FakeVisualOwner(PortableVisualOwnerKind.PointerInfrastructure);

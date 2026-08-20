@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Silk.NET.Core.Contexts;
 using Silk.NET.GLFW;
+using Silk.NET.Maths;
 using Silk.NET.Windowing;
 
 namespace System.Windows.Media.ProGPU.Platform;
@@ -17,11 +18,28 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
     private const int ClientMessage = 33;
     private const int NetWmMoveresizeMove = 8;
     private const int NormalApplicationSource = 1;
+    private const uint Button1Mask = 1u << 8;
     private const int PropModeReplace = 0;
     private const nuint XaAtom = 4;
     private const long SubstructureNotifyMask = 1L << 19;
     private const long SubstructureRedirectMask = 1L << 20;
     private const nuint CWOverrideRedirect = 1u << 9;
+
+    private IWindow? _x11DragWindow;
+    private IntPtr _x11DragDisplay;
+    private UIntPtr _x11DragHandle;
+    private IWindow? _x11InputWindow;
+    private bool _x11LeftButtonPressed;
+    private bool _x11HasLeftButtonDownPosition;
+    private double _x11LeftButtonDownX;
+    private double _x11LeftButtonDownY;
+    private int _x11DragStartRootX;
+    private int _x11DragStartRootY;
+    private double _x11DragStartLocalX;
+    private double _x11DragStartLocalY;
+    private bool _x11FallbackApplied;
+    private Vector2D<int> _x11DragStartPosition;
+    private Vector2D<int> _x11DragExpectedPosition;
 
     public bool TryBeginDragMove(object window)
     {
@@ -43,10 +61,54 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         if (OperatingSystem.IsLinux())
         {
             var x11 = GetX11Window(view);
-            return TryBeginX11DragMove(x11.Display, x11.Window);
+            return view is IWindow x11Window &&
+                TryBeginX11DragMove(x11Window, x11.Display, x11.Window);
         }
 
         return false;
+    }
+
+    public void TrackDragMoveInput(object window, WpfInputEventArgs input)
+    {
+        if (!OperatingSystem.IsLinux() || window is not IWindow view)
+        {
+            return;
+        }
+
+        if (input.Kind == WpfInputEventKind.MouseDown && input.Button == WpfMouseButton.Left)
+        {
+            ClearX11DragMove();
+            _x11InputWindow = view;
+            _x11LeftButtonPressed = true;
+            _x11HasLeftButtonDownPosition = true;
+            _x11LeftButtonDownX = input.X;
+            _x11LeftButtonDownY = input.Y;
+        }
+        else if (input.Kind == WpfInputEventKind.MouseUp && input.Button == WpfMouseButton.Left)
+        {
+            _x11LeftButtonPressed = false;
+        }
+    }
+
+    public bool TryContinueDragMove(object window, WpfInputEventArgs input)
+    {
+        if (!OperatingSystem.IsLinux() ||
+            window is not IWindow view ||
+            !ReferenceEquals(view, _x11DragWindow))
+        {
+            return false;
+        }
+
+        return TryContinueX11DragMove(view, input);
+    }
+
+    public void EndDragMove(object window)
+    {
+        if (ReferenceEquals(window, _x11DragWindow) ||
+            ReferenceEquals(window, _x11InputWindow))
+        {
+            ClearX11DragMove();
+        }
     }
 
     public bool TryShowWithoutActivation(object window)
@@ -478,7 +540,7 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
     }
 
     [SupportedOSPlatform("linux")]
-    private static bool TryBeginX11DragMove(IntPtr display, UIntPtr window)
+    private bool TryBeginX11DragMove(IWindow view, IntPtr display, UIntPtr window)
     {
         if (display == IntPtr.Zero || window == UIntPtr.Zero)
         {
@@ -493,24 +555,53 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
                 return false;
             }
 
-            if (XQueryPointer(
-                    display,
-                    root,
-                    out _,
-                    out _,
-                    out var rootX,
-                    out var rootY,
-                    out _,
-                    out _,
-                    out _) == 0)
+            int rootX;
+            int rootY;
+            var windowPosition = view.Position;
+            if (ReferenceEquals(view, _x11InputWindow) &&
+                _x11LeftButtonPressed &&
+                _x11HasLeftButtonDownPosition)
+            {
+                rootX = windowPosition.X + (int)Math.Round(_x11LeftButtonDownX);
+                rootY = windowPosition.Y + (int)Math.Round(_x11LeftButtonDownY);
+                _x11DragStartLocalX = _x11LeftButtonDownX;
+                _x11DragStartLocalY = _x11LeftButtonDownY;
+            }
+            else if (XQueryPointer(
+                         display,
+                         root,
+                         out _,
+                         out _,
+                         out rootX,
+                         out rootY,
+                         out var windowX,
+                         out var windowY,
+                         out _) != 0)
+            {
+                _x11DragStartLocalX = windowX;
+                _x11DragStartLocalY = windowY;
+                _x11LeftButtonPressed = true;
+            }
+            else
             {
                 return false;
             }
 
+            _x11DragWindow = view;
+            _x11DragDisplay = display;
+            _x11DragHandle = window;
+            _x11DragStartRootX = rootX;
+            _x11DragStartRootY = rootY;
+            _x11DragStartPosition = windowPosition;
+            _x11DragExpectedPosition = _x11DragStartPosition;
+            _x11FallbackApplied = false;
+            TraceX11DragMove(
+                $"begin pointer=({rootX},{rootY}), window={_x11DragStartPosition}, handle={window}");
+
             var moveresizeAtom = XInternAtom(display, "_NET_WM_MOVERESIZE", onlyIfExists: false);
             if (moveresizeAtom == UIntPtr.Zero)
             {
-                return false;
+                return true;
             }
 
             XUngrabPointer(display, UIntPtr.Zero);
@@ -538,15 +629,167 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
                 ref message) != 0;
 
             XFlush(display);
-            return sent;
+            // XSendEvent only confirms that the request reached the root window. Some
+            // XWayland compositors reject synthetic interactive-move requests. Keep a
+            // pending client-side fallback; it activates only if button-one remains down,
+            // the WM has not moved the window, and motion still reaches this client.
+            return sent || _x11DragWindow != null;
         }
         catch (DllNotFoundException)
         {
+            ClearX11DragMove();
             return false;
         }
         catch (EntryPointNotFoundException)
         {
+            ClearX11DragMove();
             return false;
+        }
+    }
+
+    [SupportedOSPlatform("linux")]
+    private bool TryContinueX11DragMove(IWindow view, WpfInputEventArgs input)
+    {
+        try
+        {
+            if (_x11DragDisplay == IntPtr.Zero ||
+                _x11DragHandle == UIntPtr.Zero)
+            {
+                TraceX11DragMove("cancel: native handle is unavailable");
+                ClearX11DragMove();
+                return false;
+            }
+
+            if (!_x11LeftButtonPressed)
+            {
+                TraceX11DragMove("cancel: no tracked left-button press");
+                ClearX11DragMove();
+                return false;
+            }
+
+            var currentPosition = view.Position;
+            // A changed position means the window manager accepted _NET_WM_MOVERESIZE.
+            // Stop tracking immediately so the fallback never competes with native motion.
+            if (!currentPosition.Equals(_x11DragExpectedPosition))
+            {
+                TraceX11DragMove("cancel: native window position already changed");
+                ClearX11DragMove();
+                return false;
+            }
+
+            int eventRootX = _x11DragStartRootX +
+                (int)Math.Round(input.X - _x11DragStartLocalX);
+            int eventRootY = _x11DragStartRootY +
+                (int)Math.Round(input.Y - _x11DragStartLocalY);
+            int pointerX = eventRootX;
+            int pointerY = eventRootY;
+            int liveRootX = 0;
+            int liveRootY = 0;
+            uint buttonMask = 0;
+            var root = XDefaultRootWindow(_x11DragDisplay);
+            bool pointerQueried = root != UIntPtr.Zero &&
+                XQueryPointer(
+                    _x11DragDisplay,
+                    root,
+                    out _,
+                    out _,
+                    out liveRootX,
+                    out liveRootY,
+                    out _,
+                    out _,
+                    out buttonMask) != 0;
+            bool liveButtonPressed = pointerQueried && (buttonMask & Button1Mask) != 0;
+            bool eventMatchesLivePointer = pointerQueried &&
+                Math.Abs(eventRootX - liveRootX) <= 1 &&
+                Math.Abs(eventRootY - liveRootY) <= 1;
+            if (liveButtonPressed)
+            {
+                pointerX = liveRootX;
+                pointerY = liveRootY;
+            }
+            else if (eventMatchesLivePointer && !_x11FallbackApplied)
+            {
+                TraceX11DragMove("cancel: released pointer has no queued drag motion");
+                ClearX11DragMove();
+                return false;
+            }
+
+            TraceX11DragMove(
+                $"continue event=({eventRootX},{eventRootY}), live=({liveRootX},{liveRootY}), " +
+                $"mask=0x{buttonMask:x}, window={currentPosition}, expected={_x11DragExpectedPosition}");
+            var nextPosition = ResolveX11FallbackPosition(
+                _x11DragStartPosition,
+                _x11DragStartRootX,
+                _x11DragStartRootY,
+                pointerX,
+                pointerY);
+            if (nextPosition.Equals(_x11DragExpectedPosition))
+            {
+                return false;
+            }
+
+            view.Position = nextPosition;
+            _x11DragExpectedPosition = nextPosition;
+            _x11FallbackApplied = true;
+            TraceX11DragMove($"applied position={nextPosition}");
+            if (!liveButtonPressed && eventMatchesLivePointer)
+            {
+                ClearX11DragMove();
+            }
+
+            return true;
+        }
+        catch (DllNotFoundException)
+        {
+            ClearX11DragMove();
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            ClearX11DragMove();
+            return false;
+        }
+    }
+
+    internal static Vector2D<int> ResolveX11FallbackPosition(
+        Vector2D<int> windowStart,
+        int pointerStartX,
+        int pointerStartY,
+        int pointerX,
+        int pointerY)
+    {
+        return new Vector2D<int>(
+            windowStart.X + pointerX - pointerStartX,
+            windowStart.Y + pointerY - pointerStartY);
+    }
+
+    private void ClearX11DragMove()
+    {
+        _x11DragWindow = null;
+        _x11DragDisplay = IntPtr.Zero;
+        _x11DragHandle = UIntPtr.Zero;
+        _x11InputWindow = null;
+        _x11LeftButtonPressed = false;
+        _x11HasLeftButtonDownPosition = false;
+        _x11LeftButtonDownX = 0;
+        _x11LeftButtonDownY = 0;
+        _x11DragStartRootX = 0;
+        _x11DragStartRootY = 0;
+        _x11DragStartLocalX = 0;
+        _x11DragStartLocalY = 0;
+        _x11FallbackApplied = false;
+        _x11DragStartPosition = default;
+        _x11DragExpectedPosition = default;
+    }
+
+    private static void TraceX11DragMove(string message)
+    {
+        if (string.Equals(
+                Environment.GetEnvironmentVariable("PROGPU_WPF_TRACE_NATIVE_LOOP"),
+                "1",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"ProGPU WPF X11 drag: {message}");
         }
     }
 

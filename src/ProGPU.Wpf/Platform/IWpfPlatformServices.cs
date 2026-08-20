@@ -158,6 +158,19 @@ public interface IWpfWindowDecorationService
 {
     bool TryBeginDragMove(object window);
 
+    void TrackDragMoveInput(object window, WpfInputEventArgs input)
+    {
+    }
+
+    bool TryContinueDragMove(object window, WpfInputEventArgs input)
+    {
+        return false;
+    }
+
+    void EndDragMove(object window)
+    {
+    }
+
     bool TryActivate(object window)
     {
         return false;

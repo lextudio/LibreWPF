@@ -2909,6 +2909,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private void DetachInputService()
     {
         IWindow? window = _window;
+        if (window != null)
+        {
+            PlatformServices.WindowDecorations.EndDragMove(window);
+        }
+
         bool hadSubscription = _inputSubscription != null;
         if (hadSubscription)
         {
@@ -2941,6 +2946,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         TraceInputEvent("native", e);
+        if (_window != null)
+        {
+            PlatformServices.WindowDecorations.TrackDragMoveInput(_window, e);
+        }
+
         var input = NormalizeInputEventForCurrentRenderSurface(e, sender != null);
         TraceInputEvent("wpf", input);
         _isForwardingPlatformInput = true;
@@ -2955,6 +2965,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         finally
         {
             _isForwardingPlatformInput = false;
+        }
+
+        if (_window != null)
+        {
+            if (input.Kind == WpfInputEventKind.MouseMove)
+            {
+                PlatformServices.WindowDecorations.TryContinueDragMove(_window, e);
+            }
+            else if (input.Kind == WpfInputEventKind.MouseUp && input.Button == WpfMouseButton.Left)
+            {
+                PlatformServices.WindowDecorations.EndDragMove(_window);
+            }
         }
 
         RequestRenderAndWakeNativeLoop();

@@ -492,6 +492,10 @@ namespace System.Windows.Baml2006
 
             AssemblyName assemblyName = new AssemblyName(bamlAssembly.Name);
             bamlAssembly.Assembly = MS.Internal.WindowsBase.SafeSecurityHelper.GetLoadedAssembly(assemblyName);
+            if (bamlAssembly.Assembly == null && IsPortableCompatibilityAssembly(assemblyName))
+            {
+                bamlAssembly.Assembly = MS.Internal.WindowsBase.SafeSecurityHelper.GetLoadedAssemblyBySimpleName(assemblyName.Name);
+            }
             if (bamlAssembly.Assembly == null)
             {
                 byte[] publicKeyToken = assemblyName.GetPublicKeyToken();
@@ -533,6 +537,12 @@ namespace System.Windows.Baml2006
                 }
             }
             return bamlAssembly.Assembly;
+        }
+
+        private static bool IsPortableCompatibilityAssembly(AssemblyName assemblyName)
+        {
+            return !OperatingSystem.IsWindows()
+                && string.Equals(assemblyName.Name, "WindowsFormsIntegration", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool MatchesLocalAssembly(string shortName, byte[] publicKeyToken)

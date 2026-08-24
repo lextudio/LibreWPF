@@ -529,6 +529,55 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         }
     }
 
+    // GLFW's GLFW_TRANSPARENT_FRAMEBUFFER hint gives the surface an alpha channel, but the
+    // NSWindow keeps compositing its own backdrop behind it. With the default
+    // NSColor.windowBackgroundColor that backdrop is an opaque light gray in light appearance,
+    // so a surface cleared to (0,0,0,0) still reads as a solid panel - which is what made
+    // AvalonDock's drop-target compass hide the layout underneath it. Clearing both `opaque`
+    // and `backgroundColor` lets the transparent pixels show what is actually behind the window.
+    private static bool TryEnableCocoaWindowTransparency(IntPtr nsWindow)
+    {
+        if (nsWindow == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            IntPtr setOpaque = SelRegisterName("setOpaque:");
+            IntPtr setBackgroundColor = SelRegisterName("setBackgroundColor:");
+            if (setOpaque == IntPtr.Zero || setBackgroundColor == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            IntPtr nsColorClass = ObjCGetClass("NSColor");
+            IntPtr clearColorSelector = SelRegisterName("clearColor");
+            if (nsColorClass == IntPtr.Zero || clearColorSelector == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            IntPtr clearColor = ObjCMsgSend(nsColorClass, clearColorSelector);
+            if (clearColor == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            ObjCMsgSend(nsWindow, setOpaque, false);
+            ObjCMsgSend(nsWindow, setBackgroundColor, clearColor);
+            return true;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
     [SupportedOSPlatform("linux")]
     private static bool TryConfigureX11PopupOwner(X11WindowHandle owner, X11WindowHandle popup)
     {

@@ -1134,11 +1134,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public static bool TryHitTestOwners(object? window, double x, double y, Span<object?> owners, out int ownerCount)", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("public static bool TryQueryHitTestBoundsOwners(", proGpuDiagnostics, StringComparison.Ordinal);
         Assert.Contains("Span<object?> owners,\n        out int ownerCount)", proGpuDiagnostics, StringComparison.Ordinal);
-        Assert.Contains("IWpfDelayedRenderScheduler delayedScheduler", proGpuActivation, StringComparison.Ordinal);
+        // The delayed-render scheduler check moved from the activation service to the
+        // window host with the demand-driven presentation work (#95).
+        Assert.Contains("WpfRenderScheduler is IWpfDelayedRenderScheduler delayedScheduler", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ProcessHostInputAndRequestRender", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.TryRequestNativeLoopWakeup();", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("RequestRenderFromMediaContext(RootVisual, TimeSpan.Zero);", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("Host.InvalidateWpfSourceForPortableRender(invalidatedSource ?? RootVisual);", proGpuActivation, StringComparison.Ordinal);
+        // Source invalidation moved into the window host with the demand-driven
+        // presentation work (#95).
+        Assert.Contains("InvalidateWpfSourceForPortableRender(invalidatedSource);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Host.RenderWakeupRequested += OnHostRenderWakeupRequested", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.UpdateTick += OnHostUpdateTick", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("SynchronizeInitialWindowState(updatePortablePresentationSource: false);", proGpuActivation, StringComparison.Ordinal);
@@ -1616,7 +1620,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public GpuHitTestDeviceIndex? LastHitTestDeviceIndex => _lastHitTestDeviceIndex;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private bool _suspendHitTestCacheWrites;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private void AddHitTestCommand(RenderCommand command, Matrix4x4 transform)", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("AddHitTestStateCommand(cmd, activeTransform);", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("AddHitTestStateCommand(cmd, hitTestTransform);", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("private void AddHitTestDrawCommand(RenderCommand command, Matrix4x4 transform)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("_suspendHitTestCacheWrites = true;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreateDashedStrokePath(PathGeometry source, Pen pen, out PathGeometry dashedPath)", proGpuCompositor, StringComparison.Ordinal);
@@ -1690,9 +1694,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("new (Vector2 Min, Vector2 Max, List<int> Primitives, int NodeIndex)[childCount]", proGpuHitTesting, StringComparison.Ordinal);
         Assert.DoesNotContain("childSlots[slot++]", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("if (pen?.HasDashPattern != true)", proGpuHitTestCache, StringComparison.Ordinal);
-        Assert.Contains("TryGetDashedStrokePath(command, commandPath, pen, out var strokePath, out var strokePen)", proGpuHitTestCache, StringComparison.Ordinal);
-        Assert.Contains("TryAddPathStrokePrimitive(strokePath, transform, id, zIndex, strokePen);", proGpuHitTestCache, StringComparison.Ordinal);
-        Assert.Contains("AddPathStrokePrimitive(path, transform, id, zIndex, pen);", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("TryGetDashedStrokePath(command, commandPath, pen, localThickness, out var strokePath, out var strokePen)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("TryAddPathStrokePrimitive(strokePath, transform, id, zIndex, strokePen, localThickness);", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("AddPathStrokePrimitive(path, transform, id, zIndex, pen, localThickness);", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("if (!command.Rect.IsEmpty)", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("AddBounds(command.Rect, transform, id, zIndex);", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("RenderCommandCacheUsesDashedPathSegmentsForStrokeHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -8966,7 +8970,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TransformManagedPoint", geometry, StringComparison.Ordinal);
         Assert.Contains("PROGPU_VECTOR_INTERNAL", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\DashPattern.cs", presentationCoreProject, StringComparison.Ordinal);
-        Assert.Contains(@"MS\Internal\Media\ProGPU\ProGpuVectorStrokeContracts.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains(@"MS\internal\Media\ProGPU\ProGpuVectorStrokeContracts.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal enum PenLineCap", proGpuVectorStrokeContracts, StringComparison.Ordinal);
         Assert.Contains("Flat = 0", proGpuVectorStrokeContracts, StringComparison.Ordinal);
         Assert.Contains("Square = 1", proGpuVectorStrokeContracts, StringComparison.Ordinal);
@@ -13035,6 +13039,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<add key=\"MvpAppSetting\" value=\"MVP app config value\" />", mvpAppConfig, StringComparison.Ordinal);
         Assert.Contains("<add key=\"MvpNumericSetting\" value=\"73\" />", mvpAppConfig, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"Resources/Theme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
+        // The Fluent merged dictionary is required again: ThemeMode="System" alone changed
+        // MenuItem templates enough to break native menu-popup input validation on macOS.
+        Assert.DoesNotContain("ThemeMode=\"System\"", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"/PresentationFramework.Fluent;component/Themes/Fluent.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"/ProGPU.Wpf.MvpApp;component/Resources/ComponentTheme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpComponentPackText\"", mvpComponentThemeXaml, StringComparison.Ordinal);

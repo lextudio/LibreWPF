@@ -378,6 +378,7 @@ internal static class Program
         AssertContains(portableTargets, "'$(RestorePackagesPath)' != ''", "SDK isolated managed transport restore root");
         AssertContains(portableTargets, "_ProGpuWpfSdkCopyPackageRuntimeAssets", "SDK managed runtime copy target");
         AssertContains(portableTargets, "<ProGpuWpfCopyPackageRuntimeAssets Condition=\"'$(ProGpuWpfCopyPackageRuntimeAssets)' == ''\">true</ProGpuWpfCopyPackageRuntimeAssets>", "SDK runtime recopy default");
+        AssertContains(portableTargets, "_ProGpuWpfSdkRemoveWindowsDesktopSupportFacades", "SDK support-package facade removal target");
         AssertContains(portableTargets, "_ProGpuWpfSdkCopyNativeRuntimeAssets", "SDK native runtime copy target");
 
         AssertContains(

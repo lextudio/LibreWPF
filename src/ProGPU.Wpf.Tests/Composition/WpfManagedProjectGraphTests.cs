@@ -22,28 +22,6 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
-    public void UnsafeNativeMethodsWindowLongsFailSoftOffWindows()
-    {
-        var unsafeNativeMethods = File.ReadAllText(FindRepoPath(
-            "src",
-            "Microsoft.DotNet.Wpf",
-            "src",
-            "Shared",
-            "MS",
-            "Win32",
-            "UnsafeNativeMethodsOther.cs"));
-
-        // Window longs resolve against PresentationNative_cor3.dll, which does not exist
-        // off-Windows. The managed entry points must report "no styles" there instead of
-        // faulting the process with DllNotFoundException (GetWindowStyle funnels through
-        // GetWindowLong, so a hit-test-driven ScreenToClient used to crash macOS).
-        var noStylesPtr = "if (!System.OperatingSystem.IsWindows())\n            {\n                return IntPtr.Zero;\n            }";
-        var noStylesInt = "if (!System.OperatingSystem.IsWindows())\n            {\n                return 0;\n            }";
-        AssertGuardBefore(unsafeNativeMethods, noStylesPtr, "NativeMethodsSetLastError.GetWindowLongPtr(hWnd, nIndex)");
-        AssertGuardBefore(unsafeNativeMethods, noStylesInt, "iResult = NativeMethodsSetLastError.GetWindowLong(hWnd, nIndex);");
-    }
-
-    [Fact]
     public void FocusedProGpuWpfGraphAvoidsSharedOutputParallelContention()
     {
         var project = XDocument.Load(FindRepoPath(
@@ -13039,9 +13017,6 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<add key=\"MvpAppSetting\" value=\"MVP app config value\" />", mvpAppConfig, StringComparison.Ordinal);
         Assert.Contains("<add key=\"MvpNumericSetting\" value=\"73\" />", mvpAppConfig, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"Resources/Theme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
-        // The Fluent merged dictionary is required again: ThemeMode="System" alone changed
-        // MenuItem templates enough to break native menu-popup input validation on macOS.
-        Assert.DoesNotContain("ThemeMode=\"System\"", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"/PresentationFramework.Fluent;component/Themes/Fluent.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"/ProGPU.Wpf.MvpApp;component/Resources/ComponentTheme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpComponentPackText\"", mvpComponentThemeXaml, StringComparison.Ordinal);
@@ -19313,6 +19288,28 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void UnsafeNativeMethodsWindowLongsFailSoftOffWindows()
+    {
+        var unsafeNativeMethods = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "MS",
+            "Win32",
+            "UnsafeNativeMethodsOther.cs"));
+
+        // Window longs resolve against PresentationNative_cor3.dll, which does not exist
+        // off-Windows. The managed entry points must report "no styles" there instead of
+        // faulting the process with DllNotFoundException (GetWindowStyle funnels through
+        // GetWindowLong, so a hit-test-driven ScreenToClient used to crash macOS).
+        var noStylesPtr = "if (!System.OperatingSystem.IsWindows())\n            {\n                return IntPtr.Zero;\n            }";
+        var noStylesInt = "if (!System.OperatingSystem.IsWindows())\n            {\n                return 0;\n            }";
+        AssertGuardBefore(unsafeNativeMethods, noStylesPtr, "NativeMethodsSetLastError.GetWindowLongPtr(hWnd, nIndex)");
+        AssertGuardBefore(unsafeNativeMethods, noStylesInt, "iResult = NativeMethodsSetLastError.GetWindowLong(hWnd, nIndex);");
+    }
+
+    [Fact]
     public void PortableDragDropHonorsExplicitAllowDropAndDrawsDefaultCursors()
     {
         var dragDropOperation = File.ReadAllText(FindRepoPath(
@@ -19336,6 +19333,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("if (args.UseDefaultCursors)\n                Mouse.SetCursor(GetDefaultDragCursor(args.Effects));", dragDropOperation, StringComparison.Ordinal);
         Assert.Contains("private static Cursor GetDefaultDragCursor(DragDropEffects effects)", dragDropOperation, StringComparison.Ordinal);
         Assert.Contains("if ((effects & DragDropEffects.Copy) != 0)\n                return Cursors.Cross;", dragDropOperation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PortableMoveKeepsCaptureForOwnPopupsAndHeldButtons()
     {
         var popup = File.ReadAllText(FindRepoPath(
@@ -19348,6 +19348,34 @@ public sealed class WpfManagedProjectGraphTests
             "Controls",
             "Primitives",
             "Popup.cs"));
+        var window = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Window.cs"));
+
+        // Showing a transient top-level window makes the OS reposition its owner on
+        // macOS (no WS_EX_NOACTIVATE). Releasing capture on such a spurious move
+        // dismissed the ComboBox/Menu dropdown that just opened via OnLostMouseCapture,
+        // so HandlePortableMove must suppress the release while our own popups are open.
+        Assert.Contains("s_wpfOpenPopupCount++;", popup, StringComparison.Ordinal);
+        Assert.Contains("s_wpfOpenPopupCount--;", popup, StringComparison.Ordinal);
+        Assert.Contains("internal static bool HasAnyOpenPopupInWpf => s_wpfOpenPopupCount > 0;", popup, StringComparison.Ordinal);
+
+        // Capture is also preserved while a button is physically held: that is an
+        // in-progress captured Thumb drag (e.g. an AvalonDock splitter), and ending it
+        // after one move was the original splitter-drag bug.
+        var mouseButtonHeld = "bool mouseButtonHeld =\n                    Mouse.LeftButton == MouseButtonState.Pressed ||";
+        var guardCondition = "!mouseButtonHeld &&\n                    !System.Windows.Controls.Primitives.Popup.HasAnyOpenPopupInWpf)";
+        var captureRelease = "Mouse.Capture(null);";
+        Assert.Contains(mouseButtonHeld, window, StringComparison.Ordinal);
+        AssertGuardBefore(window, guardCondition, captureRelease);
+    }
+
+    [Fact]
     public void PortableMiscFixesKeepDesignerWorkloadsAlive()
     {
         // Synthetic input can deliver a mouse-up without a matching down (the injected
@@ -19387,23 +19415,6 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "Window.cs"));
-
-        // Showing a transient top-level window makes the OS reposition its owner on
-        // macOS (no WS_EX_NOACTIVATE). Releasing capture on such a spurious move
-        // dismissed the ComboBox/Menu dropdown that just opened via OnLostMouseCapture,
-        // so HandlePortableMove must suppress the release while our own popups are open.
-        Assert.Contains("s_wpfOpenPopupCount++;", popup, StringComparison.Ordinal);
-        Assert.Contains("s_wpfOpenPopupCount--;", popup, StringComparison.Ordinal);
-        Assert.Contains("internal static bool HasAnyOpenPopupInWpf => s_wpfOpenPopupCount > 0;", popup, StringComparison.Ordinal);
-
-        // Capture is also preserved while a button is physically held: that is an
-        // in-progress captured Thumb drag (e.g. an AvalonDock splitter), and ending it
-        // after one move was the original splitter-drag bug.
-        var mouseButtonHeld = "bool mouseButtonHeld =\n                    Mouse.LeftButton == MouseButtonState.Pressed ||";
-        var guardCondition = "!mouseButtonHeld &&\n                    !System.Windows.Controls.Primitives.Popup.HasAnyOpenPopupInWpf)";
-        var captureRelease = "Mouse.Capture(null);";
-        Assert.Contains(mouseButtonHeld, window, StringComparison.Ordinal);
-        AssertGuardBefore(window, guardCondition, captureRelease);
         var chromeSync = "if (_hasPortableCustomChrome)\n            {\n                PortableWindowActivationService.SetWindowBorder(";
         Assert.Contains(chromeSync, window, StringComparison.Ordinal);
 

@@ -31,12 +31,12 @@
     <PackageReference Include="Silk.NET.Windowing" Version="$(ProGpuWpfSilkNetVersion)" />
     <PackageReference Include="Silk.NET.WebGPU" Version="$(ProGpuWpfSilkNetVersion)" />
     <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" />
-    <PackageReference Include="System.Formats.Nrbf" Version="$(ProGpuWpfSystemFormatsNrbfVersion)" />
-    <PackageReference Include="System.IO.Packaging" Version="$(ProGpuWpfSystemIOPackagingVersion)" />
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="$(ProGpuWpfSystemSecurityCryptographyXmlVersion)" />
-    <PackageReference Include="System.Security.Permissions" Version="$(ProGpuWpfSystemSecurityPermissionsVersion)" />
-    <PackageReference Include="System.Windows.Extensions" Version="$(ProGpuWpfSystemWindowsExtensionsVersion)" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Formats.Nrbf" Version="$(ProGpuWpfSystemFormatsNrbfVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.IO.Packaging" Version="$(ProGpuWpfSystemIOPackagingVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="$(ProGpuWpfSystemSecurityCryptographyXmlVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Security.Permissions" Version="$(ProGpuWpfSystemSecurityPermissionsVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Windows.Extensions" Version="$(ProGpuWpfSystemWindowsExtensionsVersion)" GeneratePathProperty="true" />
     <PackageReference Include="OpenFontSharp" Version="$(ProGpuWpfOpenFontSharpVersion)" />
     <PackageReference Include="StbImageSharp" Version="$(ProGpuWpfStbImageSharpVersion)" />
   </ItemGroup>
@@ -46,12 +46,12 @@
     <PackageReference Include="Silk.NET.Windowing" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
     <PackageReference Include="Silk.NET.WebGPU" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
     <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" VersionOverride="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" />
-    <PackageReference Include="System.Formats.Nrbf" VersionOverride="$(ProGpuWpfSystemFormatsNrbfVersion)" />
-    <PackageReference Include="System.IO.Packaging" VersionOverride="$(ProGpuWpfSystemIOPackagingVersion)" />
-    <PackageReference Include="System.Security.Cryptography.Xml" VersionOverride="$(ProGpuWpfSystemSecurityCryptographyXmlVersion)" />
-    <PackageReference Include="System.Security.Permissions" VersionOverride="$(ProGpuWpfSystemSecurityPermissionsVersion)" />
-    <PackageReference Include="System.Windows.Extensions" VersionOverride="$(ProGpuWpfSystemWindowsExtensionsVersion)" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" VersionOverride="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Formats.Nrbf" VersionOverride="$(ProGpuWpfSystemFormatsNrbfVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.IO.Packaging" VersionOverride="$(ProGpuWpfSystemIOPackagingVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Security.Cryptography.Xml" VersionOverride="$(ProGpuWpfSystemSecurityCryptographyXmlVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Security.Permissions" VersionOverride="$(ProGpuWpfSystemSecurityPermissionsVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Windows.Extensions" VersionOverride="$(ProGpuWpfSystemWindowsExtensionsVersion)" GeneratePathProperty="true" />
     <PackageReference Include="OpenFontSharp" VersionOverride="$(ProGpuWpfOpenFontSharpVersion)" />
     <PackageReference Include="StbImageSharp" VersionOverride="$(ProGpuWpfStbImageSharpVersion)" />
   </ItemGroup>
@@ -72,6 +72,39 @@
       <TransitiveFrameworkReference
         Remove="@(TransitiveFrameworkReference)"
         Condition="'%(TransitiveFrameworkReference.Identity)' == 'Microsoft.WindowsDesktop.App' Or '%(TransitiveFrameworkReference.Identity)' == 'Microsoft.WindowsDesktop.App.WPF'" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="_ProGpuWpfSdkRemoveWindowsDesktopSupportFacades"
+          BeforeTargets="ResolveAssemblyReferences"
+          DependsOnTargets="ResolveLockFileReferences"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
+    <ItemGroup>
+      <Reference
+        Remove="@(Reference)"
+        Condition="('%(Reference.Filename)' == 'System.Configuration.ConfigurationManager' Or '%(Reference.Filename)' == 'System.Formats.Nrbf' Or '%(Reference.Filename)' == 'System.IO.Packaging' Or '%(Reference.Filename)' == 'System.Security.Cryptography.Xml' Or '%(Reference.Filename)' == 'System.Security.Permissions' Or '%(Reference.Filename)' == 'System.Windows.Extensions') And $([System.String]::Copy('%(Reference.FrameworkReferenceName)').StartsWith('Microsoft.WindowsDesktop.App'))" />
+      <Reference Include="$(PkgSystem_Configuration_ConfigurationManager)/lib/net10.0/System.Configuration.ConfigurationManager.dll" Private="true" Condition="Exists('$(PkgSystem_Configuration_ConfigurationManager)/lib/net10.0/System.Configuration.ConfigurationManager.dll')" />
+      <Reference Include="$(PkgSystem_Formats_Nrbf)/lib/net10.0/System.Formats.Nrbf.dll" Private="true" Condition="Exists('$(PkgSystem_Formats_Nrbf)/lib/net10.0/System.Formats.Nrbf.dll')" />
+      <Reference Include="$(PkgSystem_IO_Packaging)/lib/net10.0/System.IO.Packaging.dll" Private="true" Condition="Exists('$(PkgSystem_IO_Packaging)/lib/net10.0/System.IO.Packaging.dll')" />
+      <Reference Include="$(PkgSystem_Security_Cryptography_Xml)/lib/net10.0/System.Security.Cryptography.Xml.dll" Private="true" Condition="Exists('$(PkgSystem_Security_Cryptography_Xml)/lib/net10.0/System.Security.Cryptography.Xml.dll')" />
+      <Reference Include="$(PkgSystem_Security_Permissions)/lib/net10.0/System.Security.Permissions.dll" Private="true" Condition="Exists('$(PkgSystem_Security_Permissions)/lib/net10.0/System.Security.Permissions.dll')" />
+      <Reference Include="$(PkgSystem_Windows_Extensions)/lib/net10.0/System.Windows.Extensions.dll" Private="true" Condition="Exists('$(PkgSystem_Windows_Extensions)/lib/net10.0/System.Windows.Extensions.dll')" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="_ProGpuWpfSdkPreferTransportReferences"
+          BeforeTargets="ResolveAssemblyReferences"
+          DependsOnTargets="ResolveLockFileReferences"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package' And '$(PkgLibreWPF_Transport)' != ''">
+    <ItemGroup>
+      <_ProGpuWpfTransportReference Include="$(PkgLibreWPF_Transport)/ref/net10.0/*.dll" />
+      <Reference Remove="@(_ProGpuWpfTransportReference)"
+                 MatchOnMetadata="Filename"
+                 MatchOnMetadataOptions="CaseInsensitive" />
+      <Reference Include="@(_ProGpuWpfTransportReference)" Private="true" />
+      <Reference Include="$(PkgLibreWPF_Transport)/lib/net10.0/System.Private.Windows.Core.dll"
+                 Private="true"
+                 Condition="Exists('$(PkgLibreWPF_Transport)/lib/net10.0/System.Private.Windows.Core.dll')" />
     </ItemGroup>
   </Target>
 
@@ -356,9 +389,11 @@
       <_ProGpuWpfManagedTransportDependencyRuntimeAsset
         Include="$(_ProGpuWpfManagedTransportRuntimeRoot)*.dll"
         Exclude="$(_ProGpuWpfManagedTransportRuntimeRoot)PresentationCore.dll" />
+      <RuntimeCopyLocalItems Remove="@(_ProGpuWpfManagedTransportDependencyRuntimeAsset)"
+                             MatchOnMetadata="Filename"
+                             MatchOnMetadataOptions="CaseInsensitive" />
       <RuntimeCopyLocalItems
-        Include="@(_ProGpuWpfManagedTransportDependencyRuntimeAsset)"
-        Exclude="@(RuntimeCopyLocalItems)">
+        Include="@(_ProGpuWpfManagedTransportDependencyRuntimeAsset)">
         <NuGetPackageId>$(ProGpuWpfManagedPackageId)</NuGetPackageId>
         <NuGetPackageVersion>$(ProGpuWpfManagedPackageVersion)</NuGetPackageVersion>
         <AssetType>runtime</AssetType>

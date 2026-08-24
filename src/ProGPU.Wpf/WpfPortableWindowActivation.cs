@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 using ProGPU.Wpf.Interop;
 using System.Windows.Media.ProGPU.Platform;
@@ -226,6 +227,25 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         host = null;
         return false;
+    }
+
+    /// <summary>
+    /// Resolves the native OS window handle backing a WPF <see cref="Window"/> on this ProGPU/
+    /// Silk.NET-hosted platform. Thin wrapper over the resolution that already lives on the
+    /// window's <see cref="WpfPortablePresentationSourceBridge.TryGetNativeHandle"/> - see that
+    /// member for what the handle actually is and why it exists alongside the portable
+    /// <c>Handle</c> WPF's <c>HwndSource</c> compat shim already exposes.
+    /// </summary>
+    public static bool TryGetNativeWindowHandle(object? window, out IntPtr handle)
+    {
+        handle = IntPtr.Zero;
+        if (!TryGetActiveHost(window, out var host) ||
+            host?.PortablePresentationSourceBridge is not { } bridge)
+        {
+            return false;
+        }
+
+        return bridge.TryGetNativeHandle(out handle);
     }
 
     public static bool TryRegisterPresentationFrameworkLauncherService()
@@ -1339,6 +1359,13 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
             ProcessHostInputAndRequestRender(e);
         }
+        catch (Exception exception)
+        {
+            if (!TryReportInputExceptionToWindowDispatcher(exception))
+            {
+                throw;
+            }
+        }
         finally
         {
             if (releaseButtonAfterDispatch)
@@ -1346,6 +1373,18 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 _pressedMouseButtons.Remove(e.Button);
             }
         }
+    }
+
+    private bool TryReportInputExceptionToWindowDispatcher(Exception exception)
+    {
+        if (!TryGetWindowActivationService(out var activationService))
+        {
+            return false;
+        }
+
+        return activationService.TryBeginInvokeInput(
+            Window,
+            () => ExceptionDispatchInfo.Capture(exception).Throw());
     }
 
     private void ProcessHostInputAndRequestRender(WpfInputEventArgs e)

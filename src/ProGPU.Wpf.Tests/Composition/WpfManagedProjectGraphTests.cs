@@ -19302,6 +19302,32 @@ public sealed class WpfManagedProjectGraphTests
             item => string.Equals(item.Attribute("Include")?.Value, include, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void PortableDragDropHonorsExplicitAllowDropAndDrawsDefaultCursors()
+    {
+        var dragDropOperation = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "PortableDragDropOperation.cs"));
+
+        // An inherited AllowDrop=true made hit-testing match the first element touched
+        // (adorner, ListBoxItem - anything), so drops silently landed nowhere. Only a
+        // value placed on THIS element (or an expression/animation/coercion) counts -
+        // on Windows inheritance is inert because nothing consults it.
+        Assert.Contains("private static bool IsExplicitlyDropEnabled(DependencyObject element, DependencyProperty property)", dragDropOperation, StringComparison.Ordinal);
+        Assert.Contains("return source != BaseValueSourceInternal.Inherited || isExpression || isAnimated || isCoerced;", dragDropOperation, StringComparison.Ordinal);
+
+        // There is no OLE modal loop off-Windows, so GiveFeedback must draw the default
+        // drag cursors itself or the pointer never visibly changes during a drag.
+        Assert.Contains("if (args.UseDefaultCursors)\n                Mouse.SetCursor(GetDefaultDragCursor(args.Effects));", dragDropOperation, StringComparison.Ordinal);
+        Assert.Contains("private static Cursor GetDefaultDragCursor(DragDropEffects effects)", dragDropOperation, StringComparison.Ordinal);
+        Assert.Contains("if ((effects & DragDropEffects.Copy) != 0)\n                return Cursors.Cross;", dragDropOperation, StringComparison.Ordinal);
+    }
+
     private static void AssertGuardBefore(string source, string guard, string guardedCall)
     {
         var guardIndex = source.IndexOf(guard, StringComparison.Ordinal);

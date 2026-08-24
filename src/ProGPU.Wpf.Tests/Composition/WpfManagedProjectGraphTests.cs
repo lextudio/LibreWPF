@@ -15381,6 +15381,7 @@ public sealed class WpfManagedProjectGraphTests
             target => (string?)target.Attribute("Name") == "_ProGpuWpfSdkPreservePortableWinFormsRuntimeAssetsInDependencyFile");
         Assert.DoesNotContain("ProGpuWpfCopyPackageRuntimeAssets",
             (string?)dependencyTarget.Attribute("Condition"), StringComparison.Ordinal);
+        Assert.Contains("_ProGpuWpfSdkRemoveWindowsDesktopSupportFacades", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyNativeRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkPreservePortableWinFormsRuntimeAssetsInDependencyFile", portableTargets, StringComparison.Ordinal);
         Assert.Contains("AfterTargets=\"Build\"", portableTargets, StringComparison.Ordinal);

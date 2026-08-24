@@ -45,6 +45,8 @@ namespace System.Windows
         private DragDropEffects _lastEffects = DragDropEffects.None;
         private DragAction _action = DragAction.Continue;
         private bool _dropped;
+        private Point _lastRootPoint;
+        private bool _hasLastRootPoint;
 
         private PortableDragDropOperation(UIElement dragSource, PortablePresentationSource source, DataObject dataObject, DragDropEffects allowedEffects)
         {
@@ -115,12 +117,38 @@ namespace System.Windows
             _dragSource.PreviewMouseUp += onPreviewMouseButtonUp;
             _dragSource.PreviewKeyDown += onPreviewKeyDown;
 
+            // Safety net: the ONLY thing that normally ends this loop is a PreviewMouseUp/
+            // PreviewMouseMove routed event reaching _dragSource while it holds mouse capture. On
+            // Windows the OLE modal loop guarantees that delivery. Off Windows, real interactive
+            // drags have been observed to leave the button released at the OS level (Mouse.LeftButton
+            // already Released) without that routed event ever firing on _dragSource - e.g. capture
+            // getting silently redirected, or the up landing on a different element mid-drag - and
+            // with no timeout this loop then spins in Dispatcher's NativeInputPump/Thread.Sleep(1)
+            // forever, which is exactly an app hang a user has to force-quit to escape. Polling the
+            // global button state once per composed frame (~60Hz) closes that gap: catches a missed
+            // release within about one frame, while changing nothing when the routed event already
+            // fires normally (RaiseQueryContinueDrag's own zero-buttons-down check still drives the
+            // actual Drop decision).
+            EventHandler onRenderingTick = (_, _) =>
+            {
+                if (_action != DragAction.Continue || !_hasLastRootPoint)
+                    return;
+                if (Mouse.LeftButton == MouseButtonState.Released &&
+                    Mouse.MiddleButton == MouseButtonState.Released &&
+                    Mouse.RightButton == MouseButtonState.Released)
+                {
+                    OnPointerUpdate(frame, _lastRootPoint);
+                }
+            };
+            CompositionTarget.Rendering += onRenderingTick;
+
             try
             {
                 Dispatcher.PushFrame(frame);
             }
             finally
             {
+                CompositionTarget.Rendering -= onRenderingTick;
                 _dragSource.PreviewMouseMove -= onPreviewMouseMove;
                 _dragSource.PreviewMouseUp -= onPreviewMouseButtonUp;
                 _dragSource.PreviewKeyDown -= onPreviewKeyDown;
@@ -143,6 +171,9 @@ namespace System.Windows
         {
             if (_action != DragAction.Continue)
                 return;
+
+            _lastRootPoint = rootPoint;
+            _hasLastRootPoint = true;
 
             var keyStates = GetCurrentKeyStates();
             var query = new QueryContinueDragEventArgs(escapePressed: false, keyStates);
@@ -237,15 +268,39 @@ namespace System.Windows
             {
                 switch (current)
                 {
-                    case UIElement { AllowDrop: true } uiElement:
+                    case UIElement { AllowDrop: true } uiElement when IsExplicitlyDropEnabled(uiElement, UIElement.AllowDropProperty):
                         return uiElement;
-                    case ContentElement { AllowDrop: true } contentElement:
+                    case ContentElement { AllowDrop: true } contentElement when IsExplicitlyDropEnabled(contentElement, ContentElement.AllowDropProperty):
                         return contentElement;
-                    case UIElement3D { AllowDrop: true } uiElement3D:
+                    case UIElement3D { AllowDrop: true } uiElement3D when IsExplicitlyDropEnabled(uiElement3D, UIElement3D.AllowDropProperty):
                         return uiElement3D;
                 }
             }
             return null;
+        }
+
+        // AllowDropProperty carries FrameworkPropertyMetadataOptions.Inherits (this matches real
+        // WPF, not a portability difference - see FrameworkElement's static constructor). On
+        // Windows that is harmless: OLE's RegisterDragDrop is registered once per HWND, and
+        // OleDropTarget resolves the specific target through its own hit-testing, never by walking
+        // AllowDrop ancestors. This portable reimplementation instead approximates Windows' registered
+        // drop target by walking up for an AllowDrop==true ancestor - but with inheritance in play,
+        // EVERY descendant under any AllowDrop-enabled root reports AllowDrop==true, so the walk
+        // matched literally the first thing hit (an adorner, a ListBoxItem - anything) instead of the
+        // real intended container. A dragged toolbox item then silently never landed: DragEnter/
+        // DragOver fired on that incidental element, which usually has no Drop subscriber, so nothing
+        // happened and no error was ever surfaced.
+        //
+        // The fix: only accept a value that was actually placed on THIS element (Local, Style,
+        // Template, DefaultStyle, ParentTemplate, ...), never one that merely flowed down via
+        // Inherited. That is what "AllowDrop declared here" means on Windows too, since inheritance
+        // there is inert (nothing consults it).
+        private static bool IsExplicitlyDropEnabled(DependencyObject element, DependencyProperty property)
+        {
+            var source = element.GetValueSource(
+                property, null,
+                out _, out var isExpression, out var isAnimated, out var isCoerced, out _);
+            return source != BaseValueSourceInternal.Inherited || isExpression || isAnimated || isCoerced;
         }
 
         private static DependencyObject GetVisualOrLogicalParent(DependencyObject current)

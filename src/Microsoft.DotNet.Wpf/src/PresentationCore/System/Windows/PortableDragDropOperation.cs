@@ -317,6 +317,26 @@ namespace System.Windows
 
             if (!args.Handled)
                 args.UseDefaultCursors = true;
+
+            // On Windows, DRAGDROP_S_USEDEFAULTCURSORS tells the OLE modal loop to draw its own
+            // native drag cursor - no WPF code is involved. There's no OLE here, so the portable
+            // path has to draw that feedback itself, or the mouse pointer never visibly changes
+            // while a drag is in progress (it just looks like nothing is happening).
+            if (args.UseDefaultCursors)
+                Mouse.SetCursor(GetDefaultDragCursor(args.Effects));
+        }
+
+        private static Cursor GetDefaultDragCursor(DragDropEffects effects)
+        {
+            if (effects == DragDropEffects.None)
+                return Cursors.No;
+            if ((effects & DragDropEffects.Copy) != 0)
+                return Cursors.Cross;
+            if ((effects & DragDropEffects.Move) != 0)
+                return Cursors.Hand;
+            if ((effects & DragDropEffects.Link) != 0)
+                return Cursors.Hand;
+            return Cursors.Arrow;
         }
     }
 }

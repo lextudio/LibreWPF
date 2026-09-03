@@ -177,7 +177,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         }
 
         WpfInputEventArgs nativeInput = CreateNativeDiagnosticInput(
-            OperatingSystem.IsMacOS(),
+            coordinatesAreOwnerRelative: false,
             input,
             LogicalX,
             LogicalY);
@@ -536,7 +536,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         double localY = input.Y;
         if (IsPointerInput(input.Kind) &&
             !TryNormalizeNativePointerCoordinates(
-                OperatingSystem.IsMacOS(),
+                coordinatesAreOwnerRelative: false,
                 input.X,
                 input.Y,
                 LogicalX,
@@ -565,8 +565,9 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         out double localX,
         out double localY)
     {
-        // Cocoa/GLFW reports transient child-window pointer coordinates in the
-        // owner client's logical coordinate space. X11 reports popup-local points.
+        // Native popup hosts report transient-window pointer coordinates in the
+        // popup's local logical coordinate space. The optional owner-relative branch
+        // remains for platforms whose native backend explicitly uses that contract.
         // Keep the conversion primitive and allocation-free because every popup
         // pointer event passes through it.
         localX = coordinatesAreOwnerRelative

@@ -119,7 +119,11 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
             WindowBorder = ProGpuWpfWindowBorder.Hidden,
             EnablePortablePopupService = false,
             IncludePortablePopupRootsInWpfReplay = true,
-            NativePointerCoordinatesAreOwnerRelative = OperatingSystem.IsMacOS(),
+            // Cocoa/GLFW reports pointer positions for these transient surfaces in
+            // popup-local logical coordinates. Do not reinterpret them as coordinates
+            // relative to the owner window: doing so subtracts the popup screen origin
+            // a second time and causes every menu hover event to miss its item.
+            NativePointerCoordinatesAreOwnerRelative = false,
             SharedRenderDeviceContext = ownerHost.CompositionTarget?.Context,
             CompositorOptions = new CompositorOptions
             {

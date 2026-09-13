@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Software-adapter query failure isolated — 2026-09-13:** the normal ARM64 VM
+consumer passes, but Microsoft Basic Render Driver crashes after first query
+submission with both original FXC and the isolated DXC experiment. The managed
+canonical-shader query also crashes, excluding a C++-bridge-only explanation.
+Retain the worker-thread dump and do not ship the experimental compiler/dependency
+selection. Current-head System.Drawing, Linux, browser and strict MSVC CI pass;
+full Windows native/package qualification remains open. The earlier native x64
+per-point-guideline rendering benchmark also fails, independently of hit queries.
+See [software comparison and next merge blockers](../reports/native-mil-windows-query-samples-2026-09-13.md#software-adapter-follow-up).
+
 **Windows query consumer passes — 2026-09-13:** ProGPU's four-lane path sample
 change now completes the ARM64 VM consumer, including all participation and fresh
 region-first cases, exit 0. Both earlier access-violation comparisons are terminal

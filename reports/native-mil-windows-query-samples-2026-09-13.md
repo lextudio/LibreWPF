@@ -65,6 +65,40 @@ the same native libraries with the earlier, preserved adapter-selection diagnost
 
 ## Still required before ordered merges
 
+### Software-adapter follow-up
+
+The software-adapter comparison subsequently fails after its first point submission:
+Microsoft Basic Render Driver passes cubic/retained rendering, submits after
+19,551.738 ms, then exits 0xC0000005 after 1m52s. An exact-input repeat under an
+unhandled-exception monitor reproduces the crash. The triage dump shows PC 0 on
+a worker thread while the main caller waits; it does not establish a specific
+faulting ProGPU or driver function. Scripts, WER event and stack/register reports
+are retained with the local dump `dotnet.exe_260913_170538.dmp`.
+
+An isolated DXC comparison uses the same native query implementation and consumer,
+the previously built exact-pin feature-enabled WebGPU DLL, and SDK DXC/DXIL files.
+Its first point submission takes 840.777 ms, but it still exits 0xC0000005, after
+6.939s. This rejects compiler selection alone as a demonstrated repair. The
+temporary managed adapter/compiler patch was preserved, reverted, and the normal
+Backend rebuilt successfully; no experimental dependency or selection is shipped.
+
+The managed `TryHitTestPointUsesGpuQuadtreeAndPreciseTesting` test was then run in
+an isolated Windows folder with the same software-adapter-only diagnostic and
+canonical four-lane shader. Its test host also crashes. This narrows investigation
+away from a C++-bridge-only defect without proving the exact shared shader/backend
+cause. The shader already dispatches one invocation; a proposed 64-invocation
+hypothesis was ruled out by source inspection and no such change was made.
+
+Current ProGPU CI completes the entire System.Drawing job successfully, including
+the unchanged allocation limit and benchmarks. The earlier be199695 native x64
+job separately fails its `--semantic-per-point-path-guideline` rendering benchmark
+before package production. That benchmark does not call the hit-query shader;
+do not equate its silent child failure with the query crash without further evidence.
+The current-head full native/package jobs remain required. Both software-adapter
+query failure and hosted missing-ink/rendering failures remain merge blockers.
+
+### Merge sequence
+
 1. Resolve/qualify Windows CI's independent missing rectangle ink. The VM adapter
    pass is not equivalent to the hosted runner's older software graphics stack.
 2. Finish exact-head native package consumers, required CI and downstream package

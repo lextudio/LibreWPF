@@ -64,6 +64,12 @@ trace is being used to recover the primary failure. The original 15-second
 recovery deadline remains unchanged. Earlier x64 recovery timeout is not closed
 by the independent pixel probes.
 
+The trace run subsequently reaches a real native presentation, drains the close
+request and exits with the original `NativeMilHostDeviceRecoverySmoke.RunAsync`
+line-29 timeout while waiting for dispatch of the injection callback. The earlier
+cleanup exception is not evidence of a fixed recovery path. A full staged WARP
+consumer, beyond the passing original pixel fixtures, is running separately.
+
 PRs 139 (ProGPU), 29 (LibreWinForms), and 115 (LibreWPF) remain unmerged. Required
 order is upstream qualification/merge, exact downstream pins, downstream CI and
 package/application qualification, then dependent merges. No full-goal completion

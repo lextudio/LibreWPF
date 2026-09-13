@@ -15,7 +15,10 @@ it is not an exact final-package qualification.
 ## First-chance failure
 
 System WARP version `10.0.26100.9278` fails after 19,879.905 ms submission,
-before first readback completion. Local artifact
+before first readback completion. A matched apphost control also confirms
+the system WARP is loaded and exits `-1073741819` before first readback, after
+28,402.209 ms submission. Thus the successful development-runtime point query
+is not explained by apphost versus shared-dotnet launch alone. Local artifact
 `artifacts/native-core-validation.GwKsGq/dotnet.exe_260913_224509.dmp`
 records an invalid generated-code store to `0x2144`; the return address maps
 inside the system `d3d10warp.dll`. Nearby SP-relative stores suggest erroneous
@@ -33,8 +36,9 @@ or redistributed. Its testing-only license does not provide a product fix.
 
 Using that runtime, the same point query submits in 22,532.337 ms, completes
 readback in 155.797 ms, and passes all 16 repeated waits. The first bounds-region
-pipeline remains live before submission, with CPU consumption exceeding 218
-seconds. Keep process 4640 / execution session 71699 as the current observation
+query submits in 341,098.475 ms and passes its assertions; ellipse compilation
+is now live. This cold latency is not usable application behavior. Keep process
+4640 / execution session 71699 as the current observation
 handle until authoritative terminal state; slow observation is not a failed or
 completed process. Full region/input compatibility and cold latency remain open.
 

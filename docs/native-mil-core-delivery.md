@@ -20,8 +20,10 @@ reproduces the Windows system-WARP crash before its first map completion. The
 first-chance dump locates an invalid generated ARM64 store, returning into
 `d3d10warp.dll`, rather than a proven null callback. With the same staged native
 DLL and unchanged shader/assertions, isolated development WARP 1.0.20 passes
-the first point query and 16 repeated waits; bounds-pipeline compilation remains
-live and slow. Metal passes the complete independent fixture. This is runtime
+the first point query, 16 repeated waits and first bounds query. Bounds pipeline
+creation takes 341 seconds; ellipse compilation remains live. The matched system
+apphost still crashes before first readback. Metal passes the complete independent
+fixture. This is runtime
 diagnosis, not a product repair: the testing-only WARP package is not distributed,
 system files remain unchanged, and current-package/input/merge gates stay closed.
 See [runtime differential evidence](../reports/native-mil-owner-query-warp-2026-09-13.md).

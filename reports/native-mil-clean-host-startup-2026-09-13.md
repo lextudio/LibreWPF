@@ -96,3 +96,52 @@ Hosted Windows x64 native-renderer CI also passes on `5a3b6bfd`. Windows ARM64
 native and Windows managed tests are still running; package consumers have not
 yet qualified this head. No merge or dependency update follows from these
 partial results alone.
+## Windows runtime asset and failure provenance follow-up
+
+The Windows x64 runtime probe combines the same architecture-neutral source
+build with the Windows managed payload from LibreWPF Build `34771261341`
+(artifact `10321747826`, head `116733cf6`) and ProGPU Build `34770390199`'s
+native x64 runtime (artifact `10322495687`, head `5a3b6bfd`). This is staged
+source-host validation, not an exact package-mode application result.
+
+The original staged run omitted the already-pinned Windows Desktop 10.0.11
+dispatcher helper. Its importing source assemblies restrict native lookup to
+AssemblyDirectory/System32; placing `PresentationNative_cor3.dll` and its
+`vcruntime140_cor3.dll` dependency beside actual WindowsBase/PresentationCore
+resolves that staging omission without relaxing DLL search policy. The existing
+transport package already includes those native dependencies; no new package
+dependency or Windows MIL renderer fallback was added to solve this probe.
+
+The harness then selected the portable root `System.Windows.Extensions.dll`
+stub instead of the included `runtimes/win/lib/net10.0` asset. Consequently
+theme loading failed in `XamlAccessLevel.AssemblyAccessTo`. Its isolated loader
+now preserves explicit and sibling source-WPF assembly priority, then consults
+the source/host dependency resolvers before a flat output fallback. The host's
+dependency manifest selects the current platform asset. A diagnostic replacement
+first isolated the cause; the final run restores the root stub and proves the
+loader change selects the Windows implementation without that replacement.
+
+Native validation failures now retain their original exception stack and the
+first recovery failure, instead of overwriting it with later validation failure.
+The unchanged Windows run gets through inline Button, rich-text decorations,
+source document/table/edit/undo, excluded text and geometry-selection checks,
+but **fails** the existing recovery deadline in
+`NativeMilHostDeviceRecoverySmoke.RunAsync` line 29. The earlier run reported
+device loss after replacing the original failure. Windows native host, input,
+recovery and package startup are therefore still unqualified; neither deadline
+nor assertions were relaxed.
+
+Release compilation has zero warnings/errors, two focused graph checks pass,
+and the full native-host/device-recovery run passes on Metal after the loader
+change. Logs under the directory above:
+`native-host-loader-build.log`, `native-host-loader-tests.log`,
+`native-host-loader-metal.log`, `native-host-windows-x64-platform-asset.log`, and
+`native-host-windows-x64-loader.log`. The Parallels skill guided scoped guest
+execution; the Windows VM remains running and no settings/drivers were changed.
+
+The completed ProGPU Build has just two failed Windows package consumers. The
+independent canonical coverage/copy probe passes on both; the original cubic
+frame is black on both. This upstream rendering failure still prevents advancing
+dependency pins and downstream SDK qualification. ProGPU's added vector-stage
+probe tests the same packaged shader without native preparation; its VM software
+adapter run passes, but that diagnostic is not a repaired consumer.

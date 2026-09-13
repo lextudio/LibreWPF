@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using ProGPU.Backend.Native;
 using System.Reflection.Emit;
 using System.Runtime.Loader;
@@ -206,7 +207,7 @@ public static class Program
                                 }
                                 catch (Exception ex)
                                 {
-                                    validationFailure = ex;
+                                    validationFailure ??= ex;
                                 }
                                 finally
                                 {
@@ -228,7 +229,7 @@ public static class Program
 
                 if (validationFailure != null)
                 {
-                    throw validationFailure;
+                    ExceptionDispatchInfo.Throw(validationFailure);
                 }
                 Console.WriteLine(status ?? throw new TimeoutException(
                     $"Native MIL host did not present within " +
@@ -2069,6 +2070,7 @@ public static class Program
         private readonly string _presentationFrameworkPath;
         private readonly string _presentationCorePath;
         private readonly AssemblyDependencyResolver _resolver;
+        private readonly AssemblyDependencyResolver _hostResolver;
 
         public WpfAssemblyLoadContext(
             string repoRoot,
@@ -2084,6 +2086,7 @@ public static class Program
             _presentationFrameworkPath = presentationFrameworkPath;
             _presentationCorePath = presentationCorePath;
             _resolver = new AssemblyDependencyResolver(presentationFrameworkPath);
+            _hostResolver = new AssemblyDependencyResolver(typeof(Program).Assembly.Location);
         }
 
         protected override Assembly? Load(AssemblyName assemblyName)
@@ -2117,15 +2120,6 @@ public static class Program
                 return LoadFromAssemblyPath(realWpfAssemblyPath);
             }
 
-            string outputAssemblyPath = Path.Combine(
-                AppContext.BaseDirectory,
-                $"{assemblyName.Name}.dll");
-
-            if (File.Exists(outputAssemblyPath))
-            {
-                return LoadFromAssemblyPath(outputAssemblyPath);
-            }
-
             // Source builds put each WPF assembly in its own project directory.
             // Resolve siblings using PresentationCore's configuration and TFM,
             // never a stale Debug build or the runtime's WindowsBase facade.
@@ -2144,8 +2138,23 @@ public static class Program
                 return LoadFromAssemblyPath(artifactAssemblyPath);
             }
 
-            string? resolvedPath = _resolver.ResolveAssemblyToPath(assemblyName);
-            return resolvedPath == null ? null : LoadFromAssemblyPath(resolvedPath);
+            // Source WPF has priority over host facades, but package dependencies
+            // must honor the runtime asset selected by the host's deps.json.
+            // A portable output can contain both a root-level platform stub and
+            // runtimes/win implementation (notably System.Windows.Extensions).
+            string? resolvedPath = _resolver.ResolveAssemblyToPath(assemblyName)
+                ?? _hostResolver.ResolveAssemblyToPath(assemblyName);
+            if (resolvedPath != null)
+            {
+                return LoadFromAssemblyPath(resolvedPath);
+            }
+
+            string outputAssemblyPath = Path.Combine(
+                AppContext.BaseDirectory,
+                $"{assemblyName.Name}.dll");
+            return File.Exists(outputAssemblyPath)
+                ? LoadFromAssemblyPath(outputAssemblyPath)
+                : null;
         }
     }
 }

@@ -3820,6 +3820,22 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void NativeSourceHarnessResolvesPlatformDependenciesAfterRealSourceAssemblies()
+    {
+        string program = File.ReadAllText(FindRepoPath(
+            "src", "ProGPU.Wpf.RealPresentationFrameworkHarness", "Program.cs"));
+        Assert.Contains("new AssemblyDependencyResolver(typeof(Program).Assembly.Location)", program, StringComparison.Ordinal);
+        int source = program.IndexOf("if (File.Exists(artifactAssemblyPath))", StringComparison.Ordinal);
+        int runtime = program.IndexOf("_hostResolver.ResolveAssemblyToPath(assemblyName)", StringComparison.Ordinal);
+        int output = program.IndexOf("string outputAssemblyPath =", StringComparison.Ordinal);
+        Assert.True(source >= 0 && runtime > source && output > runtime,
+            "Real source assemblies must precede RID resolution, and RID assets must precede flat output stubs.");
+        Assert.Contains("ExceptionDispatchInfo.Throw(validationFailure)", program, StringComparison.Ordinal);
+        Assert.DoesNotContain("throw validationFailure;", program, StringComparison.Ordinal);
+        Assert.Contains("validationFailure ??= ex;", program, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealPresentationFrameworkHarnessExercisesManagedFrameworkAndProGpuBridge()
     {
         var harnessProjectPath = FindRepoPath(

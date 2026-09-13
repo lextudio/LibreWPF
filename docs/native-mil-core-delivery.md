@@ -15,6 +15,17 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Windows merge-gate isolation — 2026-09-13:** ProGPU Build `34770390199`
+finishes with only its two Windows package consumers failing; all native
+renderer, browser, compiler and non-Windows package lanes pass. Original cubic
+frames remain black on both Windows CI architectures despite passing raw
+coverage/copy. No pins or merge admission advance. The source-host loader now
+honors platform dependency assets after real source assemblies and preserves the
+first validation exception/stack. Metal host/recovery and two graph checks pass;
+Windows source text/document checks pass, but its unchanged recovery deadline
+fails. These are separate open rendering/runtime blockers, not completed package
+qualification. See [current source-host evidence](../reports/native-mil-clean-host-startup-2026-09-13.md#windows-runtime-asset-and-failure-provenance-follow-up).
+
 **Clean source-host prerequisites — 2026-09-13:** the existing native-host script
 now explicitly restores source `PresentationBuildTasks`, and its harness builds
 the actual portable Aero2 theme. A clean checkout exposed both missing

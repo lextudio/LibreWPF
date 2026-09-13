@@ -49,7 +49,18 @@ before consuming a borrowed encoder. Both native providers compile locally;
 all 20 C++ tests pass. Rebuilt Metal libraries pass fresh direct/cubic probes
 and existing ordinary, forced-inline, forced-staged and vector-clip comparisons.
 No latency improvement or hosted failure repair is claimed before measurement.
-Windows MSVC build and local browser checks are in progress.
+Windows MSVC now builds both providers from an archive of `5e3bbc27`; the
+native DLL SHA-256 is
+`E423C947F43771A567F78EEB41E8EA8511DD7FD614609F5B42AEB4734FFD372E`.
+The isolated consumer retains package 3000's Backend and original wgpu runtime
+(`9F73E41536B3BD96A0A44692EA65888C9DE004B19FBF5DE90489768667FBBDBC`)
+with the normal Parallels adapter. Separate direct-path and cubic processes pass
+in 31.722s and 25.705s, exit 0. These end-to-end process durations are not isolated
+compiler timings or a controlled old/new performance comparison. Build/probe
+log: `artifacts/native-windows-consumer.akdIwM/lazy-path-arm64.log`.
+The rebuilt browser contract also passes its unchanged 120-second deadline and
+existing masks/image checks; ProGPU log: `artifacts/lazy-path-browser.log`.
+Hosted and final package results remain pending.
 
 Historical-package diagnosis is now manual-only with an explicit run ID. The
 full Build's failure-only Windows step runs all three stages against its own

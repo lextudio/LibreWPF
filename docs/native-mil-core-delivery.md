@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Runtime experiment rejected; CI measurement narrowed — 2026-09-14:** ProGPU
+`7aa2c352` records that moving the native query stack to workgroup memory does
+not repair system WARP. The experimental shader was reverted; exact production
+geometry and storage are unchanged. The latest Linux job reported one allocation
+test failure; its counter now excludes assertion dispatch while retaining the
+zero-byte requirement for all 10,000 builder calls. All 122 local interop tests
+pass, but a fresh Linux CI pass and the Windows runtime/package/source gates
+remain required. See [runtime and CI follow-up](../reports/native-mil-query-stack-and-ci-2026-09-14.md).
+
 **Typed compiler selection connected — 2026-09-14:** ProGPU `45147156` adds
 verified explicit DXC/FXC configuration to the shared device factory, preserving
 automatic defaults and owner/device identity. All 79 focused tests and the full

@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Ordered GPU query proof passes system WARP — 2026-09-14:** ProGPU `a1a86493`
+adds shared ordered collection/clip/primitive/merge shader stages and an original-
+shader differential. All 120 complete result buffers match on Metal and system
+ARM64 WARP, including counters; undersized candidate storage rejects. This is an
+isolated dispatcher, not yet paired product integration. Connect C++/managed
+dispatch and resource ownership, cover tree/device limits and finish package/
+Showcase gates before defaults or merges. All six native build lanes at the prior
+`20bbf7f1` head are green; package consumers/new-head CI remain separate. See
+[ordered query evidence](../reports/native-mil-ordered-query-stages-2026-09-14.md).
+
 **Redistributable compiler artifact connected — 2026-09-14:** ProGPU `20bbf7f1`
 adds signed/hash-pinned DXC staging for pure x64 and ARM64, preserving notices,
 PE checks and existing output. Seventeen input checks pass on both host and VM;

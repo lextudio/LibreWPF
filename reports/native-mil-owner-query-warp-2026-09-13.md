@@ -72,8 +72,11 @@ is introduced into the product.
 The Windows candidate at `C:\ProGPU.OwnerQuery-SegmentLanes` retains the same
 development WARP. Its native DLL hash is
 `b027e83ef793b9fd6d337119aadb51f93b62427bed4239aa0c71fbee6e528795`.
-Process 1776 / session 36961 is running the full owner fixture; its first point
-and 16 repeated waits pass, while bounds compilation remains live. Do not infer
-a latency improvement before the comparison completes. The ProGPU document
+Process 1776 / session 36961 is running the full owner fixture; its first point,
+16 repeated waits and every participation case pass. Bounds submission takes
+245,917.082 ms and ellipse submission 62,207.937 ms; fresh region-first contexts
+remain live. These lower observed times are not controlled performance results
+because the baseline/candidate runs partially overlapped; cold latency remains
+unacceptable. The ProGPU document
 `docs/native-hit-query-segment-lanes.md` records source provenance, primary design
 references, unchanged architecture and validation boundaries.

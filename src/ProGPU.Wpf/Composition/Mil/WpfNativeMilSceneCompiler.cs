@@ -494,7 +494,7 @@ public sealed class WpfNativeMilSceneCompiler
                     ? $"contentKnown={descriptor.HasContentBounds}, contentEmpty={descriptor.ContentBounds.IsEmpty}, descendantsKnown={descriptor.HasDescendantBounds}, descendantsEmpty={descriptor.DescendantBounds.IsEmpty}, descendants=({descriptor.DescendantBounds.X},{descriptor.DescendantBounds.Y},{descriptor.DescendantBounds.Width},{descriptor.DescendantBounds.Height})"
                     : "source bounds unavailable";
                 throw new NotSupportedException(
-                    $"Native MIL visual isolation and visual-source brushes require exact typed Visual descendant bounds. Visual={visual.GetType().FullName}; {detail}; allowEmptyOpacity={allowEmptyOpacity}.");
+                    $"Native MIL visual isolation and visual-source brushes require exact typed Visual descendant bounds. VisualHandle={visualHandle}; {detail}; allowEmptyOpacity={allowEmptyOpacity}.");
             }
             // An authoritative empty drawing needs no opacity raster allocation.
             // Keep the visual, alpha, source input scopes and descendants on the

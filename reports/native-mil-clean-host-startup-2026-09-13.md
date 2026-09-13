@@ -145,3 +145,24 @@ frame is black on both. This upstream rendering failure still prevents advancing
 dependency pins and downstream SDK qualification. ProGPU's added vector-stage
 probe tests the same packaged shader without native preparation; its VM software
 adapter run passes, but that diagnostic is not a repaired consumer.
+
+## Complete project-graph audit
+
+The complete `WpfManagedProjectGraphTests` class exposed a product reflection
+marker in native visual-bounds rejection. The error message now reports the
+already-owned MIL visual handle and typed descriptor details rather than
+`GetType().FullName`; bounds admission and rendering are unchanged. The audit
+remains strict. A separate SDK graph assertion still expected `setIcon` to be
+the final callback argument; it now checks the actual null callback followed by
+the existing comma, without changing that callback's contract.
+
+All **98 graph tests pass, none skipped**, using the clean validation checkout
+and its real ProGPU dependency. The initial root-checkout run also observed two
+dependency mismatches from its preserved dirty ProGPU directory; those did not
+reproduce with either the indexed dependency's inspected contracts or the clean
+current dependency. No dirty submodule was reset or rewritten. The final source
+host builds with zero errors and one existing unused-event warning (`CS0067`,
+`WpfPortableDisplayMetricsSource.DisplayMetricsChanged`). Logs:
+`native-host-clean-project-graph-tests.log`, `native-mil-reflection-audit.log`,
+and `native-host-reflection-build.log`. This is the full graph class, not all
+bridge/runtime tests or Windows/package qualification.

@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Windows query consumer passes — 2026-09-13:** ProGPU's four-lane path sample
+change now completes the ARM64 VM consumer, including all participation and fresh
+region-first cases, exit 0. Both earlier access-violation comparisons are terminal
+failures, not passes. Cold rectangle compilation still takes minutes and Windows
+CI's independent missing ink remains open. Current-head browser and System.Drawing
+quality/allocation steps pass; full CI and exact package/application/platform
+qualification remain required. See the [completion evidence and remaining merge
+gates](../reports/native-mil-windows-query-samples-2026-09-13.md).
+
 **Windows native query completion — 2026-09-13:** ProGPU `e56d45c5` includes the
 strict MSVC pipeline-release fix, lazy point/rectangle/ellipse pipelines and a
 shared four-lane path sample walker. All 156 focused hit/shader tests pass; both

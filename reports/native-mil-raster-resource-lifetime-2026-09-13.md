@@ -67,8 +67,15 @@ by the independent pixel probes.
 The trace run subsequently reaches a real native presentation, drains the close
 request and exits with the original `NativeMilHostDeviceRecoverySmoke.RunAsync`
 line-29 timeout while waiting for dispatch of the injection callback. The earlier
-cleanup exception is not evidence of a fixed recovery path. A full staged WARP
-consumer, beyond the passing original pixel fixtures, is running separately.
+cleanup exception is not evidence of a fixed recovery path.
+
+The full staged WARP consumer subsequently passes the original cubic and retained
+MIL scene (38 resources, 11 draws, 174,080 coverage bytes), then exits with access
+violation `-1073741819` after native owner-query submission (21,507 ms), at 1m38s
+total. This is a separate open query blocker. Query buffers and bindings are
+engine-owned through the pending request; inspection does not find the same
+temporary-raster release pattern there. Do not claim the raster repair fixes
+software-adapter query execution or replace it with an unqualified fallback.
 
 PRs 139 (ProGPU), 29 (LibreWinForms), and 115 (LibreWPF) remain unmerged. Required
 order is upstream qualification/merge, exact downstream pins, downstream CI and

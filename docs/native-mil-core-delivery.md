@@ -15,13 +15,23 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Exact GPU edge batching — 2026-09-13:** ProGPU `05b0fb04` shares four rectangle
+edge predicates in one vector helper without changing tolerances or geometry.
+All 2,048 GPU differential comparisons, 157 focused tests, 20 native tests and
+the full Metal consumer pass; both providers build on macOS/MSVC. Windows staged
+comparison remains live. The preceding unchanged fixture now passes completely
+with development WARP, but system WARP still crashes and its cold region latency
+is unacceptable. Keep system/runtime, final-package and application gates intact.
+See [implementation and runtime evidence](../reports/native-mil-owner-query-warp-2026-09-13.md).
+
 **First-query runtime isolation — 2026-09-13:** a fresh-context owner fixture
 reproduces the Windows system-WARP crash before its first map completion. The
 first-chance dump locates an invalid generated ARM64 store, returning into
 `d3d10warp.dll`, rather than a proven null callback. With the same staged native
 DLL and unchanged shader/assertions, isolated development WARP 1.0.20 passes
 the first point query, 16 repeated waits and first bounds query. Bounds pipeline
-creation takes 341 seconds; ellipse compilation remains live. The matched system
+creation takes 341 seconds; the full development-runtime fixture later passes.
+The matched system
 apphost still crashes before first readback. Metal passes the complete independent
 fixture. This is runtime
 diagnosis, not a product repair: the testing-only WARP package is not distributed,

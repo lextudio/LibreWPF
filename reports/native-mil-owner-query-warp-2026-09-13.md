@@ -36,11 +36,12 @@ or redistributed. Its testing-only license does not provide a product fix.
 
 Using that runtime, the same point query submits in 22,532.337 ms, completes
 readback in 155.797 ms, and passes all 16 repeated waits. The first bounds-region
-query submits in 341,098.475 ms and passes its assertions; ellipse compilation
-is now live. This cold latency is not usable application behavior. Keep process
-4640 / execution session 71699 as the current observation
-handle until authoritative terminal state; slow observation is not a failed or
-completed process. Full region/input compatibility and cold latency remain open.
+query submits in 341,098.475 ms and the first ellipse query in 69,585.134 ms.
+The entire fixture subsequently exits 0, including all participation modes and
+fresh region-first contexts. Process 4640 / session 71699 is terminal; do not
+restart or poll it as pending. This establishes development-runtime correctness
+for the fixture, but its cold latency is not usable application behavior. System
+runtime compatibility and complete source application input remain open.
 
 The ProGPU worktree's `docs/native-owner-query-warp-diagnostics.md` contains the
 fixture contract, exact development package/DLL hashes and reproduction steps.
@@ -56,3 +57,23 @@ Windows query execution and latency, finish current-head CI/package validation,
 then complete source-host/application platform checks and ordered dependency
 integration. Broader DirectX/Direct2D/Win2D work remains deferred, not complete.
 No PR is merged or dependency pin advanced by this diagnostic result.
+
+## Shared segment-lane implementation
+
+ProGPU `05b0fb04` batches the four exact rectangle-edge predicates into one
+canonical GPU vector helper. It preserves both tolerances, original expression
+order, collinear overlap, inclusive endpoints and all source/result contracts.
+The test-only original GPU predicate matches all 2,048 vector-lane comparisons;
+all 157 focused hit/resource tests and 20 native CTest entries pass. Both native
+providers compile on macOS/MSVC, and the hash-checked full Metal package consumer
+passes rendering and all owner queries. No CPU fallback or runtime substitution
+is introduced into the product.
+
+The Windows candidate at `C:\ProGPU.OwnerQuery-SegmentLanes` retains the same
+development WARP. Its native DLL hash is
+`b027e83ef793b9fd6d337119aadb51f93b62427bed4239aa0c71fbee6e528795`.
+Process 1776 / session 36961 is running the full owner fixture; its first point
+and 16 repeated waits pass, while bounds compilation remains live. Do not infer
+a latency improvement before the comparison completes. The ProGPU document
+`docs/native-hit-query-segment-lanes.md` records source provenance, primary design
+references, unchanged architecture and validation boundaries.

@@ -57,3 +57,42 @@ This closes clean source-host prerequisites, not SDK startup, complete theme
 coverage, full cross-platform application qualification or the broader DirectX
 goal. Dependency pins and merge admission remain unchanged until exact-head
 required gates pass.
+
+## Linux ARM64 follow-up
+
+The six focused host/SDK-boundary graph checks pass, including the real framework
+harness contract, source-path exclusion from package qualification, package-only
+production boundary, early native service registration and full application
+lifetime gate. Log: `native-host-sdk-boundary-tests.log` in the directory above.
+
+The same rebuilt, architecture-neutral managed source-host output was staged in
+Ubuntu ARM64 with the current Build's `progpu-native-runtime-linux-arm64` artifact
+(`10321354138`, run `34770390199`, ProGPU `5a3b6bfd`). This is a runtime portability
+check, not a Linux source-build or exact package-consumer claim. The guest uses
+.NET 10.0.11 and Xvfb/X11; Wayland, interactive desktop/mixed-DPI behavior and the
+package-mode Showcase remain separate requirements.
+
+Both retention and the unchanged native-host/device-recovery runs pass, exit 0.
+The run includes the original rich-text decoration assertion without diagnostic
+tracing or assigned replacement styles. Native input, source document/editing
+checks and recovery complete, with the same final command/resource/draw counts
+as the macOS host. Log: `native-host-linux-arm64.log` in the directory above.
+
+Runtime hashes:
+
+- `libprogpu_native.so`: `ba34f437bfd6b399b05d0a994ef810786f336518c7fd8bd07e9c8aaea1ccd099`.
+- Packaged `libwgpu_native.so`: `e1f5bbef1264c9c4490c88a967ccb0ed86166a241f9e3ffb6e5736641bd7d084`.
+
+The Parallels CLI skill guided VM discovery, readiness checks, scoped guest
+execution and lifecycle verification. The existing suspended Ubuntu VM was
+started for this check and returned to suspended state afterward. No VM setting,
+driver, package installation or user data was changed. The first guest-command
+attempt occurred before Tools was ready; retrying after readiness succeeded
+without restarting the VM. Staged test files remain in the owned host directory
+`/Volumes/1TB-macOS/progpu-native-host.c6dUuh` and guest directory
+`/tmp/progpu-native-host.scd7mr`.
+
+Hosted Windows x64 native-renderer CI also passes on `5a3b6bfd`. Windows ARM64
+native and Windows managed tests are still running; package consumers have not
+yet qualified this head. No merge or dependency update follows from these
+partial results alone.

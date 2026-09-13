@@ -15,6 +15,17 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**First-query runtime isolation — 2026-09-13:** a fresh-context owner fixture
+reproduces the Windows system-WARP crash before its first map completion. The
+first-chance dump locates an invalid generated ARM64 store, returning into
+`d3d10warp.dll`, rather than a proven null callback. With the same staged native
+DLL and unchanged shader/assertions, isolated development WARP 1.0.20 passes
+the first point query and 16 repeated waits; bounds-pipeline compilation remains
+live and slow. Metal passes the complete independent fixture. This is runtime
+diagnosis, not a product repair: the testing-only WARP package is not distributed,
+system files remain unchanged, and current-package/input/merge gates stay closed.
+See [runtime differential evidence](../reports/native-mil-owner-query-warp-2026-09-13.md).
+
 **Fence repair passes rendering; input still fails — 2026-09-13:** the new
 nonblocking-fence retirement probe passes hosted x64 and ARM64 in run
 `34781154788`; the old native baselines still fail. The staged VM's rebuilt

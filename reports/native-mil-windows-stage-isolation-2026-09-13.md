@@ -2,6 +2,54 @@
 
 ## Current merge status
 
+### Accelerated hosted isolation follow-up
+
+ProGPU now has diagnostic-only commits through `235298e7c75eeac9c90a56c92dbfc8953b25ceb3`.
+The original failing package remains `e56d45c5` / `0.1.0-preview.3000.ci`;
+dependency pins have not been moved merely to restart the downstream failed gate.
+All three goal PRs are conflict-free; none is merged or fully qualified.
+
+[Native path diagnostic run 34768876404](https://github.com/wieslawsoltes/ProGPU/actions/runs/34768876404)
+passes on both hosted Windows architectures using that exact package. The
+canonical ordinary-path shader produces `(255,0)` interior/exterior coverage;
+the same-command partial R8 atlas copy reads `(255,0)`, and an untouched pixel
+reads `0`. This narrows the basic raster/transfer stage without qualifying
+cubic math, native material/buffer setup or fragment sampling. The new test also
+passes on Metal and both VM adapters with the original packaged wgpu runtime.
+
+The follow-up separates a direct native rectangle draw from the unchanged MIL
+cubic assertion, each in a fresh process. Metal passes the direct native path.
+Hosted results are pending in
+[34769078839](https://github.com/wieslawsoltes/ProGPU/actions/runs/34769078839).
+This diagnostic workflow reuses earlier artifacts explicitly and logs their
+provenance; it never replaces the current-head package consumer. See ProGPU's
+`docs/native-path-first-frame-isolation.md` for the exact stages and boundaries.
+
+Superseded full Builds `34768264510` and `34768876402` were cancelled to release
+runners after the latest head was pushed. Neither is a passing gate. Current
+full Build `34769078820` remains required. The completed original Build remains
+40 green checks and two Windows package failures as detailed below.
+
+Additional local query bisection retains original geometry classifiers:
+
+- Removing tree traversal/result ordering alone does not resolve the crash:
+  both direct rectangle classifiers fail with DXC in compute and fragment stages.
+- Specializing that direct fixture to its actual rectangle kind passes in both
+  stages with DXC, and compute also passes with original FXC.
+- Specializing a real stroked-line path fixture to path-stroke kind still fails
+  in compute with DXC, but fragment succeeds with both DXC and original FXC.
+- Sharing the rectangle stroke piece loop preserves the original sample counts
+  and cap predicates. The full mixed-primitive rectangle query passes with DXC
+  in fragment, but compute still crashes. Original FXC fragment times out at the
+  unchanged 30-second readback deadline and then exits with an access violation.
+
+These remain isolated diagnostic shader substitutions under
+`artifacts/native-windows-consumer.akdIwM/QueryShaderProbe`, not production changes
+or a qualified alternate-stage fallback. In particular, the DXC-only success is
+not sufficient to enable that path with the shipped original runtime/compiler.
+
+### Original package gate
+
 ProGPU `e56d45c504ccc6d7e4fd683ff259adb40f6fc759` remains current with
 `main` (zero commits behind the fetched branch). Build run
 [34763887821](https://github.com/wieslawsoltes/ProGPU/actions/runs/34763887821)

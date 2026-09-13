@@ -15,6 +15,17 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Accelerated hosted isolation — 2026-09-13:** the original failing Windows
+package passes an independent canonical coverage-buffer/partial-atlas-copy probe
+on both CI architectures. This narrows the basic raster/transfer path; native
+bindings, fragment sampling and the original cubic frame remain open. ProGPU
+`235298e7` adds separate-process direct-native and original-MIL probes so this
+evidence does not require waiting for another full native rebuild. Keep the
+current full CI/package gates, exact dependency pins and first-frame assertion.
+Experimental fragment query reductions still fail with the original compiler
+and are not enabled. See the
+[hosted isolation follow-up](../reports/native-mil-windows-stage-isolation-2026-09-13.md#accelerated-hosted-isolation-follow-up).
+
 **Windows package failures isolated — 2026-09-13:** ProGPU `e56d45c5` finishes
 with 40 green PR checks and two failed Windows package consumers. Both report
 an entirely black first frame before querying; the exact CI native DLLs pass

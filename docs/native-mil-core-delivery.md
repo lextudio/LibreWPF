@@ -15,6 +15,20 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Windows package failures isolated — 2026-09-13:** ProGPU `e56d45c5` finishes
+with 40 green PR checks and two failed Windows package consumers. Both report
+an entirely black first frame before querying; the exact CI native DLLs pass
+that frame in the VM, so clang-cl versus MSVC alone is not the explanation.
+LibreWinForms is green; LibreWPF's package smoke stops at the failed upstream
+gate. The unchanged point query passes an isolated fragment-stage probe on WARP
+with the original FXC runtime, but rectangle queries still fail in stage probes
+(DXC access violation; original FXC compute device loss).
+Do not enable an incomplete fallback or merge red checks. Exact package 3000's
+normal-adapter Windows consumer passes all owner/generation/participation and
+fresh region-first checks, exit 0 in 12m23s; full application/platform
+qualification and cold-query latency remain open.
+See [package and shader-stage evidence](../reports/native-mil-windows-stage-isolation-2026-09-13.md).
+
 **Software-adapter query failure isolated — 2026-09-13:** the normal ARM64 VM
 consumer passes, but Microsoft Basic Render Driver crashes after first query
 submission with both original FXC and the isolated DXC experiment. The managed

@@ -308,3 +308,28 @@ an isolated software-adapter consumer. It retains the earlier diagnostic managed
 adapter selector, so it is C++ repair evidence, not final managed-package
 qualification. Windows query completion, source host and all final gates remain
 open until their actual runs complete.
+
+### Fence repair Windows result and remaining query failure
+
+Run `34781154788` completes. Its x64 old blocking-retirement probe crashes with
+`0xC0000005`; the actual-fence variant passes exact target/atlas checks after
+5,977 ms and 536 sleeping polls. ARM64 also passes the actual-fence variant
+(4,836 ms, 306 polls). Both old actual-native baseline frames are black, while
+both deferred-retirement diagnostics pass. The run remains red because it
+intentionally includes the failing historical-package baselines.
+
+The VM compiles both providers with MSVC and passes the native internal fixture.
+Its rebuilt C++ DLL has SHA256
+`902431121dda4d2b189efbf2300950b05486f1751a8eff8bfec42a11d22c6248`.
+The actual direct native path passes in 31.099 seconds including cold pipeline
+setup; the original cubic passes in 29.410 seconds. The full consumer passes
+initial and retained MIL rendering (38 resources, 11 draws, 174,080 coverage
+bytes), then exits with `0xC0000005` after native owner-query submission at
+19,811.814 ms. Total process time is 89.515 seconds; the outer host command
+returns 255. This is terminal failure, not a live wait or full consumer pass.
+
+The paired completion fix therefore has Windows rendering evidence, but native
+input still needs repair. All 122 managed native interop contract tests pass;
+that does not supersede the actual query crash. Superseded Builds `34779068703`
+and `34780421690` were cancelled, not qualified. Final-head CI, source-host and
+application gates remain open; neither dependency pins nor PR merges advance.

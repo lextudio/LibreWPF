@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Fence repair passes rendering; input still fails — 2026-09-13:** the new
+nonblocking-fence retirement probe passes hosted x64 and ARM64 in run
+`34781154788`; the old native baselines still fail. The staged VM's rebuilt
+`0514d72f` C++ backend passes direct path, original cubic and retained MIL
+rendering, but the full consumer terminates with `0xC0000005` after native
+owner-query submission. First-frame repair is evidence-backed, not full input
+or package qualification. Continue with native query execution and final-head
+CI; retain dependency pins, source-host deadlines and all ordered merge gates.
+
 **Observed GPU completion repair — 2026-09-13:** x64 retirement diagnostic
 `34780425843` fails when raster resources are released after the pinned runtime's
 blocking poll, but the identical native path passes when retained through

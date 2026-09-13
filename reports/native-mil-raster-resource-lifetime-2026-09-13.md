@@ -167,3 +167,18 @@ The full canonical shader with the diagnostic rectangle loops still fails: its
 pipeline takes 125.247 seconds to create and readback reaches the unchanged
 30-second timeout. The process subsequently exits, confirmed by guest process
 inspection. The loop rewrite and zero-segment specialization remain diagnostic-only.
+
+### Hosted first-frame gate remains red
+
+The x64 package consumer for `7e6b749c`, Build `34775916222`, job `103779010680`,
+fails the original independent rectangle ink assertion in the cubic fixture:
+RGBA `(0, 0, 0, 255)`, zero colored pixels, no reported device loss, D3D12 Microsoft
+Basic Render Driver. Its separate native-path and native-cubic probes also fail.
+The canonical managed vector, native-layout/binding and indexed native-submit
+probes pass; the original native path's prepared payload hash still matches the
+reference `37CF2B2338D40B07`. Thus the raster retention repair and staged MSVC/WARP
+passes do **not** establish resolution of the hosted native first-frame failure.
+That rendering gate remains open alongside native query completion; the atlas
+startup improvement closes neither. The ARM64 package job is still running at
+this checkpoint. The exact log was downloaded to
+`/tmp/progpu-7e6b749c-package-win-x64.log` for continued isolation.

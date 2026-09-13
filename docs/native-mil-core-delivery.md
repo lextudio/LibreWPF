@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Redistributable compiler artifact connected — 2026-09-14:** ProGPU `20bbf7f1`
+adds signed/hash-pinned DXC staging for pure x64 and ARM64, preserving notices,
+PE checks and existing output. Seventeen input checks pass on both host and VM;
+the full current Windows consumer passes with the staged compiler and development
+WARP. System WARP still fails first query execution. CI now produces separate
+compiler artifacts, without changing runtime defaults or shipping WARP. Complete
+the feature-enabled WebGPU package, runtime repair and application qualification.
+The prior Linux allocation-test correction is green at `7aa2c352`. See
+[compiler artifact evidence](../reports/native-mil-compiler-artifacts-2026-09-14.md).
+
 **Runtime experiment rejected; CI measurement narrowed — 2026-09-14:** ProGPU
 `7aa2c352` records that moving the native query stack to workgroup memory does
 not repair system WARP. The experimental shader was reverted; exact production

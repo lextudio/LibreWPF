@@ -79,6 +79,14 @@ lanes successfully, including Windows x64 and ARM64 and signed compiler staging.
 Native package-consumer/portable-package jobs were still running at the latest
 inspection. This is not a whole-workflow or final-head CI pass.
 
+Follow-up: ARM64 package-consumer job `103810876711` subsequently failed in
+`Restore and run package consumer`, after native owner-query submission
+(11093.461 ms, process exit 127). Its logged system WARP is 10.0.26100.8972 and
+compiler is system FXC; the independent path/cubic probes still pass. This is
+not the isolated DXC staged dispatcher proved above. The x64 package-consumer
+job was still running. Connect the staged product path and compiler package
+before treating native-build success as merge readiness.
+
 PR139, LibreWinForms PR29 and LibreWPF PR115 remain open drafts and mechanically
 mergeable. Ordered merges remain ProGPU → LibreWinForms → LibreWPF only after
 required qualification. The new ProGPU checkpoint requires its own CI results.

@@ -15,6 +15,19 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Windows query-compilation qualification — 2026-09-13:** ProGPU `532a95ea`
+separates point-input pipeline compilation from region classification in both
+renderers without changing the shared traversal or source geometry. All 122
+managed GPU hit tests pass; both native providers compile, generated contracts
+verify, and the rebuilt Metal native consumer passes rendering and original
+owner/generation queries. Final Windows/package results remain required.
+The current Windows CI failures both report missing rectangle ink; the VM's
+software adapter passes that check but spends substantial time creating the old
+general hit-query pipeline. The pinned DXC-enabled experiment fails pipeline
+creation on Parallels and is not shipped. Preserve the original compiler default,
+exact pixel checks and readback deadlines. See ProGPU's
+`docs/native-windows-package-consumer-investigation-2026-09-13.md`.
+
 **Cocoa owned Show connected — 2026-09-13:** checked hidden preparation and
 native attachment during Show now pass the external SDK's native RUN and separate
 LIVE validation, both exit 0. The source host publishes native input admission

@@ -15,6 +15,17 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Completed-encoder isolation — 2026-09-13:** diagnostic run `34779972312`
+passes canonical native-layout rendering with finished encoder and command-buffer
+references released on both Windows architectures, while both actual native
+frames fail. Renderer Build `34777843000` is terminal with only the two Windows
+package consumers failing: x64 drawing/readback and ARM64 native owner querying.
+ProGPU `f51cd965` now isolates raster retirement after confirmed submission
+completion, including an actual-native comparison retaining resources through
+synchronized target readback. Both new Metal probes pass; Windows run
+`34780425843` is dispatched. These are diagnostic comparisons, not product
+workarounds or final-head qualification. Preserve exact pins and all merge gates.
+
 **Terminal Windows query result and atlas isolation — 2026-09-13:** the staged
 lazy-atlas Windows source-host run now terminates with `0xC0000005` in
 `BeginHitTest`, reached through rectangle owner querying. Its successful first

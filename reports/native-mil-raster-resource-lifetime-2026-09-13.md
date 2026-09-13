@@ -236,3 +236,35 @@ pass unchanged Metal pixel/coverage checks; Windows diagnostic run `34779073956`
 is live. The superseded queued Build `34778760253` was cancelled to release
 capacity; it is not passing qualification. The renderer build and latest-head
 Build remain active. No product fallback, dependency pin or merge gate changes.
+
+### Completed encoding and raster retirement isolation
+
+Raster diagnostic `34779073956` completes: baseline and all three raster
+variants pass on both Windows architectures. ARM64 also passes the actual native
+frames in that run, while x64 fails both. No isolated minimum-binding or unused
+combine-buffer change reproduces the x64 failure.
+
+Encoder run `34779972312` also completes. Both runners pass the canonical raw
+reference with a finished encoder released before submission, including the
+variant releasing the submitted command buffer before the exact-token wait.
+All target, raw coverage and atlas checks pass. Both actual native path/cubic
+frames fail on both runners. This excludes those isolated reference releases as
+the reproducer, not all native resource lifetime defects.
+
+The actual lazy-atlas renderer Build `34777843000` is now terminal: only the two
+Windows package consumers fail. x64's direct native path remains black, while
+its original cubic readback also reports DeviceLost. ARM64 passes initial
+rendering and exits 127 after native owner-query submission. Other jobs pass;
+the complete Build is red and cannot qualify dependency advancement or merges.
+
+ProGPU `f51cd965` adds the bounded retirement comparison in its existing package
+consumer. One raw probe releases raster buffers/bindings only after a confirmed
+exact-token wait and before target readback. Another executes the actual native
+path but defers the native retirement poll until after the existing synchronized
+target readback, with cleanup in `finally`. Both preserve the exact target pixels;
+the raw probe additionally checks the original atlas samples. It cannot reread
+the deliberately released coverage buffer. Product rendering, lifetimes, shader
+selection and readback deadlines remain unchanged. Both variants compile without
+warnings/errors and pass on Metal with payload `37CF2B2338D40B07`. Windows run
+`34780425843` compares them against the same completed failing package 3013;
+it is diagnostic-only, not current-head CI qualification.

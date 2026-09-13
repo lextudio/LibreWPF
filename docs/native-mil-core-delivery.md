@@ -15,6 +15,19 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Cold path pipeline reduction — 2026-09-13:** ProGPU `5e3bbc27` creates only
+requested native path pipeline families, shared by path and clip execution in
+both C++ providers. Both providers compile; 20 native tests, separate cold Metal
+rectangle/cubic probes, and ordinary/inline-signed/staged-signed/vector-clip
+comparisons pass. This is not yet a demonstrated repair for hosted Windows
+black frames or the browser evidence-readback timeout. Hosted stage isolation
+passes raw coverage/copy on both architectures; direct native and MIL drawing
+still fail on x64, while ARM64 passes all three. Exact package x64 path probes
+also pass on the normal Parallels adapter. `5a3b6bfd` attaches all three diagnostic
+stages to the current package's failed consumer job; historical-package probing
+is manual-only. Final-head Windows/browser/package and application gates remain
+open; no dependency pin or merge has been advanced on diagnostic evidence alone.
+
 **Accelerated hosted isolation — 2026-09-13:** the original failing Windows
 package passes an independent canonical coverage-buffer/partial-atlas-copy probe
 on both CI architectures. This narrows the basic raster/transfer path; native

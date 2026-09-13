@@ -4,7 +4,8 @@
 
 ### Accelerated hosted isolation follow-up
 
-ProGPU now has diagnostic-only commits through `235298e7c75eeac9c90a56c92dbfc8953b25ceb3`.
+ProGPU now includes demand-driven native path pipelines at `5e3bbc27` and
+current-package failure diagnostics at `5a3b6bfd`.
 The original failing package remains `e56d45c5` / `0.1.0-preview.3000.ci`;
 dependency pins have not been moved merely to restart the downstream failed gate.
 All three goal PRs are conflict-free; none is merged or fully qualified.
@@ -19,16 +20,41 @@ passes on Metal and both VM adapters with the original packaged wgpu runtime.
 
 The follow-up separates a direct native rectangle draw from the unchanged MIL
 cubic assertion, each in a fresh process. Metal passes the direct native path.
-Hosted results are pending in
-[34769078839](https://github.com/wieslawsoltes/ProGPU/actions/runs/34769078839).
+Completed hosted results in
+[34769078839](https://github.com/wieslawsoltes/ProGPU/actions/runs/34769078839)
+pass all three stages on ARM64. On x64 the raw/copy stage passes, but both the
+direct native rectangle and original MIL cubic are entirely black. The x64
+failure does not require MIL or cubic geometry. The same package's x64 DLLs
+pass both native probes under x64 .NET in Parallels with its normal adapter;
+see `artifacts/native-windows-consumer.akdIwM/native-path-x64.log`. This is not
+full x64 consumer or application qualification, nor a cleared driver-cache test.
 This diagnostic workflow reuses earlier artifacts explicitly and logs their
 provenance; it never replaces the current-head package consumer. See ProGPU's
 `docs/native-path-first-frame-isolation.md` for the exact stages and boundaries.
 
 Superseded full Builds `34768264510` and `34768876402` were cancelled to release
 runners after the latest head was pushed. Neither is a passing gate. Current
-full Build `34769078820` remains required. The completed original Build remains
+full Build `34769078820` subsequently failed browser evidence readback at
+`map-requested` without browser errors; it and superseded `34770221857` were
+cancelled after the replacement head was pushed. Final-head Build `34770390199`
+is required. The completed original Build remains
 40 green checks and two Windows package failures as detailed below.
+
+The native path initialization previously created seven coverage pipelines and
+all three extra signed shader modules even for an ordinary rectangle. It now
+creates only the requested nonempty batch families and caches them on the same
+engine, shared between ordinary paths and clip paths. Entry points, bindings,
+sampling, submits, owner input and fallback policy are unchanged. Failure occurs
+before consuming a borrowed encoder. Both native providers compile locally;
+all 20 C++ tests pass. Rebuilt Metal libraries pass fresh direct/cubic probes
+and existing ordinary, forced-inline, forced-staged and vector-clip comparisons.
+No latency improvement or hosted failure repair is claimed before measurement.
+Windows MSVC build and local browser checks are in progress.
+
+Historical-package diagnosis is now manual-only with an explicit run ID. The
+full Build's failure-only Windows step runs all three stages against its own
+package, collecting every exit while preserving the original failed consumer.
+No required test, deadline, assertion or adapter policy was weakened.
 
 Additional local query bisection retains original geometry classifiers:
 

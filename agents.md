@@ -1,5 +1,12 @@
 # Agent Guidance
 
+Portable GPU completion relies on ProGPU's observed fence/map callback state.
+The pinned wgpu-native blocking poll can mistake its internal timeout for
+completed work; do not reintroduce it through source-host waits or teardown.
+Keep sleeping native completion, paired managed drains, source-owned request
+lifetimes and existing application/readback deadlines. Never bypass pending
+native queries through the managed index or release resources on elapsed time.
+
 Portable FlowDocument inline controls retain their actual InlineUIContainer and
 UIElement, measured at the native paragraph width. Consume source TextRunBounds
 from the shared measured TextLine for child placement; line-height selection

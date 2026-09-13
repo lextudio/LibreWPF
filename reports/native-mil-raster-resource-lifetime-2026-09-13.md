@@ -268,3 +268,43 @@ selection and readback deadlines remain unchanged. Both variants compile without
 warnings/errors and pass on Metal with payload `37CF2B2338D40B07`. Windows run
 `34780425843` compares them against the same completed failing package 3013;
 it is diagnostic-only, not current-head CI qualification.
+
+### Observed completion, not timeout-based retirement
+
+Run `34780425843` is terminal. x64 job `103786318970` passes the retained raw
+baseline, but reports DeviceLost after raster references are released following
+the blocking poll. Its original direct native path is black; the identical draw
+passes when native retirement is deferred through synchronized target readback.
+ARM64 job `103786318840` passes all probes. This is timing-sensitive execution,
+not a reason to replace exact pixels or accept an intermittently green frame.
+
+The pinned wgpu-native revision selects wgpu-core 0.19.4 commit
+`87576b72b37c6b78b41104eb25fc31893af94092`. Read-only inspection confirms that its
+blocking maintenance path advances retirement after the internal timed wait
+without checking its fence-completion boolean; nonblocking maintenance reads
+actual fence progress. See the upstream
+[five-second timeout defect](https://github.com/gfx-rs/wgpu/issues/4589).
+
+ProGPU `0514d72f` implements paired managed/native sleeping completion waits
+around nonblocking polling. Native hit-test waiting observes the existing map
+callback state; pending cleanup avoids the same timed poll. This is original
+ProGPU synchronization code, not a copied or modified dependency implementation.
+No shaders, CPU fallback, application deadlines or package gates change.
+
+Both C++ providers compile; all 20 native CTest entries and 49 focused managed
+tests pass. The actual rebuilt Metal DLL and consumer-local DLL share SHA256
+`0e4764dd18334b4d1a5e16daf221dabab0cad26cfad7654c4ffb589c06a7674f`;
+that consumer passes original frames and all native input assertions. A build's
+initial stale consumer-local DLL was detected by hash comparison and explicitly
+replaced before this final run. Native generated contracts also verify.
+
+Manual Windows comparison `34781154788` runs a bounded nonblocking-fence probe
+against the original failing package; final-head Build `34781150565` is separate.
+The Parallels CLI inventory confirms the existing Windows VM running with Tools
+installed, no active dotnet/native build process, and unchanged configuration.
+`artifacts/native-core-validation.GwKsGq/build-fence-completion-windows.ps1`
+rebuilds the two native providers in the existing task-owned MSVC cache and stages
+an isolated software-adapter consumer. It retains the earlier diagnostic managed
+adapter selector, so it is C++ repair evidence, not final managed-package
+qualification. Windows query completion, source host and all final gates remain
+open until their actual runs complete.

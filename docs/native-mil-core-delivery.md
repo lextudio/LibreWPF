@@ -15,6 +15,19 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Observed GPU completion repair — 2026-09-13:** x64 retirement diagnostic
+`34780425843` fails when raster resources are released after the pinned runtime's
+blocking poll, but the identical native path passes when retained through
+synchronized readback. The pinned wgpu-core blocking wait can promote its internal
+timeout to completed work. ProGPU `0514d72f` replaces that path with actual
+nonblocking fence progress and sleeping waits in managed/native drains, native
+map waiting and cancellation cleanup. Both C++ providers compile; 20 native and
+49 focused managed tests pass. The hash-checked rebuilt Metal consumer passes
+rendering and owner/generation/participation/region-first queries. Windows fence
+diagnostic `34781154788`, VM verification and final-head Build `34781150565`
+remain required; the query crash and complete application gates are not declared
+resolved yet. No pins or merge admission advance from diagnostic evidence.
+
 **Completed-encoder isolation — 2026-09-13:** diagnostic run `34779972312`
 passes canonical native-layout rendering with finished encoder and command-buffer
 references released on both Windows architectures, while both actual native

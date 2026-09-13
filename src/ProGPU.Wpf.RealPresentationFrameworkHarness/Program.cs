@@ -185,7 +185,14 @@ public static class Program
                             return;
                         }
 
-                        if (exerciseDeviceRecovery)
+                        if (!host.HasPresentedFrame)
+                        {
+                            validationFailure = new TimeoutException(
+                                $"Native MIL host did not present its initial frame within " +
+                                $"{NativeMilHostTimeout.TotalSeconds:0} seconds; device recovery was not started.");
+                            Console.Error.WriteLine(validationFailure.Message);
+                        }
+                        else if (exerciseDeviceRecovery)
                         {
                             try
                             {
@@ -203,7 +210,10 @@ public static class Program
                             {
                                 try
                                 {
-                                    status = ValidateNativeMilHostResult(host, drawingVisual, inlineText);
+                                    // A failed prerequisite is terminal. Do not hide it
+                                    // behind another slow or failing native query.
+                                    if (validationFailure == null)
+                                        status = ValidateNativeMilHostResult(host, drawingVisual, inlineText);
                                 }
                                 catch (Exception ex)
                                 {

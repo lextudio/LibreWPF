@@ -15,6 +15,19 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Cold atlas initialization and query isolation — 2026-09-13:** ProGPU now
+defers managed glyph/path raster pipeline creation until an actual atlas request;
+the native host was paying that setup cost for unused managed resources. All 78
+focused atlas/resource regressions pass. Windows timing remains required. A
+retained-resource WARP rectangle probe still crashes after submission, while a
+diagnostic using bounded loops over the same rectangle predicates passes its
+zero-segment fixture. Full shader/family qualification remains open; no query
+rewrite or specialization is enabled. LibreWPF now preserves the initial
+presentation deadline, stops later checks after a failed prerequisite and traces
+native initialization with monotonic timing. Source compilation, two graph tests
+and Metal host/recovery pass. See the
+[follow-up evidence](../reports/native-mil-raster-resource-lifetime-2026-09-13.md#query-execution-and-source-startup-follow-up).
+
 **Native raster lifetime repair — 2026-09-13:** the exact-package x64 comparison
 passes native-equivalent rendering with retained references and with only the
 command-buffer reference released, but turns black when temporary raster buffers

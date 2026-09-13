@@ -87,3 +87,51 @@ Local logs are under `artifacts/native-core-validation.GwKsGq`, including
 `native-host-raster-retention-metal.log`, and the ARM64 host/trace logs. ProGPU
 build, contract and consumer logs are in its worktree's `artifacts` directory.
 VM lifecycle, configuration, installed runtimes and driver settings were unchanged.
+
+## Query execution and source-startup follow-up
+
+The isolated zero-segment canonical-shader diagnostic passes a point query on
+Microsoft Basic Render Driver but crashes before rectangle completion. Compiling
+the rectangle pipeline alone succeeds in 22.802 seconds without creating query
+buffers or submitting commands. A separate cold rectangle probe retains every
+buffer, binding, pipeline, encoder and command through readback: it creates the
+pipeline in 23.722 seconds, submits at 23.744 seconds, then exits with access
+violation before readback completes. The matching Metal probe returns all three
+expected owners. Thus this query failure does not reproduce the temporary raster
+reference-release boundary fixed above.
+
+A diagnostic replaces only the repeated rectangle edge/quad corner call sites
+with bounded loops over the same predicates, vertices and short-circuit order.
+The zero-segment WARP fixture then returns all three owners in 31.972 seconds.
+The full shader and remaining families still require validation; neither this
+diagnostic rewrite nor zero-segment specialization is enabled in production.
+
+LibreWPF now records a missed initial 15-second presentation prerequisite before
+attempting device recovery. Once a prerequisite fails, the harness closes and
+reports that failure instead of launching subsequent native queries which could
+hide it behind another crash. Successful runs retain every existing input and
+recovery assertion. The explicitly enabled native-loop trace records invariant,
+monotonic elapsed milliseconds and includes native window initialization.
+Two focused source-graph tests, source-host compilation and Metal host/recovery
+pass; these are not Windows qualification.
+
+The first timed Windows run presents after 7.354 seconds measured from input
+attachment, then crashes in `BeginHitTest` from the harness rectangle owner query.
+A live stack confirms that call path. That timestamp excludes earlier window/
+composition initialization and cannot establish the original first-frame deadline
+was met. The trace now starts before native initialization to measure it directly.
+
+Code inspection also found eager managed glyph/path pipeline compilation during
+native-host composition-target construction. ProGPU now defers those pipelines
+until actual atlas rasterization, retaining shader algorithms, captured execution
+policy and cache/disposal contracts. Its native providers already create the
+corresponding resources on demand. See ProGPU's
+`docs/native-atlas-pipeline-initialization.md`; Windows timing is still required
+before claiming a startup fix.
+
+During this follow-up the Windows VM became suspended before a probe started.
+It was resumed without reset or configuration changes, and guest command access
+was verified. The failed transport attempt is not test evidence. Logs include
+`query-zero-segments-compile-warp.log`, `query-retained-bounds-warp-resumed.log`,
+`query-quad-loop-warp-dispatch.log`, `source-first-frame-timing-windows.log`, and
+`source-first-frame-timing-stack.log` in the existing validation artifact directory.

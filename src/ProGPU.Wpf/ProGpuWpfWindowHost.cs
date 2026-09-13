@@ -42,6 +42,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private static readonly bool s_traceRenderSurface = IsTraceEnabled(TraceRenderSurfaceEnvironmentVariable);
     private static readonly bool s_traceInput = IsTraceEnabled(TraceInputEnvironmentVariable);
     private static readonly bool s_traceNativeLoop = IsTraceEnabled(TraceNativeLoopEnvironmentVariable);
+    private static readonly long s_nativeLoopTraceOrigin = Stopwatch.GetTimestamp();
     private static readonly object s_nativeActivationGate = new();
     private static readonly object s_deferredNativeWindowDisposalGate = new();
     private static readonly HashSet<ProGpuWpfWindowHost> s_deferredNativeWindowDisposals = new();
@@ -612,10 +613,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             _isHostVisible = showWindow && showActivated;
         }
+        TraceNativeLoop("run initialization entering: " + CreateNativeLoopTraceState());
         EnsureWindow();
+        TraceNativeLoop("native window ensured: " + CreateNativeLoopTraceState());
         if (!_window!.IsInitialized)
         {
+            TraceNativeLoop("native window initialize entering: " + CreateNativeLoopTraceState());
             _window.Initialize();
+            TraceNativeLoop("native window initialize leaving: " + CreateNativeLoopTraceState());
         }
 
         if (showWindow)
@@ -2778,7 +2783,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
-        Console.WriteLine("ProGPU WPF native loop: " + message);
+        Console.WriteLine("ProGPU WPF native loop: " + message +
+            FormattableString.Invariant($", elapsedMs={Stopwatch.GetElapsedTime(s_nativeLoopTraceOrigin).TotalMilliseconds:0.000}"));
     }
 
     internal void TraceNativeActivation(string message)

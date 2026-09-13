@@ -3820,6 +3820,32 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void NativeSourceHarnessRetainsInitialFrameDeadlineBeforeDeviceRecovery()
+    {
+        string program = File.ReadAllText(FindRepoPath(
+            "src", "ProGPU.Wpf.RealPresentationFrameworkHarness", "Program.cs"));
+        int deadline = program.IndexOf("if (!host.HasPresentedFrame)", StringComparison.Ordinal);
+        int recovery = program.IndexOf("else if (exerciseDeviceRecovery)", deadline, StringComparison.Ordinal);
+        int injection = program.IndexOf("await NativeMilHostDeviceRecoverySmoke.RunAsync(", recovery, StringComparison.Ordinal);
+        Assert.True(deadline >= 0 && recovery > deadline && injection > recovery);
+        Assert.Contains("device recovery was not started.", program, StringComparison.Ordinal);
+        Assert.Contains("if (validationFailure == null)", program, StringComparison.Ordinal);
+        Assert.Contains("validationFailure ??= ex;", program, StringComparison.Ordinal);
+
+        string host = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf", "ProGpuWpfWindowHost.cs"));
+        int trace = host.IndexOf("private void TraceNativeLoop(string message)", StringComparison.Ordinal);
+        int disabled = host.IndexOf("if (!s_traceNativeLoop)", trace, StringComparison.Ordinal);
+        int elapsed = host.IndexOf("Stopwatch.GetElapsedTime(s_nativeLoopTraceOrigin)", trace, StringComparison.Ordinal);
+        Assert.True(trace >= 0 && disabled > trace && elapsed > disabled,
+            "Monotonic phase timing belongs only to the explicitly enabled trace.");
+        int run = host.IndexOf("private void RunCore(", StringComparison.Ordinal);
+        int beforeInitialization = host.IndexOf("TraceNativeLoop(\"run initialization entering:", run, StringComparison.Ordinal);
+        int initialize = host.IndexOf("EnsureWindow();", run, StringComparison.Ordinal);
+        Assert.True(beforeInitialization > run && initialize > beforeInitialization,
+            "Initial native window and composition setup must be inside the timed trace.");
+    }
+
+    [Fact]
     public void NativeSourceHarnessResolvesPlatformDependenciesAfterRealSourceAssemblies()
     {
         string program = File.ReadAllText(FindRepoPath(

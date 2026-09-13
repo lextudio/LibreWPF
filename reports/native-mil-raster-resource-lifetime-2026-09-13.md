@@ -135,3 +135,35 @@ was verified. The failed transport attempt is not test evidence. Logs include
 `query-zero-segments-compile-warp.log`, `query-retained-bounds-warp-resumed.log`,
 `query-quad-loop-warp-dispatch.log`, `source-first-frame-timing-windows.log`, and
 `source-first-frame-timing-stack.log` in the existing validation artifact directory.
+
+### Measured atlas startup comparison
+
+ProGPU `f4002192` passes 78 focused Release atlas/resource tests. In the matched
+Windows ARM64 staged source host, native window initialization drops from
+34.526 seconds (baseline) to 0.635 seconds (lazy atlases). The baseline explicitly
+misses the original 15-second initial-frame prerequisite and presents only at
+40.251 seconds. With the new Text/Vector assemblies, the first native presentation
+occurs at 9.147 seconds; injected device loss is recovered and the replacement
+device presents at 15.123 seconds, about six seconds after the first frame. The
+existing recovery assertions report success. No deadline, shader or renderer
+selection changes were used. The paired Metal source-host/recovery run also passes.
+
+These are staged runtime measurements, not exact final-package or full application
+qualification. The Windows run continues into native owner-query validation, which
+remains open. The same native DLL and host setup are retained; the logged SHA256
+values identify the changed managed assemblies. Logs:
+`source-initialization-baseline-windows.log`, `source-lazy-atlas-timing-windows.log`,
+and `source-lazy-atlas-timing-metal.log`.
+
+The baseline also exposes a fixture-owned dispatcher leak: creating the paginator
+for deliberate synchronous block/inline/table rejection enables background
+pagination by default. Its later queued unsupported-layout exception can interrupt
+the unrelated native host and produce a secondary Silk cleanup failure. The
+rejection fixture now disables its own background pagination before the same three
+`GetPage` assertions. Product pagination defaults and unsupported-layout rejection
+are unchanged; no queued exception is globally swallowed.
+
+The full canonical shader with the diagnostic rectangle loops still fails: its
+pipeline takes 125.247 seconds to create and readback reaches the unchanged
+30-second timeout. The process subsequently exits, confirmed by guest process
+inspection. The loop rewrite and zero-segment specialization remain diagnostic-only.

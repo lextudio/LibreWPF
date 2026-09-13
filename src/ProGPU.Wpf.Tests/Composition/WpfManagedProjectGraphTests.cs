@@ -3820,6 +3820,19 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void NativeSourceRejectionFixtureDoesNotLeaveBackgroundPaginationQueued()
+    {
+        string source = File.ReadAllText(FindRepoPath(
+            "src", "ProGPU.Wpf.RealPresentationFrameworkHarness", "NativeMilRichDocumentSmoke.cs"));
+        int cancel = source.IndexOf("Set(paginator, \"IsBackgroundPaginationEnabled\", false);", StringComparison.Ordinal);
+        int firstPage = source.IndexOf("Call(paginator, \"GetPage\", 0);", StringComparison.Ordinal);
+        Assert.True(cancel >= 0 && firstPage > cancel);
+        Assert.Contains("Pagination silently omitted the source block control.", source, StringComparison.Ordinal);
+        Assert.Contains("Pagination silently omitted the source inline control.", source, StringComparison.Ordinal);
+        Assert.Contains("native row/cell fragmentation", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NativeSourceHarnessRetainsInitialFrameDeadlineBeforeDeviceRecovery()
     {
         string program = File.ReadAllText(FindRepoPath(

@@ -375,6 +375,10 @@ internal static class NativeMilRichDocumentSmoke
         // line-only fragmentation path after releasing the editor view.
         Type paginatorSource = document.GetType().GetInterfaces().Single(type => type.Name == "IDocumentPaginatorSource");
         object paginator = paginatorSource.GetProperty("DocumentPaginator")!.GetValue(document)!;
+        // This fixture exercises synchronous rejection, not a live document
+        // viewer. Do not leave its unsupported layout queued for the later
+        // application's native dispatcher pump.
+        Set(paginator, "IsBackgroundPaginationEnabled", false);
         try
         {
             Call(paginator, "GetPage", 0);

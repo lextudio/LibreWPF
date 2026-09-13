@@ -27,6 +27,12 @@ presentation deadline, stops later checks after a failed prerequisite and traces
 native initialization with monotonic timing. Source compilation, two graph tests
 and Metal host/recovery pass. See the
 [follow-up evidence](../reports/native-mil-raster-resource-lifetime-2026-09-13.md#query-execution-and-source-startup-follow-up).
+The matched staged Windows comparison subsequently reduces native initialization
+from 34.526 seconds to 0.635 seconds, presents its first frame at 9.147 seconds,
+and passes injected device recovery about six seconds later without changing the
+15-second deadlines. Native owner-query completion and final packages remain
+open. The rejection fixture also disables its own unused background paginator;
+its three explicit unsupported-fragmentation assertions remain unchanged.
 
 **Native raster lifetime repair — 2026-09-13:** the exact-package x64 comparison
 passes native-equivalent rendering with retained references and with only the

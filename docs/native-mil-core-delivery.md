@@ -15,6 +15,18 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Compiler cost separated from runtime execution — 2026-09-13:** ProGPU
+`848f22ad` batches exact corner predicates and expands query diagnostics. All
+158 focused/20 native tests and the full Metal consumer pass. Windows full owner
+fixtures pass on development WARP using either compiler; DXC reduces observed
+family submissions to roughly one second. System WARP still crashes with both
+compiler configurations. Repair Build `34781150565` is terminal red: ARM64 fails
+after first-query submission; x64 waits after bounds submission until job timeout.
+Prioritize reproducible exact-ABI compiler-feature/configuration work, separately
+from system-runtime compatibility, before further small geometry refinements.
+No testing-only WARP distribution, timeout change, dependency pin or merge is
+admitted. See [compiler/runtime evidence](../reports/native-mil-query-compiler-runtime-2026-09-13.md).
+
 **Exact GPU edge batching — 2026-09-13:** ProGPU `05b0fb04` shares four rectangle
 edge predicates in one vector helper without changing tolerances or geometry.
 All 2,048 GPU differential comparisons, 157 focused tests, 20 native tests and

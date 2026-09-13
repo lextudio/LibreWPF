@@ -15,6 +15,14 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Pinned compiler-feature build — 2026-09-13:** ProGPU `00972519` adds isolated,
+locked DXC-capable native dependency production without changing the binding ABI
+or product defaults. Six input checks pass on macOS and Windows and are included
+in Windows PR CI. The real ARM64 build has reached compilation. Complete artifact
+verification and explicit compiler/package admission next; preserve the independent
+system-WARP failure and all current-package/source-host/merge gates. See
+[compiler build record](../reports/native-mil-windows-compiler-build-2026-09-13.md).
+
 **Compiler cost separated from runtime execution — 2026-09-13:** ProGPU
 `848f22ad` batches exact corner predicates and expands query diagnostics. All
 158 focused/20 native tests and the full Metal consumer pass. Windows full owner

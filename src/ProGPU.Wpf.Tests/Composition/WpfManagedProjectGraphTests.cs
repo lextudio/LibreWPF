@@ -6,6 +6,22 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WpfManagedProjectGraphTests
 {
     [Fact]
+    public void NativeMilHostRestoresSourceBuildTasksBeforeBuildingTheHarness()
+    {
+        string script = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-native-mil-host-smoke.sh"));
+        AssertGuardBefore(script, "\"${dotnet}\" restore", "\"${dotnet}\" build \"${host_project}\"");
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj", script, StringComparison.Ordinal);
+        Assert.Contains("-p:TargetFramework=net10.0", script, StringComparison.Ordinal);
+        AssertGuardBefore(script, "PROGPU_WPF_NATIVE_MIL_HOST_SKIP_BUILD", "\"${dotnet}\" restore");
+        Assert.Contains("--native-mil-host --native-mil-device-recovery", script, StringComparison.Ordinal);
+        var project = XDocument.Load(FindRepoPath("src", "ProGPU.Wpf.RealPresentationFrameworkHarness", "ProGPU.Wpf.RealPresentationFrameworkHarness.csproj"));
+        XElement theme = Assert.Single(project.Descendants("ProjectReference"), reference =>
+            ((string?)reference.Attribute("Include"))?.EndsWith(@"Themes\PresentationFramework.Aero2\PresentationFramework.Aero2.csproj", StringComparison.Ordinal) == true);
+        Assert.Equal("false", (string?)theme.Attribute("ReferenceOutputAssembly"));
+        Assert.Equal("all", (string?)theme.Attribute("PrivateAssets"));
+    }
+
+    [Fact]
     public void SourceTablesUseNativeRowsAndCellAwareRetainedNavigation()
     {
         string layout = File.ReadAllText(FindRepoPath("src", "Microsoft.DotNet.Wpf", "src",

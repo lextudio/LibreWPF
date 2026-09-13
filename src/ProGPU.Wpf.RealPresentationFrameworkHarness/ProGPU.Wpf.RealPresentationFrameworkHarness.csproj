@@ -28,5 +28,9 @@
     <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj" />
     <ProjectReference Include="..\Microsoft.DotNet.Wpf\src\PresentationCore\PresentationCore.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
     <ProjectReference Include="..\Microsoft.DotNet.Wpf\src\PresentationFramework\PresentationFramework.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <!-- The portable source theme supplies real inline/control styles (including
+         Underline). Build it for the isolated WPF load context; do not depend on
+         a previous SDK/package run or copy source theme types into the facade. -->
+    <ProjectReference Include="..\Microsoft.DotNet.Wpf\src\Themes\PresentationFramework.Aero2\PresentationFramework.Aero2.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
   </ItemGroup>
 </Project>

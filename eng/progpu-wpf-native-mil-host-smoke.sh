@@ -50,6 +50,13 @@ if [[ ! -f "${native_library}" ]]; then
 fi
 
 if [[ "${PROGPU_WPF_NATIVE_MIL_HOST_SKIP_BUILD:-0}" != "1" ]]; then
+  # Source XAML targets invoke this build task project dynamically, outside the
+  # harness restore graph. A clean checkout has no task assets from an earlier
+  # package build, so restore the prerequisite before building the source host.
+  "${dotnet}" restore \
+    "${repo_root}/src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj" \
+    -p:TargetFramework=net10.0 \
+    -v:minimal
   "${dotnet}" build "${host_project}" \
     --configuration "${configuration}" \
     -m:1 \

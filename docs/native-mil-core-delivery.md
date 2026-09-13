@@ -15,6 +15,17 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Clean source-host prerequisites — 2026-09-13:** the existing native-host script
+now explicitly restores source `PresentationBuildTasks`, and its harness builds
+the actual portable Aero2 theme. A clean checkout exposed both missing
+prerequisites; absent theme styles initially looked like lost rich-text
+decoration scopes. Building the theme fixes the unchanged assertion without
+changing formatter semantics. The full source-host run, native input index and
+device recovery pass with the current native library; one focused graph
+regression passes. Hosted ProGPU browser and strict GCC/MSVC checks are green;
+Windows package and full application qualification remain open. See
+[clean startup evidence](../reports/native-mil-clean-host-startup-2026-09-13.md).
+
 **Cold path pipeline reduction — 2026-09-13:** ProGPU `5e3bbc27` creates only
 requested native path pipeline families, shared by path and clip execution in
 both C++ providers. Both providers compile; 20 native tests, separate cold Metal

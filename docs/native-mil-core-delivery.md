@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Typed compiler selection connected — 2026-09-14:** ProGPU `45147156` adds
+verified explicit DXC/FXC configuration to the shared device factory, preserving
+automatic defaults and owner/device identity. All 79 focused tests and the full
+Metal consumer pass. The full Windows consumer now passes with current unpatched
+product assemblies and DXC/development WARP; missing dependencies reject before
+adapter creation. System WARP still fails first query execution, and Parallels
+hardware rejects DXC pipelines. Complete packaging and those runtime repairs,
+then final package/source application gates; no dependency pins or merges advance.
+See [typed compiler evidence](../reports/native-mil-typed-compiler-selection-2026-09-14.md).
+
 **Pinned compiler-feature build — 2026-09-13:** ProGPU `00972519` adds isolated,
 locked DXC-capable native dependency production without changing the binding ABI
 or product defaults. Six input checks pass on macOS and Windows and are included

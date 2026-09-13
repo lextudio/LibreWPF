@@ -140,10 +140,14 @@ input while culling zero-alpha rendering. Do not call OnRender or invent Size
 rectangles for that traversal. Effects/masks/caches and native host-query coverage
 remain separate blockers; this connection is not runtime qualification.
 
-Every selected native popup must complete owner configuration before Show, on
-Cocoa/X11 as well as Windows. Rejection or exception disposes the hidden popup;
-do not continue unowned or silently switch surface kind. Cocoa owner setup belongs
-in ProGPU's checked NativePopupWindow provider, not WPF-local Objective-C calls.
+Every selected native popup must complete hidden owner admission before Show.
+Win32/X11 configure ownership while hidden. Cocoa uses ProGPU's checked
+NativePopupWindow prepare/show contract: AppKit attachment itself orders the child
+in, so validate hidden identity first, publish native input admission, then attach
+and verify actual parent/visibility around the host Show callback. Hide detaches
+on Cocoa; every reopen must reattach. Rejection or exception disposes the popup;
+do not continue unowned, assign parentWindow directly, attach-then-hide as setup,
+or silently switch surface kind. Keep Cocoa calls in ProGPU, not WPF-local code.
 Native child ownership is not AppKit modal-session admission for GLFW NSWindows.
 
 Default access keys and no-focus F10/Alt menu entry share source-aware active

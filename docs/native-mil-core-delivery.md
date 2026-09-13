@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Cocoa owned Show connected — 2026-09-13:** checked hidden preparation and
+native attachment during Show now pass the external SDK's native RUN and separate
+LIVE validation, both exit 0. The source host publishes native input admission
+before Cocoa attachment, reattaches after Hide, and disposes rejected popups.
+ProGPU policy tests pass 14/0 and the WPF host compiles. These staged diagnostic
+runs are not exact final packages. The next blockers are ProGPU Windows package
+consumers (x64 cubic fixture missing rectangle ink; ARM64 native BeginHitTest
+access violation), cancelled WPF package smoke and final platform/package gates.
+See [evidence and boundaries](../reports/native-mil-cocoa-popup-show-2026-09-13.md).
+
 **Cocoa popup admission blocker — 2026-09-11:** the fail-fast external native
 application now verifies rejection of nondefault IME preferences before selecting
 DoNotCare for ordinary focus; the existing delivery scope already excludes host

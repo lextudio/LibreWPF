@@ -190,6 +190,17 @@ public interface IWpfWindowDecorationService
     {
         return false;
     }
+
+    bool TryPreparePopupOwner(object ownerWindow, object popupWindow)
+    {
+        return TryConfigurePopupOwner(ownerWindow, popupWindow);
+    }
+
+    bool TryShowOwnedPopup(object ownerWindow, object popupWindow, Action showWithoutActivation)
+    {
+        showWithoutActivation();
+        return true;
+    }
 }
 
 public interface IWpfWindowEventService

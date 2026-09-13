@@ -935,7 +935,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
-    internal void ShowWithoutActivation()
+    internal void ShowWithoutActivation(Func<Action, bool>? showWithOwner = null)
     {
         ThrowIfDisposed();
         // Keep WindowOptions.IsVisible false through native creation, then let
@@ -948,7 +948,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         _isHostVisible = true;
-        ShowNativeWindow(showActivated: false);
+        // Cocoa owner attachment itself orders the popup in. Publish modal
+        // input admission before entering that checked native Show boundary.
+        if (_modalInputRegistration != null) SetNativeInputAllowed(_nativeInputAllowed);
+        if (showWithOwner != null)
+        {
+            if (!showWithOwner(() => ShowNativeWindow(showActivated: false)))
+                throw new PlatformNotSupportedException("The selected native popup owner could not be shown.");
+        }
+        else
+        {
+            ShowNativeWindow(showActivated: false);
+        }
 
         RequestRenderAndWakeNativeLoop();
     }

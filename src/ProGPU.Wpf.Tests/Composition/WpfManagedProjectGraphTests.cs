@@ -852,10 +852,11 @@ public sealed class WpfManagedProjectGraphTests
         int transportSetter = popupHost.IndexOf("public void SetOwnerTransportScale(", StringComparison.Ordinal);
         int positionSetter = popupHost.IndexOf("public void SetPosition(", transportSetter, StringComparison.Ordinal);
         Assert.DoesNotContain("UpdatePortablePresentationSourceDpiScale", popupHost[transportSetter..positionSetter], StringComparison.Ordinal);
-        Assert.Contains("_popupHost.ShowWithoutActivation();", popupHost, StringComparison.Ordinal);
+        Assert.Contains("_popupHost.ShowWithoutActivation(show =>", popupHost, StringComparison.Ordinal);
+        Assert.Contains("WindowDecorations.TryShowOwnedPopup(", popupHost, StringComparison.Ordinal);
         Assert.Contains("internal static int ToDeviceScreenCoordinate", windowHost, StringComparison.Ordinal);
         Assert.Contains("UpdatePortablePopupOwnerOrigins(bridge.Source, deviceX, deviceY, popupDeviceScale)", windowHost, StringComparison.Ordinal);
-        Assert.Contains("internal void ShowWithoutActivation()", windowHost, StringComparison.Ordinal);
+        Assert.Contains("internal void ShowWithoutActivation(Func<Action, bool>? showWithOwner = null)", windowHost, StringComparison.Ordinal);
         Assert.Contains("PlatformServices.WindowDecorations.TryShowWithoutActivation(_window!)", windowHost, StringComparison.Ordinal);
         Assert.Contains("internal void DeferShowUntilRun()", windowHost, StringComparison.Ordinal);
         Assert.Contains("_window.Initialize();", windowHost, StringComparison.Ordinal);
@@ -874,7 +875,7 @@ public sealed class WpfManagedProjectGraphTests
         int initializePopup = popupHost.IndexOf("private void EnsureInitialized()", StringComparison.Ordinal);
         string popupInitialization = popupHost[initializePopup..popupHost.IndexOf("private void OnOwnerUpdateTick", initializePopup, StringComparison.Ordinal)];
         AssertGuardBefore(popupInitialization, "try", "_popupHost.InitializeHidden();");
-        AssertGuardBefore(popupInitialization, "_popupHost.InitializeHidden();", "TryConfigurePopupOwner(");
+        AssertGuardBefore(popupInitialization, "_popupHost.InitializeHidden();", "TryPreparePopupOwner(");
         Assert.Contains("catch", popupInitialization, StringComparison.Ordinal);
         Assert.Contains("Dispose();", popupInitialization, StringComparison.Ordinal);
         Assert.Contains("_isVisible = false;\n            Dispose();\n            throw;", popupHost, StringComparison.Ordinal);

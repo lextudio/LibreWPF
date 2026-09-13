@@ -274,7 +274,9 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         _isVisible = true;
         try
         {
-            _popupHost.ShowWithoutActivation();
+            _popupHost.ShowWithoutActivation(show =>
+                _ownerHost.PlatformServices.WindowDecorations.TryShowOwnedPopup(
+                    _ownerHost.SilkWindow!, _popupHost.SilkWindow!, show));
         }
         catch
         {
@@ -327,7 +329,7 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
             bool ownerConfigured = false;
             if (_ownerHost.SilkWindow is { } ownerWindow && _popupHost.SilkWindow is { } popupWindow)
             {
-                ownerConfigured = _ownerHost.PlatformServices.WindowDecorations.TryConfigurePopupOwner(ownerWindow, popupWindow);
+                ownerConfigured = _ownerHost.PlatformServices.WindowDecorations.TryPreparePopupOwner(ownerWindow, popupWindow);
             }
 
             if (!ownerConfigured)

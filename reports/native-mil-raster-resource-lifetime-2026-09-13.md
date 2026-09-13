@@ -206,3 +206,33 @@ Manual diagnostic run `34778761952` applies these to the completed failing Build
 package. It is not final-head qualification and changes no product renderer,
 fallback policy, dependency pin or release gate. See ProGPU's
 `docs/native-path-atlas-diagnostics.md`.
+
+### Atlas result and packaged shader provenance
+
+Diagnostic run `34778761952` completes on both architectures. The baseline and
+all three atlas variants pass exact target pixels. Both direct native path
+probes still produce black interiors; x64's original cubic also fails, while
+ARM64's cubic passes. The direct ARM64 outcome differs from the earlier Build's
+direct-path pass, so neither that earlier pass nor the isolated atlas variants
+establish reliable native rendering. Do not change product texture descriptors
+based on this comparison: their isolated differences do not reproduce the fault.
+
+The completed failing package is `0.1.0-preview.3013.ci`, from source
+`7e6b749cc608a8b878c4ac4c63c51db2e2620721`. A read-only archive inspection confirms
+the complete canonical Vector (124,648 bytes), PathRasterizerCommon (27,331)
+and PathRasterizer (14,862) source text in the managed Backend assembly and both
+Windows native DLLs, after CRLF/LF normalization. Native prefix/main composition
+also matches. This rules out those embedded-source mismatches, not runtime shader
+compilation or execution defects. Package SHA256 values:
+
+- Backend: `f6124344ad29df2ac2c3c222cdc8dae1f7a29cd2c272e6f6421127a9e7fb3b34`
+- Backend.Native: `d777967c4479c9f2b6ca5ae10069dde712540f7749f01ef3b9ac85e5a6341e35`
+
+The inspection script is retained as
+`artifacts/native-core-validation.GwKsGq/inspect-packaged-path-shaders.py`.
+ProGPU `5ba70df9` next isolates native compute layout minimum sizes and the
+ordinary path's unwritten combine buffer. All three new variants compile and
+pass unchanged Metal pixel/coverage checks; Windows diagnostic run `34779073956`
+is live. The superseded queued Build `34778760253` was cancelled to release
+capacity; it is not passing qualification. The renderer build and latest-head
+Build remain active. No product fallback, dependency pin or merge gate changes.

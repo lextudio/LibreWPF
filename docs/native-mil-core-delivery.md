@@ -15,6 +15,21 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Windows native query completion — 2026-09-13:** ProGPU `e56d45c5` includes the
+strict MSVC pipeline-release fix, lazy point/rectangle/ellipse pipelines and a
+shared four-lane path sample walker. All 156 focused hit/shader tests pass; both
+providers compile on macOS and Windows, native contracts verify and the Metal
+consumer passes. The family-only Windows comparison still crashes in rectangle
+pipeline creation. The four-lane comparison passes rendering and submits point
+input, but rectangle completion remains required; no Windows crash-resolution or
+final performance claim is made. The preceding committed head passes the browser
+gate. Its System.Drawing allocation gate reports 7,296 bytes against the unchanged
+4,096-byte limit; that test passes locally, which does not diagnose the CI result.
+Windows CI's missing rectangle ink remains independently open. See ProGPU's
+`docs/native-mil-query-pipeline-specialization.md`. Keep scope frozen to these
+qualification blockers, exact dependency/package alignment and required CI before
+ordered merges. Superseded cancelled runs are not passing qualification.
+
 **Windows query-compilation qualification — 2026-09-13:** ProGPU `532a95ea`
 separates point-input pipeline compilation from region classification in both
 renderers without changing the shared traversal or source geometry. All 122

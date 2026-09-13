@@ -15,6 +15,18 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Native raster lifetime repair — 2026-09-13:** the exact-package x64 comparison
+passes native-equivalent rendering with retained references and with only the
+command-buffer reference released, but turns black when temporary raster buffers
+and bindings are released before completion. ProGPU `f5dcfb15` retains uncached
+path/clip/glyph staging through its existing submission retirement timeline,
+including borrowed semantic encoders and split passes. Both C++ providers compile;
+20 native tests, generated contracts and the full Metal package consumer pass.
+Windows compilation/fixtures and final-head CI are running. This is a concrete
+lifetime fix awaiting Windows qualification, not permission to advance pins or
+merge. The source-host Windows recovery deadline and remaining final application
+gates stay open. Broader compatibility expansion remains deferred.
+
 **Windows merge-gate isolation — 2026-09-13:** ProGPU Build `34770390199`
 finishes with only its two Windows package consumers failing; all native
 renderer, browser, compiler and non-Windows package lanes pass. Original cubic

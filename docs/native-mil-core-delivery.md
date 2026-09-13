@@ -15,6 +15,17 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Shared indirect dispatch connected — 2026-09-14:** ProGPU `9944c50c` removes the
+probe's native-only dispatch bypass and connects Silk, Dawn, browser transport and
+C++ provider forwarding. All 120 independent full-result comparisons pass on
+wgpu-native Metal, Dawn Metal and system ARM64 WARP. Eleven focused managed
+browser tests, nine JavaScript transport checks and the strict C++ forwarding
+fixture pass; CI now includes the new checks. This is the shared operation, not
+yet the paired product query dispatcher. Continue with typed execution selection,
+generation-owned candidate resources, bounded device admission and overflow/
+readback handling, then final package/Showcase gates and ordered merges. See
+[shared dispatch evidence](../reports/native-mil-shared-indirect-dispatch-2026-09-14.md).
+
 **Ordered GPU query proof passes system WARP — 2026-09-14:** ProGPU `a1a86493`
 adds shared ordered collection/clip/primitive/merge shader stages and an original-
 shader differential. All 120 complete result buffers match on Metal and system

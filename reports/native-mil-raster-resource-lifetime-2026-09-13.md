@@ -182,3 +182,27 @@ That rendering gate remains open alongside native query completion; the atlas
 startup improvement closes neither. The ARM64 package job is still running at
 this checkpoint. The exact log was downloaded to
 `/tmp/progpu-7e6b749c-package-win-x64.log` for continued isolation.
+
+### Terminal query result and atlas configuration isolation
+
+The source-host execution above is now terminal (host command exit 255). Its
+log records fatal `0xC0000005` in `NativeMethods.BeginHitTest`, called through
+`TryQueryHitTestBoundsOwners` during `ValidateNativeMilHostResult`. Do not restart
+or describe that process as still qualifying. First-frame/recovery assertions
+passed before this crash; the complete source-host gate did not.
+
+Build `34775916222` is also terminal: all jobs except the two Windows native
+package consumers pass. ARM64 passes the original cubic and retained rendering
+fixtures, then exits 127 after native query submission; x64 still fails drawing.
+The ARM64 log is `/tmp/progpu-7e6b749c-package-win-arm64.log`.
+
+ProGPU commit `d142b7cb` isolates two actual differences between its raw canonical
+diagnostic and native atlas: CopySrc usage and explicit/default view descriptors.
+Three independent variants preserve the original target pixel checks, canonical
+shaders, prepared payload and retained references. Only legally unavailable
+atlas-storage readback is omitted for the CopyDst-only variants; target and raw
+coverage checks remain. Release compilation and all three Metal probes pass.
+Manual diagnostic run `34778761952` applies these to the completed failing Build
+package. It is not final-head qualification and changes no product renderer,
+fallback policy, dependency pin or release gate. See ProGPU's
+`docs/native-path-atlas-diagnostics.md`.

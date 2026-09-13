@@ -15,6 +15,18 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Terminal Windows query result and atlas isolation — 2026-09-13:** the staged
+lazy-atlas Windows source-host run now terminates with `0xC0000005` in
+`BeginHitTest`, reached through rectangle owner querying. Its successful first
+presentation/recovery remains valid partial evidence, not complete host admission.
+Prior ProGPU Build `34775916222` also finishes red: x64 fails the first native
+frame; ARM64 passes that frame but fails native querying. ProGPU `d142b7cb` adds
+independent atlas-usage/default-view diagnostics, with unchanged canonical shaders
+and exact target pixels; all three compile and pass on Metal. Windows diagnostic
+run `34778761952` uses that already-failing package, not a replacement release
+gate. Current-head CI, exact dependency alignment and application qualification
+remain required before ordered merges.
+
 **Cold atlas initialization and query isolation — 2026-09-13:** ProGPU now
 defers managed glyph/path raster pipeline creation until an actual atlas request;
 the native host was paying that setup cost for unused managed resources. All 78

@@ -94,6 +94,75 @@ public static class ProGpuWpfDiagnostics
         int GlyphOutlineCompiledCount,
         ulong GlyphRasterBatchSubmissions);
 
+    // CPU wall times around real host/native stages, not GPU execution times.
+    // The native submission call includes uploads and encoding; they cannot
+    // be split using the managed compositor's unrelated timing counters.
+    public readonly record struct NativePerformanceSnapshot(
+        long PresentedFrameCount,
+        double CpuFrameTimeMs,
+        double SourceUpdateCpuTimeMs,
+        double SceneCompileCpuTimeMs,
+        double SceneInstallCpuTimeMs,
+        double SurfaceAcquireCpuTimeMs,
+        double SubmissionCpuTimeMs,
+        double PresentCpuTimeMs,
+        bool SourceUpdated,
+        global::ProGPU.Backend.Native.NativeSceneUpdateMetrics SceneUpdate,
+        global::ProGPU.Backend.Native.NativeSceneFrameMetrics Frame)
+    {
+        public long DeviceRecoveryCount { get; init; }
+        // Present only when the host explicitly enables inventory capture.
+        // Logical engine-owned storage, not physical or whole-device residency.
+        public global::ProGPU.Backend.Native.NativeGpuMemorySnapshot? GpuMemory { get; init; }
+        public double MemoryInventoryCpuTimeMs { get; init; }
+    }
+
+    public static bool TryGetNativePerformanceSnapshot(
+        object? window, out NativePerformanceSnapshot snapshot)
+    {
+        snapshot = default;
+        return TryGetWindowHost(window, out var host) && host is not null &&
+            host.TryGetNativePerformanceSnapshot(out snapshot);
+    }
+
+    public readonly record struct NativeMemoryCheckpoint(
+        NativePerformanceSnapshot PresentedFrame,
+        global::ProGPU.Backend.Native.NativeGpuMemorySnapshot CompletedMemory);
+
+    /// <summary>
+    /// Explicitly polls actual GPU completion on the native render owner thread.
+    /// Unlike snapshot reads, this may retire completed submission resources.
+    /// Returns false while work remains pending or no matching captured frame exists.
+    /// Does not wait, request a frame, purge caches, or change published frame data.
+    /// </summary>
+    public static bool TryPollNativeMemoryCheckpoint(
+        object? window, out NativeMemoryCheckpoint checkpoint)
+    {
+        checkpoint = default;
+        return TryGetWindowHost(window, out var host) && host is not null &&
+            host.TryPollNativeMemoryCheckpoint(out checkpoint);
+    }
+
+    internal static bool TryCreateNativeMemoryCheckpoint(
+        NativePerformanceSnapshot frame,
+        global::ProGPU.Backend.Native.NativeGpuMemorySnapshot completed,
+        long recoveryCount,
+        out NativeMemoryCheckpoint checkpoint)
+    {
+        checkpoint = default;
+        if (frame.PresentedFrameCount == 0 || frame.DeviceRecoveryCount != recoveryCount ||
+            frame.GpuMemory is not { } submitted || submitted.EngineId == 0 ||
+            submitted.EngineId != completed.EngineId ||
+            submitted.SceneId != frame.SceneUpdate.SceneId ||
+            submitted.SceneGeneration != frame.SceneUpdate.Generation ||
+            completed.SceneId != submitted.SceneId ||
+            completed.SceneGeneration != submitted.SceneGeneration ||
+            completed.RetainedSubmissionBatchCount != 0)
+            return false;
+        checkpoint = new NativeMemoryCheckpoint(frame, completed);
+        return true;
+    }
+
     public static bool TryGetWindowHost(object? window, out ProGpuWpfWindowHost? host)
     {
         if (window is ProGpuWpfWindowHost directHost)
@@ -257,6 +326,11 @@ public static class ProGpuWpfDiagnostics
         }
 
         ArgumentNullException.ThrowIfNull(host);
+        // Managed cache sizes do not inventory resources owned by C++.
+        if (host.RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+        {
+            return false;
+        }
         var target = host.CompositionTarget;
         if (target == null)
         {
@@ -276,6 +350,10 @@ public static class ProGpuWpfDiagnostics
         }
 
         ArgumentNullException.ThrowIfNull(host);
+        if (host.RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+        {
+            return false;
+        }
         var target = host.CompositionTarget;
         if (target == null)
         {

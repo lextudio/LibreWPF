@@ -91,7 +91,7 @@ internal static class ProGpuWpfRenderDeviceSharing
         // Disposing fires before IsDisposed flips, so both are needed to keep the list live.
         for (int i = s_deviceOwners.Count - 1; i >= 0; i--)
         {
-            if (s_deviceOwners[i].IsDisposed)
+            if (s_deviceOwners[i].IsDisposed || s_deviceOwners[i].IsDeviceLost)
             {
                 s_deviceOwners.RemoveAt(i);
             }

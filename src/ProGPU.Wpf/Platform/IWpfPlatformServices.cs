@@ -158,6 +158,11 @@ public interface IWpfWindowDecorationService
 {
     bool TryBeginDragMove(object window);
 
+    bool TryShowSystemMenu(object window, double desktopX, double desktopY)
+    {
+        return false;
+    }
+
     void TrackDragMoveInput(object window, WpfInputEventArgs input)
     {
     }
@@ -184,6 +189,17 @@ public interface IWpfWindowDecorationService
     bool TryConfigurePopupOwner(object ownerWindow, object popupWindow)
     {
         return false;
+    }
+
+    bool TryPreparePopupOwner(object ownerWindow, object popupWindow)
+    {
+        return TryConfigurePopupOwner(ownerWindow, popupWindow);
+    }
+
+    bool TryShowOwnedPopup(object ownerWindow, object popupWindow, Action showWithoutActivation)
+    {
+        showWithoutActivation();
+        return true;
     }
 }
 

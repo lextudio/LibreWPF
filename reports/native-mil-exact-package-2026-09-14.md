@@ -43,6 +43,11 @@ Windows comparison. The two renderer captures used independent processes,
 not overlapping app windows. Do not merge the LibreWPF application PR on the
 strength of the DPI regression alone.
 
+With both corrected WPF assemblies rebuilt in Release mode, the same
+isolated native Showcase output passed its object self-test and complete live
+input/resize/theme/popup validation again at 2× DPI. This closes the local
+source-overlay regression check, not the exact merged-package gate.
+
 The Toolkit initial native source-overlay run exposed a second text boundary:
 `PortableTextLine.HasOverflowed` compared native glyph width against the
 1/300-DIP-floored formatting width. For an actual 41.373046875-DIP advance,

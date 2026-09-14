@@ -42,10 +42,15 @@ mid-word break. [ProGPU #163](https://github.com/wieslawsoltes/ProGPU/pull/163)
 preserves the whitespace boundary while retaining unsafe non-space and
 same-cluster protection. The reproduced request now has five whole-word
 lines, and all 20 local native CTest suites pass. #163 merged to ProGPU
-`main` at `ff8bcbf46a6b77de25cd524407b4865eb13d9db0`, but its macOS x64
-CI rerun was still pending at merge. The final exact package/app visual gate
-must be rerun;
+`main` at `ff8bcbf46a6b77de25cd524407b4865eb13d9db0`. Its macOS x64
+CI rerun and all 45 PR checks subsequently passed. The final exact merged-main
+package/app visual gate must be rerun;
 the previous exact-package pass used ProGPU `5b99b640` and predates this fix.
+LibreWinForms #31 passed all six CI checks and merged at
+`9e2924e5da58831783bcf3eb6732fd4c954ed526`, carrying the ProGPU
+`ff8bcbf4` pin. The local aligned canonical package preparation passed
+against LibreWinForms `75264ab6` and ProGPU `ff8bcbf4`; the final WPF
+dependency pin now uses the merged LibreWinForms commit and must be repacked.
 An isolated copy of the packaged Showcase output with only the locally built
 PR #163 `libprogpu_native.dylib` substituted passed its source self-test,
 `Application.Run` validation twice, and the full native live input/resize/

@@ -45,9 +45,12 @@ whitespace break without admitting unsafe non-space or same-cluster breaks;
 its deterministic regression and all 20 local native CTest suites pass.
 #163 merged to `main` at `ff8bcbf46a6b77de25cd524407b4865eb13d9db0`.
 The repository allowed the merge while the isolated macOS x64 CI rerun was
-still pending; that check is not counted as green until it completes.
+pending; the rerun and all 45 PR checks subsequently passed. The separate
+Build for merged `main` remains the exact native-artifact gate.
 [LibreWinForms #31](https://github.com/wieslawsoltes/LibreWinForms/pull/31)
-pins this exact ProGPU main commit for the canonical package graph. The
+passed all six CI checks and merged at
+`9e2924e5da58831783bcf3eb6732fd4c954ed526`, pinning this exact ProGPU
+main commit for the canonical package graph. The
 earlier exact-package gate does not qualify this corrected text path; rerun
 the final package/application gate and visual comparison before #115 is made
 merge-ready. A same-source Windows 11 native-WPF Showcase Themes

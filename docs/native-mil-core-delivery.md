@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Toolkit tile capture fixed; AvalonDock auto-hide next — 2026-09-14:** The
+cache rejection was duplicate identical TileBrush captures lacking shared-page
+admission, not capacity exhaustion. ProGPU now uses its existing exact shared-page
+contract without changing budgets. Thirty-two GPU oracle cases (64 cold/warm
+renders) and all 19 native suites pass. The unchanged diagnostic Toolkit gets
+through filter editing, popups, dialogs, controls, themes and keyboard navigation,
+then rejects native scene compilation for the AvalonDock auto-hide overlay.
+Identify that source contract next, then complete the full gate and final package/
+platform/CI qualification. See the [follow-up](../reports/native-mil-toolkit-empty-rectangle-2026-09-14.md#shared-tile-capture-fixed-avalondock-auto-hide-next).
+
 **Toolkit input compiles; cache preflight next — 2026-09-14:** ProGPU now omits
 noninvertible source image/point rectangles without rejecting the complete native
 index, matching managed scope policy. The unchanged Toolkit gate reaches rendering

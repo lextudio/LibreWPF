@@ -1,5 +1,8 @@
 # Toolkit empty rectangle and next native input blocker
 
+Current checkpoint: repeated TileBrush page admission is fixed; the next failure
+is native scene compilation at AvalonDock auto-hide overlay (final section).
+
 Latest follow-up: native input compilation is repaired; rendering now rejects
 retained cache ownership/capacity preflight. See the final section below.
 
@@ -72,3 +75,24 @@ extent, shared status, content revision and effect status; do not increase limit
 or disable caching without identifying which invariant failed. Log:
 toolkit-diagnostic-singular-image-input.log. No Toolkit success, final package
 qualification, dependency-pin advance or merge is claimed.
+
+## Shared tile capture fixed; AvalonDock auto-hide next
+
+Preflight recorded only two 20x20 pages (3,200 bytes). A repeated TileBrush's
+identical owner/revision/extent was emitted twice without shared-page admission.
+ProGPU now marks its already-normalized, source-revision-keyed tiled captures
+shared. Per-paint opacity and composite mapping remain independent, and existing
+owner/extent/revision/recursive-use/budget guards are unchanged. All 19 native
+suites pass. A new GPU oracle covers four source kinds, four tile modes and one/
+two half-opacity paints, checking every pixel plus one cold/zero warm capture
+passes: 32 cases, 64 renders, passed on Metal. See ProGPU's
+docs/native-mil-shared-tile-pages.md for provenance and platform limits.
+
+The unchanged Toolkit diagnostic now completes actions through filter text,
+popups, document/anchorable menus, editors/resources, wizard, child/message/window
+controls, zoom/scroll/panels, data grid/collection, themes/options, document/editor
+activation and keyboard navigation. Native scene compilation rejects the next
+action, AvalonDock auto-hide overlay. Log: toolkit-diagnostic-shared-tile-pages.log.
+Temporary preflight diagnostics were removed before that run. No application
+deadline, input assertion or acceptance step was removed. The complete Toolkit
+gate, final exact packages, downstream CI and merges are still open.

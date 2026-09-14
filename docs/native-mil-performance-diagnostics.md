@@ -145,6 +145,54 @@ indexed dependency pins or SDK package graph.
 
 ## Required next work
 
+### Release profiling and failed-run diagnostics — 2026-09-14
+
+Release Showcase now builds with the same native source overlay and completes
+all live input plus 120 presentations in an uninstrumented baseline. Compile
+p50/p95/p99 is 17.730/18.297/18.429 ms, host CPU 23.035/26.004/47.196 ms,
+with 4,144,731.53 managed bytes/frame. This remains a diagnostic graph, not final
+indexed packages. The initial no-restore Release build lacked an apphost; using
+the intended DLL launch with `UseAppHost=false` builds without warnings/errors.
+
+Matched Time Profiler, Allocations, Metal System Trace and EventPipe artifacts
+are retained under `/Volumes/1TB-macOS/progpu-native-release.KYesd6`. ProGPU's
+shared C++ scene builder was reserving exact size-plus-one capacities and moving
+existing records repeatedly. Its geometric-preflight change preserves serialized
+output and publication/error ordering; it does not change WPF invalidation or
+source export. Native CPU hotspot attribution is documented in ProGPU's
+`docs/native-scene-builder-capacity.md`.
+
+Both the original and candidate native binaries can still fail the existing
+1 MiB endpoint-growth gate, including without Instruments. Retained buffers vary
+with periodic queue retirement, reaching 63 batches and 138,364,752 known-owned
+GPU bytes; six textures remain at 8,410,072 logical bytes. This is not evidence of
+an unbounded texture leak or a memory improvement. The snapshot getter still
+does not poll, drain or mutate ownership.
+
+Showcase now prints the measured timing/allocation report **before throwing** on
+that memory failure, explicitly labeled `failed memory gate`. The same growth
+condition, exception, identities, 120 real presentations, capture restoration
+and deadlines remain intact. It never prints success for a failed run. This
+diagnostic change prevents a memory failure from discarding the already collected
+latency evidence. Managed reporting remains unchanged.
+
+The changed reporter compiles in Release without warnings/errors. Two sequential
+baseline/candidate pairs use the same Showcase assembly (SHA-256
+`99036df722fead184d2cb8b956284c5381dfb734abc882c5f7f57ac41fc9ea88`).
+Baseline compile p50 is 18.163/17.767 ms; candidate 3.673/3.684 ms.
+Process CPU over 120 frames falls from 3,585/3,391 to 1,658/1,666 ms.
+Host p95 does not improve (26.346/25.751 versus 29.958/29.378 ms), with increased
+surface-acquire time consistent with changed presentation pacing. Managed
+allocation stays about 4.14 MB/frame. The baseline memory gate fails/passes;
+both candidate runs fail and print the diagnostic before throwing. These are
+compiler measurements, not a complete performance or application pass.
+
+Default Windows package failures also repeat in ProGPU Build `34803203731`:
+x64 ellipse summary/list disagreement, ARM64 exit 127 after bounds submission.
+Both explicit ordered package lanes and full-capacity differentials pass, but
+that does not waive defaults or qualify automatic selection, source packages or
+ordered PR merges.
+
 Run matched final Release Instruments/counter measurements, investigate sustained
 allocation/retention behavior, and finish exact package/platform qualification
 and qualified dependency pins.

@@ -72,16 +72,6 @@ public partial class MainWindow
             const ulong maximumGrowth = 1024UL * 1024UL;
             ulong growth = memoryAfter.TotalKnownOwnedBytes >= memoryBefore.TotalKnownOwnedBytes
                 ? memoryAfter.TotalKnownOwnedBytes - memoryBefore.TotalKnownOwnedBytes : 0;
-            if (growth > maximumGrowth)
-                throw new InvalidOperationException($"Warmed native engine-owned storage grew beyond {maximumGrowth} bytes: " +
-                    $"{memoryBefore.TotalKnownOwnedBytes}->{memoryAfter.TotalKnownOwnedBytes}, peak {peakOwnedBytes}; " +
-                    $"buffers {memoryBefore.OwnedBufferCount}/{memoryBefore.OwnedBufferBytes}->" +
-                    $"{peakMemory.OwnedBufferCount}/{peakMemory.OwnedBufferBytes}, " +
-                    $"textures {memoryBefore.OwnedTextureCount}/{memoryBefore.OwnedTextureBytes}->" +
-                    $"{peakMemory.OwnedTextureCount}/{peakMemory.OwnedTextureBytes}, " +
-                    $"pending batches {memoryBefore.RetainedSubmissionBatchCount}->{peakMemory.RetainedSubmissionBatchCount}, " +
-                    $"generation/submission {memoryBefore.SceneGeneration}/{memoryBefore.SubmissionIndex}->" +
-                    $"{peakMemory.SceneGeneration}/{peakMemory.SubmissionIndex}, final {memoryAfter.TotalKnownOwnedBytes}.");
             foreach (var stage in times) Array.Sort(stage);
             string[] names = ["host CPU", "source", "compile", "install", "acquire", "submit", "present", "inventory"];
             string[] summaries = new string[times.Length];
@@ -89,8 +79,8 @@ public partial class MainWindow
                 summaries[stage] = string.Create(CultureInfo.InvariantCulture,
                     $"{names[stage]} p50/p95/p99 {Percentile(times[stage], .50):0.###}/" +
                     $"{Percentile(times[stage], .95):0.###}/{Percentile(times[stage], .99):0.###} ms");
-            return string.Create(CultureInfo.InvariantCulture,
-                $"Showcase native performance validation succeeded: frames {frames}, wall {elapsedMs:0.###} ms, " +
+            string report = string.Create(CultureInfo.InvariantCulture,
+                $"frames {frames}, wall {elapsedMs:0.###} ms, " +
                 $"process CPU {cpuMs:0.###} ms, allocated {allocated} bytes ({(double)allocated / frames:0.##}/frame), " +
                 $"{string.Join(", ", summaries)}, commands/draws {last.Frame.CommandCount}/{last.Frame.DrawCallCount}, " +
                 $"engine {memoryAfter.EngineId}, scene/generation {memoryAfter.SceneId}/{memoryAfter.SceneGeneration}, " +
@@ -101,6 +91,20 @@ public partial class MainWindow
                 $"managed heap {heapBefore}->{GC.GetGCMemoryInfo().HeapSizeBytes}, " +
                 $"working set {workingSetBefore}->{process.WorkingSet64}. " +
                 $"Logical ownership excludes swapchain/driver residency; final matched Release/package qualification remains separate.");
+            if (growth > maximumGrowth)
+            {
+                Console.Error.WriteLine("Showcase native performance measurement (failed memory gate): " + report);
+                throw new InvalidOperationException($"Warmed native engine-owned storage grew beyond {maximumGrowth} bytes: " +
+                    $"{memoryBefore.TotalKnownOwnedBytes}->{memoryAfter.TotalKnownOwnedBytes}, peak {peakOwnedBytes}; " +
+                    $"buffers {memoryBefore.OwnedBufferCount}/{memoryBefore.OwnedBufferBytes}->" +
+                    $"{peakMemory.OwnedBufferCount}/{peakMemory.OwnedBufferBytes}, " +
+                    $"textures {memoryBefore.OwnedTextureCount}/{memoryBefore.OwnedTextureBytes}->" +
+                    $"{peakMemory.OwnedTextureCount}/{peakMemory.OwnedTextureBytes}, " +
+                    $"pending batches {memoryBefore.RetainedSubmissionBatchCount}->{peakMemory.RetainedSubmissionBatchCount}, " +
+                    $"generation/submission {memoryBefore.SceneGeneration}/{memoryBefore.SubmissionIndex}->" +
+                    $"{peakMemory.SceneGeneration}/{peakMemory.SubmissionIndex}, final {memoryAfter.TotalKnownOwnedBytes}.");
+            }
+            return "Showcase native performance validation succeeded: " + report;
         }
         finally
         {

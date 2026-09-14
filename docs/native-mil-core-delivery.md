@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Release capacity hotspot removed; retention/default-query qualification open — 2026-09-14:**
+Instruments attributes substantial native CPU cost to exact-size C++ builder
+reserve preflights. ProGPU's shared geometric growth retains atomic publication
+and identical serialized scenes; all 19 native suites pass. Showcase now prints
+its completed timing report on a memory-gate failure without waiving that gate.
+Before and after binaries expose periodic retained-buffer endpoint variation;
+finish actual queue-completion/residency evidence and the separate Windows FXC
+default query failure before final packages, pins and ordered merges. ActivityMonitor
+is outside this scope. See [Release profiling](native-mil-performance-diagnostics.md#release-profiling-and-failed-run-diagnostics--2026-09-14).
+
 **Native memory/report connected; qualification remains open — 2026-09-14:**
 The host now optionally captures ProGPU's native inventory on the render thread
 and publishes it with the successful frame. Showcase has a native 120-frame

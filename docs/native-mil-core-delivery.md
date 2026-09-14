@@ -22,11 +22,12 @@ passing behavior gates. The shared shader already divides atlas pixels by
 frame DPI, while the C++ MIL compiler also supplied an inverse-DPI glyph
 ratio. [ProGPU #162](https://github.com/wieslawsoltes/ProGPU/pull/162)
 corrects the native ratio and adds 1×/2×/2.625×/3× fixture assertions. All
-20 local native suites pass; a native-dylib-only Showcase overlay visibly
-restores ordinary text size and spacing. This is not merged-package or
-Windows/Linux visual parity. Keep LibreWPF #115 draft until #162 passes CI,
-merges, both source pins advance, package gates rerun, and remaining visible
-layout defects are reviewed.
+20 local native suites and 45/45 PR checks passed; #162 merged to `main` at
+`5b99b640a583c9f1cb69fd17731e000ab632baec`. A native-dylib-only Showcase
+overlay visibly restores ordinary text size and spacing. This is not the
+exact merged-package or Windows/Linux visual parity. Keep LibreWPF #115 draft
+until LibreWinForms #30 and both source pins advance, package gates rerun,
+and remaining visible layout defects are reviewed.
 
 **Portable Fluent semantic colors and control text — 2026-09-14:**
 The managed and native Showcase captures both omitted DataGrid text and much

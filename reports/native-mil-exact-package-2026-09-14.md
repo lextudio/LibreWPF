@@ -9,10 +9,12 @@ size while WPF advances and control positions remained logical. The C++ MIL
 compiler supplied `em / raster` to a shader that already divided atlas pixels
 by frame DPI. [ProGPU #162](https://github.com/wieslawsoltes/ProGPU/pull/162)
 supplies `em × dpi / raster`; its native high-DPI regression and all 20 local
-CTest suites pass. Replacing only the app's native dylib visibly restored
-normal text size and spacing. This is local visual evidence, not final package
-or Windows/Linux parity; the pull request and downstream exact pins still need
-green CI. Other text/layout defects are not presumed fixed.
+CTest suites pass. The PR passed 45/45 checks and merged to `main` at
+`5b99b640a583c9f1cb69fd17731e000ab632baec`. Replacing only the app's
+native dylib visibly restored normal text size and spacing. This is local
+visual evidence, not final exact merged package or Windows/Linux parity;
+downstream exact pins still need green CI. Other text/layout defects are not
+presumed fixed.
 
 A separate, managed-only Showcase window capture at the same 2× display
 shows normal glyph sizing too. It also reproduced missing visible text in the

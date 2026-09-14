@@ -75,6 +75,15 @@ portable text measurement remains unresolved until matched Windows captures
 at the same logical size. SciChart's rendered chart surface is a separate
 DirectX visual concern, not evidence about text layout. The broad app text
 matrix therefore remains open despite the corrected Showcase paragraph.
+The subsequent same-source Windows Toolkit build used a guest-only
+`C:\Temp\ProGpuWpfToolkitParity-20260914` output/cache and completed with zero
+warnings/errors. At the app's initial logical window size, its native WPF
+PropertyGrid `Body` value also clips in the narrow pane, so that specific
+clipping is not evidence of a ProGPU text measurement regression. The lower
+DateTimeUpDown field was below the Windows viewport in the initial capture;
+its parity remains unchecked. The test process closed normally and the VM was
+returned to suspended state. A full normalized cross-platform glyph/field
+matrix is still required before broader text-layout qualification.
 
 A current-source Windows comparison is now available. In the Parallels
 Windows 11 VM, the same Showcase source project built against the exact

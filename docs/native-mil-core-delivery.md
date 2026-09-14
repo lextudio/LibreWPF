@@ -15,6 +15,14 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Stock FXC ordered queries pass native and independent GPU fixtures — 2026-09-14:**
+after ProGPU `81ccf3fe`, the full ARM64 system-WARP native consumer and dense/sparse
+GPU differentials (120/168 full records, 100/140 public queries) pass with the
+stock WebGPU library and FXC. Windows x64/ARM64 now join the full ordered-query
+package CI step. Preserve the separate single-pass bounds failure, unchanged
+defaults and final package/hardware/Showcase gates before ordered merges. See
+[FXC follow-up](../reports/native-mil-query-private-stack-2026-09-14.md#stock-fxc-ordered-stage-follow-up).
+
 **FXC iterator compilation repaired; bounds runtime still open — 2026-09-14:**
 the shared shader now keeps its 64-entry stack invocation-private, avoiding the
 inout-array loop-unrolling rejection. Independent dense/sparse GPU differentials,

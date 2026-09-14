@@ -57,8 +57,9 @@ default unchanged. This job is authored but its CI result is pending.
 LibreWPF #126's exact PR-head [build](https://github.com/wieslawsoltes/LibreWPF/actions/runs/34883761758)
 and its merged-branch [build](https://github.com/wieslawsoltes/LibreWPF/actions/runs/34884769187)
 passed all jobs. The new gate branches from the latest
-`progpu-rendering-port` and pins ProGPU `main` `c36cf91d`; its exact ProGPU
-Build was still completing macOS native jobs when this record was written.
+`progpu-rendering-port`, pins ProGPU `main` `c36cf91d`, and aligns
+LibreWinForms with its merged `fced003a7` source pin. Its exact ProGPU Build
+was still completing package consumer jobs when this record was written.
 Do not transfer the older emulation result to that new source pin.
 
 True x64 hosted runtime, native-WPF visual comparison, broader Windows

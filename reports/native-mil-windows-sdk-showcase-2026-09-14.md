@@ -72,21 +72,33 @@ The Windows 11 ARM64 guest ran the `PresentationCore.Tests` portable-media
 `PortableTextLineTests` class with the source-built `PresentationCore.dll` and
 packaged `PresentationNative_cor3.dll`: 24/24 tests passed, including the new
 synthetic bold/italic glyph-run flag and ink test. A displayed source-overlay
-Showcase retry did not reach the callback: `wgpuSurfaceConfigure` aborted with
-`Invalid surface`. The same abort reproduced with the earlier, previously
-successful binary and after a normal VM restart, so the current evidence does
-not attribute it to the text change. It remains a separate Windows VM
-presentation blocker; neither a process exit code of zero nor the initial
-startup messages count as Showcase success.
+Showcase retry initially aborted at `wgpuSurfaceConfigure` with `Invalid
+surface`. This was a test-harness launch error: Parallels `exec` without
+`--current-user` ran as `SYSTEM`, outside the signed-in desktop session. With
+`--current-user`, the same source-overlay binary displayed and completed the
+full `Application.Run` self-test, including the DataGrid, secondary window,
+editor, and document. Future graphical guest gates must use the signed-in
+user session; neither a process exit code of zero nor startup-only messages
+count as success.
+
+The follow-up branch then produced a fresh 23-package development closure at
+`artifacts/packages/WindowsNativeFont` using the CI-built Windows managed
+payload and exact ProGPU `ff8bcbf4` packages. The transport's `win-arm64`
+`PresentationCore.dll` SHA-256 is
+`aab9db901251fe9d0a4d78afff09515a522ecfc9447b034bd9bfe82149a867de`,
+identical to the CI payload. Its Windows package-only displayed run has not
+yet executed: the Windows VM was suspended while another VM became active.
+Do not conflate the successful source overlay with this new package closure.
 
 ## Qualification boundary
 
 The completed displayed run is Windows ARM64 source-overlay application
 evidence. The first exact PR #126 package run is stronger provenance but failed
 at mapped synthetic bold, before the new text change. The focused Windows text
-suite passes, but the displayed guest now has a separate WebGPU surface
-failure. Rebuild exact follow-up packages, rerun without overlays, repeat the text-heavy action, inspect visible
-text at Windows DPI, and qualify x64 as well as ARM64 before Windows native SDK
+suite and updated source-overlay displayed run pass; a newly built package-only
+run remains outstanding. Rerun without
+overlays, repeat the text-heavy action, inspect visible text at Windows DPI,
+and qualify x64 as well as ARM64 before Windows native SDK
 admission. The larger native text, modal/popup, DirectX/Direct2D and platform
 parity requirements remain open. No default renderer or unsupported guard for
 true anisotropic presentation was enabled.

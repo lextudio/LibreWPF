@@ -30,10 +30,13 @@ pre-display object self-test but failed displayed startup in a DataGrid header
 because a SemiBold symbol-font request mapped to a physical face with
 `BoldSimulation`. The current text follow-up connects the existing ProGPU
 simulation render path and portable ink bounds; its focused Windows portable
-text class passes 24/24. A displayed retry is currently blocked by an
-independent `wgpuSurfaceConfigure` `Invalid surface` failure that reproduces
-with the previously successful binary and after a normal VM restart. It still
-needs a fresh clean package run and Windows visual inspection. Neither the
+text class passes 24/24. The `wgpuSurfaceConfigure` `Invalid surface` retries
+were launched as `SYSTEM` by Parallels outside the signed-in desktop; running
+the same source-overlay binary with `prlctl exec --current-user` completes the
+full displayed Showcase self-test. A fresh 23-package closure now includes the
+hash-matched CI Windows managed payload, but its package-only guest run remains
+pending after the Windows VM became suspended. It still needs a clean package run
+and Windows visual inspection. Neither the
 overlay run nor the earlier failing package qualifies Windows SDK defaults.
 
 **Core package qualification checkpoint — 2026-09-14:** ProGPU #163 is

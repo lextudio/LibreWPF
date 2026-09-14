@@ -94,6 +94,33 @@ public static class ProGpuWpfDiagnostics
         int GlyphOutlineCompiledCount,
         ulong GlyphRasterBatchSubmissions);
 
+    // CPU wall times around real host/native stages, not GPU execution times.
+    // The native submission call includes uploads and encoding; they cannot
+    // be split using the managed compositor's unrelated timing counters.
+    public readonly record struct NativePerformanceSnapshot(
+        long PresentedFrameCount,
+        double CpuFrameTimeMs,
+        double SourceUpdateCpuTimeMs,
+        double SceneCompileCpuTimeMs,
+        double SceneInstallCpuTimeMs,
+        double SurfaceAcquireCpuTimeMs,
+        double SubmissionCpuTimeMs,
+        double PresentCpuTimeMs,
+        bool SourceUpdated,
+        global::ProGPU.Backend.Native.NativeSceneUpdateMetrics SceneUpdate,
+        global::ProGPU.Backend.Native.NativeSceneFrameMetrics Frame)
+    {
+        public long DeviceRecoveryCount { get; init; }
+    }
+
+    public static bool TryGetNativePerformanceSnapshot(
+        object? window, out NativePerformanceSnapshot snapshot)
+    {
+        snapshot = default;
+        return TryGetWindowHost(window, out var host) && host is not null &&
+            host.TryGetNativePerformanceSnapshot(out snapshot);
+    }
+
     public static bool TryGetWindowHost(object? window, out ProGpuWpfWindowHost? host)
     {
         if (window is ProGpuWpfWindowHost directHost)
@@ -257,6 +284,11 @@ public static class ProGpuWpfDiagnostics
         }
 
         ArgumentNullException.ThrowIfNull(host);
+        // Managed cache sizes do not inventory resources owned by C++.
+        if (host.RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+        {
+            return false;
+        }
         var target = host.CompositionTarget;
         if (target == null)
         {
@@ -276,6 +308,10 @@ public static class ProGpuWpfDiagnostics
         }
 
         ArgumentNullException.ThrowIfNull(host);
+        if (host.RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+        {
+            return false;
+        }
         var target = host.CompositionTarget;
         if (target == null)
         {

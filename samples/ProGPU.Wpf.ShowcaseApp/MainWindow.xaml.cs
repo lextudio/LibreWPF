@@ -3385,6 +3385,16 @@ public partial class MainWindow : Window
     {
         if (!ProGpuWpfDiagnostics.TryGetPerformanceSnapshot(liveHost, out var before))
         {
+            if (ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(liveHost, out var native))
+            {
+                throw new NotSupportedException(
+                    $"Native Showcase timing is available for frame {native.PresentedFrameCount}: " +
+                    $"CPU {native.CpuFrameTimeMs:0.###} ms, compile {native.SceneCompileCpuTimeMs:0.###} ms, " +
+                    $"submit {native.SubmissionCpuTimeMs:0.###} ms, " +
+                    $"commands/draws {native.Frame.CommandCount}/{native.Frame.DrawCallCount}. " +
+                    "Full performance qualification still requires native GPU-memory accounting and its native report consumer; " +
+                    "idle managed compositor counters cannot qualify this renderer.");
+            }
             throw new InvalidOperationException("Expected the live Showcase host to publish typed performance diagnostics.");
         }
 

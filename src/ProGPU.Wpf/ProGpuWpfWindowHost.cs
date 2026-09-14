@@ -55,6 +55,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private ProGpuWpfCompositionTarget? _target;
     private NativeCompositor? _nativeMilCompositor;
     private WpfNativeMilCompilationSession? _nativeMilSession;
+    private readonly object _nativeMilPerformanceGate = new();
+    private ProGpuWpfDiagnostics.NativePerformanceSnapshot _nativeMilPerformance;
+    private ProGpuWpfDiagnostics.NativePerformanceSnapshot _pendingNativeMilPerformance;
     private object? _nativeMilCompiledRootVisual;
     private uint _nativeMilCompiledPixelWidth;
     private uint _nativeMilCompiledPixelHeight;
@@ -342,6 +345,30 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public NativeSceneUpdateMetrics LastNativeMilSceneUpdateMetrics { get; private set; }
 
     public NativeSceneFrameMetrics LastNativeMilFrameMetrics { get; private set; }
+
+    internal bool TryGetNativePerformanceSnapshot(
+        out ProGpuWpfDiagnostics.NativePerformanceSnapshot snapshot)
+    {
+        lock (_nativeMilPerformanceGate)
+        {
+            snapshot = _nativeMilPerformance;
+            return !_isDisposed && RendererMode == ProGpuWpfRendererMode.NativeMilWgpu &&
+                snapshot.PresentedFrameCount != 0;
+        }
+    }
+
+    internal void RecordNativePerformanceSnapshot(
+        ProGpuWpfDiagnostics.NativePerformanceSnapshot snapshot)
+    {
+        lock (_nativeMilPerformanceGate)
+        {
+            _nativeMilPerformance = snapshot with
+            {
+                PresentedFrameCount = PresentedFrameCount,
+                DeviceRecoveryCount = RenderDeviceRecoveryCount
+            };
+        }
+    }
 
     public bool IsWpfRootVisualDirty => _target?.WpfInvalidationTracker.IsDirty ?? false;
 
@@ -2171,6 +2198,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                         pixelWidth,
                         pixelHeight,
                         dpiScale));
+                    RecordNativePerformanceSnapshot(_pendingNativeMilPerformance);
                     TraceRenderSurfaceGeometryIfRequested(geometry);
                 }
                 TraceNativeLoop("native MIL render leaving: " + CreateNativeLoopTraceState());
@@ -2427,6 +2455,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         double dpiScaleY,
         double dpiScale)
     {
+        long frameStarted = Stopwatch.GetTimestamp();
         if (_target == null || _nativeMilCompositor == null ||
             _nativeMilSession == null)
         {
@@ -2453,8 +2482,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _nativeMilCompiledPopupVersion != _nativeMilPopupVersion ||
             _target.WpfInvalidationTracker.IsDirty ||
             _forceFullWpfReplay;
+        double sourceUpdateMs = 0;
         if (update)
         {
+            long updateStarted = Stopwatch.GetTimestamp();
             TraceNativeLoop("native MIL session update entering: " + CreateNativeLoopTraceState());
             Vector4 clear = _target.Compositor.ClearColor;
             _nativeMilPopupScratch.Clear();
@@ -2480,12 +2511,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _target.WpfInvalidationTracker.ConsumeDirty();
             _forceFullWpfReplay = false;
             TraceNativeLoop("native MIL session update leaving: " + CreateNativeLoopTraceState());
+            sourceUpdateMs = Stopwatch.GetElapsedTime(updateStarted).TotalMilliseconds;
         }
 
         ulong generation = NextNativeMilIdentity(ref _nativeMilGeneration);
         ulong requestSerial = NextNativeMilIdentity(
             ref _nativeMilRequestSerial);
         TraceNativeLoop("native MIL compile entering: " + CreateNativeLoopTraceState());
+        long compileStarted = Stopwatch.GetTimestamp();
         WpfNativeMilSessionFrame frame = _nativeMilSession.CompileFrame(
             1,
             generation,
@@ -2494,13 +2527,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             dpiScaleX,
             dpiScaleY,
             NativeMilHitTestingEnabled ? NativeMilSceneBuildRequestFlags.HitTestIndex : NativeMilSceneBuildRequestFlags.None);
+        double compileMs = Stopwatch.GetElapsedTime(compileStarted).TotalMilliseconds;
         LastNativeMilSessionFrame = frame;
         TraceNativeLoop("native MIL compile leaving: " + CreateNativeLoopTraceState());
+        long installStarted = Stopwatch.GetTimestamp();
         BindNativeMilExternalImages(frame);
         // Do not expose owners for a previous scene if install/presentation fails.
         NativeMilHitTestOwners = default;
         LastNativeMilSceneUpdateMetrics = _nativeMilCompositor.UpdateScene(
             frame.Scene.Stream);
+        double installMs = Stopwatch.GetElapsedTime(installStarted).TotalMilliseconds;
         TraceNativeLoop("native MIL scene installed: " + CreateNativeLoopTraceState());
 
         bool presented = PresentNativeMil(
@@ -2510,7 +2546,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             (float)dpiScale,
             frame.Request.SceneId,
             frame.Request.Generation,
-            _target.Compositor.ClearColor);
+            _target.Compositor.ClearColor,
+            out var presentationTimings);
         if (presented)
         {
             NativeMilHitTestOwners = _nativeMilCompositor.BindGpuHitTestOwners(
@@ -2518,6 +2555,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             RequestNativeMilContinuationAndWakeNativeLoop(
                 frame.Request,
                 frame.Scene.BuildResult);
+            _pendingNativeMilPerformance = new(
+                0,
+                Stopwatch.GetElapsedTime(frameStarted).TotalMilliseconds,
+                sourceUpdateMs,
+                compileMs,
+                installMs,
+                presentationTimings.AcquireMs,
+                presentationTimings.SubmissionMs,
+                presentationTimings.PresentMs,
+                update,
+                LastNativeMilSceneUpdateMetrics,
+                LastNativeMilFrameMetrics);
         }
         return presented;
     }
@@ -2635,8 +2684,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         float dpiScale,
         ulong sceneId,
         ulong generation,
-        Vector4 clearColor)
+        Vector4 clearColor,
+        out (double AcquireMs, double SubmissionMs, double PresentMs) timings)
     {
+        timings = default;
         if (_target == null)
         {
             return false;
@@ -2644,9 +2695,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         var surfaceTexture = new SurfaceTexture();
         TraceNativeLoop("native MIL acquire entering: " + CreateNativeLoopTraceState());
+        long acquireStarted = Stopwatch.GetTimestamp();
         _target.Context.Wgpu.SurfaceGetCurrentTexture(
             _target.Context.Surface,
             &surfaceTexture);
+        double acquireMs = Stopwatch.GetElapsedTime(acquireStarted).TotalMilliseconds;
         TraceNativeLoop(
             $"native MIL acquire leaving: status={surfaceTexture.Status}, " +
             CreateNativeLoopTraceState());
@@ -2688,6 +2741,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         try
         {
             TraceNativeLoop("native MIL submission entering: " + CreateNativeLoopTraceState());
+            long submissionStarted = Stopwatch.GetTimestamp();
             LastNativeMilFrameMetrics = compositor.RenderScene(
                 new NativeSceneExternalTarget(
                     (nuint)targetView,
@@ -2697,8 +2751,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 sceneId,
                 generation,
                 clearColor);
+            double submissionMs = Stopwatch.GetElapsedTime(submissionStarted).TotalMilliseconds;
             TraceNativeLoop("native MIL submission leaving: " + CreateNativeLoopTraceState());
+            long presentStarted = Stopwatch.GetTimestamp();
             _target.Context.Wgpu.SurfacePresent(_target.Context.Surface);
+            timings = (acquireMs, submissionMs,
+                Stopwatch.GetElapsedTime(presentStarted).TotalMilliseconds);
             TraceNativeLoop("native MIL present complete: " + CreateNativeLoopTraceState());
             return true;
         }
@@ -4297,6 +4355,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         _nativeMilSession?.Dispose();
         _nativeMilSession = null;
+        lock (_nativeMilPerformanceGate)
+        {
+            _nativeMilPerformance = default;
+            _pendingNativeMilPerformance = default;
+        }
         _nativeMilCompositor?.Dispose();
         _nativeMilCompositor = null;
         _nativeMilHitTests.ResetAfterCompositorDisposal();

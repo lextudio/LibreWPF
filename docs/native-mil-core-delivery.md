@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Native host timing published; memory/report and default FXC still block — 2026-09-14:**
+The typed native snapshot now publishes measured host stages with native frame
+metrics and device-recovery identity. All 214 focused host tests and the real
+source/native recovery gate pass. Legacy managed timing/memory APIs reject
+native mode instead of reporting zeros. ProGPU-owned native GPU-memory accounting
+and the complete native Showcase report remain required, alongside final
+Release/package gates. Hosted Windows x64 also exposes a default-FXC ellipse
+list-count failure despite its passing ordered-query lane. See
+[diagnostic contract and evidence](native-mil-performance-diagnostics.md).
+
 **Showcase input and presentation loop complete; native diagnostics next — 2026-09-14:**
 Instruments isolated repeated complete glyph rasterization as the requested-frame
 timeout's blocker. ProGPU now separates exact raster identity from positioned

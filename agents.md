@@ -1,5 +1,12 @@
 # Agent Guidance
 
+Native host performance snapshots publish measured CPU stages and actual native
+frame/update metrics together only after presentation, with device-recovery
+identity. Submission includes upload/encoding, not measured GPU time. Legacy
+managed timing/memory APIs reject native mode; missing native ownership is not
+zero residency or a passing performance gate. Keep monotonic, allocation-free
+timing and invalidate snapshots when the owning native target is replaced.
+
 ScrollViewer publishes its actual transparent point-hit rectangle through
 IPortablePointHitRegionSource, matching ActualWidth/ActualHeight after layout.
 The presenter's clip belongs to descendants; geometry-region input remains

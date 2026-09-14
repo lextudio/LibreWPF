@@ -182,6 +182,35 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativePerformanceDiagnosticsPublishOnePresentedFrameAndClearOnDisposal()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+            { RendererMode = ProGpuWpfRendererMode.NativeMilWgpu });
+        Assert.False(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out _));
+        var frame = default(NativeSceneFrameMetrics) with
+            { CommandCount = 23, DrawCallCount = 5, SubmissionCount = 2 };
+        var update = default(NativeSceneUpdateMetrics) with
+            { SceneId = 7, Generation = 11, ResourceCount = 20 };
+        var measured = new ProGpuWpfDiagnostics.NativePerformanceSnapshot(
+            999, 12, 1, 2, 3, 1.5, 2.5, 0.5, true, update, frame);
+        host.RecordPresentedFrame(new ProGpuWpfFrameState(100, 50, 1, 2, 3));
+        host.RecordNativePerformanceSnapshot(measured);
+        Assert.True(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out var snapshot));
+        Assert.Equal(measured with { PresentedFrameCount = 1 }, snapshot);
+        Assert.False(ProGpuWpfDiagnostics.TryGetPerformanceSnapshot(host, out _));
+        Assert.False(ProGpuWpfDiagnostics.TryGetMemorySnapshot(host, out _));
+        host.Dispose();
+        Assert.False(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out _));
+    }
+
+    [Fact]
+    public void ManagedHostDoesNotPublishNativePerformanceDiagnostics()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        Assert.False(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out _));
+    }
+
+    [Fact]
     public void MemoryDiagnosticsSeparateManagedProcessAndTrackedGpuOwnership()
     {
         var snapshot = ProGpuWpfDiagnostics.CreateMemorySnapshot(

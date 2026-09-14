@@ -302,6 +302,22 @@ public static class Program
                 $"{host.LastNativeMilFrameMetrics}.");
         }
 
+        if (!ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out var performance) ||
+            performance.PresentedFrameCount != host.PresentedFrameCount ||
+            performance.DeviceRecoveryCount != host.RenderDeviceRecoveryCount ||
+            performance.Frame != host.LastNativeMilFrameMetrics ||
+            performance.SceneUpdate != host.LastNativeMilSceneUpdateMetrics ||
+            !double.IsFinite(performance.CpuFrameTimeMs) || performance.CpuFrameTimeMs <= 0 ||
+            !double.IsFinite(performance.SceneCompileCpuTimeMs) || performance.SceneCompileCpuTimeMs <= 0 ||
+            !double.IsFinite(performance.SubmissionCpuTimeMs) || performance.SubmissionCpuTimeMs <= 0 ||
+            performance.SourceUpdateCpuTimeMs < 0 || performance.SceneInstallCpuTimeMs < 0 ||
+            performance.SurfaceAcquireCpuTimeMs < 0 || performance.PresentCpuTimeMs < 0 ||
+            ProGpuWpfDiagnostics.TryGetPerformanceSnapshot(host, out _) ||
+            ProGpuWpfDiagnostics.TryGetMemorySnapshot(host, out _))
+            throw new InvalidOperationException(
+                $"Native host diagnostics did not retain genuine frame timings and counters independently of the managed compositor: {performance}; " +
+                $"presented={host.PresentedFrameCount}, frame={host.LastNativeMilFrameMetrics}, update={host.LastNativeMilSceneUpdateMetrics}.");
+
         if ((host.LastNativeMilSessionFrame.Request.Flags & NativeMilSceneBuildRequestFlags.HitTestIndex) == 0 ||
             !ProGpuWpfDiagnostics.TryHitTestOwner(host, 12, 12, out object? inputOwner) ||
             !ReferenceEquals(inputOwner, drawingVisual) ||
@@ -325,7 +341,11 @@ public static class Program
             $"compiled {host.LastNativeMilSceneUpdateMetrics.CommandCount} commands/" +
             $"{host.LastNativeMilSceneUpdateMetrics.ResourceCount} resources/" +
             $"{host.LastNativeMilSceneUpdateMetrics.DrawCount} draws, and submitted " +
-            $"{host.LastNativeMilFrameMetrics.DrawCallCount} draw call(s).";
+            $"{host.LastNativeMilFrameMetrics.DrawCallCount} draw call(s). " +
+            $"Native CPU frame {performance.CpuFrameTimeMs:0.###} ms, " +
+            $"source {performance.SourceUpdateCpuTimeMs:0.###}, compile {performance.SceneCompileCpuTimeMs:0.###}, " +
+            $"install {performance.SceneInstallCpuTimeMs:0.###}, acquire {performance.SurfaceAcquireCpuTimeMs:0.###}, " +
+            $"submit {performance.SubmissionCpuTimeMs:0.###}, present {performance.PresentCpuTimeMs:0.###} ms.";
     }
 
     private static void VerifySourceScrollViewerPointPolicy(Assembly presentationFramework, Assembly presentationCore, Assembly windowsBase)

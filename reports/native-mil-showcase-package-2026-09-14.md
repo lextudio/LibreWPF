@@ -1,5 +1,21 @@
 # Native Showcase package qualification — 2026-09-14
 
+## Genuine native timing follow-up
+
+The host now publishes an atomic typed native timing/frame snapshot, including
+the real device-recovery count. The legacy managed performance and memory APIs
+reject native mode. All 214 focused host tests and the actual source/native
+device-recovery gate pass. The diagnostic Showcase still completes live input,
+then explicitly rejects incomplete native performance qualification instead of
+reporting idle managed zeros. Its native snapshot records frame 65, CPU 22.773
+ms, compilation 17.754 ms, submission 1.850 ms and 2,292 commands/118 draws.
+Native C++ memory accounting and the native report consumer remain required.
+See [the complete diagnostic contract and remaining work](../docs/native-mil-performance-diagnostics.md).
+
+Hosted ProGPU `27d13562` Windows x64 package CI passes ordered queries but fails
+the default system-FXC ellipse query: one summary hit, zero returned list records.
+Exact-result checks, default selection and dependency pin gates remain unchanged.
+
 ## Glyph raster retention and performance diagnostics
 
 The latest diagnostic overlay completes **all live input actions and the

@@ -166,12 +166,18 @@ namespace MS.Win32
         private static class SafeNativeMethodsMac
         {
             private const string ObjCLibrary = "/usr/lib/libobjc.A.dylib";
+            private const string AppKitLibrary = "/System/Library/Frameworks/AppKit.framework/AppKit";
             private const int DefaultDoubleClickMilliseconds = 500;
+            private static readonly Lazy<IntPtr> AppKitHandle = new(() => NativeLibrary.Load(AppKitLibrary));
 
             public static int GetDoubleClickTimeMilliseconds()
             {
                 try
                 {
+                    // MouseDevice can initialize before the native window host loads AppKit.
+                    // objc_getClass does not load frameworks on demand, so retain AppKit
+                    // before looking up NSEvent.
+                    _ = AppKitHandle.Value;
                     IntPtr nsEventClass = ObjCGetClass("NSEvent");
                     IntPtr doubleClickIntervalSelector = SelRegisterName("doubleClickInterval");
                     if (nsEventClass == IntPtr.Zero || doubleClickIntervalSelector == IntPtr.Zero)

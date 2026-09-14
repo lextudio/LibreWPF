@@ -25,10 +25,13 @@ rejection. Source fixes for these three paths allow the displayed Showcase
 `Application.Run` self-test to finish; see
 [Windows SDK Showcase record](../reports/native-mil-windows-sdk-showcase-2026-09-14.md).
 The successful guest run overlaid rebuilt source assemblies into a disposable
-package output. It is not a fresh follow-up package, full Windows text visual
-matrix or Windows SDK default admission. A synthetic-font mapping rejection
-occurred in one intermediate run and remains an explicit text contract to
-recheck on clean follow-up packages.
+package output. A separate clean, hash-matched PR #126 package passed the
+pre-display object self-test but failed displayed startup in a DataGrid header
+because a SemiBold symbol-font request mapped to a physical face with
+`BoldSimulation`. The current text follow-up connects the existing ProGPU
+simulation render path and portable ink bounds; it still needs a fresh clean
+package run and Windows visual inspection. Neither the overlay run nor the
+earlier failing package qualifies Windows SDK defaults.
 
 **Core package qualification checkpoint — 2026-09-14:** ProGPU #163 is
 merged at `ff8bcbf4` with 45/45 PR checks green, and its exact `main` Build
@@ -2191,8 +2194,10 @@ physical face identities and composite em scales reach the existing ProGPU nativ
 paragraph and actual source GlyphRuns. Source Typeface continues to own line
 metrics. Bundled-font fallback, cache reuse, culture/scale and UTF-16 range fixtures
 are authored, not executed. This closes the identified first-physical-face-only
-source branch; null-shape, device-font and synthetic style contracts remain
-explicitly unsupported. Tabs/document objects and the other required editor
+source branch; null-shape and device-font contracts remain explicitly
+unsupported. The later Windows source follow-up connects mapped synthetic
+bold/italic flags and portable ink through the existing ProGPU renderer, but
+clean package and visual qualification remain open. Tabs/document objects and the other required editor
 connections remain next, followed by startup admission and application closure.
 The native algorithms/ABI are reused unchanged; do not port WPF font-family policy
 into ProGPU or reopen unrelated API families. See the

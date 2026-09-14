@@ -76,6 +76,27 @@ public class PortableTextLineTests
         Assert.True(genuinelyNarrow.HasOverflowed);
     }
 
+    [PortableMediaFact]
+    public void MappedSyntheticBoldRetainsSourceFaceAndPortableInk()
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "LibreWPF", "Fonts", "Inter-Medium.ttf");
+        var properties = new Properties(new FontFamily(path + "#Inter"), FontWeights.Bold);
+        var source = new Source { Text = "a", Properties = properties };
+        using var registration = PortableWpfServiceRegistry.RegisterTextFormatting(
+            new Provider { BoundaryWidth = 8 });
+        using var formatter = new TextFormatterImp();
+        using var line = PortableTextLine.Create(Settings(formatter, source), 0, 800, 1);
+
+        GlyphRun run = Assert.Single(line.GetIndexedGlyphRuns()).GlyphRun;
+        Assert.Equal(StyleSimulations.BoldSimulation, run.GlyphTypeface.StyleSimulations);
+        Assert.True(((IPortableNativeGlyphRunSource)run).TryGetPortableNativeGlyphRun(out var native));
+        Assert.True(native.IsBold);
+        Assert.False(native.IsItalic);
+        Assert.True(native.HasInkBounds);
+        Assert.True(native.InkBounds.Width > run.ComputeInkBoundingBox().Width);
+        Assert.Equal(8, Assert.Single(run.AdvanceWidths));
+    }
+
     // Typed adapter fixture only; native shaping/layout is covered separately.
     private sealed class CollapseProvider : IPortableTextFormatting
     {
@@ -652,11 +673,11 @@ public class PortableTextLineTests
         private readonly Typeface _face;
         internal TextDecorationCollection? Decorations { get; init; }
         internal double Size { get; init; } = 12;
-        internal Properties(FontFamily? family = null)
+        internal Properties(FontFamily? family = null, FontWeight? weight = null)
         {
             string path = Path.Combine(AppContext.BaseDirectory, "LibreWPF", "Fonts", "LibreWPF.FluentSymbols.ttf");
             var glyph = new GlyphTypeface(new Uri(path));
-            _face = new Typeface(family ?? new FontFamily(path + "#" + glyph.FamilyNames.Values.First()), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+            _face = new Typeface(family ?? new FontFamily(path + "#" + glyph.FamilyNames.Values.First()), FontStyles.Normal, weight ?? FontWeights.Normal, FontStretches.Normal);
         }
         public override Typeface Typeface => _face;
         public override double FontRenderingEmSize => Size;

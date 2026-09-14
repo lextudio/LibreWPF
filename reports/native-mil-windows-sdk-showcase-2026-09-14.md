@@ -44,18 +44,33 @@ With the rebuilt `PresentationFramework.dll`, `PresentationCore.dll`, and
 `ProGPU.Wpf.dll` overlaid into the guest-only package output, the displayed
 `Application.Run` self-test completed startup, system commands, storyboards,
 resource controls, secondary window, editor, document, and shutdown, printing
-`ProGPU WPF Showcase Application.Run validation succeeded.` The intermediate
-Windows run also encountered the existing explicit synthetic-font-simulation
-rejection while formatting a DataGrid header. Its mapped-request diagnostic
-was expanded, but synthetic simulation was not implemented or admitted; that
-failure did not recur in the final source-overlay run and needs a repeated
-clean-package test before it can be classified as resolved or intermittent.
+`ProGPU WPF Showcase Application.Run validation succeeded.`
+
+The first locally repacked transport still carried a stale Windows-managed
+`PresentationCore.dll`, so that run did not test the follow-up source. A second
+23-package closure replaced the transport's managed ARM64 payload with PR #126's
+CI-built artifact. SHA-256 checks of `PresentationFramework.dll`,
+`PresentationCore.dll`, `ProGPU.Wpf.dll`, and `progpu_native.dll` in the guest
+output matched their exact NuGet members. That clean package built Showcase
+without warnings or errors and passed its pre-display object self-test, but
+displayed `Application.Run` failed in a DataGrid header: WPF mapped
+`Segoe Fluent Icons, Segoe MDL2 Assets` at SemiBold to a physical face with
+`BoldSimulation`, and `PortableTextLine` rejected that mapped face. This is a
+reproducible clean-package text blocker, not an intermittent result.
+
+The follow-up text change retains the mapped face and its style-simulation
+flags in `GlyphRun`, whose portable exports already carry those flags to
+ProGPU's managed and C++ native glyph renderers. It adds portable ink overhang
+for the native simulated bold pass and italic shear without altering shaped
+advances or caret positions. A focused source regression tests mapped bold
+and flag/ink propagation. This change still requires a fresh Windows-managed
+payload, clean package closure, displayed guest retest, and visual comparison.
 
 ## Qualification boundary
 
-This is Windows ARM64 source-overlay application evidence, **not** a fresh
-NuGet package built from the follow-up branch. The unmodified merged packages
-still fail the demonstrated Windows startup path. Rebuild exact follow-up
+The completed displayed run is Windows ARM64 source-overlay application
+evidence. The first exact PR #126 package run is stronger provenance but failed
+at mapped synthetic bold, before the new text change. Rebuild exact follow-up
 packages, rerun without overlays, repeat the text-heavy action, inspect visible
 text at Windows DPI, and qualify x64 as well as ARM64 before Windows native SDK
 admission. The larger native text, modal/popup, DirectX/Direct2D and platform

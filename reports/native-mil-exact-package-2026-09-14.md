@@ -1,5 +1,20 @@
 # Native MIL exact-package validation — 2026-09-14
 
+## Current-head Windows sample oracle follow-up
+
+ProGPU `54adc6a005119d40fc25615b3823844c21453690` Build
+`34819727963` published `progpu-directx-oracle-win-x64` (artifact
+`10337999613`). It contains native Microsoft D3D12HelloTriangle and
+D3D12HelloTexture captures from the pinned DirectX-Graphics-Samples commit
+`213dd4fd4918ea009dd8f35adee1aff1f2ecaba4` (Agility `1.618.3`), together
+with ProGPU's D3D12 frames. Running the repository's unchanged
+`progpu-compare-directx-sample-oracle.py` on both pairs yields exact 1280×720
+pixels: maximum, mean, every probe and channels/pixels over three all zero.
+The outputs are retained under the external core-release diagnostic directory's
+`progpu-directx-oracle-54adc6a0` folder. Metal/Vulkan differentials, full
+package consumers and the overall current-head CI are still running; these
+two Windows frames alone are not final cross-platform qualification.
+
 ## Source and package identity
 
 ProGPU source: `0ac6a5ff79d79e7a6e5a2e5b0488955cfb2256d7`, incorporating

@@ -2835,7 +2835,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             Math.Abs(dpiScaleX - dpiScaleY) > 0.000001)
         {
             throw new NotSupportedException(
-                "Native MIL presentation currently requires uniform X/Y DPI scaling.");
+                $"Native MIL presentation currently requires uniform X/Y DPI scaling " +
+                $"(x={dpiScaleX:R}, y={dpiScaleY:R}, pixels={pixelWidth}x{pixelHeight}).");
         }
     }
 
@@ -2969,6 +2970,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         var dpiScaleX = pixelWidth / (double)logicalWidth;
         var dpiScaleY = pixelHeight / (double)logicalHeight;
+        // Windows can publish a framebuffer one pixel short during a resize
+        // while its content scale remains uniformly 2x. Keep the physical
+        // extent, but do not manufacture anisotropic source/DPI transforms
+        // from that integer rounding. Larger differences retain both ratios.
+        if (Math.Abs(fallbackScaleX - fallbackScaleY) <= 0.000001 &&
+            Math.Abs(pixelWidth - logicalWidth * fallbackScaleX) <= 1.0 &&
+            Math.Abs(pixelHeight - logicalHeight * fallbackScaleY) <= 1.0 &&
+            Math.Abs(dpiScaleX - fallbackScaleX) <= 0.02 &&
+            Math.Abs(dpiScaleY - fallbackScaleY) <= 0.02)
+        {
+            dpiScaleX = fallbackScaleX;
+            dpiScaleY = fallbackScaleY;
+        }
 
         return new RenderSurfaceGeometry(
             logicalWidth,

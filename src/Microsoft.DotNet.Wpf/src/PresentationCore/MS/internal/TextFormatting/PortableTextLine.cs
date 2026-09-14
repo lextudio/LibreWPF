@@ -439,7 +439,9 @@ internal sealed class PortableTextLine : TextLine
                 $"(null shape: {selected?.NullShape}, physical face: {selected?.ShapeTypeface?.GlyphTypeface != null}, " +
                 $"device font: {selected?.ShapeTypeface?.DeviceFont != null})");
         if (selected.ShapeTypeface.GlyphTypeface.StyleSimulations != StyleSimulations.None)
-            throw Unsupported("synthetic font simulations");
+            throw Unsupported($"synthetic font simulations for '{requested.FontFamily?.Source}' " +
+                $"(style: {requested.Style}, weight: {requested.Weight}, " +
+                $"simulations: {selected.ShapeTypeface.GlyphTypeface.StyleSimulations})");
     }
 
     private static PortableTextFont GetFont(GlyphTypeface face) => Fonts.GetValue(face, static source =>

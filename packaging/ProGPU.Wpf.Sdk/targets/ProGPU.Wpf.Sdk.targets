@@ -35,12 +35,12 @@
     <PackageReference Include="Silk.NET.Windowing" Version="$(ProGpuWpfSilkNetVersion)" />
     <PackageReference Include="Silk.NET.WebGPU" Version="$(ProGpuWpfSilkNetVersion)" />
     <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" />
-    <PackageReference Include="System.Formats.Nrbf" Version="$(ProGpuWpfSystemFormatsNrbfVersion)" />
-    <PackageReference Include="System.IO.Packaging" Version="$(ProGpuWpfSystemIOPackagingVersion)" />
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="$(ProGpuWpfSystemSecurityCryptographyXmlVersion)" />
-    <PackageReference Include="System.Security.Permissions" Version="$(ProGpuWpfSystemSecurityPermissionsVersion)" />
-    <PackageReference Include="System.Windows.Extensions" Version="$(ProGpuWpfSystemWindowsExtensionsVersion)" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Formats.Nrbf" Version="$(ProGpuWpfSystemFormatsNrbfVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.IO.Packaging" Version="$(ProGpuWpfSystemIOPackagingVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="$(ProGpuWpfSystemSecurityCryptographyXmlVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Security.Permissions" Version="$(ProGpuWpfSystemSecurityPermissionsVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Windows.Extensions" Version="$(ProGpuWpfSystemWindowsExtensionsVersion)" GeneratePathProperty="true" />
     <PackageReference Include="OpenFontSharp" Version="$(ProGpuWpfOpenFontSharpVersion)" />
     <PackageReference Include="StbImageSharp" Version="$(ProGpuWpfStbImageSharpVersion)" />
   </ItemGroup>
@@ -50,12 +50,12 @@
     <PackageReference Include="Silk.NET.Windowing" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
     <PackageReference Include="Silk.NET.WebGPU" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
     <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" VersionOverride="$(ProGpuWpfSilkNetVersion)" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" VersionOverride="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" />
-    <PackageReference Include="System.Formats.Nrbf" VersionOverride="$(ProGpuWpfSystemFormatsNrbfVersion)" />
-    <PackageReference Include="System.IO.Packaging" VersionOverride="$(ProGpuWpfSystemIOPackagingVersion)" />
-    <PackageReference Include="System.Security.Cryptography.Xml" VersionOverride="$(ProGpuWpfSystemSecurityCryptographyXmlVersion)" />
-    <PackageReference Include="System.Security.Permissions" VersionOverride="$(ProGpuWpfSystemSecurityPermissionsVersion)" />
-    <PackageReference Include="System.Windows.Extensions" VersionOverride="$(ProGpuWpfSystemWindowsExtensionsVersion)" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" VersionOverride="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Formats.Nrbf" VersionOverride="$(ProGpuWpfSystemFormatsNrbfVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.IO.Packaging" VersionOverride="$(ProGpuWpfSystemIOPackagingVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Security.Cryptography.Xml" VersionOverride="$(ProGpuWpfSystemSecurityCryptographyXmlVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Security.Permissions" VersionOverride="$(ProGpuWpfSystemSecurityPermissionsVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Windows.Extensions" VersionOverride="$(ProGpuWpfSystemWindowsExtensionsVersion)" GeneratePathProperty="true" />
     <PackageReference Include="OpenFontSharp" VersionOverride="$(ProGpuWpfOpenFontSharpVersion)" />
     <PackageReference Include="StbImageSharp" VersionOverride="$(ProGpuWpfStbImageSharpVersion)" />
   </ItemGroup>

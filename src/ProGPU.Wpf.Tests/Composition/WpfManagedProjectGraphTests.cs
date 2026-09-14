@@ -15222,19 +15222,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReference Include=\"Silk.NET.Windowing\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"Silk.NET.WebGPU\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"System.Configuration.ConfigurationManager\" Version=\"$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)\" />", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"System.Formats.Nrbf\" Version=\"$(ProGpuWpfSystemFormatsNrbfVersion)\" />", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"System.Security.Cryptography.Xml\" Version=\"$(ProGpuWpfSystemSecurityCryptographyXmlVersion)\" />", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"System.Security.Permissions\" Version=\"$(ProGpuWpfSystemSecurityPermissionsVersion)\" />", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"System.Windows.Extensions\" Version=\"$(ProGpuWpfSystemWindowsExtensionsVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.Configuration.ConfigurationManager\" Version=\"$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.Formats.Nrbf\" Version=\"$(ProGpuWpfSystemFormatsNrbfVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.Security.Cryptography.Xml\" Version=\"$(ProGpuWpfSystemSecurityCryptographyXmlVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.Security.Permissions\" Version=\"$(ProGpuWpfSystemSecurityPermissionsVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.Windows.Extensions\" Version=\"$(ProGpuWpfSystemWindowsExtensionsVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"OpenFontSharp\" Version=\"$(ProGpuWpfOpenFontSharpVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"StbImageSharp\" Version=\"$(ProGpuWpfStbImageSharpVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"Silk.NET.Input\" VersionOverride=\"$(ProGpuWpfSilkNetVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" VersionOverride=\"$(ProGpuWpfSilkNetVersion)\" />", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"System.IO.Packaging\" VersionOverride=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"System.Security.Cryptography.Xml\" VersionOverride=\"$(ProGpuWpfSystemSecurityCryptographyXmlVersion)\" />", portableTargets, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"System.Security.Permissions\" VersionOverride=\"$(ProGpuWpfSystemSecurityPermissionsVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.IO.Packaging\" VersionOverride=\"$(ProGpuWpfSystemIOPackagingVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.Security.Cryptography.Xml\" VersionOverride=\"$(ProGpuWpfSystemSecurityCryptographyXmlVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"System.Security.Permissions\" VersionOverride=\"$(ProGpuWpfSystemSecurityPermissionsVersion)\" GeneratePathProperty=\"true\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"OpenFontSharp\" VersionOverride=\"$(ProGpuWpfOpenFontSharpVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"StbImageSharp\" VersionOverride=\"$(ProGpuWpfStbImageSharpVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.DoesNotContain("<PackageReference Include=\"Microsoft.Win32.SystemEvents\"", portableTargets, StringComparison.Ordinal);
@@ -15354,6 +15354,24 @@ public sealed class WpfManagedProjectGraphTests
                 < portableTargets.IndexOf("'$(NuGetPackageRoot)' != ''", StringComparison.Ordinal),
             "The managed transport copy must prefer the active isolated restore root over the global NuGet package root.");
         Assert.Contains("_ProGpuWpfSdkCopyPackageRuntimeAssets", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfCopyPackageRuntimeAssets Condition=\"'$(ProGpuWpfCopyPackageRuntimeAssets)' == ''\">true</ProGpuWpfCopyPackageRuntimeAssets>", portableTargets, StringComparison.Ordinal);
+        var sdkTargetsDocument = XDocument.Parse(portableTargets);
+        foreach (var targetName in new[]
+        {
+            "_ProGpuWpfSdkCopyPackageRuntimeAssets",
+            "_ProGpuWpfSdkCopyManagedTransportRuntimeAssets",
+            "_ProGpuWpfSdkCopyPortableWinFormsCompatRuntimeAssets"
+        })
+        {
+            var copyTarget = Assert.Single(sdkTargetsDocument.Descendants("Target"),
+                target => (string?)target.Attribute("Name") == targetName);
+            Assert.Contains("'$(ProGpuWpfCopyPackageRuntimeAssets)' == 'true'",
+                (string?)copyTarget.Attribute("Condition"), StringComparison.Ordinal);
+        }
+        var dependencyTarget = Assert.Single(sdkTargetsDocument.Descendants("Target"),
+            target => (string?)target.Attribute("Name") == "_ProGpuWpfSdkPreservePortableWinFormsRuntimeAssetsInDependencyFile");
+        Assert.DoesNotContain("ProGpuWpfCopyPackageRuntimeAssets",
+            (string?)dependencyTarget.Attribute("Condition"), StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyNativeRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkPreservePortableWinFormsRuntimeAssetsInDependencyFile", portableTargets, StringComparison.Ordinal);
         Assert.Contains("AfterTargets=\"Build\"", portableTargets, StringComparison.Ordinal);

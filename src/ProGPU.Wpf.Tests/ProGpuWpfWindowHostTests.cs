@@ -581,8 +581,13 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Contains("DoEvents();", source, StringComparison.Ordinal);
         Assert.Contains("if (!EnsureCompositionTargetLoaded() || !ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("window.IsEventDriven = false;", source, StringComparison.Ordinal);
-        Assert.Contains("window.DoEvents();\n            TraceNativeLoop(\"native event poll leaving:", source, StringComparison.Ordinal);
-        Assert.Contains("finally\n        {\n            if (useNonBlockingNativePoll)", source, StringComparison.Ordinal);
+        Assert.Contains("window.DoEvents();\n                TraceNativeLoop(\"native event poll leaving:", source, StringComparison.Ordinal);
+        Assert.Contains("if (useNonBlockingNativePoll)\n                {\n                    window.IsEventDriven = restoreEventDriven;", source, StringComparison.Ordinal);
+        Assert.Contains("Interlocked.Increment(ref s_activeNativeEventDispatchDepth);", source, StringComparison.Ordinal);
+        Assert.Contains("if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)", source, StringComparison.Ordinal);
+        Assert.Contains("ProcessDeferredNativeWindowDisposals();", source, StringComparison.Ordinal);
+        Assert.Contains("Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0", source, StringComparison.Ordinal);
+        Assert.Contains("QueueDeferredNativeWindowDisposal(this);", source, StringComparison.Ordinal);
         Assert.True(doEventsMethodStart >= 0);
         Assert.True(nativeEventPoll > doEventsMethodStart);
         Assert.True(ownerDispatcherDrain > nativeEventPoll);
@@ -607,7 +612,7 @@ public sealed class ProGpuWpfWindowHostTests
             source,
             StringComparison.Ordinal);
         Assert.Contains("if (ShouldPumpNativeRender())", source, StringComparison.Ordinal);
-        Assert.Contains("NativeRenderPumpCount++;\n            window.DoRender();", source, StringComparison.Ordinal);
+        Assert.Contains("NativeRenderPumpCount++;\n                window.DoRender();", source, StringComparison.Ordinal);
         Assert.Contains("SkippedNativeRenderPumpCount++;", source, StringComparison.Ordinal);
         Assert.Contains("Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest", source, StringComparison.Ordinal);
         Assert.Contains("private bool ShouldKeepPortableNativeRunLoopAlive()", source, StringComparison.Ordinal);

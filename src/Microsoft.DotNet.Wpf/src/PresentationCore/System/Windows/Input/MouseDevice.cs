@@ -885,6 +885,16 @@ namespace System.Windows.Input
 
             // Simulate a mouse move
             PresentationSource activeSource = CriticalActiveSource;
+            // Portable cursor coordinates are sourced from the active presentation source.
+            // Opening a transient window during a captured drag can switch that source before
+            // the captured element moves, so a synthetic re-hit-test would route a bogus
+            // (often zero) position to the drag owner. Win32 has a real OS cursor position
+            // here and must retain its existing synchronization behavior.
+            if (Captured != null && activeSource is PortablePresentationSource)
+            {
+                return;
+            }
+
             if (activeSource != null && activeSource.CompositionTarget != null && !activeSource.CompositionTarget.IsDisposed)
             {
                 int timeStamp = Environment.TickCount;

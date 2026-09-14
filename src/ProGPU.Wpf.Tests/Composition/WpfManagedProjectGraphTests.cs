@@ -20187,6 +20187,41 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("IsPopupSurface = true,", popupHost, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void PortableThumbDragCompletionReadsPositionBeforeCaptureRelease()
+    {
+        var mouseDevice = File.ReadAllText(FindRepoPath(
+            "src", "Microsoft.DotNet.Wpf", "src", "PresentationCore",
+            "System", "Windows", "Input", "MouseDevice.cs"));
+        var synchronizeStart = mouseDevice.IndexOf("public void Synchronize()", StringComparison.Ordinal);
+        Assert.True(synchronizeStart >= 0, "MouseDevice.Synchronize must exist.");
+        var portableCaptureGuard = mouseDevice.IndexOf(
+            "if (Captured != null && activeSource is PortablePresentationSource)",
+            synchronizeStart, StringComparison.Ordinal);
+        var syntheticPositionRead = mouseDevice.IndexOf("Point ptClient = GetClientPosition();",
+            synchronizeStart, StringComparison.Ordinal);
+        Assert.True(portableCaptureGuard > synchronizeStart && syntheticPositionRead > portableCaptureGuard,
+            "Only portable captured input may skip synthetic cursor resynchronization; Win32 must retain its path.");
+
+        var thumb = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "Primitives",
+            "Thumb.cs"));
+        var releaseHandler = thumb.IndexOf("protected override void OnMouseLeftButtonUp", StringComparison.Ordinal);
+        Assert.True(releaseHandler >= 0, "Thumb.OnMouseLeftButtonUp must exist.");
+        var positionRead = thumb.IndexOf("Point pt = SafeSecurityHelper.ClientToScreen(this, e.MouseDevice.GetPosition(this));", releaseHandler, StringComparison.Ordinal);
+        var releaseCapture = thumb.IndexOf("ReleaseMouseCapture();", releaseHandler, StringComparison.Ordinal);
+
+        Assert.True(releaseHandler >= 0 && positionRead > releaseHandler && releaseCapture > positionRead,
+            "The drag-completion coordinate must be captured while the Thumb still owns mouse capture.");
+    }
+
     private static void AssertGuardBefore(string source, string guard, string guardedCall)
     {
         var guardIndex = source.IndexOf(guard, StringComparison.Ordinal);

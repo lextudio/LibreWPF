@@ -7,9 +7,9 @@ This branch ports WPF onto the ProGPU/Silk.NET platform while reusing as much ma
 Current focus areas:
 
 - Reuse WPF managed code for application model, dependency properties, layout, controls, data binding, documents, XAML, resources, themes, and the XAML compiler.
-- Replace Windows-only MIL/D3D rendering with ProGPU WebGPU composition, shaders, DirectX-compatible shims, GPU hit testing, and Silk.NET windowing/input.
+- Replace Windows-only MIL/D3D rendering with ProGPU WebGPU composition, shaders, Direct3D-style compatibility shims, GPU hit testing, and Silk.NET windowing/input. Direct2D/Win2D use a separate [Windows-native interop and portable Canvas plan](external/ProGPU/docs/DIRECT2D_WIN2D_COMPATIBILITY.md).
 - Package the runtime as a preview SDK and NuGet set that can be consumed from a local feed or NuGet.org.
-- Keep third-party validation active through basic WPF apps, Xceed Toolkit/AvalonDock, Xceed paid Toolkit/DataGrid, SciChart MVP, ProGPU Avalonia package smoke, and no-source-change SDK smoke tests.
+- Keep third-party validation active through basic WPF apps, Xceed Toolkit/AvalonDock, Xceed paid Toolkit/DataGrid, SciChart Showcase, ProGPU Avalonia package smoke, and no-source-change SDK smoke tests.
 
 The maintained cross-platform priorities, compatibility policy, and ecosystem
 status are tracked in the [LibreWPF cross-platform roadmap](roadmap.md). The
@@ -136,9 +136,11 @@ release dispatch remains the full-rebuild recovery path.
 | Package | NuGet | Purpose |
 | --- | --- | --- |
 | `ProGPU.Backend` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Backend.svg)](https://www.nuget.org/packages/ProGPU.Backend) | WebGPU device, swapchain, Silk.NET windowing, and platform backend services. |
+| `ProGPU.Backend.Native` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Backend.Native.svg)](https://www.nuget.org/packages/ProGPU.Backend.Native) | Managed bindings and RID-specific C++ retained compositor/native backend assets used by the MIL replacement. |
 | `ProGPU.Backend.Dawn` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Backend.Dawn.svg)](https://www.nuget.org/packages/ProGPU.Backend.Dawn) | Dawn native backend assets used by package-mode presentation hosts. |
 | `ProGPU.Text.Shaping` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Text.Shaping.svg)](https://www.nuget.org/packages/ProGPU.Text.Shaping) | AOT-safe OpenType shaping contracts and execution used by the text renderer. |
-| `ProGPU.DirectX` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.DirectX.svg)](https://www.nuget.org/packages/ProGPU.DirectX) | DirectX-compatible facade for SciChart and future D3D-style interop on ProGPU/WebGPU. |
+| `ProGPU.DirectX` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.DirectX.svg)](https://www.nuget.org/packages/ProGPU.DirectX) | Direct3D-style facade for SciChart and typed D3D interop on ProGPU/WebGPU; it is not a Direct2D COM implementation. |
+| `ProGPU.Direct2D` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Direct2D.svg)](https://www.nuget.org/packages/ProGPU.Direct2D) | Windows-only genuine `ID2D1*`/DirectWrite COM surfaces, uploaded bitmaps, brushes, geometries, stroke/layer/state resources, effects, command lists, retained text formats/layouts with range formatting and OpenType typography, and text drawing synchronized with ProGPU/Dawn, real Win2D projections, and canonical LibreWPF `D3DImage`. |
 | `ProGPU.Transpiler` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Transpiler.svg)](https://www.nuget.org/packages/ProGPU.Transpiler) | Shader/source transformation helpers used by generated GPU pipelines. |
 | `ProGPU.Compute` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Compute.svg)](https://www.nuget.org/packages/ProGPU.Compute) | Compute pipeline helpers for GPU effects, indexes, and acceleration structures. |
 | `ProGPU.Vector` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Vector.svg)](https://www.nuget.org/packages/ProGPU.Vector) | Vector paths, geometry, brushes, pens, and rasterization data models. |
@@ -157,10 +159,24 @@ release dispatch remains the full-rebuild recovery path.
 ## Build And Release
 
 ```bash
-PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.45 PROGPU_WPF_PROGPU_PACKAGE_VERSION=0.1.0-preview.55 ./eng/progpu-wpf-sdk-ci.sh
+PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.45 PROGPU_WPF_PROGPU_PACKAGE_VERSION=0.1.0-preview.62 ./eng/progpu-wpf-sdk-ci.sh
 ```
 
 The SDK CI script stages ProGPU runtime packages, builds managed WPF transport assemblies, `LibreWPF.ProGPU`, and `LibreWPF.Sdk`, then audits the packages, writes the preview manifest, creates and verifies the release bundle, and runs package-mode SDK smoke tests. Public releases consume the hash-identical packages from the matching ProGPU GitHub release instead of repacking or republishing them.
+
+Canonical WinForms integration is validated separately from the normal NuGet
+development path:
+
+```bash
+./eng/progpu-wpf-canonical-winforms-integration.sh
+```
+
+That clean-source gate requires the LibreWinForms and ProGPU submodule pins to
+agree, builds the upstream-derived `System.Windows.Forms` identity against
+ProGPU `System.Drawing.Common`, serializes the WPF reference/cycle foundation,
+and compiles both the real `WindowsFormsIntegration` reference and implementation
+assemblies. It treats unresolved or duplicate assembly closures as errors. The
+ordinary SDK/package path remains on released ProGPU `0.1.0-preview.62` packages.
 
 For a faster source-development loop, use the same qualified managed, theme,
 and harness project sets through the validation graph:
@@ -187,11 +203,13 @@ GPU gates remain required before a release.
 
 GitHub workflows:
 
-- `LibreWPF Build` runs the SDK package/no-source-change smoke on macOS.
+- `LibreWPF Build` runs the canonical WinForms source gate on Linux and the SDK package/no-source-change smoke on macOS.
 - `LibreWPF Docs` verifies README and release docs against the preview package list.
 - `LibreWPF Release` builds preview packages/bundle artifacts and can publish to NuGet.org with `NUGET_API_KEY`.
 
-See [docs/progpu-wpf-release.md](docs/progpu-wpf-release.md) and the ongoing porting reports in [reports/](reports/).
+See [docs/progpu-wpf-release.md](docs/progpu-wpf-release.md), the
+[canonical WinForms source integration report](reports/canonical-winforms-source-integration.md),
+and the ongoing porting reports in [reports/](reports/).
 
 ## Original Upstream README
 

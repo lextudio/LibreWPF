@@ -16,7 +16,7 @@ namespace System.Windows
     /// <summary>
     /// Presentation source for non-HWND hosts.
     /// </summary>
-    internal sealed class PortablePresentationSource : PresentationSource, IPortablePresentationSourceHost, IDisposable
+    internal sealed class PortablePresentationSource : PresentationSource, IPortablePresentationSourceHost, IPortableDesktopGeometryHost, IPortableNativeCaretHost, IWin32Window, IDisposable
     {
         private readonly PortableCompositionTarget _compositionTarget;
         private readonly PortableKeyboardInputProvider _keyboardInputProvider;
@@ -26,7 +26,7 @@ namespace System.Windows
         private const int HitTestOwnerBufferCapacity = 64;
         private Visual _rootVisual;
         private Size _clientSize;
-        private Point _clientOrigin;
+        private PortableDesktopTransform _desktopTransform = PortableDesktopTransform.Identity;
         private Func<double, double, object> _hostHitTestOverride;
         private Func<double, double, object[]> _hostHitTestAllOverride;
         private PortableHitTestAllBufferOverride _hostHitTestAllBufferOverride;
@@ -66,6 +66,8 @@ namespace System.Windows
         }
 
         internal Cursor RequestedCursor { get; private set; }
+
+        public IPortableNativeCaretService NativeCaretService { get; set; }
 
         internal HwndSource HwndSource
         {
@@ -120,6 +122,11 @@ namespace System.Windows
         IntPtr IPortablePresentationSourceHost.Handle
         {
             get { return _isDisposed ? IntPtr.Zero : _handle; }
+        }
+
+        IntPtr IWin32Window.Handle
+        {
+            get { return Handle; }
         }
 
         object IPortablePresentationSourceHost.RequestedCursor
@@ -312,23 +319,42 @@ namespace System.Windows
 
         internal Point ClientOrigin
         {
-            get { return _clientOrigin; }
+            get { return new Point(_desktopTransform.OriginX, _desktopTransform.OriginY); }
+        }
+
+        internal PortableDesktopTransform DesktopTransform => _desktopTransform;
+
+        PortableDesktopTransform IPortableDesktopGeometryHost.DesktopTransform => _desktopTransform;
+
+        void IPortableDesktopGeometryHost.SetDesktopTransform(in PortableDesktopTransform transform)
+        {
+            SetDesktopTransform(transform);
+        }
+
+        private void SetDesktopTransform(in PortableDesktopTransform transform)
+        {
+            VerifyNotDisposed();
+            if (!transform.IsValid)
+            {
+                throw new ArgumentException("A valid client-to-desktop transform is required.", nameof(transform));
+            }
+            if (_desktopTransform == transform)
+            {
+                return;
+            }
+            _desktopTransform = transform;
+            RequestRender();
         }
 
         internal void SetClientOrigin(double x, double y)
         {
-            VerifyNotDisposed();
-
-            Point origin = new Point(
+            // The legacy origin-only update preserves the independently supplied
+            // desktop scale. Framebuffer DPI changes must not change this mapping.
+            SetDesktopTransform(new PortableDesktopTransform(
                 ToFiniteClientOrigin(x),
-                ToFiniteClientOrigin(y));
-            if (_clientOrigin == origin)
-            {
-                return;
-            }
-
-            _clientOrigin = origin;
-            RequestRender();
+                ToFiniteClientOrigin(y),
+                _desktopTransform.ScaleX,
+                _desktopTransform.ScaleY));
         }
 
         public void Dispose()
@@ -355,6 +381,7 @@ namespace System.Windows
                 RenderRequested = null;
                 CursorRequested = null;
                 Disposed = null;
+                NativeCaretService = null;
                 _isDisposed = true;
                 GC.SuppressFinalize(this);
             }
@@ -402,10 +429,12 @@ namespace System.Windows
                 }
 
                 _compositionTarget.RootVisual = rootVisual;
+                // Publish the presentation source before portable DPI and layout work can
+                // reenter user code through Loaded, layout, or DPI callbacks.
+                RootChanged(oldRootVisual, _rootVisual);
                 Matrix transformToDevice = _compositionTarget.TransformToDevice;
                 ApplyRootVisualDpi(transformToDevice.M11, transformToDevice.M22);
                 UIElement.PropagateResumeLayout(null, rootVisual);
-                ApplyRootVisualLayout();
             }
             else
             {
@@ -418,8 +447,16 @@ namespace System.Windows
                 UIElement.PropagateSuspendLayout(oldRootVisual);
             }
 
-            RootChanged(oldRootVisual, _rootVisual);
+            if (rootVisual == null)
+            {
+                RootChanged(oldRootVisual, _rootVisual);
+            }
+
             _keyboardInputProvider.OnRootChanged(oldRootVisual, _rootVisual);
+            if (rootVisual != null)
+            {
+                ApplyRootVisualLayout();
+            }
             QueueContentRendered();
             RequestRender();
         }

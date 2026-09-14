@@ -125,6 +125,44 @@ public static class ProGpuWpfDiagnostics
             host.TryGetNativePerformanceSnapshot(out snapshot);
     }
 
+    public readonly record struct NativeMemoryCheckpoint(
+        NativePerformanceSnapshot PresentedFrame,
+        global::ProGPU.Backend.Native.NativeGpuMemorySnapshot CompletedMemory);
+
+    /// <summary>
+    /// Explicitly polls actual GPU completion on the native render owner thread.
+    /// Unlike snapshot reads, this may retire completed submission resources.
+    /// Returns false while work remains pending or no matching captured frame exists.
+    /// Does not wait, request a frame, purge caches, or change published frame data.
+    /// </summary>
+    public static bool TryPollNativeMemoryCheckpoint(
+        object? window, out NativeMemoryCheckpoint checkpoint)
+    {
+        checkpoint = default;
+        return TryGetWindowHost(window, out var host) && host is not null &&
+            host.TryPollNativeMemoryCheckpoint(out checkpoint);
+    }
+
+    internal static bool TryCreateNativeMemoryCheckpoint(
+        NativePerformanceSnapshot frame,
+        global::ProGPU.Backend.Native.NativeGpuMemorySnapshot completed,
+        long recoveryCount,
+        out NativeMemoryCheckpoint checkpoint)
+    {
+        checkpoint = default;
+        if (frame.PresentedFrameCount == 0 || frame.DeviceRecoveryCount != recoveryCount ||
+            frame.GpuMemory is not { } submitted || submitted.EngineId == 0 ||
+            submitted.EngineId != completed.EngineId ||
+            submitted.SceneId != frame.SceneUpdate.SceneId ||
+            submitted.SceneGeneration != frame.SceneUpdate.Generation ||
+            completed.SceneId != submitted.SceneId ||
+            completed.SceneGeneration != submitted.SceneGeneration ||
+            completed.RetainedSubmissionBatchCount != 0)
+            return false;
+        checkpoint = new NativeMemoryCheckpoint(frame, completed);
+        return true;
+    }
+
     public static bool TryGetWindowHost(object? window, out ProGpuWpfWindowHost? host)
     {
         if (window is ProGpuWpfWindowHost directHost)

@@ -15,6 +15,23 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Completed-memory checkpoints pass; exact package/CI closure next — 2026-09-14:**
+Showcase's explicit nonblocking owner-thread checkpoints now compare completed
+native-owned working storage, preserving the 1 MiB growth limit and reporting
+submitted storage and sampled peaks separately. The live dispatcher may present
+additional frames while completion is polled; timed-sample and completion frame
+counts are reported independently. All 225 focused host tests and real source-host
+recovery checks pass. The diagnostic Release Showcase completes every live action
+and 120 timed samples with 9,289,344 bytes at both completed endpoints; sampled
+in-flight ownership still reaches 138,364,752 bytes. This is not a claim of lower
+physical residency or final package qualification. ProGPU `0ac6a5ff` selects
+ordered GPU queries automatically for actual owned D3D12/FXC devices; both Windows
+VM architectures pass the differential and native owner-query probes. Its exact
+CI package gates are still running. Finish those gates, dependency pins and final
+application/package/platform qualification before ordered merges. ActivityMonitor
+and broader API expansion remain out of scope for core closure. See
+[checkpoint contract and evidence](native-mil-performance-diagnostics.md#explicit-completed-memory-checkpoints--2026-09-14).
+
 **Release capacity hotspot removed; retention/default-query qualification open — 2026-09-14:**
 Instruments attributes substantial native CPU cost to exact-size C++ builder
 reserve preflights. ProGPU's shared geometric growth retains atomic publication

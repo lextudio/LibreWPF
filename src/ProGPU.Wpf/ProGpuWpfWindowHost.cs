@@ -369,6 +369,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
+    internal bool TryPollNativeMemoryCheckpoint(
+        out ProGpuWpfDiagnostics.NativeMemoryCheckpoint checkpoint)
+    {
+        checkpoint = default;
+        if (_isRendering || _hasPendingDeviceRecovery ||
+            !TryGetNativePerformanceSnapshot(out var frame) || frame.GpuMemory is null ||
+            _nativeMilCompositor is not { } compositor)
+            return false;
+
+        // The native timeline enforces owner-thread/device identity. Only actual
+        // completion may retire retained resources; inventory itself is read-only.
+        var submission = compositor.GetLastSubmissionToken();
+        if (!submission.IsValid || !compositor.IsSubmissionComplete(submission))
+            return false;
+        return ProGpuWpfDiagnostics.TryCreateNativeMemoryCheckpoint(
+            frame, compositor.GetGpuMemorySnapshot(), RenderDeviceRecoveryCount, out checkpoint);
+    }
+
     internal void RecordNativePerformanceSnapshot(
         ProGpuWpfDiagnostics.NativePerformanceSnapshot snapshot)
     {

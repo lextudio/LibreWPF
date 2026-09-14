@@ -1,5 +1,15 @@
 # Agent Guidance
 
+Native memory qualification uses explicit owner-thread, nonblocking completion
+checkpoints backed by ProGPU's existing submission token/poll and retirement.
+Ordinary snapshot reads stay read-only; never purge caches, fabricate zero pending
+bytes or use elapsed time as GPU completion. Keep engine/scene/generation/recovery
+identity paired and require zero retained batches after actual completion. Live
+dispatcher presentations may continue while polling: report completed endpoint
+frame counts separately from timed samples, with raw submitted storage and sampled
+peaks retained. The 1 MiB growth limit compares completed owned storage; it does
+not cap in-flight peaks or qualify physical residency or final package graphs.
+
 Native performance memory capture is opt-in and runs on the host render thread,
 publishing ProGPU's original inventory with the same successful frame snapshot.
 Readers must not query live native handles or splice generations. Preserve null

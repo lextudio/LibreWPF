@@ -8,6 +8,7 @@ internal static class NativeMilHostDeviceRecoverySmoke
     public static async Task RunAsync(
         ProGpuWpfWindowHost host, TimeSpan timeout, CancellationToken cancellationToken)
     {
+        var initialMemory = await PollMemoryAsync(host, timeout, cancellationToken).ConfigureAwait(false);
         var injected = new TaskCompletionSource<WgpuContext>(TaskCreationOptions.RunContinuationsAsynchronously);
         object? root = host.WpfRootVisual;
         var window = host.SilkWindow;
@@ -55,5 +56,43 @@ internal static class NativeMilHostDeviceRecoverySmoke
             }
         });
         await completed.Task.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+        var recoveredMemory = await PollMemoryAsync(host, timeout, cancellationToken).ConfigureAwait(false);
+        if (initialMemory.CompletedMemory.EngineId == recoveredMemory.CompletedMemory.EngineId ||
+            recoveredMemory.PresentedFrame.DeviceRecoveryCount != 1)
+            throw new InvalidOperationException("Completed native memory must belong to the recovered engine, not its predecessor.");
+        Console.WriteLine("Native memory checkpoints completed on both live engines without replacing submitted-frame snapshots.");
+    }
+
+    private static async Task<ProGpuWpfDiagnostics.NativeMemoryCheckpoint> PollMemoryAsync(
+        ProGpuWpfWindowHost host, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        var elapsed = Stopwatch.StartNew();
+        while (elapsed.Elapsed < timeout)
+        {
+            var pending = new TaskCompletionSource<ProGpuWpfDiagnostics.NativeMemoryCheckpoint?>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            host.PlatformServices.Dispatcher.Post(() =>
+            {
+                try
+                {
+                    if (!ProGpuWpfDiagnostics.TryPollNativeMemoryCheckpoint(host, out var checkpoint))
+                    {
+                        pending.SetResult(null);
+                        return;
+                    }
+                    if (!ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out var submitted) ||
+                        submitted != checkpoint.PresentedFrame ||
+                        checkpoint.CompletedMemory.RetainedSubmissionBatchCount != 0 ||
+                        checkpoint.CompletedMemory.OwnedBufferBytes == 0)
+                        throw new InvalidOperationException("Completion must retain the published snapshot and quantify the live engine.");
+                    pending.SetResult(checkpoint);
+                }
+                catch (Exception error) { pending.SetException(error); }
+            });
+            var result = await pending.Task.WaitAsync(timeout - elapsed.Elapsed, cancellationToken).ConfigureAwait(false);
+            if (result is { } checkpoint) return checkpoint;
+            await Task.Delay(2, cancellationToken).ConfigureAwait(false);
+        }
+        throw new TimeoutException("The live native engine did not reach its completed memory checkpoint.");
     }
 }

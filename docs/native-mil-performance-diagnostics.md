@@ -204,3 +204,95 @@ job `103841226346`, passes ordered queries but fails the default system-FXC
 ellipse participation case (`flags=C0000001`): summary hit count is one while
 the returned list count is zero. The adapter is Microsoft Basic Render Driver.
 Do not waive the exact-result check or switch defaults merely to pass CI.
+
+## Explicit completed-memory checkpoints — 2026-09-14
+
+Acceptance: **ProGPU.Wpf.ShowcaseApp**, warmed presentation after all live input
+actions. The blocking path was the endpoint comparison of submitted-frame
+inventories containing different amounts of in-flight work. The earlier raw
+1 MiB endpoint gate passed or failed on the same binaries depending on where
+periodic native retirement fell. The renderer's allocation/retention policy is
+unchanged by this diagnostic correction.
+
+`TryPollNativeMemoryCheckpoint` explicitly calls the existing native compositor's
+latest submission token and **nonblocking** completion poll on its owner thread.
+ProGPU C++ alone observes completion and retires the corresponding retained
+resources. Only then does the host read the native inventory. A checkpoint
+requires a captured presented frame, matching engine/scene/generation and recovery
+identity, and zero retained batches. Rendering/recovery-in-progress, unavailable
+hosts, pending work and mismatched snapshots cannot produce a checkpoint. The
+native provider preserves wrong-thread and device-loss errors. No timer-based
+completion, blocking native wait, CPU query fallback, cache purge or source-local
+resource release is introduced.
+
+The checkpoint carries the original submitted-frame snapshot **and** completed
+inventory as separate values. Ordinary snapshot/inventory getters remain read-only
+and the saved presented frame is not overwritten. This adapter adds O(1),
+allocation-free identity checks and native calls only during explicit diagnostics,
+not normal frames. It introduces no new numerical kernel or SIMD fallback; managed
+rendering and its existing report remain unchanged. C++ and managed consumers both
+retain the existing ProGPU completion/retirement contract; no renderer fork exists.
+
+Showcase polls through its existing source-dispatcher/native-loop wake helper,
+without requesting a new render. It retains the 300-attempt, 2-ms polling bound.
+Completion endpoints enclose the 120 timed samples and remain outside their CPU,
+wall-time and allocated-byte measurements. The source dispatcher may still present
+additional frames while polling: an initial candidate incorrectly required equal
+last-sampled and completion presentation counts. The diagnostic run rejected
+278 → 286, with the same engine/scene/recovery and a later matching generation.
+The final report records these two ranges explicitly, rejects stale/recovered/
+different-scene endpoints, and never relabels later presentations as timed samples.
+The original 1 MiB limit now compares completed owned working storage. Raw submitted
+bytes, completion-frame submitted bytes and sampled in-flight peaks remain visible;
+this neither caps transient memory nor claims complete driver-residency coverage.
+
+Validation:
+
+- Release bridge builds with its one existing unused-event warning; Showcase
+  and source-host harness build with zero warnings/errors. The test project has
+  20 existing analyzer warnings; all **225** focused host tests pass. Identity
+  fixtures cover missing capture/presentation, engine, scene, generation, recovery
+  and pending batches without fabricating actual GPU completion.
+- The real macOS source-host gate completes checkpoints before and after forced
+  native device recovery. Both engines have live owned buffers, zero retained
+  batches at completion, and unchanged submitted-frame snapshots; recovered
+  identity differs. The full existing source/input/retention checks also pass.
+- Release Showcase with explicit ordered queries passes all live input actions
+  and 120 timed samples, presentations 154 → 274, completion frames 154 → 282.
+  Completed owned storage is **9,289,344 → 9,289,344 bytes**, 30 buffers/six
+  textures and zero retained batches. Submitted storage ends at 124,023,040 bytes;
+  sampled peak remains **138,364,752 bytes / 63 pending batches**. No lower
+  physical-memory or reduced managed-allocation claim follows.
+  Compile p50/p95/p99 is 3.754/4.134/4.362 ms, host 19.406/30.116/34.941 ms;
+  process CPU 1,695.314 ms, wall 2,639.519 ms, allocation 4,145,573 bytes/sample.
+  These are diagnostic measurements, not a matched package performance verdict.
+- The same Release binaries also pass with **automatic Metal single-pass queries**:
+  timed presentations 156 → 276, completion through 284, completed storage
+  **9,287,580 → 9,287,580 bytes**, 28 buffers/six textures and zero pending
+  batches. The sampled in-flight peak remains 138,362,988 bytes. Compile
+  p50/p95/p99 is 3.693/4.105/4.271 ms; all live input actions pass and the process
+  exits zero. This keeps the normal Metal default in the diagnostic coverage.
+
+Logs and the exact assembly-overlay runner are retained under
+`artifacts/native-completion-checkpoints.bSQpun/`. The source graph remains the
+explicit isolated diagnostic snapshot, with current WPF overlays and ProGPU
+`0ac6a5ff` managed artifacts / `21e9ed86` native build. It is **not** an exact
+indexed NuGet package qualification. SHA-256:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Showcase DLL | `5ed2a88acf289a919088ceb76c6038894c8d7d241d8d6a87688e9728718e574d` |
+| ProGPU.Wpf DLL | `594d92191c22d9f445dfbb3a5ddd3928ede942d2f51e320c75edac8751c3ec96` |
+| ProGPU.Backend DLL | `5e3a44758d96256643a4ad26efa0927d292c6771b359c948cdff4732ba844d2b` |
+| ProGPU.Backend.Native DLL | `a73048e6cb9d6f9b848307d8c0992a145e0ef4a8aa29b90e17da6f3230f97915` |
+| Native dylib | `e76956d7db8c2a8d97f341b9c96ef0aa67f3ffb0e351fa1120e532b7f81e3e9b` |
+
+The earlier default-FXC blocker above now has a separate, evidence-backed ProGPU
+policy fix: actual owned D3D12/FXC devices select ordered GPU stages automatically;
+Metal/Vulkan/DXC/unknown devices preserve single-pass automatic selection and
+explicit preferences remain authoritative. Independent full-capacity differentials
+and the actual owner-query probes pass in both Windows VM architectures. See
+[ProGPU's selection/evidence record](https://github.com/wieslawsoltes/ProGPU/blob/0ac6a5ff79d79e7a6e5a2e5b0488955cfb2256d7/docs/native-ordered-hit-query-stages.md).
+Original explicit single-pass FXC failures are not declared repaired. The current
+exact-head CI/package gates, final matched Release/platform acceptance and ordered
+dependency merges remain required; these diagnostic results do not waive them.

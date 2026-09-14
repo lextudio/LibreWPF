@@ -187,6 +187,7 @@ public sealed class ProGpuWpfWindowHostTests
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
             { RendererMode = ProGpuWpfRendererMode.NativeMilWgpu });
         Assert.False(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out _));
+        Assert.False(ProGpuWpfDiagnostics.TryPollNativeMemoryCheckpoint(host, out _));
         var frame = default(NativeSceneFrameMetrics) with
             { CommandCount = 23, DrawCallCount = 5, SubmissionCount = 2 };
         var update = default(NativeSceneUpdateMetrics) with
@@ -204,6 +205,8 @@ public sealed class ProGpuWpfWindowHostTests
         host.RecordNativePerformanceSnapshot(measured);
         Assert.True(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out var snapshot));
         Assert.Equal(measured with { PresentedFrameCount = 1 }, snapshot);
+        // A synthetic published frame is never proof of actual GPU completion.
+        Assert.False(ProGpuWpfDiagnostics.TryPollNativeMemoryCheckpoint(host, out _));
         Assert.False(ProGpuWpfDiagnostics.TryGetPerformanceSnapshot(host, out _));
         Assert.False(ProGpuWpfDiagnostics.TryGetMemorySnapshot(host, out _));
         host.EnableNativeMemoryDiagnostics = false;
@@ -214,6 +217,7 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(2, uncaptured.PresentedFrameCount);
         host.Dispose();
         Assert.False(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out _));
+        Assert.False(ProGpuWpfDiagnostics.TryPollNativeMemoryCheckpoint(host, out _));
     }
 
     [Fact]
@@ -221,6 +225,54 @@ public sealed class ProGpuWpfWindowHostTests
     {
         using var host = new ProGpuWpfWindowHost();
         Assert.False(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out _));
+        Assert.False(ProGpuWpfDiagnostics.TryPollNativeMemoryCheckpoint(host, out _));
+    }
+
+    [Theory]
+    [InlineData("matching", true)]
+    [InlineData("uncaptured", false)]
+    [InlineData("unpresented", false)]
+    [InlineData("empty-engine", false)]
+    [InlineData("engine", false)]
+    [InlineData("scene", false)]
+    [InlineData("generation", false)]
+    [InlineData("submitted-scene", false)]
+    [InlineData("submitted-generation", false)]
+    [InlineData("recovery", false)]
+    [InlineData("pending", false)]
+    public void NativeMemoryCheckpointRequiresMatchingPresentedIdentity(string mismatch, bool expected)
+    {
+        var submitted = new NativeGpuMemorySnapshot
+        {
+            EngineId = 17, SceneId = 7, SceneGeneration = 11,
+            RetainedSubmissionBatchCount = 3, OwnedBufferBytes = 256
+        };
+        var frame = new ProGpuWpfDiagnostics.NativePerformanceSnapshot(
+            1, 12, 1, 2, 3, 1, 2, 1, true,
+            default(NativeSceneUpdateMetrics) with { SceneId = 7, Generation = 11 }, default)
+            { GpuMemory = submitted, DeviceRecoveryCount = 2 };
+        var completed = submitted with { RetainedSubmissionBatchCount = 0, OwnedBufferBytes = 64 };
+        switch (mismatch)
+        {
+            case "uncaptured": frame = frame with { GpuMemory = null }; break;
+            case "unpresented": frame = frame with { PresentedFrameCount = 0 }; break;
+            case "empty-engine": frame = frame with { GpuMemory = submitted with { EngineId = 0 } }; break;
+            case "engine": completed = completed with { EngineId = 18 }; break;
+            case "scene": completed = completed with { SceneId = 8 }; break;
+            case "generation": completed = completed with { SceneGeneration = 12 }; break;
+            case "submitted-scene": frame = frame with { GpuMemory = submitted with { SceneId = 8 } }; break;
+            case "submitted-generation": frame = frame with { GpuMemory = submitted with { SceneGeneration = 12 } }; break;
+            case "recovery": frame = frame with { DeviceRecoveryCount = 3 }; break;
+            case "pending": completed = completed with { RetainedSubmissionBatchCount = 1 }; break;
+        }
+        Assert.Equal(expected, ProGpuWpfDiagnostics.TryCreateNativeMemoryCheckpoint(frame, completed, 2, out var checkpoint));
+        if (expected)
+        {
+            Assert.Equal(frame, checkpoint.PresentedFrame);
+            Assert.Equal(submitted, checkpoint.PresentedFrame.GpuMemory);
+            Assert.Equal(completed, checkpoint.CompletedMemory);
+        }
+        else Assert.Equal(default, checkpoint);
     }
 
     [Fact]

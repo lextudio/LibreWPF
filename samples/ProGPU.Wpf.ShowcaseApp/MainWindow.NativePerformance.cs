@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Windows.Media.ProGPU;
+using System.Windows.Threading;
 using ProGPU.Backend.Native;
 
 namespace ProGPU.Wpf.ShowcaseApp;
@@ -22,8 +23,11 @@ public partial class MainWindow
             GC.Collect();
 
             const int frames = 120;
-            var first = await PresentNativePerformanceFrameAsync(host);
-            NativeGpuMemorySnapshot memoryBefore = RequireNativeMemory(first);
+            _ = await PresentNativePerformanceFrameAsync(host);
+            var before = await PollNativeMemoryCheckpointAsync(host);
+            var first = before.PresentedFrame;
+            NativeGpuMemorySnapshot submittedBefore = RequireNativeMemory(first);
+            NativeGpuMemorySnapshot memoryBefore = RequireCompletedNativeMemory(before);
             // Diagnostic sample storage is allocated before measuring heap traffic.
             double[][] times = new double[8][];
             for (int stage = 0; stage < times.Length; stage++) times[stage] = new double[frames];
@@ -34,8 +38,8 @@ public partial class MainWindow
             long allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
             long started = Stopwatch.GetTimestamp();
             var last = first;
-            ulong peakOwnedBytes = memoryBefore.TotalKnownOwnedBytes;
-            NativeGpuMemorySnapshot peakMemory = memoryBefore;
+            ulong peakOwnedBytes = submittedBefore.TotalKnownOwnedBytes;
+            NativeGpuMemorySnapshot peakMemory = submittedBefore;
             for (int frame = 0; frame < frames; frame++)
             {
                 last = await PresentNativePerformanceFrameAsync(host);
@@ -65,7 +69,26 @@ public partial class MainWindow
             long allocated = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
             process.Refresh();
             double cpuMs = (process.TotalProcessorTime - cpuBefore).TotalMilliseconds;
-            var memoryAfter = RequireNativeMemory(last);
+            var submittedAfter = RequireNativeMemory(last);
+            var after = await PollNativeMemoryCheckpointAsync(host);
+            var memoryAfter = RequireCompletedNativeMemory(after);
+            // The live dispatcher can present additional frames while completion
+            // is polled. The memory endpoints enclose (not impersonate) the timed
+            // samples; retain the latest completed generation and report its count.
+            if (after.PresentedFrame.PresentedFrameCount < last.PresentedFrameCount ||
+                after.PresentedFrame.DeviceRecoveryCount != first.DeviceRecoveryCount ||
+                memoryAfter.EngineId != memoryBefore.EngineId || memoryAfter.SceneId != memoryBefore.SceneId ||
+                memoryAfter.SceneGeneration < submittedAfter.SceneGeneration)
+                throw new InvalidOperationException($"Native completion checkpoint crossed the measured presentation, engine, recovery or scene boundary: " +
+                    $"frame {last.PresentedFrameCount}->{after.PresentedFrame.PresentedFrameCount}, " +
+                    $"engine {memoryBefore.EngineId}->{memoryAfter.EngineId}, recovery {first.DeviceRecoveryCount}->{after.PresentedFrame.DeviceRecoveryCount}, " +
+                    $"scene {memoryBefore.SceneId}->{memoryAfter.SceneId}, generation {submittedAfter.SceneGeneration}->{memoryAfter.SceneGeneration}.");
+            var submittedAtCompletion = RequireNativeMemory(after.PresentedFrame);
+            if (submittedAtCompletion.TotalKnownOwnedBytes > peakOwnedBytes)
+            {
+                peakOwnedBytes = submittedAtCompletion.TotalKnownOwnedBytes;
+                peakMemory = submittedAtCompletion;
+            }
             if (last.PresentedFrameCount - first.PresentedFrameCount < frames ||
                 last.Frame.CommandCount == 0 || last.Frame.DrawCallCount == 0 || last.Frame.SubmissionCount == 0)
                 throw new InvalidOperationException("Native performance sampling did not observe 120 genuine rendered presentations.");
@@ -80,12 +103,15 @@ public partial class MainWindow
                     $"{names[stage]} p50/p95/p99 {Percentile(times[stage], .50):0.###}/" +
                     $"{Percentile(times[stage], .95):0.###}/{Percentile(times[stage], .99):0.###} ms");
             string report = string.Create(CultureInfo.InvariantCulture,
-                $"frames {frames}, wall {elapsedMs:0.###} ms, " +
+                $"timed frame samples {frames}, sampled presentations {first.PresentedFrameCount}->{last.PresentedFrameCount}, " +
+                $"completion presentations {first.PresentedFrameCount}->{after.PresentedFrame.PresentedFrameCount}, wall {elapsedMs:0.###} ms, " +
                 $"process CPU {cpuMs:0.###} ms, allocated {allocated} bytes ({(double)allocated / frames:0.##}/frame), " +
                 $"{string.Join(", ", summaries)}, commands/draws {last.Frame.CommandCount}/{last.Frame.DrawCallCount}, " +
                 $"engine {memoryAfter.EngineId}, scene/generation {memoryAfter.SceneId}/{memoryAfter.SceneGeneration}, " +
-                $"native-owned logical GPU bytes {memoryBefore.TotalKnownOwnedBytes}->{memoryAfter.TotalKnownOwnedBytes} " +
-                $"(peak {peakOwnedBytes}, peak pending batches {peakMemory.RetainedSubmissionBatchCount}), " +
+                $"completed native-owned logical GPU bytes {memoryBefore.TotalKnownOwnedBytes}->{memoryAfter.TotalKnownOwnedBytes}, " +
+                $"submitted bytes {submittedBefore.TotalKnownOwnedBytes}->{submittedAfter.TotalKnownOwnedBytes} " +
+                $"(sampled peak {peakOwnedBytes}, peak pending batches {peakMemory.RetainedSubmissionBatchCount}), " +
+                $"completion-frame submitted bytes {submittedAtCompletion.TotalKnownOwnedBytes}, " +
                 $"buffers/textures {memoryAfter.OwnedBufferCount}/{memoryAfter.OwnedTextureCount}, " +
                 $"pending batches {memoryAfter.RetainedSubmissionBatchCount}, inventory CPU storage {memoryAfter.InventoryStorageBytes}, " +
                 $"managed heap {heapBefore}->{GC.GetGCMemoryInfo().HeapSizeBytes}, " +
@@ -110,6 +136,30 @@ public partial class MainWindow
         {
             host.EnableNativeMemoryDiagnostics = previousCapture;
         }
+    }
+
+    private async Task<ProGpuWpfDiagnostics.NativeMemoryCheckpoint> PollNativeMemoryCheckpointAsync(
+        ProGpuWpfWindowHost host)
+    {
+        for (int attempt = 0; attempt < 300; attempt++)
+        {
+            var checkpoint = await InvokeWithLiveNativeLoopWakeAsync<ProGpuWpfDiagnostics.NativeMemoryCheckpoint?>(
+                host, () => ProGpuWpfDiagnostics.TryPollNativeMemoryCheckpoint(host, out var current)
+                    ? current : null, DispatcherPriority.Background);
+            if (checkpoint is { } completed) return completed;
+            await Task.Delay(TimeSpan.FromMilliseconds(2));
+        }
+        throw new InvalidOperationException("Expected actual native GPU completion with no retained submission batches at the memory checkpoint.");
+    }
+
+    private static NativeGpuMemorySnapshot RequireCompletedNativeMemory(
+        ProGpuWpfDiagnostics.NativeMemoryCheckpoint checkpoint)
+    {
+        // Validate accounting without replacing the host's submitted-frame snapshot.
+        var completed = RequireNativeMemory(checkpoint.PresentedFrame with { GpuMemory = checkpoint.CompletedMemory });
+        if (completed.RetainedSubmissionBatchCount != 0)
+            throw new InvalidOperationException("Native memory checkpoint still retains incomplete submissions.");
+        return completed;
     }
 
     private static NativeGpuMemorySnapshot RequireNativeMemory(ProGpuWpfDiagnostics.NativePerformanceSnapshot frame)

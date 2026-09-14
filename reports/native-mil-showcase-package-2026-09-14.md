@@ -1,5 +1,27 @@
 # Native Showcase package qualification — 2026-09-14
 
+## Current-source macOS diagnostic follow-up
+
+After the Toolkit floating-input correction, the native-mode ShowcaseApp was
+rebuilt in the same identified mixed source graph with zero warnings/errors.
+`showcase-diagnostic-current-source.log` passes its complete live input gate:
+TextBox editing and selection, commands and controls, all seven framework
+themes, separate popup surfaces, keyboard navigation, clipped scroll input,
+Thumb capture/drag/release and native host resize. The run exits zero with the
+required success marker.
+
+`showcase-diagnostic-current-source-performance.log` repeats that live gate and
+passes its real native 120-frame performance and memory check. It reports 132→252
+sampled presentations in 2,822.664 ms, 2,292 commands/118 draws, 3,985,151.6
+managed allocated bytes per frame, host CPU p50/p95/p99 14.541/30.148/35.689 ms,
+and completed native-owned logical GPU bytes 9,287,580→9,287,580. Submitted
+bytes were 9,287,580→27,726,924 with a sampled 126,070,092-byte peak and 57
+pending batches; the completed checkpoint had zero pending batches. These are
+single-run observations, not a comparative claim. Logical ownership excludes
+swapchain/driver residency. The mixed graph contains current source assemblies
+and native libraries over a prior SDK package; final exact-head packages,
+Windows/Linux application runs and matched performance remain open.
+
 ## Genuine native timing follow-up
 
 The host now publishes an atomic typed native timing/frame snapshot, including

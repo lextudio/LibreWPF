@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Release inventory and hosted generator repaired — 2026-09-14:** ProGPU
+`4b6d9cbe` connects the DX12 package to shipping/portable/release manifests and
+required Windows release gates. Hosted x64 compiler production passes; ARM64
+exposed Clang-22/pinned-bindgen opaque-record generation. Build-time libclang is
+now separately signed/hash-pinned to the version proven in the VM. Fresh hosted
+docs, ARM64 build and final package/application gates must pass before defaults,
+pins or merges advance. See the
+[CI follow-up](../reports/native-mil-dx12-runtime-package-2026-09-14.md#hosted-ci-and-release-integration-follow-up).
+
 **Windows compiler runtime packaged — 2026-09-14:** ProGPU `dec74b5b` adds the
 optional `ProGPU.Backend.Dx12` package and full Windows JIT/NativeAOT CI consumers.
 The restored compiler-runtime NuGet passes the full local ARM64 native consumer

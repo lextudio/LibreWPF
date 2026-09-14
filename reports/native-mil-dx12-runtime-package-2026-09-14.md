@@ -42,3 +42,24 @@ release/default integration and Showcase source/application input, popup, DPI
 and lifetime checks. The independently reproduced stock-FXC X3511 remains open.
 No dependency pins advance and no PR merges occur until the required gates pass.
 Merge order remains ProGPU 139 → LibreWinForms 29 → LibreWPF 115.
+
+## Hosted CI and release integration follow-up
+
+ProGPU `4b6d9cbe` fixes the missing shipping-manifest entry found by documentation
+CI, adds the native-assets package to portable/release packing, verifies both RID
+inventories/notices and requires added Windows DX12 JIT/NativeAOT release gates.
+The project audit count increases by exactly one, to 81; no verifier is bypassed.
+
+At the previous `dec74b5b` head, x64 compiler-runtime production passes. ARM64
+fails before runtime tests: hosted LLVM 22.1.8 makes the pinned binding generator
+emit opaque C records (247 missing-field errors). The documented upstream Clang-22
+typedef regression matches this failure. Build-time libclang is now separately
+pinned to signed ClangSharp 18.1.3.1 packages with author/package/DLL hashes,
+matching the generator that passed in the VM. No upstream implementation or ABI
+changes, generated-binding patch, runtime libclang distribution or system change.
+
+Both signed libclang payloads stage successfully; six existing compiler-input
+tests, the actual two-RID package verifier and Build/Release workflow lint pass.
+Full local documentation verification still requires the absent ACadSharp
+submodule. Fresh hosted docs, ARM64 generation, complete package graph and actual
+Showcase qualification remain required; no dependency pins or merges advance.

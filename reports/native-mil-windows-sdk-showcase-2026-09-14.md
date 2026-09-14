@@ -86,19 +86,47 @@ The follow-up branch then produced a fresh 23-package development closure at
 payload and exact ProGPU `ff8bcbf4` packages. The transport's `win-arm64`
 `PresentationCore.dll` SHA-256 is
 `aab9db901251fe9d0a4d78afff09515a522ecfc9447b034bd9bfe82149a867de`,
-identical to the CI payload. Its Windows package-only displayed run has not
-yet executed: the Windows VM was suspended while another VM became active.
-Do not conflate the successful source overlay with this new package closure.
+identical to that CI payload. The Windows VM was subsequently resumed, and
+the unchanged Showcase was built against that package feed in a private guest
+artifacts tree. Both its pre-display check and displayed `Application.Run`
+self-test passed without source overlays.
+
+For exact PR #126 head `adfbcd39f`, a second private 23-package closure at
+`artifacts/packages/WindowsNativeCurrentPr126` used the current-head Windows
+managed payload from CI run `34881136168`, canonical WinForms packages and
+ProGPU `ff8bcbf4`. The guest copied only these packages to
+`C:\Temp\ProGpuWpfNativeCurrentPr126\packages`, built the repository's
+`PresentationBuildTasks` and then the unchanged SDK Showcase with
+`ProGpuWpfRendererMode=NativeMilWgpu` and native hit testing enabled. Both
+builds finished with zero warnings and zero errors. The guest's output hashes
+matched the exact package members:
+
+| Guest output | SHA-256 |
+| --- | --- |
+| `PresentationCore.dll` | `bb96bc93e7a0fd95b76eab203d58dca7ed07076872cd19eaa2269b5232ffdf39` |
+| `PresentationFramework.dll` | `ec6a09ef13730a2ee26f0d2ffd1ab9804fbe4a442af6a446d9379cd78a309854` |
+| `ProGPU.Wpf.dll` | `126c429586347f9a0151a1ad16a4b74570151080fb7d86b2dbc5b8495faaa720` |
+| `progpu_native.dll` | `59ac5c42cef19b62c835497907a1df6a3d48567239dbdfbae40ed087dbb1cdd5` |
+
+The `PresentationCore.dll` hash also matches the current-head CI `win-arm64`
+payload. The package-only pre-display check printed `ProGPU WPF Showcase
+validation succeeded.` The displayed check, launched with Parallels
+`--current-user` into the signed-in desktop session, reached startup, resource
+controls, system commands, storyboards, the secondary window, editor and
+document, then printed `ProGPU WPF Showcase Application.Run validation
+succeeded.` Both processes exited zero. No guest output DLL was overlaid from
+the source build. Graphical Parallels tests must keep `--current-user`; running
+as `SYSTEM` previously produced an invalid WebGPU surface.
 
 ## Qualification boundary
 
-The completed displayed run is Windows ARM64 source-overlay application
-evidence. The first exact PR #126 package run is stronger provenance but failed
-at mapped synthetic bold, before the new text change. The focused Windows text
-suite and updated source-overlay displayed run pass; a newly built package-only
-run remains outstanding. Rerun without
-overlays, repeat the text-heavy action, inspect visible text at Windows DPI,
-and qualify x64 as well as ARM64 before Windows native SDK
-admission. The larger native text, modal/popup, DirectX/Direct2D and platform
-parity requirements remain open. No default renderer or unsupported guard for
-true anisotropic presentation was enabled.
+The current-head Windows ARM64 package-only Showcase startup and displayed
+`Application.Run` gates now pass. The earlier first-package synthetic-font
+failure is historical, fixed and covered by the clean rerun; it must not be
+counted as a current failure. This is functional self-test evidence, not a
+pixel-quality comparison: inspect visible text/layout at Windows DPI, run the
+same exact-package application gate on x64, complete required native-host/SDK
+smoke and CI at the delivery commit before Windows native SDK admission. The
+larger native text, modal/popup, DirectX/Direct2D and platform parity
+requirements remain open. No default renderer or unsupported guard for true
+anisotropic presentation was enabled.

@@ -15,6 +15,17 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Toolkit first native frame exposes continuation-width blocker — 2026-09-14:**
+The unchanged Toolkit/AvalonDock live gate builds and presents its native frame,
+then TextBlock arrangement requests continuation source index 38 at 203.2367 DIPs
+instead of the retained 217 DIPs. The source index matches; `PortableTextLine`
+rejects changed widths. Implement the retained native continuation contract and
+source consumer, preserving shaped/source identity rather than ignoring width or
+returning empty text. Two diagnostic runs reproduce it; final packages remain
+unqualified. ProGPU Build `34811802371` is independently still live; do not cancel
+or replace it merely because this application blocker was found. See the
+[Toolkit continuation record](../reports/native-mil-toolkit-continuation-2026-09-14.md).
+
 **Windows package CI split published; final exact Build pending — 2026-09-14:**
 ProGPU Build 3047 ended canceled when both general Windows consumers exceeded
 their 15-minute job limits, after passing successive fixtures. ProGPU `a8afeab6`

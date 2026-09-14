@@ -119,7 +119,9 @@ internal sealed class PortableTextLine : TextLine
         if (settings.PreviousLineBreak?.PortableContinuation is not Continuation next) return null;
         double width = settings.Formatter.IdealToReal(idealWidth, pixelsPerDip);
         if (next.NextSourceIndex != first || next.Owner._paragraphWidth != width)
-            throw Unsupported("changed continuation width or source index");
+            throw Unsupported($"changed continuation width or source index " +
+                $"(source={first}, expectedSource={next.NextSourceIndex}, " +
+                $"width={width:R}, retainedWidth={next.Owner._paragraphWidth:R}, line={next.LineIndex})");
         return new PortableTextLine(next.Owner, next.LineIndex);
     }
 

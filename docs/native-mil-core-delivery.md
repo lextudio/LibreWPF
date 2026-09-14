@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Windows compiler runtime packaged — 2026-09-14:** ProGPU `dec74b5b` adds the
+optional `ProGPU.Backend.Dx12` package and full Windows JIT/NativeAOT CI consumers.
+The restored compiler-runtime NuGet passes the full local ARM64 native consumer
+on system WARP, without external compiler paths. Both RID payloads build; nine
+input and three asset-selection checks pass. Complete the CI-built renderer
+package graph, x64/NativeAOT/hardware, release/default and Showcase gates next.
+Existing gates/pins remain intact; stock-FXC X3511 is still open. See
+[runtime package evidence](../reports/native-mil-dx12-runtime-package-2026-09-14.md).
+
 **Paired product dispatch connected — 2026-09-14:** ProGPU `089e9120` integrates
 ordered queries in managed/C++ renderers with retained resources, actual limits
 and failure-safe owner publication. Full native consumers pass on Metal and

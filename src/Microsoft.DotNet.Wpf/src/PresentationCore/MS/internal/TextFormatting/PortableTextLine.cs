@@ -103,7 +103,7 @@ internal sealed class PortableTextLine : TextLine
     internal double FloatingContentWidth => (_paragraph as IPortableFloatingTextParagraph)?.OccupiedWidth ?? FragmentContentWidth;
     internal ReadOnlyMemory<PortableTextFloatPlacement> SourceFloats { get; private init; }
     private double NativeOrigin => Start - (Fragment?.Left ?? 0);
-    private int First => _paragraphStart + (_lineIndex == 0 ? 0 : _sourceMap.ToSource(Info.InputStart, true));
+    private int First => _paragraphStart + (_lineIndex == 0 && Info.InputStart == 0 ? 0 : _sourceMap.ToSource(Info.InputStart, true));
     private int End => _paragraphStart + _sourceMap.ToSource(Info.InputEnd, true);
 
     internal static TextLine Create(FormatSettings settings, int first, int idealWidth, double pixelsPerDip)
@@ -118,10 +118,22 @@ internal sealed class PortableTextLine : TextLine
     {
         if (settings.PreviousLineBreak?.PortableContinuation is not Continuation next) return null;
         double width = settings.Formatter.IdealToReal(idealWidth, pixelsPerDip);
-        if (next.NextSourceIndex != first || next.Owner._paragraphWidth != width)
+        if (next.NextSourceIndex != first)
             throw Unsupported($"changed continuation width or source index " +
                 $"(source={first}, expectedSource={next.NextSourceIndex}, " +
                 $"width={width:R}, retainedWidth={next.Owner._paragraphWidth:R}, line={next.LineIndex})");
+        if (next.Owner._paragraphWidth != width)
+        {
+            if (next.Owner._paragraph is not IPortableReflowTextParagraph reflow)
+                throw Unsupported("the captured text paragraph does not expose native continuation reflow");
+            int inputStart = next.Owner._paragraph.Lines.Span[next.LineIndex].InputStart;
+            float maximumWidth = settings.Pap.Wrap && width > 0
+                ? (float)Math.Max(float.Epsilon, width - next.Owner._indent) : 0;
+            var paragraph = reflow.Reflow(inputStart, maximumWidth);
+            if (paragraph == null || paragraph.Lines.IsEmpty || paragraph.Lines.Span[0].InputStart != inputStart)
+                throw new InvalidOperationException("The native continuation lost its original input boundary.");
+            return new PortableTextLine(next.Owner, 0, paragraph, width);
+        }
         return new PortableTextLine(next.Owner, next.LineIndex);
     }
 
@@ -436,9 +448,9 @@ internal sealed class PortableTextLine : TextLine
         return new PortableTextFont(bytes.ToArray(), checked((uint)source.FaceIndex), source.DesignEmHeight);
     });
 
-    private PortableTextLine(PortableTextLine owner, int index) : this(owner._paragraph, owner._text,
+    private PortableTextLine(PortableTextLine owner, int index, IPortableTextParagraph paragraph = null, double? width = null) : this(paragraph ?? owner._paragraph, owner._text,
         owner._properties, owner._face, owner._paragraphStart, index, owner._newlines,
-        owner._paragraphWidth, owner._indent, owner._baseline, owner._height, owner._rightToLeft,
+        width ?? owner._paragraphWidth, owner._indent, owner._baseline, owner._height, owner._rightToLeft,
         owner._runs, owner.PixelsPerDip, owner._alignment, owner._styles, owner._fixedHeight, owner._sourceMap, owner._endScope,
         owner._formatter, owner._service, objects: owner._objects) { SourceFloats = owner.SourceFloats; }
 

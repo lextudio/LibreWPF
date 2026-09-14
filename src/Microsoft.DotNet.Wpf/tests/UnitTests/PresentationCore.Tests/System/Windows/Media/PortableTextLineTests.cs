@@ -146,6 +146,31 @@ public class PortableTextLineTests
     }
 
     [PortableMediaFact]
+    public void ChangedContinuationWidthUsesCapturedParagraphAndKeepsOriginalSourceIndices()
+    {
+        var source = new Source { Properties = new Properties(new FontFamily(
+            Path.Combine(AppContext.BaseDirectory, "LibreWPF", "Fonts", "Inter-Medium.ttf") + "#Inter")) };
+        var properties = new ParagraphProperties(source.Properties, false, false);
+        var provider = new Provider();
+        using var registration = PortableWpfServiceRegistry.RegisterTextFormatting(provider);
+        using var formatter = new TextFormatterImp();
+        using var first = formatter.FormatLine(source, 0, 8.0 / 3, properties, null, new TextRunCache());
+        using var original = first.GetTextLineBreak();
+        using var continuation = original.Clone();
+        original.Dispose(); first.Dispose(); registration.Dispose();
+        using var second = formatter.FormatLine(source, 2, 4, properties, continuation, new TextRunCache());
+        Assert.Equal(1, provider.Calls);
+        Assert.Equal(1, provider.Reflows);
+        Assert.Equal(2, second.Length); // One original character and its paragraph terminator.
+        var glyph = Assert.Single(second.GetIndexedGlyphRuns());
+        Assert.Equal(2, glyph.TextSourceCharacterIndex);
+        Assert.Equal(1, glyph.TextSourceLength);
+        Assert.Throws<PlatformNotSupportedException>(() =>
+            formatter.FormatLine(source, 1, 4, properties, continuation, new TextRunCache()));
+        Assert.Equal(1, provider.Reflows);
+    }
+
+    [PortableMediaFact]
     public void PortableFormattingRejectsMissingMeasurementAndOptimalLineServicesOperations()
     {
         var source = new Source();
@@ -634,8 +659,17 @@ public class PortableTextLineTests
     }
 
     // A typed source contract fixture, not native shaping/parity evidence.
-    private sealed class Provider : IPortableTextFormatting, IPortableTextParagraph
+    private sealed class Provider : IPortableTextFormatting, IPortableReflowTextParagraph
     {
+        internal bool Continued { get; init; }
+        internal int Reflows { get; private set; }
+        public IPortableTextParagraph Reflow(int inputStart, float maximumWidth)
+        {
+            Assert.Equal(2, inputStart);
+            Assert.Equal(4, maximumWidth);
+            Reflows++;
+            return new Provider { Continued = true };
+        }
         public PortableTextIntrinsicWidths? IntrinsicWidths { get; init; }
         internal bool MeasureIntrinsicWidths { get; private set; }
         internal PortableTextWrapping Wrapping { get; private set; }
@@ -662,12 +696,12 @@ public class PortableTextLineTests
             Text = request.Text.ToString(); Styles = request.Styles; IncrementalTab = request.IncrementalTab;
             Assert.False(request.Font.Data.IsEmpty); return this;
         }
-        public ReadOnlyMemory<PortableTextGlyph> Glyphs => Empty ? ReadOnlyMemory<PortableTextGlyph>.Empty : Tabs ? new PortableTextGlyph[]
+        public ReadOnlyMemory<PortableTextGlyph> Glyphs => Continued ? new PortableTextGlyph[] { new(0, 2, 3, 0, 0, 6, 1) } : Empty ? ReadOnlyMemory<PortableTextGlyph>.Empty : Tabs ? new PortableTextGlyph[]
         { new(0, 0, 1, 0, 0, 8, 0), new(uint.MaxValue, 1, 2, 8, 0, 24, 0, IsTab: true), new(0, 2, 3, 32, 0, 6, 0) } : MixedOneLine ? new PortableTextGlyph[]
         { new(0, 0, 1, 0, 0, 4, 0), new(0, 1, 2, 4, 0, 6, 0, 1), new(0, 2, 3, 10, 0, 6, 0, 1) } : Mixed ? new PortableTextGlyph[]
         { new(0, 0, 1, 0, 0, 4, 0), new(0, 1, 2, 0, 20, 6, 0, 1), new(0, 2, 3, 6, 20, 6, 0, 1) } : new PortableTextGlyph[]
         { new(0, 0, 2, 0, 0, 8, 1), new(0, 2, 3, 0, 20, 6, 1) };
-        public ReadOnlyMemory<PortableTextLineInfo> Lines => Empty ? new PortableTextLineInfo[] { new(0, 0, 0, 0, 0, 0, 20) } : Tabs ? new PortableTextLineInfo[]
+        public ReadOnlyMemory<PortableTextLineInfo> Lines => Continued ? new PortableTextLineInfo[] { new(0, 1, 2, 3, 6, 0, 20) } : Empty ? new PortableTextLineInfo[] { new(0, 0, 0, 0, 0, 0, 20) } : Tabs ? new PortableTextLineInfo[]
         { new(0, 3, 0, 3, 38, 0, 20) } : MixedOneLine ? new PortableTextLineInfo[]
         { new(0, 3, 0, 3, 16, 0, 20) } : Mixed ? new PortableTextLineInfo[]
         { new(0, 1, 0, 1, 4, 0, 20), new(1, 2, 1, 3, 12, 20, 20) } : new PortableTextLineInfo[]

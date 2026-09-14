@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Native continuation reflow connects; Toolkit rectangle next — 2026-09-14:**
+The source TextLine now consumes ProGPU's full-context native continuation at a
+changed width, keeping original source/glyph identity. Both providers build,
+19 native suites and 28 managed continuation layouts pass. The same diagnostic
+Toolkit gate gets past its text-width rejection and reaches filter focus, where
+MIL translation rejects a rectangle width. Finish that concrete failure and source
+regression/final package/CI gates before any qualified pin or merge. See the
+[continuation follow-up](../reports/native-mil-toolkit-continuation-2026-09-14.md#implemented-continuation-follow-up).
+
 **Toolkit first native frame exposes continuation-width blocker — 2026-09-14:**
 The unchanged Toolkit/AvalonDock live gate builds and presents its native frame,
 then TextBlock arrangement requests continuation source index 38 at 203.2367 DIPs

@@ -105,7 +105,7 @@ internal sealed class WpfPortableTextFormatting : IPortableFloatingTextFormattin
         bool inline = false, ReadOnlySpan<NativeTextStyleMetrics> metrics = default,
         ReadOnlySpan<NativeTextParagraphInlineObject> objects = default,
         NativeTextExclusionOptions? exclusionOptions = null, ReadOnlySpan<NativeTextExclusionRectangle> exclusions = default, double? originY = null,
-        FloatingRequest? floating = null)
+        FloatingRequest? floating = null, int? continuationStart = null)
     {
         if (request.Font == null || request.Font.UnitsPerEm == 0 || !float.IsFinite(request.FontSize) || request.FontSize <= 0)
             throw new ArgumentException("A real source face and positive em size are required.");
@@ -119,17 +119,17 @@ internal sealed class WpfPortableTextFormatting : IPortableFloatingTextFormattin
                 PortableTextAlignment.Justify => NativeTextAlignment.Justify,
                 _ => throw new ArgumentOutOfRangeException(nameof(request))
             });
-        if (!request.Styles.IsEmpty) return FormatStyled(in request, in options, font, original, collapse, inline, metrics, objects, exclusionOptions, exclusions, originY, floating);
+        if (!request.Styles.IsEmpty) return FormatStyled(in request, in options, font, original, collapse, inline, metrics, objects, exclusionOptions, exclusions, originY, floating, continuationStart);
         var features = new NativeTextFeature[request.Features.Length];
         for (int i = 0; i < features.Length; i++) features[i] = new(request.Features.Span[i].Tag, request.Features.Span[i].Value);
-        return CreateParagraph(request, CreateNative(font.Context, request, options, features, [], original, collapse, inline, metrics, objects, exclusionOptions, exclusions, originY, floating), [font.RenderFont]);
+        return CreateParagraph(request, CreateNative(font.Context, request, options, features, [], original, collapse, inline, metrics, objects, exclusionOptions, exclusions, originY, floating, continuationStart), [font.RenderFont], metrics, objects);
     }
 
     private Paragraph FormatStyled(in PortableTextParagraphRequest request, in NativeTextParagraphOptions options, FontState primary,
         Paragraph? original, PortableTextCollapseRequest? collapse, bool inline,
         ReadOnlySpan<NativeTextStyleMetrics> metrics, ReadOnlySpan<NativeTextParagraphInlineObject> objects,
         NativeTextExclusionOptions? exclusionOptions, ReadOnlySpan<NativeTextExclusionRectangle> exclusions, double? originY,
-        FloatingRequest? floating)
+        FloatingRequest? floating, int? continuationStart)
     {
         // Size/brush/feature changes on one face reuse its retained plans. Multiple
         // explicit faces use an isolated temporary context so they cannot alter
@@ -162,21 +162,31 @@ internal sealed class WpfPortableTextFormatting : IPortableFloatingTextFormattin
                 (uint)feature, (uint)style.Features.Length, style.Language);
             foreach (var value in style.Features.Span) features[feature++] = new(value.Tag, value.Value);
         }
-        return CreateParagraph(request, CreateNative(context, request, options, features, styles, original, collapse, inline, metrics, objects, exclusionOptions, exclusions, originY, floating), fonts.ToArray());
+        return CreateParagraph(request, CreateNative(context, request, options, features, styles, original, collapse, inline, metrics, objects, exclusionOptions, exclusions, originY, floating, continuationStart), fonts.ToArray(), metrics, objects);
     }
 
-    private Paragraph CreateParagraph(PortableTextParagraphRequest request, NativeTextParagraphSnapshot native, TtfFont[] fonts)
-        => native.FloatingLayout.HasValue ? new FloatingParagraph(this, request, native, fonts) :
+    private Paragraph CreateParagraph(PortableTextParagraphRequest request, NativeTextParagraphSnapshot native, TtfFont[] fonts,
+        ReadOnlySpan<NativeTextStyleMetrics> metrics, ReadOnlySpan<NativeTextParagraphInlineObject> objects)
+    {
+        Paragraph paragraph = native.FloatingLayout.HasValue ? new FloatingParagraph(this, request, native, fonts) :
             native.FragmentLayout.HasValue ? new ExcludedParagraph(this, request, native, fonts) :
             native.HasMeasuredLines ? new InlineParagraph(this, request, native, fonts) : new Paragraph(this, request, native, fonts);
+        paragraph.RetainInlineInput(metrics, objects);
+        return paragraph;
+    }
 
     private static NativeTextParagraphSnapshot CreateNative(NativeTextShapingContext context, PortableTextParagraphRequest request,
         NativeTextParagraphOptions options, NativeTextFeature[] features, NativeTextParagraphStyle[] styles,
         Paragraph? original, PortableTextCollapseRequest? collapse, bool inline,
         ReadOnlySpan<NativeTextStyleMetrics> metrics, ReadOnlySpan<NativeTextParagraphInlineObject> objects,
         NativeTextExclusionOptions? exclusionOptions, ReadOnlySpan<NativeTextExclusionRectangle> exclusions, double? originY,
-        FloatingRequest? floating)
+        FloatingRequest? floating, int? continuationStart)
     {
+        if (continuationStart is { } start)
+            return NativeTextParagraphSnapshot.CreateContinued(context, request.Text.Span,
+                request.RightToLeft ? NativeTextDirection.RightToLeft : NativeTextDirection.LeftToRight,
+                in options, start, features, styles, request.IncrementalTab, request.TabOrigin,
+                ConvertWrapping(request.Wrapping), inline, metrics, objects);
         if (floating is { } f)
             return NativeTextParagraphSnapshot.CreateWithFloats(context, request.Text.Span,
                 request.RightToLeft ? NativeTextDirection.RightToLeft : NativeTextDirection.LeftToRight,
@@ -302,13 +312,38 @@ internal sealed class WpfPortableTextFormatting : IPortableFloatingTextFormattin
         }
     }
 
-    private class Paragraph : IPortableTextParagraph
+    private class Paragraph : IPortableReflowTextParagraph
     {
         internal readonly NativeTextParagraphSnapshot _native;
         private readonly WpfPortableTextFormatting _owner;
         private readonly PortableTextParagraphRequest _request;
         private sealed record CollapseCache(PortableTextCollapseRequest Key, Paragraph Paragraph);
         private CollapseCache? _collapseCache;
+        private NativeTextStyleMetrics[] _metrics = [];
+        private NativeTextParagraphInlineObject[] _objects = [];
+        private sealed record ReflowCache(int Start, float Width, Paragraph Value);
+        private ReflowCache? _reflowCache;
+        internal void RetainInlineInput(ReadOnlySpan<NativeTextStyleMetrics> metrics,
+            ReadOnlySpan<NativeTextParagraphInlineObject> objects)
+        {
+            _metrics = metrics.ToArray(); _objects = objects.ToArray();
+        }
+        public IPortableTextParagraph Reflow(int inputStart, float maximumWidth)
+        {
+            if (!float.IsFinite(maximumWidth) || maximumWidth < 0)
+                throw new ArgumentOutOfRangeException(nameof(maximumWidth));
+            if (_native.FragmentLayout.HasValue || CollapsedRange != null)
+                throw new NotSupportedException("Excluded, floating and collapsed views require their own continuation placement contract.");
+            if (inputStart < Lines.Span[0].InputStart || inputStart >= _request.Text.Length)
+                throw new ArgumentOutOfRangeException(nameof(inputStart));
+            var cached = _reflowCache;
+            if (cached?.Start == inputStart && cached.Width == maximumWidth) return cached.Value;
+            var request = _request with { MaximumWidth = maximumWidth, MeasureIntrinsicWidths = false };
+            var result = _owner.FormatCore(in request, null, null, _native.HasMeasuredLines,
+                _metrics, _objects, continuationStart: inputStart);
+            _reflowCache = new(inputStart, maximumWidth, result);
+            return result;
+        }
         public PortableTextCollapsedRange? CollapsedRange => _native.CollapsedRange is { } c ?
             new(c.LineIndex, c.Start, c.End, c.SymbolGlyphIndex) : null;
         public IPortableTextParagraph Collapse(in PortableTextCollapseRequest request)

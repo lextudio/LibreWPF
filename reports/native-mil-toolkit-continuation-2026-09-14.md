@@ -48,6 +48,31 @@ are terminal. No existing artifacts were deleted and no deadline was extended.
 
 ## Required repair and acceptance
 
+### Implemented continuation follow-up
+
+ProGPU now provides native full-context continuation placement through an additive
+C API, managed snapshot and optional `IPortableReflowTextParagraph`. The source
+adapter uses that retained paragraph on width changes while preserving source
+index validation, original source map/styles, original terminators and provider
+ownership. The ordinary same-width path is unchanged. Measured inline objects
+retain their original source identity; fragment/float reflow stays explicit.
+
+Both native providers compile, all 19 native suites pass, and the managed consumer
+passes 28 continued layouts plus boundary rejection and ordinary continued-collapse
+checks. Both native export allowlists and generated contracts verify. Source
+PresentationCore compiles without warnings; the bridge retains its one preexisting
+unused-event warning. A typed source regression covers width changes after original
+line/override disposal and original glyph source indices; its execution remains
+pending at this checkpoint (the first unit build needed a fresh assets restore).
+
+The unchanged Toolkit diagnostic now passes transient-surface quiescence and
+reaches **filter focus**, then rejects a rectangle width during MIL translation.
+Log: `toolkit-diagnostic-native-reflow.log` in the same external staging directory.
+It exits 134; the full Toolkit gate has not passed. This is progress past the
+reproduced continuation failure, not final package or later-action qualification.
+The original requirements below remain the acceptance criteria, not an assertion
+that all extended text contracts are complete.
+
 Implement source-preserving native paragraph continuation at a new width through
 ProGPU's existing C++ shaping/layout pipeline, then consume that explicit contract
 in `PortableTextLine`. Retain the captured provider, complete source/physical-font

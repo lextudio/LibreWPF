@@ -65,6 +65,8 @@ completed the entire native live script, including DataGrid 100k virtualization,
 AvalonDock menus, floating windows and keyboard paths, at 2× DPI. This remains
 a source-assembly/native-dylib overlay rather than a new exact SDK package;
 the final merged-package gate is still required.
+The complete portable TextLine fixture class also passes 23/23 after this
+change.
 
 The Windows 11 Parallels VM was inspected for a same-source native-WPF visual
 baseline. Its existing `C:\GitHub\LibreWPF` checkout still contains the earlier

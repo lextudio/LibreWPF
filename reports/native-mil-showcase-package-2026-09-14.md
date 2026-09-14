@@ -49,6 +49,29 @@ Showcase/Toolkit/SciChart and platform gates, then merge dependencies in order.
 No PR draft state, pins or merge admission changed. ActivityMonitor is excluded;
 general Direct2D/COM/Win2D expansion remains deferred.
 
+### Popup input follow-up
+
+ProGPU `27d13562` fixes the actual popup vector-rectangle/client-rectangle
+intersection and preserves declared rectangular geometry masks on source
+blur/shadow layers. No shadow allocation bounds, alpha-mask pixels or managed
+input fallback are used. Both native providers compile; all 19 native CTest
+suites pass, including 24 state/effect clip variants and canonical MIL effect
+fixtures. Generated contracts and documentation checks pass.
+
+The rebuilt diagnostic-overlay Showcase advances through text selection,
+control mouse input, mouse bindings, discrete controls, toolbar, framework
+themes, popup surfaces and keyboard navigation. Stage logs distinguish completed
+predecessors from the current wheel/capture stage. The overall 180-second gate
+still times out; a native process sample shows a pending GPU hit-query map wait.
+This is not successful final-package or full application qualification.
+
+At WPF `37042271d`, canonical WinForms and Windows managed production pass, but
+SDK smoke fails while staging native dependencies: indexed ProGPU `e56d45c5`
+requires Build `34763887821`, which failed. Keep this exact-commit check; after
+final ProGPU qualification, update dependent pins and rerun the whole SDK lane.
+Do not substitute unrelated artifacts or waive the failed dependency run.
+LibreWinForms PR #29 remains green; ProGPU `27d13562` CI is queued/running.
+
 ## Separate Windows diagnostic
 
 Moving scalar query traversal state to invocation-private storage in addition

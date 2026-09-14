@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Popup clips repaired; live scroll query next — 2026-09-14:** ProGPU `27d13562`
+preserves proven rectangular vector intersections and source-effect output
+clips. All 19 native suites pass. The diagnostic Showcase completes input/theme/
+popup/navigation stages, but wheel/clipped-scroll validation still times out in
+native query completion. Final packages and platform gates remain open. WPF's
+SDK CI also rejects the older pinned dependency's failed build; advance pins only
+with the qualified final dependency. See the
+[application follow-up](../reports/native-mil-showcase-package-2026-09-14.md#popup-input-follow-up).
+
 **Actual source host passes; packaged Showcase reaches input — 2026-09-14:**
 the fresh macOS source host passes native retention, document/text/input and
 device recovery. Package production and Showcase compilation pass. The live

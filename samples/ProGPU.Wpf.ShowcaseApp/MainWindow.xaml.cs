@@ -1413,14 +1413,23 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        Console.WriteLine("ProGPU WPF Showcase live input validation: text selection.");
         string selectionStatus = await ValidateLiveTextSelectionAsync(liveHost, Require<TextBox>(textBox, "Showcase selection TextBox"));
+        Console.WriteLine("ProGPU WPF Showcase live input validation: control mouse input.");
         string controlMouseStatus = await ValidateLiveControlMouseInputAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Showcase live input validation: mouse bindings.");
         string mouseBindingStatus = await ValidateLiveMouseBindingAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Showcase live input validation: discrete controls.");
         string discreteControlStatus = await ValidateLiveDiscreteInputControlsAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Showcase live input validation: toolbar.");
         string toolBarStatus = await ValidateLiveToolBarInputAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Showcase live input validation: framework themes.");
         string frameworkThemeStatus = await ValidateLiveFrameworkThemesAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Showcase live input validation: popup surfaces.");
         string popupStatus = await ValidateLivePopupSurfacesAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Showcase live input validation: keyboard navigation.");
         string keyboardNavigationStatus = await ValidateLiveKeyboardNavigationAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Showcase live input validation: wheel and capture.");
         string wheelAndCaptureStatus = await ValidateLiveWheelAndCaptureInputAsync(liveHost);
         return $"{textInputStatus}; {selectionStatus}; {controlMouseStatus}; {mouseBindingStatus}; {discreteControlStatus}; {toolBarStatus}; {frameworkThemeStatus}; {popupStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
     }
@@ -3134,7 +3143,9 @@ public partial class MainWindow : Window
         TextBlock text, Point localPoint, bool expectedText)
     {
         Point point = presenter.TranslatePoint(localPoint, this);
+        Console.WriteLine($"ProGPU WPF Showcase scroll point query: ({point.X:0.###}, {point.Y:0.###}), expected text={expectedText}.");
         ProGpuWpfDiagnostics.TryHitTestOwners(liveHost, point.X, point.Y, out object?[] owners);
+        Console.WriteLine("ProGPU WPF Showcase scroll point query completed.");
         // Device index upload is demand-driven: inspect residency after the real
         // query, not before the first query against this newly presented scene.
         if (!ProGpuWpfDiagnostics.TryGetGpuHitTestCacheSnapshot(liveHost, out var index) ||
@@ -3145,8 +3156,10 @@ public partial class MainWindow : Window
         AssertEqual(expectedText, found, "Showcase presented scroll source point coverage");
         if (!expectedText)
         {
+            Console.WriteLine("ProGPU WPF Showcase scroll bounds query started.");
             ProGpuWpfDiagnostics.TryQueryHitTestBoundsOwners(liveHost,
                 point.X - 0.25, point.Y - 0.25, point.X + 0.25, point.Y + 0.25, out object?[] regionOwners);
+            Console.WriteLine("ProGPU WPF Showcase scroll bounds query completed.");
             for (int i = 0; i < regionOwners.Length; i++)
                 if (ReferenceEquals(regionOwners[i], text))
                     throw new InvalidOperationException("Showcase clipped or replaced text leaked into presented region input.");

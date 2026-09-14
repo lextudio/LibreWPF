@@ -425,13 +425,9 @@ internal static class ThemeManager
 
         for (int i = rd.MergedDictionaries.Count - 1; i >= 0; i--)
         {
-            if (rd.MergedDictionaries[i].Source != null)
+            if (IsFluentThemeResourceDictionary(rd.MergedDictionaries[i].Source))
             {
-                if (rd.MergedDictionaries[i].Source.ToString().StartsWith(FluentThemeResourceDictionaryUri,
-                                                                            StringComparison.OrdinalIgnoreCase))
-                {
-                    return i;
-                }
+                return i;
             }
         }
         return -1;
@@ -445,17 +441,23 @@ internal static class ThemeManager
 
         for (int i = rd.MergedDictionaries.Count - 1; i >= 0; i--)
         {
-            if (rd.MergedDictionaries[i].Source != null)
+            if (IsFluentThemeResourceDictionary(rd.MergedDictionaries[i].Source))
             {
-                if (rd.MergedDictionaries[i].Source.ToString().StartsWith(FluentThemeResourceDictionaryUri,
-                                                                            StringComparison.OrdinalIgnoreCase))
-                {
-                    indices.Add(i);
-                }
+                indices.Add(i);
             }
         }
 
         return indices;
+    }
+
+    internal static bool IsFluentThemeResourceDictionary(Uri source)
+    {
+        if (source == null)
+            return false;
+
+        string sourceString = source.ToString();
+        return sourceString.StartsWith(FluentThemeResourceDictionaryUri, StringComparison.OrdinalIgnoreCase)
+            || sourceString.StartsWith(FluentThemeResourceDictionaryPath, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSystemThemeLight()
@@ -530,6 +532,7 @@ internal static class ThemeManager
     #region Private Fields
     private const string FluentColorDictionaryUri = "pack://application:,,,/PresentationFramework.Fluent;component/Resources/Theme/";
     private const string FluentThemeResourceDictionaryUri = "pack://application:,,,/PresentationFramework.Fluent;component/Themes/";
+    private const string FluentThemeResourceDictionaryPath = "/PresentationFramework.Fluent;component/Themes/";
     private const string RegPersonalizeKeyPath = "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
     private const string FluentLightDictionary = "Fluent.Light.xaml";
     private const string FluentDarkDictionary = "Fluent.Dark.xaml";

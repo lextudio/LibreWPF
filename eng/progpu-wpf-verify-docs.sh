@@ -14,7 +14,20 @@ require_text() {
 }
 
 require_text ".github/workflows/progpu-wpf-sdk.yml" "./eng/progpu-wpf-sdk-ci.sh"
-require_text ".github/workflows/progpu-wpf-sdk.yml" "PROGPU_WPF_PROGPU_PACKAGE_VERSION: 0.1.0-preview.55"
+require_text ".github/workflows/progpu-wpf-sdk.yml" "./eng/progpu-wpf-canonical-winforms-integration.sh"
+require_text ".github/workflows/progpu-wpf-sdk.yml" "submodules: recursive"
+require_text ".github/workflows/progpu-wpf-sdk.yml" "canonical-librewinforms-"
+require_text ".github/workflows/progpu-wpf-sdk.yml" "./eng/progpu-wpf-canonical-sdk-smoke.sh"
+require_text ".github/workflows/progpu-wpf-sdk.yml" "Select exact ProGPU source package version"
+require_text ".github/workflows/progpu-wpf-sdk.yml" 'source_version="0.1.0-source.${submodule_commit:0:8}"'
+require_text ".github/workflows/progpu-wpf-sdk.yml" 'PROGPU_WPF_EXPECTED_PROGPU_PACKAGE_COMMIT=${submodule_commit}'
+require_text ".github/workflows/progpu-wpf-sdk.yml" "Stage native runtimes from the exact successful ProGPU Build"
+require_text ".github/workflows/progpu-wpf-sdk.yml" "./eng/progpu-stage-ci-native-runtimes.sh"
+require_text "eng/progpu-preview-package-audit.sh" 'PROGPU_WPF_EXPECTED_PROGPU_PACKAGE_COMMIT:-${progpu_source_commit}'
+require_text "eng/progpu-wpf-sdk-ci.sh" 'export ProGpuRuntimePackageVersion="${progpu_package_version}"'
+require_text "eng/progpu-wpf-sdk-ci.sh" 'export ProGpuPackageVersion="${progpu_package_version}"'
+require_text "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" '&lt;ProGpuPackageVersion&gt;$(_LibreWpfSdkProGpuPackageVersionToPack)&lt;/ProGpuPackageVersion&gt;'
+require_text "eng/progpu-preview-package-audit.sh" '<ProGpuPackageVersion>${progpu_package_version}</ProGpuPackageVersion>'
 require_text ".github/workflows/progpu-wpf-sdk.yml" "librewpf-ci-packages-"
 require_text ".github/workflows/progpu-wpf-sdk.yml" "if-no-files-found: error"
 require_text ".github/workflows/progpu-wpf-sdk.yml" "./eng/progpu-wpf-linux-xwayland-smoke.sh"
@@ -23,14 +36,45 @@ require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-v*"
 require_text ".github/workflows/progpu-wpf-release.yml" "refs/tags/librewpf-v"
 require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-packages-"
 require_text ".github/workflows/progpu-wpf-release.yml" "default: 0.1.0-preview.45"
-require_text ".github/workflows/progpu-wpf-release.yml" "default: 0.1.0-preview.55"
+require_text ".github/workflows/progpu-wpf-release.yml" "default: 0.1.0-preview.62"
 require_text ".github/workflows/progpu-wpf-release.yml" 'name: librewpf-packages-${{ needs.promote-qualified-preview.outputs.version || needs.preview.outputs.version }}'
 require_text ".github/workflows/progpu-wpf-release.yml" "Create GitHub Release"
 require_text ".github/workflows/progpu-wpf-release.yml" "gh release create"
 require_text ".github/workflows/progpu-wpf-release.yml" "--generate-notes"
 require_text "README.md" "Tag releases promote and re-verify the exact package artifact"
+require_text "README.md" "Canonical WinForms integration is validated separately from the normal NuGet"
+require_text "docs/progpu-wpf-release.md" "clean-cache WPF reference/cycle ordering"
+require_text "reports/canonical-winforms-source-integration.md" "Portable stays frozen"
+require_text "eng/LibreWinForms.WindowsFormsIntegration.Package/LibreWinForms.WindowsFormsIntegration.Package.csproj" "<PackageId>LibreWinForms.WindowsFormsIntegration</PackageId>"
+require_text "eng/LibreWinForms.WindowsFormsIntegration.Package/LibreWinForms.WindowsFormsIntegration.Package.csproj" "LibreWinForms.System.Windows.Forms"
+require_text "eng/LibreWinForms.WindowsFormsIntegration.Package/LibreWinForms.WindowsFormsIntegration.Package.csproj" 'PrivateAssets=""'
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" 'ref/${target_framework}/WindowsFormsIntegration.dll'
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" '-p:SystemCodeDomPackageVersion="${canonical_support_package_version}"'
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" 'git submodule update --init external/LibreWinForms'
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" 'PROGPU_WPF_CANONICAL_LIBREWINFORMS_ROOT'
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" 'PROGPU_WPF_CANONICAL_EXPECTED_LIBREWINFORMS_COMMIT'
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" 'Canonical System.Windows.Forms package does not depend on the qualified System.CodeDom version'
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" 'PresentationBuildTasks/PresentationBuildTasks.csproj'
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" 'PresentationUI-PresentationFramework-impl-cycle.csproj'
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" "packaged_implementation_hash"
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" 'LibreWinForms.ProGPU/LibreWinForms.ProGPU.Package.csproj'
+require_text "eng/progpu-wpf-canonical-winforms-integration.sh" 'LibreWinFormsSkipCanonicalPackageBuild=true'
+require_text "packaging/ProGPU.Wpf.Sdk/targets/ProGPU.Wpf.Sdk.targets" '<ProGpuWpfUseCanonicalLibreWinForms'
+require_text "packaging/ProGPU.Wpf.Sdk/targets/ProGPU.Wpf.Sdk.targets" 'Include="LibreWinForms.ProGPU"'
+require_text "packaging/ProGPU.Wpf.Sdk/targets/ProGPU.Wpf.Sdk.targets" '<Compile Remove="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs" />'
+require_text "packaging/ProGPU.Wpf.Sdk/targets/ProGPU.Wpf.Sdk.PortableBootstrap.cs" 'global::LibreWinForms.ProGPU.ProGpuPlatform.Register();'
+require_text "eng/progpu-wpf-canonical-sdk-smoke.sh" 'LibreWinForms.Compatibility.System.Windows.Forms/'
+require_text "eng/progpu-wpf-canonical-sdk-smoke.sh" 'DOTNET_ROLL_FORWARD_TO_PRERELEASE'
 require_text "docs/progpu-wpf-release.md" 'terminal-success `LibreWPF Build` run for the exact tagged commit'
 require_text ".github/workflows/progpu-wpf-release.yml" "Stage exact ProGPU release packages"
+require_text ".github/workflows/progpu-wpf-release.yml" "Build canonical LibreWinForms package closure"
+require_text ".github/workflows/progpu-wpf-release.yml" "./eng/progpu-wpf-canonical-winforms-integration.sh"
+require_text ".github/workflows/progpu-wpf-release.yml" 'PROGPU_WPF_EXPECTED_PROGPU_PACKAGE_COMMIT=${tag_commit}'
+require_text ".github/workflows/progpu-wpf-release.yml" '[[ "${tag_commit}" != "${submodule_commit}" ]]'
+if grep -Fq -- 'merge-base --is-ancestor "${tag_commit}" "${submodule_commit}"' "${repo_root}/.github/workflows/progpu-wpf-release.yml"; then
+  echo "Release workflow must require the ProGPU tag and source pin to be identical." >&2
+  exit 1
+fi
 require_text ".github/workflows/progpu-wpf-release.yml" "LibreWPF.Transport LibreWPF.ProGPU LibreWPF.Sdk"
 require_text ".github/workflows/progpu-wpf-docs.yml" "librewpf-docs"
 require_text "README.md" "# LibreWPF ProGPU Port"
@@ -38,7 +82,8 @@ require_text "roadmap.md" "# LibreWPF Cross-Platform Roadmap"
 require_text "Directory.Build.props" "<PackageTags Condition=\"'\$(PackageTags)' == ''\">librewpf;progpu;webgpu;silk.net;xaml;cross-platform;desktop</PackageTags>"
 require_text "docs/progpu-wpf-release.md" "LibreWPF.Sdk"
 require_text "docs/progpu-wpf-release.md" "gh release create --generate-notes"
-require_text "docs/progpu-wpf-release.md" "exact ProGPU release packages"
+require_text "docs/progpu-wpf-release.md" "immutable ProGPU release packages"
+require_text "docs/progpu-wpf-release.md" '0.1.0-source.<sha>'
 require_text "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "<PackageName>LibreWPF.Transport"
 require_text "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.csproj" "<PackageName>LibreWPF.Transport"
 require_text "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.csproj" "<PackageDescription>LibreWPF transport package"
@@ -50,10 +95,10 @@ require_text "external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" 
 require_text "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" "<PackageName>LibreWPF.Sdk"
 require_text "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" "<PackageDescription>LibreWPF MSBuild SDK"
 require_text "samples/ProGPU.Wpf.HelloApp/README.md" "# LibreWPF Hello App"
-require_text "samples/ProGPU.Wpf.MvpApp/README.md" "# LibreWPF MVP App"
+require_text "samples/ProGPU.Wpf.ShowcaseApp/README.md" "# LibreWPF Showcase App"
 require_text "samples/ProGPU.Wpf.ToolkitApp/README.md" "# LibreWPF Toolkit App"
 require_text "samples/ProGPU.Wpf.XceedPaidApp/README.md" "# LibreWPF Paid Xceed Toolkit + DataGrid"
-require_text "samples/ProGPU.Wpf.SciChartMvpApp/README.md" "# LibreWPF SciChart MVP App"
+require_text "samples/ProGPU.Wpf.SciChartApp/README.md" "# LibreWPF SciChart App"
 
 if grep -Fq "<PackageTags>librewpf;wpf;" "${repo_root}/packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj"; then
   echo "LibreWPF.Sdk package tags should not use WPF as a public package-brand tag." >&2

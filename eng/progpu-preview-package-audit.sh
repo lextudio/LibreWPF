@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.45}"
-progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.55}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.62}"
 transport_target_framework="${PROGPU_WPF_TRANSPORT_TARGET_FRAMEWORK:-net10.0}"
 source "${repo_root}/eng/progpu-preview-package-list.sh"
 
@@ -147,7 +147,8 @@ runtime_packages=("${progpu_preview_runtime_package_ids[@]}")
 all_packages=("${progpu_preview_package_ids[@]}")
 wpf_repository_packages=(LibreWPF.Transport LibreWPF.ProGPU LibreWPF.Sdk)
 wpf_commit="$(git -C "${repo_root}" rev-parse --verify HEAD)"
-progpu_commit="$(git -C "${repo_root}/external/ProGPU" rev-parse --verify HEAD)"
+progpu_source_commit="$(git -C "${repo_root}/external/ProGPU" rev-parse --verify HEAD)"
+progpu_package_commit="${PROGPU_WPF_EXPECTED_PROGPU_PACKAGE_COMMIT:-${progpu_source_commit}}"
 node "${repo_root}/eng/progpu-nuspec-repository-audit.mjs" --self-test
 
 unexpected_package_found=0
@@ -174,7 +175,7 @@ for package_id in "${runtime_packages[@]}"; do
   require_nuspec_repository \
     "${package_id}" \
     "https://github.com/wieslawsoltes/ProGPU" \
-    "${progpu_commit}"
+    "${progpu_package_commit}"
 done
 
 for package_id in "${wpf_repository_packages[@]}"; do
@@ -186,12 +187,31 @@ done
 
 require_entry LibreWPF.ProGPU "lib/net10.0/ProGPU.Wpf.dll"
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Backend\" version=\"${progpu_package_version}\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Backend.Native\" version=\"${progpu_package_version}\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.DirectX\" version=\"${progpu_package_version}\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Scene\" version=\"${progpu_package_version}\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"LibreWPF.Interop\" version=\"${progpu_package_version}\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.Input\" version=\"2.23.0\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.WebGPU\" version=\"2.23.0\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.Windowing\" version=\"2.23.0\""
+
+require_entry ProGPU.Backend.Native "lib/net10.0/ProGPU.Backend.Native.dll"
+for native_rid in linux-x64 linux-arm64 osx-x64 osx-arm64 win-x64 win-arm64; do
+  native_library="libprogpu_native.so"
+  dawn_library="libprogpu_native_dawn.so"
+  case "${native_rid}" in
+    osx-*)
+      native_library="libprogpu_native.dylib"
+      dawn_library="libprogpu_native_dawn.dylib"
+      ;;
+    win-*)
+      native_library="progpu_native.dll"
+      dawn_library="progpu_native_dawn.dll"
+      ;;
+  esac
+  require_entry ProGPU.Backend.Native "runtimes/${native_rid}/native/${native_library}"
+  require_entry ProGPU.Backend.Native "runtimes/${native_rid}/native/${dawn_library}"
+done
 
 require_nuspec_contains ProGPU.Text "dependency id=\"ProGPU.Text.Shaping\" version=\"${progpu_package_version}\""
 require_nuspec_contains ProGPU.WinUI "dependency id=\"ProGPU.Media\" version=\"${progpu_package_version}\""
@@ -210,6 +230,8 @@ require_nuspec_contains LibreWPF.Sdk "<packageType name=\"MSBuildSdk\" />"
 require_entry LibreWPF.Sdk "Sdk/Sdk.props"
 require_entry LibreWPF.Sdk "Sdk/LibreWPF.Sdk.Version.props"
 require_entry_contains LibreWPF.Sdk "Sdk/LibreWPF.Sdk.Version.props" "<_LibreWpfSdkPackageVersion>${dev_package_version}</_LibreWpfSdkPackageVersion>"
+require_entry_contains LibreWPF.Sdk "Sdk/LibreWPF.Sdk.Version.props" "<_LibreWpfSdkProGpuPackageVersion>${progpu_package_version}</_LibreWpfSdkProGpuPackageVersion>"
+require_entry_contains LibreWPF.Sdk "Sdk/LibreWPF.Sdk.Version.props" "<ProGpuPackageVersion>${progpu_package_version}</ProGpuPackageVersion>"
 require_entry LibreWPF.Sdk "Sdk/Sdk.targets"
 require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.props"
 require_entry LibreWPF.Sdk "targets/ProGPU.Wpf.Sdk.targets"

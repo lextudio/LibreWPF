@@ -62,8 +62,11 @@ internal static class Program
             proGpuWpfPath,
             proGpuWpfInteropPath);
         loadContext.LoadFromAssemblyPath(proGpuWpfInteropPath);
-        Assembly presentationFramework = loadContext.LoadFromAssemblyPath(presentationFrameworkPath);
         Assembly proGpuWpf = loadContext.LoadFromAssemblyPath(proGpuWpfPath);
+        InvokeStatic(
+            GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfNativeMediaServices"),
+            "Initialize");
+        Assembly presentationFramework = loadContext.LoadFromAssemblyPath(presentationFrameworkPath);
         Assembly windowsBase = loadContext.LoadFromAssemblyName(new AssemblyName("WindowsBase"));
         loadContext.LoadFromAssemblyPath(fluentThemePath);
         Assembly compilerHarness = loadContext.LoadFromAssemblyPath(compilerHarnessPath);
@@ -78,8 +81,8 @@ internal static class Program
             Invoke(application, "InitializeComponent");
 
             object window = Create(compilerHarness, MainWindowTypeName);
-            object themeDictionary = LoadFluentThemeDictionary(presentationFramework);
-            MergeThemeDictionary(application, themeDictionary);
+            object requestedThemeDictionary = LoadFluentThemeDictionary(presentationFramework);
+            object themeDictionary = MergeThemeDictionary(application, requestedThemeDictionary);
             ApplyRepresentativeFluentStyles(presentationFramework, application, window, themeDictionary);
             ValidateThemedRuntimeState(window, application, themeDictionary);
             ValidateThemedVisualReplay(proGpuWpf, windowsBase, window);
@@ -122,11 +125,17 @@ internal static class Program
         return themeDictionary;
     }
 
-    private static void MergeThemeDictionary(object application, object themeDictionary)
+    private static object MergeThemeDictionary(object application, object themeDictionary)
     {
         object resources = GetProperty(application, "Resources");
-        AddToCollection(GetProperty(resources, "MergedDictionaries"), themeDictionary);
-        AssertCollectionCount(GetProperty(resources, "MergedDictionaries"), expectedMinimum: 1, "application merged dictionaries");
+        object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
+        AddToCollection(mergedDictionaries, themeDictionary);
+        AssertCollectionCount(mergedDictionaries, expectedMinimum: 1, "application merged dictionaries");
+
+        // Syncing the relative Fluent.xaml URI can select ThemeMode.System and
+        // replace the merged dictionary with the active palette-bearing one.
+        // Implicit styles must be compared with that live resource dictionary.
+        return GetCollectionItem(mergedDictionaries, GetCollectionCount(mergedDictionaries) - 1);
     }
 
     private static void ApplyRepresentativeFluentStyles(
@@ -1207,7 +1216,7 @@ internal static class Program
             "TryActivate",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
             ?? throw new MissingMethodException(activationServiceType.FullName, "TryActivate");
-        object?[] parameters = { window, null };
+        object?[] parameters = { window, null, true };
         if (!Equals(true, tryActivate.Invoke(null, parameters)) || parameters[1] == null)
         {
             throw new InvalidOperationException("Real themed WPF window did not create a portable ProGPU activation.");

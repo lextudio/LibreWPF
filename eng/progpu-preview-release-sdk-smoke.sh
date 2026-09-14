@@ -12,7 +12,7 @@ export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
 dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.45}"
-progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.55}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.62}"
 bundle_output="${PROGPU_WPF_PREVIEW_RELEASE_BUNDLE:-${package_output}/librewpf-preview-${dev_package_version}.tar.gz}"
 source "${repo_root}/eng/progpu-preview-package-list.sh"
 
@@ -157,6 +157,11 @@ NUGET_PACKAGES="${smoke_root}/packages" "${dotnet}" build "${project_dir}/Bundle
 require_package_cache_entry "LibreWPF.Transport"
 require_package_cache_entry "LibreWPF.ProGPU"
 require_package_cache_entry "LibreWPF.Sdk"
+require_package_cache_entry "ProGPU.Backend"
+require_package_cache_entry "ProGPU.Backend.Native"
+require_package_cache_entry "ProGPU.DirectX"
+require_package_cache_entry "ProGPU.Scene"
+require_package_cache_entry "LibreWPF.Interop"
 
 NUGET_PACKAGES="${smoke_root}/packages" \
 PROGPU_WPF_BUNDLE_SDK_SMOKE_VALIDATE=1 \

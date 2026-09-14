@@ -14,6 +14,14 @@ normal text size and spacing. This is local visual evidence, not final package
 or Windows/Linux parity; the pull request and downstream exact pins still need
 green CI. Other text/layout defects are not presumed fixed.
 
+The Windows 11 Parallels VM was inspected for a same-source native-WPF visual
+baseline. Its existing `C:\GitHub\LibreWPF` checkout still contains the earlier
+`ProGPU.Wpf.MvpApp` samples rather than the current Showcase source; comparing
+those different applications would not qualify text parity. The current
+isolated source tree is visible on the guest's shared `X:` drive, but no build
+was run into that shared macOS worktree because it would cross-contaminate its
+package artifacts. The VM was restored to its original suspended state.
+
 A fresh local native SDK run using merged ProGPU #161 source and a clean
 canonical LibreWinForms package directory passed source host, package audit,
 Showcase, and Toolkit gates, then the paid Xceed DataGrid again reported that

@@ -41,6 +41,20 @@ Windows comparison. The two renderer captures used independent processes,
 not overlapping app windows. Do not merge the LibreWPF application PR on the
 strength of the DPI regression alone.
 
+The Toolkit initial native source-overlay run exposed a second text boundary:
+`PortableTextLine.HasOverflowed` compared native glyph width against the
+1/300-DIP-floored formatting width. For an actual 41.373046875-DIP advance,
+the floored width was 41.37 while TextBlock's collapse target was the original
+41.373046875. The false overflow requested an ellipsis; native Collapse
+correctly returned the uncollapsed fitting line, tripping WPF's debug
+assertion. Portable overflow now requires more than one ideal-unit excess,
+retaining genuine narrow-line overflow. A focused fixture passes 1/1, and the
+Toolkit initial native window renders with the source overlay. Its subsequent
+live script reached a separate debug `ItemContainerGenerator` invariant during
+AvalonDock menu validation; that script did not complete and the final Release
+package gate remains required. No text parity is claimed from the initial
+render alone.
+
 The Windows 11 Parallels VM was inspected for a same-source native-WPF visual
 baseline. Its existing `C:\GitHub\LibreWPF` checkout still contains the earlier
 `ProGPU.Wpf.MvpApp` samples rather than the current Showcase source; comparing

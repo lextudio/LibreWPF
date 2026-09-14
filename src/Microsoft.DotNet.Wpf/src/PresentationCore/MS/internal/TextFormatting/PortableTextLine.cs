@@ -983,7 +983,13 @@ internal sealed class PortableTextLine : TextLine
         _lineIndex + 1 < _paragraph.Lines.Length ?
         new TextLineBreak(null, IntPtr.Zero) { PortableContinuation = new(this, _lineIndex + 1, End) } :
         _endScope == null ? null : new TextLineBreak(_endScope, IntPtr.Zero);
-    public override bool HasOverflowed => _paragraphWidth > 0 && Start + Width > _paragraphWidth;
+    // FormatLine floors its requested width to WPF's 1/300-DIP ideal grid.
+    // Native advances may be a fraction of one ideal unit larger than that
+    // floor while still fitting the caller's real width. Do not report that
+    // quantization alone as overflow: TextBlock would request an ellipsis at
+    // its original width, where Collapse correctly returns the uncollapsed line.
+    public override bool HasOverflowed => _paragraphWidth > 0 &&
+        Start + Width > _paragraphWidth + TextFormatterImp.IdealToRealWithNoRounding(1);
     public override bool HasCollapsed => _paragraph.CollapsedRange != null;
     public override int Length => End - First + NewlineLength;
     public override int NewlineLength => _uncollapsed != null ? _uncollapsed.NewlineLength :

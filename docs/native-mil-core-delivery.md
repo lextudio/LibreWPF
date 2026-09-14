@@ -39,6 +39,15 @@ full Controls tab and was reverted. Qualify the actual source fix through the
 SDK package and the same-source Windows/native visual comparison before
 merging #115; a temporary app resource substitution is not qualification.
 
+**Portable text ideal-width boundary — 2026-09-14:**
+The Toolkit's initial native source-overlay render revealed a TextBlock
+trimming false positive where WPF's 1/300-DIP width floor was 41.37 but the
+fitting native advance and original collapse target were 41.373046875.
+`PortableTextLine.HasOverflowed` now ignores only one ideal unit of width
+quantization; a focused test confirms truly narrower lines still overflow.
+The Toolkit initial window renders, but its later debug-only AvalonDock menu
+invariant and final Release package/live validation remain separate gates.
+
 **Paid Xceed native package blocker and ProGPU #161 — 2026-09-14:**
 The packaged Showcase and Toolkit native gates pass on macOS 26. The licensed
 Xceed virtual DataGrid exposed a retained path atlas capacity limit followed

@@ -60,6 +60,22 @@ public class PortableTextLineTests
         collapsed.Draw(drawing, new Point(), InvertAxes.None);
     }
 
+    [PortableMediaFact]
+    public void IdealWidthFloorDoesNotReportNativeAdvanceQuantizationAsOverflow()
+    {
+        var properties = new Properties(new FontFamily(Path.Combine(AppContext.BaseDirectory,
+            "LibreWPF", "Fonts", "Inter-Medium.ttf") + "#Inter"));
+        var source = new Source { Text = "a", Properties = properties };
+        var paragraph = new ParagraphProperties(properties, false, false, TextWrapping.NoWrap);
+        using var registration = PortableWpfServiceRegistry.RegisterTextFormatting(
+            new Provider { BoundaryWidth = 41.373046875f });
+        using var formatter = new TextFormatterImp();
+        using var fitting = formatter.FormatLine(source, 0, 41.373046875, paragraph, null, new TextRunCache());
+        Assert.False(fitting.HasOverflowed);
+        using var genuinelyNarrow = formatter.FormatLine(source, 0, 41.36, paragraph, null, new TextRunCache());
+        Assert.True(genuinelyNarrow.HasOverflowed);
+    }
+
     // Typed adapter fixture only; native shaping/layout is covered separately.
     private sealed class CollapseProvider : IPortableTextFormatting
     {
@@ -687,6 +703,7 @@ public class PortableTextLineTests
         internal bool Tabs { get; init; }
         internal bool MixedOneLine { get; init; }
         internal bool Empty { get; init; }
+        internal float? BoundaryWidth { get; init; }
         internal float IncrementalTab { get; private set; }
         internal ReadOnlyMemory<PortableTextStyle> Styles { get; private set; }
         public object NativeFont { get; } = new();
@@ -704,12 +721,14 @@ public class PortableTextLineTests
             Text = request.Text.ToString(); Styles = request.Styles; IncrementalTab = request.IncrementalTab;
             Assert.False(request.Font.Data.IsEmpty); return this;
         }
-        public ReadOnlyMemory<PortableTextGlyph> Glyphs => Continued ? new PortableTextGlyph[] { new(0, 2, 3, 0, 0, 6, 1) } : Empty ? ReadOnlyMemory<PortableTextGlyph>.Empty : Tabs ? new PortableTextGlyph[]
+        public ReadOnlyMemory<PortableTextGlyph> Glyphs => BoundaryWidth is { } boundaryWidth ? new PortableTextGlyph[]
+        { new(0, 0, 1, 0, 0, boundaryWidth, 0) } : Continued ? new PortableTextGlyph[] { new(0, 2, 3, 0, 0, 6, 1) } : Empty ? ReadOnlyMemory<PortableTextGlyph>.Empty : Tabs ? new PortableTextGlyph[]
         { new(0, 0, 1, 0, 0, 8, 0), new(uint.MaxValue, 1, 2, 8, 0, 24, 0, IsTab: true), new(0, 2, 3, 32, 0, 6, 0) } : MixedOneLine ? new PortableTextGlyph[]
         { new(0, 0, 1, 0, 0, 4, 0), new(0, 1, 2, 4, 0, 6, 0, 1), new(0, 2, 3, 10, 0, 6, 0, 1) } : Mixed ? new PortableTextGlyph[]
         { new(0, 0, 1, 0, 0, 4, 0), new(0, 1, 2, 0, 20, 6, 0, 1), new(0, 2, 3, 6, 20, 6, 0, 1) } : new PortableTextGlyph[]
         { new(0, 0, 2, 0, 0, 8, 1), new(0, 2, 3, 0, 20, 6, 1) };
-        public ReadOnlyMemory<PortableTextLineInfo> Lines => Continued ? new PortableTextLineInfo[] { new(0, 1, 2, 3, 6, 0, 20) } : Empty ? new PortableTextLineInfo[] { new(0, 0, 0, 0, 0, 0, 20) } : Tabs ? new PortableTextLineInfo[]
+        public ReadOnlyMemory<PortableTextLineInfo> Lines => BoundaryWidth is { } boundaryWidth ? new PortableTextLineInfo[]
+        { new(0, 1, 0, 1, boundaryWidth, 0, 20) } : Continued ? new PortableTextLineInfo[] { new(0, 1, 2, 3, 6, 0, 20) } : Empty ? new PortableTextLineInfo[] { new(0, 0, 0, 0, 0, 0, 20) } : Tabs ? new PortableTextLineInfo[]
         { new(0, 3, 0, 3, 38, 0, 20) } : MixedOneLine ? new PortableTextLineInfo[]
         { new(0, 3, 0, 3, 16, 0, 20) } : Mixed ? new PortableTextLineInfo[]
         { new(0, 1, 0, 1, 4, 0, 20), new(1, 2, 1, 3, 12, 20, 20) } : new PortableTextLineInfo[]

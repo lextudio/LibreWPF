@@ -13300,7 +13300,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Running real WPF Fluent theme runtime harness", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj", validationGraphs, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj\" -c Release -v:minimal", sdkCiScript, StringComparison.Ordinal);
-        Assert.Equal(11, sdkCiScript.Split("run --no-build --project", StringSplitOptions.None).Length - 1);
+        Assert.Equal(10, sdkCiScript.Split("run --no-build --project", StringSplitOptions.None).Length - 1);
+        Assert.Contains("python3 \"${repo_root}/eng/progpu-wpf-run-bounded.py\" 180", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"Showcase SDK Application.Run validation\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"Showcase apphost Application.Run validation\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf/ProGPU.Wpf.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
@@ -14480,11 +14483,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("dataObject.SetText(payload)", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataFormats.UnicodeText", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataObjectRoundTripCount", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("Clipboard.SetText(payload)", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new DataObject(DataFormats.UnicodeText, payload)", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.SetDataObject(payloadDataObject)", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Clipboard.ContainsText()", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Clipboard.GetText()", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("Clipboard.GetDataObject()", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("Clipboard.IsCurrent(currentDataObject)", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.IsCurrent(payloadDataObject)", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Clipboard.Flush()", showcaseMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ClipboardRoundTripButton", showcaseMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ApplicationCommands.SelectAll.Execute(null, dataObjectPayloadTextBox)", showcaseMainWindowCodeBehind, StringComparison.Ordinal);

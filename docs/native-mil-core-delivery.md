@@ -31,9 +31,15 @@ and document. See the
 [Windows SDK Showcase record](../reports/native-mil-windows-sdk-showcase-2026-09-14.md)
 for provenance. Parallels graphical tests require `prlctl exec --current-user`
 to enter the signed-in desktop; running as `SYSTEM` produced an invalid WebGPU
-surface. #126's hosted SDK smoke was still queued at this checkpoint. Visual
-Windows DPI inspection, x64 exact-package application coverage and remaining
-SDK/native-host gates are not closed, so Windows SDK defaults stay guarded.
+surface. #126's exact PR-head and merged-branch CI subsequently passed every
+job. A package-only AMD64 Showcase also passed both object and displayed
+`Application.Run` checks under Windows ARM64 x64 emulation, with exact x64
+package-member hashes and a readable guest-side Themes capture. See the
+[Windows x64 package record](../reports/native-mil-windows-x64-package-2026-09-14.md).
+Emulation is not native x64-host qualification; this branch adds an explicit
+`windows-2025` native-MIL package gate for that purpose. The new gate, rigorous
+native-WPF visual comparison and remaining SDK/native-host gates are not
+closed, so Windows SDK defaults stay guarded.
 
 **Core package qualification checkpoint — 2026-09-14:** ProGPU #163 is
 merged at `ff8bcbf4` with 45/45 PR checks green, and its exact `main` Build

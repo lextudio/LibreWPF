@@ -24,7 +24,8 @@ clean ProGPU source with project references disabled, this downloaded NuGet
 feed, version `3051`, and an isolated restore cache. Its assets have zero
 project libraries. The exact-package macOS ARM64/Metal process, Windows VM
 emulated x64/system-WARP and default-Parallels-adapter processes, and native
-Windows ARM64/system-WARP process exited zero with the final ABI 4, Dawn ABI 1,
+Windows ARM64/system-WARP and default-Parallels-adapter processes exited zero
+with the final ABI 4, Dawn ABI 1,
 one-draw/16,384-pixel smoke marker. Windows WARP used the system
 `d3dcompiler_47.dll`, `D3D12Core.dll`, and `d3d10warp.dll`; no app-local WARP
 or compiler override was supplied. The guest's `progpu_native.dll` SHA-256
@@ -35,14 +36,23 @@ no source overlay was applied. Logs are under the external core-release staging
 directory as `osx-arm64-package-3051-metal.log`,
 `win-x64-package-3051-system-warp.log`,
 `win-x64-package-3051-default-adapter.log`, and
-`win-arm64-package-3051-system-warp.log`.
+`win-arm64-package-3051-system-warp.log`, and
+`win-arm64-package-3051-default-adapter.log`. Native Windows ARM64 selected
+`Parallels Display Adapter (WDDM)`/D3D12 on the default path. Its guest native
+payload hashes match the exact package publication:
+`progpu_native.dll` `d2a17d872fbe1c68de77fd14022632b187507dbce9f03170de5fb655a6bd5a9b`
+and stock `wgpu_native.dll` `9f73e41536b3bd96a0a44692ea65888c9de004b19fbf5de90489768667fbbdbc`.
 
 Separately, the current-source Windows x64 consumer passed both system WARP and
 the default Parallels D3D12 adapter using the current CI runtime payloads. This
 is useful integration evidence, not the NuGet package result above. Further
-exact-package native ARM64/default-adapter and downstream SDK/application gates
-remain open. The ProGPU producer is qualified and merged; do not infer that
-LibreWinForms/LibreWPF package/application gates are complete.
+downstream SDK/application gates remain open. The ProGPU producer is qualified
+and merged. LibreWPF's exact-runtime staging requires a successful Build for
+the pinned merge commit `86f2f766`, rather than reusing the tree-identical PR
+head's Build; main Build
+[34824026135](https://github.com/wieslawsoltes/ProGPU/actions/runs/34824026135)
+is running. Do not infer that LibreWinForms/LibreWPF package/application gates
+are complete.
 
 ## Current-head Windows sample oracle follow-up
 

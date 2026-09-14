@@ -320,11 +320,14 @@ for package_file in "${canonical_forms_package}" "${canonical_backend_package}" 
   fi
 done
 
+# Capture the full list before grep: grep -q can close unzip's pipe early and
+# make a present entry fail this gate with SIGPIPE under set -o pipefail.
+canonical_forms_entries="$(unzip -Z1 "${canonical_forms_package}")"
 for expected_entry in \
   "lib/${target_framework}/System.Windows.Forms.Design.dll" \
   "ref/${target_framework}/System.Windows.Forms.Design.dll"
 do
-  if ! unzip -Z1 "${canonical_forms_package}" | grep -Fxq "${expected_entry}"; then
+  if ! grep -Fxq "${expected_entry}" <<<"${canonical_forms_entries}"; then
     echo "Canonical System.Windows.Forms package is missing ${expected_entry}." >&2
     exit 1
   fi
@@ -336,11 +339,12 @@ if [[ "${forms_nuspec}" != *"<dependency id=\"System.CodeDom\" version=\"${canon
   exit 1
 fi
 
+canonical_integration_entries="$(unzip -Z1 "${canonical_integration_package}")"
 for expected_entry in \
   "lib/${target_framework}/WindowsFormsIntegration.dll" \
   "ref/${target_framework}/WindowsFormsIntegration.dll"
 do
-  if ! unzip -Z1 "${canonical_integration_package}" | grep -Fxq "${expected_entry}"; then
+  if ! grep -Fxq "${expected_entry}" <<<"${canonical_integration_entries}"; then
     echo "Canonical WindowsFormsIntegration package is missing ${expected_entry}." >&2
     exit 1
   fi

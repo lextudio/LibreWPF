@@ -1511,6 +1511,37 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void ResolveRenderSurfaceGeometryUsesUniformMonitorScaleForOnePixelFramebufferRounding()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 1796,
+            clientHeight: 938,
+            framebufferSize: new Vector2D<int>(3592, 1875),
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(3592u, geometry.PixelWidth);
+        Assert.Equal(1875u, geometry.PixelHeight);
+        Assert.Equal(3592u, geometry.ViewportWidth);
+        Assert.Equal(1875u, geometry.ViewportHeight);
+        Assert.Equal(2.0, geometry.DpiScaleX);
+        Assert.Equal(2.0, geometry.DpiScaleY);
+        Assert.Equal(2.0, geometry.DpiScale);
+    }
+
+    [Fact]
+    public void ResolveRenderSurfaceGeometryKeepsUnequalScaleBeyondFramebufferRounding()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 1796,
+            clientHeight: 938,
+            framebufferSize: new Vector2D<int>(3592, 1874),
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(2.0, geometry.DpiScaleX);
+        Assert.Equal(1874.0 / 938.0, geometry.DpiScaleY);
+    }
+
+    [Fact]
     public void ResolveRenderSurfaceGeometryUsesFullPhysicalViewportWhenFramebufferHasExtraPixels()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(

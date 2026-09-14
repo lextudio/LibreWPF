@@ -438,8 +438,12 @@ internal sealed class PortableTextLine : TextLine
             throw Unsupported($"unresolved null-shape or device-font mapping for '{requested.FontFamily?.Source}' " +
                 $"(null shape: {selected?.NullShape}, physical face: {selected?.ShapeTypeface?.GlyphTypeface != null}, " +
                 $"device font: {selected?.ShapeTypeface?.DeviceFont != null})");
-        if (selected.ShapeTypeface.GlyphTypeface.StyleSimulations != StyleSimulations.None)
-            throw Unsupported("synthetic font simulations");
+        var simulations = selected.ShapeTypeface.GlyphTypeface.StyleSimulations;
+        if (((int)simulations & ~(int)StyleSimulations.BoldItalicSimulation) != 0)
+            throw Unsupported($"unknown synthetic font simulation for '{requested.FontFamily?.Source}': {simulations}");
+        // Keep the source physical face, including its simulation flags. GlyphRun
+        // exports those flags to both ProGPU renderers; its portable ink bounds
+        // include the simulated stroke/shear without changing native advances.
     }
 
     private static PortableTextFont GetFont(GlyphTypeface face) => Fonts.GetValue(face, static source =>
@@ -715,7 +719,7 @@ internal sealed class PortableTextLine : TextLine
             _glyphProperties.Add(properties);
             _selectionRuns.Add((cpStart, cpEnd, level));
             CacheBackground(properties.BackgroundBrush, cpStart, cpEnd);
-            Rect bounds = run.ComputeInkBoundingBox();
+            Rect bounds = run.ComputePortableInkBoundingBox();
             if (!bounds.IsEmpty) { bounds.Offset(run.BaselineOrigin.X, run.BaselineOrigin.Y); ink.Union(bounds); }
             first = stop;
         }

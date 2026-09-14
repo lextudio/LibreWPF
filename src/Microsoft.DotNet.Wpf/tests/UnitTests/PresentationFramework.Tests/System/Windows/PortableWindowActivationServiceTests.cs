@@ -646,6 +646,59 @@ public class PortableWindowActivationServiceTests
     }
 
     [PortableInputFact]
+    public void SystemWindowCommandsUpdatePortableStateBeforeHostCreation()
+    {
+        RunInUiApartment(() =>
+        {
+            var window = new Window { Width = 200, Height = 100 };
+            try
+            {
+                window.PortableWindowActivation.Should().BeNull();
+                SystemCommands.MaximizeWindow(window);
+                window.WindowState.Should().Be(WindowState.Maximized);
+                SystemCommands.MinimizeWindow(window);
+                window.WindowState.Should().Be(WindowState.Minimized);
+                SystemCommands.RestoreWindow(window);
+                window.WindowState.Should().Be(WindowState.Normal);
+                window.PortableWindowActivation.Should().BeNull();
+            }
+            finally
+            {
+                if (!window.IsDisposed) window.Close();
+            }
+        });
+    }
+
+    [PortableInputFact]
+    public void PortableWindowBackdropNeverTreatsItsHostHandleAsWpfHwnd()
+    {
+        RunInUiApartment(() =>
+        {
+            var activation = new object();
+            int handleQueries = 0;
+            PortableWindowActivationService.Register(
+                activate: _ => activation,
+                createHidden: _ => activation,
+                getHandle: _ => { handleQueries++; return new IntPtr(5678); });
+            var window = new Window { Width = 200, Height = 100 };
+            try
+            {
+                window.ThemeMode = ThemeMode.Light;
+                new WindowInteropHelper(window).EnsureHandle();
+                int initialHandleQueries = handleQueries;
+                Appearance.WindowBackdropManager.SetBackdrop(window, WindowBackdropType.MainWindow)
+                    .Should().BeFalse();
+                handleQueries.Should().Be(initialHandleQueries);
+            }
+            finally
+            {
+                if (!window.IsDisposed) window.Close();
+                PortableWindowActivationService.Clear();
+            }
+        });
+    }
+
+    [PortableInputFact]
     public void SystemWindowCommandsUsePortableOwnerStateAndCancelableCloseOnEveryOs()
     {
         RunInUiApartment(() =>

@@ -4,6 +4,7 @@
 
 using System.Windows.Input;
 using System.Windows.Interop;
+using ProGPU.Wpf.Interop;
 using Standard;
 
 namespace System.Windows
@@ -30,7 +31,11 @@ namespace System.Windows
             // A portable window's handle belongs to its host, not to a WPF
             // HwndSource. Keep state/close notifications and cancellation on
             // the source Window's typed activation path on Windows as well.
-            if (window.PortableWindowActivation != null || !OperatingSystem.IsWindows())
+            // A source Window can receive commands before Show creates its
+            // portable activation. On Windows, frozen portable media must not
+            // turn that pre-host state change into a no-op HWND post.
+            if (window.PortableWindowActivation != null || !OperatingSystem.IsWindows() ||
+                PortableWpfRuntime.GetMediaBackendAndFreeze() == PortableWpfMediaBackend.Portable)
             {
                 switch (command)
                 {

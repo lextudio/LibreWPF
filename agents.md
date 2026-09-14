@@ -273,8 +273,13 @@ must use `GlyphingCache.GetPortableFontRuns` and the existing `TypefaceMap` fami
 linking rules without invoking the DirectWrite itemizer. Preserve mapped em-scale
 in native styles and actual GlyphRun size; source Typeface owns line metrics.
 Do not substitute a first-family face for the mapped text ranges, bypass required
-digit-substitution checks, or guess a render font by family name. Null-shape,
-device-font and synthetic-font cases remain explicit unsupported contracts.
+digit-substitution checks, or guess a render font by family name. Null-shape
+and device-font cases remain explicit unsupported contracts. Source-mapped
+synthetic bold/italic keeps the real physical face and its GlyphRun simulation
+flags through both ProGPU renderers; portable ink includes the simulated
+stroke/shear, while native paragraph advances and source carets remain unchanged.
+Keep Windows visual comparison and clean-package qualification separate from
+this source connection; never turn an unknown simulation into a silent no-op.
 Keep remaining language, document and trimming behavior explicit;
 do not convert its provider failure into the legacy empty paragraph. Preserve
 source clusters, logical versus visual caret semantics and cloned continuation

@@ -15,6 +15,26 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Windows native-MIL SDK Showcase follow-up — 2026-09-14:**
+LibreWPF #115 merged into `progpu-rendering-port` at `c99d0311` after 7/7 PR
+checks. Its Windows ARM64 package run exposed pre-host `SystemCommands`
+routing, portable-handle DWM backdrop access, one-pixel framebuffer/DPI
+rounding and synthetic-bold physical-font mapping. LibreWPF #126 head
+`adfbcd39f` fixes these source paths. The focused Windows portable text class
+passes 24/24. A fresh 23-package closure using the exact #126 CI Windows
+managed payload, ProGPU `ff8bcbf4` and canonical WinForms packages built the
+unchanged SDK Showcase without warnings or errors. The private Windows 11
+ARM64 guest output matched its package DLL hashes; both pre-display and
+displayed `Application.Run` self-tests passed with native MIL and native hit
+testing, including the DataGrid/resource controls, secondary window, editor
+and document. See the
+[Windows SDK Showcase record](../reports/native-mil-windows-sdk-showcase-2026-09-14.md)
+for provenance. Parallels graphical tests require `prlctl exec --current-user`
+to enter the signed-in desktop; running as `SYSTEM` produced an invalid WebGPU
+surface. #126's hosted SDK smoke was still queued at this checkpoint. Visual
+Windows DPI inspection, x64 exact-package application coverage and remaining
+SDK/native-host gates are not closed, so Windows SDK defaults stay guarded.
+
 **Core package qualification checkpoint — 2026-09-14:** ProGPU #163 is
 merged at `ff8bcbf4` with 45/45 PR checks green, and its exact `main` Build
 [34864169048](https://github.com/wieslawsoltes/ProGPU/actions/runs/34864169048)
@@ -2176,8 +2196,10 @@ physical face identities and composite em scales reach the existing ProGPU nativ
 paragraph and actual source GlyphRuns. Source Typeface continues to own line
 metrics. Bundled-font fallback, cache reuse, culture/scale and UTF-16 range fixtures
 are authored, not executed. This closes the identified first-physical-face-only
-source branch; null-shape, device-font and synthetic style contracts remain
-explicitly unsupported. Tabs/document objects and the other required editor
+source branch; null-shape and device-font contracts remain explicitly
+unsupported. The later Windows source follow-up connects mapped synthetic
+bold/italic flags and portable ink through the existing ProGPU renderer, but
+clean package and visual qualification remain open. Tabs/document objects and the other required editor
 connections remain next, followed by startup admission and application closure.
 The native algorithms/ABI are reused unchanged; do not port WPF font-family policy
 into ProGPU or reopen unrelated API families. See the

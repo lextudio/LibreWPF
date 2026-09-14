@@ -4,6 +4,7 @@
 using System.Windows.Interop;
 using System.Windows.Media;
 using MS.Internal;
+using ProGPU.Wpf.Interop;
 using Standard;
 using HRESULT = Standard.HRESULT;
 
@@ -37,10 +38,15 @@ internal static class WindowBackdropManager
             return false;
         }
 
+        // Portable presentation sources own their native windows. Their handle
+        // is not a WPF HwndSource for DWM frame/background manipulation; the
+        // ProGPU host must supply any native backdrop independently.
         if (window is null ||
+                window.PortableWindowActivation != null ||
+                PortableWpfRuntime.GetMediaBackendAndFreeze() == PortableWpfMediaBackend.Portable ||
                 !IsSupported(backdropType) ||
                 window.AllowsTransparency ||
-!IsBackdropEnabled)
+                !IsBackdropEnabled)
         {
             return false;
         }

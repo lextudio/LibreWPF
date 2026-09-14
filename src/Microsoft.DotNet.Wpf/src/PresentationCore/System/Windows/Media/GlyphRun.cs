@@ -2553,7 +2553,7 @@ namespace System.Windows.Media
                 bounds = cached;
                 return true;
             }
-            Rect ink = ComputeInkBoundingBox();
+            Rect ink = ComputePortableInkBoundingBox();
             if (!ink.IsEmpty)
             {
                 ink.Offset(_baselineOrigin.X, _baselineOrigin.Y);
@@ -2561,6 +2561,27 @@ namespace System.Windows.Media
             }
             _portableInkBoundsCache = bounds;
             return true;
+        }
+
+        // ProGPU's retained glyph renderers add one 0.035-em stroke pass for
+        // simulated bold and shear glyph ink by 0.22 for simulated italic.
+        // These are ink-only adjustments: source advances and caret positions
+        // remain those of the mapped physical face.
+        internal Rect ComputePortableInkBoundingBox()
+        {
+            Rect bounds = ComputeInkBoundingBox();
+            if (bounds.IsEmpty) return bounds;
+            StyleSimulations simulations = _glyphTypeface?.StyleSimulations ?? StyleSimulations.None;
+            if ((simulations & StyleSimulations.ItalicSimulation) != 0)
+            {
+                double overhang = 0.22 * Math.Max(Math.Abs(bounds.Top), Math.Abs(bounds.Bottom));
+                bounds = new Rect(bounds.Left - overhang, bounds.Top,
+                    bounds.Width + 2 * overhang, bounds.Height);
+            }
+            if ((simulations & StyleSimulations.BoldSimulation) != 0)
+                bounds = new Rect(bounds.Left, bounds.Top,
+                    bounds.Width + _renderingEmSize * 0.035, bounds.Height);
+            return bounds;
         }
 
         private static ushort[] CopyUShorts(IList<ushort> source)

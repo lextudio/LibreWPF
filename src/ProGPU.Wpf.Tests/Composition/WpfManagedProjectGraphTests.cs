@@ -6,6 +6,23 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WpfManagedProjectGraphTests
 {
     [Fact]
+    public void ToolkitFloatingInputUsesActualPresentationSource()
+    {
+        string source = File.ReadAllText(FindRepoPath("samples", "ProGPU.Wpf.ToolkitApp", "MainWindow.xaml.cs"));
+        Assert.Contains("floatingWindow = PresentationSource.FromVisual(EditorTextBox)?.RootVisual as Window;", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("floatingWindow = Window.GetWindow(EditorTextBox);", source, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(PresentationSource.FromVisual(EditorTextBox)?.RootVisual, this)", source, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(floatingHost, ownerHost)", source, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(floatingWindow.Owner, this)", source, StringComparison.Ordinal);
+        Assert.Contains("RequireSelectedNativeFrame(floatingHost)", source, StringComparison.Ordinal);
+        Assert.Contains("ClickLiveControlAsync(editorHost, EditorTextBox", source, StringComparison.Ordinal);
+        Assert.Contains("targetName == \"FloatingEditorTextBox\", out string gpuHitState)", source, StringComparison.Ordinal);
+        Assert.Contains("if (!snapshot.HasIndex || !snapshot.HasDeviceIndex)", source, StringComparison.Ordinal);
+        AssertGuardBefore(source, "if (!ProGpuWpfDiagnostics.TryHitTestOwners(liveHost", "TryGetGpuHitTestCacheSnapshot(liveHost, out var snapshot)");
+        Assert.Contains("!floatingWindow.IsVisible && !ProGpuWpfDiagnostics.TryGetWindowHost(floatingWindow, out _)", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NativeMilHostRestoresSourceBuildTasksBeforeBuildingTheHarness()
     {
         string script = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-native-mil-host-smoke.sh"));

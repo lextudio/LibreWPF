@@ -4013,7 +4013,7 @@ public partial class MainWindow : Window
             () => ValidateEditorFloatingState(expectedFloating: false),
             DispatcherPriority.Send);
         await WaitForLiveConditionAsync(liveHost,
-            () => ReferenceEquals(Window.GetWindow(EditorTextBox), this) &&
+            () => ReferenceEquals(PresentationSource.FromVisual(EditorTextBox)?.RootVisual, this) &&
                 !floatingWindow.IsVisible && !ProGpuWpfDiagnostics.TryGetWindowHost(floatingWindow, out _),
             "Toolkit floating host removal and editor source restoration after docking");
 
@@ -4926,11 +4926,22 @@ public partial class MainWindow : Window
     {
         Window? floatingWindow = null;
         ProGpuWpfWindowHost? floatingHost = null;
+        string lastFloatingState = "Floating source has not been inspected.";
         await WaitForLiveConditionAsync(ownerHost, () =>
         {
-            floatingWindow = Window.GetWindow(EditorTextBox);
-            if (floatingWindow == null || ReferenceEquals(floatingWindow, this) || !floatingWindow.IsVisible ||
-                !ProGpuWpfDiagnostics.TryGetWindowHost(floatingWindow, out floatingHost) || floatingHost == null)
+            // AvalonDock retains logical document ownership in the main Window.
+            // The actual visual presentation source owns native input and must
+            // identify the floating host, independently of inherited WindowService.
+            floatingWindow = PresentationSource.FromVisual(EditorTextBox)?.RootVisual as Window;
+            bool hasHost = ProGpuWpfDiagnostics.TryGetWindowHost(floatingWindow, out floatingHost) && floatingHost != null;
+            lastFloatingState = $"SourceWindow={floatingWindow?.GetType().FullName ?? "null"}, " +
+                $"LogicalWindow={Window.GetWindow(EditorTextBox)?.GetType().FullName ?? "null"}, " +
+                $"OwnerRoot={ReferenceEquals(floatingWindow, this)}, Visible={floatingWindow?.IsVisible}, " +
+                $"HasHost={hasHost}, Presented={floatingHost?.HasPresentedFrame}, " +
+                $"EditorLoaded={EditorTextBox.IsLoaded}, EditorVisible={EditorTextBox.IsVisible}, " +
+                $"PresentedRoot={PresentationSource.FromVisual(EditorTextBox)?.RootVisual?.GetType().FullName ?? "null"}, " +
+                $"PresentedRootIsOwner={ReferenceEquals(PresentationSource.FromVisual(EditorTextBox)?.RootVisual, this)}.";
+            if (floatingWindow == null || ReferenceEquals(floatingWindow, this) || !floatingWindow.IsVisible || !hasHost || floatingHost == null)
                 return false;
             if (ReferenceEquals(floatingHost, ownerHost) || !ReferenceEquals(floatingWindow.Owner, this))
                 throw new InvalidOperationException("AvalonDock floating editor requires its own host and actual source owner.");
@@ -4941,18 +4952,12 @@ public partial class MainWindow : Window
             }
             RequireSelectedNativeFrame(floatingHost);
             return true;
-        }, "Toolkit floating editor's separate presented host");
+        }, "Toolkit floating editor's separate presented host", () => lastFloatingState);
 
         ProGpuWpfWindowHost editorHost = floatingHost!;
         await ClickLiveControlAsync(editorHost, EditorTextBox, "FloatingEditorTextBox");
         await WaitForLiveConditionAsync(editorHost, () => EditorTextBox.IsKeyboardFocusWithin,
             "Toolkit floating editor focus from its own host input");
-        await InvokeWithLiveHostWakeAsync(editorHost, () =>
-        {
-            if (!ProGpuWpfDiagnostics.TryGetGpuHitTestCacheSnapshot(editorHost, out var snapshot) ||
-                !snapshot.HasIndex || !snapshot.HasDeviceIndex)
-                throw new InvalidOperationException("AvalonDock floating editor input must use its presented device index.");
-        }, DispatcherPriority.Send);
         return floatingWindow!;
     }
 
@@ -4965,7 +4970,8 @@ public partial class MainWindow : Window
 #endif
     }
 
-    private async Task WaitForLiveConditionAsync(ProGpuWpfWindowHost liveHost, Func<bool> condition, string description)
+    private async Task WaitForLiveConditionAsync(ProGpuWpfWindowHost liveHost, Func<bool> condition, string description,
+        Func<string>? failureDetails = null)
     {
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
@@ -4977,7 +4983,8 @@ public partial class MainWindow : Window
             await Task.Delay(LiveValidationRetryDelay);
         }
 
-        throw new InvalidOperationException($"Timed out waiting for {description}.");
+        throw new InvalidOperationException($"Timed out waiting for {description}." +
+            (failureDetails == null ? string.Empty : " " + failureDetails()));
     }
 
     private async Task ClickLiveControlAsync(ProGpuWpfWindowHost liveHost, FrameworkElement target, string targetName)
@@ -5051,7 +5058,8 @@ public partial class MainWindow : Window
             return false;
         }
 
-        if (!TryLiveHostGpuHitWithinTarget(liveHost, center.X, center.Y, target, out string gpuHitState))
+        if (!TryLiveHostGpuHitWithinTarget(liveHost, center.X, center.Y, target,
+                targetName == "FloatingEditorTextBox", out string gpuHitState))
         {
             targetState += $", {gpuHitState}";
             return false;
@@ -5069,6 +5077,7 @@ public partial class MainWindow : Window
         double x,
         double y,
         FrameworkElement target,
+        bool requireDeviceIndex,
         out string state)
     {
         state = "GpuHitTest=<unavailable>";
@@ -5096,6 +5105,22 @@ public partial class MainWindow : Window
             if (ownerCount == 0)
             {
                 return false;
+            }
+
+            // Validate the same presented generation that answered this input
+            // query. A later focus/render wakeup may replace its resident index.
+            if (requireDeviceIndex)
+            {
+                if (!ProGpuWpfDiagnostics.TryGetGpuHitTestCacheSnapshot(liveHost, out var snapshot))
+                {
+                    state += ", NativeIndex=<unavailable>";
+                    return false;
+                }
+
+                state += $", NativeIndex={snapshot.HasIndex}, DeviceIndex={snapshot.HasDeviceIndex}, " +
+                    $"Primitives={snapshot.PrimitiveCount}, Owners={snapshot.OwnerCount}";
+                if (!snapshot.HasIndex || !snapshot.HasDeviceIndex)
+                    return false;
             }
 
             return true;

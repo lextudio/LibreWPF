@@ -414,6 +414,12 @@ complete-index compilation, popup inheritance, bounded owner-resolution retry
 and original candidate intersection details. Pending readbacks retain their map
 until completion or compositor disposal; no generic recovery or managed fallback.
 Native cache diagnostics use native index metadata/residency, never managed counts.
+Read the currently installed native scene without triggering a render refresh:
+secondary hosts may otherwise replace an index just uploaded by input with a new
+unqueried generation. For floating-window validation, identify the host through
+the visual's actual PresentationSource root, not inherited logical WindowService,
+and check its device-index residency with the same query generation before input
+or focus invalidates that scene.
 The native SDK gate requires its own input index; opt-in code is not application
 qualification or permission to enable defaults before required coverage closes.
 

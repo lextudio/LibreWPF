@@ -15,6 +15,20 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Toolkit live native input diagnostic passes; final package/platform gates next — 2026-09-14:**
+AvalonDock inherits the main WindowService in its floated editor, but the editor's
+actual PresentationSource root belongs to a separate presented floating host.
+The Toolkit gate now resolves that root and checks native device-index residency
+immediately after the receiving host's GPU input query. Native cache diagnostics
+read the installed scene without forcing a secondary render that would replace
+the just-uploaded index. The mixed source diagnostic runs all required Toolkit
+live actions through floating input, redock, hide/show, layout and serialization
+to its success marker. This is not exact-head package or Windows/macOS/Linux
+qualification. ProGPU's teardown guard fix is committed; its new CI is pending.
+Next: close exact ProGPU CI, build and consume qualified packages on all required
+platforms, advance LibreWinForms/LibreWPF pins, run final acceptance and merge in
+dependency order. See the [Toolkit floating input record](../reports/native-mil-toolkit-floating-input-2026-09-14.md).
+
 **Auto-hide passes; floating host presentation next — 2026-09-14:** ProGPU now
 captures the actual native dashed outline using its shared phase/run/cap/join
 geometry. The unchanged diagnostic Toolkit passes auto-hide and overview lifecycle,

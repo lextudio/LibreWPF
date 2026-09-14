@@ -3702,7 +3702,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal bool TryGetGpuHitTestCacheSnapshot(out ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot snapshot)
     {
         snapshot = default;
-        ProGpuWpfCompositionTarget? target = GetGpuHitTestTargetAfterRefresh();
+        // Native diagnostics describe the scene currently installed in the
+        // compositor. Refreshing a secondary host here can replace the index
+        // just uploaded by the input query with a new, not-yet-queried scene.
+        ProGpuWpfCompositionTarget? target = RendererMode == ProGpuWpfRendererMode.NativeMilWgpu
+            ? (_isDisposed ? null : _target)
+            : GetGpuHitTestTargetAfterRefresh();
         if (target == null)
         {
             return false;

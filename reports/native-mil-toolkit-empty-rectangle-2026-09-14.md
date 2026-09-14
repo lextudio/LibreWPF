@@ -1,5 +1,8 @@
 # Toolkit empty rectangle and next native input blocker
 
+Latest follow-up: native input compilation is repaired; rendering now rejects
+retained cache ownership/capacity preflight. See the final section below.
+
 Acceptance application: ProGPU.Wpf.ToolkitApp. Action: focus its filter after
 first native presentation and transient-surface quiescence. The actual source
 DrawRectangle record contains (+infinity, +infinity, -infinity, -infinity), the
@@ -52,3 +55,20 @@ hidden-range assertions remain unchanged. Source Core builds with zero warnings;
 the test build has six existing warnings. All 22 PortableTextLine tests now pass,
 none skipped, with the current diagnostic source Core/Interop graph. The changed
 continuation-width/captured-provider test is included in those 22.
+
+## Singular image input fixed; retained cache preflight next
+
+The rejected scope is a 19.9999-by-20 image rectangle under a zero linear affine
+transform, not an unsupported clip. ProGPU now omits its noninvertible query
+geometry while preserving scope/owner restoration, matching existing managed
+image/point input policy. All 19 native suites and paired managed rectangle tests
+pass, including rank-one, tiny invertible and mirrored transforms. See ProGPU
+docs/native-source-rectangle-transform.md for exact provenance and limits.
+
+The unchanged Toolkit diagnostic gets through native compilation and reaches
+RenderScene, then fails semantic cache preflight with the existing owner-conflict
+or bounded-pool diagnostic. Next trace cache_budget.add using real owner identity,
+extent, shared status, content revision and effect status; do not increase limits
+or disable caching without identifying which invariant failed. Log:
+toolkit-diagnostic-singular-image-input.log. No Toolkit success, final package
+qualification, dependency-pin advance or merge is claimed.

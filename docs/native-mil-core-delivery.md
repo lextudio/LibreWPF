@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Toolkit input compiles; cache preflight next — 2026-09-14:** ProGPU now omits
+noninvertible source image/point rectangles without rejecting the complete native
+index, matching managed scope policy. The unchanged Toolkit gate reaches rendering
+and rejects retained cache ownership/capacity preflight. All 19 native suites,
+201 compiler/decoder fixtures, 22 source text fixtures and two paired managed
+rectangle fixtures pass in their documented diagnostic graphs. Source hidden
+selection and actual newline caret semantics are now separate. Trace the real
+cache-budget failure next, preserving limits and final package/CI gates. See
+[latest Toolkit evidence](../reports/native-mil-toolkit-empty-rectangle-2026-09-14.md#singular-image-input-fixed-retained-cache-preflight-next).
+
 **Toolkit empty rectangle fixed; native input compilation next — 2026-09-14:**
 The filter-focus rectangle is canonical Rect.Empty. ProGPU's shared C++ compiler
 now handles its static draw without ink while preserving handles/scopes/owners;

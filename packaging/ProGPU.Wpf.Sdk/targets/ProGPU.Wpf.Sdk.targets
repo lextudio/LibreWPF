@@ -4,9 +4,13 @@
     <CopyLocalLockFileAssemblies Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">true</CopyLocalLockFileAssemblies>
     <ProGpuWpfPackageVersion Condition="'$(ProGpuWpfPackageVersion)' == ''">$(ProGpuWpfSdkVersion)</ProGpuWpfPackageVersion>
     <ProGpuWpfManagedPackageVersion Condition="'$(ProGpuWpfManagedPackageVersion)' == ''">$(ProGpuWpfPackageVersion)</ProGpuWpfManagedPackageVersion>
+    <ProGpuWpfUseCanonicalLibreWinForms Condition="'$(ProGpuWpfUseCanonicalLibreWinForms)' == ''">false</ProGpuWpfUseCanonicalLibreWinForms>
     <ProGpuWpfLibreWinFormsPackageVersion Condition="'$(ProGpuWpfLibreWinFormsPackageVersion)' == ''">$(ProGpuWpfManagedPackageVersion)</ProGpuWpfLibreWinFormsPackageVersion>
-    <ProGpuPackageVersion Condition="'$(ProGpuPackageVersion)' == ''">0.1.0-preview.55</ProGpuPackageVersion>
-    <ProGpuWpfNet10SupportPackageVersion Condition="'$(ProGpuWpfNet10SupportPackageVersion)' == ''">10.0.10</ProGpuWpfNet10SupportPackageVersion>
+    <ProGpuWpfLibreWinFormsBackendPackageVersion Condition="'$(ProGpuWpfLibreWinFormsBackendPackageVersion)' == ''">$(ProGpuWpfLibreWinFormsPackageVersion)</ProGpuWpfLibreWinFormsBackendPackageVersion>
+    <ProGpuWpfLibreWinFormsRuntimePackageId Condition="'$(ProGpuWpfLibreWinFormsRuntimePackageId)' == '' And '$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'">LibreWinForms.System.Windows.Forms</ProGpuWpfLibreWinFormsRuntimePackageId>
+    <ProGpuWpfLibreWinFormsRuntimePackageId Condition="'$(ProGpuWpfLibreWinFormsRuntimePackageId)' == ''">LibreWinForms.Compatibility.System.Windows.Forms</ProGpuWpfLibreWinFormsRuntimePackageId>
+    <ProGpuPackageVersion Condition="'$(ProGpuPackageVersion)' == ''">0.1.0-preview.62</ProGpuPackageVersion>
+    <ProGpuWpfNet10SupportPackageVersion Condition="'$(ProGpuWpfNet10SupportPackageVersion)' == ''">10.0.11</ProGpuWpfNet10SupportPackageVersion>
     <ProGpuWpfSystemConfigurationConfigurationManagerVersion Condition="'$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">$(ProGpuWpfNet10SupportPackageVersion)</ProGpuWpfSystemConfigurationConfigurationManagerVersion>
     <ProGpuWpfSystemFormatsNrbfVersion Condition="'$(ProGpuWpfSystemFormatsNrbfVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">$(ProGpuWpfNet10SupportPackageVersion)</ProGpuWpfSystemFormatsNrbfVersion>
     <ProGpuWpfSystemIOPackagingVersion Condition="'$(ProGpuWpfSystemIOPackagingVersion)' == '' And $(TargetFramework.StartsWith('net10.'))">$(ProGpuWpfNet10SupportPackageVersion)</ProGpuWpfSystemIOPackagingVersion>
@@ -55,6 +59,7 @@
 
   <PropertyGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfEnablePortableBootstrap)' == 'true' And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe') And '$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'">
     <DefineConstants>$(DefineConstants);PROGPU_WPF_USE_LIBREWINFORMS</DefineConstants>
+    <DefineConstants Condition="'$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'">$(DefineConstants);PROGPU_WPF_USE_CANONICAL_LIBREWINFORMS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
@@ -73,10 +78,30 @@
   </Target>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfEnablePortableBootstrap)' == 'true' And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe')">
+    <Compile Remove="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs"
              Link="ProGPU.Wpf.Sdk.PortableBootstrap.cs"
              Visible="false" />
+    <RuntimeHostConfigurationOption Include="LibreWPF.RequestedRendererMode" Value="$(ProGpuWpfRendererMode)" />
   </ItemGroup>
+
+  <PropertyGroup Condition="'$(ProGpuWpfRendererMode)' == 'NativeMilWgpu'">
+    <DefineConstants>$(DefineConstants);PROGPU_WPF_NATIVE_MIL</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(ProGpuWpfNativeMilHitTesting)' == 'true'">
+    <DefineConstants>$(DefineConstants);PROGPU_WPF_NATIVE_MIL_HIT_TESTING</DefineConstants>
+  </PropertyGroup>
+
+  <Target Name="_ProGpuWpfSdkValidateRendererMode" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(ProGpuWpfNativeMilHitTesting)' != 'true' And '$(ProGpuWpfNativeMilHitTesting)' != 'false'"
+           Text="ProGpuWpfNativeMilHitTesting must be true or false." />
+    <Error Condition="'$(ProGpuWpfNativeMilHitTesting)' == 'true' And '$(ProGpuWpfRendererMode)' != 'NativeMilWgpu'"
+           Text="ProGpuWpfNativeMilHitTesting requires NativeMilWgpu; managed input remains independent." />
+    <Error Condition="'$(ProGpuWpfRendererMode)' != 'ManagedPortable' And '$(ProGpuWpfRendererMode)' != 'NativeMilWgpu'"
+           Text="ProGpuWpfRendererMode must be ManagedPortable or NativeMilWgpu." />
+    <Error Condition="'$(ProGpuWpfRendererMode)' == 'NativeMilWgpu' And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe') And ('$(ProGpuWpfUsePortableFrameworkReferences)' != 'true' Or '$(ProGpuWpfEnablePortableBootstrap)' != 'true')"
+           Text="NativeMilWgpu requires portable framework references and the portable SDK bootstrap; it must not silently run another renderer." />
+  </Target>
 
   <ItemGroup Condition="'$(EnableDefaultItems)' == 'true' And '$(EnableDefaultResourceItems)' == 'true' And '$(ProGpuWpfUseWpfMarkup)' == 'true'">
     <_ProGpuWpfDefaultResourceItem Include="**/*.bmp;**/*.cur;**/*.gif;**/*.ico;**/*.jpg;**/*.jpeg;**/*.png;**/*.tif;**/*.tiff;**/*.wdp;**/*.webp"
@@ -136,14 +161,16 @@
     <PackageReference Include="LibreWPF.ProGPU" Version="$(ProGpuWpfPackageVersion)" />
     <PackageReference Include="LibreWPF.Interop" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Backend" Version="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Backend.Native" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.DirectX" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Scene" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Vector" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Text" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Compute" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Transpiler" Version="$(ProGpuPackageVersion)" />
-    <PackageReference Include="LibreWinForms.System.Windows.Forms" Version="$(ProGpuWpfLibreWinFormsPackageVersion)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'" />
-    <PackageReference Include="LibreWinForms.WindowsFormsIntegration" Version="$(ProGpuWpfLibreWinFormsPackageVersion)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'" />
+    <PackageReference Include="$(ProGpuWpfLibreWinFormsRuntimePackageId)" Version="$(ProGpuWpfLibreWinFormsPackageVersion)" GeneratePathProperty="$(ProGpuWpfUseCanonicalLibreWinForms)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'" />
+    <PackageReference Include="LibreWinForms.ProGPU" Version="$(ProGpuWpfLibreWinFormsBackendPackageVersion)" GeneratePathProperty="true" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true' And '$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'" />
+    <PackageReference Include="LibreWinForms.WindowsFormsIntegration" Version="$(ProGpuWpfLibreWinFormsPackageVersion)" GeneratePathProperty="$(ProGpuWpfUseCanonicalLibreWinForms)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'" />
     <PackageReference Include="LibreWPF.WinFormsCompat.System.Windows.Forms" Version="$(ProGpuWpfManagedPackageVersion)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' != 'true'" />
     <PackageReference Include="LibreWPF.WinFormsCompat.WindowsFormsIntegration" Version="$(ProGpuWpfManagedPackageVersion)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' != 'true'" />
   </ItemGroup>
@@ -153,14 +180,16 @@
     <PackageReference Include="LibreWPF.ProGPU" VersionOverride="$(ProGpuWpfPackageVersion)" />
     <PackageReference Include="LibreWPF.Interop" VersionOverride="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Backend" VersionOverride="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Backend.Native" VersionOverride="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.DirectX" VersionOverride="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Scene" VersionOverride="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Vector" VersionOverride="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Text" VersionOverride="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Compute" VersionOverride="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Transpiler" VersionOverride="$(ProGpuPackageVersion)" />
-    <PackageReference Include="LibreWinForms.System.Windows.Forms" VersionOverride="$(ProGpuWpfLibreWinFormsPackageVersion)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'" />
-    <PackageReference Include="LibreWinForms.WindowsFormsIntegration" VersionOverride="$(ProGpuWpfLibreWinFormsPackageVersion)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'" />
+    <PackageReference Include="$(ProGpuWpfLibreWinFormsRuntimePackageId)" VersionOverride="$(ProGpuWpfLibreWinFormsPackageVersion)" GeneratePathProperty="$(ProGpuWpfUseCanonicalLibreWinForms)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'" />
+    <PackageReference Include="LibreWinForms.ProGPU" VersionOverride="$(ProGpuWpfLibreWinFormsBackendPackageVersion)" GeneratePathProperty="true" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true' And '$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'" />
+    <PackageReference Include="LibreWinForms.WindowsFormsIntegration" VersionOverride="$(ProGpuWpfLibreWinFormsPackageVersion)" GeneratePathProperty="$(ProGpuWpfUseCanonicalLibreWinForms)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true'" />
     <PackageReference Include="LibreWPF.WinFormsCompat.System.Windows.Forms" VersionOverride="$(ProGpuWpfManagedPackageVersion)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' != 'true'" />
     <PackageReference Include="LibreWPF.WinFormsCompat.WindowsFormsIntegration" VersionOverride="$(ProGpuWpfManagedPackageVersion)" Condition="'$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' != 'true'" />
   </ItemGroup>
@@ -216,6 +245,7 @@
     <Reference Include="ProGPU.Wpf" HintPath="$(_ProGpuReferenceRoot)ProGPU.Wpf.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Wpf.dll')" />
     <Reference Include="ProGPU.Wpf.Interop" HintPath="$(_ProGpuReferenceRoot)ProGPU.Wpf.Interop.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Wpf.Interop.dll')" />
     <Reference Include="ProGPU.Backend" HintPath="$(_ProGpuReferenceRoot)ProGPU.Backend.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Backend.dll')" />
+    <Reference Include="ProGPU.Backend.Native" HintPath="$(_ProGpuReferenceRoot)ProGPU.Backend.Native.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Backend.Native.dll')" />
     <Reference Include="ProGPU.DirectX" HintPath="$(_ProGpuReferenceRoot)ProGPU.DirectX.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.DirectX.dll')" />
     <Reference Include="ProGPU.Scene" HintPath="$(_ProGpuReferenceRoot)ProGPU.Scene.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Scene.dll')" />
     <Reference Include="ProGPU.Vector" HintPath="$(_ProGpuReferenceRoot)ProGPU.Vector.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Vector.dll')" />
@@ -228,6 +258,7 @@
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Wpf.dll" TargetPath="ProGPU.Wpf.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Wpf.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Wpf.Interop.dll" TargetPath="ProGPU.Wpf.Interop.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Wpf.Interop.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Backend.dll" TargetPath="ProGPU.Backend.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Backend.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Backend.Native.dll" TargetPath="ProGPU.Backend.Native.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Backend.Native.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.DirectX.dll" TargetPath="ProGPU.DirectX.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.DirectX.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Scene.dll" TargetPath="ProGPU.Scene.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Scene.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Vector.dll" TargetPath="ProGPU.Vector.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Vector.dll')" />
@@ -248,7 +279,7 @@
   <Target Name="_ProGpuWpfSdkReportConfiguration"
           BeforeTargets="PrepareForBuild"
           Condition="'$(ProGpuWpfEnableSdkDiagnostics)' == 'true'">
-    <Message Importance="High" Text="ProGPU.Wpf.Sdk platform=$(ProGpuWpfPlatform) backend=$(ProGpuWpfRenderingBackend) referenceMode=$(ProGpuWpfReferenceMode)" />
+    <Message Importance="High" Text="ProGPU.Wpf.Sdk platform=$(ProGpuWpfPlatform) backend=$(ProGpuWpfRenderingBackend) rendererMode=$(ProGpuWpfRendererMode) referenceMode=$(ProGpuWpfReferenceMode)" />
   </Target>
 
   <Target Name="_ProGpuWpfSdkCopyLocalRuntimeAssets"
@@ -276,6 +307,8 @@
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)System.Windows.Primitives.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)System.Windows.Forms.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)WindowsFormsIntegration.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)LibreWinForms.Platform.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)LibreWinForms.ProGPU.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Aero.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Aero2.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.AeroLite.dll" />
@@ -287,6 +320,7 @@
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Wpf.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Wpf.Interop.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Backend.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Backend.Native.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.DirectX.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Scene.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Vector.dll" />
@@ -429,9 +463,83 @@
     </ItemGroup>
   </Target>
 
+  <!--
+    NuGet conflict resolution can remove secondary assemblies that share the
+    canonical System.Windows.Forms package with the primary Forms assembly.
+    Preserve the complete typed WinForms package closure in both the deps file
+    and the application output.  In particular, LibreWinForms.ProGPU directly
+    consumes LibreWinForms.Platform and must never be deployed without it.
+  -->
+  <Target Name="_ProGpuWpfSdkPreservePortableWinFormsRuntimeAssetsInDependencyFile"
+          DependsOnTargets="ResolveLockFileCopyLocalFiles;ResolveAssemblyReferences"
+          BeforeTargets="GenerateBuildDependencyFile"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package' And '$(ProGpuWpfUsePortableWinFormsCompat)' == 'true' And '$(ProGpuWpfUseLibreWinForms)' == 'true' And '$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'">
+    <ItemGroup>
+      <_ProGpuWpfCanonicalFormsReferenceAnchor Include="@(ReferencePath)" Condition="'%(ReferencePath.Filename)' == 'System.Windows.Forms' And ('%(ReferencePath.NuGetPackageId)' == '$(ProGpuWpfLibreWinFormsRuntimePackageId)' Or $([System.String]::Copy('%(ReferencePath.Identity)').ToLowerInvariant().Contains('librewinforms.system.windows.forms')))" />
+      <_ProGpuWpfCanonicalBackendReferenceAnchor Include="@(ReferencePath)" Condition="'%(ReferencePath.Filename)' == 'LibreWinForms.ProGPU' And ('%(ReferencePath.NuGetPackageId)' == 'LibreWinForms.ProGPU' Or $([System.String]::Copy('%(ReferencePath.Identity)').ToLowerInvariant().Contains('librewinforms.progpu')))" />
+      <_ProGpuWpfCanonicalIntegrationReferenceAnchor Include="@(ReferencePath)" Condition="'%(ReferencePath.Filename)' == 'WindowsFormsIntegration' And ('%(ReferencePath.NuGetPackageId)' == 'LibreWinForms.WindowsFormsIntegration' Or $([System.String]::Copy('%(ReferencePath.Identity)').ToLowerInvariant().Contains('librewinforms.windowsformsintegration')))" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <_ProGpuWpfCanonicalWinFormsNuGetPackagesEnvironment>$([System.Environment]::GetEnvironmentVariable('NUGET_PACKAGES'))</_ProGpuWpfCanonicalWinFormsNuGetPackagesEnvironment>
+      <_ProGpuWpfCanonicalWinFormsPackageRoot Condition="'$(RestorePackagesPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(RestorePackagesPath)'))</_ProGpuWpfCanonicalWinFormsPackageRoot>
+      <_ProGpuWpfCanonicalWinFormsPackageRoot Condition="'$(_ProGpuWpfCanonicalWinFormsPackageRoot)' == '' And '$(_ProGpuWpfCanonicalWinFormsNuGetPackagesEnvironment)' != ''">$([MSBuild]::EnsureTrailingSlash('$(_ProGpuWpfCanonicalWinFormsNuGetPackagesEnvironment)'))</_ProGpuWpfCanonicalWinFormsPackageRoot>
+      <_ProGpuWpfCanonicalWinFormsPackageRoot Condition="'$(_ProGpuWpfCanonicalWinFormsPackageRoot)' == '' And '$(NuGetPackageRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_ProGpuWpfCanonicalWinFormsPackageRoot>
+      <_ProGpuWpfCanonicalWinFormsRuntimeTfm Condition="'$(ProGpuWpfPortableWinFormsCompatRuntimeTfm)' != ''">$(ProGpuWpfPortableWinFormsCompatRuntimeTfm)</_ProGpuWpfCanonicalWinFormsRuntimeTfm>
+      <_ProGpuWpfCanonicalWinFormsRuntimeTfm Condition="'$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)' == '' And '$([System.String]::Copy(`$(TargetFramework)`).StartsWith(`net10.`))' == 'True'">net10.0</_ProGpuWpfCanonicalWinFormsRuntimeTfm>
+      <_ProGpuWpfCanonicalWinFormsRuntimeTfm Condition="'$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)' == ''">$(TargetFramework)</_ProGpuWpfCanonicalWinFormsRuntimeTfm>
+      <_ProGpuWpfCanonicalFormsReferenceDirectory Condition="'@(_ProGpuWpfCanonicalFormsReferenceAnchor)' != ''">$([System.IO.Path]::GetDirectoryName('@(_ProGpuWpfCanonicalFormsReferenceAnchor)'))</_ProGpuWpfCanonicalFormsReferenceDirectory>
+      <_ProGpuWpfCanonicalBackendReferenceDirectory Condition="'@(_ProGpuWpfCanonicalBackendReferenceAnchor)' != ''">$([System.IO.Path]::GetDirectoryName('@(_ProGpuWpfCanonicalBackendReferenceAnchor)'))</_ProGpuWpfCanonicalBackendReferenceDirectory>
+      <_ProGpuWpfCanonicalIntegrationReferenceDirectory Condition="'@(_ProGpuWpfCanonicalIntegrationReferenceAnchor)' != ''">$([System.IO.Path]::GetDirectoryName('@(_ProGpuWpfCanonicalIntegrationReferenceAnchor)'))</_ProGpuWpfCanonicalIntegrationReferenceDirectory>
+      <_ProGpuWpfCanonicalFormsRuntimeRoot Condition="'$(PkgLibreWinForms_System_Windows_Forms)' != ''">$([MSBuild]::EnsureTrailingSlash('$(PkgLibreWinForms_System_Windows_Forms)'))lib/$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)</_ProGpuWpfCanonicalFormsRuntimeRoot>
+      <_ProGpuWpfCanonicalBackendRuntimeRoot Condition="'$(PkgLibreWinForms_ProGPU)' != ''">$([MSBuild]::EnsureTrailingSlash('$(PkgLibreWinForms_ProGPU)'))lib/$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)</_ProGpuWpfCanonicalBackendRuntimeRoot>
+      <_ProGpuWpfCanonicalIntegrationRuntimeRoot Condition="'$(PkgLibreWinForms_WindowsFormsIntegration)' != ''">$([MSBuild]::EnsureTrailingSlash('$(PkgLibreWinForms_WindowsFormsIntegration)'))lib/$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)</_ProGpuWpfCanonicalIntegrationRuntimeRoot>
+      <_ProGpuWpfCanonicalFormsRuntimeRoot Condition="'$(_ProGpuWpfCanonicalFormsRuntimeRoot)' == '' And '$(_ProGpuWpfCanonicalFormsReferenceDirectory)' != ''">$([System.String]::Copy('$(_ProGpuWpfCanonicalFormsReferenceDirectory)').Replace('/ref/', '/lib/').Replace('\ref\', '\lib\'))</_ProGpuWpfCanonicalFormsRuntimeRoot>
+      <_ProGpuWpfCanonicalBackendRuntimeRoot Condition="'$(_ProGpuWpfCanonicalBackendRuntimeRoot)' == '' And '$(_ProGpuWpfCanonicalBackendReferenceDirectory)' != ''">$([System.String]::Copy('$(_ProGpuWpfCanonicalBackendReferenceDirectory)').Replace('/ref/', '/lib/').Replace('\ref\', '\lib\'))</_ProGpuWpfCanonicalBackendRuntimeRoot>
+      <_ProGpuWpfCanonicalIntegrationRuntimeRoot Condition="'$(_ProGpuWpfCanonicalIntegrationRuntimeRoot)' == '' And '$(_ProGpuWpfCanonicalIntegrationReferenceDirectory)' != ''">$([System.String]::Copy('$(_ProGpuWpfCanonicalIntegrationReferenceDirectory)').Replace('/ref/', '/lib/').Replace('\ref\', '\lib\'))</_ProGpuWpfCanonicalIntegrationRuntimeRoot>
+      <_ProGpuWpfCanonicalFormsRuntimeRoot Condition="'$(_ProGpuWpfCanonicalFormsRuntimeRoot)' == ''">$(_ProGpuWpfCanonicalWinFormsPackageRoot)$([System.String]::Copy('$(ProGpuWpfLibreWinFormsRuntimePackageId)').ToLowerInvariant())/$(ProGpuWpfLibreWinFormsPackageVersion)/lib/$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)</_ProGpuWpfCanonicalFormsRuntimeRoot>
+      <_ProGpuWpfCanonicalBackendRuntimeRoot Condition="'$(_ProGpuWpfCanonicalBackendRuntimeRoot)' == ''">$(_ProGpuWpfCanonicalWinFormsPackageRoot)librewinforms.progpu/$(ProGpuWpfLibreWinFormsBackendPackageVersion)/lib/$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)</_ProGpuWpfCanonicalBackendRuntimeRoot>
+      <_ProGpuWpfCanonicalIntegrationRuntimeRoot Condition="'$(_ProGpuWpfCanonicalIntegrationRuntimeRoot)' == ''">$(_ProGpuWpfCanonicalWinFormsPackageRoot)librewinforms.windowsformsintegration/$(ProGpuWpfLibreWinFormsPackageVersion)/lib/$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)</_ProGpuWpfCanonicalIntegrationRuntimeRoot>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_ProGpuWpfCanonicalFormsRuntimeAsset Include="$(_ProGpuWpfCanonicalFormsRuntimeRoot)/*.dll" />
+      <_ProGpuWpfCanonicalBackendRuntimeAsset Include="$(_ProGpuWpfCanonicalBackendRuntimeRoot)/*.dll" />
+      <_ProGpuWpfCanonicalIntegrationRuntimeAsset Include="$(_ProGpuWpfCanonicalIntegrationRuntimeRoot)/*.dll" />
+
+      <RuntimeCopyLocalItems Include="@(_ProGpuWpfCanonicalFormsRuntimeAsset)" Exclude="@(RuntimeCopyLocalItems)">
+        <NuGetPackageId>$(ProGpuWpfLibreWinFormsRuntimePackageId)</NuGetPackageId>
+        <NuGetPackageVersion>$(ProGpuWpfLibreWinFormsPackageVersion)</NuGetPackageVersion>
+        <AssetType>runtime</AssetType>
+        <PathInPackage>lib/$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)/%(Filename)%(Extension)</PathInPackage>
+        <DestinationSubPath>%(Filename)%(Extension)</DestinationSubPath>
+        <DestinationSubDirectory></DestinationSubDirectory>
+      </RuntimeCopyLocalItems>
+      <RuntimeCopyLocalItems Include="@(_ProGpuWpfCanonicalBackendRuntimeAsset)" Exclude="@(RuntimeCopyLocalItems)">
+        <NuGetPackageId>LibreWinForms.ProGPU</NuGetPackageId>
+        <NuGetPackageVersion>$(ProGpuWpfLibreWinFormsBackendPackageVersion)</NuGetPackageVersion>
+        <AssetType>runtime</AssetType>
+        <PathInPackage>lib/$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)/%(Filename)%(Extension)</PathInPackage>
+        <DestinationSubPath>%(Filename)%(Extension)</DestinationSubPath>
+        <DestinationSubDirectory></DestinationSubDirectory>
+      </RuntimeCopyLocalItems>
+      <RuntimeCopyLocalItems Include="@(_ProGpuWpfCanonicalIntegrationRuntimeAsset)" Exclude="@(RuntimeCopyLocalItems)">
+        <NuGetPackageId>LibreWinForms.WindowsFormsIntegration</NuGetPackageId>
+        <NuGetPackageVersion>$(ProGpuWpfLibreWinFormsPackageVersion)</NuGetPackageVersion>
+        <AssetType>runtime</AssetType>
+        <PathInPackage>lib/$(_ProGpuWpfCanonicalWinFormsRuntimeTfm)/%(Filename)%(Extension)</PathInPackage>
+        <DestinationSubPath>%(Filename)%(Extension)</DestinationSubPath>
+        <DestinationSubDirectory></DestinationSubDirectory>
+      </RuntimeCopyLocalItems>
+    </ItemGroup>
+
+    <Error Condition="'@(_ProGpuWpfCanonicalFormsRuntimeAsset)' == '' Or '@(_ProGpuWpfCanonicalBackendRuntimeAsset)' == '' Or '@(_ProGpuWpfCanonicalIntegrationRuntimeAsset)' == ''"
+           Text="LibreWPF package mode could not preserve the complete canonical LibreWinForms runtime closure from '$(_ProGpuWpfCanonicalFormsRuntimeRoot)', '$(_ProGpuWpfCanonicalBackendRuntimeRoot)', and '$(_ProGpuWpfCanonicalIntegrationRuntimeRoot)'." />
+  </Target>
+
   <Target Name="_ProGpuWpfSdkCopyPortableWinFormsCompatRuntimeAssets"
-          DependsOnTargets="ResolveLockFileCopyLocalFiles"
-          AfterTargets="_ProGpuWpfSdkCopyPackageRuntimeAssets"
+          DependsOnTargets="ResolveLockFileCopyLocalFiles;_ProGpuWpfSdkPreservePortableWinFormsRuntimeAssetsInDependencyFile"
+          AfterTargets="Build"
           Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfUsePortableWinFormsCompat)' == 'true'">
     <PropertyGroup>
       <_ProGpuWpfNuGetPackagesEnvironment>$([System.Environment]::GetEnvironmentVariable('NUGET_PACKAGES'))</_ProGpuWpfNuGetPackagesEnvironment>
@@ -441,12 +549,25 @@
       <_ProGpuWpfPortableWinFormsCompatRuntimeTfm Condition="'$(ProGpuWpfPortableWinFormsCompatRuntimeTfm)' != ''">$(ProGpuWpfPortableWinFormsCompatRuntimeTfm)</_ProGpuWpfPortableWinFormsCompatRuntimeTfm>
       <_ProGpuWpfPortableWinFormsCompatRuntimeTfm Condition="'$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)' == '' And '$([System.String]::Copy(`$(TargetFramework)`).StartsWith(`net10.`))' == 'True'">net10.0</_ProGpuWpfPortableWinFormsCompatRuntimeTfm>
       <_ProGpuWpfPortableWinFormsCompatRuntimeTfm Condition="'$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)' == ''">$(TargetFramework)</_ProGpuWpfPortableWinFormsCompatRuntimeTfm>
+      <_ProGpuWpfCanonicalFormsCopyRoot Condition="'$(PkgLibreWinForms_System_Windows_Forms)' != ''">$([MSBuild]::EnsureTrailingSlash('$(PkgLibreWinForms_System_Windows_Forms)'))lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)</_ProGpuWpfCanonicalFormsCopyRoot>
+      <_ProGpuWpfCanonicalBackendCopyRoot Condition="'$(PkgLibreWinForms_ProGPU)' != ''">$([MSBuild]::EnsureTrailingSlash('$(PkgLibreWinForms_ProGPU)'))lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)</_ProGpuWpfCanonicalBackendCopyRoot>
+      <_ProGpuWpfCanonicalIntegrationCopyRoot Condition="'$(PkgLibreWinForms_WindowsFormsIntegration)' != ''">$([MSBuild]::EnsureTrailingSlash('$(PkgLibreWinForms_WindowsFormsIntegration)'))lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)</_ProGpuWpfCanonicalIntegrationCopyRoot>
+      <_ProGpuWpfCanonicalFormsCopyRoot Condition="'$(_ProGpuWpfCanonicalFormsCopyRoot)' == ''">$(_ProGpuWpfPackageRoot)$([System.String]::Copy('$(ProGpuWpfLibreWinFormsRuntimePackageId)').ToLowerInvariant())/$(ProGpuWpfLibreWinFormsPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)</_ProGpuWpfCanonicalFormsCopyRoot>
+      <_ProGpuWpfCanonicalBackendCopyRoot Condition="'$(_ProGpuWpfCanonicalBackendCopyRoot)' == ''">$(_ProGpuWpfPackageRoot)librewinforms.progpu/$(ProGpuWpfLibreWinFormsBackendPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)</_ProGpuWpfCanonicalBackendCopyRoot>
+      <_ProGpuWpfCanonicalIntegrationCopyRoot Condition="'$(_ProGpuWpfCanonicalIntegrationCopyRoot)' == ''">$(_ProGpuWpfPackageRoot)librewinforms.windowsformsintegration/$(ProGpuWpfLibreWinFormsPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)</_ProGpuWpfCanonicalIntegrationCopyRoot>
     </PropertyGroup>
 
     <ItemGroup>
+      <!-- Recompute these items in the final build target. .NET 11 may invoke the
+           deps-file hook through an isolated target scope and then cache it as
+           complete, so items created by that earlier hook are not reliable here. -->
+      <_ProGpuWpfCanonicalFormsCopyAsset Include="$(_ProGpuWpfCanonicalFormsCopyRoot)/*.dll" Condition="'$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'" />
+      <_ProGpuWpfCanonicalBackendCopyAsset Include="$(_ProGpuWpfCanonicalBackendCopyRoot)/*.dll" Condition="'$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'" />
+      <_ProGpuWpfCanonicalIntegrationCopyAsset Include="$(_ProGpuWpfCanonicalIntegrationCopyRoot)/*.dll" Condition="'$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'" />
       <_ProGpuWpfPortableWinFormsCompatRuntimeAsset
         Include="@(RuntimeCopyLocalItems)"
-        Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'LibreWPF.WinFormsCompat.System.Windows.Forms' Or '%(RuntimeCopyLocalItems.NuGetPackageId)' == 'LibreWPF.WinFormsCompat.WindowsFormsIntegration' Or '%(RuntimeCopyLocalItems.NuGetPackageId)' == 'LibreWinForms.System.Windows.Forms' Or '%(RuntimeCopyLocalItems.NuGetPackageId)' == 'LibreWinForms.WindowsFormsIntegration' Or '$([System.String]::Copy(`%(RuntimeCopyLocalItems.Identity)`).ToLowerInvariant().Contains(`librewpf.winformscompat.system.windows.forms`))' == 'True' Or '$([System.String]::Copy(`%(RuntimeCopyLocalItems.Identity)`).ToLowerInvariant().Contains(`librewpf.winformscompat.windowsformsintegration`))' == 'True' Or '$([System.String]::Copy(`%(RuntimeCopyLocalItems.Identity)`).ToLowerInvariant().Contains(`librewinforms.system.windows.forms`))' == 'True' Or '$([System.String]::Copy(`%(RuntimeCopyLocalItems.Identity)`).ToLowerInvariant().Contains(`librewinforms.windowsformsintegration`))' == 'True'" />
+        Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'LibreWPF.WinFormsCompat.System.Windows.Forms' Or '%(RuntimeCopyLocalItems.NuGetPackageId)' == 'LibreWPF.WinFormsCompat.WindowsFormsIntegration' Or '%(RuntimeCopyLocalItems.NuGetPackageId)' == '$(ProGpuWpfLibreWinFormsRuntimePackageId)' Or '%(RuntimeCopyLocalItems.NuGetPackageId)' == 'LibreWinForms.ProGPU' Or '%(RuntimeCopyLocalItems.NuGetPackageId)' == 'LibreWinForms.WindowsFormsIntegration' Or '$([System.String]::Copy(`%(RuntimeCopyLocalItems.Identity)`).ToLowerInvariant().Contains(`librewpf.winformscompat.system.windows.forms`))' == 'True' Or '$([System.String]::Copy(`%(RuntimeCopyLocalItems.Identity)`).ToLowerInvariant().Contains(`librewpf.winformscompat.windowsformsintegration`))' == 'True' Or '$([System.String]::Copy(`%(RuntimeCopyLocalItems.Identity)`).ToLowerInvariant().Contains(`librewinforms.compatibility.system.windows.forms`))' == 'True' Or '$([System.String]::Copy(`%(RuntimeCopyLocalItems.Identity)`).ToLowerInvariant().Contains(`librewinforms.progpu`))' == 'True' Or '$([System.String]::Copy(`%(RuntimeCopyLocalItems.Identity)`).ToLowerInvariant().Contains(`librewinforms.windowsformsintegration`))' == 'True'" />
+      <_ProGpuWpfPortableWinFormsCompatRuntimeAsset Include="@(_ProGpuWpfCanonicalFormsCopyAsset);@(_ProGpuWpfCanonicalBackendCopyAsset);@(_ProGpuWpfCanonicalIntegrationCopyAsset)" />
       <_ProGpuWpfPortableWinFormsCompatRuntimeAsset
         Include="$(_ProGpuWpfPackageRoot)librewpf.winformscompat.system.windows.forms/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)/System.Windows.Forms.dll"
         Condition="'$(ProGpuWpfUseLibreWinForms)' != 'true' And '$(_ProGpuWpfPackageRoot)' != '' And '$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)' != '' And Exists('$(_ProGpuWpfPackageRoot)librewpf.winformscompat.system.windows.forms/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)/System.Windows.Forms.dll')" />
@@ -454,8 +575,8 @@
         Include="$(_ProGpuWpfPackageRoot)librewpf.winformscompat.windowsformsintegration/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)/WindowsFormsIntegration.dll"
         Condition="'$(ProGpuWpfUseLibreWinForms)' != 'true' And '$(_ProGpuWpfPackageRoot)' != '' And '$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)' != '' And Exists('$(_ProGpuWpfPackageRoot)librewpf.winformscompat.windowsformsintegration/$(ProGpuWpfManagedPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)/WindowsFormsIntegration.dll')" />
       <_ProGpuWpfPortableWinFormsCompatRuntimeAsset
-        Include="$(_ProGpuWpfPackageRoot)librewinforms.system.windows.forms/$(ProGpuWpfLibreWinFormsPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)/System.Windows.Forms.dll"
-        Condition="'$(ProGpuWpfUseLibreWinForms)' == 'true' And '$(_ProGpuWpfPackageRoot)' != '' And '$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)' != '' And Exists('$(_ProGpuWpfPackageRoot)librewinforms.system.windows.forms/$(ProGpuWpfLibreWinFormsPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)/System.Windows.Forms.dll')" />
+        Include="$(_ProGpuWpfPackageRoot)$([System.String]::Copy('$(ProGpuWpfLibreWinFormsRuntimePackageId)').ToLowerInvariant())/$(ProGpuWpfLibreWinFormsPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)/System.Windows.Forms.dll"
+        Condition="'$(ProGpuWpfUseLibreWinForms)' == 'true' And '$(_ProGpuWpfPackageRoot)' != '' And '$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)' != '' And Exists('$(_ProGpuWpfPackageRoot)$([System.String]::Copy(`$(ProGpuWpfLibreWinFormsRuntimePackageId)`).ToLowerInvariant())/$(ProGpuWpfLibreWinFormsPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)/System.Windows.Forms.dll')" />
       <_ProGpuWpfPortableWinFormsCompatRuntimeAsset
         Include="$(_ProGpuWpfPackageRoot)librewinforms.windowsformsintegration/$(ProGpuWpfLibreWinFormsPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)/WindowsFormsIntegration.dll"
         Condition="'$(ProGpuWpfUseLibreWinForms)' == 'true' And '$(_ProGpuWpfPackageRoot)' != '' And '$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)' != '' And Exists('$(_ProGpuWpfPackageRoot)librewinforms.windowsformsintegration/$(ProGpuWpfLibreWinFormsPackageVersion)/lib/$(_ProGpuWpfPortableWinFormsCompatRuntimeTfm)/WindowsFormsIntegration.dll')" />
@@ -465,6 +586,20 @@
           DestinationFiles="@(_ProGpuWpfPortableWinFormsCompatRuntimeAsset->'$(TargetDir)%(DestinationSubDirectory)%(Filename)%(Extension)')"
           SkipUnchangedFiles="false"
           Condition="'@(_ProGpuWpfPortableWinFormsCompatRuntimeAsset)' != ''" />
+    <Copy SourceFiles="@(_ProGpuWpfCanonicalFormsCopyAsset)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="false"
+          Condition="'$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'" />
+    <Copy SourceFiles="@(_ProGpuWpfCanonicalBackendCopyAsset)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="false"
+          Condition="'$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'" />
+    <Copy SourceFiles="@(_ProGpuWpfCanonicalIntegrationCopyAsset)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="false"
+          Condition="'$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true'" />
+    <Error Condition="'$(ProGpuWpfUseCanonicalLibreWinForms)' == 'true' And !Exists('$(TargetDir)LibreWinForms.Platform.dll')"
+           Text="LibreWPF SDK did not deploy LibreWinForms.Platform.dll from canonical runtime roots '$(_ProGpuWpfCanonicalFormsCopyRoot)', '$(_ProGpuWpfCanonicalBackendCopyRoot)', and '$(_ProGpuWpfCanonicalIntegrationCopyRoot)'." />
   </Target>
 
   <Target Name="_ProGpuWpfSdkCopyNativeRuntimeAssets"

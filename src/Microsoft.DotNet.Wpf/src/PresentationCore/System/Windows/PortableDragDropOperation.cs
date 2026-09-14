@@ -117,19 +117,18 @@ namespace System.Windows
             _dragSource.PreviewMouseUp += onPreviewMouseButtonUp;
             _dragSource.PreviewKeyDown += onPreviewKeyDown;
 
-            // Safety net: the ONLY thing that normally ends this loop is a PreviewMouseUp/
-            // PreviewMouseMove routed event reaching _dragSource while it holds mouse capture. On
-            // Windows the OLE modal loop guarantees that delivery. Off Windows, real interactive
-            // drags have been observed to leave the button released at the OS level (Mouse.LeftButton
-            // already Released) without that routed event ever firing on _dragSource - e.g. capture
-            // getting silently redirected, or the up landing on a different element mid-drag - and
-            // with no timeout this loop then spins in Dispatcher's NativeInputPump/Thread.Sleep(1)
-            // forever, which is exactly an app hang a user has to force-quit to escape. Polling the
-            // global button state once per composed frame (~60Hz) closes that gap: catches a missed
-            // release within about one frame, while changing nothing when the routed event already
-            // fires normally (RaiseQueryContinueDrag's own zero-buttons-down check still drives the
-            // actual Drop decision).
-            EventHandler onRenderingTick = (_, _) =>
+            // A release may be lost before any routed move/up reaches the captured source.
+            // Retain a valid starting point so the liveness check can complete that drag.
+            _lastRootPoint = Mouse.GetPosition((IInputElement)_source.RootVisual);
+            _hasLastRootPoint = true;
+
+            // A render frame is not guaranteed while an idle nested dispatcher frame is active.
+            // Its timer queue is promoted on each turn, even when no routed input arrives.
+            var releaseTimer = new DispatcherTimer(DispatcherPriority.Input, _dragSource.Dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(16)
+            };
+            EventHandler onReleaseTick = (_, _) =>
             {
                 if (_action != DragAction.Continue || !_hasLastRootPoint)
                     return;
@@ -140,7 +139,8 @@ namespace System.Windows
                     OnPointerUpdate(frame, _lastRootPoint);
                 }
             };
-            CompositionTarget.Rendering += onRenderingTick;
+            releaseTimer.Tick += onReleaseTick;
+            releaseTimer.Start();
 
             try
             {
@@ -148,7 +148,8 @@ namespace System.Windows
             }
             finally
             {
-                CompositionTarget.Rendering -= onRenderingTick;
+                releaseTimer.Stop();
+                releaseTimer.Tick -= onReleaseTick;
                 _dragSource.PreviewMouseMove -= onPreviewMouseMove;
                 _dragSource.PreviewMouseUp -= onPreviewMouseButtonUp;
                 _dragSource.PreviewKeyDown -= onPreviewKeyDown;

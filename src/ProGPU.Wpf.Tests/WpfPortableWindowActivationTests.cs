@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Backend;
 using ProGPU.Wpf.Interop;
 using Xunit;
 
@@ -36,11 +37,104 @@ public sealed class WpfPortableWindowActivationTests
         Assert.NotNull(service.Callbacks.SetWindowBorder);
         Assert.NotNull(service.Callbacks.Close);
         Assert.NotNull(service.Callbacks.Run);
+        Assert.NotNull(service.Callbacks.RunDialog);
+        Assert.NotNull(service.Callbacks.ReleaseDialog);
+        Assert.NotNull(service.Callbacks.SetOwner);
         Assert.NotNull(service.Callbacks.Dispose);
         Assert.NotNull(service.Callbacks.DragMove);
         Assert.NotNull(service.Callbacks.GetHandle);
         Assert.NotNull(service.Callbacks.SetWindowRegion);
         Assert.NotNull(service.Callbacks.RequestActivation);
+    }
+
+    [Fact]
+    public void DialogReleaseWithoutNativeSessionCompletesEvenAfterActivationDisposal()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        Assert.True(WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation());
+        using var host = new ProGpuWpfWindowHost { WpfRenderScheduler = new TestRenderScheduler() };
+        Assert.True(WpfPortableWindowActivation.TryAttach(host, new FakeWindow(), new FakePortablePresentationSource(), out var activation));
+        using var lease = activation;
+        int completed = 0;
+        service.Callbacks!.ReleaseDialog!(activation!, () => completed++);
+        Assert.Equal(1, completed);
+        activation!.Dispose();
+        service.Callbacks.ReleaseDialog(activation, () => completed++);
+        Assert.Equal(2, completed);
+    }
+
+    [Fact]
+    public void OwnerUpdatesResolveLiveHostsAndPropagateNativeRejection()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        Assert.True(WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation());
+        using var ownerHost = new ProGpuWpfWindowHost { WpfRenderScheduler = new TestRenderScheduler() };
+        using var childHost = new ProGpuWpfWindowHost { WpfRenderScheduler = new TestRenderScheduler() };
+        var owner = new FakeWindow();
+        var child = new FakeWindow();
+        Assert.True(WpfPortableWindowActivation.TryAttach(ownerHost, owner, new FakePortablePresentationSource(), out var ownerActivation));
+        Assert.True(WpfPortableWindowActivation.TryAttach(childHost, child, new FakePortablePresentationSource(), out var childActivation));
+        using var ownerLease = ownerActivation;
+        using var childLease = childActivation;
+        var owners = new List<ProGpuWpfWindowHost?>();
+        bool accepted = true;
+        childHost.NativeOwnerSetterOverride = candidate => { owners.Add(candidate); return accepted; };
+
+        service.Callbacks!.SetOwner!(childActivation!, owner);
+        Assert.Same(ownerHost, Assert.Single(owners));
+        accepted = false;
+        Assert.Throws<PlatformNotSupportedException>(() => service.Callbacks.SetOwner(childActivation!, null));
+        accepted = true;
+        service.Callbacks.SetOwner(childActivation!, null);
+        Assert.Equal(3, owners.Count); // Rejected clearing did not erase the retained relation.
+        Assert.Null(owners[2]);
+        Assert.Throws<InvalidOperationException>(() => service.Callbacks.SetOwner(childActivation!, child));
+        Assert.Throws<InvalidOperationException>(() => service.Callbacks.SetOwner(childActivation!, new object()));
+        ownerActivation!.Dispose();
+        Assert.Throws<InvalidOperationException>(() => service.Callbacks.SetOwner(childActivation!, owner));
+        Assert.Equal(3, owners.Count);
+    }
+
+    [Fact]
+    public void OwnedShowRejectsMissingOwnerBeforeCreatingOrShowingNativeWindow()
+    {
+        using var host = new ProGpuWpfWindowHost { WpfRenderScheduler = new TestRenderScheduler() };
+        var child = new FakeWindow { Owner = new FakeWindow() };
+        Assert.True(WpfPortableWindowActivation.TryAttach(host, child, new FakePortablePresentationSource(), out var activation));
+        using var lease = activation;
+        Assert.Throws<InvalidOperationException>(() => activation!.Show());
+        Assert.Null(host.SilkWindow);
+    }
+
+    [Fact]
+    public void NativeInputGatesFollowSourceIdentityAndPopupInheritance()
+    {
+        using var ownerHost = new ProGpuWpfWindowHost { WpfRenderScheduler = new TestRenderScheduler() };
+        using var dialogHost = new ProGpuWpfWindowHost { WpfRenderScheduler = new TestRenderScheduler() };
+        using var popupHost = new ProGpuWpfWindowHost { WpfRenderScheduler = new TestRenderScheduler() };
+        bool ownerAllowed = true, dialogAllowed = true, popupAllowed = true;
+        ownerHost.NativeInputAllowedSetterOverride = value => { ownerAllowed = value; return true; };
+        dialogHost.NativeInputAllowedSetterOverride = value => { dialogAllowed = value; return true; };
+        popupHost.NativeInputAllowedSetterOverride = value => { popupAllowed = value; return true; };
+        var owner = new FakeWindow();
+        var dialog = new FakeWindow();
+        Assert.True(WpfPortableWindowActivation.TryAttach(ownerHost, owner, new FakePortablePresentationSource(), out var ownerActivation));
+        Assert.True(WpfPortableWindowActivation.TryAttach(dialogHost, dialog, new FakePortablePresentationSource(), out var dialogActivation));
+        using var ownerLease = ownerActivation;
+        using var dialogLease = dialogActivation;
+        using (PortableModalInputScope.Enter(dialog))
+        {
+            Assert.False(ownerAllowed);
+            Assert.True(dialogAllowed);
+            popupHost.InheritModalInputOwner(ownerHost);
+            Assert.False(popupAllowed);
+            using (PortableModalInputScope.Enter(new object())) Assert.False(dialogAllowed);
+            Assert.True(dialogAllowed);
+            Assert.False(ownerAllowed || popupAllowed);
+        }
+        Assert.True(ownerAllowed && dialogAllowed && popupAllowed);
     }
 
     [Fact]
@@ -69,6 +163,7 @@ public sealed class WpfPortableWindowActivationTests
         using var fileDialogRegistration = PortableWpfServiceRegistry.RegisterFileDialogService(fileDialogService);
         var launcherRegisterCountBefore = launcherService.RegisterCount;
         var messageBoxRegisterCountBefore = messageBoxService.RegisterCount;
+        var messageBoxFallbackCountBefore = messageBoxService.FallbackRegisterCount;
         var fileDialogRegisterCountBefore = fileDialogService.RegisterCount;
 
         var launcherRegistered = WpfPortableWindowActivation.TryRegisterPresentationFrameworkLauncherService();
@@ -80,7 +175,7 @@ public sealed class WpfPortableWindowActivationTests
         Assert.True(fileDialogRegistered);
         Assert.Equal(launcherRegisterCountBefore + 1, launcherService.RegisterCount);
         Assert.Equal(messageBoxRegisterCountBefore + 1, messageBoxService.RegisterCount);
-        Assert.Equal(1, messageBoxService.FallbackRegisterCount);
+        Assert.Equal(messageBoxFallbackCountBefore + 1, messageBoxService.FallbackRegisterCount);
         Assert.Equal(fileDialogRegisterCountBefore + 1, fileDialogService.RegisterCount);
         Assert.NotNull(launcherService.Launch);
         Assert.NotNull(messageBoxService.Show);
@@ -93,12 +188,13 @@ public sealed class WpfPortableWindowActivationTests
         var service = new TestMessageBoxServiceRegistrar(PortableWpfServiceKey.WinForms);
         using var registration = PortableWpfServiceRegistry.RegisterMessageBoxService(service);
         var registerCountBefore = service.RegisterCount;
+        var fallbackCountBefore = service.FallbackRegisterCount;
 
         var registered = WpfPortableWindowActivation.TryRegisterWinFormsCompatMessageBoxService();
 
         Assert.True(registered);
         Assert.Equal(registerCountBefore + 1, service.RegisterCount);
-        Assert.Equal(1, service.FallbackRegisterCount);
+        Assert.Equal(fallbackCountBefore + 1, service.FallbackRegisterCount);
         Assert.NotNull(service.Show);
     }
 
@@ -192,6 +288,19 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void RejectedConfiguredFactoryDoesNotConstructADefaultHost()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        Assert.True(WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation(_ => null!));
+        var callbacks = Assert.IsType<PortableWindowActivationCallbacks>(service.Callbacks);
+        var window = new FakeWindow();
+        Assert.Throws<InvalidOperationException>(() => callbacks.Activate(window));
+        Assert.NotNull(callbacks.CreateHidden);
+        Assert.Throws<InvalidOperationException>(() => callbacks.CreateHidden(window));
+    }
+
+    [Fact]
     public void WindowRegionCallbackUsesTypedHandleMap()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -222,6 +331,49 @@ public sealed class WpfPortableWindowActivationTests
 
         activation.Dispose();
         Assert.False(service.Callbacks.SetWindowRegion(source.Handle, region));
+    }
+
+    [Fact]
+    public void PortablePresentationHandleRegistersTypedNativeWindowOwner()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource
+        {
+            Handle = new IntPtr(0x505701)
+        };
+
+        Assert.True(WpfPortableWindowActivation.TryAttach(host, window, source, out var activation));
+        Assert.NotNull(activation);
+        Assert.True(NativeWindowOwnerRegistry.TryResolve(source.Handle, out INativeWindowOwner? owner));
+        Assert.Same(activation, owner);
+        Assert.False(NativeWindowOwnerRegistry.TryResolveNativeHandle(source.Handle, out _));
+
+        activation.Dispose();
+
+        Assert.False(NativeWindowOwnerRegistry.TryResolve(source.Handle, out _));
+    }
+
+    [Fact]
+    public void PortablePresentationHandleIsRegisteredBeforeRootVisualAttachment()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource
+        {
+            Handle = new IntPtr(0x505702)
+        };
+        INativeWindowOwner? ownerObservedDuringAttachment = null;
+        source.RootVisualChanged = _ =>
+        {
+            Assert.True(NativeWindowOwnerRegistry.TryResolve(source.Handle, out ownerObservedDuringAttachment));
+        };
+
+        Assert.True(WpfPortableWindowActivation.TryAttach(host, window, source, out var activation));
+        Assert.NotNull(activation);
+        Assert.Same(activation, ownerObservedDuringAttachment);
+
+        activation.Dispose();
     }
 
     [Fact]
@@ -538,7 +690,8 @@ public sealed class WpfPortableWindowActivationTests
             Top = 2,
             Topmost = false,
             WindowBorder = ProGpuWpfWindowBorder.Hidden,
-            VSync = true
+            VSync = true,
+            RendererMode = ProGpuWpfRendererMode.NativeMilWgpu
         };
         var window = new FakeWindow
         {
@@ -564,6 +717,9 @@ public sealed class WpfPortableWindowActivationTests
         Assert.True(options.Topmost);
         Assert.True(options.TransparentFramebuffer);
         Assert.True(options.VSync);
+        Assert.Equal(
+            ProGpuWpfRendererMode.NativeMilWgpu,
+            options.RendererMode);
         Assert.Equal(ProGpuWpfWindowState.Minimized, options.WindowState);
         Assert.Equal(ProGpuWpfWindowBorder.Resizable, options.WindowBorder);
     }
@@ -1327,6 +1483,66 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void ModalScopeRejectsOwnerIngressAndEventsQueuedBeforeEntry()
+    {
+        var service = new TestWindowActivationServiceRegistrar { QueueInputCallbacks = true };
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost { WpfRenderScheduler = new TestRenderScheduler() };
+        var window = new FakeDispatchingPortableInputWindow();
+        Assert.True(WpfPortableWindowActivation.TryAttach(host, window, new FakePortablePresentationSource(), out _));
+        var queued = new WpfInputEventArgs(WpfInputEventKind.MouseDown, button: WpfMouseButton.Left);
+        RaiseHostInputEvent(host, queued);
+        Action callback = service.LastBeginInvokeInputCallback!;
+        Assert.Equal(1, service.BeginInvokeInputCount);
+        using (PortableModalInputScope.Enter(new object()))
+        {
+            callback();
+            Assert.True(queued.Handled);
+            Assert.Equal(0, service.InputCount);
+            int activationCount = service.SetActivationStateCount;
+            RaiseHostWindowEvent(host, WpfWindowEventKind.Activated);
+            Assert.Equal(activationCount, service.SetActivationStateCount);
+            var drop = new WpfDragDropEventArgs(WpfDragDropEventKind.Drop,
+                new WpfDragDropData(Array.Empty<string>(), "blocked"),
+                acceptedEffect: WpfDragDropEffects.Copy);
+            RaiseHostDragDropEvent(host, drop);
+            Assert.Equal(WpfDragDropEffects.None, drop.AcceptedEffect);
+            Assert.Equal(0, service.DragDropCount);
+            var blocked = new WpfInputEventArgs(WpfInputEventKind.KeyDown, key: "A");
+            RaiseHostInputEvent(host, blocked);
+            Assert.True(blocked.Handled);
+            Assert.Equal(1, service.BeginInvokeInputCount);
+        }
+        using (PortableModalInputScope.Enter(window))
+        {
+            var allowed = new WpfInputEventArgs(WpfInputEventKind.KeyDown, key: "A");
+            RaiseHostInputEvent(host, allowed);
+            service.LastBeginInvokeInputCallback!();
+            Assert.Equal(1, service.InputCount);
+        }
+    }
+
+    [Fact]
+    public void ModalScopeCancelsNativeClosingOfAnotherWindow()
+    {
+        var service = new TestWindowActivationServiceRegistrar { HandleCloseWindow = true };
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        Assert.True(WpfPortableWindowActivation.TryAttach(host, new FakeWindow(),
+            new FakePortablePresentationSource(), out _));
+        bool canceled = false;
+        host.Closing += (_, args) => canceled = args.Cancel;
+        using (PortableModalInputScope.Enter(new object()))
+        {
+            // Existing diagnostic event adapter; no real native window is opened.
+            typeof(ProGpuWpfWindowHost).GetMethod("OnClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(host, Array.Empty<object>());
+        }
+        Assert.True(canceled);
+        Assert.Equal(0, service.CloseWindowCount);
+    }
+
+    [Fact]
     public void QueuedPassivePointerMovesDeferRenderingUntilAfterTheNativeBatch()
     {
         var service = new TestWindowActivationServiceRegistrar
@@ -1567,6 +1783,35 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Contains("ApplicationIdle", service.FlushedPriorities);
         Assert.Contains(service.FlushTimeouts, timeout => timeout.HasValue);
         Assert.Same(window, service.LastFlushWindow);
+    }
+
+    [Fact]
+    public void PostedIdleDispatcherWorkIsCoalescedAndFlushedOnNextHostUpdate()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        Assert.True(WpfPortableWindowActivation.TryAttach(host, window, source, out var activation));
+        Assert.NotNull(activation);
+        Assert.Equal(1, service.DispatcherIdleWorkRegisterCount);
+
+        service.FlushedPriorities.Clear();
+        service.PostDispatcherIdleWork();
+        service.PostDispatcherIdleWork();
+        RaiseHostUpdate(host);
+
+        Assert.Equal(new[] { "Background", "ApplicationIdle" }, service.FlushedPriorities);
+
+        service.FlushedPriorities.Clear();
+        RaiseHostUpdate(host);
+
+        Assert.Equal(new[] { "Background" }, service.FlushedPriorities);
+
+        activation.Dispose();
+        Assert.True(service.LastDispatcherIdleWorkRegistration?.IsDisposed);
     }
 
     [Fact]
@@ -1853,6 +2098,13 @@ public sealed class WpfPortableWindowActivationTests
         typeof(ProGpuWpfWindowHost)
             .GetMethod("OnPlatformDragDropReceived", BindingFlags.Instance | BindingFlags.NonPublic)!
             .Invoke(host, new object?[] { null, args });
+    }
+
+    private static void RaiseHostUpdate(ProGpuWpfWindowHost host)
+    {
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnUpdate", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, new object[] { 0d });
     }
 
     private sealed class FakeWindow : IPortableWindowStateSource
@@ -2490,6 +2742,12 @@ public sealed class WpfPortableWindowActivationTests
 
         public TestPortableServiceRegistration? LastMediaContextRenderRegistration { get; private set; }
 
+        public int DispatcherIdleWorkRegisterCount { get; private set; }
+
+        public Action? DispatcherIdleWorkPosted { get; private set; }
+
+        public TestPortableServiceRegistration? LastDispatcherIdleWorkRegistration { get; private set; }
+
         public int SetActivationStateCount { get; private set; }
 
         public object? LastActivationStateWindow { get; private set; }
@@ -2673,6 +2931,24 @@ public sealed class WpfPortableWindowActivationTests
             return true;
         }
 
+        public bool TryRegisterDispatcherIdleWorkNotification(
+            object window,
+            Action workPosted,
+            out IDisposable? registration)
+        {
+            DispatcherIdleWorkRegisterCount++;
+            DispatcherIdleWorkPosted = workPosted;
+            LastDispatcherIdleWorkRegistration = new TestPortableServiceRegistration(
+                () => DispatcherIdleWorkPosted = null);
+            registration = LastDispatcherIdleWorkRegistration;
+            return true;
+        }
+
+        public void PostDispatcherIdleWork()
+        {
+            DispatcherIdleWorkPosted?.Invoke();
+        }
+
         public bool TryProcessDragDropEvent(
             object window,
             int dragDropEventKind,
@@ -2705,6 +2981,8 @@ public sealed class WpfPortableWindowActivationTests
             LastMediaContextRenderWindow = null;
             RequestRender = null;
             LastMediaContextRenderRegistration = null;
+            DispatcherIdleWorkPosted = null;
+            LastDispatcherIdleWorkRegistration = null;
             LastActivationStateWindow = null;
             LastBeginInvokeInputWindow = null;
             LastBeginInvokeInputCallback = null;
@@ -2722,11 +3000,19 @@ public sealed class WpfPortableWindowActivationTests
 
     private sealed class TestPortableServiceRegistration : IDisposable
     {
+        private readonly Action? _dispose;
+
+        public TestPortableServiceRegistration(Action? dispose = null)
+        {
+            _dispose = dispose;
+        }
+
         public bool IsDisposed { get; private set; }
 
         public void Dispose()
         {
             IsDisposed = true;
+            _dispose?.Invoke();
         }
     }
 
@@ -2793,9 +3079,12 @@ public sealed class WpfPortableWindowActivationTests
             set
             {
                 _rootVisual = value;
+                RootVisualChanged?.Invoke(value);
                 RenderRequested?.Invoke(this, EventArgs.Empty);
             }
         }
+
+        public Action<object?>? RootVisualChanged { get; set; }
 
         public double ClientWidth { get; private set; }
 

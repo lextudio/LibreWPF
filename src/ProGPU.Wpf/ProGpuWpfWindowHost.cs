@@ -1,8 +1,12 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using ProGPU.Backend;
+using ProGPU.Backend.Native;
 using ProGPU.DirectX;
 using Silk.NET.Core;
 using Silk.NET.Core.Contexts;
@@ -38,6 +42,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private static readonly bool s_traceRenderSurface = IsTraceEnabled(TraceRenderSurfaceEnvironmentVariable);
     private static readonly bool s_traceInput = IsTraceEnabled(TraceInputEnvironmentVariable);
     private static readonly bool s_traceNativeLoop = IsTraceEnabled(TraceNativeLoopEnvironmentVariable);
+    private static readonly long s_nativeLoopTraceOrigin = Stopwatch.GetTimestamp();
     private static readonly object s_nativeActivationGate = new();
     private static readonly object s_deferredNativeWindowDisposalGate = new();
     private static readonly HashSet<ProGpuWpfWindowHost> s_deferredNativeWindowDisposals = new();
@@ -45,8 +50,21 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private static WeakReference<ProGpuWpfWindowHost>? s_requestedNativeActivation;
 
     private readonly ProGpuWpfWindowOptions _options;
+    private readonly ProGpuWpfNativeHitTesting _nativeMilHitTests = new();
     private IWindow? _window;
     private ProGpuWpfCompositionTarget? _target;
+    private NativeCompositor? _nativeMilCompositor;
+    private WpfNativeMilCompilationSession? _nativeMilSession;
+    private readonly object _nativeMilPerformanceGate = new();
+    private ProGpuWpfDiagnostics.NativePerformanceSnapshot _nativeMilPerformance;
+    private ProGpuWpfDiagnostics.NativePerformanceSnapshot _pendingNativeMilPerformance;
+    private volatile bool _enableNativeMemoryDiagnostics;
+    private object? _nativeMilCompiledRootVisual;
+    private uint _nativeMilCompiledPixelWidth;
+    private uint _nativeMilCompiledPixelHeight;
+    private ulong _nativeMilGeneration;
+    private ulong _nativeMilRequestSerial;
+    private IProGpuTextureLease[] _nativeMilExternalImageLeases = [];
     private ProGpuDirectXDevice? _directXDevice;
     private IDisposable? _inputSubscription;
     private IWpfInputService? _attachedInputService;
@@ -60,6 +78,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private IWpfRenderScheduler _wpfRenderScheduler;
     private WpfPortablePresentationSourceBridge? _portablePresentationSourceBridge;
     private readonly List<WpfPortablePopupBridge> _portablePopupBridges = new();
+    private readonly List<WpfNativeMilVisualOverlay> _nativeMilPopupScratch = new();
+    private ulong _nativeMilPopupVersion;
+    private ulong _nativeMilCompiledPopupVersion;
     private readonly WpfPortablePopupService? _portablePopupService;
     private readonly IDisposable? _portablePopupServiceRegistration;
     private object? _wpfRootVisual;
@@ -74,6 +95,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _isNativeLoopRunning;
     private bool _usesExternalNativeLoopPump;
     private bool _isLoadingCompositionTarget;
+    private bool _hasPendingDeviceRecovery;
+    private Vector4 _deviceRecoveryClearColor;
+    private long _renderDeviceRecoveryCount;
     private bool _disposeNativeWindowWhenLoopExits;
     private bool _hasPresentedFrame;
     private long _presentedFrameCount;
@@ -87,6 +111,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _isProcessingDispatcherWorkWakeup;
     private bool _forceFullWpfReplay;
     private bool _isHostVisible;
+    private bool _nativeHidePending;
     private bool _hasNativeWindowCloseStarted;
     private bool _dpiWindowHintsConfigured;
     private bool _hasPendingNativeDpiChange;
@@ -108,6 +133,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private int _windowIconWidth;
     private int _windowIconHeight;
     private SilkWindowController? _windowController;
+    internal NativeWindowHandle NativeCaretWindow =>
+        !_isDisposed && !_hasNativeWindowCloseStarted && _window?.IsInitialized == true
+            ? _windowController?.Handle ?? NativeWindowHandle.Empty : NativeWindowHandle.Empty;
+    private object? _modalInputOwner;
+    private IDisposable? _modalInputRegistration;
+    private NativeWindowModalHint? _nativeDialogHint;
+    private bool _nativeInputAllowed = true;
     private PortableWindowRegion? _windowRegion;
 
     internal readonly record struct RenderSurfaceGeometry(
@@ -126,6 +158,20 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public ProGpuWpfWindowHost(ProGpuWpfWindowOptions? options = null)
     {
         _options = options ?? new ProGpuWpfWindowOptions();
+        RendererMode = _options.RendererMode;
+        if (RendererMode is not ProGpuWpfRendererMode.ManagedPortable and not ProGpuWpfRendererMode.NativeMilWgpu)
+            throw new ArgumentException("The WPF renderer mode is unsupported.", nameof(options));
+        NativeMilHitTestingEnabled = _options.EnableNativeMilHitTesting;
+        if (NativeMilHitTestingEnabled && RendererMode != ProGpuWpfRendererMode.NativeMilWgpu)
+            throw new ArgumentException("Native MIL hit testing requires the native MIL renderer.", nameof(options));
+        if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+            ProGpuWpfNativeMediaServices.Initialize();
+        else
+        {
+            WpfPortableGeometryOperations.EnsureRegistered();
+            WpfPortableDocumentFlow.EnsureRegistered();
+            WpfPortableTextFormatting.EnsureRegistered();
+        }
         _isHostVisible = _options.IsVisible;
         _windowState = _options.WindowState;
         _windowTitle = _options.Title;
@@ -142,7 +188,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
         AttachDispatcherService(_platformServices.Dispatcher);
         AttachRenderScheduler(_wpfRenderScheduler);
-        if (!OperatingSystem.IsWindows() && _options.EnablePortablePopupService)
+        // Host ownership, not the OS, selects portable popup services. Native
+        // popup child hosts opt out so creation stays with the owning root host.
+        if (_options.EnablePortablePopupService)
         {
             _portablePopupService = new WpfPortablePopupService(this);
             _portablePopupServiceRegistration = PortableWpfServiceRegistry.RegisterPopupService(_portablePopupService);
@@ -162,6 +210,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public event EventHandler<WpfWindowEventArgs>? WindowEventReceived;
 
     public event EventHandler<ProGpuWpfWindowClosingEventArgs>? Closing;
+
+    /// <summary>
+    /// Raised on the host thread after a lost device's target has been rebuilt,
+    /// before its first frame. Recreate application-owned device resources using
+    /// <see cref="CompositionTarget"/>; old-device texture leases cannot be reused.
+    /// </summary>
+    public event EventHandler? RenderDeviceRecreated;
+
+    public long RenderDeviceRecoveryCount => Interlocked.Read(ref _renderDeviceRecoveryCount);
 
     public IWindow? SilkWindow => _window;
 
@@ -195,6 +252,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     }
 
     public bool IsVisible => _isHostVisible || (_window?.IsVisible ?? false);
+
+    public NativeWindowHandle NativeWindowHandle =>
+        _windowController?.Handle ?? global::ProGPU.Backend.NativeWindowHandle.Empty;
+
+    public bool IsEnabled => _windowController?.IsEnabled ?? true;
 
     public ProGpuWpfWindowState WindowState => _windowState;
 
@@ -273,6 +335,71 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public WpfCompositionDrawingContextResult LastSourceDrawingResult { get; private set; }
 
+    public WpfNativeMilSessionUpdate LastNativeMilSessionUpdate { get; private set; }
+
+    public WpfNativeMilSessionFrame? LastNativeMilSessionFrame { get; private set; }
+
+    // Published only after presentation succeeds. A newly compiled batch may
+    // reuse integer handles while replacing every corresponding source object.
+    internal NativeGpuHitTestOwnerSnapshot<object> NativeMilHitTestOwners { get; private set; }
+
+    public NativeSceneUpdateMetrics LastNativeMilSceneUpdateMetrics { get; private set; }
+
+    public NativeSceneFrameMetrics LastNativeMilFrameMetrics { get; private set; }
+
+    /// <summary>
+    /// Opts into one native resource inventory per successfully presented frame.
+    /// Capture runs on the render owner thread and publishes with that frame's
+    /// timings. Disabled by default; reads never query live handles themselves.
+    /// </summary>
+    public bool EnableNativeMemoryDiagnostics
+    {
+        get => _enableNativeMemoryDiagnostics;
+        set => _enableNativeMemoryDiagnostics = value;
+    }
+
+    internal bool TryGetNativePerformanceSnapshot(
+        out ProGpuWpfDiagnostics.NativePerformanceSnapshot snapshot)
+    {
+        lock (_nativeMilPerformanceGate)
+        {
+            snapshot = _nativeMilPerformance;
+            return !_isDisposed && RendererMode == ProGpuWpfRendererMode.NativeMilWgpu &&
+                snapshot.PresentedFrameCount != 0;
+        }
+    }
+
+    internal bool TryPollNativeMemoryCheckpoint(
+        out ProGpuWpfDiagnostics.NativeMemoryCheckpoint checkpoint)
+    {
+        checkpoint = default;
+        if (_isRendering || _hasPendingDeviceRecovery ||
+            !TryGetNativePerformanceSnapshot(out var frame) || frame.GpuMemory is null ||
+            _nativeMilCompositor is not { } compositor)
+            return false;
+
+        // The native timeline enforces owner-thread/device identity. Only actual
+        // completion may retire retained resources; inventory itself is read-only.
+        var submission = compositor.GetLastSubmissionToken();
+        if (!submission.IsValid || !compositor.IsSubmissionComplete(submission))
+            return false;
+        return ProGpuWpfDiagnostics.TryCreateNativeMemoryCheckpoint(
+            frame, compositor.GetGpuMemorySnapshot(), RenderDeviceRecoveryCount, out checkpoint);
+    }
+
+    internal void RecordNativePerformanceSnapshot(
+        ProGpuWpfDiagnostics.NativePerformanceSnapshot snapshot)
+    {
+        lock (_nativeMilPerformanceGate)
+        {
+            _nativeMilPerformance = snapshot with
+            {
+                PresentedFrameCount = PresentedFrameCount,
+                DeviceRecoveryCount = RenderDeviceRecoveryCount
+            };
+        }
+    }
+
     public bool IsWpfRootVisualDirty => _target?.WpfInvalidationTracker.IsDirty ?? false;
 
     public bool EnableFrameCoalescing { get; set; } = true;
@@ -317,7 +444,31 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal long SkippedNativeRenderPumpCount { get; private set; }
 
-    internal bool HasGpuHitTestCache => !_isDisposed && _target?.LastGpuHitTestIndex != null;
+    internal bool HasGpuHitTestCache => !_isDisposed &&
+        (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu
+            ? NativeMilHitTestingEnabled && NativeMilHitTestOwners.IsValid && NativeMilHitTestOwners.GetIndexInfo().HasIndex
+            : _target?.LastGpuHitTestIndex != null);
+
+    internal bool NativeMilHitTestingEnabled { get; }
+
+    internal NativeGpuHitTestResult LastNativeMilHitTestSummary => _nativeMilHitTests.LastSummary;
+
+    internal ProGpuWpfRendererMode RendererMode { get; }
+
+    internal ulong NativeMilPopupVersion => _nativeMilPopupVersion;
+
+    internal void InvalidateNativeMilPopups()
+    {
+        unchecked { _nativeMilPopupVersion++; }
+    }
+
+    internal void CaptureNativeMilPopupOverlays(List<WpfNativeMilVisualOverlay> destination)
+    {
+        destination.Clear();
+        for (int i = 0; i < _portablePopupBridges.Count; i++)
+            if (_portablePopupBridges[i].TryGetNativeMilOverlay(out var overlay))
+                destination.Add(overlay);
+    }
 
     internal bool HasVisibleNativePortablePopup
     {
@@ -485,23 +636,64 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal void Run(bool showActivated)
     {
+        RunCore(showActivated, showWindow: true);
+    }
+
+    internal void RunHidden()
+    {
+        RunCore(showActivated: false, showWindow: false);
+    }
+
+    internal void RunExisting()
+    {
+        RunCore(showActivated: false, showWindow: false, preserveWindowVisibility: true);
+    }
+
+    internal void RunDialog(Func<bool> continueRunning)
+    {
+        ArgumentNullException.ThrowIfNull(continueRunning);
+        if (_nativeDialogHint is { IsReleased: false })
+            throw new InvalidOperationException("This native window already owns a dialog hint.");
+        // ShowPortableDialog already showed the source. Do not show it again if
+        // a synchronous activation/layout callback hid it before pumping starts.
+        try { RunCore(showActivated: false, showWindow: false, continueRunning); }
+        finally { ReleaseNativeDialogHint(); }
+    }
+
+    private void RunCore(bool showActivated, bool showWindow, Func<bool>? continueRunning = null,
+        bool preserveWindowVisibility = false)
+    {
         ThrowIfDisposed();
         // Nonactivating native windows must be created hidden. Otherwise the
         // Cocoa/GLFW window can take focus before the platform show policy runs.
-        _isHostVisible = showActivated;
+        if (continueRunning == null && !preserveWindowVisibility)
+        {
+            _isHostVisible = showWindow && showActivated;
+        }
+        TraceNativeLoop("run initialization entering: " + CreateNativeLoopTraceState());
         EnsureWindow();
+        TraceNativeLoop("native window ensured: " + CreateNativeLoopTraceState());
         if (!_window!.IsInitialized)
         {
+            TraceNativeLoop("native window initialize entering: " + CreateNativeLoopTraceState());
             _window.Initialize();
+            TraceNativeLoop("native window initialize leaving: " + CreateNativeLoopTraceState());
         }
 
-        _isHostVisible = true;
-        ShowNativeWindow(showActivated);
+        if (showWindow)
+        {
+            _isHostVisible = true;
+            ShowNativeWindow(showActivated);
+        }
+        if (continueRunning != null && _isHostVisible &&
+            _windowController?.Handle.Kind == NativeWindowKind.X11 &&
+            !_windowController.TryBeginModalHint(out _nativeDialogHint))
+            throw new PlatformNotSupportedException("The X11 window manager did not accept modal-hint submission.");
         _isNativeLoopRunning = true;
         TraceNativeLoop("run entering: " + CreateNativeLoopTraceState());
         try
         {
-            RunPortableNativeLoop();
+            RunPortableNativeLoop(continueRunning);
         }
         catch (Exception ex)
         {
@@ -511,12 +703,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         finally
         {
             _isNativeLoopRunning = false;
+            if (continueRunning != null) ReleaseNativeDialogHint();
             DisposeDeferredNativeWindowIfNeeded();
             TraceNativeLoop("run leaving: " + CreateNativeLoopTraceState());
         }
     }
 
-    private void RunPortableNativeLoop()
+    private void RunPortableNativeLoop(Func<bool>? continueRunning = null)
     {
         if (!ShouldKeepPortableNativeRunLoopAlive())
         {
@@ -528,6 +721,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         TraceNativeLoop("owner loop entering: " + CreateNativeLoopTraceState());
         while (ShouldKeepPortableNativeRunLoopAlive())
         {
+            if (continueRunning != null && !continueRunning())
+            {
+                break;
+            }
             var hadPendingRender = WpfRenderScheduler.HasPendingRenderRequest;
             NativeLoopOwnerDoEventsCallCount++;
             try
@@ -564,6 +761,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return;
             }
 
+            if (continueRunning != null && !continueRunning())
+            {
+                break;
+            }
+
             Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest
                 ? PortableNativeLoopActiveDelay
                 : PortableNativeLoopIdleDelay);
@@ -598,6 +800,66 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
+    internal Func<ProGpuWpfWindowHost?, bool>? NativeOwnerSetterOverride { get; set; }
+    internal Func<bool, bool>? NativeInputAllowedSetterOverride { get; set; }
+
+    internal void BindModalInputOwner(object owner)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(owner);
+        if (_modalInputOwner != null)
+        {
+            if (!ReferenceEquals(owner, _modalInputOwner))
+                throw new InvalidOperationException("A native input surface cannot change its source owner identity.");
+            return;
+        }
+        _modalInputOwner = owner;
+        try
+        {
+            // Cocoa currently changes buttons only; Linux lacks full suppression.
+            // Never present those operations as native modal-input qualification.
+            if (OperatingSystem.IsWindows() || NativeInputAllowedSetterOverride != null)
+                _modalInputRegistration = PortableModalInputScope.RegisterWindow(owner, SetNativeInputAllowed);
+        }
+        catch { _modalInputOwner = null; throw; }
+    }
+
+    internal void InheritModalInputOwner(ProGpuWpfWindowHost owner)
+    {
+        // Native popup services are registered by the real owning source host.
+        // Standalone hosts without source Window activation keep no registration.
+        if (owner._modalInputOwner is { } identity) BindModalInputOwner(identity);
+    }
+
+    private void SetNativeInputAllowed(bool allowed)
+    {
+        _nativeInputAllowed = allowed;
+        if (_isDisposed || _hasNativeWindowCloseStarted) return;
+        if (NativeInputAllowedSetterOverride is { } setter)
+        {
+            if (!setter(allowed)) throw new PlatformNotSupportedException("Native input admission was rejected.");
+            return;
+        }
+        // Cache admission for a not-yet-created native window. OnLoad applies it
+        // before the window is shown, including newly created inactive owners.
+        if (_window?.IsInitialized == true && _windowController?.SetInputAllowed(allowed) != true)
+            throw new PlatformNotSupportedException("Native input admission was rejected.");
+    }
+
+    internal bool TrySetNativeOwner(ProGpuWpfWindowHost? owner)
+    {
+        ThrowIfDisposed();
+        if (ReferenceEquals(owner, this) || _hasNativeWindowCloseStarted ||
+            owner is { _isDisposed: true } || owner is { _hasNativeWindowCloseStarted: true })
+            return false;
+        if (NativeOwnerSetterOverride is { } setter) return setter(owner);
+        // An owner must already possess a native identity. Never create/show an
+        // unrelated source merely to satisfy an ownership request.
+        if (owner != null && owner._window?.IsInitialized != true) return false;
+        if (_window?.IsInitialized != true) InitializeHidden();
+        return _windowController?.TrySetOwner(owner?._windowController) == true;
+    }
+
     public void Show()
     {
         ThrowIfDisposed();
@@ -617,6 +879,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         TraceNativeLoop("native activation requested: accepted=" + activated + ", " + CreateNativeLoopTraceState());
         return activated;
+    }
+
+    internal bool TrySetEnabled(bool enabled)
+    {
+        ThrowIfDisposed();
+        EnsureWindow();
+        _windowController!.SetEnabled(enabled);
+        return true;
     }
 
     private static void QueuePendingNativeActivation(ProGpuWpfWindowHost host)
@@ -678,7 +948,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             // WPF dispatcher resumes and observes IsActive.
             try
             {
-                host._window.DoEvents();
+                if (!NativeWindowModalSession.TryPumpEvents()) host._window.DoEvents();
             }
             finally
             {
@@ -727,7 +997,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
-    internal void ShowWithoutActivation()
+    internal void ShowWithoutActivation(Func<Action, bool>? showWithOwner = null)
     {
         ThrowIfDisposed();
         // Keep WindowOptions.IsVisible false through native creation, then let
@@ -740,14 +1010,28 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         _isHostVisible = true;
-        ShowNativeWindow(showActivated: false);
+        // Cocoa owner attachment itself orders the popup in. Publish modal
+        // input admission before entering that checked native Show boundary.
+        if (_modalInputRegistration != null) SetNativeInputAllowed(_nativeInputAllowed);
+        if (showWithOwner != null)
+        {
+            if (!showWithOwner(() => ShowNativeWindow(showActivated: false)))
+                throw new PlatformNotSupportedException("The selected native popup owner could not be shown.");
+        }
+        else
+        {
+            ShowNativeWindow(showActivated: false);
+        }
 
         RequestRenderAndWakeNativeLoop();
     }
 
     private void ShowNativeWindow(bool showActivated)
     {
-        if (showActivated ||
+        // Recheck admission on every show, including retries after failed load
+        // or native callbacks. Cached desired state alone is not native success.
+        if (_modalInputRegistration != null) SetNativeInputAllowed(_nativeInputAllowed);
+        if ((showActivated && _nativeInputAllowed) ||
             !PlatformServices.WindowDecorations.TryShowWithoutActivation(_window!))
         {
             _window!.IsVisible = true;
@@ -769,12 +1053,64 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         ThrowIfDisposed();
 
         _isHostVisible = false;
-        if (_window != null)
-        {
-            _window.IsVisible = false;
-        }
+        HideNativeWindowAfterModalRelease();
 
         RequestRenderAndWakeNativeLoop();
+    }
+
+    private void HideNativeWindowAfterModalRelease()
+    {
+        ReleaseNativeDialogHint();
+        if (_nativeHidePending) return;
+        if (_window != null)
+        {
+            if (NativeWindowModalSession.IsActive && _window.IsInitialized &&
+                _window.Native?.Cocoa is { } cocoa && cocoa != 0)
+            {
+                _nativeHidePending = true;
+                try
+                {
+                    if (NativeWindowModalSession.TryReleaseWindow(
+                        new(NativeWindowKind.Cocoa, cocoa, 0, "NSWindow"), CompleteDeferredNativeHide)) return;
+                }
+                catch
+                {
+                    _nativeHidePending = false;
+                    throw;
+                }
+                _nativeHidePending = false;
+            }
+            _window.IsVisible = false;
+        }
+    }
+
+    private void CompleteDeferredNativeHide()
+    {
+        _nativeHidePending = false;
+        // Show or disposal can supersede Hide while a nested native poll unwinds.
+        // Recheck for any newly entered lease before touching native visibility.
+        if (!_isDisposed && !_isHostVisible) HideNativeWindowAfterModalRelease();
+    }
+
+    internal void ReleaseNativeDialog(Action completed)
+    {
+        ArgumentNullException.ThrowIfNull(completed);
+        ReleaseNativeDialogHint();
+        // Cleanup can arrive after source Close disposed its activation. The
+        // native window may still be retained by the active native event poll.
+        if (NativeWindowModalSession.IsActive && _window?.IsInitialized == true &&
+            _window.Native?.Cocoa is { } cocoa && cocoa != 0 &&
+            NativeWindowModalSession.TryReleaseWindow(
+                new(NativeWindowKind.Cocoa, cocoa, 0, "NSWindow"), completed)) return;
+        completed();
+    }
+
+    private void ReleaseNativeDialogHint()
+    {
+        // EWMH submission is synchronous; source gate/focus publication follows
+        // it, without claiming that the WM has acknowledged native suppression.
+        _nativeDialogHint?.Dispose();
+        _nativeDialogHint = null;
     }
 
     public void SetWindowState(ProGpuWpfWindowState windowState)
@@ -908,6 +1244,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         ArgumentNullException.ThrowIfNull(region);
 
         _windowRegion = region.IsEmpty ? null : region;
+        _forceFullWpfReplay = true;
         ApplyWindowRegionToCompositionTarget();
         RequestRenderAndWakeNativeLoop();
     }
@@ -1060,45 +1397,63 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
-        if (!_usesExternalNativeLoopPump && PresentedFrameCount == 0)
-        {
-            // Complete cold-start dispatcher work before polling a potentially
-            // large native pointer backlog. Once the first frame is visible,
-            // owner-driven windows poll native input first for responsiveness.
-            ProcessDispatcherQueueCore();
-            if (!ShouldKeepPortableNativeRunLoopAlive())
-            {
-                DisposeDeferredNativeWindowIfNeeded();
-                return;
-            }
-        }
-
-        bool pumpExternalRenderBeforeEvents = ShouldPumpExternalNativeRenderBeforeEvents(
+        bool pumpRenderBeforeEvents = ShouldPumpNativeRenderBeforeEvents(
             _usesExternalNativeLoopPump,
+            HasPresentedFrame,
             ShouldPumpNativeRender());
-        if (pumpExternalRenderBeforeEvents)
+        if (pumpRenderBeforeEvents)
         {
             // Externally pumped popup windows need their retained hit-test state
-            // current before native input is dispatched. The owner-driven main
-            // loop instead polls native events first so queued dispatcher work
-            // cannot delay clicks, activation, or an interactive window move.
-            ProcessDispatcherQueueCore();
-            if (!ShouldKeepPortableNativeRunLoopAlive())
+            // current before native input is dispatched. Owner-driven windows
+            // also present their first pending frame before an event-driven wait:
+            // a wake posted before GLFW enters WaitEvents can otherwise be lost.
+            // After cold start, owner-driven windows resume input-first polling.
+            if (_usesExternalNativeLoopPump)
             {
-                DisposeDeferredNativeWindowIfNeeded();
-                return;
+                ProcessDispatcherQueueCore();
+                if (!ShouldKeepPortableNativeRunLoopAlive())
+                {
+                    DisposeDeferredNativeWindowIfNeeded();
+                    return;
+                }
             }
 
+            // The owner loop must not drain WPF's self-rescheduling dispatcher
+            // before its first presentation. The bounded dispatcher turn after
+            // native polling will process that work without starving DoRender.
             NativeRenderPumpCount++;
+            TraceNativeLoop("pre-event render entering: " + CreateNativeLoopTraceState());
             window.DoRender();
+            TraceNativeLoop("pre-event render leaving: " + CreateNativeLoopTraceState());
+        }
+
+        bool restoreEventDriven = window.IsEventDriven;
+        bool useNonBlockingNativePoll = ShouldUseNonBlockingNativeEventPoll(
+            _isNativeLoopRunning,
+            _usesExternalNativeLoopPump,
+            restoreEventDriven);
+        if (useNonBlockingNativePoll)
+        {
+            // RunPortableNativeLoop already applies bounded active/idle sleeps.
+            // Poll here so dispatcher/render work posted immediately before an
+            // event wait cannot lose its GLFW empty-event wakeup indefinitely.
+            window.IsEventDriven = false;
         }
 
         try
         {
-            window.DoEvents();
+            TraceNativeLoop(
+                $"native event poll entering: nonBlocking={useNonBlockingNativePoll}, " +
+                CreateNativeLoopTraceState());
+            if (!NativeWindowModalSession.TryPumpEvents()) window.DoEvents();
+            TraceNativeLoop("native event poll leaving: " + CreateNativeLoopTraceState());
         }
         finally
         {
+            if (useNonBlockingNativePoll)
+            {
+                window.IsEventDriven = restoreEventDriven;
+            }
             ProcessDeferredNativeWindowDisposals();
         }
 
@@ -1184,6 +1539,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return _window != null && PlatformServices.WindowDecorations.TryBeginDragMove(_window);
     }
 
+    public bool TryShowSystemMenu(double desktopX, double desktopY)
+    {
+        ThrowIfDisposed();
+        return _window != null && PlatformServices.WindowDecorations.TryShowSystemMenu(_window, desktopX, desktopY);
+    }
+
     public bool ProcessDispatcherQueue()
     {
         ThrowIfDisposed();
@@ -1239,12 +1600,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
+        ReleaseNativeDialogHint();
+        _portablePresentationSourceBridge?.ReleaseNativeCaret();
         _isDisposed = true;
+        _modalInputRegistration?.Dispose();
+        _modalInputRegistration = null;
+        _modalInputOwner = null;
         ClearNativeActivationForHost(this);
 
         IWindow? window = _window;
         bool deferNativeWindowDispose = window != null &&
             (_isNativeLoopRunning ||
+                IsNativeWindowRetainedByModalSession(window) ||
                 _isRendering ||
                 _isProcessingDispatcherWorkWakeup ||
                 _isInNativeWindowCloseCallback);
@@ -1264,7 +1631,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             _disposeNativeWindowWhenLoopExits = true;
             RequestNativeWindowClose(window!);
-            if (_isInNativeWindowCloseCallback)
+            if (_isInNativeWindowCloseCallback || IsNativeWindowRetainedByModalSession(window!))
             {
                 QueueDeferredNativeWindowDisposal(this);
             }
@@ -1301,6 +1668,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
+        if (_window != null && IsNativeWindowRetainedByModalSession(_window))
+        {
+            // A callback can close a host while AppKit still owns its native
+            // session. Keep the deferred host queued until its lease has ended.
+            QueueDeferredNativeWindowDisposal(this);
+            return;
+        }
+
         _disposeNativeWindowWhenLoopExits = false;
         IWindow? window = _window;
         if (window == null)
@@ -1318,6 +1693,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         window.Dispose();
         _window = null;
     }
+
+    private static bool IsNativeWindowRetainedByModalSession(IWindow window) =>
+        NativeWindowModalSession.IsActive && window.IsInitialized &&
+        window.Native?.Cocoa is { } cocoa && cocoa != 0 &&
+        NativeWindowModalSession.RetainsWindow(new(NativeWindowKind.Cocoa, cocoa, 0, "NSWindow"));
 
     private static void QueueDeferredNativeWindowDisposal(ProGpuWpfWindowHost host)
     {
@@ -1385,7 +1765,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         windowOptions.Title = _windowTitle;
         windowOptions.VSync = _options.VSync;
         windowOptions.IsEventDriven = _options.IsEventDriven;
-        windowOptions.IsVisible = _isHostVisible;
+        windowOptions.IsVisible = _isHostVisible && _modalInputRegistration == null;
         windowOptions.WindowState = ToSilkWindowState(_windowState);
         windowOptions.TopMost = _windowTopmost;
         windowOptions.WindowBorder = ToSilkWindowBorder(_windowBorder);
@@ -1412,6 +1792,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         AttachNativeDpiService();
         _windowController?.Attach();
+        if (_modalInputRegistration != null)
+            SetNativeInputAllowed(_nativeInputAllowed);
         ApplyWindowIcon();
         EnsureCompositionTargetLoaded();
     }
@@ -1431,7 +1813,20 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         if (_target != null)
         {
-            return true;
+            if (!_target.Context.IsDeviceLost)
+            {
+                return true;
+            }
+            // Never release an acquired target or native scene during its frame.
+            // A notification only schedules work; this boundary owns rebuilding.
+            if (_isRendering)
+            {
+                return false;
+            }
+            _deviceRecoveryClearColor = _target.Compositor.ClearColor;
+            _hasPendingDeviceRecovery = true;
+            DisposeTarget();
+            _forceFullWpfReplay = true;
         }
 
         if (_window == null)
@@ -1448,23 +1843,64 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         try
         {
             IWindow window = _window;
+            WgpuContext? sharedDeviceContext = null;
+            if (_options.SharedRenderDeviceOwner is { } owner)
+            {
+                if (!owner.EnsureCompositionTargetLoaded() ||
+                    owner._target is not { } ownerTarget ||
+                    ownerTarget.Context.IsDeviceLost)
+                {
+                    RequestPresentationRetryAndWakeNativeLoop();
+                    return false;
+                }
+                sharedDeviceContext = ownerTarget.Context;
+            }
             ProGpuWpfCompositionTarget target = ProGpuWpfCompositionTarget.CreateForWindow(
                 window,
-                _options.SharedRenderDeviceContext,
+                sharedDeviceContext,
                 _options.CompositorOptions);
-            if (_options.TransparentFramebuffer)
+            NativeCompositor? nativeMilCompositor = null;
+            WpfNativeMilCompilationSession? nativeMilSession = null;
+            try
             {
-                target.Compositor.ClearColor = System.Numerics.Vector4.Zero;
+                if (_options.TransparentFramebuffer)
+                {
+                    target.Compositor.ClearColor = System.Numerics.Vector4.Zero;
+                }
+                if (_hasPendingDeviceRecovery)
+                {
+                    target.Compositor.ClearColor = _deviceRecoveryClearColor;
+                }
+                if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+                {
+                    nativeMilCompositor = new NativeCompositor(
+                        target.Context,
+                        target.Context.SwapChainFormat);
+                    nativeMilSession = new WpfNativeMilCompilationSession(
+                        NativeMilBackend.WgpuNative);
+                }
+            }
+            catch
+            {
+                nativeMilSession?.Dispose();
+                nativeMilCompositor?.Dispose();
+                target.Dispose();
+                throw;
             }
 
             if (_isDisposed || _hasNativeWindowCloseStarted || !ReferenceEquals(window, _window))
             {
+                nativeMilSession?.Dispose();
+                nativeMilCompositor?.Dispose();
                 target.Dispose();
                 return false;
             }
 
             _target = target;
+            _nativeMilCompositor = nativeMilCompositor;
+            _nativeMilSession = nativeMilSession;
             target.RenderInvalidated += OnCompositionTargetRenderInvalidated;
+            WgpuContext.OnWebGpuDeviceLost += OnRenderDeviceLost;
             target.Context.VSync = _options.VSync;
             ApplyWindowRegionToCompositionTarget();
             if (!CanFinishCompositionTargetLoad(target, window))
@@ -1493,8 +1929,27 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             {
                 UpdatePortablePresentationSourceClientOrigin(nativeLogicalLeft, nativeLogicalTop);
             }
+            if (_hasPendingDeviceRecovery)
+            {
+                Interlocked.Increment(ref _renderDeviceRecoveryCount);
+                RenderDeviceRecreated?.Invoke(this, EventArgs.Empty);
+                if (!CanFinishCompositionTargetLoad(target, window))
+                {
+                    DisposeTarget();
+                    return false;
+                }
+                _hasPendingDeviceRecovery = false;
+            }
             RequestRenderAndWakeNativeLoop();
             return true;
+        }
+        catch (WgpuDeviceLostException) when (
+            _target?.Context.IsDeviceLost == true ||
+            _options.SharedRenderDeviceOwner?._target?.Context.IsDeviceLost == true)
+        {
+            DisposeTarget();
+            RequestPresentationRetryAndWakeNativeLoop();
+            return false;
         }
         catch
         {
@@ -1511,6 +1966,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         return !_isDisposed &&
             !_hasNativeWindowCloseStarted &&
+            !target.Context.IsDeviceLost &&
             ReferenceEquals(window, _window) &&
             ReferenceEquals(target, _target);
     }
@@ -1661,9 +2117,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
+        if (!EnsureCompositionTargetLoaded())
+        {
+            return;
+        }
+
         _isRendering = true;
         try
         {
+            TraceNativeLoop("render callback entering: " + CreateNativeLoopTraceState());
             if (_isDisposed)
             {
                 return;
@@ -1683,7 +2145,23 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
             var geometry = ResolveCurrentRenderSurfaceGeometry();
             SynchronizePortablePresentationSourceGeometry(geometry);
-            ProcessDispatcherQueueCore();
+            bool skipNativeMilColdStartDispatcher =
+                RendererMode == ProGpuWpfRendererMode.NativeMilWgpu &&
+                !HasPresentedFrame;
+            if (!skipNativeMilColdStartDispatcher)
+            {
+                ProcessDispatcherQueueCore();
+            }
+            else
+            {
+                // The typed retained root is already complete enough for its
+                // initial native MIL snapshot. Process self-rescheduling WPF
+                // callbacks after that first frame is visible.
+                TraceNativeLoop(
+                    "native MIL cold-start dispatcher deferred: " +
+                    CreateNativeLoopTraceState());
+            }
+            TraceNativeLoop("render dispatcher drained: " + CreateNativeLoopTraceState());
 
             if (_target == null || _window == null || _target.Context.Surface == null)
             {
@@ -1718,9 +2196,42 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return;
             }
 
+            if (_target.Context.IsDeviceLost)
+            {
+                RequestPresentationRetryAndWakeNativeLoop();
+                return;
+            }
             if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight))
             {
-                RequestRenderAndWakeNativeLoop();
+                RequestPresentationRetryAndWakeNativeLoop();
+                return;
+            }
+
+            if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+            {
+                TraceNativeLoop("native MIL render entering: " + CreateNativeLoopTraceState());
+                if (RenderNativeMilFrame(
+                        pixelWidth,
+                        pixelHeight,
+                        viewportX,
+                        viewportY,
+                        viewportWidth,
+                        viewportHeight,
+                        dpiScaleX,
+                        dpiScaleY,
+                        dpiScale))
+                {
+                    RecordPresentedFrame(CaptureFrameState(
+                        _target,
+                        logicalWidth,
+                        logicalHeight,
+                        pixelWidth,
+                        pixelHeight,
+                        dpiScale));
+                    RecordNativePerformanceSnapshot(_pendingNativeMilPerformance);
+                    TraceRenderSurfaceGeometryIfRequested(geometry);
+                }
+                TraceNativeLoop("native MIL render leaving: " + CreateNativeLoopTraceState());
                 return;
             }
 
@@ -1863,9 +2374,21 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 TraceRenderSurfaceGeometryIfRequested(geometry);
             }
         }
+        catch (WgpuDeviceLostException) when (_target?.Context.IsDeviceLost == true)
+        {
+            RequestPresentationRetryAndWakeNativeLoop();
+        }
+        catch (NativeRendererException error) when (
+            error.Status == NativeRendererStatus.DeviceLost &&
+            RendererMode == ProGpuWpfRendererMode.NativeMilWgpu && _target != null)
+        {
+            _target.Context.ReportDeviceLost(DeviceLostReason.Unknown, error.Message);
+            RequestPresentationRetryAndWakeNativeLoop();
+        }
         finally
         {
             _isRendering = false;
+            TraceNativeLoop("render callback leaving: " + CreateNativeLoopTraceState());
         }
     }
 
@@ -1890,7 +2413,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         if (surfaceTexture.Status != SurfaceGetCurrentTextureStatus.Success)
         {
+            if (surfaceTexture.Texture != null)
+            {
+                _target.Context.Wgpu.TextureRelease(surfaceTexture.Texture);
+            }
+            HandleSurfaceAcquisitionFailure(_target.Context, surfaceTexture.Status);
             return false;
+        }
+
+        if (surfaceTexture.Texture == null)
+        {
+            throw new InvalidOperationException(
+                "WebGPU reported successful surface acquisition without a texture.");
         }
 
         var viewDescriptor = new TextureViewDescriptor
@@ -1907,6 +2441,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         var targetView = _target.Context.Wgpu.TextureCreateView(surfaceTexture.Texture, &viewDescriptor);
         try
         {
+            if (targetView == null)
+            {
+                RequestPresentationRetryAndWakeNativeLoop();
+                return false;
+            }
             _target.Render(
                 logicalWidth,
                 logicalHeight,
@@ -1928,6 +2467,397 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             {
                 _target.Context.Wgpu.TextureViewRelease(targetView);
             }
+            if (surfaceTexture.Texture != null)
+            {
+                _target.Context.Wgpu.TextureRelease(surfaceTexture.Texture);
+            }
+        }
+    }
+
+    private bool RenderNativeMilFrame(
+        uint pixelWidth,
+        uint pixelHeight,
+        uint viewportX,
+        uint viewportY,
+        uint viewportWidth,
+        uint viewportHeight,
+        double dpiScaleX,
+        double dpiScaleY,
+        double dpiScale)
+    {
+        long frameStarted = Stopwatch.GetTimestamp();
+        if (_target == null || _nativeMilCompositor == null ||
+            _nativeMilSession == null)
+        {
+            throw new InvalidOperationException(
+                "The native MIL renderer was selected but its typed compositor session is unavailable.");
+        }
+        object rootVisual = _wpfRootVisual ?? throw new InvalidOperationException(
+            "The native MIL renderer requires a typed WPF root visual.");
+        ValidateNativeMilHostConfiguration(
+            viewportX,
+            viewportY,
+            viewportWidth,
+            viewportHeight,
+            pixelWidth,
+            pixelHeight,
+            dpiScaleX,
+            dpiScaleY);
+
+        _target.WpfInvalidationTracker.AttachIfChanged(rootVisual);
+        bool update = !_nativeMilSession.IsInitialized ||
+            !ReferenceEquals(_nativeMilCompiledRootVisual, rootVisual) ||
+            _nativeMilCompiledPixelWidth != pixelWidth ||
+            _nativeMilCompiledPixelHeight != pixelHeight ||
+            _nativeMilCompiledPopupVersion != _nativeMilPopupVersion ||
+            _target.WpfInvalidationTracker.IsDirty ||
+            _forceFullWpfReplay;
+        double sourceUpdateMs = 0;
+        if (update)
+        {
+            long updateStarted = Stopwatch.GetTimestamp();
+            TraceNativeLoop("native MIL session update entering: " + CreateNativeLoopTraceState());
+            Vector4 clear = _target.Compositor.ClearColor;
+            _nativeMilPopupScratch.Clear();
+            try
+            {
+                ulong popupVersion = _nativeMilPopupVersion;
+                CaptureNativeMilPopupOverlays(_nativeMilPopupScratch);
+                LastNativeMilSessionUpdate = _nativeMilSession.Update(
+                    rootVisual, pixelWidth, pixelHeight,
+                    new NativeMilColor(clear.X, clear.Y, clear.Z, clear.W),
+                    CollectionsMarshal.AsSpan(_nativeMilPopupScratch), _windowRegion);
+                _nativeMilCompiledPopupVersion = popupVersion;
+            }
+            finally
+            {
+                // The compiler snapshots canonical resources synchronously. Do not
+                // keep closed popup visual roots alive in frame scratch storage.
+                _nativeMilPopupScratch.Clear();
+            }
+            _nativeMilCompiledRootVisual = rootVisual;
+            _nativeMilCompiledPixelWidth = pixelWidth;
+            _nativeMilCompiledPixelHeight = pixelHeight;
+            _target.WpfInvalidationTracker.ConsumeDirty();
+            _forceFullWpfReplay = false;
+            TraceNativeLoop("native MIL session update leaving: " + CreateNativeLoopTraceState());
+            sourceUpdateMs = Stopwatch.GetElapsedTime(updateStarted).TotalMilliseconds;
+        }
+
+        ulong generation = NextNativeMilIdentity(ref _nativeMilGeneration);
+        ulong requestSerial = NextNativeMilIdentity(
+            ref _nativeMilRequestSerial);
+        TraceNativeLoop("native MIL compile entering: " + CreateNativeLoopTraceState());
+        long compileStarted = Stopwatch.GetTimestamp();
+        WpfNativeMilSessionFrame frame = _nativeMilSession.CompileFrame(
+            1,
+            generation,
+            GetMonotonicTimeNanoseconds(),
+            requestSerial,
+            dpiScaleX,
+            dpiScaleY,
+            NativeMilHitTestingEnabled ? NativeMilSceneBuildRequestFlags.HitTestIndex : NativeMilSceneBuildRequestFlags.None);
+        double compileMs = Stopwatch.GetElapsedTime(compileStarted).TotalMilliseconds;
+        LastNativeMilSessionFrame = frame;
+        TraceNativeLoop("native MIL compile leaving: " + CreateNativeLoopTraceState());
+        long installStarted = Stopwatch.GetTimestamp();
+        BindNativeMilExternalImages(frame);
+        // Do not expose owners for a previous scene if install/presentation fails.
+        NativeMilHitTestOwners = default;
+        LastNativeMilSceneUpdateMetrics = _nativeMilCompositor.UpdateScene(
+            frame.Scene.Stream);
+        double installMs = Stopwatch.GetElapsedTime(installStarted).TotalMilliseconds;
+        TraceNativeLoop("native MIL scene installed: " + CreateNativeLoopTraceState());
+
+        bool presented = PresentNativeMil(
+            _nativeMilCompositor,
+            pixelWidth,
+            pixelHeight,
+            (float)dpiScale,
+            frame.Request.SceneId,
+            frame.Request.Generation,
+            _target.Compositor.ClearColor,
+            out var presentationTimings);
+        if (presented)
+        {
+            NativeMilHitTestOwners = _nativeMilCompositor.BindGpuHitTestOwners(
+                frame.VisualOwners, frame.Request.SceneId, frame.Request.Generation);
+            RequestNativeMilContinuationAndWakeNativeLoop(
+                frame.Request,
+                frame.Scene.BuildResult);
+            NativeGpuMemorySnapshot? memory = null;
+            double memoryMs = 0;
+            if (EnableNativeMemoryDiagnostics)
+            {
+                long memoryStarted = Stopwatch.GetTimestamp();
+                memory = _nativeMilCompositor.GetGpuMemorySnapshot();
+                memoryMs = Stopwatch.GetElapsedTime(memoryStarted).TotalMilliseconds;
+            }
+            _pendingNativeMilPerformance = new(
+                0,
+                Stopwatch.GetElapsedTime(frameStarted).TotalMilliseconds,
+                sourceUpdateMs,
+                compileMs,
+                installMs,
+                presentationTimings.AcquireMs,
+                presentationTimings.SubmissionMs,
+                presentationTimings.PresentMs,
+                update,
+                LastNativeMilSceneUpdateMetrics,
+                LastNativeMilFrameMetrics)
+            {
+                GpuMemory = memory,
+                MemoryInventoryCpuTimeMs = memoryMs
+            };
+        }
+        return presented;
+    }
+
+    private void BindNativeMilExternalImages(WpfNativeMilSessionFrame frame)
+    {
+        NativeCompositor compositor = _nativeMilCompositor ??
+            throw new InvalidOperationException(
+                "The native MIL compositor is unavailable.");
+        WgpuContext context = _target?.Context ??
+            throw new InvalidOperationException(
+                "The native MIL target context is unavailable.");
+        IReadOnlyList<WpfNativeMilMediaPlayerSource> mediaSources =
+            frame.MediaPlayerSources;
+        IReadOnlyList<WpfNativeMilBitmapExternalImageSource> bitmapSources =
+            frame.BitmapExternalImageSources;
+        IReadOnlyList<WpfNativeMilD3DImageSource> d3dImageSources =
+            frame.D3DImageSources;
+        int sourceCount = checked(
+            mediaSources.Count + bitmapSources.Count +
+            d3dImageSources.Count);
+        var leases = new IProGpuTextureLease[sourceCount];
+        var bindings = new NativeSceneExternalImageBinding[sourceCount];
+        try
+        {
+            uint previousHandle = 0;
+            int mediaIndex = 0;
+            int bitmapIndex = 0;
+            int d3dImageIndex = 0;
+            for (int index = 0; index < sourceCount; ++index)
+            {
+                uint mediaHandle = mediaIndex < mediaSources.Count
+                    ? mediaSources[mediaIndex].Handle
+                    : uint.MaxValue;
+                uint bitmapHandle = bitmapIndex < bitmapSources.Count
+                    ? bitmapSources[bitmapIndex].Handle
+                    : uint.MaxValue;
+                uint d3dImageHandle = d3dImageIndex < d3dImageSources.Count
+                    ? d3dImageSources[d3dImageIndex].Handle
+                    : uint.MaxValue;
+                uint handle;
+                IProGpuTextureLeaseSource textureSource;
+                if (bitmapHandle <= mediaHandle &&
+                    bitmapHandle <= d3dImageHandle)
+                {
+                    WpfNativeMilBitmapExternalImageSource bitmap =
+                        bitmapSources[bitmapIndex++];
+                    handle = bitmap.Handle;
+                    textureSource = bitmap.TextureSource;
+                }
+                else if (mediaHandle <= d3dImageHandle)
+                {
+                    WpfNativeMilMediaPlayerSource media =
+                        mediaSources[mediaIndex++];
+                    handle = media.Handle;
+                    textureSource = media.TextureSource;
+                }
+                else
+                {
+                    WpfNativeMilD3DImageSource d3dImage =
+                        d3dImageSources[d3dImageIndex++];
+                    handle = d3dImage.Handle;
+                    textureSource = d3dImage.TextureSource;
+                }
+                if (handle <= previousHandle)
+                {
+                    throw new InvalidOperationException(
+                        "Native MIL external-image handles must be globally strictly increasing.");
+                }
+                previousHandle = handle;
+                bool acquired = textureSource is
+                    IProGpuContextTextureLeaseSource contextSource
+                        ? contextSource.TryAcquireGpuTextureLease(
+                            context,
+                            out IProGpuTextureLease lease)
+                        : textureSource.TryAcquireGpuTextureLease(
+                            out lease);
+                if (!acquired || lease is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Native MIL external-image handle {handle} has no current GPU texture lease.");
+                }
+                leases[index] = lease;
+                bindings[index] = new NativeSceneExternalImageBinding(
+                    checked((ulong)index + 1U),
+                    frame.Request.Generation,
+                    lease.Texture);
+            }
+            compositor.BindSceneExternalImages(bindings);
+        }
+        catch
+        {
+            DisposeNativeMilExternalImageLeases(leases);
+            throw;
+        }
+
+        IProGpuTextureLease[] previous = _nativeMilExternalImageLeases;
+        _nativeMilExternalImageLeases = leases;
+        DisposeNativeMilExternalImageLeases(previous);
+    }
+
+    private static void DisposeNativeMilExternalImageLeases(
+        IProGpuTextureLease[] leases)
+    {
+        foreach (IProGpuTextureLease? lease in leases)
+        {
+            lease?.Dispose();
+        }
+    }
+
+    private bool PresentNativeMil(
+        NativeCompositor compositor,
+        uint pixelWidth,
+        uint pixelHeight,
+        float dpiScale,
+        ulong sceneId,
+        ulong generation,
+        Vector4 clearColor,
+        out (double AcquireMs, double SubmissionMs, double PresentMs) timings)
+    {
+        timings = default;
+        if (_target == null)
+        {
+            return false;
+        }
+
+        var surfaceTexture = new SurfaceTexture();
+        TraceNativeLoop("native MIL acquire entering: " + CreateNativeLoopTraceState());
+        long acquireStarted = Stopwatch.GetTimestamp();
+        _target.Context.Wgpu.SurfaceGetCurrentTexture(
+            _target.Context.Surface,
+            &surfaceTexture);
+        double acquireMs = Stopwatch.GetElapsedTime(acquireStarted).TotalMilliseconds;
+        TraceNativeLoop(
+            $"native MIL acquire leaving: status={surfaceTexture.Status}, " +
+            CreateNativeLoopTraceState());
+        if (surfaceTexture.Status != SurfaceGetCurrentTextureStatus.Success)
+        {
+            if (surfaceTexture.Texture != null)
+            {
+                _target.Context.Wgpu.TextureRelease(surfaceTexture.Texture);
+            }
+            HandleSurfaceAcquisitionFailure(_target.Context, surfaceTexture.Status);
+            return false;
+        }
+
+        if (surfaceTexture.Texture == null)
+        {
+            throw new InvalidOperationException(
+                "WebGPU reported successful surface acquisition without a texture.");
+        }
+
+        var viewDescriptor = new TextureViewDescriptor
+        {
+            Format = _target.Context.SwapChainFormat,
+            Dimension = TextureViewDimension.Dimension2D,
+            BaseMipLevel = 0,
+            MipLevelCount = 1,
+            BaseArrayLayer = 0,
+            ArrayLayerCount = 1,
+            Aspect = TextureAspect.All
+        };
+        var targetView = _target.Context.Wgpu.TextureCreateView(
+            surfaceTexture.Texture,
+            &viewDescriptor);
+        if (targetView == null)
+        {
+            _target.Context.Wgpu.TextureRelease(surfaceTexture.Texture);
+            RequestPresentationRetryAndWakeNativeLoop();
+            return false;
+        }
+        try
+        {
+            TraceNativeLoop("native MIL submission entering: " + CreateNativeLoopTraceState());
+            long submissionStarted = Stopwatch.GetTimestamp();
+            LastNativeMilFrameMetrics = compositor.RenderScene(
+                new NativeSceneExternalTarget(
+                    (nuint)targetView,
+                    pixelWidth,
+                    pixelHeight),
+                dpiScale,
+                sceneId,
+                generation,
+                clearColor);
+            double submissionMs = Stopwatch.GetElapsedTime(submissionStarted).TotalMilliseconds;
+            TraceNativeLoop("native MIL submission leaving: " + CreateNativeLoopTraceState());
+            long presentStarted = Stopwatch.GetTimestamp();
+            _target.Context.Wgpu.SurfacePresent(_target.Context.Surface);
+            timings = (acquireMs, submissionMs,
+                Stopwatch.GetElapsedTime(presentStarted).TotalMilliseconds);
+            TraceNativeLoop("native MIL present complete: " + CreateNativeLoopTraceState());
+            return true;
+        }
+        finally
+        {
+            _target.Context.Wgpu.TextureViewRelease(targetView);
+            _target.Context.Wgpu.TextureRelease(surfaceTexture.Texture);
+        }
+    }
+
+    private void ValidateNativeMilHostConfiguration(
+        uint viewportX,
+        uint viewportY,
+        uint viewportWidth,
+        uint viewportHeight,
+        uint pixelWidth,
+        uint pixelHeight,
+        double dpiScaleX,
+        double dpiScaleY)
+    {
+        if (Draw != null || WpfDraw != null || Render != null)
+        {
+            throw new NotSupportedException(
+                "Native MIL mode does not mix managed drawing callbacks into the native semantic scene.");
+        }
+        if (viewportX != 0 || viewportY != 0 ||
+            viewportWidth != pixelWidth || viewportHeight != pixelHeight)
+        {
+            throw new NotSupportedException(
+                "Native MIL mode currently requires a full-surface viewport.");
+        }
+        if (!double.IsFinite(dpiScaleX) ||
+            !double.IsFinite(dpiScaleY) ||
+            Math.Abs(dpiScaleX - dpiScaleY) > 0.000001)
+        {
+            throw new NotSupportedException(
+                "Native MIL presentation currently requires uniform X/Y DPI scaling.");
+        }
+    }
+
+    private static ulong GetMonotonicTimeNanoseconds()
+    {
+        long timestamp = Stopwatch.GetTimestamp();
+        return timestamp <= 0
+            ? 1
+            : (ulong)((UInt128)(ulong)timestamp * 1_000_000_000UL /
+                (ulong)Stopwatch.Frequency);
+    }
+
+    private static ulong NextNativeMilIdentity(ref ulong value)
+    {
+        unchecked
+        {
+            ++value;
+            if (value == 0)
+            {
+                ++value;
+            }
+            return value;
         }
     }
 
@@ -1953,7 +2883,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
-        Console.WriteLine("ProGPU WPF native loop: " + message);
+        Console.WriteLine("ProGPU WPF native loop: " + message +
+            FormattableString.Invariant($", elapsedMs={Stopwatch.GetElapsedTime(s_nativeLoopTraceOrigin).TotalMilliseconds:0.000}"));
     }
 
     internal void TraceNativeActivation(string message)
@@ -2113,9 +3044,43 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal bool SynchronizePortablePresentationSourceGeometry(RenderSurfaceGeometry geometry)
     {
         LastResolvedRenderSurfaceGeometry = geometry;
+        var contentScale = ResolveCurrentWindowContentScale();
+        var desktop = PortableDesktopTransform.FromWindowCoordinates(0, 0,
+            contentScale.X, contentScale.Y, UsesMonitorScaledWindowCoordinates());
+        bool desktopScaleChanged = UpdatePortablePresentationSourceDesktopScale(
+            desktop.ScaleX, desktop.ScaleY, synchronizePopups: false);
         bool dpiScaleChanged = UpdatePortablePresentationSourceDpiScale(geometry.DpiScaleX, geometry.DpiScaleY);
+        if (desktopScaleChanged)
+            RefreshPortablePopupDesktopGeometry();
         bool clientSizeChanged = UpdatePortablePresentationSourceClientSize(geometry.LogicalWidth, geometry.LogicalHeight);
-        return clientSizeChanged || dpiScaleChanged;
+        return clientSizeChanged || dpiScaleChanged || desktopScaleChanged;
+    }
+
+    internal bool UpdatePortablePresentationSourceDesktopScale(
+        double scaleX, double scaleY, bool synchronizePopups = true)
+    {
+        if (_portablePresentationSourceBridge is not { } bridge) return false;
+        var previous = bridge.DesktopTransform;
+        var next = new PortableDesktopTransform(
+            _hasPortablePresentationSourceClientOrigin ? _portablePresentationSourceClientOriginX : previous.OriginX,
+            _hasPortablePresentationSourceClientOrigin ? _portablePresentationSourceClientOriginY : previous.OriginY,
+            scaleX, scaleY);
+        if (previous == next) return false;
+        bridge.SetDesktopTransform(next);
+        if (synchronizePopups) RefreshPortablePopupDesktopGeometry();
+        InvalidateWpfRootVisualForPresentationSourceGeometryChange();
+        return true;
+    }
+
+    private void RefreshPortablePopupDesktopGeometry()
+    {
+        // Creation order is parent before child, including legacy handle owners.
+        for (int i = 0; i < _portablePopupBridges.Count; i++)
+        {
+            var popup = _portablePopupBridges[i];
+            if (popup.RefreshOwnerDesktopGeometry())
+                UpdatePortablePopupOwnerOrigins(popup.Source, popup.X, popup.Y);
+        }
     }
 
     private bool SynchronizePortablePresentationSourceGeometry()
@@ -2576,6 +3541,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+        {
+            Span<object?> ownerSlot = MemoryMarshal.CreateSpan(ref owner, 1);
+            return QueryNativeMilInput(NativeGpuHitTestQuery.PointQuery(new((float)x, (float)y)),
+                ownerSlot, false, out int count) && count != 0;
+        }
         return target.TryHitTestOwner(
             new System.Numerics.Vector2((float)x, (float)y),
             out owner,
@@ -2626,11 +3597,23 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+            return QueryNativeMilInput(NativeGpuHitTestQuery.PointQuery(new((float)x, (float)y)),
+                owners, false, out ownerCount);
         return target.TryHitTestOwners(
             new System.Numerics.Vector2((float)x, (float)y),
             owners,
             out ownerCount,
             out _);
+    }
+
+    private bool QueryNativeMilInput(NativeGpuHitTestQuery query, Span<object?> destination,
+        bool geometryCandidates, out int count)
+    {
+        if (!NativeMilHitTestingEnabled)
+            throw new NotSupportedException(
+                "Native MIL host input requires explicit EnableNativeMilHitTesting admission; a managed index is not a native fallback.");
+        return _nativeMilHitTests.Query(NativeMilHitTestOwners, query, destination, geometryCandidates, out count);
     }
 
     private ProGpuWpfCompositionTarget? GetGpuHitTestTargetAfterRefresh()
@@ -2704,6 +3687,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+            return QueryNativeMilInput(NativeGpuHitTestQuery.BoundsQuery(
+                new((float)minX, (float)minY), new((float)maxX, (float)maxY), 0),
+                owners, false, out ownerCount);
         return target.TryQueryHitTestBoundsOwners(
             new System.Numerics.Vector2((float)minX, (float)minY),
             new System.Numerics.Vector2((float)maxX, (float)maxY),
@@ -2715,12 +3702,27 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal bool TryGetGpuHitTestCacheSnapshot(out ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot snapshot)
     {
         snapshot = default;
-        ProGpuWpfCompositionTarget? target = GetGpuHitTestTargetAfterRefresh();
+        // Native diagnostics describe the scene currently installed in the
+        // compositor. Refreshing a secondary host here can replace the index
+        // just uploaded by the input query with a new, not-yet-queried scene.
+        ProGpuWpfCompositionTarget? target = RendererMode == ProGpuWpfRendererMode.NativeMilWgpu
+            ? (_isDisposed ? null : _target)
+            : GetGpuHitTestTargetAfterRefresh();
         if (target == null)
         {
             return false;
         }
 
+        if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+        {
+            NativeGpuHitTestIndexInfo native = NativeMilHitTestOwners.IsValid
+                ? NativeMilHitTestOwners.GetIndexInfo() : default;
+            snapshot = new ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot(
+                native.HasIndex, native.IsUploaded, checked((int)native.PrimitiveCount),
+                checked((int)native.NodeCount), checked((int)native.PrimitiveIndexCount),
+                checked((int)native.PathSegmentCount), NativeMilHitTestOwners.OwnerCount);
+            return true;
+        }
         var index = target.LastGpuHitTestIndex;
         snapshot = new ProGpuWpfDiagnostics.GpuHitTestCacheSnapshot(
             index is not null,
@@ -2795,6 +3797,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+            return QueryNativeMilInput(NativeGpuHitTestQuery.BoundsQuery(
+                new((float)minX, (float)minY), new((float)maxX, (float)maxY), 0),
+                candidates, true, out candidateCount);
         return target.TryQueryHitTestBoundsCandidates(
             new System.Numerics.Vector2((float)minX, (float)minY),
             new System.Numerics.Vector2((float)maxX, (float)maxY),
@@ -2853,6 +3859,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
+            return QueryNativeMilInput(NativeGpuHitTestQuery.EllipseQuery(
+                new((float)minX, (float)minY), new((float)maxX, (float)maxY), 0),
+                candidates, true, out candidateCount);
         return target.TryQueryHitTestEllipseCandidates(
             new System.Numerics.Vector2((float)minX, (float)minY),
             new System.Numerics.Vector2((float)maxX, (float)maxY),
@@ -3038,6 +4048,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return input;
         }
 
+        if (isNativePlatformEvent)
+        {
+            var contentScale = ResolveCurrentWindowContentScale();
+            var desktop = PortableDesktopTransform.FromWindowCoordinates(0, 0,
+                contentScale.X, contentScale.Y, UsesMonitorScaledWindowCoordinates());
+            return NormalizeNativeDesktopInput(input, desktop, _options.NativePointerCoordinatesAreOwnerRelative);
+        }
+
         var geometry = ResolveCurrentRenderSurfaceGeometry();
         return NormalizeInputEventForRenderSurfaceGeometry(
             input,
@@ -3049,6 +4067,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 geometry,
                 input),
             _options.NativePointerCoordinatesAreOwnerRelative);
+    }
+
+    internal static WpfInputEventArgs NormalizeNativeDesktopInput(
+        WpfInputEventArgs input, PortableDesktopTransform desktop, bool preserveOwnerCoordinates = false)
+    {
+        if (preserveOwnerCoordinates || !IsPointerInput(input.Kind) ||
+            (desktop.ScaleX == 1 && desktop.ScaleY == 1)) return input;
+        // Native pointer positions are client-local desktop units, not framebuffer pixels.
+        var point = desktop.DesktopVectorToClient(new PortablePoint(input.X, input.Y));
+        return new WpfInputEventArgs(input.Kind, input.Key, input.ScanCode, input.Character,
+            point.X, point.Y, input.DeltaX, input.DeltaY, input.Button, input.Modifiers)
+        { Handled = input.Handled };
     }
 
     internal static bool NativeInputCoordinatesArePhysical(
@@ -3365,9 +4395,33 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void DisposeTarget()
     {
+        WgpuContext.OnWebGpuDeviceLost -= OnRenderDeviceLost;
         DetachInputService();
         DetachDragDropService();
         DetachWindowEventService();
+
+        _nativeMilSession?.Dispose();
+        _nativeMilSession = null;
+        lock (_nativeMilPerformanceGate)
+        {
+            _nativeMilPerformance = default;
+            _pendingNativeMilPerformance = default;
+        }
+        _nativeMilCompositor?.Dispose();
+        _nativeMilCompositor = null;
+        _nativeMilHitTests.ResetAfterCompositorDisposal();
+        DisposeNativeMilExternalImageLeases(_nativeMilExternalImageLeases);
+        _nativeMilExternalImageLeases = [];
+        _nativeMilCompiledRootVisual = null;
+        _nativeMilCompiledPixelWidth = 0;
+        _nativeMilCompiledPixelHeight = 0;
+        _nativeMilGeneration = 0;
+        _nativeMilRequestSerial = 0;
+        LastNativeMilSessionUpdate = default;
+        LastNativeMilSessionFrame = null;
+        NativeMilHitTestOwners = default;
+        LastNativeMilSceneUpdateMetrics = default;
+        LastNativeMilFrameMetrics = default;
 
         if (_target == null)
         {
@@ -3531,6 +4585,93 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         TryRequestNativeLoopWakeup();
     }
 
+    internal void HandleSurfaceAcquisitionFailure(
+        WgpuContext context,
+        SurfaceGetCurrentTextureStatus status)
+    {
+        // Device loss also schedules a host turn, but never another acquisition
+        // on that device: EnsureCompositionTargetLoaded rebuilds it first.
+        _ = context.HandleSurfaceAcquisitionFailure(status);
+        RequestPresentationRetryAndWakeNativeLoop();
+    }
+
+    private void OnRenderDeviceLost(DeviceLostReason reason, string message)
+    {
+        // Notifications may arrive on a backend thread. Do not dispose, allocate
+        // GPU resources or traverse WPF state here. Ignore other device domains.
+        if (_target?.Context.IsDeviceLost == true)
+        {
+            RequestPresentationRetryAndWakeNativeLoop();
+        }
+    }
+
+    internal bool RequestPresentationRetryAndWakeNativeLoop()
+    {
+        if (_isDisposed || _hasNativeWindowCloseStarted)
+        {
+            return false;
+        }
+
+        try
+        {
+            // A failed acquisition consumed the current request, not the work
+            // that still needs presenting. Upgrade wake-only ticks even when
+            // the scene itself is unchanged. Retry through the host scheduler,
+            // never recursively acquire or block the render/event thread.
+            Volatile.Write(ref _pendingRenderRequestIsWakeOnly, 0);
+            if (WpfRenderScheduler is IWpfDelayedRenderScheduler delayedScheduler)
+            {
+                delayedScheduler.RequestRender(TimeSpan.FromMilliseconds(16));
+            }
+            else
+            {
+                WpfRenderScheduler.RequestRender();
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+
+        TryRequestNativeLoopWakeup();
+        return true;
+    }
+
+    internal bool RequestNativeMilContinuationAndWakeNativeLoop(
+        NativeMilSceneBuildRequest request,
+        NativeMilSceneBuildResult result)
+    {
+        if (_isDisposed ||
+            !NativeMilSceneBuildTiming.TryGetContinuationDelay(
+                request, result, out TimeSpan delay))
+        {
+            return false;
+        }
+
+        try
+        {
+            // Native MIL phase advancement changes the compiled scene even
+            // when WPF retained state is unchanged. It must therefore upgrade
+            // any coalesced wake-only request into a presentation request.
+            Volatile.Write(ref _pendingRenderRequestIsWakeOnly, 0);
+            if (WpfRenderScheduler is IWpfDelayedRenderScheduler delayedScheduler)
+            {
+                delayedScheduler.RequestRender(delay);
+            }
+            else
+            {
+                WpfRenderScheduler.RequestRender();
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+
+        TryRequestNativeLoopWakeup();
+        return true;
+    }
+
     internal bool ConsumeScheduledRenderRequest()
     {
         bool wakeOnly = Interlocked.Exchange(ref _pendingRenderRequestIsWakeOnly, 0) != 0;
@@ -3653,10 +4794,20 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _usesExternalNativeLoopPump = true;
     }
 
-    internal static bool ShouldPumpExternalNativeRenderBeforeEvents(
+    internal static bool ShouldPumpNativeRenderBeforeEvents(
         bool usesExternalNativeLoopPump,
+        bool hasPresentedFrame,
         bool shouldPumpNativeRender) =>
-        usesExternalNativeLoopPump && shouldPumpNativeRender;
+        !hasPresentedFrame ||
+        (usesExternalNativeLoopPump && shouldPumpNativeRender);
+
+    internal static bool ShouldUseNonBlockingNativeEventPoll(
+        bool isNativeLoopRunning,
+        bool usesExternalNativeLoopPump,
+        bool isEventDriven) =>
+        isNativeLoopRunning &&
+        !usesExternalNativeLoopPump &&
+        isEventDriven;
 
     private static bool IsRecoverableDispatcherRenderException(Exception exception)
     {
@@ -3697,9 +4848,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _portablePresentationSourceDpiScaleY = dpiScaleY;
         if (Left is int nativeLogicalLeft && Top is int nativeLogicalTop)
         {
-            UpdatePortablePresentationSourceClientOrigin(nativeLogicalLeft, nativeLogicalTop);
+            UpdatePortablePresentationSourceClientOrigin(
+                nativeLogicalLeft, nativeLogicalTop, new WpfDeviceScale(dpiScaleX, dpiScaleY));
         }
-
+        // Unpositioned owners and legacy handle-only requests cannot participate
+        // in the source-identity traversal above. Already updated popups are
+        // no-ops here. Creation order keeps nested owners before their children.
         for (int i = 0; i < _portablePopupBridges.Count; i++)
         {
             _portablePopupBridges[i].TrySetDeviceScale(dpiScaleX, dpiScaleY);
@@ -3736,6 +4890,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     }
 
     internal bool UpdatePortablePresentationSourceClientOrigin(int x, int y)
+        => UpdatePortablePresentationSourceClientOrigin(x, y, popupDeviceScale: null);
+
+    private bool UpdatePortablePresentationSourceClientOrigin(int x, int y, WpfDeviceScale? popupDeviceScale)
     {
         WpfPortablePresentationSourceBridge? bridge = _portablePresentationSourceBridge;
         if (bridge == null)
@@ -3753,7 +4910,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         int deviceX = ToDeviceScreenCoordinate(x, _portablePresentationSourceDpiScaleX);
         int deviceY = ToDeviceScreenCoordinate(y, _portablePresentationSourceDpiScaleY);
-        UpdatePortablePopupOwnerOrigins(bridge.Source, deviceX, deviceY);
+        UpdatePortablePopupOwnerOrigins(bridge.Source, deviceX, deviceY, popupDeviceScale);
 
         _portablePresentationSourceClientOriginX = x;
         _portablePresentationSourceClientOriginY = y;
@@ -3880,23 +5037,33 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return true;
     }
 
+    internal bool TryGetPortablePopupPlacementBounds(object presentationSource, PortableRect targetBounds,
+        out PortablePopupPlacementBounds bounds)
+    {
+        bounds = default;
+        return !_isDisposed && TryFindPortablePopup(presentationSource, out var popup) &&
+            popup.TryGetPlacementBounds(targetBounds, out bounds);
+    }
+
     private void UpdatePortablePopupOwnerOrigins(
         object ownerPresentationSource,
         int ownerClientScreenDeviceX,
-        int ownerClientScreenDeviceY)
+        int ownerClientScreenDeviceY,
+        WpfDeviceScale? deviceScale = null)
     {
         for (int i = 0; i < _portablePopupBridges.Count; i++)
         {
             WpfPortablePopupBridge popup = _portablePopupBridges[i];
-            if (!popup.TrySetOwnerClientScreenOrigin(
+            if (!popup.TrySetOwnerClientGeometry(
                     ownerPresentationSource,
                     ownerClientScreenDeviceX,
-                    ownerClientScreenDeviceY))
+                    ownerClientScreenDeviceY,
+                    deviceScale))
             {
                 continue;
             }
 
-            UpdatePortablePopupOwnerOrigins(popup.Source, popup.X, popup.Y);
+            UpdatePortablePopupOwnerOrigins(popup.Source, popup.X, popup.Y, deviceScale);
         }
     }
 
@@ -3953,6 +5120,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         _portablePopupBridges.Remove(popup);
         popup.Dispose();
+        InvalidateNativeMilPopups();
         RequestRenderAndWakeNativeLoop();
         return true;
     }
@@ -3970,10 +5138,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private bool OwnsPortablePopupOwner(object? ownerPresentationSource, IntPtr ownerHandle)
     {
+        // An explicit source is authoritative. Handle-only lookup is a legacy
+        // contract and must not let another registered window claim this owner.
         var rootBridge = _portablePresentationSourceBridge;
         if (rootBridge != null &&
             (ReferenceEquals(ownerPresentationSource, rootBridge.Source) ||
-             (ownerHandle != IntPtr.Zero && ownerHandle == rootBridge.Handle)))
+             (ownerPresentationSource == null && ownerHandle != IntPtr.Zero && ownerHandle == rootBridge.Handle)))
         {
             return true;
         }
@@ -3982,7 +5152,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             var popup = _portablePopupBridges[i];
             if (ReferenceEquals(ownerPresentationSource, popup.Source) ||
-                (ownerHandle != IntPtr.Zero && ownerHandle == popup.Handle))
+                (ownerPresentationSource == null && ownerHandle != IntPtr.Zero && ownerHandle == popup.Handle))
             {
                 return true;
             }
@@ -4023,6 +5193,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         _portablePopupBridges.Clear();
+        _nativeMilPopupScratch.Clear();
+        InvalidateNativeMilPopups();
     }
 
     private void DisposeOwnedRenderScheduler()
@@ -4044,9 +5216,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         _isHostVisible = true;
         EnsureWindow();
-        _window!.IsVisible = true;
 
-        if (!_window.IsInitialized)
+        if (!_window!.IsInitialized)
         {
             _window.Initialize();
         }
@@ -4054,6 +5225,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             RequestRenderAndWakeNativeLoop();
         }
+        ShowNativeWindow(showActivated: true);
     }
 
     private static IDisposable? RegisterDefaultRenderDataSinkProvider(

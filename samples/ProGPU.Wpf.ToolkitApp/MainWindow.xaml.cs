@@ -1357,6 +1357,14 @@ public partial class MainWindow : Window
 
         AssertEqual(expectedText, messageBox.Text, "Toolkit static MessageBox text");
         AssertEqual(expectedCaption, Convert.ToString(messageBox.Caption, CultureInfo.InvariantCulture), "Toolkit static MessageBox caption");
+        Window dialog = Window.GetWindow(messageBox)
+            ?? throw new InvalidOperationException("Expected Toolkit static MessageBox to have a source Window.");
+        if (!ReferenceEquals(dialog.Owner, this) ||
+            new WindowInteropHelper(dialog).Owner != new WindowInteropHelper(this).Handle ||
+            !OwnedWindows.Cast<Window>().Any(window => ReferenceEquals(window, dialog)))
+        {
+            throw new InvalidOperationException("Both Toolkit owner overloads must retain the actual source Window ownership.");
+        }
         PresentationSource? source = PresentationSource.FromVisual(messageBox);
         if (source is not HwndSource ||
             source.CompositionTarget == null)
@@ -2966,6 +2974,12 @@ public partial class MainWindow : Window
         return autoHideWindow?.Model;
     }
 
+    private FrameworkElement? GetAvalonDockAutoHideArea()
+    {
+        DockManager.ApplyTemplate();
+        return DockManager.Template?.FindName("PART_AutoHideArea", DockManager) as FrameworkElement;
+    }
+
     private static bool AutoHideOverlayModelContains(object? overlayModel, LayoutAnchorable expectedContent)
     {
         if (ReferenceEquals(overlayModel, expectedContent))
@@ -3738,6 +3752,7 @@ public partial class MainWindow : Window
             }
 
             Console.WriteLine("ProGPU WPF Toolkit live input validation frame ready.");
+            RequireSelectedNativeFrame(liveHost);
             string geometryStatus = await InvokeWithLiveHostWakeAsync(
                 liveHost,
                 () => ValidateLiveRenderSurfaceGeometryCore(liveHost),
@@ -3782,6 +3797,44 @@ public partial class MainWindow : Window
 
     private async Task<string> ValidateLiveInputAsync(ProGpuWpfWindowHost liveHost)
     {
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: transient surface quiescence.");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ActionDropDownButton.IsOpen = false;
+                SplitActionButton.IsOpen = false;
+                DockDocumentContextMenu.IsOpen = false;
+                DockAnchorableContextMenu.IsOpen = false;
+                if (DockManager.AutoHideWindow is { } transientAutoHideWindow)
+                {
+                    transientAutoHideWindow.IsHitTestVisible = false;
+                }
+
+                if (GetAvalonDockAutoHideArea() is { } transientAutoHideArea)
+                {
+                    transientAutoHideArea.IsHitTestVisible = false;
+                }
+
+                Point safePointerPoint = ActivateEditorButton.TranslatePoint(
+                    new Point(
+                        Math.Max(1.0, ActivateEditorButton.ActualWidth) / 2.0,
+                        Math.Max(1.0, ActivateEditorButton.ActualHeight) / 2.0),
+                    this);
+                RaiseHostInput(
+                    liveHost,
+                    WpfInputEventKind.MouseMove,
+                    x: safePointerPoint.X,
+                    y: safePointerPoint.Y);
+                ActivateEditorButton.Focus();
+                Keyboard.Focus(ActivateEditorButton);
+            },
+            DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => GetAvalonDockAutoHideWindowModel() == null,
+            "Toolkit live transient AvalonDock auto-hide overlay close");
+
         Console.WriteLine("ProGPU WPF Toolkit live input validation step: filter focus.");
         string lastTargetState = "not checked";
         bool focusedFilter = false;
@@ -3948,6 +4001,7 @@ public partial class MainWindow : Window
             liveHost,
             () => ValidateEditorFloatingState(expectedFloating: true),
             DispatcherPriority.Send);
+        Window floatingWindow = await ValidateLiveFloatingEditorAsync(liveHost);
 
         await ClickLiveControlAsync(liveHost, ToggleEditorFloatButton, "ToggleEditorFloatButton");
         await WaitForLiveConditionAsync(
@@ -3958,6 +4012,10 @@ public partial class MainWindow : Window
             liveHost,
             () => ValidateEditorFloatingState(expectedFloating: false),
             DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(liveHost,
+            () => ReferenceEquals(PresentationSource.FromVisual(EditorTextBox)?.RootVisual, this) &&
+                !floatingWindow.IsVisible && !ProGpuWpfDiagnostics.TryGetWindowHost(floatingWindow, out _),
+            "Toolkit floating host removal and editor source restoration after docking");
 
         int propertyPaneHidingCountBefore = ViewModel.AvalonDockAnchorableHidingCount;
         int propertyPaneVisibleChangedCountBefore = ViewModel.AvalonDockAnchorableIsVisibleChangedCount;
@@ -4306,6 +4364,16 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
+                if (GetAvalonDockAutoHideArea() is { } autoHideArea)
+                {
+                    autoHideArea.IsHitTestVisible = true;
+                }
+
+                if (DockManager.AutoHideWindow is { } autoHideWindow)
+                {
+                    autoHideWindow.IsHitTestVisible = true;
+                }
+
                 EnsureAutoHideOverlayAnchorables();
                 _avalonDockAutoHideOverlayIndex = -1;
                 ViewModel.LastAvalonDockAutoHideOverlayTarget = string.Empty;
@@ -4474,9 +4542,20 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        Button splitActionButtonPart = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                SplitActionButton.ApplyTemplate();
+                SplitActionButton.UpdateLayout();
+                return SplitActionButton.Template?.FindName("PART_ActionButton", SplitActionButton) as Button
+                    ?? throw new InvalidOperationException("Expected Toolkit SplitButton template action button.");
+            },
+            DispatcherPriority.Send);
+
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
-            await ClickLiveControlAsync(liveHost, SplitActionButton, "SplitActionButton");
+            await ClickLiveControlAsync(liveHost, splitActionButtonPart, "SplitActionButton.PART_ActionButton");
             if (await InvokeWithLiveHostWakeAsync(
                     liveHost,
                     () => string.Equals(ViewModel.Status, "Applied owner ProGPU", StringComparison.Ordinal),
@@ -4843,7 +4922,56 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
-    private async Task WaitForLiveConditionAsync(ProGpuWpfWindowHost liveHost, Func<bool> condition, string description)
+    private async Task<Window> ValidateLiveFloatingEditorAsync(ProGpuWpfWindowHost ownerHost)
+    {
+        Window? floatingWindow = null;
+        ProGpuWpfWindowHost? floatingHost = null;
+        string lastFloatingState = "Floating source has not been inspected.";
+        await WaitForLiveConditionAsync(ownerHost, () =>
+        {
+            // AvalonDock retains logical document ownership in the main Window.
+            // The actual visual presentation source owns native input and must
+            // identify the floating host, independently of inherited WindowService.
+            floatingWindow = PresentationSource.FromVisual(EditorTextBox)?.RootVisual as Window;
+            bool hasHost = ProGpuWpfDiagnostics.TryGetWindowHost(floatingWindow, out floatingHost) && floatingHost != null;
+            lastFloatingState = $"SourceWindow={floatingWindow?.GetType().FullName ?? "null"}, " +
+                $"LogicalWindow={Window.GetWindow(EditorTextBox)?.GetType().FullName ?? "null"}, " +
+                $"OwnerRoot={ReferenceEquals(floatingWindow, this)}, Visible={floatingWindow?.IsVisible}, " +
+                $"HasHost={hasHost}, Presented={floatingHost?.HasPresentedFrame}, " +
+                $"EditorLoaded={EditorTextBox.IsLoaded}, EditorVisible={EditorTextBox.IsVisible}, " +
+                $"PresentedRoot={PresentationSource.FromVisual(EditorTextBox)?.RootVisual?.GetType().FullName ?? "null"}, " +
+                $"PresentedRootIsOwner={ReferenceEquals(PresentationSource.FromVisual(EditorTextBox)?.RootVisual, this)}.";
+            if (floatingWindow == null || ReferenceEquals(floatingWindow, this) || !floatingWindow.IsVisible || !hasHost || floatingHost == null)
+                return false;
+            if (ReferenceEquals(floatingHost, ownerHost) || !ReferenceEquals(floatingWindow.Owner, this))
+                throw new InvalidOperationException("AvalonDock floating editor requires its own host and actual source owner.");
+            if (!floatingHost.HasPresentedFrame)
+            {
+                WakeLiveRenderHost(floatingHost);
+                return false;
+            }
+            RequireSelectedNativeFrame(floatingHost);
+            return true;
+        }, "Toolkit floating editor's separate presented host", () => lastFloatingState);
+
+        ProGpuWpfWindowHost editorHost = floatingHost!;
+        await ClickLiveControlAsync(editorHost, EditorTextBox, "FloatingEditorTextBox");
+        await WaitForLiveConditionAsync(editorHost, () => EditorTextBox.IsKeyboardFocusWithin,
+            "Toolkit floating editor focus from its own host input");
+        return floatingWindow!;
+    }
+
+    private static void RequireSelectedNativeFrame(ProGpuWpfWindowHost host)
+    {
+#if PROGPU_WPF_NATIVE_MIL
+        if (!string.Equals(AppContext.GetData("LibreWPF.RequestedRendererMode") as string,
+                "NativeMilWgpu", StringComparison.Ordinal) || host.LastNativeMilSessionFrame == null)
+            throw new InvalidOperationException("The Toolkit native SDK host must present a native MIL session frame.");
+#endif
+    }
+
+    private async Task WaitForLiveConditionAsync(ProGpuWpfWindowHost liveHost, Func<bool> condition, string description,
+        Func<string>? failureDetails = null)
     {
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
@@ -4855,7 +4983,8 @@ public partial class MainWindow : Window
             await Task.Delay(LiveValidationRetryDelay);
         }
 
-        throw new InvalidOperationException($"Timed out waiting for {description}.");
+        throw new InvalidOperationException($"Timed out waiting for {description}." +
+            (failureDetails == null ? string.Empty : " " + failureDetails()));
     }
 
     private async Task ClickLiveControlAsync(ProGpuWpfWindowHost liveHost, FrameworkElement target, string targetName)
@@ -4886,9 +5015,13 @@ public partial class MainWindow : Window
 
     private bool TryRaiseLiveMouseClick(ProGpuWpfWindowHost liveHost, FrameworkElement target, string targetName, out string targetState)
     {
+        // A floated document is no longer in MainWindow's visual tree. Use the
+        // same source root as the host receiving this input, without screen/DPI remapping.
+        var inputRoot = liveHost.WpfRootVisual as UIElement
+            ?? throw new InvalidOperationException("Toolkit live input requires its host's source UIElement root.");
         Point initialCenter = target.TranslatePoint(
             new Point(Math.Max(1.0, target.ActualWidth) / 2.0, Math.Max(1.0, target.ActualHeight) / 2.0),
-            this);
+            inputRoot);
         target.BringIntoView();
         target.UpdateLayout();
 
@@ -4909,7 +5042,7 @@ public partial class MainWindow : Window
 
         Point center = target.TranslatePoint(
             new Point(Math.Max(1.0, target.ActualWidth) / 2.0, Math.Max(1.0, target.ActualHeight) / 2.0),
-            this);
+            inputRoot);
         double layoutDeltaX = center.X - initialCenter.X;
         double layoutDeltaY = center.Y - initialCenter.Y;
         if (Math.Abs(layoutDeltaX) > 0.5 || Math.Abs(layoutDeltaY) > 0.5)
@@ -4918,9 +5051,15 @@ public partial class MainWindow : Window
             return false;
         }
 
-        object? hit = InputHitTest(center);
+        object? hit = inputRoot.InputHitTest(center);
         targetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
-        if (!TryLiveHostGpuHitWithinTarget(liveHost, center.X, center.Y, target, out string gpuHitState))
+        if (hit == null || !IsInputElementWithinTarget(hit, target))
+        {
+            return false;
+        }
+
+        if (!TryLiveHostGpuHitWithinTarget(liveHost, center.X, center.Y, target,
+                targetName == "FloatingEditorTextBox", out string gpuHitState))
         {
             targetState += $", {gpuHitState}";
             return false;
@@ -4938,6 +5077,7 @@ public partial class MainWindow : Window
         double x,
         double y,
         FrameworkElement target,
+        bool requireDeviceIndex,
         out string state)
     {
         state = "GpuHitTest=<unavailable>";
@@ -4965,6 +5105,22 @@ public partial class MainWindow : Window
             if (ownerCount == 0)
             {
                 return false;
+            }
+
+            // Validate the same presented generation that answered this input
+            // query. A later focus/render wakeup may replace its resident index.
+            if (requireDeviceIndex)
+            {
+                if (!ProGpuWpfDiagnostics.TryGetGpuHitTestCacheSnapshot(liveHost, out var snapshot))
+                {
+                    state += ", NativeIndex=<unavailable>";
+                    return false;
+                }
+
+                state += $", NativeIndex={snapshot.HasIndex}, DeviceIndex={snapshot.HasDeviceIndex}, " +
+                    $"Primitives={snapshot.PrimitiveCount}, Owners={snapshot.OwnerCount}";
+                if (!snapshot.HasIndex || !snapshot.HasDeviceIndex)
+                    return false;
             }
 
             return true;

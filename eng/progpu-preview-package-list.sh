@@ -3,6 +3,7 @@
 progpu_preview_runtime_package_ids=(
   ProGPU.Backend
   ProGPU.Backend.Dawn
+  ProGPU.Backend.Native
   ProGPU.Text.Shaping
   ProGPU.DirectX
   ProGPU.Transpiler
@@ -36,7 +37,7 @@ progpu_preview_package_version() {
       printf '%s\n' "${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.45}"
       ;;
     *)
-      printf '%s\n' "${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.55}"
+      printf '%s\n' "${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.62}"
       ;;
   esac
 }

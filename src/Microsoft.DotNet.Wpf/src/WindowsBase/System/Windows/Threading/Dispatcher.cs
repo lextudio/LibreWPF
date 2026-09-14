@@ -1870,7 +1870,9 @@ namespace System.Windows.Threading
                 window = _window;
                 _window = null;
             }
-            window.Dispose();
+            // Portable dispatchers do not create the Win32 message-only window.
+            // Shutdown must still complete after the managed frame unwinds.
+            window?.Dispose();
 
             // Mark this dispatcher as shut down.  Attempts to BeginInvoke
             // or Invoke will result in an exception.
@@ -2137,7 +2139,7 @@ namespace System.Windows.Threading
 
                 try
                 {
-                    while(frame.Continue || HasPendingManagedOperation())
+                    while(frame.Continue)
                     {
                         PromoteTimers(Environment.TickCount);
 

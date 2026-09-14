@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**FXC iterator compilation repaired; bounds runtime still open — 2026-09-14:**
+the shared shader now keeps its 64-entry stack invocation-private, avoiding the
+inout-array loop-unrolling rejection. Independent dense/sparse GPU differentials,
+54 source checks/19 native tests and both provider builds pass. The full rebuilt
+Metal and DXC/ordered Windows consumers pass. Stock FXC/single-pass now completes
+point input and repeated waits but crashes on bounds readback. Finish that runtime
+path and final package/Showcase gates; no pins or merges advance. See
+[storage evidence](../reports/native-mil-query-private-stack-2026-09-14.md).
+
 **Complete renderer NuGet graph passes ARM64 JIT/NativeAOT — 2026-09-14:** the
 CI-built `089e9120` renderer packages plus the verified optional DX12 NuGet pass
 the full system-WARP consumer without project references or DLL overlays. Both

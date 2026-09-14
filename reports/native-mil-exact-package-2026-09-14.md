@@ -14,6 +14,30 @@ normal text size and spacing. This is local visual evidence, not final package
 or Windows/Linux parity; the pull request and downstream exact pins still need
 green CI. Other text/layout defects are not presumed fixed.
 
+A separate, managed-only Showcase window capture at the same 2× display
+shows normal glyph sizing too. It also reproduced missing visible text in the
+initial Controls tab's DataGrid Name/Category columns while checkbox cells
+and grid lines were present. The native capture had the same missing content.
+An isolated live visual-tree trace found correct bound strings, nonzero
+TextBlock measured/actual sizes and `IsVisible=true`, but inherited
+`Foreground=#00FFFFFF` from the DataGrid's Fluent style. The app's normal
+relative `/PresentationFramework.Fluent;component/Themes/Fluent.xaml` resource
+URI was not recognized by `ThemeManager`'s absolute-pack-URI-only prefix
+check, so its dynamic light/dark semantic colors were absent. Temporarily
+selecting the explicit `Fluent.Light.xaml` resource in the app restored the
+palette and visible DataGrid text/control chrome in a fresh managed capture;
+that app-only experiment was reverted. The source fix now recognizes the
+relative URI and retains automatic system/light/dark theme selection. Its
+focused PresentationFramework test passes 4/4. Overlaying only the newly
+compiled source PresentationFramework assembly into an isolated packaged
+Showcase output restored the full Controls tab in both managed and native
+window captures; both live input validations and the object self-test passed.
+The native overlay also used the clean rebuilt ProGPU #162 dylib. This is
+source-overlay evidence, not a rebuilt exact SDK package or same-source
+Windows comparison. The two renderer captures used independent processes,
+not overlapping app windows. Do not merge the LibreWPF application PR on the
+strength of the DPI regression alone.
+
 The Windows 11 Parallels VM was inspected for a same-source native-WPF visual
 baseline. Its existing `C:\GitHub\LibreWPF` checkout still contains the earlier
 `ProGPU.Wpf.MvpApp` samples rather than the current Showcase source; comparing

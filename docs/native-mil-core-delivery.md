@@ -28,6 +28,17 @@ Windows/Linux visual parity. Keep LibreWPF #115 draft until #162 passes CI,
 merges, both source pins advance, package gates rerun, and remaining visible
 layout defects are reviewed.
 
+**Portable Fluent semantic colors and control text — 2026-09-14:**
+The managed and native Showcase captures both omitted DataGrid text and much
+of the Fluent control chrome. The realized cells had correct bound strings
+and measured sizes, but transparent inherited foreground because the
+application's relative Fluent theme URI did not activate the semantic
+light/dark palette. `ThemeManager` now recognizes both relative component
+and absolute pack URIs; the explicit light-palette experiment restored the
+full Controls tab and was reverted. Qualify the actual source fix through the
+SDK package and the same-source Windows/native visual comparison before
+merging #115; a temporary app resource substitution is not qualification.
+
 **Paid Xceed native package blocker and ProGPU #161 — 2026-09-14:**
 The packaged Showcase and Toolkit native gates pass on macOS 26. The licensed
 Xceed virtual DataGrid exposed a retained path atlas capacity limit followed

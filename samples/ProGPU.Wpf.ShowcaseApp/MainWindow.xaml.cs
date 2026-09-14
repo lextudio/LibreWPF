@@ -5043,6 +5043,11 @@ internal static class ShowcaseSelfTest
         AssertEqual("Name", GetColumnBindingPath(itemsDataGrid.Columns[0]), "DataGrid name column binding");
         AssertEqual("Category", GetColumnBindingPath(itemsDataGrid.Columns[1]), "DataGrid category column binding");
         AssertEqual("IsActive", GetColumnBindingPath(itemsDataGrid.Columns[2]), "DataGrid active column binding");
+        if (itemsDataGrid.TryFindResource("TextFillColorPrimary") is not Color { A: > 0 } ||
+            itemsDataGrid.Foreground is not SolidColorBrush { Color.A: > 0 })
+        {
+            throw new InvalidOperationException("The active Fluent theme must provide visible DataGrid text colors.");
+        }
         ValidateCollectionView(window, viewModel, groupedItemsList, activeOnlyCheckBox, activeTextConverter);
         ValidateFormattedItemsList(window, viewModel, formattedItemsList);
         ValidateSelectedSummaryBinding(selectedItemSummaryText, itemSummaryConverter);

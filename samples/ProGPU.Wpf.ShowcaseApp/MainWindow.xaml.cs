@@ -5667,7 +5667,10 @@ internal static class ShowcaseSelfTest
                 restoreItem,
                 SystemCommands.RestoreWindowCommand,
                 "showcase restore",
-                WindowState.Normal,
+                isPresentedRunValidation &&
+                    PortableWpfRuntime.ConfiguredMediaBackend != PortableWpfMediaBackend.Portable
+                    ? WindowState.Maximized
+                    : WindowState.Normal,
                 "restore");
             if (isPresentedRunValidation)
             {

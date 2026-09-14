@@ -116,6 +116,14 @@ failure instead of letting the whole SDK job hang. The changed app rebuilt
 cleanly, and isolated 2× macOS native and managed `Application.Run` validations
 both completed successfully in about five seconds. Hosted CI must rerun on
 the updated PR head before this blocker is called closed.
+The same current-source Windows 11 Showcase `Application.Run` test also passed
+after its presented native-WPF restore assertion was aligned with Windows'
+maximize → minimize → restore behavior (restore returns to Maximized). The
+portable source path still asserts Normal. The first guest retry returned a
+Parallels Tools job-code error without starting the app; an unchanged second
+attempt completed every validation phase. The guest was returned to suspended
+state. This adds a same-source Windows app-lifetime check, not a Windows native
+MIL SDK package run.
 
 ## Native text visual blocker and clean-package follow-up
 

@@ -3,6 +3,7 @@
 
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using MS.Utility;
 
 namespace MS.Win32
@@ -148,9 +149,69 @@ namespace MS.Win32
 
         public static int GetDoubleClickTime()
         {
-            return System.OperatingSystem.IsWindows()
-                ? SafeNativeMethodsPrivate.GetDoubleClickTime()
-                : 500;
+            if (System.OperatingSystem.IsWindows())
+            {
+                return SafeNativeMethodsPrivate.GetDoubleClickTime();
+            }
+
+            if (System.OperatingSystem.IsMacOS())
+            {
+                return SafeNativeMethodsMac.GetDoubleClickTimeMilliseconds();
+            }
+
+            return 500;
+        }
+
+        [SupportedOSPlatform("macos")]
+        private static class SafeNativeMethodsMac
+        {
+            private const string ObjCLibrary = "/usr/lib/libobjc.A.dylib";
+            private const string AppKitLibrary = "/System/Library/Frameworks/AppKit.framework/AppKit";
+            private const int DefaultDoubleClickMilliseconds = 500;
+            private static readonly Lazy<IntPtr> AppKitHandle = new(() => NativeLibrary.Load(AppKitLibrary));
+
+            public static int GetDoubleClickTimeMilliseconds()
+            {
+                try
+                {
+                    // MouseDevice can initialize before the native window host loads AppKit.
+                    // objc_getClass does not load frameworks on demand, so retain AppKit
+                    // before looking up NSEvent.
+                    _ = AppKitHandle.Value;
+                    IntPtr nsEventClass = ObjCGetClass("NSEvent");
+                    IntPtr doubleClickIntervalSelector = SelRegisterName("doubleClickInterval");
+                    if (nsEventClass == IntPtr.Zero || doubleClickIntervalSelector == IntPtr.Zero)
+                    {
+                        return DefaultDoubleClickMilliseconds;
+                    }
+
+                    // NSEvent returns a double. Both macOS x86-64 and arm64 use objc_msgSend
+                    // for that return type; objc_msgSend_fpret is for long double on x86-64.
+                    double seconds = ObjCMsgSendReturningDouble(nsEventClass, doubleClickIntervalSelector);
+                    double milliseconds = Math.Round(seconds * 1000);
+                    return double.IsFinite(milliseconds) && milliseconds >= 1 && milliseconds <= int.MaxValue
+                        ? (int)milliseconds
+                        : DefaultDoubleClickMilliseconds;
+                }
+                catch (DllNotFoundException)
+                {
+                    return DefaultDoubleClickMilliseconds;
+                }
+                catch (EntryPointNotFoundException)
+                {
+                    return DefaultDoubleClickMilliseconds;
+                }
+            }
+
+            [DllImport(ObjCLibrary, EntryPoint = "objc_getClass")]
+            private static extern IntPtr ObjCGetClass([MarshalAs(UnmanagedType.LPStr)] string name);
+
+            [DllImport(ObjCLibrary, EntryPoint = "sel_registerName")]
+            private static extern IntPtr SelRegisterName([MarshalAs(UnmanagedType.LPStr)] string name);
+
+            [DllImport(ObjCLibrary, EntryPoint = "objc_msgSend")]
+            private static extern double ObjCMsgSendReturningDouble(IntPtr receiver, IntPtr selector);
+
         }
 
         public static bool IsWindowEnabled(HandleRef hWnd)

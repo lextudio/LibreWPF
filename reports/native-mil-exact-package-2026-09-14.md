@@ -102,6 +102,21 @@ private `C:\Temp` directory, and the Windows VM was returned to suspended
 state. This closes the object-graph test discrepancy, not Windows native MIL
 SDK package admission or the full text visual parity matrix.
 
+The first hosted LibreWPF PR #115 SDK run reached Showcase's displayed
+`Application.Run` validation after all preceding package, Hello and Showcase
+object checks passed, then remained there until the 90-minute job cancellation.
+Local phase tracing reproduced the stall inside `ValidateShowcaseSystemCommands`:
+maximize, minimize and restore completed, but executing the displayed native
+system menu waited for an interactive dismissal. The unattended run now checks
+that command's binding and `CanExecute` without opening the menu; the unshown
+object test retains execution coverage. Actual displayed system-menu behavior
+still needs a separate interaction gate. A process-group deadline now limits
+both Showcase `Application.Run` invocations to three minutes with an explicit
+failure instead of letting the whole SDK job hang. The changed app rebuilt
+cleanly, and isolated 2× macOS native and managed `Application.Run` validations
+both completed successfully in about five seconds. Hosted CI must rerun on
+the updated PR head before this blocker is called closed.
+
 ## Native text visual blocker and clean-package follow-up
 
 The user identified widespread text sizing/spacing defects while the live

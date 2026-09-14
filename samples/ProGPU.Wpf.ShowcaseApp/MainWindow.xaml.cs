@@ -4435,8 +4435,16 @@ internal static class ShowcaseSelfTest
             ?? throw new InvalidOperationException("Expected current Application.");
         AssertEqual(ShutdownMode.OnMainWindowClose, application.ShutdownMode, "Application ShutdownMode");
         ValidateApplicationRunState(application, window, expectLoadedStoryboardApplied);
+        if (expectLoadedStoryboardApplied)
+        {
+            Console.WriteLine("Showcase Application.Run validation passed startup state.");
+        }
         ValidateAppConfiguration();
         ValidateRuntimeNameScope(window);
+        if (expectLoadedStoryboardApplied)
+        {
+            Console.WriteLine("Showcase Application.Run validation passed resource setup.");
+        }
         var themeResources = Require<ResourceDictionary>(
             FindMergedResourceDictionary(
                 application.Resources.MergedDictionaries,
@@ -5036,12 +5044,17 @@ internal static class ShowcaseSelfTest
         AssertEqual(SystemCommands.RestoreWindowCommand, window.CommandBindings[3].Command, "window restore command binding");
         AssertEqual(SystemCommands.ShowSystemMenuCommand, window.CommandBindings[4].Command, "window system-menu command binding");
         AssertEqual(2, window.InputBindings.Count, "window input binding count");
+        if (expectLoadedStoryboardApplied)
+        {
+            Console.WriteLine("Showcase Application.Run validation reached system commands.");
+        }
         ValidateShowcaseSystemCommands(
             window,
             windowMaximizeMenuItem,
             windowMinimizeMenuItem,
             windowRestoreMenuItem,
-            windowSystemMenuItem);
+            windowSystemMenuItem,
+            expectLoadedStoryboardApplied);
         ValidateShowcaseWindowChrome(
             window,
             chromeCaptionRegion,
@@ -5131,6 +5144,10 @@ internal static class ShowcaseSelfTest
             showcaseAdornerDecorator,
             showcaseAdornerTarget,
             showcaseAdornerStatusText);
+        if (expectLoadedStoryboardApplied)
+        {
+            Console.WriteLine("Showcase Application.Run validation reached storyboards.");
+        }
         ValidateStoryboards(window, loadedStoryboardText, clickStoryboardButton, expectLoadedStoryboardApplied);
         ValidateNativeEffects(dropShadowEffectBorder, blurEffectBorder);
         AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
@@ -5265,6 +5282,10 @@ internal static class ShowcaseSelfTest
             splitterRightPane,
             showcaseViewbox,
             viewboxText);
+        if (expectLoadedStoryboardApplied)
+        {
+            Console.WriteLine("Showcase Application.Run validation reached resource controls.");
+        }
         ValidateResourceControls(
             window,
             componentResourceText,
@@ -5298,7 +5319,15 @@ internal static class ShowcaseSelfTest
             detailsNavigationButton,
             backNavigationButton,
             forwardNavigationButton);
+        if (expectLoadedStoryboardApplied)
+        {
+            Console.WriteLine("Showcase Application.Run validation reached secondary window.");
+        }
         ValidateSecondaryWindow(window, aboutMenuItem);
+        if (expectLoadedStoryboardApplied)
+        {
+            Console.WriteLine("Showcase Application.Run validation reached editor.");
+        }
         ValidateEditor(
             window,
             editorPasswordBox,
@@ -5315,6 +5344,10 @@ internal static class ShowcaseSelfTest
             copyRichTextButton,
             pasteRichTextButton,
             dataObjectStatusText);
+        if (expectLoadedStoryboardApplied)
+        {
+            Console.WriteLine("Showcase Application.Run validation reached document.");
+        }
         ValidateDocument(window, documentViewer, documentPageViewer, documentReader);
 
         AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command initial CanExecute state");
@@ -5606,7 +5639,8 @@ internal static class ShowcaseSelfTest
         MenuItem maximizeItem,
         MenuItem minimizeItem,
         MenuItem restoreItem,
-        MenuItem systemMenuItem)
+        MenuItem systemMenuItem,
+        bool isPresentedRunValidation)
     {
         var originalState = window.WindowState;
         int initialCanExecuteCount = window.SystemCommandCanExecuteCount;
@@ -5635,13 +5669,31 @@ internal static class ShowcaseSelfTest
                 "showcase restore",
                 WindowState.Normal,
                 "restore");
-            ExecuteShowcaseSystemCommand(
-                window,
-                systemMenuItem,
-                SystemCommands.ShowSystemMenuCommand,
-                "showcase system menu",
-                WindowState.Normal,
-                "show system menu");
+            if (isPresentedRunValidation)
+            {
+                // A shown native menu waits for interactive dismissal. Check
+                // the binding here; actual menu operation needs a separate
+                // native interaction gate.
+                AssertEqual(SystemCommands.ShowSystemMenuCommand, systemMenuItem.Command,
+                    "Showcase SystemCommands show system menu command");
+                AssertEqual(window, systemMenuItem.CommandTarget,
+                    "Showcase SystemCommands show system menu target");
+                AssertEqual("showcase system menu", systemMenuItem.CommandParameter,
+                    "Showcase SystemCommands show system menu parameter");
+                AssertEqual(true,
+                    SystemCommands.ShowSystemMenuCommand.CanExecute(systemMenuItem.CommandParameter, window),
+                    "Showcase SystemCommands show system menu CanExecute");
+            }
+            else
+            {
+                ExecuteShowcaseSystemCommand(
+                    window,
+                    systemMenuItem,
+                    SystemCommands.ShowSystemMenuCommand,
+                    "showcase system menu",
+                    WindowState.Normal,
+                    "show system menu");
+            }
         }
         finally
         {
@@ -5654,7 +5706,7 @@ internal static class ShowcaseSelfTest
             window.SystemCommandCanExecuteCount,
             "Showcase SystemCommands CanExecute count");
         AssertEqual(
-            initialExecutedCount + 4,
+            initialExecutedCount + (isPresentedRunValidation ? 3 : 4),
             window.SystemCommandExecutedCount,
             "Showcase SystemCommands executed count");
     }

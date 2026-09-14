@@ -28,10 +28,12 @@ public partial class App : Application
 
         if (Environment.GetEnvironmentVariable("PROGPU_WPF_SHOWCASE_RUN_VALIDATE") == "1")
         {
+            Console.WriteLine("Showcase Application.Run validation entered startup.");
             base.OnStartup(e);
             Dispatcher.BeginInvoke(
                 DispatcherPriority.ApplicationIdle,
                 new Action(ValidateRunningApplication));
+            Console.WriteLine("Showcase Application.Run validation queued callback.");
             return;
         }
 
@@ -56,6 +58,7 @@ public partial class App : Application
 
     private static void ValidateRunningApplication()
     {
+        Console.WriteLine("Showcase Application.Run validation entered callback.");
         try
         {
             var window = FindMainWindow()

@@ -576,7 +576,10 @@ echo "Running Showcase SDK app Application.Run validation..."
 PROGPU_WPF_SHOWCASE_VALIDATE=0 \
 PROGPU_WPF_SHOWCASE_RUN_VALIDATE=1 \
 PROGPU_WPF_SHOWCASE_LIVE_VALIDATE=0 \
-  run_dotnet run --no-build --project "${repo_root}/samples/ProGPU.Wpf.ShowcaseApp/ProGPU.Wpf.ShowcaseApp.csproj" -v:minimal
+  python3 "${repo_root}/eng/progpu-wpf-run-bounded.py" 180 \
+    "Showcase SDK Application.Run validation" \
+    "${dotnet}" run --no-build \
+    --project "${repo_root}/samples/ProGPU.Wpf.ShowcaseApp/ProGPU.Wpf.ShowcaseApp.csproj" -v:minimal
 
 showcase_output="${repo_root}/artifacts/bin/ProGPU.Wpf.ShowcaseApp/Debug/${sdk_sample_target_framework}"
 showcase_apphost_name="$(apphost_name "ProGPU.Wpf.ShowcaseApp")"
@@ -591,7 +594,9 @@ echo "Running Showcase SDK app apphost Application.Run validation..."
   PROGPU_WPF_SHOWCASE_VALIDATE=0 \
   PROGPU_WPF_SHOWCASE_RUN_VALIDATE=1 \
   PROGPU_WPF_SHOWCASE_LIVE_VALIDATE=0 \
-    "./${showcase_apphost_name}"
+    python3 "${repo_root}/eng/progpu-wpf-run-bounded.py" 180 \
+      "Showcase apphost Application.Run validation" \
+      "./${showcase_apphost_name}"
 )
 
 echo "Running Showcase SDK app live geometry validation..."

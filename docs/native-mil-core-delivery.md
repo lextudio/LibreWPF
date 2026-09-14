@@ -15,6 +15,24 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Core package qualification checkpoint — 2026-09-14:** ProGPU #163 is
+merged at `ff8bcbf4` with 45/45 PR checks green, and its exact `main` Build
+[34864169048](https://github.com/wieslawsoltes/ProGPU/actions/runs/34864169048)
+passed 43/43. LibreWinForms #31 merged at `9e2924e5` after 6/6 checks.
+LibreWPF #115 at `3928b97ad` passed 7/7 hosted checks, including exact native
+SDK package/app smoke and Windows/Linux package/runtime smoke. The isolated
+macOS NativeMilWgpu full SDK gate passed with paid Xceed enabled; its Showcase
+runtime hash equals the published merged-main dylib. The exact packaged
+Showcase Themes capture confirms ordinary 2× glyph size and five legal
+whole-word lines. See `reports/native-mil-exact-package-2026-09-14.md`.
+Under the user-requested core scope, this closes the package and observed
+major text defect gates for an integration-branch merge. It does not enable
+Windows native SDK MIL defaults or qualify the full Windows/Linux visual text
+matrix, commercial SciChart binaries, general Direct2D/Win2D, or the broader
+goal. Keep these as explicit follow-up work rather than implying parity.
+The dated entries below preserve earlier blocker discovery and are not newer
+release-status decisions than this checkpoint.
+
 **Exact merged native package and text-heavy application gate — 2026-09-14:**
 ProGPU `main` Build
 [34843133821](https://github.com/wieslawsoltes/ProGPU/actions/runs/34843133821)
@@ -30,8 +48,8 @@ The packaged Showcase native dylib SHA-256
 `e00023d9ef597ad52c2036b4f2d9906ab7679d3f89835a2485f9bd3c55257c5e`
 matches the exact merged-main artifact. This closes the local macOS
 exact-package application gate, not same-source Windows/Linux visual parity,
-commercial SciChart compatibility, or LibreWPF PR #115's hosted CI. Keep
-#115 draft until those required decisions and checks finish. The earlier
+commercial SciChart compatibility, or LibreWPF PR #115's hosted CI. At that
+checkpoint #115 remained draft pending those decisions and checks. The earlier
 source-overlay and stale-local-package observations below remain historical.
 
 **Shared portable text wrapping blocker — 2026-09-14:** A matched managed/native
@@ -46,14 +64,14 @@ its deterministic regression and all 20 local native CTest suites pass.
 #163 merged to `main` at `ff8bcbf46a6b77de25cd524407b4865eb13d9db0`.
 The repository allowed the merge while the isolated macOS x64 CI rerun was
 pending; the rerun and all 45 PR checks subsequently passed. The separate
-Build for merged `main` remains the exact native-artifact gate.
+Build for merged `main` was the exact native-artifact gate; it passed above.
 [LibreWinForms #31](https://github.com/wieslawsoltes/LibreWinForms/pull/31)
 passed all six CI checks and merged at
 `9e2924e5da58831783bcf3eb6732fd4c954ed526`, pinning this exact ProGPU
 main commit for the canonical package graph. The
-earlier exact-package gate does not qualify this corrected text path; rerun
-the final package/application gate and visual comparison before #115 is made
-merge-ready. A same-source Windows 11 native-WPF Showcase Themes
+earlier exact-package gate did not qualify this corrected text path; the
+final package/application gate and visual comparison passed in the newer
+checkpoint above. A same-source Windows 11 native-WPF Showcase Themes
 baseline built in guest-only output paths and displayed five whole-word lines;
 the same-source Windows object and displayed `Application.Run` self-tests now
 pass after the test distinguishes unpresented native commands and the native
@@ -66,8 +84,8 @@ WPF SDK job was canceled while its unattended Showcase test displayed a
 blocking native system menu; the test now avoids opening that interactive
 menu and bounds app-lifetime runs to three minutes. The hosted SDK graph guard
 then exposed stale script-shape and clipboard assertions; the corrected guard
-passes locally and is pushed to #115. Its new hosted CI and the re-pinned
-final package gate remain required.
+passed locally and was pushed to #115. Its new hosted CI and the re-pinned
+final package gate subsequently passed as recorded above.
 
 **Native text display scale and final visual qualification — 2026-09-14:**
 A direct 2× macOS window capture of `ProGPU.Wpf.ShowcaseApp` found glyph ink
@@ -79,9 +97,9 @@ corrects the native ratio and adds 1×/2×/2.625×/3× fixture assertions. All
 20 local native suites and 45/45 PR checks passed; #162 merged to `main` at
 `5b99b640a583c9f1cb69fd17731e000ab632baec`. A native-dylib-only Showcase
 overlay visibly restores ordinary text size and spacing. This is not the
-exact merged-package or Windows/Linux visual parity. Keep LibreWPF #115 draft
-until its final source pins, package gates and remaining visible layout
-reviews complete.
+exact merged-package or Windows/Linux visual parity. At this earlier
+checkpoint LibreWPF #115 remained draft pending the final source pins,
+package gates and visible layout review.
 
 **Portable Fluent semantic colors and control text — 2026-09-14:**
 The managed and native Showcase captures both omitted DataGrid text and much

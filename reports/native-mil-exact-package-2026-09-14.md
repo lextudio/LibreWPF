@@ -1,5 +1,43 @@
 # Native MIL exact-package validation — 2026-09-14
 
+## Final merged-source core package and text check
+
+ProGPU `main` Build
+[34864169048](https://github.com/wieslawsoltes/ProGPU/actions/runs/34864169048)
+passed 43/43 jobs for `ff8bcbf46a6b77de25cd524407b4865eb13d9db0`.
+ProGPU #163 passed all 45 PR checks. LibreWinForms #31 passed all six checks
+and merged to `9e2924e5da58831783bcf3eb6732fd4c954ed526`.
+LibreWPF #115 head `3928b97ad4704bd49a9a3f2ab506d073ef6f0ffb`
+passed all seven hosted checks: canonical WinForms source, Windows managed
+payload, native SDK package/app smoke, canonical SDK consumer, Windows AnyCPU
+package launch, Linux Wayland/XWayland input and popup smoke, and docs.
+
+The isolated macOS NativeMilWgpu `eng/progpu-wpf-sdk-ci.sh` run exited zero
+with the exact merged ProGPU runtime and aligned LibreWinForms package closure.
+It completed the native host, XAML/theme/application-lifetime, package/bundle,
+Hello, Showcase, Toolkit, licensed Xceed, default SciChart, and focused graph
+gates. Its Showcase apphost `libprogpu_native.dylib` and the staged Build
+runtime both have SHA-256
+`ea2d4c4364844d18d486ae5d702b669b0bc3298f4188eef8422aeeaaca1de083`.
+The initial local command omitted the exact native build-directory setting;
+the next omitted the ProGPU source package version and stopped at a mixed
+WPF/WinForms NU1605 downgrade. Neither stopped run is qualification. The
+corrected full command passed. Local canonical package preparation also
+passed for both the PR-head and merged LibreWinForms pins; a repeated output
+directory first had to be isolated from old generated package versions.
+
+A direct 2× macOS window-only capture of the final packaged Showcase Themes
+pane showed normal-sized glyph ink and these five whole-word lines:
+`The button is styled through a`, `compiled ControlTemplate,`,
+`TemplateBinding, named parts,`, `VisualStateManager states, and`,
+`a property trigger.` The private local capture is
+`/tmp/progpu-showcase-merged-themes-window-20260914.png`; no unrelated desktop
+content is part of that window image. This closes the observed native ink-scale
+and shared whitespace-wrap defects on the exact core package. It does not
+qualify a full cross-platform text-layout/sizing matrix, commercial SciChart
+binaries, arbitrary Direct2D/Win2D, or native Windows SDK MIL admission. Those
+remain documented work outside this core package decision.
+
 ## Exact merged package and licensed macOS application pass
 
 ProGPU `main` Build
@@ -23,8 +61,8 @@ packaged Showcase `libprogpu_native.dylib` SHA-256 is
 identical to the staged exact merged-main artifact. This validates the local
 macOS package path after the native text DPI, Fluent palette and ideal-width
 fixes. It does not establish same-source Windows/Linux text visual parity,
-commercial SciChart binaries, or hosted LibreWPF PR #115 CI. Keep the PR draft
-until the remaining required gates and release decision are resolved.
+commercial SciChart binaries, or hosted LibreWPF PR #115 CI. At that earlier
+checkpoint the PR remained draft pending the final gates and release decision.
 
 ## Shared paragraph whitespace-wrap defect
 
@@ -44,13 +82,13 @@ same-cluster protection. The reproduced request now has five whole-word
 lines, and all 20 local native CTest suites pass. #163 merged to ProGPU
 `main` at `ff8bcbf46a6b77de25cd524407b4865eb13d9db0`. Its macOS x64
 CI rerun and all 45 PR checks subsequently passed. The final exact merged-main
-package/app visual gate must be rerun;
+package/app visual gate was then rerun and passed as recorded above;
 the previous exact-package pass used ProGPU `5b99b640` and predates this fix.
 LibreWinForms #31 passed all six CI checks and merged at
 `9e2924e5da58831783bcf3eb6732fd4c954ed526`, carrying the ProGPU
 `ff8bcbf4` pin. The local aligned canonical package preparation passed
 against LibreWinForms `75264ab6` and ProGPU `ff8bcbf4`; the final WPF
-dependency pin now uses the merged LibreWinForms commit and must be repacked.
+dependency pin uses the merged LibreWinForms commit and was repacked above.
 An isolated copy of the packaged Showcase output with only the locally built
 PR #163 `libprogpu_native.dylib` substituted passed its source self-test,
 `Application.Run` validation twice, and the full native live input/resize/

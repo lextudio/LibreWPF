@@ -365,6 +365,11 @@ namespace MS.Internal
         /// </returns>
         internal static NativeMethods.POINT AdjustForRightToLeft(NativeMethods.POINT pt, HandleRef handleRef)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return pt;
+            }
+
             int windowStyle = SafeNativeMethods.GetWindowStyle(handleRef, true);
 
             if(( windowStyle & NativeMethods.WS_EX_LAYOUTRTL ) == NativeMethods.WS_EX_LAYOUTRTL)
@@ -404,6 +409,11 @@ namespace MS.Internal
         /// </returns>
         internal static NativeMethods.RECT AdjustForRightToLeft(NativeMethods.RECT rc, HandleRef handleRef)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return rc;
+            }
+
             int windowStyle = SafeNativeMethods.GetWindowStyle(handleRef, true);
 
             if(( windowStyle & NativeMethods.WS_EX_LAYOUTRTL ) == NativeMethods.WS_EX_LAYOUTRTL)

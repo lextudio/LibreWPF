@@ -91,10 +91,20 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private int _portablePresentationSourceClientOriginX;
     private int _portablePresentationSourceClientOriginY;
     private bool _hasPortablePresentationSourceClientOrigin;
+    // GLFW's event poll is process-global: whichever host instance happens to call
+    // window.DoEvents() dispatches pending native callbacks for every native window, not just its
+    // own (e.g. a mouse-up on a modal dialog can be delivered while the *main* window's host is the
+    // one pumping). A callback can synchronously Close()/Dispose() a *different* host than the one
+    // currently inside window.DoEvents()/DoUpdate()/DoRender(), so the existing _isNativeLoopRunning/
+    // _isRendering/etc. instance flags below don't see it and Dispose() would call Silk.NET's
+    // Reset() reentrantly - which Silk.NET explicitly forbids while any window's render loop is
+    // active, crashing the process. This process-wide counter closes that gap.
+    private static int s_activeNativeEventDispatchDepth;
     private bool _isDisposed;
     private bool _isNativeLoopRunning;
     private bool _usesExternalNativeLoopPump;
     private bool _isLoadingCompositionTarget;
+    private bool _usesSharedRenderDevice;
     private bool _hasPendingDeviceRecovery;
     private Vector4 _deviceRecoveryClearColor;
     private long _renderDeviceRecoveryCount;
@@ -223,6 +233,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public IWindow? SilkWindow => _window;
 
     public ProGpuWpfCompositionTarget? CompositionTarget => _target;
+
+    /// <summary>
+    /// Gets a value indicating whether this window renders through a WebGPU device that it
+    /// borrowed from another window instead of a device it created itself.
+    /// </summary>
+    public bool UsesSharedRenderDevice => _target != null && _usesSharedRenderDevice;
 
     public ProGpuDirectXDevice? DirectXDevice
     {
@@ -1423,7 +1439,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             // native polling will process that work without starving DoRender.
             NativeRenderPumpCount++;
             TraceNativeLoop("pre-event render entering: " + CreateNativeLoopTraceState());
-            window.DoRender();
+            Interlocked.Increment(ref s_activeNativeEventDispatchDepth);
+            try
+            {
+                window.DoRender();
+            }
+            finally
+            {
+                if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)
+                {
+                    ProcessDeferredNativeWindowDisposals();
+                }
+            }
             TraceNativeLoop("pre-event render leaving: " + CreateNativeLoopTraceState());
         }
 
@@ -1440,46 +1467,56 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             window.IsEventDriven = false;
         }
 
+        Interlocked.Increment(ref s_activeNativeEventDispatchDepth);
         try
         {
-            TraceNativeLoop(
-                $"native event poll entering: nonBlocking={useNonBlockingNativePoll}, " +
-                CreateNativeLoopTraceState());
-            if (!NativeWindowModalSession.TryPumpEvents()) window.DoEvents();
-            TraceNativeLoop("native event poll leaving: " + CreateNativeLoopTraceState());
+            try
+            {
+                TraceNativeLoop(
+                    $"native event poll entering: nonBlocking={useNonBlockingNativePoll}, " +
+                    CreateNativeLoopTraceState());
+                if (!NativeWindowModalSession.TryPumpEvents()) window.DoEvents();
+                TraceNativeLoop("native event poll leaving: " + CreateNativeLoopTraceState());
+            }
+            finally
+            {
+                if (useNonBlockingNativePoll)
+                {
+                    window.IsEventDriven = restoreEventDriven;
+                }
+            }
+
+            if (!ShouldKeepPortableNativeRunLoopAlive())
+            {
+                DisposeDeferredNativeWindowIfNeeded();
+                return;
+            }
+
+            ProcessDispatcherQueueCore();
+            if (!ShouldKeepPortableNativeRunLoopAlive())
+            {
+                DisposeDeferredNativeWindowIfNeeded();
+                return;
+            }
+
+            window.DoUpdate();
+            EnsureCompositionTargetLoaded();
+            if (ShouldPumpNativeRender())
+            {
+                NativeRenderPumpCount++;
+                window.DoRender();
+            }
+            else
+            {
+                SkippedNativeRenderPumpCount++;
+            }
         }
         finally
         {
-            if (useNonBlockingNativePoll)
+            if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)
             {
-                window.IsEventDriven = restoreEventDriven;
+                ProcessDeferredNativeWindowDisposals();
             }
-            ProcessDeferredNativeWindowDisposals();
-        }
-
-        if (!ShouldKeepPortableNativeRunLoopAlive())
-        {
-            DisposeDeferredNativeWindowIfNeeded();
-            return;
-        }
-
-        ProcessDispatcherQueueCore();
-        if (!ShouldKeepPortableNativeRunLoopAlive())
-        {
-            DisposeDeferredNativeWindowIfNeeded();
-            return;
-        }
-
-        window.DoUpdate();
-        EnsureCompositionTargetLoaded();
-        if (ShouldPumpNativeRender())
-        {
-            NativeRenderPumpCount++;
-            window.DoRender();
-        }
-        else
-        {
-            SkippedNativeRenderPumpCount++;
         }
 
         DisposeDeferredNativeWindowIfNeeded();
@@ -1614,7 +1651,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 IsNativeWindowRetainedByModalSession(window) ||
                 _isRendering ||
                 _isProcessingDispatcherWorkWakeup ||
-                _isInNativeWindowCloseCallback);
+                _isInNativeWindowCloseCallback ||
+                // Not just this instance's own reentrancy: GLFW's poll is process-global, so a
+                // *different* host's DoEvents() can be the one currently dispatching the native
+                // callback (e.g. a modal dialog's Cancel click) that led here.
+                Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0);
         bool disposeNativeWindow = window != null && !deferNativeWindowDispose;
 
         if (window != null && !deferNativeWindowDispose)
@@ -1631,7 +1672,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             _disposeNativeWindowWhenLoopExits = true;
             RequestNativeWindowClose(window!);
-            if (_isInNativeWindowCloseCallback || IsNativeWindowRetainedByModalSession(window!))
+            if (_isInNativeWindowCloseCallback ||
+                IsNativeWindowRetainedByModalSession(window!) ||
+                Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0)
             {
                 QueueDeferredNativeWindowDisposal(this);
             }
@@ -1665,6 +1708,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         if (!_disposeNativeWindowWhenLoopExits || _isNativeLoopRunning)
         {
+            return;
+        }
+
+        if (Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0)
+        {
+            QueueDeferredNativeWindowDisposal(this);
             return;
         }
 
@@ -1709,6 +1758,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private static void ProcessDeferredNativeWindowDisposals()
     {
+        if (Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0)
+        {
+            return;
+        }
+
         ProGpuWpfWindowHost[] pending;
         lock (s_deferredNativeWindowDisposalGate)
         {
@@ -1778,6 +1832,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _window = Window.Create(windowOptions);
         _dpiWindowHintsConfigured = SilkNetGlfwDpiService.TryConfigureDpiWindowHints();
         _windowController = new SilkWindowController(_window);
+        _windowController.SetIsPopup(_options.IsPopupSurface);
         ApplyWindowBorderToController();
         _hasNativeWindowCloseStarted = false;
         _window.Load += OnLoad;
@@ -1792,10 +1847,43 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         AttachNativeDpiService();
         _windowController?.Attach();
+        if (OperatingSystem.IsMacOS() && _options.TransparentFramebuffer &&
+            _windowController?.SetBackdrop(NativeWindowBackdrop.Transparent) != true)
+        {
+            throw new InvalidOperationException(
+                "The native window did not accept a transparent backdrop.");
+        }
         if (_modalInputRegistration != null)
             SetNativeInputAllowed(_nativeInputAllowed);
         ApplyWindowIcon();
+        ReleaseUnusedClientGraphicsContext();
         EnsureCompositionTargetLoaded();
+    }
+
+    private void ReleaseUnusedClientGraphicsContext()
+    {
+        if (!SilkNetGlfwPlatformSelector.RequiresClientApiForTransparentFramebuffer(
+                _options.TransparentFramebuffer))
+        {
+            return;
+        }
+
+        // Transparent-framebuffer windows ask GLFW for a client API so its X11 backend picks a
+        // visual with an alpha channel, and GLFW makes that context current on this thread.
+        // WebGPU owns presentation and never uses it, but wgpu's GLES backend releases the
+        // thread's current context while creating a surface - eglMakeCurrent(display, NULL,
+        // NULL, NULL) - and Mesa answers EGL_BAD_ACCESS when that context is GLFW's rather than
+        // wgpu's, aborting the process from native code.
+        try
+        {
+            _window?.GLContext?.Clear();
+        }
+        catch (Exception exception)
+        {
+            throw new InvalidOperationException(
+                "The unused client graphics context could not be released before WebGPU surface creation.",
+                exception);
+        }
     }
 
     private bool EnsureCompositionTargetLoaded()
@@ -1855,10 +1943,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 }
                 sharedDeviceContext = ownerTarget.Context;
             }
-            ProGpuWpfCompositionTarget target = ProGpuWpfCompositionTarget.CreateForWindow(
-                window,
-                sharedDeviceContext,
-                _options.CompositorOptions);
+            ProGpuWpfCompositionTarget target = CreateCompositionTargetForWindow(
+                window, sharedDeviceContext);
             NativeCompositor? nativeMilCompositor = null;
             WpfNativeMilCompilationSession? nativeMilSession = null;
             try
@@ -1960,6 +2046,54 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             _isLoadingCompositionTarget = false;
         }
+    }
+
+    private ProGpuWpfCompositionTarget CreateCompositionTargetForWindow(
+        IWindow window, WgpuContext? explicitDeviceOwner)
+    {
+        // Popup hosts resolve their current owner immediately before target creation, including
+        // after device recovery. Only independent top-level hosts use the process device.
+        bool usesProcessRenderDevice =
+            _options.SharedRenderDeviceOwner == null &&
+            ProGpuWpfRenderDeviceSharing.IsEnabled;
+        WgpuContext? deviceOwner = usesProcessRenderDevice
+            ? ProGpuWpfRenderDeviceSharing.TryGetDeviceOwnerContext()
+            : explicitDeviceOwner;
+
+        ProGpuWpfCompositionTarget? target = null;
+        while (deviceOwner != null)
+        {
+            try
+            {
+                target = ProGpuWpfCompositionTarget.CreateForWindow(
+                    window,
+                    deviceOwner,
+                    _options.CompositorOptions);
+            }
+            catch (InvalidOperationException) when (
+                usesProcessRenderDevice && (deviceOwner.IsDisposed || deviceOwner.IsDeviceLost))
+            {
+                // Selection raced a retiring device. Try another existing owner before creating
+                // a new device; unrelated surface/initialization errors remain authoritative.
+                ProGpuWpfRenderDeviceSharing.RetireDeviceOwnerContext(deviceOwner);
+                deviceOwner = ProGpuWpfRenderDeviceSharing.TryGetDeviceOwnerContext();
+            }
+
+            if (target != null)
+                break;
+        }
+
+        _usesSharedRenderDevice = target != null;
+        target ??= ProGpuWpfCompositionTarget.CreateForWindow(
+            window,
+            sharedDeviceContext: null,
+            _options.CompositorOptions);
+        if (usesProcessRenderDevice)
+        {
+            ProGpuWpfRenderDeviceSharing.RegisterDeviceOwnerContext(target.Context);
+        }
+
+        return target;
     }
 
     private bool CanFinishCompositionTargetLoad(ProGpuWpfCompositionTarget target, IWindow window)
@@ -2835,7 +2969,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             Math.Abs(dpiScaleX - dpiScaleY) > 0.000001)
         {
             throw new NotSupportedException(
-                "Native MIL presentation currently requires uniform X/Y DPI scaling.");
+                $"Native MIL presentation currently requires uniform X/Y DPI scaling " +
+                $"(x={dpiScaleX:R}, y={dpiScaleY:R}, pixels={pixelWidth}x{pixelHeight}).");
         }
     }
 
@@ -2969,6 +3104,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         var dpiScaleX = pixelWidth / (double)logicalWidth;
         var dpiScaleY = pixelHeight / (double)logicalHeight;
+        // Windows can publish a framebuffer one pixel short during a resize
+        // while its content scale remains uniformly 2x. Keep the physical
+        // extent, but do not manufacture anisotropic source/DPI transforms
+        // from that integer rounding. Larger differences retain both ratios.
+        if (Math.Abs(fallbackScaleX - fallbackScaleY) <= 0.000001 &&
+            Math.Abs(pixelWidth - logicalWidth * fallbackScaleX) <= 1.0 &&
+            Math.Abs(pixelHeight - logicalHeight * fallbackScaleY) <= 1.0 &&
+            Math.Abs(dpiScaleX - fallbackScaleX) <= 0.02 &&
+            Math.Abs(dpiScaleY - fallbackScaleY) <= 0.02)
+        {
+            dpiScaleX = fallbackScaleX;
+            dpiScaleY = fallbackScaleY;
+        }
 
         return new RenderSurfaceGeometry(
             logicalWidth,
@@ -4430,9 +4578,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         ProGpuWpfCompositionTarget target = _target;
         _target = null;
+        _usesSharedRenderDevice = false;
         _directXDevice?.Dispose();
         _directXDevice = null;
         target.RenderInvalidated -= OnCompositionTargetRenderInvalidated;
+        ProGpuWpfRenderDeviceSharing.RetireDeviceOwnerContext(target.Context);
         target.Dispose();
         WpfRenderScheduler.Reset();
         Volatile.Write(ref _pendingRenderRequestIsWakeOnly, 0);

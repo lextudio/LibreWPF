@@ -120,6 +120,7 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
             ShowActivated = false,
             TransparentFramebuffer = request.IsTransparent,
             WindowBorder = ProGpuWpfWindowBorder.Hidden,
+            IsPopupSurface = true,
             EnablePortablePopupService = false,
             IncludePortablePopupRootsInWpfReplay = true,
             NativePointerCoordinatesAreOwnerRelative = OperatingSystem.IsMacOS(),

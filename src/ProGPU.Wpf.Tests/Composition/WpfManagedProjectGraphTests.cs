@@ -406,6 +406,28 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void UnsafeNativeMethodsWindowLongsFailSoftOffWindows()
+    {
+        var unsafeNativeMethods = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "MS",
+            "Win32",
+            "UnsafeNativeMethodsOther.cs"));
+
+        // Window longs resolve against PresentationNative_cor3.dll, which does not exist
+        // off-Windows. The managed entry points must report "no styles" there instead of
+        // faulting the process with DllNotFoundException (GetWindowStyle funnels through
+        // GetWindowLong, so a hit-test-driven ScreenToClient used to crash macOS).
+        var noStylesPtr = "if (!System.OperatingSystem.IsWindows())\n            {\n                return IntPtr.Zero;\n            }";
+        var noStylesInt = "if (!System.OperatingSystem.IsWindows())\n            {\n                return 0;\n            }";
+        AssertGuardBefore(unsafeNativeMethods, noStylesPtr, "NativeMethodsSetLastError.GetWindowLongPtr(hWnd, nIndex)");
+        AssertGuardBefore(unsafeNativeMethods, noStylesInt, "iResult = NativeMethodsSetLastError.GetWindowLong(hWnd, nIndex);");
+    }
+
+    [Fact]
     public void FocusedProGpuWpfGraphAvoidsSharedOutputParallelContention()
     {
         var project = XDocument.Load(FindRepoPath(
@@ -13184,11 +13206,11 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("name: LibreWPF Build", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_QUALIFIED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
-        Assert.Equal(6, sdkCiWorkflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        Assert.Equal(15, sdkCiWorkflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(7, sdkCiWorkflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(16, sdkCiWorkflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("librewpf-ci-packages-${{ github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("librewpf-windows-managed-runtime-${{ github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
-        Assert.Equal(2, sdkCiWorkflow.Split("submodules: true", StringSplitOptions.None).Length - 1);
+        Assert.Equal(3, sdkCiWorkflow.Split("submodules: true", StringSplitOptions.None).Length - 1);
         Assert.Contains("submodules: recursive", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("./eng/progpu-wpf-canonical-winforms-integration.sh", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("Download canonical LibreWinForms package closure", sdkCiWorkflow, StringComparison.Ordinal);
@@ -13200,6 +13222,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("Stage exact ProGPU release packages", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("global-json-file: global.json", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("./eng/progpu-wpf-sdk-ci.sh", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/progpu-wpf-linux-multi-window-smoke.sh", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("name: LibreWPF Docs", docsWorkflow, StringComparison.Ordinal);
         Assert.Contains("submodules: true", docsWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("submodules: recursive", docsWorkflow, StringComparison.Ordinal);
@@ -20099,6 +20122,67 @@ public sealed class WpfManagedProjectGraphTests
         // either registration order between ProGPU.Wpf and PresentationFramework).
         Assert.Contains("PortableWpfServiceRegistry.NativeInputPumpChanged += static (_, _) => ApplyNativeInputPump();", portableActivationService, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.NativeInputPump = PortableWpfServiceRegistry.NativeInputPump;", portableActivationService, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PopupSurfacesRenderWithoutMacOsRoundedCorners()
+    {
+        var nativeWindowTypes = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Backend",
+            "NativeWindowTypes.cs"));
+
+        Assert.Contains("bool IsPopup = false)", nativeWindowTypes, StringComparison.Ordinal);
+        Assert.Contains("IsPopup: false);", nativeWindowTypes, StringComparison.Ordinal);
+
+        var windowController = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Backend",
+            "SilkWindowController.cs"));
+
+        Assert.Contains("public bool SetIsPopup(bool value)", windowController, StringComparison.Ordinal);
+        Assert.Contains("_state = _state with { IsPopup = value };", windowController, StringComparison.Ordinal);
+
+        var macPlatform = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Backend",
+            "MacOsNativeWindowPlatform.cs"));
+
+        // NSWindowStyleMaskTitled forces OS-drawn rounded window corners even with the title bar
+        // hidden/transparent - only a truly borderless (styleMask 0) window renders square on
+        // macOS. Popup surfaces (ComboBox/ContextMenu/ToolTip drop-downs) reused the same
+        // "no decorations" chrome path as chromeless top-level windows, which intentionally keep
+        // StyleTitled for their own OS-drawn shadow/rounding, so every popup came out rounded -
+        // something real WPF popups never are.
+        Assert.Contains("if (state.IsPopup)", macPlatform, StringComparison.Ordinal);
+        AssertGuardBefore(macPlatform, "if (state.IsPopup)", "style |= StyleTitled | StyleFullSizeContentView;");
+
+        var windowOptions = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowOptions.cs"));
+
+        Assert.Contains("internal bool IsPopupSurface { get; set; }", windowOptions, StringComparison.Ordinal);
+
+        var windowHost = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowHost.cs"));
+
+        Assert.Contains("_windowController.SetIsPopup(_options.IsPopupSurface);", windowHost, StringComparison.Ordinal);
+
+        var popupHost = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "WpfPortableNativePopupHost.cs"));
+
+        Assert.Contains("IsPopupSurface = true,", popupHost, StringComparison.Ordinal);
     }
 
     private static void AssertGuardBefore(string source, string guard, string guardedCall)

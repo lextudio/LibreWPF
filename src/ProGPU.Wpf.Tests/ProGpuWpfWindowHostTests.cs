@@ -27,6 +27,39 @@ namespace ProGPU.Wpf.Tests;
 public sealed class ProGpuWpfWindowHostTests
 {
     [Fact]
+    public void TransparentWindowUsesNativeBackdropBeforeCreatingItsSurface()
+    {
+        string host = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf", "ProGpuWpfWindowHost.cs"));
+        int load = host.IndexOf("private void OnLoad()", StringComparison.Ordinal);
+        int attach = host.IndexOf("_windowController?.Attach();", load, StringComparison.Ordinal);
+        int backdrop = host.IndexOf(
+            "_windowController?.SetBackdrop(NativeWindowBackdrop.Transparent)",
+            load, StringComparison.Ordinal);
+        int target = host.IndexOf("EnsureCompositionTargetLoaded();", load, StringComparison.Ordinal);
+        Assert.True(load >= 0 && attach > load && backdrop > attach && target > backdrop);
+        Assert.Contains("OperatingSystem.IsMacOS() && _options.TransparentFramebuffer", host);
+        Assert.Contains("The native window did not accept a transparent backdrop.", host);
+
+        string native = File.ReadAllText(FindRepoPath(
+            "external", "ProGPU", "src", "ProGPU.Backend", "MacOsNativeWindowPlatform.cs"));
+        Assert.Contains("backdrop != NativeWindowBackdrop.None", native);
+        Assert.Contains("setOpaque:", native);
+        Assert.Contains("setBackgroundColor:", native);
+    }
+
+    [Fact]
+    public void RightToLeftWin32PointAdjustmentStopsOffWindows()
+    {
+        string source = File.ReadAllText(FindRepoPath(
+            "src", "Microsoft.DotNet.Wpf", "src", "Shared", "MS", "Internal", "PointUtil.cs"));
+        int point = source.IndexOf("AdjustForRightToLeft(NativeMethods.POINT pt", StringComparison.Ordinal);
+        int rect = source.IndexOf("AdjustForRightToLeft(NativeMethods.RECT rc", StringComparison.Ordinal);
+        Assert.True(point >= 0 && rect > point);
+        Assert.Contains("if (!OperatingSystem.IsWindows())\n            {\n                return pt;", source[point..rect]);
+        Assert.Contains("if (!OperatingSystem.IsWindows())\n            {\n                return rc;", source[rect..]);
+    }
+
+    [Fact]
     public void X11DialogHintLifetimePrecedesSourceCompletionHideAndDisposal()
     {
         string source = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf", "ProGpuWpfWindowHost.cs"));
@@ -548,8 +581,13 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Contains("DoEvents();", source, StringComparison.Ordinal);
         Assert.Contains("if (!EnsureCompositionTargetLoaded() || !ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("window.IsEventDriven = false;", source, StringComparison.Ordinal);
-        Assert.Contains("window.DoEvents();\n            TraceNativeLoop(\"native event poll leaving:", source, StringComparison.Ordinal);
-        Assert.Contains("finally\n        {\n            if (useNonBlockingNativePoll)", source, StringComparison.Ordinal);
+        Assert.Contains("window.DoEvents();\n                TraceNativeLoop(\"native event poll leaving:", source, StringComparison.Ordinal);
+        Assert.Contains("if (useNonBlockingNativePoll)\n                {\n                    window.IsEventDriven = restoreEventDriven;", source, StringComparison.Ordinal);
+        Assert.Contains("Interlocked.Increment(ref s_activeNativeEventDispatchDepth);", source, StringComparison.Ordinal);
+        Assert.Contains("if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)", source, StringComparison.Ordinal);
+        Assert.Contains("ProcessDeferredNativeWindowDisposals();", source, StringComparison.Ordinal);
+        Assert.Contains("Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0", source, StringComparison.Ordinal);
+        Assert.Contains("QueueDeferredNativeWindowDisposal(this);", source, StringComparison.Ordinal);
         Assert.True(doEventsMethodStart >= 0);
         Assert.True(nativeEventPoll > doEventsMethodStart);
         Assert.True(ownerDispatcherDrain > nativeEventPoll);
@@ -574,7 +612,7 @@ public sealed class ProGpuWpfWindowHostTests
             source,
             StringComparison.Ordinal);
         Assert.Contains("if (ShouldPumpNativeRender())", source, StringComparison.Ordinal);
-        Assert.Contains("NativeRenderPumpCount++;\n            window.DoRender();", source, StringComparison.Ordinal);
+        Assert.Contains("NativeRenderPumpCount++;\n                window.DoRender();", source, StringComparison.Ordinal);
         Assert.Contains("SkippedNativeRenderPumpCount++;", source, StringComparison.Ordinal);
         Assert.Contains("Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest", source, StringComparison.Ordinal);
         Assert.Contains("private bool ShouldKeepPortableNativeRunLoopAlive()", source, StringComparison.Ordinal);
@@ -1508,6 +1546,37 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(2.0, geometry.DpiScaleX);
         Assert.Equal(2.0, geometry.DpiScaleY);
         Assert.Equal(2.0, geometry.DpiScale);
+    }
+
+    [Fact]
+    public void ResolveRenderSurfaceGeometryUsesUniformMonitorScaleForOnePixelFramebufferRounding()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 1796,
+            clientHeight: 938,
+            framebufferSize: new Vector2D<int>(3592, 1875),
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(3592u, geometry.PixelWidth);
+        Assert.Equal(1875u, geometry.PixelHeight);
+        Assert.Equal(3592u, geometry.ViewportWidth);
+        Assert.Equal(1875u, geometry.ViewportHeight);
+        Assert.Equal(2.0, geometry.DpiScaleX);
+        Assert.Equal(2.0, geometry.DpiScaleY);
+        Assert.Equal(2.0, geometry.DpiScale);
+    }
+
+    [Fact]
+    public void ResolveRenderSurfaceGeometryKeepsUnequalScaleBeyondFramebufferRounding()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 1796,
+            clientHeight: 938,
+            framebufferSize: new Vector2D<int>(3592, 1874),
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(2.0, geometry.DpiScaleX);
+        Assert.Equal(1874.0 / 938.0, geometry.DpiScaleY);
     }
 
     [Fact]

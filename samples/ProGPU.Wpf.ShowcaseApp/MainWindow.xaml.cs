@@ -2919,6 +2919,8 @@ public partial class MainWindow : Window
                 }
             }
 
+            if (attempt == 0 || (attempt + 1) % 100 == 0)
+                Console.WriteLine($"ProGPU WPF Showcase wheel attempt {attempt + 1}: sent={sentWheelInput}, observed={observedWheelInput}, {lastTargetState}.");
             await Task.Delay(LiveValidationRetryDelay);
         }
 

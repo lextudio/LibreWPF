@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Showcase live input completes; performance presentation next — 2026-09-14:**
+ScrollViewer now exports its actual transparent point policy through the existing
+shared typed metadata. The source host/regressions pass; diagnostic-overlay
+Showcase completes wheel, clipped point/region input, content replacement and
+drag capture/release. The next failure is requested-frame presentation in the
+performance gate. Earlier samples observed ordinary pending queries during
+repeated failed wheel targeting, not a proven GPU hang. Keep full performance,
+exact-package/platform/CI qualification and dependency pin/merge ordering. See
+[scroll source evidence](../reports/native-mil-showcase-package-2026-09-14.md#transparent-scrollviewer-source-input).
+
 **Popup clips repaired; live scroll query next — 2026-09-14:** ProGPU `27d13562`
 preserves proven rectangular vector intersections and source-effect output
 clips. All 19 native suites pass. The diagnostic Showcase completes input/theme/

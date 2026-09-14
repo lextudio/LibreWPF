@@ -146,6 +146,7 @@ public static class Program
                 }
 
                 Assembly presentationFramework = loadContext.LoadFromAssemblyPath(presentationFrameworkPath);
+                VerifySourceScrollViewerPointPolicy(presentationFramework, presentationCore, windowsBase);
                 NativeMilTextCollapseSmoke.RunSourceHeader(presentationFramework, presentationCore, windowsBase);
                 NativeMilSourceInlineObjectSmoke.Run(presentationFramework, presentationCore, windowsBase);
                 NativeMilRichTextDecorationSmoke.Run(presentationFramework);
@@ -325,6 +326,36 @@ public static class Program
             $"{host.LastNativeMilSceneUpdateMetrics.ResourceCount} resources/" +
             $"{host.LastNativeMilSceneUpdateMetrics.DrawCount} draws, and submitted " +
             $"{host.LastNativeMilFrameMetrics.DrawCallCount} draw call(s).";
+    }
+
+    private static void VerifySourceScrollViewerPointPolicy(Assembly presentationFramework, Assembly presentationCore, Assembly windowsBase)
+    {
+        // Public source-object diagnostic access, never a product reflection path.
+        object viewer = Create(presentationFramework, "System.Windows.Controls.ScrollViewer");
+        Type size = GetRequiredType(windowsBase, "System.Windows.Size");
+        Type rect = GetRequiredType(windowsBase, "System.Windows.Rect");
+        Type point = GetRequiredType(windowsBase, "System.Windows.Point");
+        Type hitParameters = GetRequiredType(presentationCore, "System.Windows.Media.PointHitTestParameters");
+        foreach (double width in new[] {160.0, 80.0})
+        {
+            viewer.GetType().GetMethod("Measure", new[] {size})!.Invoke(viewer,
+                new[] {Activator.CreateInstance(size, width, 96.0)});
+            viewer.GetType().GetMethod("Arrange", new[] {rect})!.Invoke(viewer,
+                new[] {Activator.CreateInstance(rect, 0.0, 0.0, width, 96.0)});
+            if (viewer is not IPortablePointHitRegionSource source ||
+                !source.TryGetPortablePointHitRegion(out var bounds) || bounds.IsEmpty ||
+                bounds.X != 0 || bounds.Y != 0 || bounds.Width != width || bounds.Height != 96 ||
+                viewer.GetType().GetProperty("Background")!.GetValue(viewer) != null)
+                throw new InvalidOperationException("Transparent ScrollViewer lost its source point rectangle after layout.");
+            // Invoke the actual point policy: an unattached fixture intentionally
+            // has no visible presentation source for UIElement.InputHitTest.
+            object? hit = viewer.GetType().GetMethod("HitTestCore", BindingFlags.Instance | BindingFlags.NonPublic,
+                null, new[] {hitParameters}, null)!.Invoke(viewer,
+                new[] {Activator.CreateInstance(hitParameters, Activator.CreateInstance(point, width / 2, 48.0))});
+            if (hit == null || !ReferenceEquals(GetRequiredType(presentationCore, "System.Windows.Media.HitTestResult")
+                .GetProperty("VisualHit")!.GetValue(hit), viewer))
+                throw new InvalidOperationException("ScrollViewer metadata does not match its actual transparent point policy.");
+        }
     }
 
     private static object CreateNativeMilInlineTextVisual(Assembly presentationFramework, Assembly presentationCore, Assembly windowsBase)

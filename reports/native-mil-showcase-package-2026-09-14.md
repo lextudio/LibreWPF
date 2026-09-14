@@ -72,6 +72,37 @@ final ProGPU qualification, update dependent pins and rerun the whole SDK lane.
 Do not substitute unrelated artifacts or waive the failed dependency run.
 LibreWinForms PR #29 remains green; ProGPU `27d13562` CI is queued/running.
 
+### Transparent ScrollViewer source input
+
+Per-attempt diagnostics identified the timeout as repeated unsuccessful wheel
+targeting, not a proven stuck GPU submission. The actual ScrollViewer center
+resolved to the Border behind it. Native query tracing confirmed successive
+ordered point queries completed against 140 primitives/13 nodes; that temporary
+native tracing was removed and both libraries rebuilt cleanly.
+
+`ScrollViewer.HitTestCore` explicitly owns its full ActualWidth/ActualHeight
+rectangle even with a null background. The source class now exports precisely
+that policy through the existing `IPortablePointHitRegionSource` contract. Both
+portable renderer modes already consume this typed point-only scope. Region
+input remains drawing-based, and the ScrollContentPresenter retains descendant
+clipping; no painted background or renderer-local type filter is added.
+
+The source regression compares the metadata after 160/80-DIP arrangements with
+the actual protected point-hit policy on a background-free ScrollViewer. Its
+unattached fixture invokes that policy directly: public InputHitTest additionally
+requires visible source admission, exercised separately by the live application.
+The complete source host/retention/device-recovery script passes with this change.
+The full source build has zero errors and two existing warnings; the final
+harness-only build has zero warnings/errors.
+
+With the rebuilt PresentationFramework diagnostic overlay, Showcase completes
+wheel routing, real scroll movement, visible/clipped point queries, both bounds
+queries, content replacement and Thumb capture/move/release. It then fails the
+required performance gate with `Expected the requested Showcase performance
+frame to be presented`. Thus input completion is concrete progress, not a passing
+whole gate. Finish requested-frame scheduling/performance diagnostics, rebuild
+the exact final package graph, then run platform/CI gates before ordered merges.
+
 ## Separate Windows diagnostic
 
 Moving scalar query traversal state to invocation-private storage in addition

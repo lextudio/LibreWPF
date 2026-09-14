@@ -22,17 +22,20 @@ isolated source tree is visible on the guest's shared `X:` drive, but no build
 was run into that shared macOS worktree because it would cross-contaminate its
 package artifacts. The VM was restored to its original suspended state.
 
-A fresh local native SDK run using merged ProGPU #161 source and a clean
-canonical LibreWinForms package directory passed source host, package audit,
-Showcase, and Toolkit gates, then the paid Xceed DataGrid again reported that
-its retained native path set exceeded the bounded atlas. The app output's
-`libprogpu_native.dylib` SHA-256
+A local native SDK run using the #161 source pin and a clean canonical
+LibreWinForms package directory passed source host, package audit, Showcase,
+and Toolkit gates, then the paid Xceed DataGrid reported the old bounded-atlas
+failure. Its app output's native dylib SHA-256
 `2626281f3742eaa7f8890fe84bccc50f351a68921d82a094a783260288b3c0f0`
-matched the #161 source-tree build, so this is not an old native binary in
-the app output. The prior isolated overlay did pass Xceed, making the exact
-state/input difference an open blocker. The paid license variables later
-became unavailable to the current shell and launchctl; the next diagnostic
-run needs the user to restore them locally, without sharing secret values.
+matched the locally staged `external/ProGPU/artifacts/progpu-native/package`
+binary. That staging binary was built at 09:58 local, before #161's C++ fix
+at 12:20; the passing isolated overlay's dylib was built at 12:17. The
+source-version package label had therefore hidden an old local native payload.
+This run is invalid as #161 package qualification, not evidence of a new atlas
+regression. The hosted gate must stage the successful exact-commit ProGPU Build
+artifact, and the paid app must rerun with it. Paid license variables later
+became unavailable to the current shell and launchctl; local rerun needs the
+user to restore them without sharing secret values.
 
 ## Paid Xceed package gate follow-up
 

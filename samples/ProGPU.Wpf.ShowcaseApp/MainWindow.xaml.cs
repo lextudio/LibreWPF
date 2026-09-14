@@ -750,13 +750,13 @@ public partial class MainWindow : Window
     private void OnClipboardRoundTripClick(object sender, RoutedEventArgs e)
     {
         var payload = DataObjectPayloadTextBox.Text + " clipboard";
+        var payloadDataObject = new DataObject(DataFormats.UnicodeText, payload);
         Clipboard.Clear();
-        Clipboard.SetText(payload);
+        Clipboard.SetDataObject(payloadDataObject);
 
         LastClipboardContainsText = Clipboard.ContainsText();
         LastClipboardText = Clipboard.GetText();
-        IDataObject? currentDataObject = Clipboard.GetDataObject();
-        LastClipboardIsCurrent = currentDataObject != null && Clipboard.IsCurrent(currentDataObject);
+        LastClipboardIsCurrent = Clipboard.IsCurrent(payloadDataObject);
         Clipboard.Flush();
 
         ClipboardRoundTripCount++;
@@ -5710,6 +5710,7 @@ internal static class ShowcaseSelfTest
             $"Showcase SystemCommands {description} CanExecute");
 
         int initialExecutedCount = window.SystemCommandExecutedCount;
+        WindowState initialState = window.WindowState;
         command.Execute(parameter, window);
         DrainDispatcher(window);
 
@@ -5719,7 +5720,15 @@ internal static class ShowcaseSelfTest
             $"Showcase SystemCommands {description} executed count");
         AssertEqual(command.Name, window.LastSystemCommandName, $"Showcase SystemCommands {description} name");
         AssertEqual(parameter, window.LastSystemCommandParameter, $"Showcase SystemCommands {description} parameter result");
-        AssertEqual(expectedState, window.WindowState, $"Showcase SystemCommands {description} state");
+        // Native WPF posts a system command to its HWND; the object-graph
+        // self-test has not shown this window, so no HWND exists yet. Portable
+        // media updates the source Window state before a host is presented.
+        WindowState admittedState =
+            PortableWpfRuntime.ConfiguredMediaBackend == PortableWpfMediaBackend.Portable ||
+            PresentationSource.FromVisual(window) is not null
+                ? expectedState
+                : initialState;
+        AssertEqual(admittedState, window.WindowState, $"Showcase SystemCommands {description} state");
     }
 
     private static void ValidateShowcaseTabControl(

@@ -75,15 +75,19 @@ whole-word lines: `The button is styled through a`,
 `VisualStateManager states, and a`, `property trigger.` The Windows font and
 metrics differ slightly from the portable macOS capture, so exact glyph pixels
 and the last line boundary are not asserted identical; no mid-word split
-occurred. The guest's existing older `MvpApp` checkout was not used. A separate
-Showcase self-test attempted before this visual run failed its SystemCommands
-maximize-state assertion (`Normal` rather than `Maximized`), so this is a
-text visual baseline, not a passing full Windows SDK application gate. The
-self-test constructs an unshown Window; native Windows MIL's system-command
-route correctly has no HWND to post to at that point, while the test expects
-the portable source-state update. This appears to be a self-test admission
-assumption rather than evidence about the displayed text, but the Windows
-application gate must be rerun after that distinction is encoded in the test.
+occurred. An older guest checkout was not used. The first Windows
+object-graph self-test exposed two portable-only test assumptions:
+an unshown native WPF Window has no HWND for `SystemCommands` to post to, and
+`Clipboard.IsCurrent` must receive the original object placed on the clipboard,
+not a later `GetDataObject` wrapper. The Showcase now checks system-command
+state only when the native source is presented, while still checking portable
+pre-host state; its clipboard test retains the original `DataObject`. The
+same-source Windows Release rebuild then succeeded with zero warnings/errors
+and `PROGPU_WPF_SHOWCASE_VALIDATE=1` passed. The macOS native source-overlay
+self-test passed after those adjustments too. Guest builds stayed in its
+private `C:\Temp` directory, and the Windows VM was returned to suspended
+state. This closes the object-graph test discrepancy, not Windows native MIL
+SDK package admission or the full text visual parity matrix.
 
 ## Native text visual blocker and clean-package follow-up
 

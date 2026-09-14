@@ -4624,6 +4624,8 @@ internal static class Program
 
         public int ShowCount { get; private set; }
 
+        public int BorderSyncCount { get; private set; }
+
         public int HideCount { get; private set; }
 
         public int RunCount { get; private set; }
@@ -4665,6 +4667,10 @@ internal static class Program
             AssertType(window, MainWindowTypeName, "activated SDK startup window");
             ValidateWindow(window, validateFrameContent: false, flushDispatcherOperations: null);
 
+            // Simulate WindowChrome being applied by a Style Setter during first layout,
+            // before TryCreatePortableWindowDuringShow stores its activation object.
+            InvokeVoid(window, "SetPortableCustomChrome", true);
+
             object presentationSource = CreatePortablePresentationSource(window);
             ActivateCount++;
             _activation = new RecordingActivation(window, presentationSource)
@@ -4697,6 +4703,9 @@ internal static class Program
         private void ShowCore(object activation)
         {
             var typedActivation = AssertSameActivation(activation);
+            AssertEqual(1, BorderSyncCount, "pre-activation custom chrome border synchronization count");
+            AssertEqual("None", typedActivation.WindowStyle?.ToString() ?? string.Empty,
+                "pre-activation custom chrome removes the native title border");
             ShowCount++;
             typedActivation.IsVisible = true;
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render");
@@ -4744,6 +4753,7 @@ internal static class Program
         public void SetWindowBorder(object activation, object resizeMode, object windowStyle)
         {
             var typedActivation = AssertSameActivation(activation);
+            BorderSyncCount++;
             typedActivation.ResizeMode = resizeMode;
             typedActivation.WindowStyle = windowStyle;
         }

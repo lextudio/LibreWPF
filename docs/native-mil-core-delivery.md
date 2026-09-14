@@ -29,12 +29,20 @@ passed 7/7 checks and merged at `625befd5f7140343f80dbcf3185c23f15ca21318`;
 its tree equals tested PR head `7c583b29fa5b2a6d1fa2ac02b86ac3c1cb33065b`.
 LibreWPF pins both merged commits. Its local canonical WinForms/WPF source and
 package gate passes after making the required package-entry check independent
-of a `grep -q`/`pipefail` SIGPIPE race. Its SDK runtime staging requires a successful ProGPU
-Build at the merge commit itself; main Build `34824026135` is running, even
-though its source tree equals the qualified PR head. Complete WPF SDK/native
-application/platform gates, then merge [LibreWPF #115](https://github.com/wieslawsoltes/LibreWPF/pull/115)
-after its final-head CI is green. Source diagnostics remain distinct
-from package qualification; broader API expansion is still deferred.
+of a `grep -q`/`pipefail` SIGPIPE race. ProGPU main Build
+[34824026135](https://github.com/wieslawsoltes/ProGPU/actions/runs/34824026135)
+also passed, and LibreWPF stages that exact merge-commit native artifact. The
+native SDK gate now runs on macOS 26, matching that artifact's current deployment
+target, with its restored WebGPU dependency and a built source host harness.
+Package-mode Showcase exposed a separate SDK issue: per-app `RestorePackagesPath`
+must also set `NuGetPackageRoot`, or NuGet's transitive target imports silently
+miss the bundled Fluent symbol font. The SDK now aligns the paths, asserts that
+the app output contains the font, and keeps null-shape/device-font mapping
+fail-closed when no real face is available. Complete the latest-head WPF SDK,
+native application and platform gates, then merge
+[LibreWPF #115](https://github.com/wieslawsoltes/LibreWPF/pull/115) only after
+its CI is green. Source diagnostics remain distinct from package qualification;
+broader API expansion is still deferred.
 
 **Toolkit and Showcase live native diagnostics pass; final package/platform gates next — 2026-09-14:**
 AvalonDock inherits the main WindowService in its floated editor, but the editor's

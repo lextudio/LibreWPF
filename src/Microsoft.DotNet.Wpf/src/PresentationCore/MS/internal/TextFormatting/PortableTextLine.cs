@@ -240,7 +240,7 @@ internal sealed class PortableTextLine : TextLine
                     new CharacterBufferRange(" ", 0, 1), p.CultureInfo, mappedFonts);
                 if (mappedFonts.Count != 1) throw new InvalidOperationException("No source physical face for an inline object style.");
                 var mapped = mappedFonts[0].Value;
-                ValidateMappedFont(mapped);
+                ValidateMappedFont(mapped, p.Typeface);
                 var objectFace = mapped.ShapeTypeface.GlyphTypeface;
                 double objectEm = p.FontRenderingEmSize * mapped.ScaleInEm;
                 if (!double.IsFinite(objectEm) || objectEm <= 0) throw Unsupported("invalid inline style em size");
@@ -283,7 +283,7 @@ internal sealed class PortableTextLine : TextLine
                 foreach (var mapped in mappedFonts)
                 {
                     var selected = mapped.Value;
-                    ValidateMappedFont(selected);
+                    ValidateMappedFont(selected, p.Typeface);
                     var runFace = selected.ShapeTypeface.GlyphTypeface;
                     double emSize = p.FontRenderingEmSize * selected.ScaleInEm;
                     if (!double.IsFinite(emSize) || emSize <= 0) throw Unsupported("invalid composite-font scale");
@@ -309,7 +309,7 @@ internal sealed class PortableTextLine : TextLine
             settings.Formatter.GlyphingCache.GetPortableFontRuns(properties.Typeface,
                 new CharacterBufferRange(" ", 0, 1), properties.CultureInfo, mappedFonts);
             if (mappedFonts.Count != 1) throw new InvalidOperationException("No default physical face for an empty line.");
-            ValidateMappedFont(mappedFonts[0].Value);
+            ValidateMappedFont(mappedFonts[0].Value, properties.Typeface);
             face = mappedFonts[0].Value.ShapeTypeface.GlyphTypeface;
             primaryEmSize = properties.FontRenderingEmSize * mappedFonts[0].Value.ScaleInEm;
         }
@@ -431,11 +431,13 @@ internal sealed class PortableTextLine : TextLine
         finally { previous?.Dispose(); }
     }
 
-    private static void ValidateMappedFont(ScaledShapeTypeface selected)
+    private static void ValidateMappedFont(ScaledShapeTypeface selected, Typeface requested)
     {
         if (selected == null || selected.NullShape || selected.ShapeTypeface?.GlyphTypeface == null ||
             selected.ShapeTypeface.DeviceFont != null)
-            throw Unsupported("unresolved null-shape or device-font mapping");
+            throw Unsupported($"unresolved null-shape or device-font mapping for '{requested.FontFamily?.Source}' " +
+                $"(null shape: {selected?.NullShape}, physical face: {selected?.ShapeTypeface?.GlyphTypeface != null}, " +
+                $"device font: {selected?.ShapeTypeface?.DeviceFont != null})");
         if (selected.ShapeTypeface.GlyphTypeface.StyleSimulations != StyleSimulations.None)
             throw Unsupported("synthetic font simulations");
     }

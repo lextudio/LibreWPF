@@ -1,5 +1,35 @@
 # Native MIL exact-package validation — 2026-09-14
 
+## Merged ProGPU and LibreWinForms handoff
+
+ProGPU #139 merged as `86f2f766d1f8e6b4041fa184de0fe9d03ae2840f`.
+Its own main-branch [Build 34824026135](https://github.com/wieslawsoltes/ProGPU/actions/runs/34824026135)
+completed successfully and published native package artifact `10340618392`,
+version `0.1.0-preview.3052.ci`, with nuspec repository commit matching the
+merge commit. The exact NuGet consumer passes on macOS ARM64/Metal, Windows VM
+x64/system WARP and Parallels D3D12, and Windows VM native ARM64/system WARP.
+Each returns the final ABI 4, Dawn ABI 1, one-draw/16,384-pixel marker. This
+does not substitute for a packaged LibreWPF application test. LibreWinForms #29
+merged as `625befd5f7140343f80dbcf3185c23f15ca21318`; LibreWPF #115 pins
+both merge commits.
+
+The exact merged native dylib targets macOS 26. LibreWPF's hosted native SDK
+gate therefore uses a macOS 26 runner and stages the restored source-closure
+`libwgpu_native.dylib` separately from the ProGPU native package. Locally,
+the source-built native MIL host, XAML, application lifetime and Fluent theme
+harnesses pass on macOS 26 with the exact merged native runtime. The package-
+mode Hello app and Showcase validation pass. Showcase Application.Run exposed
+that its per-app restore cache was not also used as `NuGetPackageRoot` for
+transitive target imports: the resulting output omitted the packaged
+`LibreWPF.FluentSymbols.ttf`, then correctly rejected an unresolved null-shape
+run for `Segoe Fluent Icons, Segoe MDL2 Assets`. Aligning both roots copies the
+font byte-for-byte (SHA-256
+`2b1cef154adcd63aa3538b76e46d41f4d284277a8722b938bfe8996fd4874bd4`)
+and makes the packaged Showcase Application.Run check pass. The SDK now owns
+that alignment and asserts the font is present before Showcase tests. The
+remaining full package-mode and latest-head CI gates must still complete
+before LibreWPF #115 is merge-ready.
+
 ## Current-head package handoff
 
 ProGPU Build [34819727963](https://github.com/wieslawsoltes/ProGPU/actions/runs/34819727963)

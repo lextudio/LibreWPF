@@ -560,6 +560,11 @@ PROGPU_WPF_HELLO_LIVE_VALIDATE=1 \
 
 echo "Building Showcase SDK app..."
 run_dotnet build "${repo_root}/samples/ProGPU.Wpf.ShowcaseApp/ProGPU.Wpf.ShowcaseApp.csproj" -v:minimal
+showcase_symbol_font="${repo_root}/artifacts/bin/ProGPU.Wpf.ShowcaseApp/Debug/${sdk_sample_target_framework}/LibreWPF/Fonts/LibreWPF.FluentSymbols.ttf"
+if [[ ! -s "${showcase_symbol_font}" ]]; then
+  echo "The packaged Showcase app did not copy its portable Fluent symbol font: ${showcase_symbol_font}" >&2
+  exit 1
+fi
 
 echo "Running Showcase SDK app validation..."
 PROGPU_WPF_SHOWCASE_VALIDATE=1 \

@@ -37,6 +37,10 @@
   <Import Sdk="Microsoft.NET.Sdk.WindowsDesktop" Project="Sdk.props" />
 
   <PropertyGroup>
+    <!-- NuGet's generated buildTransitive imports use NuGetPackageRoot. Keep
+         them on the same cache as RestorePackagesPath so portable font and
+         notice assets are not silently omitted by package-mode consumers. -->
+    <NuGetPackageRoot Condition="'$(RestorePackagesPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(RestorePackagesPath)'))</NuGetPackageRoot>
     <RuntimeIdentifier Condition="'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(RuntimeIdentifier)' == '' And '$(NETCoreSdkRuntimeIdentifier)' != ''">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
     <AppendRuntimeIdentifierToOutputPath Condition="'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(AppendRuntimeIdentifierToOutputPath)' == ''">false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>

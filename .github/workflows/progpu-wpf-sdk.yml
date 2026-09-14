@@ -227,6 +227,33 @@ jobs:
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Release
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Debug
 
+  windows-native-mil-showcase:
+    name: Windows x64 native MIL package Showcase
+    needs: sdk-smoke
+    runs-on: windows-2025
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Download exact CI package bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: librewpf-ci-packages-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/packages/Release/NonShipping
+
+      - name: Run package-only x64 native MIL Showcase
+        shell: pwsh
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1
+
   linux-xwayland-smoke:
     name: Linux Wayland-session XWayland input and popup smoke
     needs: sdk-smoke

@@ -13,8 +13,8 @@ CTest suites pass. The PR passed 45/45 checks and merged to `main` at
 `5b99b640a583c9f1cb69fd17731e000ab632baec`. Replacing only the app's
 native dylib visibly restored normal text size and spacing. This is local
 visual evidence, not final exact merged package or Windows/Linux parity;
-downstream exact pins still need green CI. Other text/layout defects are not
-presumed fixed.
+LibreWPF's final exact pin and package CI remain. Other text/layout defects
+are not presumed fixed.
 
 A separate, managed-only Showcase window capture at the same 2× display
 shows normal glyph sizing too. It also reproduced missing visible text in the
@@ -114,9 +114,10 @@ large-scroll budget and GPU hit testing.
 
 This is local overlay evidence, not final merged-package evidence.
 [LibreWinForms #30](https://github.com/wieslawsoltes/LibreWinForms/pull/30)
-must pass its required CI and merge with the same ProGPU pin, then LibreWPF
-must pin both exact merge commits. Its current-head CI and remaining SDK/platform
-gates must pass before #115 is marked ready or merged.
+passed 7/7 checks and merged as
+`7164c7ed9b9b93175d0eec9e0cee2a28dcc61310`, with the same ProGPU #162
+merge pin. LibreWPF must commit both exact merge pins; its current-head CI and
+remaining SDK/platform gates must pass before #115 is marked ready or merged.
 
 After the Xceed gate, the current SDK package output also built the default
 `ProGPU.Wpf.SciChartApp` with zero errors; its renderer validation and real
@@ -146,8 +147,8 @@ The current-source SDK package-production command completed, but the optional
 identical to the built implementation. That probe is not the canonical
 LibreWinForms package lane or a release bundle. The canonical lane requires
 LibreWinForms and LibreWPF to pin the same ProGPU commit. LibreWinForms #30
-carries that matching update; its green CI, merge, and final LibreWPF repin
-remain outstanding.
+carries that matching update; its 7/7 green CI and merge are complete. The
+final LibreWPF repin and package gate remain outstanding.
 
 ## Merged ProGPU and LibreWinForms handoff
 

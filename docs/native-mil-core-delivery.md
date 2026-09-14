@@ -26,8 +26,8 @@ corrects the native ratio and adds 1×/2×/2.625×/3× fixture assertions. All
 `5b99b640a583c9f1cb69fd17731e000ab632baec`. A native-dylib-only Showcase
 overlay visibly restores ordinary text size and spacing. This is not the
 exact merged-package or Windows/Linux visual parity. Keep LibreWPF #115 draft
-until LibreWinForms #30 and both source pins advance, package gates rerun,
-and remaining visible layout defects are reviewed.
+until its final source pins, package gates and remaining visible layout
+reviews complete.
 
 **Portable Fluent semantic colors and control text — 2026-09-14:**
 The managed and native Showcase captures both omitted DataGrid text and much
@@ -63,8 +63,9 @@ geometry, large-scroll and GPU input gate passes. LibreWPF's check now queries
 each new scene before asserting device-index upload. This is not a merged
 package or Windows/Linux result. LibreWPF now has a local pin to the merged
 ProGPU main; [LibreWinForms #30](https://github.com/wieslawsoltes/LibreWinForms/pull/30)
-aligns its nested ProGPU pin and must pass CI and merge before LibreWPF can
-pin both merged commits. Rerun exact SDK and platform gates, then merge #115
+aligned its nested ProGPU pin, passed 7/7 checks and merged at
+`7164c7ed9b9b93175d0eec9e0cee2a28dcc61310`. LibreWPF can now pin both
+merged commits. Rerun exact SDK and platform gates, then merge #115
 only if all checks pass. See the
 [exact-package record](../reports/native-mil-exact-package-2026-09-14.md).
 

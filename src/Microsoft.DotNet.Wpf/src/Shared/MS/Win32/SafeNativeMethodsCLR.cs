@@ -179,14 +179,13 @@ namespace MS.Win32
                         return DefaultDoubleClickMilliseconds;
                     }
 
-                    // objc_msgSend returning a double requires the fpret entry point on x86_64
-                    // (the classic ABI returns floating-point values via XMM0, not RAX), while
-                    // arm64 uses the ordinary entry point for all return types.
-                    double seconds = RuntimeInformation.ProcessArchitecture == Architecture.X64
-                        ? ObjCMsgSendFpretReturningDouble(nsEventClass, doubleClickIntervalSelector)
-                        : ObjCMsgSendReturningDouble(nsEventClass, doubleClickIntervalSelector);
-
-                    return seconds > 0 ? (int)Math.Round(seconds * 1000) : DefaultDoubleClickMilliseconds;
+                    // NSEvent returns a double. Both macOS x86-64 and arm64 use objc_msgSend
+                    // for that return type; objc_msgSend_fpret is for long double on x86-64.
+                    double seconds = ObjCMsgSendReturningDouble(nsEventClass, doubleClickIntervalSelector);
+                    double milliseconds = Math.Round(seconds * 1000);
+                    return double.IsFinite(milliseconds) && milliseconds >= 1 && milliseconds <= int.MaxValue
+                        ? (int)milliseconds
+                        : DefaultDoubleClickMilliseconds;
                 }
                 catch (DllNotFoundException)
                 {
@@ -207,8 +206,6 @@ namespace MS.Win32
             [DllImport(ObjCLibrary, EntryPoint = "objc_msgSend")]
             private static extern double ObjCMsgSendReturningDouble(IntPtr receiver, IntPtr selector);
 
-            [DllImport(ObjCLibrary, EntryPoint = "objc_msgSend_fpret")]
-            private static extern double ObjCMsgSendFpretReturningDouble(IntPtr receiver, IntPtr selector);
         }
 
         public static bool IsWindowEnabled(HandleRef hWnd)

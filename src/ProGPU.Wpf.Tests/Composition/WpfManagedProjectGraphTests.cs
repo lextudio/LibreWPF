@@ -9812,7 +9812,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return Environment.TickCount;", safeNativeMethodsClr, StringComparison.Ordinal);
         Assert.Contains("if (System.OperatingSystem.IsWindows())\n            {\n                return SafeNativeMethodsPrivate.GetDoubleClickTime();\n            }", safeNativeMethodsClr, StringComparison.Ordinal);
         Assert.Contains("if (System.OperatingSystem.IsMacOS())\n            {\n                return SafeNativeMethodsMac.GetDoubleClickTimeMilliseconds();\n            }", safeNativeMethodsClr, StringComparison.Ordinal);
-        Assert.Contains("[DllImport(ObjCLibrary, EntryPoint = \"objc_msgSend_fpret\")]", safeNativeMethodsClr, StringComparison.Ordinal);
+        Assert.Contains("double seconds = ObjCMsgSendReturningDouble(nsEventClass, doubleClickIntervalSelector);", safeNativeMethodsClr, StringComparison.Ordinal);
+        Assert.DoesNotContain("EntryPoint = \"objc_msgSend_fpret\"", safeNativeMethodsClr, StringComparison.Ordinal);
         Assert.Contains("return IntGetParent(hWnd);", unsafeNativeMethodsClr, StringComparison.Ordinal);
         Assert.Contains("[DllImport(ExternDll.User32, EntryPoint = \"GetParent\"", unsafeNativeMethodsClr, StringComparison.Ordinal);
         AssertGuardBefore(hwndHost, "if (!global::System.OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetParent(_hwnd)");

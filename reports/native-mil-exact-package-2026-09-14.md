@@ -32,6 +32,9 @@ focused PresentationFramework test passes 4/4. Overlaying only the newly
 compiled source PresentationFramework assembly into an isolated packaged
 Showcase output restored the full Controls tab in both managed and native
 window captures; both live input validations and the object self-test passed.
+The new Showcase palette assertion fails against the old package payload and
+passes with the compiled source assembly, providing a red/green package-output
+regression check.
 The native overlay also used the clean rebuilt ProGPU #162 dylib. This is
 source-overlay evidence, not a rebuilt exact SDK package or same-source
 Windows comparison. The two renderer captures used independent processes,

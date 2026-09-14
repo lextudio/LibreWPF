@@ -1,9 +1,13 @@
 # Native MIL exact-package validation — 2026-09-14
 
-## Current-head package handoff in progress
+## Current-head package handoff
 
 ProGPU Build [34819727963](https://github.com/wieslawsoltes/ProGPU/actions/runs/34819727963)
-published `progpu-native-package` artifact `10338682752`, version
+completed successfully with 54/54 checks, including all native package
+consumer jobs. [ProGPU #139](https://github.com/wieslawsoltes/ProGPU/pull/139)
+merged to `main` as `86f2f766d1f8e6b4041fa184de0fe9d03ae2840f`, whose tree
+is identical to tested PR head `54adc6a005119d40fc25615b3823844c21453690`.
+The Build published `progpu-native-package` artifact `10338682752`, version
 `0.1.0-preview.3051.ci`. Both inspected Backend and Native nuspecs identify
 repository commit `54adc6a005119d40fc25615b3823844c21453690`; Native depends on
 Backend and Dawn at the same exact version. Downloaded package SHA-256 values:
@@ -18,23 +22,27 @@ Backend and Dawn at the same exact version. Downloaded package SHA-256 values:
 The unchanged full `ProGPU.Native.PackageConsumer` was published from this
 clean ProGPU source with project references disabled, this downloaded NuGet
 feed, version `3051`, and an isolated restore cache. Its assets have zero
-project libraries. The exact-package macOS ARM64/Metal process and the Windows
-VM emulated x64/system-WARP process both exited zero with the final ABI 4,
-Dawn ABI 1, one-draw/16,384-pixel smoke marker. Windows used the system
+project libraries. The exact-package macOS ARM64/Metal process, Windows VM
+emulated x64/system-WARP and default-Parallels-adapter processes, and native
+Windows ARM64/system-WARP process exited zero with the final ABI 4, Dawn ABI 1,
+one-draw/16,384-pixel smoke marker. Windows WARP used the system
 `d3dcompiler_47.dll`, `D3D12Core.dll`, and `d3d10warp.dll`; no app-local WARP
 or compiler override was supplied. The guest's `progpu_native.dll` SHA-256
 `6449641b46d4568ffaf8c185e88366f30c2e52d97a683c44a23d6c893e818490`
 matches the published package payload. The stock package `wgpu_native.dll`
 hash is `4971fce5b4d93fc10b65d01cbcc57f9f35ad1bc479e654737974e4ad2e265be6`;
 no source overlay was applied. Logs are under the external core-release staging
-directory as `osx-arm64-package-3051-metal.log` and
-`win-x64-package-3051-system-warp.log`.
+directory as `osx-arm64-package-3051-metal.log`,
+`win-x64-package-3051-system-warp.log`,
+`win-x64-package-3051-default-adapter.log`, and
+`win-arm64-package-3051-system-warp.log`.
 
 Separately, the current-source Windows x64 consumer passed both system WARP and
 the default Parallels D3D12 adapter using the current CI runtime payloads. This
 is useful integration evidence, not the NuGet package result above. Further
-exact-package VM adapter/ARM64 and downstream SDK/application gates remain open;
-do not advance dependency pins or merge from this partial Build.
+exact-package native ARM64/default-adapter and downstream SDK/application gates
+remain open. The ProGPU producer is qualified and merged; do not infer that
+LibreWinForms/LibreWPF package/application gates are complete.
 
 ## Current-head Windows sample oracle follow-up
 
@@ -47,9 +55,11 @@ with ProGPU's D3D12 frames. Running the repository's unchanged
 `progpu-compare-directx-sample-oracle.py` on both pairs yields exact 1280×720
 pixels: maximum, mean, every probe and channels/pixels over three all zero.
 The outputs are retained under the external core-release diagnostic directory's
-`progpu-directx-oracle-54adc6a0` folder. Metal/Vulkan differentials, full
-package consumers and the overall current-head CI are still running; these
-two Windows frames alone are not final cross-platform qualification.
+`progpu-directx-oracle-54adc6a0` folder. The exact-head hosted differential
+artifact `progpu-directx-sample-differential` (`10338942628`) also passed:
+both pinned 1280×720 Microsoft frames compare byte-identically with ProGPU's
+D3D12, Metal and Vulkan candidates. These two sample scenes are not full
+DirectX API or final LibreWPF application qualification.
 
 ## Source and package identity
 

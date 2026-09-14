@@ -15,6 +15,17 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Showcase input and presentation loop complete; native diagnostics next — 2026-09-14:**
+Instruments isolated repeated complete glyph rasterization as the requested-frame
+timeout's blocker. ProGPU now separates exact raster identity from positioned
+instance revisions, retaining DPI/phase/generation and all execution paths.
+The diagnostic Showcase completes all live input and 120 presentations without
+changing deadlines. Its timing/residency report still reads the idle managed
+compositor in native mode: zero counters do not qualify performance. Connect
+accurate native diagnostics, then run final Release/package/platform gates and
+advance qualified dependency pins for CI and ordered merges. See
+[raster follow-up](../reports/native-mil-showcase-package-2026-09-14.md#glyph-raster-retention-and-performance-diagnostics).
+
 **Showcase live input completes; performance presentation next — 2026-09-14:**
 ScrollViewer now exports its actual transparent point policy through the existing
 shared typed metadata. The source host/regressions pass; diagnostic-overlay

@@ -1,5 +1,48 @@
 # Native Showcase package qualification — 2026-09-14
 
+## Glyph raster retention and performance diagnostics
+
+The latest diagnostic overlay completes **all live input actions and the
+120-frame presentation loop**. This supersedes the earlier per-stage blockers
+below, but does not qualify final packages or native performance counters.
+
+A Metal System Trace isolated native glyph coverage passes around 375 ms,
+with a maximum of 785.335 ms. Host traces showed surface acquisition around
+360–390 ms. The improved failure message captured presented 91→91, skipped
+0→0, 740.183 ms waiting, 2,292 native commands and 118 draws. The existing
+300×2 ms polling deadline is unchanged.
+
+ProGPU `5a4cc291` now retains exact owned outline/segment bytes separately
+from positioned instances. Unchanged raster content survives scene placement/
+paint changes; new instances still upload. DPI, raster scale, subpixel phase,
+atlas generation, invalid input and abandoned encoder ownership remain checked.
+The existing shared intrinsic byte comparison is reused. Managed GlyphAtlas
+already separates these identities; its algorithm and all fallback defaults are
+unchanged. Both native providers build, all 19 CTests pass and each of five
+execution modes passes 11 exact fresh-raster pixel comparisons plus the existing
+managed/native differential. See ProGPU `docs/native-glyph-raster-retention.md`.
+
+The post-fix run completed text editing/selection, controls and bindings,
+toolbar, seven framework themes, separate popup surfaces, navigation, wheel,
+clipped point/region queries, content replacement and Thumb capture/move/release.
+It then presented 120 measured frames in 3,187.306 ms, reporting 497,321,536
+managed allocated bytes (4,144,346.13/frame). This single Debug-app/Release-native
+overlay observation is not a comparative performance claim.
+
+**Open diagnostic contract:** `ProGpuWpfDiagnostics.TryGetPerformanceSnapshot`
+uses the idle managed compositor's timings/draw/cache counters for native mode.
+The memory snapshot likewise does not inventory the complete native engine.
+The report's zero timings, zero draws and zero tracked GPU bytes must not be
+accepted as native qualification. Add genuine typed native measurements before
+the matched final Release Instruments, memory and package/platform acceptance.
+
+At WPF `f1538b46c`, canonical WinForms and Windows managed CI pass; SDK staging
+still fails on the old pinned ProGPU build, so downstream launch jobs skip.
+LibreWinForms PR #29 remains green. No dependency pins, draft states or merges
+were advanced by this diagnostic fix. ActivityMonitor remains excluded.
+
+## Initial package snapshot
+
 The isolated `artifacts/native-source-qualification.PmByoe/wpf` snapshot contains
 WPF `1ee08c876`, ProGPU `960dfbfb` and LibreWinForms `f268f73c` source. Physical
 dirty submodules and indexed dependency pins were not modified.

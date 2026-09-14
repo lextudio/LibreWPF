@@ -3388,6 +3388,8 @@ public partial class MainWindow : Window
             throw new InvalidOperationException("Expected the live Showcase host to publish typed performance diagnostics.");
         }
 
+        long requestedAt = Stopwatch.GetTimestamp();
+        long skippedBefore = liveHost.SkippedFrameCount;
         WakeLiveRenderHost(liveHost);
         for (int attempt = 0; attempt < 300; attempt++)
         {
@@ -3413,7 +3415,12 @@ public partial class MainWindow : Window
             }
         }
 
-        throw new InvalidOperationException("Expected the requested Showcase performance frame to be presented.");
+        throw new InvalidOperationException(
+            $"Expected the requested Showcase performance frame to be presented: " +
+            $"presented={before.PresentedFrameCount}->{liveHost.PresentedFrameCount}, " +
+            $"skipped={skippedBefore}->{liveHost.SkippedFrameCount}, " +
+            $"elapsed={Stopwatch.GetElapsedTime(requestedAt).TotalMilliseconds:0.###} ms, " +
+            $"native commands/draws={liveHost.LastNativeMilFrameMetrics.CommandCount}/{liveHost.LastNativeMilFrameMetrics.DrawCallCount}.");
     }
 
     private static LiveMemorySnapshot ReadLiveMemorySnapshot(ProGpuWpfWindowHost liveHost)

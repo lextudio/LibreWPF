@@ -63,6 +63,19 @@ shows the same text boundaries. The native and managed captures used separate
 processes. This is visual source-overlay evidence for the specific defect,
 not a full text sizing/layout matrix or exact merged-package qualification.
 
+Additional 2× macOS window spot-checks used isolated copies of the existing
+Toolkit and SciChart Debug app outputs with only the locally built PR #163
+native library substituted. Toolkit's headings, control labels, document
+tabs, PropertyGrid values, and status text rendered at normal apparent size;
+SciChart's title, bridge labels, button and status text did likewise. These
+were initial-window captures, not the final exact package or a Windows
+side-by-side. Narrow Toolkit DateTimeUpDown/PropertyGrid fields visibly clip
+content at the current window width; whether that is source control sizing or
+portable text measurement remains unresolved until matched Windows captures
+at the same logical size. SciChart's rendered chart surface is a separate
+DirectX visual concern, not evidence about text layout. The broad app text
+matrix therefore remains open despite the corrected Showcase paragraph.
+
 A current-source Windows comparison is now available. In the Parallels
 Windows 11 VM, the same Showcase source project built against the exact
 `5b99b640` local SDK feed with all output, intermediate and NuGet cache paths

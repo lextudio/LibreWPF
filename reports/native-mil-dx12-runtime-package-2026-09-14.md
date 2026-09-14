@@ -63,3 +63,32 @@ tests, the actual two-RID package verifier and Build/Release workflow lint pass.
 Full local documentation verification still requires the absent ACadSharp
 submodule. Fresh hosted docs, ARM64 generation, complete package graph and actual
 Showcase qualification remain required; no dependency pins or merges advance.
+
+## Complete renderer package graph and NativeAOT
+
+Both hosted compiler-runtime builds at ProGPU `4b6d9cbe` now pass in Build
+`34793857889`, including the repaired ARM64 binding-generator lane. Hosted Docs
+`34793857865` and the full local documentation verifier pass. One source assertion
+still expected the pre-DX12 release job dependency list; it is updated to require
+the new gate and all existing gates. All 53 original source diagnostics tests
+pass in an isolated test project; the full local test project additionally needs
+the separate Microsoft UI XAML checkout and is not claimed green.
+
+Renderer packages from Build `34792388706` (`089e9120`, artifact `10329321304`,
+version `0.1.0-preview.3034.ci`) pass the full Windows ARM64 consumer in both JIT
+and NativeAOT. The optional DX12 NuGet is locally packed from the verified two-RID
+payloads at that version. All renderer assets now come from NuGet: no project
+references or DLL overlays. Both runs use explicit DXC/ordered stages and system
+WARP, without an external compiler directory.
+
+Retained rendering is 38 resources/11 draws/174080 coverage. Original owner/
+generation, 16 repeated waits, participation and region-first checks all pass.
+JIT verifies five loaded renderer/compiler/system module paths. Stdout SHA-256:
+`3accf5b12b53ca805195e688f4ed998df971eb60f19611e0c96fbdcfac260e5e`.
+Artifacts: ProGPU `artifacts/native-package-3034*`. Both fresh VM stages remain
+available; no system DLLs, VM settings or user applications changed.
+
+This closes the project-reference-only package gap. Final-head CI, x64 runtime,
+hardware/default selection and Showcase source/application checks still gate
+ordered merges. LibreWinForms PR 29 is green at its unchanged head, but waits
+for ProGPU; dependency pins and all draft states remain unchanged.

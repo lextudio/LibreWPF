@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Complete renderer NuGet graph passes ARM64 JIT/NativeAOT — 2026-09-14:** the
+CI-built `089e9120` renderer packages plus the verified optional DX12 NuGet pass
+the full system-WARP consumer without project references or DLL overlays. Both
+hosted compiler-runtime builds and Docs pass at `4b6d9cbe`; the stale release
+dependency assertion is corrected with all prior gates retained. Continue with
+final-head CI, x64/hardware/default and actual Showcase application qualification.
+No pins or merges advance. See the
+[package follow-up](../reports/native-mil-dx12-runtime-package-2026-09-14.md#complete-renderer-package-graph-and-nativeaot).
+
 **Release inventory and hosted generator repaired — 2026-09-14:** ProGPU
 `4b6d9cbe` connects the DX12 package to shipping/portable/release manifests and
 required Windows release gates. Hosted x64 compiler production passes; ARM64

@@ -8505,7 +8505,7 @@ internal static class ShowcaseSelfTest
         passwordBox.Password = "showcase-secret";
         DrainDispatcher(window);
         AssertEqual("showcase-secret", passwordBox.Password, "editor PasswordBox password");
-        AssertEqual(10, passwordBox.SecurePassword.Length, "editor PasswordBox secure password length");
+        AssertEqual("showcase-secret".Length, passwordBox.SecurePassword.Length, "editor PasswordBox secure password length");
         AssertEqual(1, window.EditorPasswordChangedCount, "editor PasswordBox changed count");
 
         passwordBox.Clear();

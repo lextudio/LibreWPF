@@ -1,5 +1,13 @@
 # Agent Guidance
 
+Native performance memory capture is opt-in and runs on the host render thread,
+publishing ProGPU's original inventory with the same successful frame snapshot.
+Readers must not query live native handles or splice generations. Preserve null
+when capture is disabled, invalidate on disposal/recovery, and include diagnostic
+cost in host CPU time. Showcase reports native stages separately from managed
+upload/encoding counters; unknown formats and borrowed views cannot silently
+qualify an owned-memory growth gate. Logical bytes are not driver residency.
+
 Native host performance snapshots publish measured CPU stages and actual native
 frame/update metrics together only after presentation, with device-recovery
 identity. Submission includes upload/encoding, not measured GPU time. Legacy

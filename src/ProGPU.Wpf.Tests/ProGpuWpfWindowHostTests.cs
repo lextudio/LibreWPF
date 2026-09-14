@@ -192,13 +192,26 @@ public sealed class ProGpuWpfWindowHostTests
         var update = default(NativeSceneUpdateMetrics) with
             { SceneId = 7, Generation = 11, ResourceCount = 20 };
         var measured = new ProGpuWpfDiagnostics.NativePerformanceSnapshot(
-            999, 12, 1, 2, 3, 1.5, 2.5, 0.5, true, update, frame);
+            999, 12, 1, 2, 3, 1.5, 2.5, 0.5, true, update, frame)
+        {
+            GpuMemory = new NativeGpuMemorySnapshot
+                { EngineId = 17, SceneId = 7, SceneGeneration = 11, OwnedBufferBytes = 64 },
+            MemoryInventoryCpuTimeMs = 0.25
+        };
+        Assert.False(host.EnableNativeMemoryDiagnostics);
+        host.EnableNativeMemoryDiagnostics = true;
         host.RecordPresentedFrame(new ProGpuWpfFrameState(100, 50, 1, 2, 3));
         host.RecordNativePerformanceSnapshot(measured);
         Assert.True(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out var snapshot));
         Assert.Equal(measured with { PresentedFrameCount = 1 }, snapshot);
         Assert.False(ProGpuWpfDiagnostics.TryGetPerformanceSnapshot(host, out _));
         Assert.False(ProGpuWpfDiagnostics.TryGetMemorySnapshot(host, out _));
+        host.EnableNativeMemoryDiagnostics = false;
+        host.RecordPresentedFrame(new ProGpuWpfFrameState(100, 50, 1, 2, 3));
+        host.RecordNativePerformanceSnapshot(measured with { GpuMemory = null, MemoryInventoryCpuTimeMs = 0 });
+        Assert.True(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out var uncaptured));
+        Assert.Null(uncaptured.GpuMemory);
+        Assert.Equal(2, uncaptured.PresentedFrameCount);
         host.Dispose();
         Assert.False(ProGpuWpfDiagnostics.TryGetNativePerformanceSnapshot(host, out _));
     }

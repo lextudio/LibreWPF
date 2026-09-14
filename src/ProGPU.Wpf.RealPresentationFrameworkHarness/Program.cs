@@ -130,6 +130,7 @@ public static class Program
                     RendererMode = ProGpuWpfRendererMode.NativeMilWgpu,
                     EnableNativeMilHitTesting = true
                 });
+                host.EnableNativeMemoryDiagnostics = true;
                 if (drawingVisual is not IPortableVisualStateSource)
                 {
                     string interfaces = string.Join(
@@ -307,6 +308,10 @@ public static class Program
             performance.DeviceRecoveryCount != host.RenderDeviceRecoveryCount ||
             performance.Frame != host.LastNativeMilFrameMetrics ||
             performance.SceneUpdate != host.LastNativeMilSceneUpdateMetrics ||
+            performance.GpuMemory is not { } memory || memory.EngineId == 0 ||
+            memory.SceneId != performance.SceneUpdate.SceneId ||
+            memory.SceneGeneration != performance.SceneUpdate.Generation || memory.OwnedBufferBytes == 0 ||
+            !double.IsFinite(performance.MemoryInventoryCpuTimeMs) || performance.MemoryInventoryCpuTimeMs < 0 ||
             !double.IsFinite(performance.CpuFrameTimeMs) || performance.CpuFrameTimeMs <= 0 ||
             !double.IsFinite(performance.SceneCompileCpuTimeMs) || performance.SceneCompileCpuTimeMs <= 0 ||
             !double.IsFinite(performance.SubmissionCpuTimeMs) || performance.SubmissionCpuTimeMs <= 0 ||

@@ -15,6 +15,19 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Native memory/report connected; qualification remains open — 2026-09-14:**
+The host now optionally captures ProGPU's native inventory on the render thread
+and publishes it with the successful frame. Showcase has a native 120-frame
+report with scene/engine/recovery checks and the original 1 MiB endpoint growth
+gate, reporting transient peaks separately. All 214 host tests and the real
+source-host recovery gate pass. The diagnostic Showcase completes all live input
+and 120 measured frames with 9,616 bytes endpoint growth. It also exposes about
+4.15 MB managed allocation per frame and up to 63
+retained raster batches; investigate actual completion/working-set behavior in
+matched profiling, not as an assumed texture leak. Exact package graphs, final
+Windows/default-query CI and ordered merges remain open. See
+[memory/report evidence](native-mil-performance-diagnostics.md#native-memory-and-report-connection).
+
 **Native host timing published; memory/report and default FXC still block — 2026-09-14:**
 The typed native snapshot now publishes measured host stages with native frame
 metrics and device-recovery identity. All 214 focused host tests and the real

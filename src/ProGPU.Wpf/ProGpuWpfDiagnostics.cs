@@ -111,6 +111,10 @@ public static class ProGpuWpfDiagnostics
         global::ProGPU.Backend.Native.NativeSceneFrameMetrics Frame)
     {
         public long DeviceRecoveryCount { get; init; }
+        // Present only when the host explicitly enables inventory capture.
+        // Logical engine-owned storage, not physical or whole-device residency.
+        public global::ProGPU.Backend.Native.NativeGpuMemorySnapshot? GpuMemory { get; init; }
+        public double MemoryInventoryCpuTimeMs { get; init; }
     }
 
     public static bool TryGetNativePerformanceSnapshot(

@@ -58,6 +58,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private readonly object _nativeMilPerformanceGate = new();
     private ProGpuWpfDiagnostics.NativePerformanceSnapshot _nativeMilPerformance;
     private ProGpuWpfDiagnostics.NativePerformanceSnapshot _pendingNativeMilPerformance;
+    private volatile bool _enableNativeMemoryDiagnostics;
     private object? _nativeMilCompiledRootVisual;
     private uint _nativeMilCompiledPixelWidth;
     private uint _nativeMilCompiledPixelHeight;
@@ -345,6 +346,17 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public NativeSceneUpdateMetrics LastNativeMilSceneUpdateMetrics { get; private set; }
 
     public NativeSceneFrameMetrics LastNativeMilFrameMetrics { get; private set; }
+
+    /// <summary>
+    /// Opts into one native resource inventory per successfully presented frame.
+    /// Capture runs on the render owner thread and publishes with that frame's
+    /// timings. Disabled by default; reads never query live handles themselves.
+    /// </summary>
+    public bool EnableNativeMemoryDiagnostics
+    {
+        get => _enableNativeMemoryDiagnostics;
+        set => _enableNativeMemoryDiagnostics = value;
+    }
 
     internal bool TryGetNativePerformanceSnapshot(
         out ProGpuWpfDiagnostics.NativePerformanceSnapshot snapshot)
@@ -2555,6 +2567,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             RequestNativeMilContinuationAndWakeNativeLoop(
                 frame.Request,
                 frame.Scene.BuildResult);
+            NativeGpuMemorySnapshot? memory = null;
+            double memoryMs = 0;
+            if (EnableNativeMemoryDiagnostics)
+            {
+                long memoryStarted = Stopwatch.GetTimestamp();
+                memory = _nativeMilCompositor.GetGpuMemorySnapshot();
+                memoryMs = Stopwatch.GetElapsedTime(memoryStarted).TotalMilliseconds;
+            }
             _pendingNativeMilPerformance = new(
                 0,
                 Stopwatch.GetElapsedTime(frameStarted).TotalMilliseconds,
@@ -2566,7 +2586,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 presentationTimings.PresentMs,
                 update,
                 LastNativeMilSceneUpdateMetrics,
-                LastNativeMilFrameMetrics);
+                LastNativeMilFrameMetrics)
+            {
+                GpuMemory = memory,
+                MemoryInventoryCpuTimeMs = memoryMs
+            };
         }
         return presented;
     }

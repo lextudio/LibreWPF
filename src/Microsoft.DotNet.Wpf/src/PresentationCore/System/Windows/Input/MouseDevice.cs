@@ -885,6 +885,21 @@ namespace System.Windows.Input
 
             // Simulate a mouse move
             PresentationSource activeSource = CriticalActiveSource;
+            // A portable element-captured drag has no trustworthy OS cursor position when
+            // a transient window switches the active source. Do not synthesize a move in
+            // that narrow case. Subtree capture (used by menus and popups) still needs the
+            // normal re-hit-test when the pointer enters its separate native surface.
+            // Win32 also retains its original synchronization path.
+            if (Captured != null &&
+                _captureMode == CaptureMode.Element &&
+                activeSource is PortablePresentationSource &&
+                (LeftButton == MouseButtonState.Pressed ||
+                 MiddleButton == MouseButtonState.Pressed ||
+                 RightButton == MouseButtonState.Pressed))
+            {
+                return;
+            }
+
             if (activeSource != null && activeSource.CompositionTarget != null && !activeSource.CompositionTarget.IsDisposed)
             {
                 int timeStamp = Environment.TickCount;

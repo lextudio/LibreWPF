@@ -421,7 +421,6 @@ esac
 if [[ "${run_native_mil_host_gate}" == "1" ]]; then
   echo "Running real WPF native MIL host validation..."
   PROGPU_WPF_NATIVE_MIL_HOST_CONFIGURATION=Release \
-  PROGPU_WPF_NATIVE_MIL_HOST_SKIP_BUILD=1 \
     "${repo_root}/eng/progpu-wpf-native-mil-host-smoke.sh"
 else
   echo "Skipping native MIL host validation because its native runtime or graphical session is unavailable."

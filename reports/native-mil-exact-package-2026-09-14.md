@@ -9,8 +9,11 @@ atlas. An isolated packaged-app output overlay, with no source-project
 fallback, showed that enlarging the path atlas exposed a second ProGPU error:
 per-point guideline snapping collapsed a filled path's X bound to one float
 coordinate after earlier scene admission. Both fixes are in
-[ProGPU #161](https://github.com/wieslawsoltes/ProGPU/pull/161), not in the
-LibreWPF package pin yet. The overlay subsequently reached Xceed's virtual
+[ProGPU #161](https://github.com/wieslawsoltes/ProGPU/pull/161), which passed
+45/45 checks and merged to `main` at
+`62b67e6cf34addff2e2bdc7ef959a3c50694939a`. LibreWPF has a local
+submodule pin but has not yet qualified the merged package. The overlay
+subsequently reached Xceed's virtual
 DataGrid GPU input check. That check needed a real query for the newly changed
 scene before requiring device-index residency; the source check now performs
 one and retains its existing owner/count assertions. With these two ProGPU
@@ -18,10 +21,11 @@ fixes and that assertion ordering, the isolated paid Xceed native live gate
 passes at 1180×760 logical, 2360×1520 pixels, 2× DPI, including full viewport,
 large-scroll budget and GPU hit testing.
 
-This is local overlay evidence, not final merged-package evidence. ProGPU #161
-must pass CI and merge, LibreWPF must pin and package that exact merge commit,
-and its current-head CI and remaining SDK/platform gates must pass before #115
-is marked ready or merged.
+This is local overlay evidence, not final merged-package evidence.
+[LibreWinForms #30](https://github.com/wieslawsoltes/LibreWinForms/pull/30)
+must pass its required CI and merge with the same ProGPU pin, then LibreWPF
+must pin both exact merge commits. Its current-head CI and remaining SDK/platform
+gates must pass before #115 is marked ready or merged.
 
 After the Xceed gate, the current SDK package output also built the default
 `ProGPU.Wpf.SciChartApp` with zero errors; its renderer validation and real
@@ -50,9 +54,9 @@ The current-source SDK package-production command completed, but the optional
 `22a26af872d3c86dba7134cbed8ec201238d1fd1c045205fae2fdaae0ad76717`,
 identical to the built implementation. That probe is not the canonical
 LibreWinForms package lane or a release bundle. The canonical lane requires
-LibreWinForms and LibreWPF to pin the same ProGPU commit; after #161 merges,
-LibreWinForms needs its matching submodule update before LibreWPF can repin
-and complete that gate.
+LibreWinForms and LibreWPF to pin the same ProGPU commit. LibreWinForms #30
+carries that matching update; its green CI, merge, and final LibreWPF repin
+remain outstanding.
 
 ## Merged ProGPU and LibreWinForms handoff
 

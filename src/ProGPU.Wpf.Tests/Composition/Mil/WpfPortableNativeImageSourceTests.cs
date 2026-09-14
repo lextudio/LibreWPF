@@ -22,8 +22,7 @@ public sealed class WpfPortableNativeImageSourceTests
         string invalidationTracker = File.ReadAllText(FindRepoPath(
             "src", "ProGPU.Wpf", "Composition", "Mil", "WpfVisualInvalidationTracker.cs"));
         string host = File.ReadAllText(FindRepoPath(
-            "external", "LibreWinForms", "src", "LibreWinForms.Portable",
-            "LibreWinForms.WindowsFormsIntegration", "src", "WindowsFormsHost.cs"));
+            "src", "LibreWPF.WinFormsCompat", "WindowsFormsIntegration", "WindowsFormsHost.cs"));
 
         Assert.Contains("public interface IPortableNativeImageSource", interop, StringComparison.Ordinal);
         Assert.Contains("TryGetPortableNativeImage(out object? nativeImage)", interop, StringComparison.Ordinal);

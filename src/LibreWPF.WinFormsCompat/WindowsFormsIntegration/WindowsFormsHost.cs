@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -10,6 +11,8 @@ using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using ProGPU.Backend;
+using ProGPU.Wpf.Interop;
 using Forms = System.Windows.Forms;
 using DrawingBitmap = System.Drawing.Bitmap;
 using DrawingColor = System.Drawing.Color;
@@ -1130,10 +1133,13 @@ public class WindowsFormsHost : FrameworkElement
         ImageSource? ownerDrawSource = null;
         bool ownerDrawn = comboBox.SelectedIndex >= 0
             && comboBox.DrawMode != Forms.DrawMode.Normal
-            && TryRenderListItemOwnerDraw(comboBox, comboBox.SelectedIndex, textBounds, out ownerDrawSource);
-        if (ownerDrawn && ownerDrawSource != null)
+            && TryRenderListItemOwnerDraw(drawingContext, comboBox, comboBox.SelectedIndex, bounds, textBounds, out ownerDrawSource);
+        if (ownerDrawn)
         {
-            drawingContext.DrawImage(ownerDrawSource, textBounds);
+            if (ownerDrawSource != null)
+            {
+                drawingContext.DrawImage(ownerDrawSource, textBounds);
+            }
         }
         else
         {
@@ -1185,10 +1191,13 @@ public class WindowsFormsHost : FrameworkElement
             Rect itemTextBounds = new(textX, rowBounds.Y + 1, Math.Max(0, rowBounds.Right - textX - 2), lineHeight - 2);
             ImageSource? ownerDrawSource = null;
             bool ownerDrawn = listBox.DrawMode != Forms.DrawMode.Normal
-                && TryRenderListItemOwnerDraw(listBox, i, itemTextBounds, out ownerDrawSource);
-            if (ownerDrawn && ownerDrawSource != null)
+                && TryRenderListItemOwnerDraw(drawingContext, listBox, i, bounds, itemTextBounds, out ownerDrawSource);
+            if (ownerDrawn)
             {
-                drawingContext.DrawImage(ownerDrawSource, itemTextBounds);
+                if (ownerDrawSource != null)
+                {
+                    drawingContext.DrawImage(ownerDrawSource, itemTextBounds);
+                }
             }
             else
             {
@@ -1204,7 +1213,13 @@ public class WindowsFormsHost : FrameworkElement
         }
     }
 
-    private static bool TryRenderListItemOwnerDraw(Forms.ListBox listBox, int index, Rect itemBounds, out ImageSource? imageSource)
+    private static bool TryRenderListItemOwnerDraw(
+        DrawingContext drawingContext,
+        Forms.ListBox listBox,
+        int index,
+        Rect controlBounds,
+        Rect itemBounds,
+        out ImageSource? imageSource)
     {
         imageSource = null;
         int bitmapWidth = Math.Max(1, (int)Math.Ceiling(itemBounds.Width));
@@ -1226,15 +1241,69 @@ public class WindowsFormsHost : FrameworkElement
             state |= Forms.DrawItemState.Disabled;
         }
 
-        using DrawingBitmap bitmap = new(bitmapWidth, bitmapHeight, DrawingPixelFormat.Format32bppPArgb);
-        using DrawingGraphics graphics = DrawingGraphics.FromImage(bitmap);
-        graphics.Clear(DrawingColor.Transparent);
-        graphics.TranslateTransform(-drawBounds.X, -drawBounds.Y);
+        drawingContext.PushClip(new RectangleGeometry(itemBounds));
+        try
+        {
+            if (TryGetNativeDrawingContext(drawingContext, out var nativeContext, out Matrix4x4 outerTransform))
+            {
+                Matrix4x4 clientTransform = Matrix4x4.CreateTranslation(
+                    (float)controlBounds.X, (float)controlBounds.Y, 0f) * outerTransform;
+                DrawingRectangle clientBounds = new(
+                    drawBounds.X - (int)Math.Round(controlBounds.X),
+                    drawBounds.Y - (int)Math.Round(controlBounds.Y),
+                    bitmapWidth,
+                    bitmapHeight);
+                using DrawingGraphics nativeGraphics = DrawingGraphics.FromProGpuDrawingContext(
+                    nativeContext, clientTransform);
+                listBox.RaiseDrawItem(new Forms.DrawItemEventArgs(
+                    nativeGraphics, listBox.Font, clientBounds, index, state));
+                return true;
+            }
 
-        Forms.DrawItemEventArgs eventArgs = new(graphics, listBox.Font, drawBounds, index, state);
-        listBox.RaiseDrawItem(eventArgs);
-        imageSource = CreateImageSource(bitmap);
-        return imageSource != null;
+            using DrawingBitmap bitmap = new(bitmapWidth, bitmapHeight, DrawingPixelFormat.Format32bppPArgb);
+            using DrawingGraphics graphics = DrawingGraphics.FromImage(bitmap);
+            graphics.Clear(DrawingColor.Transparent);
+            graphics.TranslateTransform(-drawBounds.X, -drawBounds.Y);
+
+            Forms.DrawItemEventArgs eventArgs = new(graphics, listBox.Font, drawBounds, index, state);
+            listBox.RaiseDrawItem(eventArgs);
+            imageSource = CreateImageSource(bitmap);
+            return imageSource != null;
+        }
+        finally
+        {
+            drawingContext.Pop();
+        }
+    }
+
+    private static bool TryGetNativeDrawingContext(
+        DrawingContext drawingContext,
+        out ProGPU.Scene.DrawingContext nativeContext,
+        out Matrix4x4 outerTransform)
+    {
+        nativeContext = null!;
+        outerTransform = Matrix4x4.Identity;
+        if (drawingContext is IPortableNativeDrawingContextStateSource nativeContextStateSource
+            && nativeContextStateSource.TryGetPortableNativeDrawingContextState(out var portableState)
+            && ProGPU.Scene.ProGpuDrawingContextState.TryCreate(
+                portableState.NativeDrawingContext,
+                portableState.Transform,
+                out ProGPU.Scene.ProGpuDrawingContextState state))
+        {
+            nativeContext = state.DrawingContext;
+            outerTransform = state.OuterTransform;
+            return true;
+        }
+
+        if (drawingContext is not IPortableNativeDrawingContextSource nativeContextSource
+            || !nativeContextSource.TryGetPortableNativeDrawingContext(out object? nativeContextObject)
+            || nativeContextObject is not ProGPU.Scene.DrawingContext resolvedContext)
+        {
+            return false;
+        }
+
+        nativeContext = resolvedContext;
+        return true;
     }
 
     private void RenderPropertyGrid(DrawingContext drawingContext, Forms.PropertyGrid propertyGrid, Rect bounds, Brush foreground)
@@ -1696,7 +1765,18 @@ public class WindowsFormsHost : FrameworkElement
         return index >= 0 && index < imageList.Images.Count ? imageList.Images[index] : null;
     }
 
-    private static WriteableBitmap? CreateImageSource(DrawingImage image)
+    private static ImageSource? CreateImageSource(DrawingImage image)
+    {
+        if (image is IProGpuTextureSource textureSource)
+        {
+            return PortableNativeImageSourceFactory.Create(
+                new ProGpuDrawingImageSource(image, textureSource));
+        }
+
+        return CreatePixelImageSource(image);
+    }
+
+    private static WriteableBitmap? CreatePixelImageSource(DrawingImage image)
     {
         DrawingBitmap? bitmap = image as DrawingBitmap;
         bool ownsBitmap = false;
@@ -1740,6 +1820,34 @@ public class WindowsFormsHost : FrameworkElement
             {
                 bitmap.Dispose();
             }
+        }
+    }
+
+    private sealed class ProGpuDrawingImageSource : IPortableNativeImageSource
+    {
+        private readonly DrawingImage _image;
+        private readonly IProGpuTextureSource _textureSource;
+
+        public ProGpuDrawingImageSource(DrawingImage image, IProGpuTextureSource textureSource)
+        {
+            _image = image;
+            _textureSource = textureSource;
+        }
+
+        public int PixelWidth => _image.Width;
+
+        public int PixelHeight => _image.Height;
+
+        public bool TryGetPortableNativeImage(out object? nativeImage)
+        {
+            if (_textureSource.TryGetGpuTexture(out GpuTexture texture))
+            {
+                nativeImage = texture;
+                return true;
+            }
+
+            nativeImage = null;
+            return false;
         }
     }
 

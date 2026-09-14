@@ -15,11 +15,9 @@ public sealed class WpfPortableNativeDrawingContextStateTests
         string graphics = File.ReadAllText(FindRepoPath(
             "external", "ProGPU", "src", "System.Drawing.Common", "System", "Drawing", "Graphics.cs"));
         string host = File.ReadAllText(FindRepoPath(
-            "external", "LibreWinForms", "src", "LibreWinForms.Portable",
-            "LibreWinForms.WindowsFormsIntegration", "src", "WindowsFormsHost.cs"));
+            "src", "LibreWPF.WinFormsCompat", "WindowsFormsIntegration", "WindowsFormsHost.cs"));
         string hostProject = File.ReadAllText(FindRepoPath(
-            "external", "LibreWinForms", "src", "LibreWinForms.Portable",
-            "LibreWinForms.WindowsFormsIntegration", "LibreWinForms.WindowsFormsIntegration.csproj"));
+            "src", "LibreWPF.WinFormsCompat", "WindowsFormsIntegration", "WindowsFormsIntegration.csproj"));
 
         Assert.Contains("public readonly struct PortableNativeDrawingContextState", interop, StringComparison.Ordinal);
         Assert.Contains("public Matrix4x4 Transform", interop, StringComparison.Ordinal);
@@ -39,16 +37,17 @@ public sealed class WpfPortableNativeDrawingContextStateTests
         Assert.DoesNotContain("state.NativeDrawingContext is ProGPU.Scene.DrawingContext", host, StringComparison.Ordinal);
         Assert.Contains("Matrix4x4 clientTransform = Matrix4x4.CreateTranslation", host, StringComparison.Ordinal);
         Assert.Contains("* outerTransform;", host, StringComparison.Ordinal);
-        Assert.Contains("FromProGpuDrawingContext(nativeContext, clientTransform)", host, StringComparison.Ordinal);
+        Assert.Contains("DrawingGraphics.FromProGpuDrawingContext(", host, StringComparison.Ordinal);
+        Assert.Contains("nativeContext, clientTransform)", host, StringComparison.Ordinal);
         Assert.DoesNotContain("graphics.TranslateTransform((float)bounds.X", host, StringComparison.Ordinal);
         Assert.DoesNotContain("graphics.TranslateTransform((float)controlBounds.X", host, StringComparison.Ordinal);
         Assert.DoesNotContain("graphics.TranslateTransform((float)treeBounds.X", host, StringComparison.Ordinal);
-        Assert.Contains("TryRenderListItemOwnerDraw(drawingContext, listBox, i, bounds, rowBounds)", host, StringComparison.Ordinal);
+        Assert.Contains("TryRenderListItemOwnerDraw(drawingContext, listBox, i, bounds, itemTextBounds, out ownerDrawSource)", host, StringComparison.Ordinal);
         Assert.DoesNotContain("System.Reflection", host, StringComparison.Ordinal);
 
-        Assert.Contains("<PackageReference Include=\"LibreWPF.ProGPU\"", hostProject, StringComparison.Ordinal);
-        Assert.Contains("Condition=\"'$(LibreWinFormsReferenceMode)' != 'Project'\"", hostProject, StringComparison.Ordinal);
-        Assert.Contains("..\\..\\..\\..\\..\\src\\ProGPU.Wpf\\ProGPU.Wpf.csproj", hostProject, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Backend\\ProGPU.Backend.csproj", hostProject, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Scene\\ProGPU.Scene.csproj", hostProject, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Interop\\ProGPU.Wpf.Interop.csproj", hostProject, StringComparison.Ordinal);
     }
 
     private static string FindRepoPath(params string[] pathSegments)

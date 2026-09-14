@@ -23,6 +23,26 @@ must pass CI and merge, LibreWPF must pin and package that exact merge commit,
 and its current-head CI and remaining SDK/platform gates must pass before #115
 is marked ready or merged.
 
+After the Xceed gate, the current SDK package output also built the default
+`ProGPU.Wpf.SciChartApp` with zero errors; its renderer validation and real
+`Application.Run` startup both exited successfully in `NativeMilWgpu` mode.
+The focused SDK graph guard passed (1/1). This default chart application does
+not enable the separate commercial SciChart binaries, whose native runtime
+compatibility remains a documented broader DirectX integration gap.
+
+The full local WPF test assembly initially reported 17 failures: 13 lacked a
+native runtime on the test process path, two source guards still read the
+retired LibreWinForms portable host, and two guards expected obsolete source
+forms. With the ProGPU native build and stock WebGPU runtime staged, 1,786/1,790
+passed. The live `src/LibreWPF.WinFormsCompat/WindowsFormsIntegration` host now
+restores typed GPU image carriers and native direct owner-draw painting, retaining
+pixel bitmap rendering only when those capabilities are unavailable. Its Release
+project build succeeds. The guards now inspect that live host, the current
+retained hit-query counter form, and actual floating-host diagnostics without
+allowing private reflection. The final full assembly passes 1,790/1,790 on
+macOS ARM64 with the local ProGPU #161 native runtime. This is source-test
+evidence; the final SDK package and platform gates are still required.
+
 ## Merged ProGPU and LibreWinForms handoff
 
 ProGPU #139 merged as `86f2f766d1f8e6b4041fa184de0fe9d03ae2840f`.

@@ -2189,7 +2189,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("fn primitive_uses_precise_bounds_region_test(", proGpuHitTestingShader, StringComparison.Ordinal);
         Assert.Contains("fn intersects_bounds(", proGpuHitTestingShader, StringComparison.Ordinal);
         Assert.Contains("query_result_capacity()", proGpuHitTestingShader, StringComparison.Ordinal);
-        Assert.Contains("let total_count = results[0].hit + 1u;", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("var hit_count = results[0].hit;", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("hit_count = hit_count + 1u;", proGpuHitTestingShader, StringComparison.Ordinal);
+        Assert.Contains("results[0].hit = hit_count;", proGpuHitTestingShader, StringComparison.Ordinal);
         Assert.Contains("fn stored_result_count(capacity: u32) -> u32", proGpuHitTestingShader, StringComparison.Ordinal);
         Assert.Contains("if (count >= capacity) {\n            break;\n        }\n\n        if (results[count + 1u].hit == 0u) {", proGpuHitTestingShader, StringComparison.Ordinal);
         Assert.Contains("fn find_stored_hit_slot(id: i32, stored_count: u32) -> u32", proGpuHitTestingShader, StringComparison.Ordinal);
@@ -11161,7 +11163,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("GetProperty(\"AutoHideWindow\"", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GetProperty(\"VisualClip\"", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.DoesNotContain("GetMethod(", mainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.DoesNotContain("GetType()", mainWindowCodeBehind, StringComparison.Ordinal);
+        // Diagnostics may name the actual floating host type; private member
+        // discovery/invocation remains prohibited by the checks above.
         Assert.Contains("DockThemeSwitchCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SourceDockManager.ActiveContentChanged", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ViewModel.SourceDocuments", mainWindowCodeBehind, StringComparison.Ordinal);

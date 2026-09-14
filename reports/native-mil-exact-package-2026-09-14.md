@@ -1,5 +1,41 @@
 # Native MIL exact-package validation — 2026-09-14
 
+## Current-head package handoff in progress
+
+ProGPU Build [34819727963](https://github.com/wieslawsoltes/ProGPU/actions/runs/34819727963)
+published `progpu-native-package` artifact `10338682752`, version
+`0.1.0-preview.3051.ci`. Both inspected Backend and Native nuspecs identify
+repository commit `54adc6a005119d40fc25615b3823844c21453690`; Native depends on
+Backend and Dawn at the same exact version. Downloaded package SHA-256 values:
+
+| Package | SHA-256 |
+| --- | --- |
+| ProGPU.Backend | `c19347bd04a262e244e2fcebf9011cae34af62b595412721d8e0f4d15a135552` |
+| ProGPU.Backend.Native | `f3320496ee5a54401707060bad76925594027951b77541c601e525ecbdf8bea5` |
+| ProGPU.Backend.Dawn | `45ff4ead3f9be3dfd38d35086bd7f400930cd75ad617ad4555e42afcb52ab965` |
+| ProGPU.Backend.Dx12 | `8287589556f0767a4968015d3b2723fedc66adb5eb5a06d4ae2b5792a406154c` |
+
+The unchanged full `ProGPU.Native.PackageConsumer` was published from this
+clean ProGPU source with project references disabled, this downloaded NuGet
+feed, version `3051`, and an isolated restore cache. Its assets have zero
+project libraries. The exact-package macOS ARM64/Metal process and the Windows
+VM emulated x64/system-WARP process both exited zero with the final ABI 4,
+Dawn ABI 1, one-draw/16,384-pixel smoke marker. Windows used the system
+`d3dcompiler_47.dll`, `D3D12Core.dll`, and `d3d10warp.dll`; no app-local WARP
+or compiler override was supplied. The guest's `progpu_native.dll` SHA-256
+`6449641b46d4568ffaf8c185e88366f30c2e52d97a683c44a23d6c893e818490`
+matches the published package payload. The stock package `wgpu_native.dll`
+hash is `4971fce5b4d93fc10b65d01cbcc57f9f35ad1bc479e654737974e4ad2e265be6`;
+no source overlay was applied. Logs are under the external core-release staging
+directory as `osx-arm64-package-3051-metal.log` and
+`win-x64-package-3051-system-warp.log`.
+
+Separately, the current-source Windows x64 consumer passed both system WARP and
+the default Parallels D3D12 adapter using the current CI runtime payloads. This
+is useful integration evidence, not the NuGet package result above. Further
+exact-package VM adapter/ARM64 and downstream SDK/application gates remain open;
+do not advance dependency pins or merge from this partial Build.
+
 ## Current-head Windows sample oracle follow-up
 
 ProGPU `54adc6a005119d40fc25615b3823844c21453690` Build

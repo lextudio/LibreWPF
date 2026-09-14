@@ -1,5 +1,13 @@
 # Agent Guidance
 
+ScrollViewer publishes its actual transparent point-hit rectangle through
+IPortablePointHitRegionSource, matching ActualWidth/ActualHeight after layout.
+The presenter's clip belongs to descendants; geometry-region input remains
+drawing-based. Reuse ProGPU's point-only/region-only scopes, never add a painted
+background, type-name filter or generic control layout-box hit. Derived custom
+point policies require matching source metadata. Keep wheel/capture and clipped
+scroll application checks enabled; retrying a hit behind the viewer is failure.
+
 Portable GPU completion relies on ProGPU's observed fence/map callback state.
 The pinned wgpu-native blocking poll can mistake its internal timeout for
 completed work; do not reintroduce it through source-host waits or teardown.

@@ -1,5 +1,13 @@
 # Agent Guidance
 
+PortableTextLine width-changing continuations use the captured paragraph's explicit
+native reflow capability over the complete original shaping context. Keep original
+source maps, styled physical faces, terminators, hidden positions and cloned-break
+ownership; source index mismatches still reject. Never ignore a new width, reread
+the registry, reshape an isolated suffix or return empty text. Exclusion/float
+placement and measured collapse remain explicit separate contracts. Qualify the
+actual Toolkit/AvalonDock path and final packages, not only a typed fixture.
+
 Native memory qualification uses explicit owner-thread, nonblocking completion
 checkpoints backed by ProGPU's existing submission token/poll and retirement.
 Ordinary snapshot reads stay read-only; never purge caches, fabricate zero pending

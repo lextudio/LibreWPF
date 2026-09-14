@@ -92,3 +92,16 @@ This closes the project-reference-only package gap. Final-head CI, x64 runtime,
 hardware/default selection and Showcase source/application checks still gate
 ordered merges. LibreWinForms PR 29 is green at its unchanged head, but waits
 for ProGPU; dependency pins and all draft states remain unchanged.
+
+The same complete NuGet graph also passes the full consumer on Apple M3 Pro/Metal
+with explicit ordered stages; the Windows-only optional package leaves its native
+asset selection intact. At `ab32ad25`, the assertion repair is pushed and Docs is
+green; Build `34794383097` remains pending. The prior Windows/Linux source-test
+failures both identify that same corrected assertion.
+
+The older `089e9120` hosted x64 stock-runtime consumer is now terminal red in job
+`103823672111`: FXC X3511 forced-loop-unrolling rejection at first owner-pipeline
+creation, followed by the pinned native library's NulError panic. Its independent
+path/raster/native-submit/cubic diagnostics all pass. Linux x64/ARM64 package jobs
+pass at that head. This preserves a concrete Windows default-compiler blocker,
+not a generic CI wait or a waiver justified by the passing explicit DXC lane.

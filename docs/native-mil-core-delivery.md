@@ -15,6 +15,21 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Windows native-MIL SDK Showcase source follow-up — 2026-09-14:**
+LibreWPF #115 merged into `progpu-rendering-port` at `c99d0311` after 7/7 PR
+checks. In the Parallels Windows 11 ARM64 VM, Showcase built from the exact
+merged package feed with zero warnings/errors and the exact ProGPU `win-arm64`
+native DLL. Its package run exposed pre-host Windows `SystemCommands` routing,
+portable-handle DWM backdrop access and a one-pixel framebuffer/DPI rounding
+rejection. Source fixes for these three paths allow the displayed Showcase
+`Application.Run` self-test to finish; see
+[Windows SDK Showcase record](../reports/native-mil-windows-sdk-showcase-2026-09-14.md).
+The successful guest run overlaid rebuilt source assemblies into a disposable
+package output. It is not a fresh follow-up package, full Windows text visual
+matrix or Windows SDK default admission. A synthetic-font mapping rejection
+occurred in one intermediate run and remains an explicit text contract to
+recheck on clean follow-up packages.
+
 **Core package qualification checkpoint — 2026-09-14:** ProGPU #163 is
 merged at `ff8bcbf4` with 45/45 PR checks green, and its exact `main` Build
 [34864169048](https://github.com/wieslawsoltes/ProGPU/actions/runs/34864169048)

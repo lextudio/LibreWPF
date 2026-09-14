@@ -43,10 +43,14 @@ discarded because the next glyph carried an `unsafe_to_break` shaping flag.
 [ProGPU #163](https://github.com/wieslawsoltes/ProGPU/pull/163) retains that
 whitespace break without admitting unsafe non-space or same-cluster breaks;
 its deterministic regression and all 20 local native CTest suites pass.
-The fix is not yet in a merged package, so the earlier exact-package gate
-does not qualify this corrected text path. Re-pin the merged ProGPU payload,
-then rerun the package/application gate and visual comparison before #115
-is made merge-ready. A same-source Windows 11 native-WPF Showcase Themes
+#163 merged to `main` at `ff8bcbf46a6b77de25cd524407b4865eb13d9db0`.
+The repository allowed the merge while the isolated macOS x64 CI rerun was
+still pending; that check is not counted as green until it completes.
+[LibreWinForms #31](https://github.com/wieslawsoltes/LibreWinForms/pull/31)
+pins this exact ProGPU main commit for the canonical package graph. The
+earlier exact-package gate does not qualify this corrected text path; rerun
+the final package/application gate and visual comparison before #115 is made
+merge-ready. A same-source Windows 11 native-WPF Showcase Themes
 baseline built in guest-only output paths and displayed five whole-word lines;
 the same-source Windows object and displayed `Application.Run` self-tests now
 pass after the test distinguishes unpresented native commands and the native
@@ -57,8 +61,10 @@ an exact #163 package, full Windows SDK admission or the broad text-parity
 matrix; other text/layout defects are not presumed closed. The first hosted
 WPF SDK job was canceled while its unattended Showcase test displayed a
 blocking native system menu; the test now avoids opening that interactive
-menu and bounds app-lifetime runs to three minutes. Its latest PR CI and the
-re-pinned final package gate remain required.
+menu and bounds app-lifetime runs to three minutes. The hosted SDK graph guard
+then exposed stale script-shape and clipboard assertions; the corrected guard
+passes locally and is pushed to #115. Its new hosted CI and the re-pinned
+final package gate remain required.
 
 **Native text display scale and final visual qualification — 2026-09-14:**
 A direct 2× macOS window capture of `ProGPU.Wpf.ShowcaseApp` found glyph ink

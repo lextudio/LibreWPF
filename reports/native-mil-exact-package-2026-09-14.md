@@ -28,7 +28,7 @@ until the remaining required gates and release decision are resolved.
 
 ## Shared paragraph whitespace-wrap defect
 
-The exact packaged Showcase Themes pane still split `TemplateBinding` into
+The earlier exact packaged Showcase Themes pane split `TemplateBinding` into
 `TemplateBindin` / `g` and placed `compiled` alone despite enough width for
 `compiled ControlTemplate,`. Independent ManagedPortable and NativeMilWgpu
 window captures reproduced the same boundaries, ruling out native MIL glyph
@@ -41,8 +41,10 @@ caused the shared scanner to ignore the space and take an emergency
 mid-word break. [ProGPU #163](https://github.com/wieslawsoltes/ProGPU/pull/163)
 preserves the whitespace boundary while retaining unsafe non-space and
 same-cluster protection. The reproduced request now has five whole-word
-lines, and all 20 local native CTest suites pass. This is source-level
-evidence only until #163 merges and its exact package/app visual gates rerun;
+lines, and all 20 local native CTest suites pass. #163 merged to ProGPU
+`main` at `ff8bcbf46a6b77de25cd524407b4865eb13d9db0`, but its macOS x64
+CI rerun was still pending at merge. The final exact package/app visual gate
+must be rerun;
 the previous exact-package pass used ProGPU `5b99b640` and predates this fix.
 An isolated copy of the packaged Showcase output with only the locally built
 PR #163 `libprogpu_native.dylib` substituted passed its source self-test,

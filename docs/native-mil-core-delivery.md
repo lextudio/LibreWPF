@@ -29,9 +29,12 @@ package output. A separate clean, hash-matched PR #126 package passed the
 pre-display object self-test but failed displayed startup in a DataGrid header
 because a SemiBold symbol-font request mapped to a physical face with
 `BoldSimulation`. The current text follow-up connects the existing ProGPU
-simulation render path and portable ink bounds; it still needs a fresh clean
-package run and Windows visual inspection. Neither the overlay run nor the
-earlier failing package qualifies Windows SDK defaults.
+simulation render path and portable ink bounds; its focused Windows portable
+text class passes 24/24. A displayed retry is currently blocked by an
+independent `wgpuSurfaceConfigure` `Invalid surface` failure that reproduces
+with the previously successful binary and after a normal VM restart. It still
+needs a fresh clean package run and Windows visual inspection. Neither the
+overlay run nor the earlier failing package qualifies Windows SDK defaults.
 
 **Core package qualification checkpoint — 2026-09-14:** ProGPU #163 is
 merged at `ff8bcbf4` with 45/45 PR checks green, and its exact `main` Build

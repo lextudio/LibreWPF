@@ -62,16 +62,30 @@ The follow-up text change retains the mapped face and its style-simulation
 flags in `GlyphRun`, whose portable exports already carry those flags to
 ProGPU's managed and C++ native glyph renderers. It adds portable ink overhang
 for the native simulated bold pass and italic shear without altering shaped
-advances or caret positions. A focused source regression tests mapped bold
-and flag/ink propagation. This change still requires a fresh Windows-managed
-payload, clean package closure, displayed guest retest, and visual comparison.
+advances or caret positions. A focused Windows regression tests explicitly
+simulated physical-face flag and ink propagation. The source mapper itself
+still needs the displayed application gate. This change still requires a fresh
+Windows-managed payload, clean package closure, displayed guest retest, and
+visual comparison.
+
+The Windows 11 ARM64 guest ran the `PresentationCore.Tests` portable-media
+`PortableTextLineTests` class with the source-built `PresentationCore.dll` and
+packaged `PresentationNative_cor3.dll`: 24/24 tests passed, including the new
+synthetic bold/italic glyph-run flag and ink test. A displayed source-overlay
+Showcase retry did not reach the callback: `wgpuSurfaceConfigure` aborted with
+`Invalid surface`. The same abort reproduced with the earlier, previously
+successful binary and after a normal VM restart, so the current evidence does
+not attribute it to the text change. It remains a separate Windows VM
+presentation blocker; neither a process exit code of zero nor the initial
+startup messages count as Showcase success.
 
 ## Qualification boundary
 
 The completed displayed run is Windows ARM64 source-overlay application
 evidence. The first exact PR #126 package run is stronger provenance but failed
-at mapped synthetic bold, before the new text change. Rebuild exact follow-up
-packages, rerun without overlays, repeat the text-heavy action, inspect visible
+at mapped synthetic bold, before the new text change. The focused Windows text
+suite passes, but the displayed guest now has a separate WebGPU surface
+failure. Rebuild exact follow-up packages, rerun without overlays, repeat the text-heavy action, inspect visible
 text at Windows DPI, and qualify x64 as well as ARM64 before Windows native SDK
 admission. The larger native text, modal/popup, DirectX/Direct2D and platform
 parity requirements remain open. No default renderer or unsupported guard for

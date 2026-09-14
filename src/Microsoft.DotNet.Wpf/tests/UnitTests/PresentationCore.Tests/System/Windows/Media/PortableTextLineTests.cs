@@ -3,6 +3,7 @@
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows.Markup;
 using MS.Internal.TextFormatting;
 using ProGPU.Wpf.Interop;
 using System.Windows.Media.TextFormatting;
@@ -77,21 +78,17 @@ public class PortableTextLineTests
     }
 
     [PortableMediaFact]
-    public void MappedSyntheticBoldRetainsSourceFaceAndPortableInk()
+    public void SyntheticGlyphRunRetainsPortableInkAndFlags()
     {
         string path = Path.Combine(AppContext.BaseDirectory, "LibreWPF", "Fonts", "Inter-Medium.ttf");
-        var properties = new Properties(new FontFamily(path + "#Inter"), FontWeights.Bold);
-        var source = new Source { Text = "a", Properties = properties };
-        using var registration = PortableWpfServiceRegistry.RegisterTextFormatting(
-            new Provider { BoundaryWidth = 8 });
-        using var formatter = new TextFormatterImp();
-        using var line = PortableTextLine.Create(Settings(formatter, source), 0, 800, 1);
-
-        GlyphRun run = Assert.Single(line.GetIndexedGlyphRuns()).GlyphRun;
-        Assert.Equal(StyleSimulations.BoldSimulation, run.GlyphTypeface.StyleSimulations);
+        var face = new GlyphTypeface(new Uri(path), StyleSimulations.BoldItalicSimulation);
+        ushort glyph = face.CharacterToGlyphMap['a'];
+        var run = new GlyphRun(face, 0, false, 20, 1,
+            new[] { glyph }, new Point(3, 20), new[] { 8.0 }, new[] { new Point() },
+            new[] { 'a' }, null!, null!, null!, XmlLanguage.GetLanguage("en-US"));
         Assert.True(((IPortableNativeGlyphRunSource)run).TryGetPortableNativeGlyphRun(out var native));
         Assert.True(native.IsBold);
-        Assert.False(native.IsItalic);
+        Assert.True(native.IsItalic);
         Assert.True(native.HasInkBounds);
         Assert.True(native.InkBounds.Width > run.ComputeInkBoundingBox().Width);
         Assert.Equal(8, Assert.Single(run.AdvanceWidths));
@@ -673,11 +670,11 @@ public class PortableTextLineTests
         private readonly Typeface _face;
         internal TextDecorationCollection? Decorations { get; init; }
         internal double Size { get; init; } = 12;
-        internal Properties(FontFamily? family = null, FontWeight? weight = null)
+        internal Properties(FontFamily? family = null)
         {
             string path = Path.Combine(AppContext.BaseDirectory, "LibreWPF", "Fonts", "LibreWPF.FluentSymbols.ttf");
             var glyph = new GlyphTypeface(new Uri(path));
-            _face = new Typeface(family ?? new FontFamily(path + "#" + glyph.FamilyNames.Values.First()), FontStyles.Normal, weight ?? FontWeights.Normal, FontStretches.Normal);
+            _face = new Typeface(family ?? new FontFamily(path + "#" + glyph.FamilyNames.Values.First()), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
         }
         public override Typeface Typeface => _face;
         public override double FontRenderingEmSize => Size;

@@ -1778,6 +1778,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _window = Window.Create(windowOptions);
         _dpiWindowHintsConfigured = SilkNetGlfwDpiService.TryConfigureDpiWindowHints();
         _windowController = new SilkWindowController(_window);
+        _windowController.SetIsPopup(_options.IsPopupSurface);
         ApplyWindowBorderToController();
         _hasNativeWindowCloseStarted = false;
         _window.Load += OnLoad;

@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Paired product dispatch connected — 2026-09-14:** ProGPU `089e9120` integrates
+ordered queries in managed/C++ renderers with retained resources, actual limits
+and failure-safe owner publication. Full native consumers pass on Metal and
+system ARM64 WARP/DXC; dense and sparse differentials and 20 focused/19 native
+tests pass. The matched FXC run rejects loop unrolling during pipeline creation.
+Finish DXC-capable packaging, exact Windows/default and Showcase gates next;
+do not expand compatibility scope or advance dependency pins from staged proof.
+See [paired product evidence](../reports/native-mil-product-ordered-queries-2026-09-14.md).
+
 **Shared indirect dispatch connected — 2026-09-14:** ProGPU `9944c50c` removes the
 probe's native-only dispatch bypass and connects Silk, Dawn, browser transport and
 C++ provider forwarding. All 120 independent full-result comparisons pass on

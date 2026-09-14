@@ -71,6 +71,27 @@ both pinned 1280×720 Microsoft frames compare byte-identically with ProGPU's
 D3D12, Metal and Vulkan candidates. These two sample scenes are not full
 DirectX API or final LibreWPF application qualification.
 
+## Aligned LibreWPF canonical package gate
+
+ProGPU `main` merge `86f2f766` and LibreWinForms PR head `7c583b29` (retained
+by its tree-identical merge `625befd5`) build the canonical WinForms, WPF
+foundation and WindowsFormsIntegration source graph locally on macOS. The first
+isolated run stopped before package production because ProGPU's `ACadSharp`
+submodule was not initialized there; clean CI checks out submodules recursively.
+After initialization, the run produced the actual Design and integration
+assemblies and packages, then exposed a WPF package-entry verifier race: its
+`unzip -Z1 | grep -Fxq` pipeline can return SIGPIPE 141 under `pipefail` even
+when `lib/net10.0/System.Windows.Forms.Design.dll` is present. An unchanged
+package reproduces that exit in a 100-attempt loop. The verifier now consumes
+the complete zip entry listing before exact `grep` checks, still rejecting a
+missing required entry. Bash syntax, the documentation verifier, present and
+missing entry checks pass. A rerun in a fresh package output directory passes
+the entire canonical source and package gate, ending with its explicit
+LibreWinForms `7c583b29` / ProGPU `86f2f766` success marker. Its log is
+`wpf-canonical-winforms-merged-progpu-pipefix-clean.log` in the external
+core-release staging directory. This is a local source/package gate, not the
+final SDK consumer or live application gate; final-head WPF CI remains required.
+
 ## Source and package identity
 
 ProGPU source: `0ac6a5ff79d79e7a6e5a2e5b0488955cfb2256d7`, incorporating

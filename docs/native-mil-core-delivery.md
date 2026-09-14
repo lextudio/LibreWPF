@@ -15,7 +15,7 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
-**ProGPU producer merged; downstream source/package gate — 2026-09-14:**
+**ProGPU and LibreWinForms merged; final LibreWPF gate — 2026-09-14:**
 [ProGPU #139](https://github.com/wieslawsoltes/ProGPU/pull/139) is merged to
 `main` at `86f2f766d1f8e6b4041fa184de0fe9d03ae2840f`. That merge tree equals
 tested head `54adc6a005119d40fc25615b3823844c21453690`; exact Build
@@ -24,14 +24,16 @@ passed 54/54 checks, including current-source platform package consumers.
 The exact `3051` NuGet full consumer passes local macOS Metal and Windows x64/
 ARM64 system-WARP and default-Parallels-adapter paths. The current-head
 Microsoft HelloTriangle/HelloTexture differentials are byte-identical for
-D3D12, Metal and Vulkan. LibreWinForms now pins the merged ProGPU main commit
-in [PR #29](https://github.com/wieslawsoltes/LibreWinForms/pull/29), with
-its new CI pending. LibreWPF now pins that same ProGPU commit and exact
-LibreWinForms PR commit. Its SDK runtime staging requires a successful ProGPU
+D3D12, Metal and Vulkan. [LibreWinForms #29](https://github.com/wieslawsoltes/LibreWinForms/pull/29)
+passed 7/7 checks and merged at `625befd5f7140343f80dbcf3185c23f15ca21318`;
+its tree equals tested PR head `7c583b29fa5b2a6d1fa2ac02b86ac3c1cb33065b`.
+LibreWPF pins both merged commits. Its local canonical WinForms/WPF source and
+package gate passes after making the required package-entry check independent
+of a `grep -q`/`pipefail` SIGPIPE race. Its SDK runtime staging requires a successful ProGPU
 Build at the merge commit itself; main Build `34824026135` is running, even
 though its source tree equals the qualified PR head. Complete WPF SDK/native
-application/platform gates, then
-merge the remaining PRs in dependency order. Source diagnostics remain distinct
+application/platform gates, then merge [LibreWPF #115](https://github.com/wieslawsoltes/LibreWPF/pull/115)
+after its final-head CI is green. Source diagnostics remain distinct
 from package qualification; broader API expansion is still deferred.
 
 **Toolkit and Showcase live native diagnostics pass; final package/platform gates next — 2026-09-14:**

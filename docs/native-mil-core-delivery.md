@@ -15,6 +15,20 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Post-merge Windows text-layout follow-up — 2026-09-15:** LibreWPF #131 is
+merged at `a89e8d233`, and its post-merge Build
+[34897880315](https://github.com/wieslawsoltes/LibreWPF/actions/runs/34897880315)
+passed. A same-source Windows WPF/ProGPU native-MIL text fixture then exposed
+a final `TextPointer.GetCharacterRect` fail-fast on a hidden closing formatting
+edge. A caret-only source fix preserves empty selection geometry; the focused
+portable text suite passes 24/24 in the Windows ARM64 Parallels guest. A
+private source-assembly overlay matches stock WPF's five line breaks, with
+at most 0.004 DIP observed line-top difference. The existing Windows x64
+native-MIL package CI script now includes a same-source text comparison, but
+the new commit/package gate has not yet run. See the
+[text-layout parity record](../reports/native-mil-windows-text-layout-parity-2026-09-15.md).
+This is a narrow post-merge repair, not full text or original-goal completion.
+
 **Windows native-MIL SDK Showcase follow-up — 2026-09-14:**
 LibreWPF #115 merged into `progpu-rendering-port` at `c99d0311` after 7/7 PR
 checks. Its Windows ARM64 package run exposed pre-host `SystemCommands`

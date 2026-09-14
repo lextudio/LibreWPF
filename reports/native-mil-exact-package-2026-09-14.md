@@ -68,6 +68,16 @@ the final merged-package gate is still required.
 The complete portable TextLine fixture class also passes 23/23 after this
 change.
 
+The first exact-merge native SDK attempt passed the native host, XAML and
+application-lifetime harnesses, then stopped in the Fluent theme harness.
+Recognizing the relative Fluent URI now correctly selects system ThemeMode;
+that transition replaces the merged dictionary with the active
+palette-bearing dictionary. The harness still compared implicit control style
+identity with the discarded requested dictionary. It now reads the live
+merged dictionary after synchronization. The focused Release native Fluent
+harness passes with the exact `5b99b640` runtime. This repairs the gate's
+identity expectation; the full exact-package run must restart and pass.
+
 The Windows 11 Parallels VM was inspected for a same-source native-WPF visual
 baseline. Its existing `C:\GitHub\LibreWPF` checkout still contains the earlier
 `ProGPU.Wpf.MvpApp` samples rather than the current Showcase source; comparing

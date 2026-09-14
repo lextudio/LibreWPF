@@ -81,8 +81,8 @@ internal static class Program
             Invoke(application, "InitializeComponent");
 
             object window = Create(compilerHarness, MainWindowTypeName);
-            object themeDictionary = LoadFluentThemeDictionary(presentationFramework);
-            MergeThemeDictionary(application, themeDictionary);
+            object requestedThemeDictionary = LoadFluentThemeDictionary(presentationFramework);
+            object themeDictionary = MergeThemeDictionary(application, requestedThemeDictionary);
             ApplyRepresentativeFluentStyles(presentationFramework, application, window, themeDictionary);
             ValidateThemedRuntimeState(window, application, themeDictionary);
             ValidateThemedVisualReplay(proGpuWpf, windowsBase, window);
@@ -125,11 +125,17 @@ internal static class Program
         return themeDictionary;
     }
 
-    private static void MergeThemeDictionary(object application, object themeDictionary)
+    private static object MergeThemeDictionary(object application, object themeDictionary)
     {
         object resources = GetProperty(application, "Resources");
-        AddToCollection(GetProperty(resources, "MergedDictionaries"), themeDictionary);
-        AssertCollectionCount(GetProperty(resources, "MergedDictionaries"), expectedMinimum: 1, "application merged dictionaries");
+        object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
+        AddToCollection(mergedDictionaries, themeDictionary);
+        AssertCollectionCount(mergedDictionaries, expectedMinimum: 1, "application merged dictionaries");
+
+        // Syncing the relative Fluent.xaml URI can select ThemeMode.System and
+        // replace the merged dictionary with the active palette-bearing one.
+        // Implicit styles must be compared with that live resource dictionary.
+        return GetCollectionItem(mergedDictionaries, GetCollectionCount(mergedDictionaries) - 1);
     }
 
     private static void ApplyRepresentativeFluentStyles(

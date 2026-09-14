@@ -1808,6 +1808,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void ReleaseUnusedClientGraphicsContext()
     {
+        if (!SilkNetGlfwPlatformSelector.RequiresClientApiForTransparentFramebuffer(
+                _options.TransparentFramebuffer))
+        {
+            return;
+        }
+
         // Transparent-framebuffer windows ask GLFW for a client API so its X11 backend picks a
         // visual with an alpha channel, and GLFW makes that context current on this thread.
         // WebGPU owns presentation and never uses it, but wgpu's GLES backend releases the

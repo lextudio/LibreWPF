@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Auto-hide empty union fixed; stroke input next — 2026-09-14:** ProGPU's shared
+MIL compiler now simplifies affirmative empty operands without losing original
+geometry, fill, transforms or validation. The auto-hide clip was exactly a leaf
+union empty. All 48 native combinations and paired managed cases pass; the
+unchanged Toolkit then rejects native stroke-batch input during that same action.
+Trace its actual descriptor, finish the full application gate, then qualify
+exact-head packages/CI and merge in dependency order. This is not overlay or
+final package qualification. See the [ProGPU contract](../external/ProGPU/docs/native-mil-empty-combined-geometry.md).
+
 **Toolkit tile capture fixed; AvalonDock auto-hide next — 2026-09-14:** The
 cache rejection was duplicate identical TileBrush captures lacking shared-page
 admission, not capacity exhaustion. ProGPU now uses its existing exact shared-page

@@ -1,5 +1,31 @@
 # Native MIL exact-package validation — 2026-09-14
 
+## Native text visual blocker and clean-package follow-up
+
+The user identified widespread text sizing/spacing defects while the live
+behavior gates were green. A direct 1656×1312 window capture of the packaged
+Showcase on a 2× macOS display confirmed that native glyph ink was about half
+size while WPF advances and control positions remained logical. The C++ MIL
+compiler supplied `em / raster` to a shader that already divided atlas pixels
+by frame DPI. [ProGPU #162](https://github.com/wieslawsoltes/ProGPU/pull/162)
+supplies `em × dpi / raster`; its native high-DPI regression and all 20 local
+CTest suites pass. Replacing only the app's native dylib visibly restored
+normal text size and spacing. This is local visual evidence, not final package
+or Windows/Linux parity; the pull request and downstream exact pins still need
+green CI. Other text/layout defects are not presumed fixed.
+
+A fresh local native SDK run using merged ProGPU #161 source and a clean
+canonical LibreWinForms package directory passed source host, package audit,
+Showcase, and Toolkit gates, then the paid Xceed DataGrid again reported that
+its retained native path set exceeded the bounded atlas. The app output's
+`libprogpu_native.dylib` SHA-256
+`2626281f3742eaa7f8890fe84bccc50f351a68921d82a094a783260288b3c0f0`
+matched the #161 source-tree build, so this is not an old native binary in
+the app output. The prior isolated overlay did pass Xceed, making the exact
+state/input difference an open blocker. The paid license variables later
+became unavailable to the current shell and launchctl; the next diagnostic
+run needs the user to restore them locally, without sharing secret values.
+
 ## Paid Xceed package gate follow-up
 
 The macOS 26 native SDK run at LibreWPF head `a8c942360` passed packaged

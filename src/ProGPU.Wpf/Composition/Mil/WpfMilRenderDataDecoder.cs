@@ -136,7 +136,13 @@ public sealed class WpfMilRenderDataDecoder
             recordCount++;
             var unsupportedStateBefore = GetUnsupportedStateCount(diagnostics);
 
-            if (TryReplayRawCacheBrushRecord(commandId, payload, sink, resources, imageSourceAdapter,
+            if (IsCanonicalEmptyRectangle(commandId, payload))
+            {
+                // Empty source drawing is applied without ink; retain the
+                // surrounding scopes and subsequent/child drawing commands.
+                appliedCount++;
+            }
+            else if (TryReplayRawCacheBrushRecord(commandId, payload, sink, resources, imageSourceAdapter,
                     out var cacheStatus, out var cacheAnimations))
             {
                 CountDrawingReplayStatus(cacheStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
@@ -538,7 +544,11 @@ public sealed class WpfMilRenderDataDecoder
             recordCount++;
             var unsupportedStateBefore = GetUnsupportedStateCount(diagnostics);
 
-            if (TryReplayRawCacheBrushRecord(commandId, payload, sink, resources, imageSourceAdapter,
+            if (IsCanonicalEmptyRectangle(commandId, payload))
+            {
+                appliedCount++;
+            }
+            else if (TryReplayRawCacheBrushRecord(commandId, payload, sink, resources, imageSourceAdapter,
                     out var cacheStatus, out var cacheAnimations))
             {
                 CountDrawingReplayStatus(cacheStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
@@ -1709,6 +1719,12 @@ public sealed class WpfMilRenderDataDecoder
     {
         return new Point(ReadDouble(payload, offset), ReadDouble(payload, offset + 8));
     }
+
+    private static bool IsCanonicalEmptyRectangle(WpfMilCommandId command, ReadOnlySpan<byte> payload) =>
+        command == WpfMilCommandId.DrawRectangle && payload.Length == 40 &&
+        new global::ProGPU.Backend.Native.NativeMilRect(
+            ReadDouble(payload, 0), ReadDouble(payload, 8),
+            ReadDouble(payload, 16), ReadDouble(payload, 24)).IsCanonicalEmpty;
 
     private static Rect ReadRect(ReadOnlySpan<byte> payload, int offset)
     {

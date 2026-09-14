@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Toolkit empty rectangle fixed; native input compilation next — 2026-09-14:**
+The filter-focus rectangle is canonical Rect.Empty. ProGPU's shared C++ compiler
+now handles its static draw without ink while preserving handles/scopes/owners;
+managed source replay matches. All 19 native suites and 201 compiler/decoder tests
+pass. Toolkit next fails native recorded hit-index construction; source text
+tests also expose two older hidden-range/terminal-caret assertion conflicts.
+Close those concrete contracts before final application/package qualification.
+The previous-head ProGPU Build 34811802371 passed, not the new local fixes. See
+[empty rectangle and next blocker](../reports/native-mil-toolkit-empty-rectangle-2026-09-14.md).
+
 **Native continuation reflow connects; Toolkit rectangle next — 2026-09-14:**
 The source TextLine now consumes ProGPU's full-context native continuation at a
 changed width, keeping original source/glyph identity. Both providers build,

@@ -12,6 +12,42 @@ namespace ProGPU.Wpf.Tests.Composition.Mil;
 public sealed class WpfNativeMilSceneCompilerTests
 {
     [Theory]
+    [InlineData(NativeMilBackend.WgpuNative)]
+    [InlineData(NativeMilBackend.Dawn)]
+    public void CanonicalEmptyRectangleKeepsOwnersChildrenAndPointPolicy(NativeMilBackend backend)
+    {
+        var brush = new FakeBrush(new PortableColor(255, 20, 30, 40));
+        byte[] emptyRecord = CreateRectangleRecord(1, 0);
+        WriteDouble(emptyRecord, 8, double.PositiveInfinity);
+        WriteDouble(emptyRecord, 16, double.PositiveInfinity);
+        WriteDouble(emptyRecord, 24, double.NegativeInfinity);
+        WriteDouble(emptyRecord, 32, double.NegativeInfinity);
+        var empty = new PointVisual(new FakeRenderData(emptyRecord, [brush]))
+            { PointRegion = new(0, 0, 80, 20) };
+        var painted = new FakeVisual(new FakeRenderData(CreateRectangleRecord(1, 0), [brush]));
+        var root = new FakeVisual(null, null, empty, painted);
+        var batch = new WpfNativeMilSceneCompiler().BuildBatch(root, 160, 96);
+        Assert.Equal(3, batch.VisualOwners.Count);
+        Assert.Single(batch.PointHitRegions.ToArray());
+        using var session = new WpfNativeMilCompilationSession(backend);
+        session.Update(batch);
+        var frame = session.CompileFrame(8241, 1, 0, 1,
+            flags: NativeMilSceneBuildRequestFlags.HitTestIndex);
+        Assert.Equal(1U, frame.Scene.Metrics.RectangleCount);
+
+        var recorder = new global::ProGPU.Scene.GpuPictureRecorder();
+        var drawing = recorder.BeginRecording(new(0, 0, 160, 96));
+        using var sink = new global::System.Windows.Media.ProGPU.Composition.ProGpuCompositionCommandSink(drawing);
+        new WpfVisualTreeRenderer().ReplaySubtree(root, sink);
+        using var picture = recorder.EndRecording();
+        using var capture = new global::ProGPU.Scene.GpuRenderCommandHitTestCacheBuilder();
+        for (int i = 0; i < picture.CommandCount; ++i)
+            capture.AddCommand(picture.GetCommand(i), Matrix4x4.Identity);
+        Assert.Equal(2, capture.BuildIndex().Primitives.Count);
+        Assert.Equal(0, sink.UnsupportedStateCount);
+    }
+
+    [Theory]
     [InlineData(0.0, NativeMilBackend.WgpuNative)]
     [InlineData(0.5, NativeMilBackend.WgpuNative)]
     [InlineData(0.0, NativeMilBackend.Dawn)]

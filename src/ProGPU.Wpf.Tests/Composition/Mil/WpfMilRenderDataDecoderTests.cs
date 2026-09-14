@@ -17,6 +17,31 @@ namespace ProGPU.Wpf.Tests.Composition.Mil;
 
 public sealed class WpfMilRenderDataDecoderTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CanonicalEmptyRectangleIsAppliedWithoutDiscardingZeroWidthDraw(bool native)
+    {
+        var resolver = new TestResolver { Brush = Brushes.Red, Pen = new Pen(Brushes.Black, 2) };
+        TestSink sink = native ? new NativeTestSink() : new TestSink();
+        var empty = new byte[40];
+        WriteRect(empty, 0, double.PositiveInfinity, double.PositiveInfinity,
+            double.NegativeInfinity, double.NegativeInfinity);
+        WriteUInt32(empty, 32, 1);
+        WriteUInt32(empty, 36, 2);
+        var zero = new byte[40];
+        WriteRect(zero, 0, 1, 2, 0, 40);
+        WriteUInt32(zero, 36, 2);
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawRectangle, empty)
+                .Concat(CreateRecord(WpfMilCommandId.DrawRectangle, zero)).ToArray(), sink, resolver);
+        Assert.Equal(new WpfMilDecodeResult(2, 2, 0, 0), result);
+        if (sink is NativeTestSink nativeSink)
+            Assert.Equal(0, Assert.Single(nativeSink.NativeRectangles).Rectangle.Width);
+        else
+            Assert.Equal(0, Assert.Single(sink.DrawRectangles).Rectangle.Width);
+    }
+
     [Fact]
     public void DecodeDrawRectangleResolvesBrushAndPen()
     {

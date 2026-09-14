@@ -1,5 +1,28 @@
 # Native MIL exact-package validation — 2026-09-14
 
+## Paid Xceed package gate follow-up
+
+The macOS 26 native SDK run at LibreWPF head `a8c942360` passed packaged
+Hello, Showcase and Toolkit before the licensed paid Xceed DataGrid stopped
+its first native frame: the retained ProGPU path batch exceeded the 4096²
+atlas. An isolated packaged-app output overlay, with no source-project
+fallback, showed that enlarging the path atlas exposed a second ProGPU error:
+per-point guideline snapping collapsed a filled path's X bound to one float
+coordinate after earlier scene admission. Both fixes are in
+[ProGPU #161](https://github.com/wieslawsoltes/ProGPU/pull/161), not in the
+LibreWPF package pin yet. The overlay subsequently reached Xceed's virtual
+DataGrid GPU input check. That check needed a real query for the newly changed
+scene before requiring device-index residency; the source check now performs
+one and retains its existing owner/count assertions. With these two ProGPU
+fixes and that assertion ordering, the isolated paid Xceed native live gate
+passes at 1180×760 logical, 2360×1520 pixels, 2× DPI, including full viewport,
+large-scroll budget and GPU hit testing.
+
+This is local overlay evidence, not final merged-package evidence. ProGPU #161
+must pass CI and merge, LibreWPF must pin and package that exact merge commit,
+and its current-head CI and remaining SDK/platform gates must pass before #115
+is marked ready or merged.
+
 ## Merged ProGPU and LibreWinForms handoff
 
 ProGPU #139 merged as `86f2f766d1f8e6b4041fa184de0fe9d03ae2840f`.

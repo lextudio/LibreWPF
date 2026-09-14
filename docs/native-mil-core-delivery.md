@@ -15,6 +15,19 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Paid Xceed native package blocker and ProGPU #161 — 2026-09-14:**
+The packaged Showcase and Toolkit native gates pass on macOS 26. The licensed
+Xceed virtual DataGrid exposed a retained path atlas capacity limit followed
+by a guideline-snapped zero-area path. Scoped ProGPU repairs are proposed in
+[ProGPU #161](https://github.com/wieslawsoltes/ProGPU/pull/161). With its local
+native runtime overlaid in an isolated package output, the paid Xceed live
+geometry, large-scroll and GPU input gate passes. LibreWPF's check now queries
+each new scene before asserting device-index upload. This is not a merged
+package or Windows/Linux result. Finish #161 CI and merge, repin #115 to the
+new ProGPU main, rerun its exact SDK and platform gates, then merge #115 only
+if all checks pass. See the
+[exact-package record](../reports/native-mil-exact-package-2026-09-14.md).
+
 **ProGPU and LibreWinForms merged; final LibreWPF gate — 2026-09-14:**
 [ProGPU #139](https://github.com/wieslawsoltes/ProGPU/pull/139) is merged to
 `main` at `86f2f766d1f8e6b4041fa184de0fe9d03ae2840f`. That merge tree equals

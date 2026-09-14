@@ -557,6 +557,25 @@ internal static class XceedPaidSelfTest
 
     private static void ValidateGpuHitTestCache(MainWindow window, string description)
     {
+        // A scene installed after layout changes does not upload its device
+        // index until its first native input query. Exercise that path for the
+        // current scene before checking GPU residency.
+        object?[] owners = ArrayPool<object?>.Shared.Rent(GpuOwnerBufferCapacity);
+        try
+        {
+            if (!ProGpuWpfDiagnostics.TryQueryHitTestBoundsOwners(
+                    window, 0, 0, window.ActualWidth, window.ActualHeight,
+                    owners, out int ownerCount) || ownerCount == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Expected {description} to resolve owners through the current GPU hit-test index.");
+            }
+        }
+        finally
+        {
+            ArrayPool<object?>.Shared.Return(owners, clearArray: true);
+        }
+
         if (!ProGpuWpfDiagnostics.TryGetGpuHitTestCacheSnapshot(window, out var cache))
         {
             throw new InvalidOperationException($"Expected {description} to expose ProGPU hit-test cache diagnostics.");

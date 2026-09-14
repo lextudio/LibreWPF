@@ -1793,6 +1793,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         AttachNativeDpiService();
         _windowController?.Attach();
+        if (OperatingSystem.IsMacOS() && _options.TransparentFramebuffer &&
+            _windowController?.SetBackdrop(NativeWindowBackdrop.Transparent) != true)
+        {
+            throw new InvalidOperationException(
+                "The native window did not accept a transparent backdrop.");
+        }
         if (_modalInputRegistration != null)
             SetNativeInputAllowed(_nativeInputAllowed);
         ApplyWindowIcon();

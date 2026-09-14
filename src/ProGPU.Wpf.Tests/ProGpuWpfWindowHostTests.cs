@@ -27,6 +27,39 @@ namespace ProGPU.Wpf.Tests;
 public sealed class ProGpuWpfWindowHostTests
 {
     [Fact]
+    public void TransparentWindowUsesNativeBackdropBeforeCreatingItsSurface()
+    {
+        string host = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf", "ProGpuWpfWindowHost.cs"));
+        int load = host.IndexOf("private void OnLoad()", StringComparison.Ordinal);
+        int attach = host.IndexOf("_windowController?.Attach();", load, StringComparison.Ordinal);
+        int backdrop = host.IndexOf(
+            "_windowController?.SetBackdrop(NativeWindowBackdrop.Transparent)",
+            load, StringComparison.Ordinal);
+        int target = host.IndexOf("EnsureCompositionTargetLoaded();", load, StringComparison.Ordinal);
+        Assert.True(load >= 0 && attach > load && backdrop > attach && target > backdrop);
+        Assert.Contains("OperatingSystem.IsMacOS() && _options.TransparentFramebuffer", host);
+        Assert.Contains("The native window did not accept a transparent backdrop.", host);
+
+        string native = File.ReadAllText(FindRepoPath(
+            "external", "ProGPU", "src", "ProGPU.Backend", "MacOsNativeWindowPlatform.cs"));
+        Assert.Contains("backdrop != NativeWindowBackdrop.None", native);
+        Assert.Contains("setOpaque:", native);
+        Assert.Contains("setBackgroundColor:", native);
+    }
+
+    [Fact]
+    public void RightToLeftWin32PointAdjustmentStopsOffWindows()
+    {
+        string source = File.ReadAllText(FindRepoPath(
+            "src", "Microsoft.DotNet.Wpf", "src", "Shared", "MS", "Internal", "PointUtil.cs"));
+        int point = source.IndexOf("AdjustForRightToLeft(NativeMethods.POINT pt", StringComparison.Ordinal);
+        int rect = source.IndexOf("AdjustForRightToLeft(NativeMethods.RECT rc", StringComparison.Ordinal);
+        Assert.True(point >= 0 && rect > point);
+        Assert.Contains("if (!OperatingSystem.IsWindows())\n            {\n                return pt;", source[point..rect]);
+        Assert.Contains("if (!OperatingSystem.IsWindows())\n            {\n                return rc;", source[rect..]);
+    }
+
+    [Fact]
     public void X11DialogHintLifetimePrecedesSourceCompletionHideAndDisposal()
     {
         string source = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf", "ProGpuWpfWindowHost.cs"));

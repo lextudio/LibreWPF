@@ -15,6 +15,15 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Auto-hide passes; floating host presentation next — 2026-09-14:** ProGPU now
+captures the actual native dashed outline using its shared phase/run/cap/join
+geometry. The unchanged diagnostic Toolkit passes auto-hide and overview lifecycle,
+then times out waiting for the editor's distinct presented floating host; teardown
+also reports a native recursive-mutex error. Trace source floating-window creation,
+visibility and presentation without weakening real separate-host/device-index or
+redocking checks. Final package/platform/CI qualification is still required. See
+the [native dash contract](../external/ProGPU/docs/native-dashed-stroke-input.md).
+
 **Auto-hide empty union fixed; stroke input next — 2026-09-14:** ProGPU's shared
 MIL compiler now simplifies affirmative empty operands without losing original
 geometry, fill, transforms or validation. The auto-hide clip was exactly a leaf

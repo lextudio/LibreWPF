@@ -1,5 +1,81 @@
 # Native MIL exact-package validation — 2026-09-14
 
+## Exact merged package and licensed macOS application pass
+
+ProGPU `main` Build
+[34843133821](https://github.com/wieslawsoltes/ProGPU/actions/runs/34843133821)
+completed successfully with 43/43 jobs for merge commit
+`5b99b640a583c9f1cb69fd17731e000ab632baec`. Its published native
+runtime artifact was staged without a source-built substitution. The canonical
+LibreWinForms source/package gate passed against `7164c7ed9b9b93175d0eec9e0cee2a28dcc61310`
+and LibreWPF head `33d7b09f7c1edd3cbaeb2098bd2df5d62fa74f2a`; its
+isolated package directory contained one current canonical generation.
+
+The full local `eng/progpu-wpf-sdk-ci.sh` run in `NativeMilWgpu` mode with
+licensed Xceed validation enabled exited zero. It passed the native host,
+XAML, application-lifetime and Fluent runtime harnesses; package audit and
+release-bundle verification; SDK switch, external and mixed-desktop package
+consumers; packaged Hello, Showcase, Toolkit and paid Xceed live app gates at
+2× macOS DPI; Showcase's 120-frame performance/memory gate; default SciChart
+renderer/`Application.Run` checks; and the focused SDK graph guard. The
+packaged Showcase `libprogpu_native.dylib` SHA-256 is
+`e00023d9ef597ad52c2036b4f2d9906ab7679d3f89835a2485f9bd3c55257c5e`,
+identical to the staged exact merged-main artifact. This validates the local
+macOS package path after the native text DPI, Fluent palette and ideal-width
+fixes. It does not establish same-source Windows/Linux text visual parity,
+commercial SciChart binaries, or hosted LibreWPF PR #115 CI. Keep the PR draft
+until the remaining required gates and release decision are resolved.
+
+## Shared paragraph whitespace-wrap defect
+
+The exact packaged Showcase Themes pane still split `TemplateBinding` into
+`TemplateBindin` / `g` and placed `compiled` alone despite enough width for
+`compiled ControlTemplate,`. Independent ManagedPortable and NativeMilWgpu
+window captures reproduced the same boundaries, ruling out native MIL glyph
+ink scaling as the cause. The source adapter supplied a 211.333-DIP paragraph,
+14-DIP font, and three style spans; native output cut at source indices
+`31..40`, `40..71`, and `71..87`. A C++ reproduction with the captured font
+and identical paragraph request produced those exact cuts. A shaping
+`unsafe_to_break` flag on the glyph after a legal whitespace opportunity
+caused the shared scanner to ignore the space and take an emergency
+mid-word break. [ProGPU #163](https://github.com/wieslawsoltes/ProGPU/pull/163)
+preserves the whitespace boundary while retaining unsafe non-space and
+same-cluster protection. The reproduced request now has five whole-word
+lines, and all 20 local native CTest suites pass. This is source-level
+evidence only until #163 merges and its exact package/app visual gates rerun;
+the previous exact-package pass used ProGPU `5b99b640` and predates this fix.
+An isolated copy of the packaged Showcase output with only the locally built
+PR #163 `libprogpu_native.dylib` substituted passed its source self-test,
+`Application.Run` validation twice, and the full native live input/resize/
+framework-theme/popup gate at 2× DPI. The first `Application.Run` attempt in
+that copied directory did not complete and was stopped; a control run using
+the original merged-main dylib passed, then two clean attempts using the new
+dylib passed in 11 and 7 seconds. That transient is not counted as a pass or
+reproduced regression. The overlay run demonstrates app ABI compatibility,
+not a rebuilt exact artifact or corrected Themes screenshot.
+
+A current-source Windows comparison is now available. In the Parallels
+Windows 11 VM, the same Showcase source project built against the exact
+`5b99b640` local SDK feed with all output, intermediate and NuGet cache paths
+redirected to `C:\Temp\ProGpuWpfShowcaseParity-20260914`; the shared macOS
+worktree artifacts were not written. The source `PresentationBuildTasks`
+dependency and Showcase both built with zero warnings/errors. Native Windows
+WPF displayed the Themes pane at the VM's high-DPI resolution with five
+whole-word lines: `The button is styled through a`,
+`compiled ControlTemplate,`, `TemplateBinding, named parts,`,
+`VisualStateManager states, and a`, `property trigger.` The Windows font and
+metrics differ slightly from the portable macOS capture, so exact glyph pixels
+and the last line boundary are not asserted identical; no mid-word split
+occurred. The guest's existing older `MvpApp` checkout was not used. A separate
+Showcase self-test attempted before this visual run failed its SystemCommands
+maximize-state assertion (`Normal` rather than `Maximized`), so this is a
+text visual baseline, not a passing full Windows SDK application gate. The
+self-test constructs an unshown Window; native Windows MIL's system-command
+route correctly has no HWND to post to at that point, while the test expects
+the portable source-state update. This appears to be a self-test admission
+assumption rather than evidence about the displayed text, but the Windows
+application gate must be rerun after that distinction is encoded in the test.
+
 ## Native text visual blocker and clean-package follow-up
 
 The user identified widespread text sizing/spacing defects while the live

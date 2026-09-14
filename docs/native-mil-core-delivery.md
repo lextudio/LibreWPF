@@ -15,6 +15,43 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Exact merged native package and text-heavy application gate — 2026-09-14:**
+ProGPU `main` Build
+[34843133821](https://github.com/wieslawsoltes/ProGPU/actions/runs/34843133821)
+passed 43/43 checks and supplied the exact `5b99b640` native payload.
+LibreWinForms `7164c7ed` and LibreWPF head `33d7b09f` passed the isolated
+canonical source/package gate. The full local LibreWPF native SDK gate then
+passed with this package closure and the paid Xceed licenses: native host,
+XAML, application lifetime, Fluent runtime, package/bundle audit, SDK switch,
+mixed desktop, Hello, Showcase, Toolkit, Xceed virtual DataGrid and default
+SciChart application. Hello, Showcase, Toolkit and Xceed live geometry/input
+ran at 2× macOS DPI; Showcase's 120-frame performance/memory gate passed.
+The packaged Showcase native dylib SHA-256
+`e00023d9ef597ad52c2036b4f2d9906ab7679d3f89835a2485f9bd3c55257c5e`
+matches the exact merged-main artifact. This closes the local macOS
+exact-package application gate, not same-source Windows/Linux visual parity,
+commercial SciChart compatibility, or LibreWPF PR #115's hosted CI. Keep
+#115 draft until those required decisions and checks finish. The earlier
+source-overlay and stale-local-package observations below remain historical.
+
+**Shared portable text wrapping blocker — 2026-09-14:** A matched managed/native
+Showcase Themes capture at 2× DPI still split `TemplateBinding` after
+`TemplateBindin` and stranded `compiled` on a separate line. The exact
+paragraph request was 211.333 DIP wide with 14-DIP text. Reproducing it in
+ProGPU C++ with the captured font isolated a legal whitespace opportunity
+discarded because the next glyph carried an `unsafe_to_break` shaping flag.
+[ProGPU #163](https://github.com/wieslawsoltes/ProGPU/pull/163) retains that
+whitespace break without admitting unsafe non-space or same-cluster breaks;
+its deterministic regression and all 20 local native CTest suites pass.
+The fix is not yet in a merged package, so the earlier exact-package gate
+does not qualify this corrected text path. Re-pin the merged ProGPU payload,
+then rerun the package/application gate and visual comparison before #115
+is made merge-ready. A same-source Windows 11 native-WPF Showcase Themes
+baseline built in guest-only output paths and displayed five whole-word lines;
+its separate self-test failed a SystemCommands maximize-state assertion, so
+this does not close the full Windows SDK or text-parity gate. Other text/layout
+defects are not presumed closed.
+
 **Native text display scale and final visual qualification — 2026-09-14:**
 A direct 2× macOS window capture of `ProGPU.Wpf.ShowcaseApp` found glyph ink
 half-sized relative to source advances and control layout despite the earlier

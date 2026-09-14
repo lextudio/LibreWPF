@@ -52,10 +52,14 @@ correctly returned the uncollapsed fitting line, tripping WPF's debug
 assertion. Portable overflow now requires more than one ideal-unit excess,
 retaining genuine narrow-line overflow. A focused fixture passes 1/1, and the
 Toolkit initial native window renders with the source overlay. Its subsequent
-live script reached a separate debug `ItemContainerGenerator` invariant during
-AvalonDock menu validation; that script did not complete and the final Release
-package gate remains required. No text parity is claimed from the initial
-render alone.
+debug-assembly live script reached a separate `#if DEBUG`
+`ItemContainerGenerator` assertion during AvalonDock menu validation. Rebuilding
+the corrected PresentationCore and PresentationFramework assemblies in Release
+mode and overlaying those two assemblies into the same packaged Toolkit output
+completed the entire native live script, including DataGrid 100k virtualization,
+AvalonDock menus, floating windows and keyboard paths, at 2× DPI. This remains
+a source-assembly/native-dylib overlay rather than a new exact SDK package;
+the final merged-package gate is still required.
 
 The Windows 11 Parallels VM was inspected for a same-source native-WPF visual
 baseline. Its existing `C:\GitHub\LibreWPF` checkout still contains the earlier

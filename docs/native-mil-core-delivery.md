@@ -47,7 +47,9 @@ fitting native advance and original collapse target were 41.373046875.
 `PortableTextLine.HasOverflowed` now ignores only one ideal unit of width
 quantization; a focused test confirms truly narrower lines still overflow.
 The Toolkit initial window renders, but its later debug-only AvalonDock menu
-invariant and final Release package/live validation remain separate gates.
+assertion was specific to the debug-assembly overlay. The corrected Release
+source-assembly/native-dylib overlay passes the complete Toolkit native live
+script at 2× DPI. The exact merged SDK package/live gate remains separate.
 
 **Paid Xceed native package blocker and ProGPU #161 — 2026-09-14:**
 The packaged Showcase and Toolkit native gates pass on macOS 26. The licensed

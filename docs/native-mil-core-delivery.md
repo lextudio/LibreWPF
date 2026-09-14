@@ -48,9 +48,17 @@ does not qualify this corrected text path. Re-pin the merged ProGPU payload,
 then rerun the package/application gate and visual comparison before #115
 is made merge-ready. A same-source Windows 11 native-WPF Showcase Themes
 baseline built in guest-only output paths and displayed five whole-word lines;
-its separate self-test failed a SystemCommands maximize-state assertion, so
-this does not close the full Windows SDK or text-parity gate. Other text/layout
-defects are not presumed closed.
+the same-source Windows object and displayed `Application.Run` self-tests now
+pass after the test distinguishes unpresented native commands and the native
+maximize/minimize/restore state. Isolated macOS native/managed Themes captures
+with the #163 source library both show five whole-word lines. Toolkit's narrow
+PropertyGrid `Body` clipping also reproduces on native Windows. These are not
+an exact #163 package, full Windows SDK admission or the broad text-parity
+matrix; other text/layout defects are not presumed closed. The first hosted
+WPF SDK job was canceled while its unattended Showcase test displayed a
+blocking native system menu; the test now avoids opening that interactive
+menu and bounds app-lifetime runs to three minutes. Its latest PR CI and the
+re-pinned final package gate remain required.
 
 **Native text display scale and final visual qualification — 2026-09-14:**
 A direct 2× macOS window capture of `ProGPU.Wpf.ShowcaseApp` found glyph ink

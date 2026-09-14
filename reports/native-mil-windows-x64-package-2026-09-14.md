@@ -56,10 +56,15 @@ default unchanged. This job is authored but its CI result is pending.
 
 LibreWPF #126's exact PR-head [build](https://github.com/wieslawsoltes/LibreWPF/actions/runs/34883761758)
 and its merged-branch [build](https://github.com/wieslawsoltes/LibreWPF/actions/runs/34884769187)
-passed all jobs. The new gate branches from the latest
-`progpu-rendering-port`, pins ProGPU `main` `c36cf91d`, and aligns
-LibreWinForms with its merged `fced003a7` source pin. Its exact ProGPU Build
-was still completing package consumer jobs when this record was written.
+passed all jobs. The new gate branches from `progpu-rendering-port` after
+LibreWPF #130, inheriting ProGPU `main` `c36cf91d` and LibreWinForms
+`51953c557` from that integration branch, and is tracked in
+[LibreWPF #131](https://github.com/wieslawsoltes/LibreWPF/pull/131).
+The exact ProGPU `main`
+[Build 34886208634](https://github.com/wieslawsoltes/ProGPU/actions/runs/34886208634)
+passed all jobs. The first #131 CI run exposed a stale workflow occurrence
+count in the SDK graph guard, not a renderer failure; the guard is updated
+and passes locally. The rebased PR CI and x64 host job remain pending.
 Do not transfer the older emulation result to that new source pin.
 
 True x64 hosted runtime, native-WPF visual comparison, broader Windows

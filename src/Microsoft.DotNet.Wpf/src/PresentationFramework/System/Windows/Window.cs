@@ -125,6 +125,8 @@ namespace System.Windows
                 Left = Left,
                 HasTop = true,
                 Top = Top,
+                HasStartupLocation = true,
+                StartupLocation = (int)WindowStartupLocation,
                 HasWindowState = true,
                 WindowState = (int)WindowState,
                 HasTopmost = true,

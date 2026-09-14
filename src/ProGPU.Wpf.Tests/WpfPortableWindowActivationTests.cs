@@ -15,6 +15,42 @@ namespace ProGPU.Wpf.Tests;
 public sealed class WpfPortableWindowActivationTests
 {
     [Fact]
+    public void StartupWorkAreaUsesPrimaryMonitorWithoutOwner()
+    {
+        WpfMonitorInfo[] monitors =
+        [
+            new("Left", -1920, 0, 1920, 1080, 1, false)
+            {
+                WorkAreaX = -1920, WorkAreaY = 24, WorkAreaWidth = 1920, WorkAreaHeight = 1056
+            },
+            new("Primary", 0, 0, 1920, 1080, 1, true)
+            {
+                WorkAreaX = 0, WorkAreaY = 40, WorkAreaWidth = 1920, WorkAreaHeight = 1040
+            }
+        ];
+
+        Assert.Equal(new PortableRect(0, 40, 1920, 1040),
+            WpfPortableWindowActivation.SelectStartupWorkArea(monitors, ownerBounds: null));
+    }
+
+    [Fact]
+    public void StartupWorkAreaFollowsOwnerAcrossMonitors()
+    {
+        WpfMonitorInfo[] monitors =
+        [
+            new("Primary", 0, 0, 1920, 1080, 1, true),
+            new("Left", -1920, 0, 1920, 1080, 1, false)
+            {
+                WorkAreaX = -1920, WorkAreaY = 24, WorkAreaWidth = 1920, WorkAreaHeight = 1056
+            }
+        ];
+
+        Assert.Equal(new PortableRect(-1920, 24, 1920, 1056),
+            WpfPortableWindowActivation.SelectStartupWorkArea(
+                monitors, new PortableRect(-1500, 100, 600, 400)));
+    }
+
+    [Fact]
     public void PresentationFrameworkActivationRegistrationUsesTypedInteropOnly()
     {
         var service = new TestWindowActivationServiceRegistrar();
@@ -2125,6 +2161,8 @@ public sealed class WpfPortableWindowActivationTests
 
         public double Top { get; set; } = double.NaN;
 
+        public int StartupLocation { get; set; }
+
         public bool Topmost { get; set; }
 
         public FakeWindowState WindowState { get; set; } = FakeWindowState.Normal;
@@ -2174,6 +2212,8 @@ public sealed class WpfPortableWindowActivationTests
                 Left = Left,
                 HasTop = true,
                 Top = Top,
+                HasStartupLocation = true,
+                StartupLocation = StartupLocation,
                 HasWindowState = true,
                 WindowState = (int)WindowState,
                 HasTopmost = true,

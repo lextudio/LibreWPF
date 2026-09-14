@@ -57,6 +57,7 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
     private int _dispatcherIdleWorkPosted;
     private bool _isNativeRunStarted;
     private bool _showDeferredUntilRun;
+    private bool _startupLocationApplied;
     private IDisposable? _mediaContextRenderRegistration;
     private IDisposable? _dispatcherIdleWorkRegistration;
     private IDisposable? _nativeWindowOwnerRegistration;
@@ -432,6 +433,7 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
         AttachRootForShow();
         SynchronizeInitialWindowState(updatePortablePresentationSource: true);
         SetOwner(_ownerWindow);
+        ApplyStartupLocationBeforeFirstShow();
         if (ShouldDeferNativeShowUntilRun())
         {
             _showDeferredUntilRun = true;
@@ -450,6 +452,8 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
         {
             Host.ShowWithoutActivation();
         }
+
+        _startupLocationApplied = true;
 
         DispatchPortableShowWindowHook(isShown: true);
         if (!_showActivated)
@@ -621,6 +625,12 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
         if (_isDisposed)
         {
             return;
+        }
+
+        if (_showDeferredUntilRun)
+        {
+            ApplyStartupLocationBeforeFirstShow();
+            _startupLocationApplied = true;
         }
 
         StartDispatcherTimerPump();
@@ -965,6 +975,74 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
         }
 
         SetHostClientSize(Host.Width, Host.Height, updatePortablePresentationSource);
+    }
+
+    private void ApplyStartupLocationBeforeFirstShow()
+    {
+        if (_startupLocationApplied ||
+            !TryGetPortableWindowState(Window, out var state) ||
+            !state.HasStartupLocation ||
+            state.StartupLocation is not (1 or 2) ||
+            (state.HasWindowState && state.WindowState != 0))
+            return;
+
+        PortableRect? ownerBounds = null;
+        if (state.HasOwner && state.Owner != null &&
+            TryGetActiveHost(state.Owner, out var ownerHost) &&
+            ownerHost?.Left is int ownerLeft && ownerHost.Top is int ownerTop)
+        {
+            ownerBounds = new PortableRect(ownerLeft, ownerTop, ownerHost.Width, ownerHost.Height);
+        }
+
+        if (state.StartupLocation == 2 && ownerBounds == null)
+            return;
+
+        bool centerOverOwner = state.StartupLocation == 2 &&
+            (!TryGetPortableWindowState(state.Owner!, out var ownerState) ||
+             !ownerState.HasWindowState || ownerState.WindowState == 0);
+
+        IReadOnlyList<WpfMonitorInfo> monitors = Host.PlatformServices.Monitors.GetMonitors();
+        PortableRect? workArea = SelectStartupWorkArea(monitors, ownerBounds);
+        if (workArea == null)
+            return;
+
+        double left;
+        double top;
+        bool positioned = centerOverOwner
+            ? PortableWindowStartupPlacement.TryCenterOwner(
+                ownerBounds!.Value, workArea.Value, Host.Width, Host.Height, out left, out top)
+            : PortableWindowStartupPlacement.TryCenterScreen(
+                workArea.Value, Host.Width, Host.Height, out left, out top);
+        if (positioned)
+            Host.SetPosition(ToLogicalPositionDimension(left), ToLogicalPositionDimension(top));
+    }
+
+    internal static PortableRect? SelectStartupWorkArea(
+        IReadOnlyList<WpfMonitorInfo> monitors,
+        PortableRect? ownerBounds)
+    {
+        var selection = new PortablePopupMonitorSelection(ownerBounds ?? new PortableRect(0, 0, 0, 0));
+        PortableRect? primaryWorkArea = null;
+        PortableRect? firstWorkArea = null;
+        for (int i = 0; i < monitors.Count; i++)
+        {
+            WpfMonitorInfo monitor = monitors[i];
+            var screen = new PortableRect(monitor.X, monitor.Y, monitor.Width, monitor.Height);
+            var workArea = new PortableRect(
+                monitor.WorkAreaX, monitor.WorkAreaY, monitor.WorkAreaWidth, monitor.WorkAreaHeight);
+            if (!PortablePopupMonitorSelection.IsValidMonitorBounds(screen, workArea))
+                continue;
+
+            firstWorkArea ??= workArea;
+            if (monitor.IsPrimary)
+                primaryWorkArea = workArea;
+            if (ownerBounds.HasValue)
+                selection.Consider(screen, workArea, monitor.IsPrimary);
+        }
+
+        if (ownerBounds.HasValue && selection.TryGetBounds(out var selected))
+            return selected.WorkArea;
+        return primaryWorkArea ?? firstWorkArea;
     }
 
     private static bool TryGetPortableWindowState(object window, out PortableWindowState state)

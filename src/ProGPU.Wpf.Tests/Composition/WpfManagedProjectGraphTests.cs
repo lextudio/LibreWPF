@@ -20196,12 +20196,17 @@ public sealed class WpfManagedProjectGraphTests
         var synchronizeStart = mouseDevice.IndexOf("public void Synchronize()", StringComparison.Ordinal);
         Assert.True(synchronizeStart >= 0, "MouseDevice.Synchronize must exist.");
         var portableCaptureGuard = mouseDevice.IndexOf(
-            "if (Captured != null && activeSource is PortablePresentationSource)",
+            "_captureMode == CaptureMode.Element &&",
             synchronizeStart, StringComparison.Ordinal);
+        var pressedButtonGuard = mouseDevice.IndexOf(
+            "LeftButton == MouseButtonState.Pressed",
+            portableCaptureGuard, StringComparison.Ordinal);
         var syntheticPositionRead = mouseDevice.IndexOf("Point ptClient = GetClientPosition();",
             synchronizeStart, StringComparison.Ordinal);
-        Assert.True(portableCaptureGuard > synchronizeStart && syntheticPositionRead > portableCaptureGuard,
-            "Only portable captured input may skip synthetic cursor resynchronization; Win32 must retain its path.");
+        Assert.True(portableCaptureGuard > synchronizeStart &&
+            pressedButtonGuard > portableCaptureGuard &&
+            syntheticPositionRead > pressedButtonGuard,
+            "Only portable element-captured pressed drags may skip synthetic cursor resynchronization; popup subtree capture and Win32 must retain their paths.");
 
         var thumb = File.ReadAllText(FindRepoPath(
             "src",

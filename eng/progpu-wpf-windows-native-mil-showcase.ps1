@@ -29,6 +29,7 @@ foreach ($package in @($sdkPackage, $transportPackage, $bridgePackage)) {
 if ($nativePackages.Count -ne 1) {
     throw "Windows native MIL Showcase requires exactly one ProGPU.Backend.Native package; found $($nativePackages.Count)."
 }
+$nativePackageVersion = $nativePackages[0].BaseName -replace '^ProGPU\.Backend\.Native\.', ''
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
@@ -128,6 +129,62 @@ function Invoke-ShowcaseCheck {
     }
 }
 
+function Invoke-TextLayoutCheck {
+    param(
+        [string] $Name,
+        [string] $AppHost,
+        [string] $OutputDirectory
+    )
+
+    $env:PROGPU_WPF_TEXT_LAYOUT_REPORT = "1"
+    $env:PROGPU_WPF_TEXT_LAYOUT_EXIT_AFTER_REPORT = "1"
+    $stdoutPath = Join-Path $OutputDirectory "$Name-text-layout-stdout.log"
+    $stderrPath = Join-Path $OutputDirectory "$Name-text-layout-stderr.log"
+    $process = Start-Process -FilePath $AppHost -WorkingDirectory (Split-Path -Parent $AppHost) `
+        -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
+    try {
+        if (!$process.WaitForExit(120000)) {
+            throw "Windows $Name text-layout check timed out after 120 seconds."
+        }
+        $process.Refresh()
+        $stdout = Get-Content -LiteralPath $stdoutPath -Raw
+        $stderr = Get-Content -LiteralPath $stderrPath -Raw
+        Write-Host "$Name text layout: $stdout"
+        if (![string]::IsNullOrWhiteSpace($stderr)) {
+            Write-Warning $stderr
+        }
+        if ($process.ExitCode -ne 0) {
+            throw "Windows $Name text-layout check exited $($process.ExitCode)."
+        }
+        $match = [regex]::Match($stdout,
+            '(?m)^TEXT_LAYOUT width=(?<width>[0-9.]+) height=(?<height>[0-9.]+) font=(?<font>[0-9.]+) lines=(?<lines>[0-9]+) tops=(?<tops>[0-9.,]+) starts=(?<starts>[0-9,]+)\r?$')
+        if (!$match.Success) {
+            throw "Windows $Name text-layout check did not report the expected metrics."
+        }
+        $culture = [System.Globalization.CultureInfo]::InvariantCulture
+        return [pscustomobject]@{
+            Width = [double]::Parse($match.Groups['width'].Value, $culture)
+            Height = [double]::Parse($match.Groups['height'].Value, $culture)
+            Font = [double]::Parse($match.Groups['font'].Value, $culture)
+            Lines = [int]::Parse($match.Groups['lines'].Value, $culture)
+            Tops = @($match.Groups['tops'].Value.Split(',') | ForEach-Object { [double]::Parse($_, $culture) })
+            Starts = @($match.Groups['starts'].Value.Split(',') | ForEach-Object { [int]::Parse($_, $culture) })
+        }
+    }
+    finally {
+        if (!$process.HasExited) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Assert-TextMetricNear {
+    param([string] $Name, [double] $Native, [double] $Portable, [double] $Tolerance)
+    if ([math]::Abs($Native - $Portable) -gt $Tolerance) {
+        throw "Windows text-layout $Name differs: native=$Native portable=$Portable tolerance=$Tolerance."
+    }
+}
+
 $smokeRoot = Join-Path ([System.IO.Path]::GetTempPath()) "librewpf-native-mil-win-x64-$([guid]::NewGuid().ToString('N'))"
 $artifactsRoot = Join-Path $smokeRoot "artifacts"
 $packagesRoot = Join-Path $smokeRoot "nuget"
@@ -154,6 +211,7 @@ Invoke-DotNet -Arguments @(
     "-p:RestorePackagesPath=$packagesProperty",
     "-p:RestoreAdditionalProjectSources=$feedProperty",
     "-p:ProGpuWpfReferenceMode=Package",
+    "-p:ProGpuPackageVersion=$nativePackageVersion",
     "-p:ProGpuWpfRendererMode=NativeMilWgpu",
     "-p:ProGpuWpfNativeMilHitTesting=true",
     "-p:RunNetFrameworkApiCompat=false", "-v:minimal"
@@ -178,4 +236,55 @@ Assert-ExactPackageAsset (Join-Path $appDirectory "progpu_native.dll") $nativePa
 
 Invoke-ShowcaseCheck "pre-display" "ProGPU WPF Showcase validation succeeded." $appHost $smokeRoot
 Invoke-ShowcaseCheck "displayed" "ProGPU WPF Showcase Application.Run validation succeeded." $appHost $smokeRoot
-Write-Host "Windows x64 package-only native MIL Showcase checks succeeded."
+
+# Compile one source-only WPF fixture under both SDKs. The stock Windows WPF
+# build is the geometry oracle; both processes must exercise their live text
+# views, including the final hidden formatting-edge caret insertion position.
+$textProject = Join-Path $repoRoot "samples/ProGPU.Wpf.TextLayoutParityApp/ProGPU.Wpf.TextLayoutParityApp.csproj"
+$windowsTextProject = Join-Path $repoRoot "samples/ProGPU.Wpf.TextLayoutParityApp.Windows/ProGPU.Wpf.TextLayoutParityApp.Windows.csproj"
+$windowsTextObj = Join-Path $smokeRoot "windows-text-obj"
+$windowsTextBin = Join-Path $smokeRoot "windows-text-bin"
+New-Item -ItemType Directory -Path $windowsTextObj, $windowsTextBin -Force | Out-Null
+Invoke-DotNet -Arguments @(
+    "build", $textProject, "-c", "Release", "-r", "win-x64",
+    "-p:PlatformTarget=x64",
+    "-p:ArtifactsDir=$artifactsProperty",
+    "-p:RestorePackagesPath=$packagesProperty",
+    "-p:RestoreAdditionalProjectSources=$feedProperty",
+    "-p:ProGpuWpfReferenceMode=Package",
+    "-p:ProGpuPackageVersion=$nativePackageVersion",
+    "-p:ProGpuWpfRendererMode=NativeMilWgpu",
+    "-p:ProGpuWpfNativeMilHitTesting=true",
+    "-p:RunNetFrameworkApiCompat=false", "-v:minimal"
+)
+$textDirectory = Join-Path $artifactsRoot "bin/ProGPU.Wpf.TextLayoutParityApp/Release/net10.0-windows"
+$textAppHost = Join-Path $textDirectory "ProGPU.Wpf.TextLayoutParityApp.exe"
+Assert-ExactPackageAsset (Join-Path $textDirectory "PresentationCore.dll") $transportPackage "runtimes/win-x64/lib/net10.0/PresentationCore.dll"
+Assert-ExactPackageAsset (Join-Path $textDirectory "PresentationFramework.dll") $transportPackage "lib/net10.0/PresentationFramework.dll"
+Assert-ExactPackageAsset (Join-Path $textDirectory "progpu_native.dll") $nativePackages[0].FullName "runtimes/win-x64/native/progpu_native.dll"
+Invoke-DotNet -Arguments @(
+    "build", $windowsTextProject, "-c", "Release", "-r", "win-x64",
+    "-p:BaseIntermediateOutputPath=$($windowsTextObj.Replace('\', '/'))/",
+    "-p:OutputPath=$($windowsTextBin.Replace('\', '/'))/",
+    "-p:AppendTargetFrameworkToOutputPath=false",
+    "-p:AppendRuntimeIdentifierToOutputPath=false", "-v:minimal"
+)
+$windowsTextAppHost = Join-Path $windowsTextBin "ProGPU.Wpf.TextLayoutParityApp.Windows.exe"
+if (!(Test-Path -LiteralPath $windowsTextAppHost -PathType Leaf)) {
+    throw "Windows native WPF text-layout build is missing $windowsTextAppHost."
+}
+$nativeLayout = Invoke-TextLayoutCheck "native-WPF" $windowsTextAppHost $smokeRoot
+$portableLayout = Invoke-TextLayoutCheck "ProGPU-native-MIL" $textAppHost $smokeRoot
+if ($nativeLayout.Lines -lt 2 -or $portableLayout.Lines -ne $nativeLayout.Lines -or
+    $nativeLayout.Tops.Count -ne $nativeLayout.Lines -or
+    $portableLayout.Tops.Count -ne $portableLayout.Lines -or
+    ($nativeLayout.Starts -join ',') -ne ($portableLayout.Starts -join ',')) {
+    throw "Windows native-WPF and ProGPU text-layout line breaks differ."
+}
+Assert-TextMetricNear "content width" $nativeLayout.Width $portableLayout.Width 0.01
+Assert-TextMetricNear "content height" $nativeLayout.Height $portableLayout.Height 0.05
+Assert-TextMetricNear "font size" $nativeLayout.Font $portableLayout.Font 0.001
+for ($i = 0; $i -lt $nativeLayout.Tops.Count; $i++) {
+    Assert-TextMetricNear "line $i top" $nativeLayout.Tops[$i] $portableLayout.Tops[$i] 0.05
+}
+Write-Host "Windows x64 package-only native MIL Showcase and same-source text-layout checks succeeded."

@@ -305,6 +305,16 @@ public class PortableTextLineTests
         Assert.Equal(6, glyph.TextSourceCharacterIndex);
         Assert.Equal(2, glyph.TextSourceLength);
         Assert.Empty(second.GetTextBounds(8, 1));
+        var portableSecond = Assert.IsType<PortableTextLine>(second);
+        Assert.True(portableSecond.TryGetNonInkCaretBounds(8, out var hiddenEdge, out _));
+        Assert.Equal(0, hiddenEdge.Width);
+        Assert.Equal(second.Height, hiddenEdge.Height);
+        Assert.Equal(second.GetDistanceFromCharacterHit(new(8, 0)), hiddenEdge.X);
+        Assert.Empty(second.GetTextBounds(10, 1));
+        Assert.True(portableSecond.TryGetNonInkCaretBounds(10, out var finalInsertion, out _));
+        Assert.Equal(0, finalInsertion.Width);
+        Assert.Equal(second.Height, finalInsertion.Height);
+        Assert.Equal(second.GetDistanceFromCharacterHit(new(10, 0)), finalInsertion.X);
         Assert.Equal(1, provider.Calls);
     }
 
@@ -516,6 +526,11 @@ public class PortableTextLineTests
         Assert.Equal(0, terminator.Width);
         Assert.Equal(next.Height, terminator.Height);
         Assert.Equal(next.GetDistanceFromCharacterHit(new(3, 0)), terminator.X);
+        Assert.Empty(next.GetTextBounds(4, 1));
+        Assert.True(Assert.IsType<PortableTextLine>(next).TryGetNonInkCaretBounds(4, out var finalInsertion, out _));
+        Assert.Equal(0, finalInsertion.Width);
+        Assert.Equal(next.Height, finalInsertion.Height);
+        Assert.Equal(next.GetDistanceFromCharacterHit(new(4, 0)), finalInsertion.X);
         Assert.Equal(1, provider.Calls);
     }
 

@@ -968,6 +968,23 @@ internal sealed class PortableTextLine : TextLine
         }
         return result;
     }
+    // Source formatting edges have caret positions but no selection geometry.
+    // Keep GetTextBounds empty for those edges; TextBlock's point-caret query
+    // consumes this separate rectangle instead of treating the edge as ink.
+    internal bool TryGetNonInkCaretBounds(int sourcePosition, out Rect rectangle, out FlowDirection flowDirection)
+    {
+        CheckAlive();
+        rectangle = Rect.Empty;
+        flowDirection = _rightToLeft ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+        if (sourcePosition < First || sourcePosition > First + Length ||
+            (sourcePosition == First + Length && _lineIndex + 1 != _paragraph.Lines.Length))
+            return false;
+        int start = _sourceMap.ToText(Math.Clamp(sourcePosition, First, End) - _paragraphStart);
+        int end = _sourceMap.ToText(Math.Clamp(checked(sourcePosition + 1), First, End) - _paragraphStart);
+        if (start != end) return false;
+        rectangle = new Rect(GetDistanceFromCharacterHit(new CharacterHit(sourcePosition, 0)), 0, 0, Height);
+        return true;
+    }
     public override IList<TextSpan<TextRun>> GetTextRunSpans()
     {
         var result = new List<TextSpan<TextRun>>(); int cp = _paragraphStart;

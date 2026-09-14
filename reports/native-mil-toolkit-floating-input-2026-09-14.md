@@ -37,10 +37,12 @@ passes. ProGPU's native CTest set passes 20/20, including its process-exit
 synchronization regression. ProGPU's current `54adc6a0` native build-only lane
 also stages both `osx-arm64` and `osx-x64` payloads with both providers and SDK
 libraries; native CTest passes 20/20 on each architecture (x64 under Rosetta).
-The staged payloads remain unqualified package inputs. A mixed-graph attempt
-to run the native WPF host unit fixture was not qualified because its test
-output did not carry the exact
-native library/managed context combination; it is not counted as a pass.
+The staged payloads remain unqualified package inputs. The native WPF host
+fixture `HostQueriesUsePresentedNativeOwnersAndNativeDiagnostics` passes after
+staging matching source assemblies and native libraries in a separate test
+output. The source guard runs from the repository output so its file lookup
+resolves correctly. The combined copied-output attempt was not counted because
+that source guard could not locate the repository from the external directory.
 
 These diagnostics combine source-built LibreWPF assemblies with current ProGPU
 artifacts and a prior SDK package. They are not final package, independent CI,

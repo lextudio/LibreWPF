@@ -15,6 +15,16 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Actual source host passes; packaged Showcase reaches input — 2026-09-14:**
+the fresh macOS source host passes native retention, document/text/input and
+device recovery. Package production and Showcase compilation pass. The live
+package probe exposes unbounded caret guidelines; ProGPU now preserves those
+static protocol anchors, with 124 managed/19 native tests passing. A rebuilt
+diagnostic overlay advances to a popup `UnsupportedCommand`, not full application
+success. Finish this concrete popup path and final package/platform/CI gates
+before ordered merges. See the
+[package/application record](../reports/native-mil-showcase-package-2026-09-14.md).
+
 **Stock FXC ordered queries pass native and independent GPU fixtures — 2026-09-14:**
 after ProGPU `81ccf3fe`, the full ARM64 system-WARP native consumer and dense/sparse
 GPU differentials (120/168 full records, 100/140 public queries) pass with the

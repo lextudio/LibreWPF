@@ -1249,8 +1249,8 @@ public class WindowsFormsHost : FrameworkElement
                 Matrix4x4 clientTransform = Matrix4x4.CreateTranslation(
                     (float)controlBounds.X, (float)controlBounds.Y, 0f) * outerTransform;
                 DrawingRectangle clientBounds = new(
-                    drawBounds.X - (int)Math.Round(controlBounds.X),
-                    drawBounds.Y - (int)Math.Round(controlBounds.Y),
+                    (int)Math.Round(itemBounds.X - controlBounds.X),
+                    (int)Math.Round(itemBounds.Y - controlBounds.Y),
                     bitmapWidth,
                     bitmapHeight);
                 using DrawingGraphics nativeGraphics = DrawingGraphics.FromProGpuDrawingContext(

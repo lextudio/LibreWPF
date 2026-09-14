@@ -43,6 +43,17 @@ allowing private reflection. The final full assembly passes 1,790/1,790 on
 macOS ARM64 with the local ProGPU #161 native runtime. This is source-test
 evidence; the final SDK package and platform gates are still required.
 
+The current-source SDK package-production command completed, but the optional
+`LibreWPF.WinFormsCompat.WindowsFormsIntegration` assembly is not part of
+`LibreWPF.Transport`. Its separate Release package probe contains
+`lib/net10.0/WindowsFormsIntegration.dll` with SHA-256
+`22a26af872d3c86dba7134cbed8ec201238d1fd1c045205fae2fdaae0ad76717`,
+identical to the built implementation. That probe is not the canonical
+LibreWinForms package lane or a release bundle. The canonical lane requires
+LibreWinForms and LibreWPF to pin the same ProGPU commit; after #161 merges,
+LibreWinForms needs its matching submodule update before LibreWPF can repin
+and complete that gate.
+
 ## Merged ProGPU and LibreWinForms handoff
 
 ProGPU #139 merged as `86f2f766d1f8e6b4041fa184de0fe9d03ae2840f`.

@@ -1,5 +1,10 @@
 # Agent Guidance
 
+Portable TextLine terminal caret boxes apply only to source ranges intersecting
+the actual newline. Hidden-only formatting ranges keep native caret navigation,
+not invented selection rectangles. Preserve newline X/height from the retained
+source line and keep hidden source/glyph mapping unchanged.
+
 PortableTextLine width-changing continuations use the captured paragraph's explicit
 native reflow capability over the complete original shaping context. Keep original
 source maps, styled physical faces, terminators, hidden positions and cloned-break

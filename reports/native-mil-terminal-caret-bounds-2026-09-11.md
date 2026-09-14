@@ -1,5 +1,11 @@
 # Terminal source caret bounds and application success
 
+Follow-up 2026-09-14: the boundary special case is now restricted to actual
+newline-intersecting ranges. Hidden-only formatting selections remain empty while
+keeping caret navigation. All 22 PortableTextLine fixtures pass, including explicit
+hidden-only and continued-line terminal bounds. The earlier broad hidden-range
+wording below records the original checkpoint, not the current admission rule.
+
 The failing TextBox caret query was measured in the prepared source application:
 cp=18, length=1, bounds=0, PortableTextLine length=19, newline length=1,
 width=98.71875 and height=13.798828125. It queried the terminal source newline,

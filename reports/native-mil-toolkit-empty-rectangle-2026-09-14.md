@@ -40,3 +40,15 @@ claiming the source suite passes. No assembly-loading failure counts as a test p
 
 ProGPU Build 34811802371 finished successful at a8afeab6; new local continuation
 and empty-rectangle changes require fresh CI. No downstream pins or merges advanced.
+
+## Hidden selection versus terminal caret follow-up
+
+The original terminal-caret fix admitted any hidden-only selection range. Narrowed
+it to positive ranges intersecting the actual source newline, preserving native
+caret X and retained line height. Hidden formatting edges still participate in
+navigation but do not acquire selection rectangles. Added explicit terminal-box
+assertions for both a hidden-only paragraph and a continued shaped line; existing
+hidden-range assertions remain unchanged. Source Core builds with zero warnings;
+the test build has six existing warnings. All 22 PortableTextLine tests now pass,
+none skipped, with the current diagnostic source Core/Interop graph. The changed
+continuation-width/captured-provider test is included in those 22.

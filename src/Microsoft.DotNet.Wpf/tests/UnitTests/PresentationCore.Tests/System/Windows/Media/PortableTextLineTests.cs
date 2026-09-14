@@ -346,6 +346,10 @@ public class PortableTextLineTests
         Assert.Equal(0, line.Width);
         Assert.Empty(line.GetIndexedGlyphRuns());
         Assert.Empty(line.GetTextBounds(0, 4));
+        var terminator = Assert.Single(line.GetTextBounds(4, 1)).Rectangle;
+        Assert.Equal(0, terminator.Width);
+        Assert.Equal(line.Height, terminator.Height);
+        Assert.Equal(line.GetDistanceFromCharacterHit(new(4, 0)), terminator.X);
         Assert.Null(line.GetTextLineBreak());
     }
 
@@ -474,6 +478,10 @@ public class PortableTextLineTests
         using var next = PortableTextLine.Create(Settings(formatter, source, continuation), 2, TextFormatterImp.RealToIdeal(80), 1);
         Assert.Equal(2, next.Length);
         Assert.Equal(1, next.NewlineLength);
+        var terminator = Assert.Single(next.GetTextBounds(3, 1)).Rectangle;
+        Assert.Equal(0, terminator.Width);
+        Assert.Equal(next.Height, terminator.Height);
+        Assert.Equal(next.GetDistanceFromCharacterHit(new(3, 0)), terminator.X);
         Assert.Equal(1, provider.Calls);
     }
 

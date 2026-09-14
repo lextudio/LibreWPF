@@ -31,6 +31,12 @@ CI package gates are still running. Finish those gates, dependency pins and fina
 application/package/platform qualification before ordered merges. ActivityMonitor
 and broader API expansion remain out of scope for core closure. See
 [checkpoint contract and evidence](native-mil-performance-diagnostics.md#explicit-completed-memory-checkpoints--2026-09-14).
+The exact `0.1.0-preview.3047.ci` ProGPU packages subsequently pass the full
+consumer on VM ARM64/x64 system WARP, the default Parallels adapter, and local
+Metal without assembly overlays. Current-head HelloTriangle/HelloTexture oracles
+are byte-identical across D3D12/Metal/Vulkan. The general Windows package jobs
+and final WPF package/application graph remain open; see the
+[exact-package record](../reports/native-mil-exact-package-2026-09-14.md).
 
 **Release capacity hotspot removed; retention/default-query qualification open — 2026-09-14:**
 Instruments attributes substantial native CPU cost to exact-size C++ builder

@@ -34,8 +34,12 @@ after the diagnostic getter refreshed the scene. With the corrected getter,
 `ProGPU WPF Toolkit live input validation succeeded` after all required actions.
 The focused source guard test `ToolkitFloatingInputUsesActualPresentationSource`
 passes. ProGPU's native CTest set passes 20/20, including its process-exit
-synchronization regression. A mixed-graph attempt to run the native WPF host
-unit fixture was not qualified because its test output did not carry the exact
+synchronization regression. ProGPU's current `54adc6a0` native build-only lane
+also stages both `osx-arm64` and `osx-x64` payloads with both providers and SDK
+libraries; native CTest passes 20/20 on each architecture (x64 under Rosetta).
+The staged payloads remain unqualified package inputs. A mixed-graph attempt
+to run the native WPF host unit fixture was not qualified because its test
+output did not carry the exact
 native library/managed context combination; it is not counted as a pass.
 
 These diagnostics combine source-built LibreWPF assemblies with current ProGPU

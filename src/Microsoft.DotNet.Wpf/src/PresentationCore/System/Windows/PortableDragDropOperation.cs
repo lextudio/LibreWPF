@@ -98,10 +98,14 @@ namespace System.Windows
 
         private DragDropEffects RunCore()
         {
+            var frame = new DispatcherFrame();
+            var releaseTimer = new DispatcherTimer(DispatcherPriority.Input, _dragSource.Dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(16)
+            };
+
             if (!Mouse.Capture(_dragSource, CaptureMode.SubTree))
                 return DragDropEffects.None;
-
-            var frame = new DispatcherFrame();
 
             MouseEventHandler onPreviewMouseMove = (sender, e) => OnPointerUpdate(frame, e.GetPosition((IInputElement)_source.RootVisual));
             MouseButtonEventHandler onPreviewMouseButtonUp = (sender, e) => OnPointerUpdate(frame, e.GetPosition((IInputElement)_source.RootVisual));
@@ -113,21 +117,8 @@ namespace System.Windows
                 frame.Continue = false;
             };
 
-            _dragSource.PreviewMouseMove += onPreviewMouseMove;
-            _dragSource.PreviewMouseUp += onPreviewMouseButtonUp;
-            _dragSource.PreviewKeyDown += onPreviewKeyDown;
-
-            // A release may be lost before any routed move/up reaches the captured source.
-            // Retain a valid starting point so the liveness check can complete that drag.
-            _lastRootPoint = Mouse.GetPosition((IInputElement)_source.RootVisual);
-            _hasLastRootPoint = true;
-
             // A render frame is not guaranteed while an idle nested dispatcher frame is active.
             // Its timer queue is promoted on each turn, even when no routed input arrives.
-            var releaseTimer = new DispatcherTimer(DispatcherPriority.Input, _dragSource.Dispatcher)
-            {
-                Interval = TimeSpan.FromMilliseconds(16)
-            };
             EventHandler onReleaseTick = (_, _) =>
             {
                 if (_action != DragAction.Continue || !_hasLastRootPoint)
@@ -139,11 +130,19 @@ namespace System.Windows
                     OnPointerUpdate(frame, _lastRootPoint);
                 }
             };
-            releaseTimer.Tick += onReleaseTick;
-            releaseTimer.Start();
-
             try
             {
+                _dragSource.PreviewMouseMove += onPreviewMouseMove;
+                _dragSource.PreviewMouseUp += onPreviewMouseButtonUp;
+                _dragSource.PreviewKeyDown += onPreviewKeyDown;
+
+                // A release may be lost before any routed move/up reaches the captured source.
+                // Retain a valid starting point so the liveness check can complete that drag.
+                _lastRootPoint = Mouse.GetPosition((IInputElement)_source.RootVisual);
+                _hasLastRootPoint = true;
+
+                releaseTimer.Tick += onReleaseTick;
+                releaseTimer.Start();
                 Dispatcher.PushFrame(frame);
             }
             finally

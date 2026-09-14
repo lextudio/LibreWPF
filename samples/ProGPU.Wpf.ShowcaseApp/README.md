@@ -26,6 +26,16 @@ Run the native apphost long enough to verify the live ProGPU/Silk.NET swapchain 
 PROGPU_WPF_SHOWCASE_LIVE_VALIDATE=1 ./eng/run-progpu-wpf-showcase.sh
 ```
 
+For a reproducible text/layout comparison, start the same app on a named tab
+without synthesizing a desktop click (for example,
+`PROGPU_WPF_SHOWCASE_INITIAL_TAB=Themes ./eng/run-progpu-wpf-showcase.sh`).
+An unknown tab name fails startup rather than silently capturing the default
+Controls tab. Capture the presented window at its actual device scale, and
+compare source words, wrapping, baselines, clipping, and control geometry
+against the same-source Windows WPF view. This runtime selection is a visual
+test aid; a passing object-graph or input gate alone does not establish text
+rendering parity.
+
 If the local `0.1.0-preview.45` LibreWPF packages are stale or missing, rebuild the SDK package feed first:
 
 ```bash

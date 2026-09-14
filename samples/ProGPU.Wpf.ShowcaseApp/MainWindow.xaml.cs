@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     private const string LivePerformanceValidationEnvironmentVariable = "PROGPU_WPF_SHOWCASE_PERFORMANCE_VALIDATE";
     private const string LiveValidationStatusPathEnvironmentVariable = "PROGPU_WPF_SHOWCASE_LIVE_VALIDATE_STATUS_PATH";
     private const string LiveNativeDragStatusPathEnvironmentVariable = "PROGPU_WPF_SHOWCASE_NATIVE_DRAG_STATUS_PATH";
+    private const string InitialTabEnvironmentVariable = "PROGPU_WPF_SHOWCASE_INITIAL_TAB";
     private const int LiveValidationMaxAttempts = 600;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
     private static readonly FrameworkThemeDefinition[] s_frameworkThemes =
@@ -295,6 +296,28 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         InitializeComponent();
         InitializeFrameworkThemeState();
+
+        string? initialTab = Environment.GetEnvironmentVariable(InitialTabEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(initialTab))
+        {
+            TabItem? requestedTab = null;
+            foreach (object item in ShowcaseTabControl.Items)
+            {
+                if (item is TabItem { Header: string header } &&
+                    string.Equals(header, initialTab, StringComparison.Ordinal))
+                {
+                    requestedTab = (TabItem)item;
+                    break;
+                }
+            }
+
+            if (requestedTab is null)
+            {
+                throw new InvalidOperationException($"Unknown Showcase tab: {initialTab}");
+            }
+
+            ShowcaseTabControl.SelectedItem = requestedTab;
+        }
 
         SelectorScrollViewer.AddHandler(MouseWheelEvent, new MouseWheelEventHandler(OnSelectorScrollViewerMouseWheel), true);
         ShowcaseRoutedEventScope.AddHandler(

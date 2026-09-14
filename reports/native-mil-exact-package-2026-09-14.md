@@ -52,7 +52,16 @@ that copied directory did not complete and was stopped; a control run using
 the original merged-main dylib passed, then two clean attempts using the new
 dylib passed in 11 and 7 seconds. That transient is not counted as a pass or
 reproduced regression. The overlay run demonstrates app ABI compatibility,
-not a rebuilt exact artifact or corrected Themes screenshot.
+not a rebuilt exact artifact. A new opt-in initial-tab selector allowed the
+same isolated output to open directly on Themes, avoiding unreliable desktop
+click injection. A 2× macOS window capture with the PR #163 dylib shows
+normal-sized native glyphs and five whole-word paragraph lines:
+`The button is styled through a`, `compiled ControlTemplate,`,
+`TemplateBinding, named parts,`, `VisualStateManager states, and`,
+`a property trigger.` A managed-mode full-screen capture of the same output
+shows the same text boundaries. The native and managed captures used separate
+processes. This is visual source-overlay evidence for the specific defect,
+not a full text sizing/layout matrix or exact merged-package qualification.
 
 A current-source Windows comparison is now available. In the Parallels
 Windows 11 VM, the same Showcase source project built against the exact

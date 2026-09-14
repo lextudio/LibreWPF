@@ -51,6 +51,44 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void DeferredFirstShowPublishesCenteredHostAndSourceLocation()
+    {
+        var service = new TestWindowActivationServiceRegistrar
+        {
+            HandleMainWindowQuery = true,
+            IsMainWindow = true
+        };
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = new TestRenderScheduler()
+        };
+        host.PlatformServices = new MonitorOverridePlatformServices(
+            host.PlatformServices,
+            new FixedMonitorService(
+            [new("Primary", 0, 0, 1920, 1080, 1, true)
+            {
+                WorkAreaX = 0, WorkAreaY = 40, WorkAreaWidth = 1920, WorkAreaHeight = 1040
+            }]));
+        var window = new FakeWindow
+        {
+            Width = 800,
+            Height = 600,
+            StartupLocation = 1
+        };
+        Assert.True(WpfPortableWindowActivation.TryAttach(
+            host, window, new FakePortablePresentationSource(), out var activation));
+        using var lease = activation;
+
+        activation!.Show();
+
+        Assert.Equal(560, host.Left);
+        Assert.Equal(260, host.Top);
+        Assert.Equal((560d, 260d), window.LastHostLocation);
+        Assert.Null(host.SilkWindow);
+    }
+
+    [Fact]
     public void PresentationFrameworkActivationRegistrationUsesTypedInteropOnly()
     {
         var service = new TestWindowActivationServiceRegistrar();
@@ -2143,7 +2181,32 @@ public sealed class WpfPortableWindowActivationTests
             .Invoke(host, new object[] { 0d });
     }
 
-    private sealed class FakeWindow : IPortableWindowStateSource
+    private sealed class FixedMonitorService(IReadOnlyList<WpfMonitorInfo> monitors) : IWpfMonitorService
+    {
+        public IReadOnlyList<WpfMonitorInfo> GetMonitors() => monitors;
+    }
+
+    private sealed class MonitorOverridePlatformServices(
+        IWpfPlatformServices inner,
+        IWpfMonitorService monitors) : IWpfPlatformServices
+    {
+        public IWpfClipboard Clipboard => inner.Clipboard;
+        public IWpfColorDialogService ColorDialogs => inner.ColorDialogs;
+        public IWpfCursorService Cursors => inner.Cursors;
+        public IWpfDispatcherService Dispatcher => inner.Dispatcher;
+        public IWpfDragDropService DragDrop => inner.DragDrop;
+        public IWpfFileDialogService FileDialogs => inner.FileDialogs;
+        public IWpfFontDialogService FontDialogs => inner.FontDialogs;
+        public IWpfInputService Input => inner.Input;
+        public IWpfLauncher Launcher => inner.Launcher;
+        public IWpfMessageBoxService MessageBoxes => inner.MessageBoxes;
+        public IWpfMonitorService Monitors => monitors;
+        public IWpfTimerService Timers => inner.Timers;
+        public IWpfWindowDecorationService WindowDecorations => inner.WindowDecorations;
+        public IWpfWindowEventService WindowEvents => inner.WindowEvents;
+    }
+
+    private sealed class FakeWindow : IPortableWindowStateSource, IPortableWindowLocationSink
     {
         public string? Title { get; set; }
 
@@ -2162,6 +2225,15 @@ public sealed class WpfPortableWindowActivationTests
         public double Top { get; set; } = double.NaN;
 
         public int StartupLocation { get; set; }
+
+        public (double Left, double Top)? LastHostLocation { get; private set; }
+
+        public void OnPortableWindowLocationChanged(double left, double top)
+        {
+            LastHostLocation = (left, top);
+            Left = left;
+            Top = top;
+        }
 
         public bool Topmost { get; set; }
 

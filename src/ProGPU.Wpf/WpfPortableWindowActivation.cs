@@ -1014,7 +1014,13 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
             : PortableWindowStartupPlacement.TryCenterScreen(
                 workArea.Value, Host.Width, Host.Height, out left, out top);
         if (positioned)
-            Host.SetPosition(ToLogicalPositionDimension(left), ToLogicalPositionDimension(top));
+        {
+            int nativeLeft = ToLogicalPositionDimension(left);
+            int nativeTop = ToLogicalPositionDimension(top);
+            Host.SetPosition(nativeLeft, nativeTop);
+            if (Window is IPortableWindowLocationSink locationSink)
+                locationSink.OnPortableWindowLocationChanged(nativeLeft, nativeTop);
+        }
     }
 
     internal static PortableRect? SelectStartupWorkArea(
@@ -1350,6 +1356,8 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
         if (left.HasValue && top.HasValue)
         {
             Host.UpdatePortablePresentationSourceClientOrigin(left.Value, top.Value);
+            if (Window is IPortableWindowLocationSink locationSink)
+                locationSink.OnPortableWindowLocationChanged(left.Value, top.Value);
         }
 
         bridge.TryDispatchHwndSourceHook(WM_WINDOWPOSCHANGED, IntPtr.Zero, IntPtr.Zero, out _, out _);

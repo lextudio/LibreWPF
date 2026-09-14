@@ -6,6 +6,9 @@ the portable host's initial client size and owner have been synchronized, before
 the first native show. Later `Hide`/`Show` cycles preserve the user's moved
 position. `Manual` remains controlled by source `Left`/`Top`; maximized and
 minimized startup states take precedence over centering.
+The optional typed `IPortableWindowLocationSink` returns accepted native
+desktop positions to the source `Window`, so `Left`/`Top` and
+`LocationChanged` do not depend on an HWND-only move handler.
 
 The shared ProGPU `PortableWindowStartupPlacement` contract performs the
 work-area center and owner-center clamp in desktop coordinates. The WPF host
@@ -35,3 +38,6 @@ Compilation gate: build `external/ProGPU/src/ProGPU.Wpf.Interop` and
 authored in the ProGPU and LibreWPF test projects. Run those, then compare the
 Showcase and text-layout windows against Windows WPF in the final integrated
 qualification phase defined by `native-mil-core-delivery.md`.
+Canonical WinForms source integration requires the same ProGPU pin in
+LibreWinForms; [LibreWinForms #33](https://github.com/wieslawsoltes/LibreWinForms/pull/33)
+tracks that exact-head alignment.

@@ -112,9 +112,22 @@ directory's `oracles/` subdirectories.
 
 Current-head native producer builds, both Windows explicit/automatic ordered-query
 parity jobs, the DX12 NativeAOT package consumers and macOS/Linux package consumers
-have passed. The two general Windows package-consumer jobs are still running;
-the full Build is not yet a success. Do not restart live jobs, advance dependency
-pins, or merge based on these partial results.
+have passed. Both general Windows package-consumer jobs subsequently hit their
+15-minute job limit, leaving Build 3047 terminal canceled. Their logs show
+successful assertions until cancellation, not a completed qualification. The
+exact-runtime staging helper correctly rejected this Build and produced no
+qualified staging directory.
+
+ProGPU `a8afeab6f53c0b8bdd470cf9d2d9283f6c1bdf8d` now splits each Windows RID
+into core, drawing, visual and guideline jobs, retaining all nine independent
+JIT and NativeAOT cases and the original deadlines. Runtime code and assertions
+are unchanged. Selector coverage, Bash syntax, ShellCheck, Actionlint and release
+documentation checks pass locally. The new exact
+[Build 34811802371](https://github.com/wieslawsoltes/ProGPU/actions/runs/34811802371)
+must pass; the older package results above are historical evidence, not proof
+for this new commit. See the
+[ProGPU scheduling contract](https://github.com/wieslawsoltes/ProGPU/blob/a8afeab6f53c0b8bdd470cf9d2d9283f6c1bdf8d/docs/native-package-consumer-groups.md).
+Do not restart live jobs, advance dependency pins, or merge from partial results.
 
 After exact ProGPU qualification, align LibreWinForms and LibreWPF to the same
 qualified ProGPU commit, produce the exact WPF Windows payload/SDK packages,

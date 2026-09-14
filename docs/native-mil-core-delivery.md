@@ -15,6 +15,17 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Windows package CI split published; final exact Build pending — 2026-09-14:**
+ProGPU Build 3047 ended canceled when both general Windows consumers exceeded
+their 15-minute job limits, after passing successive fixtures. ProGPU `a8afeab6`
+splits those independent JIT/NativeAOT cases across bounded jobs without removing
+coverage or changing runtime behavior. Its new Build `34811802371` must pass
+before dependency pins advance. The full exact-package VM/Metal results below
+remain valid historical evidence, not completed new-head or WPF qualification.
+Then align dependencies, qualify final SDK/application/platform packages and
+merge ProGPU → LibreWinForms → LibreWPF. See the
+[updated exact-package record](../reports/native-mil-exact-package-2026-09-14.md#remaining-merge-gates-at-this-checkpoint).
+
 **Completed-memory checkpoints pass; exact package/CI closure next — 2026-09-14:**
 Showcase's explicit nonblocking owner-thread checkpoints now compare completed
 native-owned working storage, preserving the 1 MiB growth limit and reporting

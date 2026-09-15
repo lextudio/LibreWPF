@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ProGPU.Backend;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
@@ -74,6 +75,64 @@ public sealed class SilkNetWpfMonitorService : IWpfMonitorService
         }
 
         return mapped;
+    }
+
+    public bool TryGetPointerScreenPosition(out double x, out double y)
+    {
+        NativeWindowKind platformKind = ResolveDesktopPointerPlatformKind();
+        if (NativeDesktopPointer.TryGetPosition(platformKind, out NativeWindowPoint position))
+        {
+            x = position.X;
+            y = position.Y;
+            return true;
+        }
+
+        x = y = 0;
+        return false;
+    }
+
+    private static NativeWindowKind ResolveDesktopPointerPlatformKind()
+    {
+        return ResolveDesktopPointerPlatformKind(
+            OperatingSystem.IsWindows(),
+            OperatingSystem.IsMacOS(),
+            OperatingSystem.IsLinux(),
+            Environment.GetEnvironmentVariable("XDG_SESSION_TYPE"),
+            Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"),
+            Environment.GetEnvironmentVariable("DISPLAY"),
+            Environment.GetEnvironmentVariable("PROGPU_WPF_LINUX_WINDOWING"));
+    }
+
+    internal static NativeWindowKind ResolveDesktopPointerPlatformKind(
+        bool isWindows,
+        bool isMacOS,
+        bool isLinux,
+        string? sessionType,
+        string? waylandDisplay,
+        string? x11Display,
+        string? configuredPreference)
+    {
+        if (isWindows)
+            return NativeWindowKind.Win32;
+        if (isMacOS)
+            return NativeWindowKind.Cocoa;
+        if (!isLinux)
+            return NativeWindowKind.Unknown;
+
+        LinuxGlfwPlatformPreference preference = SilkNetGlfwPlatformSelector.ResolvePreference(
+            sessionType,
+            waylandDisplay,
+            x11Display,
+            configuredPreference);
+        if (preference == LinuxGlfwPlatformPreference.X11)
+            return NativeWindowKind.X11;
+        if (preference == LinuxGlfwPlatformPreference.Wayland)
+            return NativeWindowKind.Wayland;
+
+        return string.IsNullOrWhiteSpace(waylandDisplay) &&
+               !string.IsNullOrWhiteSpace(x11Display)
+            ? NativeWindowKind.X11
+            : NativeWindowKind.Wayland;
     }
 
     public static WpfMonitorInfo ToMonitorInfo(IMonitor monitor, IMonitor? mainMonitor)

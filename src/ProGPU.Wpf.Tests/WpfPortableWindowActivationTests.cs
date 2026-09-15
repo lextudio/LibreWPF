@@ -34,6 +34,44 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void StartupWorkAreaUsesPointerMonitorWithoutOwner()
+    {
+        WpfMonitorInfo[] monitors =
+        [
+            new("Left", -1920, 0, 1920, 1080, 1, false)
+            {
+                WorkAreaX = -1920, WorkAreaY = 24, WorkAreaWidth = 1920, WorkAreaHeight = 1056
+            },
+            new("Primary", 0, 0, 1920, 1080, 1, true)
+            {
+                WorkAreaX = 0, WorkAreaY = 40, WorkAreaWidth = 1920, WorkAreaHeight = 1040
+            }
+        ];
+
+        Assert.Equal(new PortableRect(-1920, 24, 1920, 1056),
+            WpfPortableWindowActivation.SelectStartupWorkArea(
+                monitors,
+                ownerBounds: null,
+                new PortablePoint(-640, 400)));
+    }
+
+    [Fact]
+    public void StartupWorkAreaKeepsOwnerPrecedenceOverPointer()
+    {
+        WpfMonitorInfo[] monitors =
+        [
+            new("Primary", 0, 0, 1920, 1080, 1, true),
+            new("Right", 1920, 0, 1920, 1080, 1, false)
+        ];
+
+        Assert.Equal(new PortableRect(1920, 0, 1920, 1080),
+            WpfPortableWindowActivation.SelectStartupWorkArea(
+                monitors,
+                new PortableRect(2200, 100, 600, 400),
+                new PortablePoint(400, 300)));
+    }
+
+    [Fact]
     public void StartupWorkAreaFollowsOwnerAcrossMonitors()
     {
         WpfMonitorInfo[] monitors =
@@ -85,6 +123,47 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(560, host.Left);
         Assert.Equal(260, host.Top);
         Assert.Equal((560d, 260d), window.LastHostLocation);
+        Assert.Null(host.SilkWindow);
+    }
+
+    [Fact]
+    public void DeferredFirstShowCentersOnPointerMonitor()
+    {
+        var service = new TestWindowActivationServiceRegistrar
+        {
+            HandleMainWindowQuery = true,
+            IsMainWindow = true
+        };
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = new TestRenderScheduler()
+        };
+        host.PlatformServices = new MonitorOverridePlatformServices(
+            host.PlatformServices,
+            new FixedMonitorService(
+            [
+                new("Primary", 0, 0, 1920, 1080, 1, true),
+                new("Right", 1920, 0, 1600, 900, 1, false)
+                {
+                    WorkAreaX = 1920, WorkAreaY = 24, WorkAreaWidth = 1600, WorkAreaHeight = 876
+                }
+            ], new PortablePoint(2400, 300)));
+        var window = new FakeWindow
+        {
+            Width = 800,
+            Height = 600,
+            StartupLocation = 1
+        };
+        Assert.True(WpfPortableWindowActivation.TryAttach(
+            host, window, new FakePortablePresentationSource(), out var activation));
+        using var lease = activation;
+
+        activation!.Show();
+
+        Assert.Equal(2320, host.Left);
+        Assert.Equal(162, host.Top);
+        Assert.Equal((2320d, 162d), window.LastHostLocation);
         Assert.Null(host.SilkWindow);
     }
 
@@ -2181,9 +2260,24 @@ public sealed class WpfPortableWindowActivationTests
             .Invoke(host, new object[] { 0d });
     }
 
-    private sealed class FixedMonitorService(IReadOnlyList<WpfMonitorInfo> monitors) : IWpfMonitorService
+    private sealed class FixedMonitorService(
+        IReadOnlyList<WpfMonitorInfo> monitors,
+        PortablePoint? pointer = null) : IWpfMonitorService
     {
         public IReadOnlyList<WpfMonitorInfo> GetMonitors() => monitors;
+
+        public bool TryGetPointerScreenPosition(out double x, out double y)
+        {
+            if (pointer is PortablePoint value)
+            {
+                x = value.X;
+                y = value.Y;
+                return true;
+            }
+
+            x = y = 0;
+            return false;
+        }
     }
 
     private sealed class MonitorOverridePlatformServices(

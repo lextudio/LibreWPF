@@ -3041,6 +3041,10 @@ platform support or drop the owner-surface path from this milestone.
 
 ## Feature freeze and final validation
 
+The typed top-level first-show placement path and its remaining pointer-monitor,
+frame-extents, and Wayland qualifications are tracked in
+`docs/native-window-startup-placement.md`.
+
 Continue implementation and compilation first, as requested. Author regressions
 with code, but do not run tests, source verifiers, VM/image workloads, benchmarks
 or CI qualification until the feature phase ends. Do not disable automatic CI.

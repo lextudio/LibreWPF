@@ -29,7 +29,7 @@ using Win32Error = MS.Internal.Interop.Win32Error;
 namespace System.Windows
 {
     [Localizability(LocalizationCategory.Ignore)]
-    public class Window : ContentControl, IWindowService, IPortableVisualOwnerHost, IPortableWindowStateSource, IPortableAccessKeyScopeSource
+    public class Window : ContentControl, IWindowService, IPortableVisualOwnerHost, IPortableWindowStateSource, IPortableWindowLocationSink, IPortableAccessKeyScopeSource
     {
         //---------------------------------------------------
         //
@@ -125,6 +125,8 @@ namespace System.Windows
                 Left = Left,
                 HasTop = true,
                 Top = Top,
+                HasStartupLocation = true,
+                StartupLocation = (int)WindowStartupLocation,
                 HasWindowState = true,
                 WindowState = (int)WindowState,
                 HasTopmost = true,
@@ -141,6 +143,34 @@ namespace System.Windows
                 Owner = Owner
             };
             return true;
+        }
+
+        void IPortableWindowLocationSink.OnPortableWindowLocationChanged(double left, double top)
+        {
+            VerifyAccess();
+            if (_disposed || !IsPortableWindowActive ||
+                !double.IsFinite(left) || !double.IsFinite(top) ||
+                (DoubleUtil.AreClose(_actualLeft, left) && DoubleUtil.AreClose(_actualTop, top)))
+                return;
+
+            _actualLeft = left;
+            _actualTop = top;
+            if (WindowState != WindowState.Normal)
+                return;
+
+            try
+            {
+                _updateHwndLocation = false;
+                SetValue(LeftProperty, left);
+                SetValue(TopProperty, top);
+            }
+            finally
+            {
+                _updateHwndLocation = true;
+            }
+
+            if (_isVisible)
+                OnLocationChanged(EventArgs.Empty);
         }
 
         private ImageSource GetPortableWindowIconImageSource()

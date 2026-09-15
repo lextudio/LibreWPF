@@ -1,15 +1,26 @@
 param(
     [string] $PackageDirectory = "",
     [string] $Version = "0.1.0-preview.45",
+    [ValidateSet("x64", "arm64")]
+    [string] $TargetArchitecture = "x64",
     [switch] $AllowEmulatedX64
 )
 
 $ErrorActionPreference = "Stop"
 
 $osArchitecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
-if ($osArchitecture -ne [System.Runtime.InteropServices.Architecture]::X64 -and !$AllowEmulatedX64) {
-    throw "The Windows x64 native MIL CI gate requires an x64 Windows host; detected $osArchitecture."
+$requiredArchitecture = if ($TargetArchitecture -eq "arm64") {
+    [System.Runtime.InteropServices.Architecture]::Arm64
+} else {
+    [System.Runtime.InteropServices.Architecture]::X64
 }
+if ($osArchitecture -ne $requiredArchitecture -and
+    !($TargetArchitecture -eq "x64" -and $AllowEmulatedX64 -and
+      $osArchitecture -eq [System.Runtime.InteropServices.Architecture]::Arm64)) {
+    throw "The Windows $TargetArchitecture native MIL gate requires a $requiredArchitecture Windows host; detected $osArchitecture."
+}
+$targetRid = "win-$TargetArchitecture"
+$targetMachine = if ($TargetArchitecture -eq "arm64") { 0xAA64 } else { 0x8664 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($PackageDirectory)) {
@@ -185,7 +196,7 @@ function Assert-TextMetricNear {
     }
 }
 
-$smokeRoot = Join-Path ([System.IO.Path]::GetTempPath()) "librewpf-native-mil-win-x64-$([guid]::NewGuid().ToString('N'))"
+$smokeRoot = Join-Path ([System.IO.Path]::GetTempPath()) "librewpf-native-mil-$targetRid-$([guid]::NewGuid().ToString('N'))"
 $artifactsRoot = Join-Path $smokeRoot "artifacts"
 $packagesRoot = Join-Path $smokeRoot "nuget"
 New-Item -ItemType Directory -Path $artifactsRoot, $packagesRoot -Force | Out-Null
@@ -195,7 +206,7 @@ $feedProperty = $PackageDirectory.Replace('\', '/')
 $buildTasksProject = Join-Path $repoRoot "src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj"
 $showcaseProject = Join-Path $repoRoot "samples/ProGPU.Wpf.ShowcaseApp/ProGPU.Wpf.ShowcaseApp.csproj"
 
-Write-Host "Building unchanged SDK Showcase for win-x64 from $PackageDirectory."
+Write-Host "Building unchanged SDK Showcase for $targetRid from $PackageDirectory."
 Write-Host "Private test output: $smokeRoot"
 Invoke-DotNet -Arguments @(
     "build", $buildTasksProject, "-f", "net10.0", "-c", "Release",
@@ -205,8 +216,8 @@ Invoke-DotNet -Arguments @(
     "-p:RunNetFrameworkApiCompat=false", "-v:minimal"
 )
 Invoke-DotNet -Arguments @(
-    "build", $showcaseProject, "-c", "Release", "-r", "win-x64",
-    "-p:PlatformTarget=x64",
+    "build", $showcaseProject, "-c", "Release", "-r", $targetRid,
+    "-p:PlatformTarget=$TargetArchitecture",
     "-p:ArtifactsDir=$artifactsProperty",
     "-p:RestorePackagesPath=$packagesProperty",
     "-p:RestoreAdditionalProjectSources=$feedProperty",
@@ -220,19 +231,19 @@ Invoke-DotNet -Arguments @(
 $appDirectory = Join-Path $artifactsRoot "bin/ProGPU.Wpf.ShowcaseApp/Release/net10.0-windows"
 $appHost = Join-Path $appDirectory "ProGPU.Wpf.ShowcaseApp.exe"
 if (!(Test-Path -LiteralPath $appHost -PathType Leaf)) {
-    throw "Windows native MIL Showcase build is missing the x64 apphost $appHost."
+    throw "Windows native MIL Showcase build is missing the $TargetArchitecture apphost $appHost."
 }
 $appHostBytes = [System.IO.File]::ReadAllBytes($appHost)
 $peOffset = [System.BitConverter]::ToInt32($appHostBytes, 60)
 $machine = [System.BitConverter]::ToUInt16($appHostBytes, $peOffset + 4)
-if ($machine -ne 0x8664) {
-    throw "Windows native MIL Showcase apphost is not AMD64 (PE machine $machine)."
+if ($machine -ne $targetMachine) {
+    throw "Windows native MIL Showcase apphost is not $TargetArchitecture (PE machine $machine)."
 }
 
-Assert-ExactPackageAsset (Join-Path $appDirectory "PresentationCore.dll") $transportPackage "runtimes/win-x64/lib/net10.0/PresentationCore.dll"
+Assert-ExactPackageAsset (Join-Path $appDirectory "PresentationCore.dll") $transportPackage "runtimes/$targetRid/lib/net10.0/PresentationCore.dll"
 Assert-ExactPackageAsset (Join-Path $appDirectory "PresentationFramework.dll") $transportPackage "lib/net10.0/PresentationFramework.dll"
 Assert-ExactPackageAsset (Join-Path $appDirectory "ProGPU.Wpf.dll") $bridgePackage "lib/net10.0/ProGPU.Wpf.dll"
-Assert-ExactPackageAsset (Join-Path $appDirectory "progpu_native.dll") $nativePackages[0].FullName "runtimes/win-x64/native/progpu_native.dll"
+Assert-ExactPackageAsset (Join-Path $appDirectory "progpu_native.dll") $nativePackages[0].FullName "runtimes/$targetRid/native/progpu_native.dll"
 
 Invoke-ShowcaseCheck "pre-display" "ProGPU WPF Showcase validation succeeded." $appHost $smokeRoot
 Invoke-ShowcaseCheck "displayed" "ProGPU WPF Showcase Application.Run validation succeeded." $appHost $smokeRoot
@@ -246,8 +257,8 @@ $windowsTextObj = Join-Path $smokeRoot "windows-text-obj"
 $windowsTextBin = Join-Path $smokeRoot "windows-text-bin"
 New-Item -ItemType Directory -Path $windowsTextObj, $windowsTextBin -Force | Out-Null
 Invoke-DotNet -Arguments @(
-    "build", $textProject, "-c", "Release", "-r", "win-x64",
-    "-p:PlatformTarget=x64",
+    "build", $textProject, "-c", "Release", "-r", $targetRid,
+    "-p:PlatformTarget=$TargetArchitecture",
     "-p:ArtifactsDir=$artifactsProperty",
     "-p:RestorePackagesPath=$packagesProperty",
     "-p:RestoreAdditionalProjectSources=$feedProperty",
@@ -259,11 +270,12 @@ Invoke-DotNet -Arguments @(
 )
 $textDirectory = Join-Path $artifactsRoot "bin/ProGPU.Wpf.TextLayoutParityApp/Release/net10.0-windows"
 $textAppHost = Join-Path $textDirectory "ProGPU.Wpf.TextLayoutParityApp.exe"
-Assert-ExactPackageAsset (Join-Path $textDirectory "PresentationCore.dll") $transportPackage "runtimes/win-x64/lib/net10.0/PresentationCore.dll"
+Assert-ExactPackageAsset (Join-Path $textDirectory "PresentationCore.dll") $transportPackage "runtimes/$targetRid/lib/net10.0/PresentationCore.dll"
 Assert-ExactPackageAsset (Join-Path $textDirectory "PresentationFramework.dll") $transportPackage "lib/net10.0/PresentationFramework.dll"
-Assert-ExactPackageAsset (Join-Path $textDirectory "progpu_native.dll") $nativePackages[0].FullName "runtimes/win-x64/native/progpu_native.dll"
+Assert-ExactPackageAsset (Join-Path $textDirectory "progpu_native.dll") $nativePackages[0].FullName "runtimes/$targetRid/native/progpu_native.dll"
 Invoke-DotNet -Arguments @(
-    "build", $windowsTextProject, "-c", "Release", "-r", "win-x64",
+    "build", $windowsTextProject, "-c", "Release", "-r", $targetRid,
+    "-p:PlatformTarget=$TargetArchitecture",
     "-p:BaseIntermediateOutputPath=$($windowsTextObj.Replace('\', '/'))/",
     "-p:OutputPath=$($windowsTextBin.Replace('\', '/'))/",
     "-p:AppendTargetFrameworkToOutputPath=false",
@@ -287,4 +299,4 @@ Assert-TextMetricNear "font size" $nativeLayout.Font $portableLayout.Font 0.001
 for ($i = 0; $i -lt $nativeLayout.Tops.Count; $i++) {
     Assert-TextMetricNear "line $i top" $nativeLayout.Tops[$i] $portableLayout.Tops[$i] 0.05
 }
-Write-Host "Windows x64 package-only native MIL Showcase and same-source text-layout checks succeeded."
+Write-Host "Windows $TargetArchitecture package-only native MIL Showcase and same-source text-layout checks succeeded."

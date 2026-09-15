@@ -15,6 +15,19 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Merged Windows ARM64 package application gate; CI admission next — 2026-09-15:**
+The merge-commit LibreWPF/ProGPU/LibreWinForms package closure built the
+unchanged Showcase as a native Windows ARM64 apphost in Parallels. Exact
+managed/bridge/native output hashes match NuGet members; pre-display and
+displayed `Application.Run` self-tests pass. Same-source native-MIL and stock
+Windows WPF text-layout reports have identical five-line breaks and metrics.
+The existing x64-only Windows package gate is now architecture-selectable and
+has an authored ARM64 CI job. Run that actual `pwsh` job against the new head,
+keep x64 green, and only then merge this bounded qualification change. Visual
+text quality, additional platform/application scenarios and the broader
+DirectX/Direct2D goal remain separate. See the
+[exact Windows ARM64 record](../reports/native-mil-windows-arm64-package-parity-2026-09-15.md).
+
 **Pointer-monitor startup placement follow-up — 2026-09-15:** the coordinated
 startup-placement PRs are merged: ProGPU #164 at `eed951cd`, LibreWinForms #33
 at `e59758e3`, and LibreWPF #137 at `df759d0b`; all repositories had no open PR

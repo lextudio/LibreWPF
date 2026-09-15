@@ -48,6 +48,6 @@ Compare the Showcase and text-layout windows against Windows WPF in the final
 integrated qualification phase defined by `native-mil-core-delivery.md`.
 Canonical WinForms source integration requires the same ProGPU pin in
 LibreWinForms. [LibreWinForms #34](https://github.com/wieslawsoltes/LibreWinForms/pull/34)
-pins the provider head as coordinated dependency commit
-`2fc4775bb3990c484ff6f9f9389e194ba17341c1`; LibreWPF pins that exact
-LibreWinForms commit and retains its own exact-ProGPU-pin gate.
+merged as `c5f459c7b078eee47b2c32065ecac0899d87de0a` and pins ProGPU merge
+`21c60978539ca7893f04491249f08ad11141e475`; LibreWPF pins those exact
+merge commits and retains its own exact-ProGPU-pin gate.

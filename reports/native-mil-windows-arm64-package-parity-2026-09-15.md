@@ -68,3 +68,10 @@ with zero errors; the guest validation above used direct `dotnet` and process
 commands matching the script's architecture, package, renderer, and hit-test
 parameters. The new CI job must execute the actual script under its `pwsh`
 runner before this branch is merge-qualified.
+
+The first PR-head SDK producer failed its focused source-graph assertion because
+the workflow had gained the intended ARM64 job: exact-head references changed
+from 8/18 to 9/20. The guard now checks those counts and the explicit
+`windows-11-arm`/`-TargetArchitecture arm64` route. The focused graph test
+passes 1/1 locally after that correction; full CI must rerun at the corrected
+head rather than treating the first failed run as passing evidence.

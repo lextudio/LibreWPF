@@ -13210,10 +13210,13 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("name: LibreWPF Build", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_QUALIFIED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
-        Assert.Equal(8, sdkCiWorkflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        Assert.Equal(18, sdkCiWorkflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(9, sdkCiWorkflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(20, sdkCiWorkflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
         Assert.Contains("windows-native-mil-showcase:", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("./eng/progpu-wpf-windows-native-mil-showcase.ps1", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("windows-arm64-native-mil-showcase:", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("runs-on: windows-11-arm", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("librewpf-ci-packages-${{ github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("librewpf-windows-managed-runtime-${{ github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Equal(3, sdkCiWorkflow.Split("submodules: true", StringSplitOptions.None).Length - 1);

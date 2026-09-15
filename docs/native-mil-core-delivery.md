@@ -23,7 +23,8 @@ the primary monitor because the pre-window host had no typed global pointer
 query. The current purpose-named follow-up adds ProGPU `NativeDesktopPointer`
 providers for Win32, Cocoa, and X11, explicitly rejects Wayland/unknown window
 systems, and routes LibreWPF's monitor selection through that contract while
-preserving owner precedence and primary fallback. Backend and managed consumer
+preserving owner precedence and primary fallback. LibreWinForms #34 carries the
+matching dependency pin required by canonical integration. Backend and managed consumer
 graphs compile; the focused ProGPU provider cases pass 8/8 and the combined WPF
 activation/platform-selection cases pass 104/104. Multi-monitor platform and
 pixel qualification remain in the final validation phase. See [native window startup placement](native-window-startup-placement.md)

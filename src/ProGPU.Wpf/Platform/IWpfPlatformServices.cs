@@ -136,6 +136,12 @@ public interface IWpfInputService
 public interface IWpfMonitorService
 {
     IReadOnlyList<WpfMonitorInfo> GetMonitors();
+
+    bool TryGetPointerScreenPosition(out double x, out double y)
+    {
+        x = y = 0;
+        return false;
+    }
 }
 
 public interface IWpfTimerService

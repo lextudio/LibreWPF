@@ -15,6 +15,22 @@ do not automatically expand the release checklist.
 
 ## Active completion queue
 
+**Pointer-monitor startup placement follow-up — 2026-09-15:** the coordinated
+startup-placement PRs are merged: ProGPU #164 at `eed951cd`, LibreWinForms #33
+at `e59758e3`, and LibreWPF #137 at `df759d0b`; all repositories had no open PR
+at the follow-up start. Unowned `WindowStartupLocation.CenterScreen` still used
+the primary monitor because the pre-window host had no typed global pointer
+query. The current purpose-named follow-up adds ProGPU `NativeDesktopPointer`
+providers for Win32, Cocoa, and X11, explicitly rejects Wayland/unknown window
+systems, and routes LibreWPF's monitor selection through that contract while
+preserving owner precedence and primary fallback. ProGPU #165 merged at
+`21c60978`; LibreWinForms #34 merged at `c5f459c7` with the matching dependency
+pin required by canonical integration. Backend and managed consumer
+graphs compile; the focused ProGPU provider cases pass 8/8 and the combined WPF
+activation/platform-selection cases pass 104/104. Multi-monitor platform and
+pixel qualification remain in the final validation phase. See [native window startup placement](native-window-startup-placement.md)
+and ProGPU's [pointer provider](../external/ProGPU/docs/native-window-pointer-position.md).
+
 **Post-merge Windows text-layout follow-up — 2026-09-15:** LibreWPF #131 is
 merged at `a89e8d233`, and its post-merge Build
 [34897880315](https://github.com/wieslawsoltes/LibreWPF/actions/runs/34897880315)

@@ -1,10 +1,41 @@
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Backend;
 using Xunit;
 
 namespace ProGPU.Wpf.Tests.Platform;
 
 public sealed class SilkNetGlfwPlatformSelectorTests
 {
+    [Theory]
+    [InlineData(true, false, false, null, null, null, null, (int)NativeWindowKind.Win32)]
+    [InlineData(false, true, false, null, null, null, null, (int)NativeWindowKind.Cocoa)]
+    [InlineData(false, false, true, "x11", null, ":0", null, (int)NativeWindowKind.X11)]
+    [InlineData(false, false, true, "wayland", "wayland-0", ":0", null, (int)NativeWindowKind.X11)]
+    [InlineData(false, false, true, "wayland", "wayland-0", ":0", "wayland", (int)NativeWindowKind.Wayland)]
+    [InlineData(false, false, true, "wayland", "wayland-0", null, null, (int)NativeWindowKind.Wayland)]
+    [InlineData(false, false, false, null, null, null, null, (int)NativeWindowKind.Unknown)]
+    public void DesktopPointerProviderMatchesSelectedWindowSystem(
+        bool isWindows,
+        bool isMacOS,
+        bool isLinux,
+        string? sessionType,
+        string? waylandDisplay,
+        string? x11Display,
+        string? configuredPreference,
+        int expected)
+    {
+        Assert.Equal(
+            (NativeWindowKind)expected,
+            SilkNetWpfMonitorService.ResolveDesktopPointerPlatformKind(
+                isWindows,
+                isMacOS,
+                isLinux,
+                sessionType,
+                waylandDisplay,
+                x11Display,
+                configuredPreference));
+    }
+
     [Theory]
     [InlineData("wayland", "wayland-0", ":0", null, (int)LinuxGlfwPlatformPreference.X11)]
     [InlineData("wayland", "wayland-0", null, null, (int)LinuxGlfwPlatformPreference.Any)]

@@ -1001,8 +1001,17 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
             (!TryGetPortableWindowState(state.Owner!, out var ownerState) ||
              !ownerState.HasWindowState || ownerState.WindowState == 0);
 
-        IReadOnlyList<WpfMonitorInfo> monitors = Host.PlatformServices.Monitors.GetMonitors();
-        PortableRect? workArea = SelectStartupWorkArea(monitors, ownerBounds);
+        IWpfMonitorService monitorService = Host.PlatformServices.Monitors;
+        IReadOnlyList<WpfMonitorInfo> monitors = monitorService.GetMonitors();
+        PortablePoint? pointerPosition = null;
+        if (ownerBounds == null &&
+            monitorService.TryGetPointerScreenPosition(out double pointerX, out double pointerY) &&
+            double.IsFinite(pointerX) && double.IsFinite(pointerY))
+        {
+            pointerPosition = new PortablePoint(pointerX, pointerY);
+        }
+
+        PortableRect? workArea = SelectStartupWorkArea(monitors, ownerBounds, pointerPosition);
         if (workArea == null)
             return;
 
@@ -1025,9 +1034,17 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
 
     internal static PortableRect? SelectStartupWorkArea(
         IReadOnlyList<WpfMonitorInfo> monitors,
-        PortableRect? ownerBounds)
+        PortableRect? ownerBounds,
+        PortablePoint? pointerPosition = null)
     {
-        var selection = new PortablePopupMonitorSelection(ownerBounds ?? new PortableRect(0, 0, 0, 0));
+        PortableRect? target = ownerBounds;
+        if (target == null && pointerPosition is PortablePoint pointer &&
+            double.IsFinite(pointer.X) && double.IsFinite(pointer.Y))
+        {
+            target = new PortableRect(pointer.X, pointer.Y, 0, 0);
+        }
+
+        var selection = new PortablePopupMonitorSelection(target ?? new PortableRect(0, 0, 0, 0));
         PortableRect? primaryWorkArea = null;
         PortableRect? firstWorkArea = null;
         for (int i = 0; i < monitors.Count; i++)
@@ -1042,11 +1059,11 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
             firstWorkArea ??= workArea;
             if (monitor.IsPrimary)
                 primaryWorkArea = workArea;
-            if (ownerBounds.HasValue)
+            if (target.HasValue)
                 selection.Consider(screen, workArea, monitor.IsPrimary);
         }
 
-        if (ownerBounds.HasValue && selection.TryGetBounds(out var selected))
+        if (target.HasValue && selection.TryGetBounds(out var selected))
             return selected.WorkArea;
         return primaryWorkArea ?? firstWorkArea;
     }

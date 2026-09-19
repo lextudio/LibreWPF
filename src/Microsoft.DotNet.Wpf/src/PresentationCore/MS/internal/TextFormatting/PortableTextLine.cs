@@ -108,6 +108,13 @@ internal sealed class PortableTextLine : TextLine
 
     internal static TextLine Create(FormatSettings settings, int first, int idealWidth, double pixelsPerDip)
     {
+        // TextFormattingMode.Display is not implemented by the portable paragraph contract, but it
+        // is not a fatal condition either: the source SimpleTextLine path has always supported it
+        // (see its own TextFormattingMode.Display branches). Decline here - return null - so
+        // TextFormatterImp.FormatLineInternal falls through to SimpleTextLine, which is exactly
+        // what happened before the portable provider was wired up. Only Ideal keeps the native
+        // portable paragraph.
+        if (settings.TextFormattingMode != TextFormattingMode.Ideal) return null;
         TextLine continuation = CreateContinuation(settings, first, idealWidth, pixelsPerDip);
         if (continuation != null) return continuation;
         if (!PortableWpfServiceRegistry.TryGetTextFormatting(out var service)) return null;
@@ -157,10 +164,13 @@ internal sealed class PortableTextLine : TextLine
         PortableTextExclusionRequest exclusions = (settings.TextSource as IPortableExcludedTextSource)?.GetExclusions(first);
         if (exclusions != null && (measureIntrinsicWidths || service is not IPortableExcludedTextFormatting || width <= 0))
             throw Unsupported("excluded source formatting requires a bounded width and explicit native provider; intrinsic formatting remains separate");
-        if (settings.IsSideways || settings.TextFormattingMode != TextFormattingMode.Ideal || pap.TextMarkerProperties != null ||
+        // TextFormattingMode is deliberately NOT checked here: Create() above declines any mode
+        // other than Ideal so this path is only reached for Ideal, and a caller that reaches it
+        // directly still gets a usable ideal-metric line instead of an exception.
+        if (settings.IsSideways || pap.TextMarkerProperties != null ||
             (pap.TextDecorations?.Count ?? 0) != 0 ||
             pap.Tabs?.Count > 0)
-            throw Unsupported($"display hinting, sideways text, markers, paragraph decorations or custom tabs " +
+            throw Unsupported($"sideways text, markers, paragraph decorations or custom tabs " +
                 $"(mode={settings.TextFormattingMode}, sideways={settings.IsSideways}, marker={pap.TextMarkerProperties != null}, " +
                 $"decorations={pap.TextDecorations?.Count ?? 0}, justify={pap.Justify}, tabs={pap.Tabs?.Count ?? 0})");
 

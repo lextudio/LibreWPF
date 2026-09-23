@@ -311,6 +311,8 @@ do
     --verbosity minimal \
     -p:Version="${progpu_source_package_version}" \
     -p:PackageVersion="${progpu_source_package_version}" \
+    -p:Platform=AnyCPU \
+    -p:PlatformTarget=AnyCPU \
     -p:ContinuousIntegrationBuild=true
 done
 

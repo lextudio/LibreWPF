@@ -87,6 +87,16 @@ fidelity, all application interactions or another platform's qualification.
 
 ## Validation state
 
+The first Windows wiring Build at `a00b37a2a` stopped in the SDK source guard
+([job 108479995458](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36268541312/job/108479995458)):
+the two new exact-head evidence names increased the workflow reference count
+from 22 to 24. Neither native Windows job ran. The corrected guard retains all
+ten exact-head checkouts and separately requires Python 3.12, launcher controls,
+the idle opt-in and retained evidence inside each architecture's job. The
+focused checked-in C# guard passed in a source-only harness; that is not a full
+SDK or native application result. The failed Build remains historical evidence,
+and the replacement exact head still requires the complete CI matrix.
+
 The endpoint helper has strict zero/nonzero/regressed-frame controls and a
 two-endpoint execution contract. Source guards preserve the side-effect-free
 interval and real Showcase ownership seam. The launcher has offline negative

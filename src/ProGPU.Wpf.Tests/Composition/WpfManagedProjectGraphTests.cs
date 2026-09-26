@@ -6,6 +6,43 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WpfManagedProjectGraphTests
 {
     [Fact]
+    public void WindowsNativePassiveIdleWorkflowKeepsBothArchitectureContracts()
+    {
+        string workflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
+        AssertWindowsNativePassiveIdleWorkflow(workflow);
+    }
+
+    private static void AssertWindowsNativePassiveIdleWorkflow(string workflow)
+    {
+        Assert.Equal(10, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        // Ten checkout refs plus fourteen exact-head artifact producer/consumer names.
+        Assert.Equal(24, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        foreach (string architecture in new[] { "x64", "arm64" })
+        {
+            string jobName = architecture == "x64" ? "windows-native-mil-showcase" : "windows-arm64-native-mil-showcase";
+            string nextJob = architecture == "x64" ? "windows-arm64-native-mil-showcase" : "linux-xwayland-smoke";
+            int start = workflow.IndexOf($"  {jobName}:\n", StringComparison.Ordinal);
+            Assert.True(start >= 0, $"Missing native idle job {jobName}.");
+            int end = workflow.IndexOf($"\n  {nextJob}:", start, StringComparison.Ordinal);
+            Assert.True(end > start, $"Missing job boundary after {jobName}.");
+            string job = workflow[start..end];
+            Assert.Contains("needs: sdk-smoke", job, StringComparison.Ordinal);
+            Assert.Contains("timeout-minutes: 40", job, StringComparison.Ordinal);
+            Assert.Contains("uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'", job, StringComparison.Ordinal);
+            Assert.Contains("run: ./eng/test-progpu-wpf-windows-native-idle.ps1", job, StringComparison.Ordinal);
+            string command = architecture == "x64"
+                ? "run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle"
+                : "run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle";
+            Assert.Contains(command, job, StringComparison.Ordinal);
+            AssertGuardBefore(job, "uses: actions/setup-python@v5", "run: ./eng/test-progpu-wpf-windows-native-idle.ps1");
+            AssertGuardBefore(job, "run: ./eng/test-progpu-wpf-windows-native-idle.ps1", command);
+            Assert.Contains($"name: showcase-native-idle-win-{architecture}-${{{{ env.PROGPU_WPF_QUALIFIED_COMMIT }}}}", job, StringComparison.Ordinal);
+            Assert.Contains($"path: artifacts/showcase-native-idle/win-{architecture}/**", job, StringComparison.Ordinal);
+            Assert.Contains("if: always()\n        uses: actions/upload-artifact@v4", job, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void SdkSliderDragContractRunsRealControlsInBoundedFreshProcesses()
     {
         string harness = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf.SdkExternalSmokeHarness", "Program.cs"));
@@ -13365,8 +13402,7 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("name: LibreWPF Build", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_QUALIFIED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
-        Assert.Equal(10, sdkCiWorkflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        Assert.Equal(22, sdkCiWorkflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        AssertWindowsNativePassiveIdleWorkflow(sdkCiWorkflow);
         int retainedJobStart = sdkCiWorkflow.IndexOf("  retained-invalidation:\n", StringComparison.Ordinal);
         Assert.True(retainedJobStart >= 0, "The fast retained-invalidation job must be present.");
         int retainedJobEnd = sdkCiWorkflow.IndexOf("\n  canonical-winforms-integration:", retainedJobStart, StringComparison.Ordinal);

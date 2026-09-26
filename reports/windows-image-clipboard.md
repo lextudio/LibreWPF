@@ -111,3 +111,33 @@ found and corrected the standalone consumer's inherited copy-local suppression:
 its declared xUnit assertion DLL now accompanies the executable. Existing exact-head
 CI and Windows x64/ARM64 package/runtime gates remain required; source compilation
 and this failed diagnostic do not close issue117.
+
+## Preserved SDK failure and main integration
+
+Exact head `1b971273206f45f29a35e382cea1c0de559a3f33` failed the macOS SDK
+job in [Build 36267516062](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36267516062/job/108477431838),
+before Toolkit or the downstream Windows clipboard jobs ran. Showcase's real
+live Thumb precondition exhausted its existing attempts: the target was visible,
+enabled and hit-test-visible at 32×20, but source `InputHitTest` at `(16,470.087)`
+returned a `Border` outside the target's ancestry. This happened before that
+attempt injected drag input. The app exited after approximately94 seconds,
+within the unchanged180-second outer deadline; this was an assertion failure,
+not a Toolkit Splitter timeout.
+
+The full retained job log has SHA-256
+`cef21b466b1a75e048ba4e362b5d6aac32a147b3d844d83dd2723444135a0787`.
+It does not identify the returned Border's ancestors, templated owner or clip.
+Toolkit had not started, so its always-upload step explicitly found no diagnostic
+files and no Toolkit screenshot/receipt exists for this run. No renderer,
+runtime, clipboard or historical issue117 cause is inferred from that failure.
+
+Main `915df76c1b19889ee7ab8992d4313c1568dbd645` is now integrated, retaining
+all clipboard product/consumer contracts and Toolkit failure diagnostics, plus
+the separately merged #181/#182 work. The incoming #181 final-failed-attempt
+Thumb diagnostic adds selected-tab, presentation-source, ancestor/templated-owner,
+layout-validity, transform and clip evidence. It neither repairs layout nor changes
+input admission, deadlines or assertions. This integration is not a fix for the
+recorded failure and not retry-as-qualification: the new exact combined head must
+pass the entire source/package Build and both actual Windows clipboard jobs.
+Only lightweight syntax/offline integration checks were run locally; no new
+native application, heavy build or VM execution was performed.

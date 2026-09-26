@@ -485,6 +485,11 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (StartIdleLayoutClipValidationIfRequested())
+        {
+            return;
+        }
+
         if (Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) != "1")
         {
             return;
@@ -3124,13 +3129,20 @@ public partial class MainWindow : Window
                 liveHost,
                 () =>
                 {
-                    return TryRaiseLiveThumbDrag(
+                    Thumb thumb = Require<Thumb>(inputDragThumb, "Showcase live input drag Thumb attempt");
+                    bool inputRaised = TryRaiseLiveThumbDrag(
                         liveHost,
-                        Require<Thumb>(inputDragThumb, "Showcase live input drag Thumb attempt"),
+                        thumb,
                         "InputDragThumb",
                         horizontalDelta: 18.0,
                         verticalDelta: 12.0,
                         out lastTargetState);
+                    if (!inputRaised && attempt == LiveValidationMaxAttempts - 1)
+                    {
+                        lastTargetState += DescribeLiveThumbHitFailure(thumb);
+                    }
+
+                    return inputRaised;
                 },
                 DispatcherPriority.Send);
             if (sentDragInput)

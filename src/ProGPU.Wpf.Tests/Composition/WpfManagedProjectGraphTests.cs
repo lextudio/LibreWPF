@@ -6,6 +6,32 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WpfManagedProjectGraphTests
 {
     [Fact]
+    public void ShowcaseThumbFailureDiagnosticsStayBoundedAndObservational()
+    {
+        string source = File.ReadAllText(FindRepoPath("samples", "ProGPU.Wpf.ShowcaseApp", "MainWindow.InputDiagnostics.cs"));
+        string caller = File.ReadAllText(FindRepoPath("samples", "ProGPU.Wpf.ShowcaseApp", "MainWindow.xaml.cs"));
+        Assert.Contains("if (!inputRaised && attempt == LiveValidationMaxAttempts - 1)", caller, StringComparison.Ordinal);
+        Assert.Contains("lastTargetState += DescribeLiveThumbHitFailure(thumb);", caller, StringComparison.Ordinal);
+        Assert.Contains("TransformToDescendant(visual).Transform(rootPoint)", source, StringComparison.Ordinal);
+        Assert.Contains("SourceClipContainsPoint={clip.FillContains(localPoint)}", source, StringComparison.Ordinal);
+        Assert.Contains("ClipTransform={clip.Transform?.Value}", source, StringComparison.Ordinal);
+        Assert.Contains("TemplatePresent={target.Template is not null}", source, StringComparison.Ordinal);
+        Assert.Contains("VisualTreeHelper.GetDrawing(visual)", source, StringComparison.Ordinal);
+        Assert.Contains("int remaining = 64;", source, StringComparison.Ordinal);
+        Assert.Contains("depth >= 8", source, StringComparison.Ordinal);
+        Assert.Contains("object?[] owners = new object?[128];", source, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryHitTestOwners(this, center.X, center.Y, owners.AsSpan(), out int count)", source, StringComparison.Ordinal);
+        Assert.Contains("PostFailureGpuQuery=", source, StringComparison.Ordinal);
+        Assert.Contains("FrameBefore=", source, StringComparison.Ordinal);
+        Assert.Contains("FrameAfter=", source, StringComparison.Ordinal);
+        Assert.Contains("AtCapacity={count == owners.Length}", source, StringComparison.Ordinal);
+        Assert.Contains("GpuDiagnosticError=", source, StringComparison.Ordinal);
+        Assert.Contains("ThumbDiagnosticError=", source, StringComparison.Ordinal);
+        foreach (string mutation in new[] { "ApplyTemplate(", "UpdateLayout(", "BringIntoView(", "WakeLiveRenderHost(", "RaiseHostInput(", "Task.Delay(", "SetValue(" })
+            Assert.DoesNotContain(mutation, source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SdkSliderDragContractRunsRealControlsInBoundedFreshProcesses()
     {
         string harness = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf.SdkExternalSmokeHarness", "Program.cs"));

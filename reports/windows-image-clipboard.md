@@ -141,3 +141,26 @@ recorded failure and not retry-as-qualification: the new exact combined head mus
 pass the entire source/package Build and both actual Windows clipboard jobs.
 Only lightweight syntax/offline integration checks were run locally; no new
 native application, heavy build or VM execution was performed.
+
+The integrated `1170b29afd90ffb98d368950e3e151d0ca4ec695` failed the same
+precondition in [Build 36269872346](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36269872346/job/108484453658).
+Both target and Window resolve to the same presentation source; layout is valid.
+The selected hit belongs to the outer TabControl template Border, not the Thumb.
+The recorded offsets place the Thumb center at `(16,226.4931640625)` in the
+ancestor with reported rectangle `(0,0,506.66666666666663,254.607421875)`.
+Those coordinates alone do not establish the geometry's transform, actual
+containment, template drawing admission or retained GPU owner selection. The
+source `InputHitTest` is connected to the portable GPU owner-query override.
+The full job log SHA-256 is
+`075b5a44dc324b67ec1ba6971f6c7f0e7d6326a6e7874d9a3edc647db491ec96`.
+Toolkit and downstream native clipboard jobs again did not run.
+
+The next final-failure diagnostic records the actual clip-local point, clip
+affine and source containment; existing Thumb template/drawing descendants
+(at most64 visual nodes and depth8); and at most128 raw GPU owners through the
+existing typed query. This is explicitly a **post-failure** query: it may refresh
+the index, so before/after presented-frame identities are retained and it is not
+claimed to be the original rejected query. Truncation and diagnostic errors are
+reported. No layout/template repair, input, retry, fallback, assertion or deadline
+change is made. The checked-in focused source guard and Roslyn syntax check pass
+without building/running Showcase; actual compilation and full CI remain required.

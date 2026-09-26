@@ -6,6 +6,30 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WpfManagedProjectGraphTests
 {
     [Fact]
+    public void ShowcaseFailureArchiveStaysSeparateFromQualifiedPackages()
+    {
+        string workflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
+        Assert.Equal(10, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(24, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(14, workflow.Split('\n').Count(line =>
+            line.TrimStart().StartsWith("name: ", StringComparison.Ordinal) &&
+            line.Contains("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringComparison.Ordinal)));
+        Assert.Contains("name: Validate Showcase failure archive controls", workflow, StringComparison.Ordinal);
+        Assert.Contains("run: python3 eng/tests/test_showcase_failure_archive.py", workflow, StringComparison.Ordinal);
+        Assert.Contains("id: sdk-gate", workflow, StringComparison.Ordinal);
+        Assert.Contains("if: ${{ failure() && steps.sdk-gate.outcome == 'failure' }}", workflow, StringComparison.Ordinal);
+        Assert.Contains("python3 eng/progpu-wpf-preserve-showcase.py", workflow, StringComparison.Ordinal);
+        int start = workflow.IndexOf("      - name: Upload failed Showcase diagnostic closure\n", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        int end = workflow.IndexOf("      - name: Upload Toolkit live probe diagnostics\n", start, StringComparison.Ordinal);
+        Assert.True(end > start);
+        string upload = workflow.Substring(start, end - start);
+        Assert.Contains("if: always()", upload, StringComparison.Ordinal);
+        Assert.Contains("name: showcase-failure-diagnostics-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", upload, StringComparison.Ordinal);
+        Assert.Contains("path: artifacts/showcase-failure/**", upload, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ShowcaseThumbFailureDiagnosticsStayBoundedAndObservational()
     {
         string source = File.ReadAllText(FindRepoPath("samples", "ProGPU.Wpf.ShowcaseApp", "MainWindow.InputDiagnostics.cs"));
@@ -13430,7 +13454,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("name: LibreWPF Build", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_QUALIFIED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Equal(10, sdkCiWorkflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        Assert.Equal(22, sdkCiWorkflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(24, sdkCiWorkflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        ShowcaseFailureArchiveStaysSeparateFromQualifiedPackages();
         int retainedJobStart = sdkCiWorkflow.IndexOf("  retained-invalidation:\n", StringComparison.Ordinal);
         Assert.True(retainedJobStart >= 0, "The fast retained-invalidation job must be present.");
         int retainedJobEnd = sdkCiWorkflow.IndexOf("\n  canonical-winforms-integration:", retainedJobStart, StringComparison.Ordinal);

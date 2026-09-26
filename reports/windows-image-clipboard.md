@@ -164,3 +164,36 @@ claimed to be the original rejected query. Truncation and diagnostic errors are
 reported. No layout/template repair, input, retry, fallback, assertion or deadline
 change is made. The checked-in focused source guard and Roslyn syntax check pass
 without building/running Showcase; actual compilation and full CI remain required.
+
+The SDK workflow now prepares a separate failure-only Showcase archive after a
+failed SDK step. `eng/progpu-wpf-preserve-showcase.py` retains the actual built
+Debug app directory (apphost, managed assemblies, dependency/runtime manifests,
+fonts and content) and the two already-staged native input directories. Its fresh
+private receipt records source commit, recursive submodule state, workflow run
+and attempt, every archived file's SHA-256/size/mode and the archive SHA-256.
+Capture rejects missing required payloads, links, changed inputs and exceeded
+budgets (4096 files, 256 MiB source bytes, 272 MiB compressed, 90 seconds inside
+a two-minute step). An incomplete capture stays explicitly incomplete, with its
+original failed job still failed. No app is launched or rebuilt by this step.
+
+`showcase-failure-diagnostics-<source SHA>` is intentionally separate from the
+successful CI package bundle and is **never a qualified package producer**.
+Staged native files are not proof of which modules the failed process loaded;
+the .NET runtime and operating-system dependencies are not distributed. The
+runtimeconfig, dependency manifest and exact retained bytes enable a later
+controlled diagnostic launch, not a rendering or clipboard qualification claim.
+The 15 offline archive controls exercise inert byte fixtures only; they do not
+run Showcase or replace any existing SDK, input or Windows gate.
+
+Exact `b3e88a5c90e5b3acd0fbe9abc02bf0b0e31af4d2` reached and passed the actual
+Showcase Thumb capture/drag/release and Toolkit live gates in
+[Build 36272431104](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36272431104/job/108491679689).
+Consequently its failure-only Thumb diagnostic did not execute. The SDK job then
+failed the unchanged packaging graph guard: it expected 22 exact-head expressions,
+but the already-added Toolkit diagnostic artifact made 23. The new Showcase
+archive makes 24: ten checkout refs plus fourteen artifact names, now explicitly
+checked by the focused executable source guard as well as the original full guard.
+No original job, input assertion or deadline is removed. This observed live pass
+does not explain or repair the retained earlier Thumb failures and the failed
+producer is not qualified. The full job log SHA-256 is
+`e3d43eb9427be9bf941c37282106cff17935fd3fd0a9e4e08aa9e298cec00253`.

@@ -97,6 +97,18 @@ focused checked-in C# guard passed in a source-only harness; that is not a full
 SDK or native application result. The failed Build remains historical evidence,
 and the replacement exact head still requires the complete CI matrix.
 
+The subsequent `2f8eb19b3` Build
+([36271307857](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36271307857))
+failed the shared Showcase Thumb input acceptance before either Windows idle
+job ran. That failure remains evidence, not a native idle result. This branch
+now integrates qualified main `455d962b758788bb8d0a083edb299eeb39c95ec0`, including
+the retained dirty-source/topology fix from PR #174. Its original strict input
+gate and failure archives remain unchanged. The combined workflow has ten
+exact-head checkout references and sixteen artifact names, checked by both
+complete source guards. Full CI on this combined head, including actual x64
+and ARM64 four-phase native idle receipts, is still required; the earlier
+failed Build is not reclassified as passing.
+
 The endpoint helper has strict zero/nonzero/regressed-frame controls and a
 two-endpoint execution contract. Source guards preserve the side-effect-free
 interval and real Showcase ownership seam. The launcher has offline negative

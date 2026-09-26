@@ -92,6 +92,7 @@ public partial class MainWindow : Window
     private const string LiveValidationStatusPathEnvironmentVariable = "PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_STATUS_PATH";
     private const int LiveValidationStartupMaxAttempts = 7500;
     private const int LiveValidationMaxAttempts = 400;
+    private static readonly long LiveValidationClockOrigin = Environment.TickCount64;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
     private static readonly string[] AvalonDockThemeNames = ["Aero", "Metro", "VS2010"];
     private readonly ToolkitViewModel _viewModel = new();
@@ -101,6 +102,7 @@ public partial class MainWindow : Window
     private int _avalonDockAutoHideOverlayIndex;
     private bool _liveValidationStarted;
     private volatile bool _liveValidationShutdownRequested;
+    private int _liveClickTraceCount;
 
     public MainWindow()
     {
@@ -4729,8 +4731,20 @@ public partial class MainWindow : Window
 
     private static void WriteLiveValidationProgress(string progress)
     {
-        Console.WriteLine($"ProGPU WPF Toolkit live input validation progress: {progress}.");
+        Console.WriteLine($"ProGPU WPF Toolkit live input validation progress: {progress}. " +
+            $"Elapsed={Environment.TickCount64 - LiveValidationClockOrigin}ms.");
         Console.Out.Flush();
+    }
+
+    private void WriteLiveClickStage(bool enabled, string targetName, string stage)
+    {
+        // Bound diagnostics across the outer action retry as well as individual
+        // ownership retries. Logging must not submit another native query.
+        if (enabled && _liveClickTraceCount < 256)
+        {
+            _liveClickTraceCount++;
+            WriteLiveValidationProgress($"{targetName}: {stage}");
+        }
     }
 
     private async Task ValidateLivePopupOpenCloseAsync(
@@ -4847,6 +4861,8 @@ public partial class MainWindow : Window
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
             await ClickLiveControlAsync(liveHost, splitActionButtonPart, "SplitActionButton.PART_ActionButton");
+            WriteLiveClickStage(attempt < 2 || attempt % 100 == 0,
+                "SplitActionButton.PART_ActionButton", $"checking action status after click {attempt + 1}");
             if (await InvokeWithLiveHostWakeAsync(
                     liveHost,
                     () => string.Equals(ViewModel.Status, "Applied owner ProGPU", StringComparison.Ordinal),
@@ -5283,17 +5299,24 @@ public partial class MainWindow : Window
         string lastTargetState = "not checked";
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
+            bool traceStages = targetName == "SplitActionButton.PART_ActionButton" &&
+                (attempt < 2 || attempt % 100 == 0 || attempt == LiveValidationMaxAttempts - 1);
+            WriteLiveClickStage(traceStages, targetName, $"dispatching click attempt {attempt + 1}");
             bool sentClick = await InvokeWithLiveHostWakeAsync(
                 liveHost,
-                () => TryRaiseLiveMouseClick(liveHost, target, targetName, attempt == 0, out lastTargetState),
+                () => TryRaiseLiveMouseClick(liveHost, target, targetName, attempt == 0, out lastTargetState,
+                    traceStages: traceStages),
                 DispatcherPriority.Send);
+            WriteLiveClickStage(traceStages, targetName, $"click attempt returned {sentClick}: {lastTargetState}");
             if (sentClick)
             {
+                WriteLiveClickStage(traceStages, targetName, "waiting for background dispatcher after click");
                 await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+                WriteLiveClickStage(traceStages, targetName, "background dispatcher completed after click");
                 return;
             }
 
-            if (attempt % 500 == 0)
+            if (attempt % 100 == 0 || attempt == LiveValidationMaxAttempts - 1)
             {
                 WriteLiveValidationProgress(
                     $"waiting for {targetName} native input ownership at attempt {attempt + 1}: {lastTargetState}");
@@ -5315,17 +5338,22 @@ public partial class MainWindow : Window
         FrameworkElement target,
         string targetName,
         bool traceDetails,
-        out string targetState)
+        out string targetState,
+        bool traceStages = false)
     {
         // A floated document is no longer in MainWindow's visual tree. Use the
         // same source root as the host receiving this input, without screen/DPI remapping.
         var inputRoot = liveHost.WpfRootVisual as UIElement
             ?? throw new InvalidOperationException("Toolkit live input requires its host's source UIElement root.");
+        WriteLiveClickStage(traceStages, targetName, "resolving initial source center");
         Point initialCenter = target.TranslatePoint(
             new Point(Math.Max(1.0, target.ActualWidth) / 2.0, Math.Max(1.0, target.ActualHeight) / 2.0),
             inputRoot);
+        WriteLiveClickStage(traceStages, targetName, "bringing target into view");
         target.BringIntoView();
+        WriteLiveClickStage(traceStages, targetName, "updating target layout");
         target.UpdateLayout();
+        WriteLiveClickStage(traceStages, targetName, "target layout updated");
 
         targetState =
             $"{targetName}.IsVisible={target.IsVisible}, " +
@@ -5356,6 +5384,7 @@ public partial class MainWindow : Window
         bool traceAutoHideAnchor = traceDetails &&
             targetName.EndsWith("AutoHideAnchorControl", StringComparison.Ordinal);
         Point preferredCenter = center;
+        WriteLiveClickStage(traceStages, targetName, "finding source hit point");
         if (!TryFindSourceHitPoint(inputRoot, target, preferredCenter, out center, out DependencyObject? sourceHit))
         {
             targetState += $", PreferredInput=({preferredCenter.X:0.###}, {preferredCenter.Y:0.###}), " +
@@ -5381,7 +5410,9 @@ public partial class MainWindow : Window
             WriteLiveValidationProgress($"querying {targetName} source input owner");
         }
 
+        WriteLiveClickStage(traceStages, targetName, "querying source input owner");
         object? hit = inputRoot.InputHitTest(center);
+        WriteLiveClickStage(traceStages, targetName, $"source input owner={DescribeInputElement(hit)}");
         bool hitWithinTarget = hit != null && IsInputElementWithinTarget(hit, target);
         if (traceAutoHideAnchor)
         {
@@ -5436,6 +5467,7 @@ public partial class MainWindow : Window
             WriteLiveValidationProgress($"querying {targetName} diagnostic native owners");
         }
 
+        WriteLiveClickStage(traceStages, targetName, "querying existing diagnostic native owners");
         if (!TryLiveHostGpuHitWithinTarget(liveHost, center.X, center.Y, target,
                 targetName == "FloatingEditorTextBox", out string gpuHitState))
         {
@@ -5448,25 +5480,30 @@ public partial class MainWindow : Window
             WriteLiveValidationProgress($"queried {targetName} diagnostic native owners");
         }
 
+        WriteLiveClickStage(traceStages, targetName, "diagnostic native owners accepted");
         targetState += $", {gpuHitState}";
         if (traceAutoHideAnchor)
         {
             WriteLiveValidationProgress($"raising {targetName} mouse move");
         }
 
+        WriteLiveClickStage(traceStages, targetName, "raising mouse move");
         RaiseHostInput(liveHost, WpfInputEventKind.MouseMove, x: center.X, y: center.Y);
         if (traceAutoHideAnchor)
         {
             WriteLiveValidationProgress($"raising {targetName} mouse down");
         }
 
+        WriteLiveClickStage(traceStages, targetName, "raising mouse down");
         RaiseHostInput(liveHost, WpfInputEventKind.MouseDown, x: center.X, y: center.Y, button: WpfMouseButton.Left);
         if (traceAutoHideAnchor)
         {
             WriteLiveValidationProgress($"raising {targetName} mouse up");
         }
 
+        WriteLiveClickStage(traceStages, targetName, "raising mouse up");
         RaiseHostInput(liveHost, WpfInputEventKind.MouseUp, x: center.X, y: center.Y, button: WpfMouseButton.Left);
+        WriteLiveClickStage(traceStages, targetName, "mouse click completed");
         if (traceAutoHideAnchor)
         {
             WriteLiveValidationProgress($"raised {targetName} mouse click");

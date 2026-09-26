@@ -197,3 +197,52 @@ No original job, input assertion or deadline is removed. This observed live pass
 does not explain or repair the retained earlier Thumb failures and the failed
 producer is not qualified. The full job log SHA-256 is
 `e3d43eb9427be9bf941c37282106cff17935fd3fd0a9e4e08aa9e298cec00253`.
+
+## Pending invalidation and stale tab owners
+
+Exact `6038d31dbbf82cb074a8cc09bf4d271c6ba65091` again failed the real Thumb
+precondition in [Build 36274663011](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36274663011/job/108497743761).
+The source Thumb had its real opaque Border drawing, valid layout and a point
+inside its actual ancestor clip: local `(16,226.4931640625)` within
+`(0,0,506.66666666666663,254.607421875)`, identity transform. The logical and
+pixel frame were both 760×560 at DPI1. The post-failure typed GPU query returned
+six owners, including `MultiSelectItemsList` and `SelectorGroupBox` from the
+previous Selectors tab, while the current source tab was Input. Before/after
+frame revisions were unchanged. This excludes a simple source-clip miss; the
+log alone does not distinguish every possible retained-scene/index defect.
+
+The failure-only artifact `10917183347` was successfully captured and independently
+verified: all 233 files, modes and per-file SHA-256 values, 79,517,327 payload
+bytes. Its outer ZIP SHA-256 is
+`ffa8fbe709e9d28843db36025755821183445536c95caeef8104a4a07b6ddc35`,
+inner archive SHA-256 is
+`31e55fa932d31e70640c9ce28b50542d081cd5d23ea088ed39d184618e10d4a3`,
+and job-log SHA-256 is
+`59a06acbf54345a79b38d42c530bbbf43ac2239fb0c88c756adcd70543fcf181`.
+It remains an explicitly unqualified failed-producer diagnostic closure.
+
+A deterministic ordered probe against those exact archived bridge and canonical
+source assemblies found a concrete invalidation defect. Replacing a real
+`ContainerVisual` child is detected normally. First mutating its tracked real
+`SolidColorBrush`, then replacing the child, leaves only the brush in the dirty
+set: `DetectVersionChanges` returned early merely because the tracker was already
+dirty. Partial branch replay could therefore select only the previous branch;
+`ConsumeDirty` then refreshed snapshots to the unreplayed new topology, and the
+next scan reported clean. The same sequence reproduces through typed descriptors.
+
+The correction runs the existing single state/children traversal even when a
+resource already marked the tracker dirty. New changes join the same dirty set;
+there is still only one coalesced `Invalidated` notification. A pending dirty
+state with no additional snapshot changes still returns true. No GPU query,
+owner-ID policy, clip, input assertion, layout timing or deadline changes.
+
+Nine focused rows cover add/remove/replace, state and availability changes,
+unchanged pending work, event coalescing and the existing retained-branch planner
+rejecting a partial replay after an unmapped replacement child. With the unchanged
+archived tracker, the 38 existing Facts and two pending-work controls pass, while
+seven new contracts fail. The linked corrected source passes all 47 rows. The
+small diagnostic harness uses host .NET 10 and does not replace the original
+SDK/native build policy; the archived application requested .NET 11 RC.
+The full exact-head source/package/application gates remain required. This
+source-level fix is consistent with the stale-tab evidence, not a claim that a
+new native application run or Windows clipboard qualification has passed.

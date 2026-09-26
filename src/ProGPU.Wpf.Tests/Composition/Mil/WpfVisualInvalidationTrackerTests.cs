@@ -550,6 +550,137 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.Contains(secondChild, tracker.DirtySources);
     }
 
+    [Theory]
+    [InlineData("add")]
+    [InlineData("remove")]
+    [InlineData("replace")]
+    [InlineData("state")]
+    public void PendingResourceInvalidationStillCollectsSourceChangesBeforeReplay(string change)
+    {
+        var resource = new FakePortableInvalidationResource();
+        var state = new PortableVisualState { HasOpacity = true, Opacity = 1.0 };
+        var previousChild = new FakePortableStateVisual(state);
+        var nextChild = new FakePortableStateVisual(new PortableVisualState { HasOpacity = true, Opacity = 0.75 });
+        var root = new FakePortableVisualChildrenOnly();
+        root.AddChild(resource);
+        root.AddChild(previousChild);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+        int notifications = 0;
+        tracker.Invalidated += (_, _) => notifications++;
+
+        resource.RaisePortableInvalidated();
+        switch (change)
+        {
+            case "add": root.AddChild(nextChild); break;
+            case "remove": Assert.True(root.RemoveChild(previousChild)); break;
+            case "replace": Assert.True(root.RemoveChild(previousChild)); root.AddChild(nextChild); break;
+            case "state": state.Opacity = 0.5; break;
+            default: throw new ArgumentOutOfRangeException(nameof(change));
+        }
+
+        // A resource notification is not evidence that every visual/topology
+        // change is already in the branch-replay set. Detect before consuming it.
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.Contains(resource, tracker.DirtySources);
+        Assert.Contains(change == "state" ? previousChild : root, tracker.DirtySources);
+        if (change is "add" or "replace") Assert.Contains(nextChild, tracker.DirtySources);
+        if (change is "remove" or "replace") Assert.Contains(previousChild, tracker.DirtySources);
+        int dirtyCount = tracker.DirtySourceCount;
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.Equal(dirtyCount, tracker.DirtySourceCount);
+        Assert.Equal(1, notifications); // Preserve coalesced scheduling.
+
+        Assert.True(tracker.ConsumeDirty());
+        Assert.False(tracker.DetectVersionChanges());
+        Assert.Empty(tracker.DirtySources);
+        resource.RaisePortableInvalidated();
+        Assert.Equal(2, notifications);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PendingInvalidationPreservesSnapshotAvailabilityChanges(bool initiallyAvailable)
+    {
+        var resource = new FakePortableInvalidationResource();
+        var child = new MutablePortableStateVisual(new PortableVisualState
+        {
+            HasOpacity = true, Opacity = 1.0
+        }) { PublishState = initiallyAvailable };
+        var root = new FakePortableVisualChildrenOnly();
+        root.AddChild(resource);
+        root.AddChild(child);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+        resource.RaisePortableInvalidated();
+        child.PublishState = !initiallyAvailable;
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.Contains(resource, tracker.DirtySources);
+        Assert.Contains(child, tracker.DirtySources);
+        Assert.True(tracker.ConsumeDirty());
+        Assert.False(tracker.DetectVersionChanges());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PendingInvalidationWithoutNewSnapshotsStillReturnsDirty(bool sourceEvent)
+    {
+        var root = new FakePortableInvalidationResource();
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+        int notifications = 0;
+        tracker.Invalidated += (_, _) => notifications++;
+        if (sourceEvent) root.RaisePortableInvalidated(); else tracker.MarkDirty(root);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.Single(tracker.DirtySources);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Equal(1, notifications);
+        Assert.True(tracker.ConsumeDirty());
+        Assert.False(tracker.DetectVersionChanges());
+    }
+
+    [Fact]
+    public void PendingResourceInvalidationCannotReplayOnlyOldBranchAfterChildReplacement()
+    {
+        var resource = new FakePortableInvalidationResource();
+        var previousChild = new FakePortableStateVisual(new PortableVisualState { HasOpacity = true, Opacity = 1 });
+        var nextChild = new FakePortableStateVisual(new PortableVisualState { HasOpacity = true, Opacity = 1 });
+        var root = new FakePortableVisualChildrenOnly();
+        root.AddChild(resource);
+        root.AddChild(previousChild);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+        var branches = new WpfRetainedVisualBranchMap();
+        var retainedRoot = new global::ProGPU.Scene.ContainerVisual();
+        var retainedChild = new global::ProGPU.Scene.ContainerVisual();
+        retainedRoot.AddChild(retainedChild);
+        branches.Register(root, retainedRoot);
+        branches.Register(previousChild, retainedChild);
+        branches.RegisterDependency(resource, retainedChild);
+
+        resource.RaisePortableInvalidated();
+        Assert.Same(previousChild, Assert.Single(branches.GetReplayTargetsForSources(tracker.DirtySources)).Source);
+        Assert.True(root.RemoveChild(previousChild));
+        root.AddChild(nextChild);
+        Assert.True(tracker.DetectVersionChanges());
+
+        // The new child has no retained branch yet. The existing planner must
+        // reject a partial replay instead of refreshing only the old tab branch.
+        Assert.Empty(branches.GetReplayTargetsForSources(tracker.DirtySources));
+        Assert.Contains(root, tracker.DirtySources);
+        Assert.Contains(previousChild, tracker.DirtySources);
+        Assert.Contains(nextChild, tracker.DirtySources);
+    }
+
     [Fact]
     public void DrawingForegroundBrushChangeMarksTrackerDirty()
     {

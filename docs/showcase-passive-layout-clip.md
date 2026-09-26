@@ -52,6 +52,31 @@ is no quiet-until-success loop. All four intervals require **exactly zero new
 presentations**. CPU, allocation and GC deltas are reported without invented
 performance thresholds; they include process-wide activity and observer cost.
 
+## Windows package CI connection
+
+The existing Windows x64 and ARM64 native MIL package Showcase jobs opt in with
+`eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle` (plus
+`-TargetArchitecture arm64` on ARM64). This uses the same apphost whose PE
+architecture, requested native mode and exact package assets have already been
+checked. The original pre-display, displayed and same-source text-layout matrix
+remain mandatory with their original deadlines; each job still has 40 minutes.
+
+Only around this additional child, the PowerShell launcher saves and clears the
+four conflicting pre-display, displayed, live and forced-performance modes,
+then restores the caller's exact settings in `finally`, including launch or
+receipt failures. It does not change renderer selection, adapter choice or the
+Python runner's 120-second deadline. Standalone Python invocation still rejects
+conflicting modes. Offline PowerShell controls verify this boundary without
+launching Showcase; they are not application qualification.
+
+Each attempt retains a fresh launcher transcript plus the existing runner's
+payload hashes, child output and mandatory receipts under
+`artifacts/showcase-native-idle/win-{x64,arm64}/`, outside the private temporary
+build/cache directory. Both CI jobs always upload that RID-specific directory,
+including failed attempts. Failure before a launch can leave no application
+receipt and is never an idle pass. Enabling these jobs is not itself a native
+idle result; qualification requires their actual four-phase successful receipts.
+
 Source/native checks happen outside the intervals. Failure receipts retain
 observed metrics. The original text, scroll request, selected tab, Expander,
 native size and temporary child are restored in `finally`; an unresponsive child

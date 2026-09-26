@@ -291,6 +291,15 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Setup passive idle runner Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate native idle launcher isolation
+        shell: pwsh
+        run: ./eng/test-progpu-wpf-windows-native-idle.ps1
+
       - name: Download exact CI package bundle
         uses: actions/download-artifact@v4
         with:
@@ -299,7 +308,15 @@ jobs:
 
       - name: Run package-only x64 native MIL Showcase
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle
+
+      - name: Upload x64 passive native idle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-native-idle-win-x64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/showcase-native-idle/win-x64/**
+          if-no-files-found: warn
 
   windows-arm64-native-mil-showcase:
     name: Windows ARM64 native MIL package Showcase
@@ -318,6 +335,15 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Setup passive idle runner Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate native idle launcher isolation
+        shell: pwsh
+        run: ./eng/test-progpu-wpf-windows-native-idle.ps1
+
       - name: Download exact CI package bundle
         uses: actions/download-artifact@v4
         with:
@@ -326,7 +352,15 @@ jobs:
 
       - name: Run package-only ARM64 native MIL Showcase
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle
+
+      - name: Upload ARM64 passive native idle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-native-idle-win-arm64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/showcase-native-idle/win-arm64/**
+          if-no-files-found: warn
 
   linux-xwayland-smoke:
     name: Linux Wayland-session XWayland input and popup smoke

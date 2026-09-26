@@ -13429,6 +13429,22 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("windows-arm64-native-mil-showcase:", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("runs-on: windows-11-arm", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Equal(2, sdkCiWorkflow.Split("run: ./eng/test-progpu-wpf-windows-native-idle.ps1", StringSplitOptions.None).Length - 1);
+        foreach (string architecture in new[] { "x64", "arm64" })
+        {
+            Assert.Contains($"name: showcase-native-idle-win-{architecture}-${{{{ env.PROGPU_WPF_QUALIFIED_COMMIT }}}}", sdkCiWorkflow, StringComparison.Ordinal);
+            Assert.Contains($"path: artifacts/showcase-native-idle/win-{architecture}/**", sdkCiWorkflow, StringComparison.Ordinal);
+        }
+        string nativeIdleGate = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-windows-native-mil-showcase.ps1"));
+        Assert.Contains("[switch] $ValidatePassiveIdle", nativeIdleGate, StringComparison.Ordinal);
+        Assert.Contains("if ($ValidatePassiveIdle)", nativeIdleGate, StringComparison.Ordinal);
+        Assert.Contains("Invoke-ShowcaseIdleCheck $appHost (Join-Path $repoRoot \"artifacts/showcase-native-idle/$targetRid\")", nativeIdleGate, StringComparison.Ordinal);
+        AssertGuardBefore(nativeIdleGate, "Assert-RequestedRendererMode $appHost", "if ($ValidatePassiveIdle)");
+        AssertGuardBefore(nativeIdleGate, "Invoke-ShowcaseCheck \"displayed\"", "if ($ValidatePassiveIdle)");
+        Assert.Contains("eng/progpu-wpf-showcase-idle.py", nativeIdleGate, StringComparison.Ordinal);
+        Assert.Contains("--app $AppHost --evidence-parent $evidence", nativeIdleGate, StringComparison.Ordinal);
         Assert.DoesNotContain("librewpf-ci-packages-${{ github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("librewpf-windows-managed-runtime-${{ github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Equal(4, sdkCiWorkflow.Split("submodules: true", StringSplitOptions.None).Length - 1);

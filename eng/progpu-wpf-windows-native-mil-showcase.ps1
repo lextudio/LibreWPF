@@ -3,7 +3,8 @@ param(
     [string] $Version = "0.1.0-preview.65",
     [ValidateSet("x64", "arm64")]
     [string] $TargetArchitecture = "x64",
-    [switch] $AllowEmulatedX64
+    [switch] $AllowEmulatedX64,
+    [switch] $ValidatePassiveIdle
 )
 
 $ErrorActionPreference = "Stop"
@@ -228,6 +229,59 @@ function Invoke-ShowcaseCheck {
     }
 }
 
+function Invoke-ShowcaseIdleCheck {
+    param(
+        [string] $AppHost,
+        [string] $EvidenceParent,
+        [string] $PythonCommand = "python"
+    )
+
+    # Preserve the existing self-test modes outside this separate real native
+    # child. The Python runner still rejects conflicts when called directly.
+    $modes = @(
+        "PROGPU_WPF_SHOWCASE_VALIDATE",
+        "PROGPU_WPF_SHOWCASE_RUN_VALIDATE",
+        "PROGPU_WPF_SHOWCASE_LIVE_VALIDATE",
+        "PROGPU_WPF_SHOWCASE_PERFORMANCE_VALIDATE"
+    )
+    $previousModes = @{}
+    foreach ($name in $modes) {
+        $previousModes[$name] = [Environment]::GetEnvironmentVariable($name, "Process")
+    }
+    # Evidence survives the private temporary build/cache directory and every
+    # failed receipt, timeout or launcher invocation remains available to CI.
+    $evidence = Join-Path $EvidenceParent "windows-idle-$([guid]::NewGuid().ToString('N'))"
+    New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+    Start-Transcript -LiteralPath (Join-Path $evidence "launcher.log") -NoClobber | Out-Null
+    try {
+        foreach ($name in $modes) {
+            Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue
+        }
+        # Capture the native exit explicitly even when the caller opts into
+        # PowerShell's native-command error preference. Never waive a failure.
+        $PSNativeCommandUseErrorActionPreference = $false
+        & $PythonCommand (Join-Path $repoRoot "eng/progpu-wpf-showcase-idle.py") `
+            --app $AppHost --evidence-parent $evidence
+        if ($LASTEXITCODE -ne 0) {
+            throw "Windows native MIL Showcase passive idle gate exited $LASTEXITCODE; evidence: $evidence."
+        }
+    }
+    catch {
+        Write-Host "Native idle launcher failed: $($_.Exception.Message)"
+        throw
+    }
+    finally {
+        foreach ($name in $modes) {
+            if ($null -eq $previousModes[$name]) {
+                Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue
+            } else {
+                [Environment]::SetEnvironmentVariable($name, $previousModes[$name], "Process")
+            }
+        }
+        Stop-Transcript | Out-Null
+    }
+}
+
 function Invoke-TextLayoutCheck {
     param(
         [string] $Name,
@@ -407,6 +461,10 @@ Assert-RequestedRendererMode $appHost
 
 Invoke-ShowcaseCheck "pre-display" "ProGPU WPF Showcase validation succeeded." $appHost $smokeRoot
 Invoke-ShowcaseCheck "displayed" "ProGPU WPF Showcase Application.Run validation succeeded." $appHost $smokeRoot
+
+if ($ValidatePassiveIdle) {
+    Invoke-ShowcaseIdleCheck $appHost (Join-Path $repoRoot "artifacts/showcase-native-idle/$targetRid")
+}
 
 # Compile one source-only WPF fixture under both SDKs. The stock Windows WPF
 # build is the geometry oracle; both processes must exercise their live text

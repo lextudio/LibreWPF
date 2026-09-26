@@ -77,10 +77,24 @@ fi
 
 if [[ "${PROGPU_WPF_TOOLKIT_LIVE_VALIDATE:-0}" == "1" ]]; then
   export PROGPU_WPF_TOOLKIT_LIVE_VALIDATE
-  live_log="$(mktemp "${TMPDIR:-/tmp}/progpu-wpf-toolkit-live.XXXXXX")"
-  live_status="$(mktemp "${TMPDIR:-/tmp}/progpu-wpf-toolkit-live-status.XXXXXX")"
+  live_artifacts="${repo_root}/artifacts/toolkit-live"
+  mkdir -p "${live_artifacts}"
+  live_directory="$(mktemp -d "${live_artifacts}/probe.XXXXXXXX")"
+  live_log="$(mktemp "${live_directory}/app-log.XXXXXX")"
+  live_status="$(mktemp "${live_directory}/app-status.XXXXXX")"
+  echo "Retaining Toolkit live probe evidence: ${live_directory}"
   apphost_pid=""
   cleanup_live_probe() {
+    local probe_exit="${1:-0}"
+    if (( probe_exit != 0 )); then
+      # Capture the failed live state before terminating our apphost. This is
+      # diagnostic-only; it cannot change the original validation exit status.
+      python3 "${repo_root}/eng/progpu-wpf-toolkit-failure.py" \
+        --directory "${live_directory}" --exit-code "${probe_exit}" \
+        --process-id "${apphost_pid:-0}" || \
+        echo "Could not finish Toolkit failure diagnostics; original log/status retained at ${live_directory}." >&2
+    fi
+
     if [[ -n "${apphost_pid}" ]] && kill -0 "${apphost_pid}" 2>/dev/null; then
       kill "${apphost_pid}" 2>/dev/null || true
       sleep 0.5
@@ -89,9 +103,9 @@ if [[ "${PROGPU_WPF_TOOLKIT_LIVE_VALIDATE:-0}" == "1" ]]; then
       fi
       wait "${apphost_pid}" 2>/dev/null || true
     fi
-    rm -f "${live_log}" "${live_status}"
+    return "${probe_exit}"
   }
-  trap cleanup_live_probe EXIT
+  trap 'cleanup_live_probe "$?"' EXIT
 
   echo "Launching ProGPU WPF Toolkit apphost live geometry probe..."
   (

@@ -184,11 +184,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             return false;
         }
 
-        if (_isDirty)
-        {
-            return true;
-        }
-
+        // A resource notification may precede visual state or child changes
+        // that have no invalidation event. Collect those changes even while
+        // dirty, before branch replay and ConsumeDirty refresh the snapshots.
         _changedSources.Clear();
         _visualStateTraversalVisited.Clear();
         _visualChildrenCurrentSources.Clear();
@@ -212,7 +210,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
             if (_changedSources.Count == 0)
             {
-                return false;
+                return _isDirty;
             }
 
             MarkDirtyListAndRefresh(_changedSources);

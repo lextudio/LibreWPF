@@ -198,8 +198,49 @@ jobs:
           echo "PROGPU_NATIVE_BUILD_DIR=${native_dir}" >> "${GITHUB_ENV}"
           echo "PROGPU_NATIVE_RUNTIME_DIR=${runtime_dir}" >> "${GITHUB_ENV}"
 
+      - name: Validate Toolkit failure evidence controls
+        run: python3 eng/tests/test_toolkit_failure_diagnostics.py
+
+      - name: Validate Showcase failure archive controls
+        run: python3 eng/tests/test_showcase_failure_archive.py
+
       - name: Run LibreWPF SDK gate
+        id: sdk-gate
+        env:
+          PROGPU_WPF_TOOLKIT_FAILURE_SCREENSHOT: 1
         run: ./eng/progpu-wpf-sdk-ci.sh
+
+      - name: Preserve failed Showcase app closure
+        if: ${{ failure() && steps.sdk-gate.outcome == 'failure' }}
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/showcase-failure
+          python3 eng/progpu-wpf-preserve-showcase.py \
+            --repository "${GITHUB_WORKSPACE}" \
+            --source-commit "${PROGPU_WPF_QUALIFIED_COMMIT}" \
+            --run-id "${GITHUB_RUN_ID}" --run-attempt "${GITHUB_RUN_ATTEMPT}" \
+            --app-directory "${GITHUB_WORKSPACE}/artifacts/bin/ProGPU.Wpf.ShowcaseApp/Debug/net10.0-windows" \
+            --native-build-directory "${PROGPU_NATIVE_BUILD_DIR}" \
+            --native-runtime-directory "${PROGPU_NATIVE_RUNTIME_DIR}" \
+            --evidence-parent "${GITHUB_WORKSPACE}/artifacts/showcase-failure"
+
+      - name: Upload failed Showcase diagnostic closure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-failure-diagnostics-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/showcase-failure/**
+          if-no-files-found: warn
+
+      - name: Upload Toolkit live probe diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolkit-live-diagnostics-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/toolkit-live/**
+          if-no-files-found: warn
 
       - name: Upload CI package bundle
         uses: actions/upload-artifact@v4

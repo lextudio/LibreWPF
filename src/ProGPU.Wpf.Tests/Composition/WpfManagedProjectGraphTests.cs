@@ -6,6 +6,56 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WpfManagedProjectGraphTests
 {
     [Fact]
+    public void ShowcaseFailureArchiveStaysSeparateFromQualifiedPackages()
+    {
+        string workflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
+        Assert.Equal(10, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(24, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(14, workflow.Split('\n').Count(line =>
+            line.TrimStart().StartsWith("name: ", StringComparison.Ordinal) &&
+            line.Contains("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringComparison.Ordinal)));
+        Assert.Contains("name: Validate Showcase failure archive controls", workflow, StringComparison.Ordinal);
+        Assert.Contains("run: python3 eng/tests/test_showcase_failure_archive.py", workflow, StringComparison.Ordinal);
+        Assert.Contains("id: sdk-gate", workflow, StringComparison.Ordinal);
+        Assert.Contains("if: ${{ failure() && steps.sdk-gate.outcome == 'failure' }}", workflow, StringComparison.Ordinal);
+        Assert.Contains("python3 eng/progpu-wpf-preserve-showcase.py", workflow, StringComparison.Ordinal);
+        int start = workflow.IndexOf("      - name: Upload failed Showcase diagnostic closure\n", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        int end = workflow.IndexOf("      - name: Upload Toolkit live probe diagnostics\n", start, StringComparison.Ordinal);
+        Assert.True(end > start);
+        string upload = workflow.Substring(start, end - start);
+        Assert.Contains("if: always()", upload, StringComparison.Ordinal);
+        Assert.Contains("name: showcase-failure-diagnostics-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", upload, StringComparison.Ordinal);
+        Assert.Contains("path: artifacts/showcase-failure/**", upload, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShowcaseThumbFailureDiagnosticsStayBoundedAndObservational()
+    {
+        string source = File.ReadAllText(FindRepoPath("samples", "ProGPU.Wpf.ShowcaseApp", "MainWindow.InputDiagnostics.cs"));
+        string caller = File.ReadAllText(FindRepoPath("samples", "ProGPU.Wpf.ShowcaseApp", "MainWindow.xaml.cs"));
+        Assert.Contains("if (!inputRaised && attempt == LiveValidationMaxAttempts - 1)", caller, StringComparison.Ordinal);
+        Assert.Contains("lastTargetState += DescribeLiveThumbHitFailure(thumb);", caller, StringComparison.Ordinal);
+        Assert.Contains("TransformToDescendant(visual).Transform(rootPoint)", source, StringComparison.Ordinal);
+        Assert.Contains("SourceClipContainsPoint={clip.FillContains(localPoint)}", source, StringComparison.Ordinal);
+        Assert.Contains("ClipTransform={clip.Transform?.Value}", source, StringComparison.Ordinal);
+        Assert.Contains("TemplatePresent={target.Template is not null}", source, StringComparison.Ordinal);
+        Assert.Contains("VisualTreeHelper.GetDrawing(visual)", source, StringComparison.Ordinal);
+        Assert.Contains("int remaining = 64;", source, StringComparison.Ordinal);
+        Assert.Contains("depth >= 8", source, StringComparison.Ordinal);
+        Assert.Contains("object?[] owners = new object?[128];", source, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfDiagnostics.TryHitTestOwners(this, center.X, center.Y, owners.AsSpan(), out int count)", source, StringComparison.Ordinal);
+        Assert.Contains("PostFailureGpuQuery=", source, StringComparison.Ordinal);
+        Assert.Contains("FrameBefore=", source, StringComparison.Ordinal);
+        Assert.Contains("FrameAfter=", source, StringComparison.Ordinal);
+        Assert.Contains("AtCapacity={count == owners.Length}", source, StringComparison.Ordinal);
+        Assert.Contains("GpuDiagnosticError=", source, StringComparison.Ordinal);
+        Assert.Contains("ThumbDiagnosticError=", source, StringComparison.Ordinal);
+        foreach (string mutation in new[] { "ApplyTemplate(", "UpdateLayout(", "BringIntoView(", "WakeLiveRenderHost(", "RaiseHostInput(", "Task.Delay(", "SetValue(" })
+            Assert.DoesNotContain(mutation, source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SdkSliderDragContractRunsRealControlsInBoundedFreshProcesses()
     {
         string harness = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf.SdkExternalSmokeHarness", "Program.cs"));
@@ -92,6 +142,44 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Application.Current.Shutdown(exitCode)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Environment.Exit(", source, StringComparison.Ordinal);
         AssertGuardBefore(source, "WriteLiveValidationStatus", "RequestLiveValidationShutdown(0)");
+    }
+
+    [Fact]
+    public void ToolkitClickDiagnosticsPreserveInputQueriesAndDeadlines()
+    {
+        string source = File.ReadAllText(FindRepoPath("samples", "ProGPU.Wpf.ToolkitApp", "MainWindow.xaml.cs"));
+        string runner = File.ReadAllText(FindRepoPath("eng", "run-progpu-wpf-toolkit.sh"));
+        Assert.Contains("LiveValidationMaxAttempts = 400;", source, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_TIMEOUT_SECONDS:-180", runner, StringComparison.Ordinal);
+        Assert.Contains("Environment.TickCount64 - LiveValidationClockOrigin", source, StringComparison.Ordinal);
+
+        int traceStart = source.IndexOf("private void WriteLiveClickStage(", StringComparison.Ordinal);
+        int traceEnd = source.IndexOf("private async Task ValidateLivePopupOpenCloseAsync(", traceStart, StringComparison.Ordinal);
+        string trace = source[traceStart..traceEnd];
+        Assert.Contains("enabled && _liveClickTraceCount < 256", trace, StringComparison.Ordinal);
+        Assert.Contains("_liveClickTraceCount++;", trace, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryHitTest", trace, StringComparison.Ordinal);
+        Assert.DoesNotContain("RaiseHostInput", trace, StringComparison.Ordinal);
+        Assert.DoesNotContain("UpdateLayout", trace, StringComparison.Ordinal);
+
+        int clickStart = source.IndexOf("private async Task ClickLiveControlAsync(", StringComparison.Ordinal);
+        int clickEnd = source.IndexOf("private static bool TryFindSourceHitPoint(", clickStart, StringComparison.Ordinal);
+        string click = source[clickStart..clickEnd];
+        Assert.Contains("bool traceStages = targetName == \"SplitActionButton.PART_ActionButton\"", click, StringComparison.Ordinal);
+        Assert.Contains("attempt < 2 || attempt % 100 == 0 || attempt == LiveValidationMaxAttempts - 1", click, StringComparison.Ordinal);
+        Assert.DoesNotContain("attempt % 500", click, StringComparison.Ordinal);
+        Assert.Contains("targetName, attempt == 0, out lastTargetState", click, StringComparison.Ordinal);
+        Assert.Contains("bool traceAutoHideAnchor = traceDetails &&", click, StringComparison.Ordinal);
+        Assert.Contains("targetName.EndsWith(\"AutoHideAnchorControl\", StringComparison.Ordinal)", click, StringComparison.Ordinal);
+        Assert.Contains("if (!TryFindSourceHitPoint(", click, StringComparison.Ordinal);
+        Assert.Contains("if (!hitWithinTarget)", click, StringComparison.Ordinal);
+        Assert.Contains("if (!TryLiveHostGpuHitWithinTarget(", click, StringComparison.Ordinal);
+        Assert.Contains("targetName == \"FloatingEditorTextBox\", out string gpuHitState)", click, StringComparison.Ordinal);
+        AssertGuardBefore(click, "\"updating target layout\"", "target.UpdateLayout();");
+        AssertGuardBefore(click, "\"querying source input owner\"", "object? hit = inputRoot.InputHitTest(center);");
+        AssertGuardBefore(click, "\"querying existing diagnostic native owners\"", "if (!TryLiveHostGpuHitWithinTarget(");
+        AssertGuardBefore(click, "\"raising mouse down\"", "RaiseHostInput(liveHost, WpfInputEventKind.MouseDown");
+        AssertGuardBefore(click, "\"raising mouse up\"", "RaiseHostInput(liveHost, WpfInputEventKind.MouseUp");
     }
 
     [Fact]
@@ -13086,7 +13174,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"--runtime\",", proGpuBuildWorkflow, StringComparison.Ordinal);
         Assert.Contains("\"${{ matrix.rid }}\",", proGpuBuildWorkflow, StringComparison.Ordinal);
         Assert.Contains("if ($IsWindows)", proGpuBuildWorkflow, StringComparison.Ordinal);
-        Assert.Contains("\"FullyQualifiedName~DiagnosticsLoggingSourceTests|FullyQualifiedName~StrongNameSigningTests|FullyQualifiedName~WindowsDpiAwarenessTests\"", proGpuBuildWorkflow, StringComparison.Ordinal);
+        Assert.Contains("\"FullyQualifiedName~DiagnosticsLoggingSourceTests|FullyQualifiedName~StrongNameSigningTests|FullyQualifiedName~WindowsDpiAwarenessTests|FullyQualifiedName~WindowsGdiBitmapTests\"", proGpuBuildWorkflow, StringComparison.Ordinal);
         Assert.Contains("dotnet @testArgs", proGpuBuildWorkflow, StringComparison.Ordinal);
         Assert.Contains("uses: actions/upload-artifact@v", proGpuBuildWorkflow, StringComparison.Ordinal);
         Assert.Contains("name: progpu-packages-linux-x64", proGpuBuildWorkflow, StringComparison.Ordinal);
@@ -13366,7 +13454,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("name: LibreWPF Build", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_QUALIFIED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Equal(10, sdkCiWorkflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        Assert.Equal(22, sdkCiWorkflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(24, sdkCiWorkflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        ShowcaseFailureArchiveStaysSeparateFromQualifiedPackages();
         int retainedJobStart = sdkCiWorkflow.IndexOf("  retained-invalidation:\n", StringComparison.Ordinal);
         Assert.True(retainedJobStart >= 0, "The fast retained-invalidation job must be present.");
         int retainedJobEnd = sdkCiWorkflow.IndexOf("\n  canonical-winforms-integration:", retainedJobStart, StringComparison.Ordinal);

@@ -95,6 +95,44 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ToolkitClickDiagnosticsPreserveInputQueriesAndDeadlines()
+    {
+        string source = File.ReadAllText(FindRepoPath("samples", "ProGPU.Wpf.ToolkitApp", "MainWindow.xaml.cs"));
+        string runner = File.ReadAllText(FindRepoPath("eng", "run-progpu-wpf-toolkit.sh"));
+        Assert.Contains("LiveValidationMaxAttempts = 400;", source, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE_TIMEOUT_SECONDS:-180", runner, StringComparison.Ordinal);
+        Assert.Contains("Environment.TickCount64 - LiveValidationClockOrigin", source, StringComparison.Ordinal);
+
+        int traceStart = source.IndexOf("private void WriteLiveClickStage(", StringComparison.Ordinal);
+        int traceEnd = source.IndexOf("private async Task ValidateLivePopupOpenCloseAsync(", traceStart, StringComparison.Ordinal);
+        string trace = source[traceStart..traceEnd];
+        Assert.Contains("enabled && _liveClickTraceCount < 256", trace, StringComparison.Ordinal);
+        Assert.Contains("_liveClickTraceCount++;", trace, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryHitTest", trace, StringComparison.Ordinal);
+        Assert.DoesNotContain("RaiseHostInput", trace, StringComparison.Ordinal);
+        Assert.DoesNotContain("UpdateLayout", trace, StringComparison.Ordinal);
+
+        int clickStart = source.IndexOf("private async Task ClickLiveControlAsync(", StringComparison.Ordinal);
+        int clickEnd = source.IndexOf("private static bool TryFindSourceHitPoint(", clickStart, StringComparison.Ordinal);
+        string click = source[clickStart..clickEnd];
+        Assert.Contains("bool traceStages = targetName == \"SplitActionButton.PART_ActionButton\"", click, StringComparison.Ordinal);
+        Assert.Contains("attempt < 2 || attempt % 100 == 0 || attempt == LiveValidationMaxAttempts - 1", click, StringComparison.Ordinal);
+        Assert.DoesNotContain("attempt % 500", click, StringComparison.Ordinal);
+        Assert.Contains("targetName, attempt == 0, out lastTargetState", click, StringComparison.Ordinal);
+        Assert.Contains("bool traceAutoHideAnchor = traceDetails &&", click, StringComparison.Ordinal);
+        Assert.Contains("targetName.EndsWith(\"AutoHideAnchorControl\", StringComparison.Ordinal)", click, StringComparison.Ordinal);
+        Assert.Contains("if (!TryFindSourceHitPoint(", click, StringComparison.Ordinal);
+        Assert.Contains("if (!hitWithinTarget)", click, StringComparison.Ordinal);
+        Assert.Contains("if (!TryLiveHostGpuHitWithinTarget(", click, StringComparison.Ordinal);
+        Assert.Contains("targetName == \"FloatingEditorTextBox\", out string gpuHitState)", click, StringComparison.Ordinal);
+        AssertGuardBefore(click, "\"updating target layout\"", "target.UpdateLayout();");
+        AssertGuardBefore(click, "\"querying source input owner\"", "object? hit = inputRoot.InputHitTest(center);");
+        AssertGuardBefore(click, "\"querying existing diagnostic native owners\"", "if (!TryLiveHostGpuHitWithinTarget(");
+        AssertGuardBefore(click, "\"raising mouse down\"", "RaiseHostInput(liveHost, WpfInputEventKind.MouseDown");
+        AssertGuardBefore(click, "\"raising mouse up\"", "RaiseHostInput(liveHost, WpfInputEventKind.MouseUp");
+    }
+
+    [Fact]
     public void ToolkitFloatingInputUsesActualPresentationSource()
     {
         string source = File.ReadAllText(FindRepoPath("samples", "ProGPU.Wpf.ToolkitApp", "MainWindow.xaml.cs"));

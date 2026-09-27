@@ -48,6 +48,16 @@ def synthetic_receipt(hashes=None):
 
 
 class ReceiptTests(unittest.TestCase):
+    def test_event_diagnostics_never_replace_failure_or_success_status(self):
+        for status in (0, 7, 124, 3221226505):
+            metadata = {"success": status == 0, "childExitCode": status, "runnerExitCode": status}
+            before = dict(metadata)
+            with mock.patch.object(runner.showcase_idle_events, "collect", side_effect=OSError("private detail")):
+                runner.collect_failure_events("owned.exe", metadata, Path("unused"))
+            self.assertEqual(before, {key: metadata[key] for key in before})
+            self.assertFalse(metadata["applicationErrorEvidence"]["collected"])
+            self.assertNotIn("private detail", str(metadata))
+
     def test_crash_diagnostic_failures_preserve_observed_child_status(self):
         for status in (0, 7, 124, 3221225477):
             for cleanup in (OSError("cleanup"), ["cleanup failure"]):
@@ -157,6 +167,8 @@ class ProcessTests(unittest.TestCase):
                                               root, os.environ.copy(), root, outcome=outcome)
             self.assertEqual((23, False), (code, timed_out))
             self.assertEqual(23, outcome["childExitCode"])
+            self.assertLessEqual(runner.showcase_idle_events.instant(outcome["childLaunchUtc"]),
+                                 runner.showcase_idle_events.instant(outcome["childExitObservedUtc"]))
             self.assertEqual("retained\n", (root / "stdout.log").read_text())
             self.assertEqual("failure\n", (root / "stderr.log").read_text())
 

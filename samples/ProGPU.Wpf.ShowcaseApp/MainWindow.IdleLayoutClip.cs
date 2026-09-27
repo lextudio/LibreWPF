@@ -153,10 +153,18 @@ public partial class MainWindow
             int resizedWidth = checked(fixture!.OriginalWidth + 140);
             int resizedHeight = checked(fixture.OriginalHeight + 80);
             journal?.Write("native-resize-request");
-            await InvokeWithLiveHostWakeAsync(host, () => SetLiveNativeWindowSize(host, resizedWidth, resizedHeight), DispatcherPriority.Send);
+            await InvokeWithLiveHostWakeAsync(host, () =>
+            {
+                journal?.Write("native-resize-callback-entered");
+                host.SetClientSize(resizedWidth, resizedHeight);
+                journal?.Write("native-resize-setter-returned");
+                WakeLiveRenderHost(host);
+                journal?.Write("native-resize-wake-returned");
+            }, DispatcherPriority.Send);
             await WaitForLiveNativeResizeAsync(host, (uint)resizedWidth, (uint)resizedHeight, "passive native resize",
                 layout => layout.ContentWidth >= initial.ContentWidth + 80 && layout.ContentHeight >= initial.ContentHeight + 40,
                 requestRenderWhileObserving: false);
+            journal?.Write("native-resize-geometry-observed");
             var resized = await ObserveIdlePhaseAsync(host, fixture, process, readFrames, "native-resized", receipt, journal);
             if (resized.Geometry == initial.Geometry)
                 throw new InvalidOperationException("The native resize did not change the actual surface geometry.");

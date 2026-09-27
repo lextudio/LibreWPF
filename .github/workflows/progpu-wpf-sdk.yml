@@ -46,6 +46,7 @@ jobs:
         run: |
           python3 ./eng/test-progpu-wpf-showcase-idle.py -v
           python3 ./eng/test-showcase-idle-crash.py -v
+          python3 ./eng/test-showcase-idle-events.py -v
 
       - name: Upload retained invalidation evidence
         if: always()

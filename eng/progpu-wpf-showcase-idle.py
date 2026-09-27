@@ -19,6 +19,7 @@ import tempfile
 import time
 import uuid
 import showcase_idle_crash
+import showcase_idle_events
 
 
 TIMEOUT_SECONDS = 120
@@ -232,6 +233,7 @@ def run_child(command: list[str], cwd: Path, environment: dict[str, str], direct
         try:
             if os.name == "nt":
                 job = WindowsJob()
+            outcome["childLaunchUtc"] = showcase_idle_events.utc_now()
             process = subprocess.Popen(command, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
                                        stdout=stdout, stderr=stderr, start_new_session=os.name == "posix")
             outcome["childProcessId"] = process.pid
@@ -239,6 +241,7 @@ def run_child(command: list[str], cwd: Path, environment: dict[str, str], direct
                 job.assign(process)
             try:
                 process.wait(timeout=max(0, deadline - time.monotonic()))
+                outcome["childExitObservedUtc"] = showcase_idle_events.utc_now()
             except subprocess.TimeoutExpired:
                 timed_out = True
         finally:
@@ -301,6 +304,15 @@ def finish_crash_capture(crash, metadata, exit_code):
             metadata["success"] = False
             exit_code = exit_code or 1
     return exit_code
+
+
+def collect_failure_events(image, metadata, directory):
+    try:
+        metadata["applicationErrorEvidence"] = showcase_idle_events.collect(image, metadata, directory)
+    except Exception as error:
+        # Supplemental diagnostics must never replace the original child status.
+        metadata["applicationErrorEvidence"] = {"collected": False,
+            "reason": f"Read-only event collection unavailable ({type(error).__name__})"}
 
 
 def run(app: Path, dotnet: str | None, evidence_parent: Path, windows_crash_dumps: bool = False) -> int:
@@ -367,6 +379,7 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path, windows_crash_dump
     finally:
         if crash is not None:
             exit_code = finish_crash_capture(crash, metadata, exit_code)
+            collect_failure_events(command[0], metadata, directory)
     metadata["runnerExitCode"] = exit_code
     try:
         write_json_new(directory / "runner-receipt.json", metadata)

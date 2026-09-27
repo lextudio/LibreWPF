@@ -61,7 +61,19 @@ public class ShowcasePassiveIdleSourceContractTests
         Assert.Contains("panel.Children.Insert(0, zero)", source, StringComparison.Ordinal);
         Assert.Contains("new Border { Width = 80, Height = 0, ClipToBounds = true", source, StringComparison.Ordinal);
         Assert.Contains("fixture.Viewer.ScrollToVerticalOffset(", source, StringComparison.Ordinal);
-        Assert.Contains("SetLiveNativeWindowSize(host, resizedWidth, resizedHeight)", source, StringComparison.Ordinal);
+        int previousResizeCheckpoint = -1;
+        foreach (string checkpoint in new[] { "journal?.Write(\"native-resize-request\")",
+            "journal?.Write(\"native-resize-callback-entered\")", "host.SetClientSize(resizedWidth, resizedHeight);",
+            "journal?.Write(\"native-resize-setter-returned\")", "WakeLiveRenderHost(host);",
+            "journal?.Write(\"native-resize-wake-returned\")",
+            "await WaitForLiveNativeResizeAsync(host, (uint)resizedWidth, (uint)resizedHeight",
+            "journal?.Write(\"native-resize-geometry-observed\")",
+            "var resized = await ObserveIdlePhaseAsync(" })
+        {
+            int current = source.IndexOf(checkpoint, previousResizeCheckpoint + 1, StringComparison.Ordinal);
+            Assert.True(current > previousResizeCheckpoint, $"Missing or reordered resize checkpoint: {checkpoint}");
+            previousResizeCheckpoint = current;
+        }
         foreach (string phase in new[] { "initial", "scrolled", "native-resized", "restored" })
             Assert.Contains($"\"{phase}\", receipt, journal)", source, StringComparison.Ordinal);
         Assert.Contains("finally", source, StringComparison.Ordinal);

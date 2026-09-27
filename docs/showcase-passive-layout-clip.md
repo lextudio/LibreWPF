@@ -30,6 +30,18 @@ retained ARM64 `0xC0000005` failure. The headless minimum is now 649, preserving
 all prior 630 cases and adding seven actual-host and twelve boundary/journal/source
 cases. Offline synthetic dump/registry controls are not Windows crash qualification.
 
+At source `26e79f35f`, the actual canonical `ProGPU.Wpf.Tests` Release project
+built with its exact `08f4343` source dependency: zero errors, 117 warnings.
+VSTest 18.9 on .NET 10.0.5 ARM64 passed all 32 selected cases, zero skips:
+seven actual host cases, eleven boundary/journal cases, eight original interval
+cases, four source contracts and two workflow guards. The unchanged full suite
+was compiled, not executed. Evidence is `artifacts/passive-canonical/`, with TRX
+SHA-256 `85a1be9ada25310b779e849abedad03c7326ac818c088fa816d269d86b28b763`.
+The runner's nineteen Python controls, ten crash-policy controls and six
+PowerShell launcher controls also pass without native/registry execution.
+Both actual Windows native idle results and a useful ARM64 fault stack remain
+outstanding; the earlier failures are retained without reinterpretation.
+
 This is a separate opt-in native application gate for the retained layout-clip
 change in #179. Implementation and source/metric controls are not evidence that
 the application has passed idle qualification. No native run is claimed here.

@@ -32,10 +32,16 @@ class Registry:
         self.removed.append(name)
 
 
-def dump(flags=0, kind=6, length=168, pid=42, valid=1, version=0xA793, identity_kind=15):
-    return (struct.pack("<IIIIIIQ", 0x504D444D, version, 2, 32, 0, 0, flags)
-        + struct.pack("<III", kind, length, 56) + struct.pack("<III", identity_kind, 24, 224)
-        + bytes(168) + struct.pack("<IIIIII", 24, valid, pid, 0, 0, 0))
+def dump(flags=0, kind=6, length=168, pid=42, valid=1, version=0xA793, identity_kind=15, architecture=None):
+    count = 2 if architecture is None else 3
+    start = 32 + count * 12
+    table = struct.pack("<III", kind, length, start) + struct.pack("<III", identity_kind, 24, start + 168)
+    system = b""
+    if architecture is not None:
+        table += struct.pack("<III", 7, 56, start + 192)
+        system = struct.pack("<H", architecture) + bytes(54)
+    return (struct.pack("<IIIIIIQ", 0x504D444D, version, count, 32, 0, 0, flags)
+        + table + bytes(168) + struct.pack("<IIIIII", 24, valid, pid, 0, 0, 0) + system)
 
 
 class CrashControls(unittest.TestCase):
@@ -155,6 +161,38 @@ class CrashControls(unittest.TestCase):
         self.assertIn("streams=2, table=32", message)
         self.assertNotIn("PRIVATE", message)
         self.assertLess(len(message), 256)
+
+    def test_only_intrinsic_x64_register_extension_is_admitted(self):
+        path = self.root / "arm64-name-does-not-select-policy.dmp"
+        path.write_bytes(dump(flags=crash.AVX_CONTEXT_FLAG, architecture=9))
+        self.assertEqual(crash.AVX_CONTEXT_FLAG, crash.validate_dump(path, 42)["dumpFlags"])
+        # Missing, ARM64, x86 and unknown system identities cannot claim AVX.
+        for architecture in (None, 12, 0, 0xFFFF):
+            path.write_bytes(dump(flags=crash.AVX_CONTEXT_FLAG, architecture=architecture))
+            with self.subTest(architecture=architecture), self.assertRaises(ValueError):
+                crash.validate_dump(path, 42)
+        # Every other bit still rejects, including full-memory and unknown bits.
+        for bit in range(64):
+            flag = 1 << bit
+            if flag == crash.AVX_CONTEXT_FLAG:
+                continue
+            path.write_bytes(dump(flags=crash.AVX_CONTEXT_FLAG | flag, architecture=9))
+            with self.subTest(bit=bit), self.assertRaises(ValueError):
+                crash.validate_dump(path, 42)
+
+    def test_register_extension_keeps_stream_and_process_guards(self):
+        path = self.root / "registers.dmp"
+        short_system = bytearray(dump(flags=crash.AVX_CONTEXT_FLAG, architecture=9))
+        struct.pack_into("<I", short_system, 60, 55)
+        overlapping_system = bytearray(dump(flags=crash.AVX_CONTEXT_FLAG, architecture=9))
+        struct.pack_into("<I", overlapping_system, 64, 32)
+        for data in (short_system, overlapping_system, dump(flags=crash.AVX_CONTEXT_FLAG, architecture=9)[:-1],
+                     dump(flags=crash.AVX_CONTEXT_FLAG, architecture=9, kind=9),
+                     dump(flags=crash.AVX_CONTEXT_FLAG, architecture=9, identity_kind=7),
+                     dump(flags=crash.AVX_CONTEXT_FLAG, architecture=9, pid=99)):
+            path.write_bytes(data)
+            with self.subTest(data=data[:68]), self.assertRaises(ValueError):
+                crash.validate_dump(path, 42)
 
     def test_dump_hash_reads_are_bounded_and_require_unchanged_length(self):
         path = self.root / "raw" / "hash.dmp"

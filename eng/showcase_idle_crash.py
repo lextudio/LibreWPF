@@ -15,6 +15,7 @@ import uuid
 
 
 MAX_DUMP_BYTES = 32 * 1024 * 1024
+AVX_CONTEXT_FLAG = 0x00200000  # MiniDumpWithAvxXStateContext: CPU registers only.
 PREFIX = "SOFTWARE\\Microsoft\\Windows\\Windows Error Reporting\\LocalDumps\\"
 
 
@@ -44,7 +45,7 @@ def validate_dump(path, expected_pid):
     with path.open("rb") as stream:
         header = stream.read(32)
         signature, version, count, table, _, _, flags = struct.unpack("<IIIIIIQ", header)
-        if signature != 0x504D444D or version & 0xFFFF != 0xA793 or flags != 0 or not 1 <= count <= 128 or table < 32 or table + count * 12 > size:
+        if signature != 0x504D444D or version & 0xFFFF != 0xA793 or flags not in (0, AVX_CONTEXT_FLAG) or not 1 <= count <= 128 or table < 32 or table + count * 12 > size:
             # Fixed-size structural evidence only; never log process memory.
             raise ValueError(f"Invalid/non-MiniDumpNormal crash dump: signature=0x{signature:08x}, "
                 f"version=0x{version:08x}, flags=0x{flags:016x}, streams={count}, table={table}, bytes={size}")
@@ -57,6 +58,18 @@ def validate_dump(path, expected_pid):
         raise ValueError("Crash dump has no unique exception stream")
     if any(kind == 9 for kind, _, _ in entries):
         raise ValueError("Full-memory stream is not admitted")
+    if flags == AVX_CONTEXT_FLAG:
+        # Windows x64 DbgHelp can add register-state metadata even when the
+        # writer requests MiniDumpNormal. Prove the intrinsic architecture;
+        # never admit additional memory flags or infer it from a filename.
+        systems = [(length, offset) for kind, length, offset in entries if kind == 7]
+        if len(systems) != 1 or systems[0][0] < 56 or systems[0][1] < table + count * 12:
+            raise ValueError("AVX register dump requires one complete system-info stream")
+        with path.open("rb") as stream:
+            stream.seek(systems[0][1])
+            architecture, = struct.unpack("<H", stream.read(2))
+        if architecture != 9:  # PROCESSOR_ARCHITECTURE_AMD64, not a PE machine ID.
+            raise ValueError("AVX register dump requires intrinsic x64 architecture")
     identity = [(length, offset) for kind, length, offset in entries if kind == 15]
     if len(identity) != 1 or identity[0][0] < 24:
         raise ValueError("Crash dump has no unique process identity stream")

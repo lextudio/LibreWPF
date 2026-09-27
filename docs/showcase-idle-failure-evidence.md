@@ -63,6 +63,20 @@ not claim success for operations it does not implement or ignore read failures.
 Native callback controls exercise these decisions before the real child controls.
 Both architecture jobs must pass again; this is not evidence of a product fix.
 
+The executed `b0957129a` x64 control then supplied the missing evidence:
+signature `0x504d444d`, version `0xa0f4a793`, flags `0x00200000`, 13 streams,
+12,521 bytes. Both architectures passed the callback contracts; ARM64 also
+passed all child controls. The x64 writer still requested exactly `MiniDumpNormal`.
+The system DbgHelp added `MiniDumpWithAvxXStateContext`, which the documented
+[dump type contract](https://learn.microsoft.com/en-us/windows/win32/api/minidumpapiset/ne-minidumpapiset-minidump_type)
+defines as AVX crash-context registers, not additional process-memory collection.
+The validator now admits only zero flags or that exact register flag, requiring
+one complete, in-bounds `SystemInfoStream` with intrinsic x64 architecture for
+the latter. It records the actual flags without rewriting the dump. Every other
+flag bit, full-memory stream, invalid PID, truncation and size excess still
+rejects. Synthetic controls exercise all 63 other bits and malformed/non-x64
+system streams; real controls must independently pass on both architectures.
+
 Implementation provenance is original LibreWPF process/receipt ownership and
 ProGPU's existing installed-Visual-Studio discovery. Public contracts consulted:
 [debug events and handle ownership](https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-waitfordebugevent),

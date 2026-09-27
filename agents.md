@@ -26,6 +26,9 @@ first and never replace its result. Launch only a fresh owned apphost, verify na
 architecture, retain OS exception handling and capture a bounded normal dump from
 the real stopped thread. Correlate PID/thread/code/address before publication;
 debugger controls and instrumented replays never qualify the original idle gate.
+Normal dump writers may include the documented AVX register-state flag on x64;
+admit only that exact extension with intrinsic system-stream architecture proof.
+Keep actual flags, bounded dumps, full-memory rejection and original failure status.
 Resize checkpoints are per-host and scoped only around the synchronous action,
 never a measured idle interval. Read cached state without native queries or
 pumping; defer diagnostic failures so they cannot escape unmanaged callbacks or

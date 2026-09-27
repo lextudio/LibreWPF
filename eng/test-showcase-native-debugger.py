@@ -160,7 +160,8 @@ def native_controls(directory, architecture):
             dumps = list(raw.iterdir())
             if captures:
                 if len(dumps) != 1: raise RuntimeError("Expected exactly one owned exception dump")
-                diagnostic.correlate_exception(dumps[0], value)
+                report = diagnostic.correlate_exception(dumps[0], value)
+                print(f"Validated native {architecture} dump: {json.dumps(report, sort_keys=True)}", flush=True)
             elif dumps or value["exceptionCode"] != 0:
                 raise RuntimeError("Handled/ordinary exit created false crash evidence")
             print(f"PASS native {architecture} debugger: {mode}", flush=True)

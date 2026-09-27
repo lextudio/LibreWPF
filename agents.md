@@ -1,5 +1,14 @@
 # Agent Guidance
 
+Resize callbacks retain source geometry and invalidate the scene; only the
+guarded render boundary configures the swap chain before acquiring a texture.
+Native size setters defer presentation until their complete nested assignment
+unwinds, including synchronous scheduler wakeups. Win32 inline resize rendering
+requires the controller's actual interactive move/size state, not any WM_SIZE;
+preserve other platforms' live-resize callbacks and pending presentation retries.
+Missing native crash stacks must not turn this ordering correction into a claim
+that a prior fail-fast or all platform resize behavior is qualified.
+
 Passive Showcase endpoints must run once from the captured native window's Update
 callback, not a dispatcher callback that can execute inside an unfinished render.
 Read owner-thread render activity without consuming requests or polling GPU memory;

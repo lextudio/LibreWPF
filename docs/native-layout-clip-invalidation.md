@@ -105,6 +105,51 @@ this change. Actual settled-window frame counts and native application/package
 qualification remain required; source contract success alone does not close
 the application report. DPI lookup cost and transparent-control input policy
 are separate issues, not implicitly fixed here.
+# Resize presentation ownership — 2026-09-27
+
+Acceptance path: package-mode native-MIL Showcase, scroll its real source
+ScrollViewer, resize the native client, then restore it. Build
+[36300654843](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36300654843)
+at `8c920aaeb0fd85caf4230797ec3beb120b95c7f9` failed both Windows native idle
+jobs. Its bounded ARM64 journal ends at `SwapChainConfigureEntering` inside
+`window.Size = nativeSize`, after source layout returned. The owner thread,
+native window, target and source identities match; `IsRendering` is false.
+The process exits `0xc0000409`, without a WER dump or correlated Application
+Error record. This locates the operation, not its native crash stack or cause.
+The x64 journal passes resized observation but times out before the restored
+observation; its empty final receipt does not establish successful cleanup.
+
+The host previously configured on every client/framebuffer resize and again
+through the render path. `OnResize` now retains geometry, synchronizes the
+source, invalidates both roots and requests presentation without configuring.
+Both managed and C++ MIL presentation use the existing guarded `OnRender`
+configuration/retry path before acquiring their external target. No C++ scene,
+WebGPU completion, renderer selection or recovery policy changes.
+
+Native size assignments use a nested depth counter restored in `finally`.
+Their framebuffer callbacks and synchronous scheduler notifications retain the
+pending request but cannot present inside the native setter. On Windows, only
+`SilkWindowController.IsInteractiveMoveResize` admits inline resize rendering,
+following the existing ProGPU Avalonia host at dependency `08f4343e`:
+`src/ProGPU.Avalonia.SilkNet/SilkNetDesktopWindow.cs:OnResize`. Other platforms
+retain their existing live-resize callbacks except while a programmatic setter
+or frame is active. There is no additional frame queue, allocation, blocking
+wait, native crossing, GPU readback or copied external implementation.
+
+Seventeen additive policy/source cases cover the full four-boolean policy,
+configuration ownership, setter unwind, invalidation, and scheduler admission.
+The CI selector retains every original case and adds this class. The existing
+surface-transition guard still requires failure-aware configuration and retry;
+its unconditional resize configuration assertion is replaced with rejection of
+that path. These checks do not prove native crash resolution, interactive drag
+fidelity or final package qualification. Exact-head Windows x64/ARM64 CI and
+final macOS/Linux/Windows application validation remain required, with the same
+deadlines, exact-zero passive intervals and identity assertions.
+
+Local implementation check: the linked .NET 10 harness executed 25 actual
+diagnostic/policy/source-guard cases successfully. It compiles the shared policy
+and diagnostic classes, not the complete host or source-WPF package graph.
+
 # Passive native boundary follow-up
 
 The b0a78 Windows x64 receipt retained initial and scrolled exact-zero intervals,

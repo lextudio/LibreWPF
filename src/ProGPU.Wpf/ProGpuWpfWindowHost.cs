@@ -53,6 +53,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private readonly ProGpuWpfNativeHitTesting _nativeMilHitTests = new();
     private IWindow? _window;
     private ProGpuWpfResizeDiagnosticScope? _resizeDiagnostics;
+    private int _nativeSizeAssignmentDepth;
     private ProGpuWpfCompositionTarget? _target;
     private NativeCompositor? _nativeMilCompositor;
     private WpfNativeMilCompilationSession? _nativeMilSession;
@@ -1447,7 +1448,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 ResolveCurrentWindowContentScale(),
                 UsesMonitorScaledWindowCoordinates());
             TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeSizeAssigning, nativeSize.X, nativeSize.Y);
-            window.Size = nativeSize;
+            // Win32 can dispatch framebuffer callbacks before this assignment
+            // returns. Publish their geometry, but leave presentation to the
+            // owner loop after the native setter has unwound.
+            _nativeSizeAssignmentDepth++;
+            try
+            {
+                window.Size = nativeSize;
+            }
+            finally
+            {
+                _nativeSizeAssignmentDepth--;
+            }
             TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeSizeAssigned, nativeSize.X, nativeSize.Y);
         }
 
@@ -2249,16 +2261,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         var geometry = ResolveCurrentRenderSurfaceGeometry();
         SynchronizePortablePresentationSourceGeometry(geometry);
-        TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureEntering, geometry.PixelWidth, geometry.PixelHeight);
-        if (!_target.Context.TryConfigureSwapChain(
-                geometry.PixelWidth,
-                geometry.PixelHeight))
-        {
-            TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureRejected, geometry.PixelWidth, geometry.PixelHeight);
-            RequestRenderAndWakeNativeLoop();
-            return;
-        }
-        TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureReturned, geometry.PixelWidth, geometry.PixelHeight);
+        // Configuration belongs to OnRender, before surface acquisition. A
+        // native resize callback may be nested inside a setter or presentation;
+        // it must not reconfigure an acquired surface or configure twice for
+        // the framebuffer/client-size notifications of one native resize.
         _target.SceneRootVisual.Invalidate();
         _target.RootVisual.Invalidate();
         RequestRenderAndWakeNativeLoop();
@@ -2277,9 +2283,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _isRenderingLiveResize = true;
         try
         {
-            // Native resize tracking can keep Silk.NET's owner event loop inside
-            // DoEvents until the drag completes. Render synchronously from the
-            // framebuffer callback so layout and the swap chain follow every step.
+            // Always retain current source geometry. Only native interactive
+            // tracking needs an inline frame while the owner event loop cannot
+            // advance; programmatic changes use its next render opportunity.
             OnResize(_window.Size);
             if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu && _wpfRootVisual == null)
             {
@@ -2288,6 +2294,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 // retained the new geometry and queued a frame; the bridge will
                 // publish the typed root before that frame is rendered.
                 TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferSourceUnavailable, size.X, size.Y);
+                return;
+            }
+            if (!ProGpuWpfResizePolicy.ShouldRenderInline(
+                    _isRendering,
+                    _nativeSizeAssignmentDepth != 0,
+                    OperatingSystem.IsWindows(),
+                    _windowController?.IsInteractiveMoveResize == true))
+            {
+                TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderDeferred, size.X, size.Y);
                 return;
             }
             TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderEntering, size.X, size.Y);
@@ -2462,11 +2477,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 RequestPresentationRetryAndWakeNativeLoop();
                 return;
             }
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureEntering, pixelWidth, pixelHeight);
             if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight))
             {
+                TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureRejected, pixelWidth, pixelHeight);
                 RequestPresentationRetryAndWakeNativeLoop();
                 return;
             }
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureReturned, pixelWidth, pixelHeight);
 
             if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
             {
@@ -5027,6 +5045,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal bool TryProcessRenderSchedulerWakeup()
     {
+        // Resize invalidation may synchronously notify the scheduler even for
+        // an externally driven host. Do not bypass the framebuffer policy via
+        // that wakeup while a native size setter/callback is still on the stack.
+        if (_nativeSizeAssignmentDepth != 0 || _isRenderingLiveResize)
+        {
+            return false;
+        }
+
         var window = _window;
         if (!ShouldProcessRenderSchedulerWakeupInline(
                 _isDisposed,

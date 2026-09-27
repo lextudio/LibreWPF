@@ -727,7 +727,7 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void NativeFramebufferResizeDefersUnattachedRootAndOtherwiseRendersSynchronously()
+    public void NativeFramebufferResizeDefersUnattachedRootAndGuardsInlineRendering()
     {
         var source = File.ReadAllText(FindRepoPath(
             "src",
@@ -743,13 +743,15 @@ public sealed class ProGpuWpfWindowHostTests
             source,
             StringComparison.Ordinal);
         Assert.Contains(
-            "TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferSourceUnavailable, size.X, size.Y);\n" +
+            "TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderDeferred, size.X, size.Y);\n" +
             "                return;\n            }\n" +
             "            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderEntering, size.X, size.Y);\n" +
             "            OnRender(0d);\n" +
             "            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderReturned, size.X, size.Y);",
             source,
             StringComparison.Ordinal);
+        Assert.Contains("TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferSourceUnavailable, size.X, size.Y);", source, StringComparison.Ordinal);
+        Assert.Contains("if (!ProGpuWpfResizePolicy.ShouldRenderInline(", source, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -23,7 +23,8 @@ public enum ProGpuWpfResizeStage
     SwapChainConfigureEntering,
     SwapChainConfigureReturned,
     SwapChainConfigureRejected,
-    ClientSizeReturned
+    ClientSizeReturned,
+    FramebufferRenderDeferred
 }
 
 /// <summary>

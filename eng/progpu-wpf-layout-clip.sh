@@ -19,6 +19,7 @@ minimum = {
     "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 5,
     "ProGPU.Wpf.Tests.PassiveIdleBoundaryTests": 17,
     "ProGPU.Wpf.Tests.MenuLifecycleJournalTests": 7,
+    "ProGPU.Wpf.Tests.ProGpuWpfResizePolicyTests": 17,
 }
 ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
 
@@ -124,6 +125,7 @@ filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleIntervalTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleBoundaryTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.MenuLifecycleJournalTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ProGpuWpfResizePolicyTests.'
 
 # Use VSTest explicitly: the repository's MTP default is not this xUnit adapter.
 # Preserve its actual nonzero status even when receipt validation also fails.

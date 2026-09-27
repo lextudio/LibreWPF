@@ -9,7 +9,7 @@ public sealed class WgpuSurfaceTransitionContractTests
     {
         string host = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf", "ProGpuWpfWindowHost.cs"));
 
-        Assert.Contains("if (!_target.Context.TryConfigureSwapChain(", host, StringComparison.Ordinal);
+        Assert.DoesNotContain("_target.Context.TryConfigureSwapChain(", host, StringComparison.Ordinal);
         Assert.Contains("if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight))", host, StringComparison.Ordinal);
         Assert.DoesNotContain("_target.Context.ConfigureSwapChain(\n            geometry.PixelWidth", host, StringComparison.Ordinal);
         Assert.DoesNotContain("_target.Context.ReconfigureIfNeeded(pixelWidth, pixelHeight);", host, StringComparison.Ordinal);

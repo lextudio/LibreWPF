@@ -31,7 +31,7 @@ public class ShowcasePassiveIdleSourceContractTests
         foreach (string[] ordered in new[]
         {
             new[] { "ProGpuWpfResizeStage.ClientSizeEntered", "ProGpuWpfResizeStage.NativeSizeResolving", "ResolveNativeWindowSizeForLogicalClientSize(", "ProGpuWpfResizeStage.NativeSizeAssigning", "window.Size = nativeSize;", "ProGpuWpfResizeStage.NativeSizeAssigned" },
-            new[] { "ProGpuWpfResizeStage.SwapChainConfigureEntering", "if (!_target.Context.TryConfigureSwapChain(", "ProGpuWpfResizeStage.SwapChainConfigureRejected", "ProGpuWpfResizeStage.SwapChainConfigureReturned" },
+            new[] { "ProGpuWpfResizeStage.SwapChainConfigureEntering", "if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight))", "ProGpuWpfResizeStage.SwapChainConfigureRejected", "ProGpuWpfResizeStage.SwapChainConfigureReturned" },
             new[] { "ProGpuWpfResizeStage.FramebufferResizeEntered", "ProGpuWpfResizeStage.FramebufferResizeSkipped", "ProGpuWpfResizeStage.FramebufferSourceUnavailable", "ProGpuWpfResizeStage.FramebufferRenderEntering", "OnRender(0d);", "ProGpuWpfResizeStage.FramebufferRenderReturned" },
             new[] { "ProGpuWpfResizeStage.SourceLayoutEntering", "if (!_portablePresentationSourceBridge.TrySetClientSize(clientWidth, clientHeight))", "ProGpuWpfResizeStage.SourceLayoutRejected", "ProGpuWpfResizeStage.SourceLayoutReturned" }
         })

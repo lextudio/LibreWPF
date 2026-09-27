@@ -1,0 +1,35 @@
+<Project DefaultTargets="Build">
+  <PropertyGroup>
+    <TargetFramework Condition="'$(FixtureMode)' == 'Singular'">net10.0-windows</TargetFramework>
+    <TargetFrameworks Condition="'$(FixtureMode)' == 'Plural'">net10.0-windows</TargetFrameworks>
+    <TargetFrameworks Condition="'$(FixtureMode)' == 'Multiple'">net10.0-windows;net11.0-windows</TargetFrameworks>
+    <IsCrossTargetingBuild Condition="'$(TargetFramework)' == '' And '$(TargetFrameworks)' != ''">true</IsCrossTargetingBuild>
+  </PropertyGroup>
+  <!-- Import the real shipped targets. Enable runtime policy afterward so this
+       isolated target-graph fixture needs neither package restore nor a renderer. -->
+  <Import Project="../../packaging/ProGPU.Wpf.Sdk/targets/ProGPU.Wpf.Sdk.targets" />
+  <PropertyGroup>
+    <ProGpuWpfUsePortableFrameworkReferences>true</ProGpuWpfUsePortableFrameworkReferences>
+    <ProGpuWpfUsePortableWinFormsCompat>true</ProGpuWpfUsePortableWinFormsCompat>
+    <ProGpuWpfUseLibreWinForms>true</ProGpuWpfUseLibreWinForms>
+    <ProGpuWpfUseCanonicalLibreWinForms>$(FixtureCanonical)</ProGpuWpfUseCanonicalLibreWinForms>
+    <ProGpuWpfCopyPackageRuntimeAssets>$(FixtureCopy)</ProGpuWpfCopyPackageRuntimeAssets>
+    <TargetDir>$(FixtureRoot)$(TargetFramework)/output/</TargetDir>
+    <ProGpuWpfPortableWinFormsCompatRuntimeTfm>$(TargetFramework)</ProGpuWpfPortableWinFormsCompatRuntimeTfm>
+    <PkgLibreWinForms_System_Windows_Forms>$(FixtureRoot)$(TargetFramework)/forms/</PkgLibreWinForms_System_Windows_Forms>
+    <PkgLibreWinForms_ProGPU>$(FixtureRoot)$(TargetFramework)/backend/</PkgLibreWinForms_ProGPU>
+    <PkgLibreWinForms_WindowsFormsIntegration>$(FixtureRoot)$(TargetFramework)/integration/</PkgLibreWinForms_WindowsFormsIntegration>
+  </PropertyGroup>
+  <!-- Like the real SDK outer build, this evaluation has no per-framework
+       ResolveLockFileCopyLocalFiles target at all. A Condition on its body
+       would hide the missing-target failure instead of reproducing it. -->
+  <Import Project="Inner.targets" Condition="'$(TargetFramework)' != ''" />
+  <Target Name="Build">
+    <ItemGroup Condition="'$(IsCrossTargetingBuild)' == 'true'">
+      <Framework Include="$(TargetFrameworks)" />
+    </ItemGroup>
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Build"
+             Properties="TargetFramework=%(Framework.Identity);IsCrossTargetingBuild=false"
+             Condition="'$(IsCrossTargetingBuild)' == 'true'" />
+  </Target>
+</Project>

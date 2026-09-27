@@ -19,7 +19,8 @@ DOTNET = shutil.which("dotnet")
 
 class DesktopPropertyTests(unittest.TestCase):
     def probe(self, wpf="", forms="", framework="net10.0", portable=True,
-              markup=True, global_flags=False, transitive=False):
+              markup=True, global_flags=False, transitive=False, frameworks=None,
+              target="Probe"):
         with tempfile.TemporaryDirectory(prefix="librewpf-desktop-properties-") as directory:
             root = Path(directory)
             (root / "App.xaml").write_text(
@@ -33,6 +34,8 @@ class DesktopPropertyTests(unittest.TestCase):
             transitive_item = ('<TransitiveFrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />'
                                if transitive else "")
             project = root / "Consumer.csproj"
+            framework_property = (f"<TargetFramework>{framework}</TargetFramework>" if frameworks is None
+                                  else f"<TargetFrameworks>{frameworks}</TargetFrameworks>")
             project.write_text(f"""<Project>
   <PropertyGroup>
     <ProGpuWpfUseCurrentRuntimeIdentifier>false</ProGpuWpfUseCurrentRuntimeIdentifier>
@@ -40,7 +43,7 @@ class DesktopPropertyTests(unittest.TestCase):
   </PropertyGroup>
   <Import Project="{escape(str(SDK_ROOT / 'Sdk' / 'Sdk.props'))}" />
   <PropertyGroup>
-    <TargetFramework>{framework}</TargetFramework>
+    {framework_property}
     <ImplicitUsings>enable</ImplicitUsings>
     <ProGpuWpfUseWpfMarkup>{str(markup).lower()}</ProGpuWpfUseWpfMarkup>
     <ProGpuWpfEnablePortableBootstrap>false</ProGpuWpfEnablePortableBootstrap>
@@ -60,8 +63,8 @@ class DesktopPropertyTests(unittest.TestCase):
   </Target>
 </Project>""", encoding="utf-8")
             command = [DOTNET, "msbuild", str(project), "-nologo", "-nodeReuse:false",
-                       "-t:Probe",
-                       "-getProperty:UseWPF,UseWindowsForms,PrepareResourcesDependsOn,ImportWindowsDesktopTargets",
+                       f"-t:{target}",
+                       "-getProperty:UseWPF,UseWindowsForms,PrepareResourcesDependsOn,ImportWindowsDesktopTargets,TargetFramework,IsCrossTargetingBuild",
                        "-getItem:FrameworkReference,ApplicationDefinition,Page,Using,IntentAtEvaluation,IntentAtExecution"]
             if global_flags:
                 command.extend([f"-p:UseWPF={wpf}", f"-p:UseWindowsForms={forms}"])
@@ -111,6 +114,15 @@ class DesktopPropertyTests(unittest.TestCase):
         self.assertEqual([], self.identities(data, "ApplicationDefinition"))
         self.assertEqual([], self.identities(data, "Page"))
         self.assertEqual(["Microsoft.NETCore.App"], self.identities(data, "FrameworkReference"))
+
+    def test_outer_build_skips_per_framework_runtime_copy_dependencies(self):
+        for frameworks in ("net10.0-windows", "net10.0-windows;net11.0-windows"):
+            with self.subTest(frameworks=frameworks):
+                code, output, data = self.probe("true", "true", frameworks=frameworks,
+                    target="_ProGpuWpfSdkCopyPortableWinFormsCompatRuntimeAssets")
+                self.assertEqual(0, code, output)
+                self.assertEqual("", data["Properties"]["TargetFramework"])
+                self.assertEqual("true", data["Properties"]["IsCrossTargetingBuild"])
 
     def test_native_opt_out_keeps_original_framework_selection(self):
         for wpf, forms, desktop in (("true", "false", "Microsoft.WindowsDesktop.App.WPF"),

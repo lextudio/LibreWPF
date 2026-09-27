@@ -1,3 +1,4 @@
+using ProGPU.Wpf.ShowcaseApp;
 using Xunit;
 
 namespace ProGPU.Wpf.Tests;
@@ -7,6 +8,20 @@ namespace ProGPU.Wpf.Tests;
 // Showcase process must supply all four actual native receipts.
 public class ShowcasePassiveIdleSourceContractTests
 {
+    [Fact]
+    public void IdleStartupWaitsForLoadedAndDoesNotRestart()
+    {
+        bool started = false;
+        Assert.False(PassiveIdleStartup.TryStart(isLoaded: false, ref started));
+        Assert.False(started);
+        Assert.True(PassiveIdleStartup.TryStart(isLoaded: true, ref started));
+        Assert.True(started);
+        Assert.False(PassiveIdleStartup.TryStart(isLoaded: true, ref started));
+        Assert.False(PassiveIdleStartup.TryStart(isLoaded: false, ref started));
+        Assert.False(PassiveIdleStartup.TryStart(isLoaded: true, ref started));
+        Assert.True(started);
+    }
+
     [Fact]
     public void ObserverHasNoDispatcherLayoutRenderQueryOrStatusSideEffects()
     {
@@ -24,6 +39,20 @@ public class ShowcasePassiveIdleSourceContractTests
     public void ActualShowcaseFixtureIsSeparateAndPreservesRealNativeOwnership()
     {
         string source = Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.IdleLayoutClip.cs");
+        int configuration = source.IndexOf("ValidateIdleLayoutClipConfiguration();", StringComparison.Ordinal);
+        int startup = source.IndexOf("if (!PassiveIdleStartup.TryStart(IsLoaded, ref _liveValidationStarted)) return true;", StringComparison.Ordinal);
+        int launch = source.IndexOf("_ = Task.Run(", StringComparison.Ordinal);
+        Assert.True(configuration >= 0 && startup > configuration && launch > startup,
+            "The actual Loaded state must admit the idle task after configuration validation.");
+        Assert.Contains("TimeSpan.FromSeconds(30)", source, StringComparison.Ordinal);
+        Assert.Contains("host.HasPresentedFrame", source, StringComparison.Ordinal);
+        string window = Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.xaml.cs");
+        int constructor = window.IndexOf("public MainWindow()", StringComparison.Ordinal);
+        int loaded = window.IndexOf("private void OnShowcaseWindowLoaded(", StringComparison.Ordinal);
+        int afterLoaded = window.IndexOf("internal static IReadOnlyList<string> FrameworkThemeNames", StringComparison.Ordinal);
+        Assert.Contains("StartLiveValidationIfRequired();", window[constructor..loaded], StringComparison.Ordinal);
+        Assert.Contains("StartLiveValidationIfRequired();", window[loaded..afterLoaded], StringComparison.Ordinal);
+        Assert.Contains("Loaded=\"OnShowcaseWindowLoaded\"", Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.xaml"), StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(host.WpfRootVisual, this)", source, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(host.PortablePresentationSourceBridge?.RootVisual, this)", source, StringComparison.Ordinal);
         Assert.Contains("host.LastNativeMilSessionFrame is null", source, StringComparison.Ordinal);

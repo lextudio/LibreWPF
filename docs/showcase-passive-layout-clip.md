@@ -26,6 +26,13 @@ install packages, select a software adapter, start a VM, disable application
 timers/carets/input, or reuse an old receipt. Do not interact with the application
 during the observation. Other activity causes a failure, not a tolerance.
 
+The constructor validates the idle configuration but does not start its task.
+The existing actual `Loaded` callback admits it once, after synchronous native
+window/composition initialization. `Loaded` is not a presentation acknowledgement:
+the separate, unchanged 30-second check still requires the actual host's
+`HasPresentedFrame`. The outer 120-second deadline includes cold startup. Ordinary
+live-input validation keeps its existing constructor startup behavior.
+
 The application uses its existing Selectors tab, Expander, ScrollViewer and text.
 It expands normal text to produce pixel scrolling and temporarily attaches an
 ordinary zero-height `Border` with `ClipToBounds=true`. Typed source layout
@@ -124,12 +131,45 @@ preserves a prior nonzero status, and still fails an independently injected
 case-count assertion. These are offline launcher checks, not native idle
 receipts; both actual Windows four-phase runs remain required.
 
+At `f8f419321`, [Build 36282082103](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36282082103)
+passed the offline controls, four clipboard contracts, pre-display Showcase and
+displayed `Application.Run` self-tests, then failed both actual idle children:
+[x64 job 108519668366](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36282082103/job/108519668366)
+and [ARM64 job 108519668286](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36282082103/job/108519668286).
+Both application receipts have no phases, `success=false`, `uiRestored=false`,
+and `No actual Showcase native presentation within 30 seconds.` Both runner
+receipts preserve child exit 1, `timedOut=false`, no cleanup errors and identical
+before/after managed payload hashes. They are failures, not idle qualification.
+
+Source inspection found that the constructor started the first-frame timer
+before `Window.Show` and synchronous native initialization; the later `Loaded`
+callback was already suppressed by the started flag. The corrected admission
+waits for `IsLoaded` and retains the original presentation assertion and both
+deadlines. Focused controls exercise pre-Loaded rejection, first Loaded admission
+and repeated/unload-reload rejection, while source guards connect that helper to
+the real constructor/Loaded paths. The new source guard fails on the former
+ordering; all 11 focused endpoint/startup/source cases pass after the change in
+a small .NET 10.0.5 harness compiling the exact checked-in helper/test files.
+This does not execute WPF's Loaded lifecycle or prove that initialization timing
+was the sole cause of either Windows failure. Fresh complete CI and both actual
+four-phase receipts remain required.
+
+Both complete failed job logs and their original artifacts are retained in
+`/Volumes/1TB-macOS/librewpf-idle-native-ci.Dcy2Vcmk`. Archive SHA-256 values match
+GitHub's artifact digests: x64 artifact `10920185668` is
+`f67ce8b661c16c99f099de810b6a5887e59d71ac6c955708ee3a95c36d09b290`;
+ARM64 artifact `10919513268` is
+`0f98655c84a8c7b3796c0bd0fb541032c20cd7be609ff0f23158c021d929301f`.
+The focused harness preserves its baseline failure and corrected result under
+`artifacts/windows-idle-startup.30t9Vp/`. No native application, VM or full source
+build was run for these local checks.
+
 The endpoint helper has strict zero/nonzero/regressed-frame controls and a
 two-endpoint execution contract. Source guards preserve the side-effect-free
 interval and real Showcase ownership seam. The launcher has offline negative
 receipt/child controls. CI adds these controls to the existing retained lane:
-all original 619 cases remain mandatory, plus 10 endpoint/source cases (minimum
-629), followed by the offline launcher suite. No live application is launched
+all original 619 cases remain mandatory, plus 11 endpoint/startup/source cases (minimum
+630), followed by the offline launcher suite. No live application is launched
 by that headless lane. These are implementation regressions, not native idle
 receipts. Compilation, complete CI and subsequent actual graphical execution
 remain required before claiming the #179 application acceptance criterion.

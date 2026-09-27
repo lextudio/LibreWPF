@@ -38,7 +38,10 @@ public partial class MainWindow
     {
         if (Environment.GetEnvironmentVariable(IdleLayoutClipEnvironmentVariable) != "1") return false;
         ValidateIdleLayoutClipConfiguration();
-        _liveValidationStarted = true;
+        // The constructor also calls this method, before native initialization.
+        // Wait for the existing Loaded callback before starting the first-frame
+        // clock. Loaded itself does not satisfy the actual presentation check.
+        if (!PassiveIdleStartup.TryStart(IsLoaded, ref _liveValidationStarted)) return true;
         _ = Task.Run(async () =>
         {
             var receipt = new IdleLayoutClipReceipt();

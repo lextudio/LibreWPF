@@ -183,6 +183,16 @@ if [[ "${PROGPU_WPF_SHOWCASE_LIVE_VALIDATE:-0}" == "1" ]]; then
     exit 1
   fi
 
+  # Forward the actual apphost receipt before discarding its private log. The
+  # outer XWayland gate sees this launcher's stdout, not live_log.
+  if [[ -n "${PROGPU_WPF_SHOWCASE_NATIVE_DRAG_STATUS_PATH:-}" ]]; then
+    if ! grep -Fx "ProGPU WPF Showcase external native drag source press/release received." "${live_log}"; then
+      echo "Expected the Showcase apphost source press/release receipt." >&2
+      cat "${live_log}" >&2
+      exit 1
+    fi
+  fi
+
   trap - EXIT
   if [[ -s "${live_status}" ]]; then
     cat "${live_status}"

@@ -25,6 +25,13 @@ the source press/release marker before accepting the existing popup/theme result
 The 90-second live deadline, external 36-step gesture, popup assertions and
 renderer selection are unchanged.
 
+The first exact-head hosted run completed all popup/theme checks but rejected
+the missing outer receipt: the launcher printed its status summary while keeping
+the apphost console private. The launcher now forwards the exact observed line
+before deleting that log, and fails if a requested drag has no receipt. Four
+offline launcher tests cover forwarding, missing/partial receipts and ordinary
+non-drag probes; they do not substitute for the native smoke job.
+
 ## Focused evidence
 
 On Ubuntu ARM64 with .NET 10.0.11, Xvfb 1280x1024, simulated Wayland-session

@@ -45,6 +45,9 @@ jobs:
       - name: Validate passive Showcase launcher controls
         run: python3 ./eng/test-progpu-wpf-showcase-idle.py -v
 
+      - name: Validate Showcase launcher input receipts
+        run: python3 ./eng/tests/test_showcase_launcher_receipt.py -v
+
       - name: Upload retained invalidation evidence
         if: always()
         uses: actions/upload-artifact@v4

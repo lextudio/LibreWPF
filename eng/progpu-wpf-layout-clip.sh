@@ -17,6 +17,7 @@ minimum = {
     "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests": 236,
     "ProGPU.Wpf.Tests.PassiveIdleIntervalTests": 8,
     "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 2,
+    "ProGPU.Wpf.Tests.Platform.WebGpuClientContextContractTests": 3,
 }
 ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
 
@@ -32,7 +33,7 @@ try:
     counters = summary.find("t:Counters", ns)
     require(counters is not None, "TRX counters are missing")
     total = int(counters.attrib["total"])
-    require(total >= sum(minimum.values()), "Fewer than 629 tests executed")
+    require(total >= sum(minimum.values()), f"Fewer than {sum(minimum.values())} tests executed")
     for name in ("executed", "passed"):
         require(int(counters.attrib[name]) == total, f"TRX {name} differs from total")
     for name, value in counters.attrib.items():
@@ -120,6 +121,7 @@ filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRende
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleIntervalTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Platform.WebGpuClientContextContractTests.'
 
 # Use VSTest explicitly: the repository's MTP default is not this xUnit adapter.
 # Preserve its actual nonzero status even when receipt validation also fails.

@@ -7,8 +7,9 @@ set -euo pipefail
 # crosses the native boundary and cannot be caught in managed code, so the test is
 # simply that the harness runs to completion.
 #
-# This runs against whatever adapter wgpu selects. Forcing its GLES/EGL backend
-# still cannot keep several windows alive in one process - see
+# This runs against whatever adapter wgpu selects, and reports the actual backend.
+# A pass is not evidence for an unselected backend. The harness also checks that
+# Silk never takes back ownership of the unused alpha-visual client context; see
 # docs/progpu-wpf-multi-window-render-device.md.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

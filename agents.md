@@ -16,11 +16,16 @@ reject active/current presentation work and recovery instead of waiting for quie
 Passive resize geometry reads wake only the native loop. Delayed callbacks remain
 live and count normally in the unchanged exact-zero interval. Source controls do
 not qualify native idle or attribute a previous access violation.
-CI crash evidence uses only an exact-byte, unique-name Showcase apphost and its
+Initial CI crash evidence uses only an exact-byte, unique-name Showcase apphost and its
 newly owned per-image WER key. Never mutate caller/global crash policy or upload
 unbounded/full-memory dumps. Keep phase journal writes outside measured intervals,
 preserve actual child failure status through diagnostic cleanup, and treat a
 missing stack as unqualified rather than inventing an ARM64 crash cause.
+An explicit failure-only debugger replay must persist the original failed receipt
+first and never replace its result. Launch only a fresh owned apphost, verify native
+architecture, retain OS exception handling and capture a bounded normal dump from
+the real stopped thread. Correlate PID/thread/code/address before publication;
+debugger controls and instrumented replays never qualify the original idle gate.
 Resize checkpoints are per-host and scoped only around the synchronous action,
 never a measured idle interval. Read cached state without native queries or
 pumping; defer diagnostic failures so they cannot escape unmanaged callbacks or

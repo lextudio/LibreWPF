@@ -19,6 +19,7 @@ import tempfile
 import time
 import uuid
 import showcase_idle_crash
+import showcase_idle_debugger
 import showcase_idle_events
 
 
@@ -315,7 +316,8 @@ def collect_failure_events(image, metadata, directory):
             "reason": f"Read-only event collection unavailable ({type(error).__name__})"}
 
 
-def run(app: Path, dotnet: str | None, evidence_parent: Path, windows_crash_dumps: bool = False) -> int:
+def run(app: Path, dotnet: str | None, evidence_parent: Path, windows_crash_dumps: bool = False,
+        windows_debugger: Path | None = None) -> int:
     app = app.resolve(strict=True)
     require(app.is_file() and app.name in ("ProGPU.Wpf.ShowcaseApp", "ProGPU.Wpf.ShowcaseApp.exe", "ProGPU.Wpf.ShowcaseApp.dll"),
             "--app must be the prebuilt genuine Showcase apphost or DLL")
@@ -328,6 +330,11 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path, windows_crash_dump
     if windows_crash_dumps:
         require(os.name == "nt" and os.environ.get("GITHUB_ACTIONS") == "true" and app.suffix.lower() == ".exe",
                 "WER capture is restricted to the CI Windows apphost child")
+    if windows_debugger is not None:
+        require(windows_crash_dumps, "Diagnostic replay requires the original CI-only crash-capture gate")
+        require(windows_debugger.name == "ShowcaseNativeDebugger.exe" and
+                showcase_idle_debugger.machine(windows_debugger) == showcase_idle_debugger.machine(app),
+                "Diagnostic debugger must match the original apphost architecture")
     if app.suffix.lower() == ".dll":
         executable = shutil.which(dotnet or "dotnet")
         require(executable is not None, "A .NET host is required for a prebuilt DLL")
@@ -387,6 +394,15 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path, windows_crash_dump
         print(f"Could not retain runner receipt: {error}", file=sys.stderr)
         return exit_code or 1
     print(f"Showcase passive idle {'passed' if metadata['success'] else 'failed'}; evidence retained at {directory}")
+    if windows_debugger is not None and showcase_idle_debugger.should_replay(metadata):
+        # Persist the original receipt BEFORE a separate instrumented process.
+        # Neither the first result nor its exit status can be replaced by replay.
+        try:
+            diagnostic = showcase_idle_debugger.replay(
+                app, windows_debugger, directory, environment, run_child, write_json_new)
+            write_json_new(directory / "native-debugger-replay.json", diagnostic)
+        except Exception as error:
+            print(f"Supplemental native replay unavailable: {type(error).__name__}: {error}", file=sys.stderr)
     return exit_code
 
 
@@ -396,12 +412,14 @@ def main() -> int:
     parser.add_argument("--dotnet", help=".NET host for DLL input only")
     parser.add_argument("--evidence-parent", required=True, type=Path, help="Existing directory for a fresh evidence child")
     parser.add_argument("--windows-crash-dumps", action="store_true", help="CI only: task-owned per-image WER stack minidump")
+    parser.add_argument("--windows-debugger", type=Path,
+                        help="CI only: native-architecture debugger for one separate failure-only replay")
     args = parser.parse_args()
     handlers = {}
     try:
         for signum in (signal.SIGINT, signal.SIGTERM):
             handlers[signum] = signal.signal(signum, lambda received, frame: (_ for _ in ()).throw(Interrupted(received)))
-        return run(args.app, args.dotnet, args.evidence_parent, args.windows_crash_dumps)
+        return run(args.app, args.dotnet, args.evidence_parent, args.windows_crash_dumps, args.windows_debugger)
     except Interrupted as interrupted:
         return 128 + interrupted.signum
     except (OSError, ContractError) as error:

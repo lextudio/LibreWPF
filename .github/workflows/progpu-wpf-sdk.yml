@@ -47,6 +47,7 @@ jobs:
           python3 ./eng/test-progpu-wpf-showcase-idle.py -v
           python3 ./eng/test-showcase-idle-crash.py -v
           python3 ./eng/test-showcase-idle-events.py -v
+          python3 ./eng/test-showcase-native-debugger.py
 
       - name: Validate Showcase launcher input receipts
         run: python3 ./eng/tests/test_showcase_launcher_receipt.py -v
@@ -324,9 +325,40 @@ jobs:
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Release
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Debug
 
+  windows-native-debugger:
+    name: Windows native crash capture controls (${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            architecture: x64
+          - os: windows-11-arm
+            architecture: arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+      - name: Setup diagnostic control Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and exercise owned native crash capture
+        shell: pwsh
+        run: ./eng/build-showcase-native-debugger.ps1 -Architecture ${{ matrix.architecture }} -OutputDirectory "${{ runner.temp }}/showcase-native-debugger"
+      - name: Upload exact-head diagnostic helper
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-native-debugger-${{ matrix.architecture }}-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: ${{ runner.temp }}/showcase-native-debugger/ShowcaseNativeDebugger.exe
+          if-no-files-found: error
+
   windows-native-mil-showcase:
     name: Windows x64 native MIL package Showcase
-    needs: sdk-smoke
+    needs: [sdk-smoke, windows-native-debugger]
     runs-on: windows-2025
     timeout-minutes: 40
 
@@ -356,9 +388,15 @@ jobs:
           name: librewpf-ci-packages-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/packages/Release/NonShipping
 
+      - name: Download exact-head native diagnostic helper
+        uses: actions/download-artifact@v4
+        with:
+          name: showcase-native-debugger-x64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: ${{ runner.temp }}/showcase-native-debugger
+
       - name: Run package-only x64 native MIL Showcase
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle -CaptureIdleCrashDump
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle -CaptureIdleCrashDump -IdleNativeDebugger (Join-Path $env:RUNNER_TEMP "showcase-native-debugger/ShowcaseNativeDebugger.exe")
 
       - name: Upload x64 passive native idle evidence
         if: always()
@@ -370,7 +408,7 @@ jobs:
 
   windows-arm64-native-mil-showcase:
     name: Windows ARM64 native MIL package Showcase
-    needs: sdk-smoke
+    needs: [sdk-smoke, windows-native-debugger]
     runs-on: windows-11-arm
     timeout-minutes: 40
 
@@ -400,9 +438,15 @@ jobs:
           name: librewpf-ci-packages-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/packages/Release/NonShipping
 
+      - name: Download exact-head native diagnostic helper
+        uses: actions/download-artifact@v4
+        with:
+          name: showcase-native-debugger-arm64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: ${{ runner.temp }}/showcase-native-debugger
+
       - name: Run package-only ARM64 native MIL Showcase
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle -CaptureIdleCrashDump
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle -CaptureIdleCrashDump -IdleNativeDebugger (Join-Path $env:RUNNER_TEMP "showcase-native-debugger/ShowcaseNativeDebugger.exe")
 
       - name: Upload ARM64 passive native idle evidence
         if: always()

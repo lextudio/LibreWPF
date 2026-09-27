@@ -14,9 +14,9 @@ public sealed class WpfManagedProjectGraphTests
 
     private static void AssertWindowsNativePassiveIdleWorkflow(string workflow)
     {
-        Assert.Equal(10, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        // Ten checkout refs plus sixteen exact-head artifact producer/consumer names.
-        Assert.Equal(26, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(11, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        // Eleven checkout refs plus nineteen exact-head artifact producer/consumer names.
+        Assert.Equal(30, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
         foreach (string architecture in new[] { "x64", "arm64" })
         {
             string jobName = architecture == "x64" ? "windows-native-mil-showcase" : "windows-arm64-native-mil-showcase";
@@ -26,7 +26,7 @@ public sealed class WpfManagedProjectGraphTests
             int end = workflow.IndexOf($"\n  {nextJob}:", start, StringComparison.Ordinal);
             Assert.True(end > start, $"Missing job boundary after {jobName}.");
             string job = workflow[start..end];
-            Assert.Contains("needs: sdk-smoke", job, StringComparison.Ordinal);
+            Assert.Contains("needs: [sdk-smoke, windows-native-debugger]", job, StringComparison.Ordinal);
             Assert.Contains("timeout-minutes: 40", job, StringComparison.Ordinal);
             Assert.Contains("uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'", job, StringComparison.Ordinal);
             Assert.Contains("run: ./eng/test-progpu-wpf-windows-native-idle.ps1", job, StringComparison.Ordinal);
@@ -34,6 +34,9 @@ public sealed class WpfManagedProjectGraphTests
                 ? "run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle -CaptureIdleCrashDump"
                 : "run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle -CaptureIdleCrashDump";
             Assert.Contains(command, job, StringComparison.Ordinal);
+            Assert.Contains($"name: showcase-native-debugger-{architecture}-${{{{ env.PROGPU_WPF_QUALIFIED_COMMIT }}}}", job, StringComparison.Ordinal);
+            Assert.Contains("-IdleNativeDebugger (Join-Path $env:RUNNER_TEMP", job, StringComparison.Ordinal);
+            AssertGuardBefore(job, $"name: showcase-native-debugger-{architecture}-", command);
             AssertGuardBefore(job, "uses: actions/setup-python@v5", "run: ./eng/test-progpu-wpf-windows-native-idle.ps1");
             AssertGuardBefore(job, "run: ./eng/test-progpu-wpf-windows-native-idle.ps1", command);
             Assert.Contains($"name: showcase-native-idle-win-{architecture}-${{{{ env.PROGPU_WPF_QUALIFIED_COMMIT }}}}", job, StringComparison.Ordinal);
@@ -46,9 +49,9 @@ public sealed class WpfManagedProjectGraphTests
     public void ShowcaseFailureArchiveStaysSeparateFromQualifiedPackages()
     {
         string workflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
-        Assert.Equal(10, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        Assert.Equal(26, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        Assert.Equal(16, workflow.Split('\n').Count(line =>
+        Assert.Equal(11, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(30, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(19, workflow.Split('\n').Count(line =>
             line.TrimStart().StartsWith("name: ", StringComparison.Ordinal) &&
             line.Contains("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringComparison.Ordinal)));
         Assert.Contains("name: Validate Showcase failure archive controls", workflow, StringComparison.Ordinal);
@@ -435,7 +438,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("--build-packages-only) build_packages_only=1 ;;", script, StringComparison.Ordinal);
         Assert.Contains("if (( $# > 1 )); then", script, StringComparison.Ordinal);
         Assert.DoesNotContain("build_packages_only=\"${", script, StringComparison.Ordinal);
-        Assert.Contains("if [[ \"${build_packages_only}\" == \"0\" ]]; then\n  command -v python3", script, StringComparison.Ordinal);
+        Assert.Contains("if [[ \"${build_packages_only}\" == \"0\" ]]; then\n  \"${dotnet}\" msbuild \"${repo_root}/eng/sdk-runtime-copy/Run.proj\" -nologo -v:minimal\n  command -v python3", script, StringComparison.Ordinal);
         Assert.Contains("if [[ \"${build_packages_only}\" == \"0\" ]]; then\n  echo \"Running ProGPU Avalonia package consumer smoke", script, StringComparison.Ordinal);
         Assert.Contains("The package-production lane cannot execute dotnet ${command}.", script, StringComparison.Ordinal);
 

@@ -3,7 +3,61 @@
 This is diagnostic localization, not a resize fix or native idle qualification.
 The original native presentation assertions, four exact-zero intervals,
 30-second post-Loaded first-frame bound and 120-second child deadline remain
-unchanged. No debugger, renderer tracing switch, policy change or retry is added.
+unchanged. The original gate has no debugger or renderer tracing switch. An
+explicit failure-only diagnostic replay is described below; it cannot qualify
+or replace the original result.
+
+## Current-main integration: 525dba116
+
+[Build 36331790928](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36331790928)
+passed the x64 native Showcase job, Linux XWayland popup/input job and canonical
+SDK consumer. The x64 idle intervals were `3→3`, `4→4`, `5→5`, `6→6`, with
+source restoration complete. ARM64 exited `3221225477` (`0xC0000005`) after
+`native-resized-boundary`; it did not time out. All 13 synchronous resize
+checkpoints completed, including `FramebufferRenderDeferred`, setter return
+and observed geometry. This localizes the new crash after the setter; it does
+not identify a faulting module or prove a rendering/lifetime cause. No WER dump
+or exactly correlated Application Error record was produced. This Build remains
+failed and must not stage qualified packages or releases.
+
+## Separate failure-only native debugger replay
+
+CI may explicitly supply the matching `ShowcaseNativeDebugger.exe`. The original
+uninstrumented child runs first, with unchanged assertions and deadlines. Its
+receipt and exit status are persisted before any replay. Only an access violation,
+fail-fast or stack-buffer-overrun status without an original dump, timeout or
+cleanup error permits one separate diagnostic invocation. A passing replay is
+never a passing original run; every diagnostic receipt says `qualifiesIdle=false`.
+
+The original C++ helper launches only a fresh, exact-byte `ShowcaseIdle-<id>`
+apphost. It cannot attach to another PID. It uses the Windows SDK's native
+`DEBUG_EVENT` and `CONTEXT`, verifies actual process architecture and rejects
+emulation. The suspended child enters a private kill-on-close job before running.
+Only the initial loader breakpoint is consumed; other first-chance exceptions
+retain application handling, and second-chance exceptions remain unhandled after
+capture. There are no register writes, desktop hooks or global crash-policy edits.
+
+The helper writes `MiniDumpNormal` using the stopped faulting thread's context
+and debugger-owned exception pointers. Foreign chained records reject explicitly.
+The diagnostic child has a 110-second native bound inside the separate 120-second
+runner bound; dump cancellation is requested after five seconds or 32 MiB. Raw
+files remain outside uploaded evidence. Existing independent type/size/PID/hash
+validation also requires the dump's thread, exception code and address to match
+the debug event before publication. Cleanup retains the original failure.
+
+Both Windows architectures compile and exercise the helper in early independent
+CI jobs: ordinary nonzero exit, handled exception and unhandled access violation.
+Their exact-head artifacts are diagnostic tools, never product package payloads.
+Offline controls cover PE architecture, malformed receipts, dump correlation and
+original-result preservation. These controls do not qualify ARM64 Showcase or
+establish a crash fix. No new third-party executable/dependency is downloaded.
+
+Implementation provenance is original LibreWPF process/receipt ownership and
+ProGPU's existing installed-Visual-Studio discovery. Public contracts consulted:
+[debug events and handle ownership](https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-waitfordebugevent),
+[MiniDumpWriteDump](https://learn.microsoft.com/en-us/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump),
+and [local exception pointers](https://learn.microsoft.com/en-us/windows/win32/api/minidumpapiset/ns-minidumpapiset-minidump_exception_information).
+No debugger/toolkit implementation source was copied.
 
 ## Exact-head follow-up: f2b46c2
 

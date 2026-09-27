@@ -5,7 +5,8 @@ param(
     [string] $TargetArchitecture = "x64",
     [switch] $AllowEmulatedX64,
     [switch] $ValidatePassiveIdle,
-    [switch] $CaptureIdleCrashDump
+    [switch] $CaptureIdleCrashDump,
+    [string] $IdleNativeDebugger = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -235,7 +236,8 @@ function Invoke-ShowcaseIdleCheck {
         [string] $AppHost,
         [string] $EvidenceParent,
         [string] $PythonCommand = "python",
-        [switch] $CaptureCrashDump
+        [switch] $CaptureCrashDump,
+        [string] $NativeDebugger = ""
     )
 
     # Preserve the existing self-test modes outside this separate real native
@@ -264,6 +266,10 @@ function Invoke-ShowcaseIdleCheck {
         $PSNativeCommandUseErrorActionPreference = $false
         $crashArguments = @()
         if ($CaptureCrashDump) { $crashArguments = @("--windows-crash-dumps") }
+        if (![string]::IsNullOrWhiteSpace($NativeDebugger)) {
+            if (!$CaptureCrashDump) { throw "Native diagnostic replay requires CI crash capture." }
+            $crashArguments += @("--windows-debugger", $NativeDebugger)
+        }
         & $PythonCommand (Join-Path $repoRoot "eng/progpu-wpf-showcase-idle.py") `
             --app $AppHost --evidence-parent $evidence @crashArguments
         if ($LASTEXITCODE -ne 0) {
@@ -495,7 +501,7 @@ Invoke-ShowcaseCheck "pre-display" "ProGPU WPF Showcase validation succeeded." $
 Invoke-ShowcaseCheck "displayed" "ProGPU WPF Showcase Application.Run validation succeeded." $appHost $smokeRoot
 
 if ($ValidatePassiveIdle) {
-    Invoke-ShowcaseIdleCheck $appHost (Join-Path $repoRoot "artifacts/showcase-native-idle/$targetRid") -CaptureCrashDump:$CaptureIdleCrashDump
+    Invoke-ShowcaseIdleCheck $appHost (Join-Path $repoRoot "artifacts/showcase-native-idle/$targetRid") -CaptureCrashDump:$CaptureIdleCrashDump -NativeDebugger $IdleNativeDebugger
 }
 
 # Compile one source-only WPF fixture under both SDKs. The stock Windows WPF

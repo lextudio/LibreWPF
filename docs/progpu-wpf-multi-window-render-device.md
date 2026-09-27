@@ -79,8 +79,21 @@ Mesa software rendering, and the `Linux headless multi-window render device smok
 `.github/workflows/progpu-wpf-sdk.yml` runs that in CI.
 The harness also checks the actual window context-control/swap flags and verifies
 that the unused client context is not current after Show or any event/render turn.
-Three source integration regressions guard the setup, initial detach and live
+Source integration regressions guard the setup, initial detach and live
 assertion wiring. These guards are not native EGL or pixel qualification.
+
+The smoke also rasterizes `Ag09` from the dependency-pinned Inter Regular font
+on each window's actual device, including after closing the original owner. Its
+private atlas explicitly captures native compute and restores the host preference
+before rasterization; this does not change compositor or backend defaults. The
+probe requires real compute passes/submissions and reads back R8 atlas coverage
+inside **each** glyph's region, with an untouched guard texel. An empty frame,
+coverage from another glyph, or a raster/CPU fallback cannot qualify this probe.
+The font and its original license travel with the harness. This adds the missing
+runtime exercise for LibreWPF #186: lazy atlas initialization means the earlier
+empty-window pass did not compile `Compute_GlyphRasterizer`. Local coverage-reader
+controls are not a Mesa pass; the explicit GL CI run must execute this new probe.
+
 The unchanged source initially failed two of these guards and passed the existing
 initial-detach control. All three pass after this change; shell syntax and diff
 checks pass. Local logs are in `artifacts/client-context/`. Full host compilation,

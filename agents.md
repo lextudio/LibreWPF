@@ -1,5 +1,12 @@
 # Agent Guidance
 
+Linux glyph shader qualification must execute the actual compute atlas on the
+selected window device and read coverage for every requested glyph, including
+after the device owner closes. Empty presented windows do not compile lazy glyph
+pipelines. Keep explicit probe policy scoped to its atlas, preserve host defaults,
+font provenance, real submission/readback deadlines and independent GL/Vulkan
+gates; this probe is not source-text or transparent-pixel application parity.
+
 Native event-pump/render diagnostics must skip state reads and interpolation
 when disabled, not just skip their final write. Retain enabled message semantics
 and original scheduling/deadlines; skipped formatting is not native GPU idle

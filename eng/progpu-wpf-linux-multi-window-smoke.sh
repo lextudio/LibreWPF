@@ -102,7 +102,7 @@ set +e
 harness_status=$?
 set -e
 
-grep -E "^(ProGPU WPF multi-window smoke|')" "${smoke_log}" || true
+grep -E "^(ProGPU WPF (multi-window smoke|glyph compute readback)|')" "${smoke_log}" || true
 
 if ((harness_status != 0)); then
   echo "ProGPU WPF multi-window smoke failed with exit code ${harness_status}." >&2

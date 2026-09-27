@@ -20,7 +20,7 @@ namespace System.Windows;
 public class PortableMessageBoxModalTests
 {
     private const string ChildMarker = "LIBREWPF_MESSAGEBOX_MODAL_CHILD";
-    private const string CompletionMarker = "Public MessageBox modal contracts passed: explicit owner and inferred main window.";
+    private const string CompletionMarker = "Public MessageBox modal contracts passed: explicit/inferred owner and short/scrollable long content.";
 
     [PortableMessageBoxFact]
     public void PublicMessageBoxBlocksItsOwnerUntilTheActualDialogCloses()
@@ -104,6 +104,7 @@ public class PortableMessageBoxModalTests
         var sources = new Dictionary<Window, IPortablePresentationSourceHost>();
         int ownerActivationRequests = 0, ownerMouseReports = 0, ownerDrops = 0;
         int dialogRuns = 0, dialogCloses = 0, dialogDisposals = 0;
+        string expectedMessage = string.Empty;
         bool ownerInputAllowed = true;
         bool observingOwnerInput = false;
         // Observe the real source ingress, not renderer-owned hit selection. This
@@ -184,11 +185,45 @@ public class PortableMessageBoxModalTests
                         // Click the real generated button. This runs the production
                         // selected-result callback and Window.DialogResult close path.
                         Grid content = Assert.IsType<Grid>(dialog.Content);
+                        ScrollViewer messageViewport = Assert.IsType<ScrollViewer>(content.Children[0]);
+                        Assert.Equal(0, Grid.GetRow(messageViewport));
+                        Assert.Equal(ScrollBarVisibility.Auto, messageViewport.VerticalScrollBarVisibility);
+                        Assert.Equal(ScrollBarVisibility.Disabled, messageViewport.HorizontalScrollBarVisibility);
+                        Assert.False(messageViewport.CanContentScroll);
+                        Grid messageArea = Assert.IsType<Grid>(messageViewport.Content);
+                        TextBlock message = Assert.IsType<TextBlock>(Assert.Single(messageArea.Children.Cast<UIElement>()));
+                        Assert.Equal(expectedMessage, message.Text);
+                        Assert.Equal(TextWrapping.Wrap, message.TextWrapping);
                         StackPanel buttons = Assert.IsType<StackPanel>(content.Children[1]);
+                        Assert.Equal(1, Grid.GetRow(buttons));
+                        Assert.True(content.RowDefinitions[1].Height.IsAuto);
                         Assert.Equal(3, buttons.Children.Count);
                         Button selected = Assert.IsType<Button>(buttons.Children[1]);
                         Assert.Equal("_No", selected.Content);
                         Assert.True(selected.IsDefault);
+
+                        // This source-only host has no native window theme. Lay
+                        // out the actual dialog content at its bounded size;
+                        // ScrollViewer keeps its real default control template.
+                        content.Measure(new Size(dialog.Width, dialog.Height));
+                        content.Arrange(new Rect(0, 0, dialog.Width, dialog.Height));
+                        content.UpdateLayout();
+                        Assert.True(messageViewport.ViewportHeight > 0);
+                        Assert.True(selected.ActualHeight > 0);
+                        Point buttonPosition = selected.TranslatePoint(new Point(), content);
+                        Assert.InRange(buttonPosition.Y, 0, content.ActualHeight - selected.ActualHeight);
+                        if (expectedMessage.Contains('\n'))
+                        {
+                            Assert.True(messageViewport.ScrollableHeight > 0);
+                            messageViewport.ScrollToBottom();
+                            content.UpdateLayout();
+                            Assert.Equal(messageViewport.ScrollableHeight, messageViewport.VerticalOffset);
+                            Assert.Equal(buttonPosition, selected.TranslatePoint(new Point(), content));
+                        }
+                        else
+                        {
+                            Assert.Equal(0, messageViewport.ScrollableHeight);
+                        }
                         selected.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, selected));
                         Assert.False(shouldContinue());
                         Assert.True(dialog.IsDisposed);
@@ -209,12 +244,18 @@ public class PortableMessageBoxModalTests
             owner.Show();
             sources[owner].SetClientSize(800, 500);
             PortableWindowActivationService.SetActivationState(owner, true);
+            foreach (string messageText in new[]
+            {
+                "Actual source message",
+                string.Join("\n", Enumerable.Range(1, 80).Select(index => $"Message line {index}: retained source content."))
+            })
             foreach (bool explicitOwner in new[] { true, false })
             {
+                expectedMessage = messageText;
                 MessageBoxResult result = explicitOwner
-                    ? MessageBox.Show(owner, "Actual source message", "Modal source dialog", MessageBoxButton.YesNoCancel,
+                    ? MessageBox.Show(owner, messageText, "Modal source dialog", MessageBoxButton.YesNoCancel,
                         MessageBoxImage.None, MessageBoxResult.No)
-                    : MessageBox.Show("Actual source message", "Modal source dialog", MessageBoxButton.YesNoCancel,
+                    : MessageBox.Show(messageText, "Modal source dialog", MessageBoxButton.YesNoCancel,
                         MessageBoxImage.None, MessageBoxResult.No);
                 Assert.Equal(MessageBoxResult.No, result);
                 Assert.False(ComponentDispatcher.IsThreadModal);
@@ -236,9 +277,9 @@ public class PortableMessageBoxModalTests
                 Assert.Equal((int)DragDropEffects.Copy, DeliverDrop(owner));
                 Assert.Equal(drops + 1, ownerDrops);
             }
-            Assert.Equal(2, dialogRuns);
-            Assert.Equal(2, dialogCloses);
-            Assert.Equal(2, dialogDisposals);
+            Assert.Equal(4, dialogRuns);
+            Assert.Equal(4, dialogCloses);
+            Assert.Equal(4, dialogDisposals);
         }
         finally
         {

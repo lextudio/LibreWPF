@@ -5,6 +5,29 @@ The original native presentation assertions, four exact-zero intervals,
 30-second post-Loaded first-frame bound and 120-second child deadline remain
 unchanged. No debugger, renderer tracing switch, policy change or retry is added.
 
+## Exact-head follow-up: f2b46c2
+
+[Build 36306597457](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36306597457)
+completed unsuccessfully on both Windows architectures. ARM64 recorded an initial
+interval of `3→4` presentations and unequal source/native state. x64 recorded
+three stable exact-zero intervals (`2→2`, `3→3`, `4→4`), then timed out waiting
+for the restored-window native Update endpoint. Both receipts report source UI
+restoration. Neither failure supplies a native crash stack, and neither proves
+the earlier ARM64 fail-fast resolved. No failed producer artifacts qualify releases.
+
+The downloaded idle artifacts match GitHub's SHA-256 digests: ARM64 artifact
+`10929085218`, `b4fe70d5dddc12e57a9b5e5d53ccd050e1f3f6d2a6c71b1465250a433b1acba7`;
+x64 artifact `10928820768`,
+`0f1c5cd00c57a2e4df7d952be2a32a8c757b3206b12f73e9b455362d88dbc41b`.
+
+The receipt now retains both actual endpoint values before comparing them,
+including presented scene/WPF/drawing revisions, viewport, source placement,
+clips and native counters. `after: null` means the endpoint was not obtained,
+not unchanged state. Full text remains part of equality; only its length and an
+explicit text-change flag are serialized. No extra observation, native query,
+interval logging, render request, settling time or deadline is introduced.
+This closes the missing comparison evidence, not either application failure.
+
 ## Retained ARM64 failure and x64 control
 
 At `ba7dcd7cd7288d9e0f2d2a3c07e44514489e50d2`,

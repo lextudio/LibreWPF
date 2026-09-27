@@ -32,6 +32,18 @@ public class ShowcasePassiveIdleSourceContractTests
         int publish = source.IndexOf("return source;", revalidate, StringComparison.Ordinal);
         Assert.True(read > owner && sourceCaptured > read && revalidate > sourceCaptured && publish > revalidate);
         Assert.Contains("IdleSourceState after = await ReadIdleBoundaryAsync(host, fixture);", source, StringComparison.Ordinal);
+        int after = source.IndexOf("IdleSourceState after = await ReadIdleBoundaryAsync(host, fixture);", retained, StringComparison.Ordinal);
+        int captureAfter = source.IndexOf("phase.After = after;", after, StringComparison.Ordinal);
+        int comparison = source.IndexOf("phase.StableIdentity = before == after;", captureAfter, StringComparison.Ordinal);
+        int reject = source.IndexOf("if (!phase.StableIdentity)", comparison, StringComparison.Ordinal);
+        int requireIdle = source.IndexOf("interval.RequireIdle();", reject, StringComparison.Ordinal);
+        Assert.True(after > retained && captureAfter > after && comparison > captureAfter && reject > comparison && requireIdle > reject);
+        Assert.Contains("public IdleSourceState Before => state;", source, StringComparison.Ordinal);
+        Assert.Contains("public IdleSourceState? After { get; set; }", source, StringComparison.Ordinal);
+        Assert.Contains("[property: JsonIgnore] string Text", source, StringComparison.Ordinal);
+        Assert.Contains("!string.Equals(state.Text, after.Text, StringComparison.Ordinal)", source, StringComparison.Ordinal);
+        foreach (string field in new[] { "Geometry", "Presented", "TextTop", "ContentWidth", "ContentHeight", "Clip", "Zero", "Recovery", "Commands", "Draws", "Submissions" })
+            Assert.Contains(field, source[source.IndexOf("private readonly record struct IdleSourceState(", StringComparison.Ordinal)..source.IndexOf("private readonly record struct IdleRect(", StringComparison.Ordinal)], StringComparison.Ordinal);
         Assert.Contains("IdleSettlingTime = TimeSpan.FromSeconds(1)", source, StringComparison.Ordinal);
         Assert.Contains("IdleObservationTime = TimeSpan.FromSeconds(2)", source, StringComparison.Ordinal);
         // Seventeen existing phase records plus two markers for each of four

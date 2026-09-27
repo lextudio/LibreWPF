@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -237,6 +238,7 @@ public partial class MainWindow
         receipt.Phases.Add(phase); // Preserve measured failure evidence before validation.
         journal?.Write(name + "-observed");
         IdleSourceState after = await ReadIdleBoundaryAsync(host, fixture);
+        phase.After = after; // Retain both endpoints even when the comparison below fails.
         phase.StableIdentity = before == after;
         if (!phase.StableIdentity)
             throw new InvalidOperationException($"{name}: source/native identity, geometry or recovery changed during observation.");
@@ -343,9 +345,14 @@ public partial class MainWindow
         WpfPortablePresentationSourceBridge Bridge, long OriginalRecovery);
 
     private readonly record struct IdleSourceState(LiveRenderSurfaceGeometry Geometry, LivePresentedFrameState Presented,
-        string Text, double ScrollOffset,
+        [property: JsonIgnore] string Text, double ScrollOffset,
         double TextTop, double ContentWidth, double ContentHeight, IdleRect Clip, IdleRect Zero,
-        long Recovery, uint Commands, uint Draws, ulong Submissions);
+        long Recovery, uint Commands, uint Draws, ulong Submissions)
+    {
+        // Equality still compares the full original text, but failure receipts
+        // need not duplicate the overflowing source paragraphs at each endpoint.
+        public int TextLength => Text.Length;
+    }
 
     private readonly record struct IdleRect(double X, double Y, double Width, double Height, bool IsEmpty);
 
@@ -368,6 +375,11 @@ public partial class MainWindow
         public string Name => name;
         public PassiveIdleInterval.Result Interval => interval;
         public bool StableIdentity { get; set; }
+        public IdleSourceState Before => state;
+        public IdleSourceState? After { get; set; }
+        public bool? TextChanged => After is { } after
+            ? !string.Equals(state.Text, after.Text, StringComparison.Ordinal)
+            : null;
         public uint LogicalWidth => state.Geometry.LogicalWidth;
         public uint LogicalHeight => state.Geometry.LogicalHeight;
         public uint PixelWidth => state.Geometry.PixelWidth;

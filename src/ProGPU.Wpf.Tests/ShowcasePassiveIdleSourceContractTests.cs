@@ -9,6 +9,31 @@ namespace ProGPU.Wpf.Tests;
 public class ShowcasePassiveIdleSourceContractTests
 {
     [Fact]
+    public void BoundaryMarkersCompleteBeforeTheUnchangedMeasuredInterval()
+    {
+        string source = Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.IdleLayoutClip.cs");
+        int before = source.IndexOf("IdleSourceState before = await ReadIdleBoundaryAsync(host, fixture,", StringComparison.Ordinal);
+        int entered = source.IndexOf("journal?.Write(name + \"-boundary-entered\")", before, StringComparison.Ordinal);
+        int captured = source.IndexOf("journal?.Write(name + \"-boundary-captured\");", entered, StringComparison.Ordinal);
+        int interval = source.IndexOf("PassiveIdleInterval.Result interval = await PassiveIdleInterval.ObserveAsync(process, readFrames,", captured, StringComparison.Ordinal);
+        int retained = source.IndexOf("receipt.Phases.Add(phase);", interval, StringComparison.Ordinal);
+        Assert.True(before >= 0 && entered > before && captured > entered && interval > captured && retained > interval);
+        Assert.DoesNotContain("journal", source[interval..retained], StringComparison.Ordinal);
+        int boundary = source.IndexOf("private Task<IdleSourceState> ReadIdleBoundaryAsync(", StringComparison.Ordinal);
+        int once = source.IndexOf("return PassiveIdleBoundary.ObserveOnceAsync(", boundary, StringComparison.Ordinal);
+        int wake = source.IndexOf("() => WakeLiveNativeLoop(host)", once, StringComparison.Ordinal);
+        int callback = source.IndexOf("onBoundaryEntered?.Invoke();", wake, StringComparison.Ordinal);
+        int owner = source.IndexOf("if (!Dispatcher.CheckAccess()", callback, StringComparison.Ordinal);
+        Assert.True(boundary >= 0 && once > boundary && wake > once && callback > wake && owner > callback);
+        Assert.Contains("IdleSourceState after = await ReadIdleBoundaryAsync(host, fixture);", source, StringComparison.Ordinal);
+        Assert.Contains("IdleSettlingTime = TimeSpan.FromSeconds(1)", source, StringComparison.Ordinal);
+        Assert.Contains("IdleObservationTime = TimeSpan.FromSeconds(2)", source, StringComparison.Ordinal);
+        // Seventeen existing phase records plus two markers for each of four
+        // initial boundaries remain inside the unchanged 32-record journal.
+        Assert.Contains("++_count > 32", Read("samples/ProGPU.Wpf.ShowcaseApp/PassiveIdlePhaseJournal.cs"), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ResizeDiagnosticsBracketTheActualOperationAndNeverObserveAnIdleInterval()
     {
         string fixture = Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.IdleLayoutClip.cs");

@@ -16,7 +16,7 @@ minimum = {
     "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRendererTests": 242,
     "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests": 243,
     "ProGPU.Wpf.Tests.PassiveIdleIntervalTests": 8,
-    "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 5,
+    "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 6,
     "ProGPU.Wpf.Tests.PassiveIdleBoundaryTests": 17,
     "ProGPU.Wpf.Tests.MenuLifecycleJournalTests": 7,
     "ProGPU.Wpf.Tests.ProGpuWpfResizePolicyTests": 17,

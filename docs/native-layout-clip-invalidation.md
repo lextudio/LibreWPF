@@ -150,6 +150,30 @@ Local implementation check: the linked .NET 10 harness executed 25 actual
 diagnostic/policy/source-guard cases successfully. It compiles the shared policy
 and diagnostic classes, not the complete host or source-WPF package graph.
 
+### Exact Windows follow-up at 360da4c3
+
+Build 36303457299 retains a successful x64 receipt: all four phases have zero
+extra presentations, stable source/native identity, unchanged recovery count,
+and restored UI. Its diagnostic artifact SHA-256 is
+`06d6bede0ba4b6146eadeaa5e6a5efe9ef84e0930311b351f50e93d666860768`.
+This qualifies that x64 idle run, not every Windows/native application contract.
+
+ARM64 PID 6136 completes the source resize, defers inline framebuffer rendering,
+returns from the native setter and observes the resized geometry. It later exits
+`0xC0000409` after `native-resized-boundary`, without a timeout, WER dump or exact
+Application Error record. Artifact SHA-256 is
+`24925cd8c09658b05c33438916df7f47a89f525953c8252da2bc0aa45f5a814a`.
+The complete producer Build remains failed and cannot supply qualified staging.
+The earlier failure at swap-chain configuration is no longer the last observed
+operation; the new trace still does not establish a native fault cause.
+
+Two bounded markers now distinguish entry into the native Update observer from
+completion of its first source snapshot. Both finish before process-metric
+sampling begins; no output is added inside the measured interval. All four
+phases, exact-zero assertions, owner checks and deadlines remain unchanged, and
+the 25 possible phase records stay within the original 32-record journal budget.
+This is failure localization, not an ARM64 crash fix or a passing native gate.
+
 # Passive native boundary follow-up
 
 The b0a78 Windows x64 receipt retained initial and scrolled exact-zero intervals,

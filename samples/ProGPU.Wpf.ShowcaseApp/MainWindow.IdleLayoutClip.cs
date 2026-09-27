@@ -227,7 +227,9 @@ public partial class MainWindow
         journal?.Write(name + "-boundary");
         // A dispatcher operation may run inside OnRender before presentation.
         // Observe once from the actual native Update callback, not that drain.
-        IdleSourceState before = await ReadIdleBoundaryAsync(host, fixture);
+        IdleSourceState before = await ReadIdleBoundaryAsync(host, fixture,
+            () => journal?.Write(name + "-boundary-entered"));
+        journal?.Write(name + "-boundary-captured");
         PassiveIdleInterval.Result interval = await PassiveIdleInterval.ObserveAsync(process, readFrames,
             IdleObservationTime).ConfigureAwait(false);
         var phase = new IdlePhaseReceipt(name, interval, before);
@@ -241,7 +243,8 @@ public partial class MainWindow
         return after;
     }
 
-    private Task<IdleSourceState> ReadIdleBoundaryAsync(ProGpuWpfWindowHost host, IdleFixture fixture)
+    private Task<IdleSourceState> ReadIdleBoundaryAsync(ProGpuWpfWindowHost host, IdleFixture fixture,
+        Action? onBoundaryEntered = null)
     {
         var window = host.SilkWindow ?? throw new InvalidOperationException("Missing actual native window.");
         Action<double>? update = null;
@@ -251,6 +254,9 @@ public partial class MainWindow
             () => WakeLiveNativeLoop(host),
             () =>
             {
+                // Diagnostic setup only, before the interval starts. Exceptions
+                // are captured by ObserveOnceAsync, never an unmanaged callback.
+                onBoundaryEntered?.Invoke();
                 if (!Dispatcher.CheckAccess() || !ReferenceEquals(host.SilkWindow, window) ||
                     !ProGpuWpfDiagnostics.TryGetRenderActivitySnapshot(host, out var activity) ||
                     activity.HasImmediatePresentationWork || activity.PresentedFrameCount <= 0 ||

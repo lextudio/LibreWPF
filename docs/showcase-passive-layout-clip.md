@@ -109,6 +109,21 @@ complete source guards. Full CI on this combined head, including actual x64
 and ARM64 four-phase native idle receipts, is still required; the earlier
 failed Build is not reclassified as passing.
 
+The combined `0889ffdbaf` Build
+([36280045293](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36280045293))
+reached both Windows jobs, but each stopped at **Validate native idle launcher
+isolation** before launching Showcase. All five offline controls passed; the
+invalid-receipt stub left a synthetic global `LASTEXITCODE=1`, which the GitHub
+PowerShell wrapper propagated after the final launch-exception control. The
+fixture now saves and restores the caller's exit-status presence and value
+around each injected invocation in `finally`, and asserts that restoration.
+The production launcher, its original failure assertions and all native gates
+are unchanged. Local PowerShell 7.5.2 reproduced the original wrapper exit 1;
+the corrected fixture passes all five controls with absent/zero caller status,
+preserves a prior nonzero status, and still fails an independently injected
+case-count assertion. These are offline launcher checks, not native idle
+receipts; both actual Windows four-phase runs remain required.
+
 The endpoint helper has strict zero/nonzero/regressed-frame controls and a
 two-endpoint execution contract. Source guards preserve the side-effect-free
 interval and real Showcase ownership seam. The launcher has offline negative

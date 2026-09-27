@@ -76,10 +76,28 @@ try {
         $caseCode = $case.Code
         $caseThrows = $case.Throws
         $observed = $null
+        # The stub deliberately writes a synthetic native-process status. Scope
+        # that mutation to this control, including the throwing launch case;
+        # GitHub's pwsh wrapper propagates any remaining LASTEXITCODE afterward.
+        $previousExitCodeVariable = Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue
+        $hadExitCode = $null -ne $previousExitCodeVariable
+        $previousExitCode = if ($hadExitCode) { $previousExitCodeVariable.Value } else { $null }
         try {
             Invoke-ShowcaseIdleCheck $expectedApp $testRoot -PythonCommand Invoke-ControlPython
         }
         catch { $observed = $_.Exception.Message }
+        finally {
+            if ($hadExitCode) {
+                $global:LASTEXITCODE = $previousExitCode
+            } else {
+                Remove-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue
+            }
+        }
+        $restoredExitCode = Get-Variable -Name LASTEXITCODE -Scope Global -ErrorAction SilentlyContinue
+        Assert-Control ($hadExitCode -eq ($null -ne $restoredExitCode)) "Caller exit-status presence changed."
+        if ($hadExitCode) {
+            Assert-Control ($restoredExitCode.Value -eq $previousExitCode) "Caller exit status changed."
+        }
         if ($case.Throws) {
             Assert-Control ($observed -eq "offline launch error") "Launch exception was hidden: $observed."
         } elseif ($case.Code -ne 0) {

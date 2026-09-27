@@ -1,5 +1,34 @@
 # Passive Showcase failure evidence
 
+## ARM64 result after real-fence surface reconfiguration
+
+Exact head `800d15fd5`, Build `36340593124`, passes the x64 native Showcase,
+SDK consumers and Linux popup gates, but the ARM64 application still fails.
+Its original PID 9648 exits 1 without an access violation or child timeout and
+restores the UI. Initial/scrolled observations retain stable source identity,
+4→4 / 5→5 presentations and 2007.7321 / 2000.6860 ms intervals. They still record
+2687.5 / 6093.75 ms of process CPU and 192736 / 186248 allocated bytes. Zero extra
+presentations are not proof of idle CPU or complete issue #179 qualification.
+After resize, the native update-boundary callback does not enter within the
+unchanged 9.6-second bound. This is a new observed failure, not a crash-resolution
+claim or permission to extend timeouts. Evidence is retained under
+`artifacts/idle-current-integration/fence-ci.YrqQsfZg/` in the diagnostics worktree.
+The independent `602a59864` Build `36341507005` repeats this ARM64 failure:
+PID 5688 exits 1, restores the UI and records no crash or child timeout. Its
+initial/scrolled intervals retain 4→4 / 5→5 frames, with 2750 / 5500 ms process
+CPU. The callback timeout must not be treated as a one-off passing-run retry.
+
+Source inspection found an independent idle allocation: event-pump and render
+callbacks constructed native-loop trace strings even when tracing was off.
+Those hot call sites now use an enabled-gated interpolated string handler so
+the state reads and formatting expressions are not evaluated when disabled.
+Enabled text/formatting and the existing logger remain unchanged. Controls
+exercise skipped side effects, throwing expressions and enabled formatting,
+and guard actual pump/render call-site wiring. They do not qualify native GPU
+completion, resolve the ARM64 callback timeout, or establish near-zero app CPU.
+
+## Diagnostic scope
+
 This is diagnostic localization, not a resize fix or native idle qualification.
 The original native presentation assertions, four exact-zero intervals,
 30-second post-Loaded first-frame bound and 120-second child deadline remain

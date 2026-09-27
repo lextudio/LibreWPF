@@ -1,5 +1,10 @@
 # Agent Guidance
 
+Native event-pump/render diagnostics must skip state reads and interpolation
+when disabled, not just skip their final write. Retain enabled message semantics
+and original scheduling/deadlines; skipped formatting is not native GPU idle
+or application performance qualification.
+
 Resize callbacks retain source geometry and invalidate the scene; only the
 guarded render boundary configures the swap chain before acquiring a texture.
 Native size setters defer presentation until their complete nested assignment

@@ -667,7 +667,7 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Contains("DoEvents();", source, StringComparison.Ordinal);
         Assert.Contains("if (!EnsureCompositionTargetLoaded() || !ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("window.IsEventDriven = false;", source, StringComparison.Ordinal);
-        Assert.Contains("window.DoEvents();\n                TraceNativeLoop(\"native event poll leaving:", source, StringComparison.Ordinal);
+        Assert.Contains("window.DoEvents();\n                TraceNativeLoop(s_traceNativeLoop, $\"native event poll leaving:", source, StringComparison.Ordinal);
         Assert.Contains("if (useNonBlockingNativePoll)\n                {\n                    window.IsEventDriven = restoreEventDriven;", source, StringComparison.Ordinal);
         Assert.Contains("Interlocked.Increment(ref s_activeNativeEventDispatchDepth);", source, StringComparison.Ordinal);
         Assert.Contains("if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)", source, StringComparison.Ordinal);

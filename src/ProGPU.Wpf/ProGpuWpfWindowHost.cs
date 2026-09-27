@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using ProGPU.Backend;
@@ -1557,7 +1558,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             // before its first presentation. The bounded dispatcher turn after
             // native polling will process that work without starving DoRender.
             NativeRenderPumpCount++;
-            TraceNativeLoop("pre-event render entering: " + CreateNativeLoopTraceState());
+            TraceNativeLoop(s_traceNativeLoop, $"pre-event render entering: {CreateNativeLoopTraceState()}");
             Interlocked.Increment(ref s_activeNativeEventDispatchDepth);
             try
             {
@@ -1570,7 +1571,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     ProcessDeferredNativeWindowDisposals();
                 }
             }
-            TraceNativeLoop("pre-event render leaving: " + CreateNativeLoopTraceState());
+            TraceNativeLoop(s_traceNativeLoop, $"pre-event render leaving: {CreateNativeLoopTraceState()}");
         }
 
         bool restoreEventDriven = window.IsEventDriven;
@@ -1591,11 +1592,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             try
             {
-                TraceNativeLoop(
-                    $"native event poll entering: nonBlocking={useNonBlockingNativePoll}, " +
-                    CreateNativeLoopTraceState());
+                TraceNativeLoop(s_traceNativeLoop,
+                    $"native event poll entering: nonBlocking={useNonBlockingNativePoll}, {CreateNativeLoopTraceState()}");
                 if (!NativeWindowModalSession.TryPumpEvents()) window.DoEvents();
-                TraceNativeLoop("native event poll leaving: " + CreateNativeLoopTraceState());
+                TraceNativeLoop(s_traceNativeLoop, $"native event poll leaving: {CreateNativeLoopTraceState()}");
             }
             finally
             {
@@ -2407,7 +2407,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _isRendering = true;
         try
         {
-            TraceNativeLoop("render callback entering: " + CreateNativeLoopTraceState());
+            TraceNativeLoop(s_traceNativeLoop, $"render callback entering: {CreateNativeLoopTraceState()}");
             if (_isDisposed)
             {
                 return;
@@ -2439,11 +2439,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 // The typed retained root is already complete enough for its
                 // initial native MIL snapshot. Process self-rescheduling WPF
                 // callbacks after that first frame is visible.
-                TraceNativeLoop(
-                    "native MIL cold-start dispatcher deferred: " +
-                    CreateNativeLoopTraceState());
+                TraceNativeLoop(s_traceNativeLoop,
+                    $"native MIL cold-start dispatcher deferred: {CreateNativeLoopTraceState()}");
             }
-            TraceNativeLoop("render dispatcher drained: " + CreateNativeLoopTraceState());
+            TraceNativeLoop(s_traceNativeLoop, $"render dispatcher drained: {CreateNativeLoopTraceState()}");
 
             if (_target == null || _window == null || _target.Context.Surface == null)
             {
@@ -2494,7 +2493,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
             if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
             {
-                TraceNativeLoop("native MIL render entering: " + CreateNativeLoopTraceState());
+                TraceNativeLoop(s_traceNativeLoop, $"native MIL render entering: {CreateNativeLoopTraceState()}");
                 if (RenderNativeMilFrame(
                         pixelWidth,
                         pixelHeight,
@@ -2515,7 +2514,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     RecordNativePerformanceSnapshot(_pendingNativeMilPerformance);
                     TraceRenderSurfaceGeometryIfRequested(geometry);
                 }
-                TraceNativeLoop("native MIL render leaving: " + CreateNativeLoopTraceState());
+                TraceNativeLoop(s_traceNativeLoop, $"native MIL render leaving: {CreateNativeLoopTraceState()}");
                 return;
             }
 
@@ -2672,7 +2671,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         finally
         {
             _isRendering = false;
-            TraceNativeLoop("render callback leaving: " + CreateNativeLoopTraceState());
+            TraceNativeLoop(s_traceNativeLoop, $"render callback leaving: {CreateNativeLoopTraceState()}");
         }
     }
 
@@ -3201,9 +3200,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             FormattableString.Invariant($", elapsedMs={Stopwatch.GetElapsedTime(s_nativeLoopTraceOrigin).TotalMilliseconds:0.000}"));
     }
 
+    private void TraceNativeLoop(bool enabled,
+        [InterpolatedStringHandlerArgument(nameof(enabled))] ref NativeLoopTraceMessage message)
+    {
+        if (enabled) TraceNativeLoop(message.GetFormattedText());
+    }
+
     internal void TraceNativeActivation(string message)
     {
-        TraceNativeLoop($"window={Title}, {message}");
+        TraceNativeLoop(s_traceNativeLoop, $"window={Title}, {message}");
     }
 
     private string CreateNativeLoopTraceState()

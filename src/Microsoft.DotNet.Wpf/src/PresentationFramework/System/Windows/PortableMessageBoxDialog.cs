@@ -210,8 +210,19 @@ namespace System.Windows
             };
             Grid.SetColumn(text, textColumn);
             messageArea.Children.Add(text);
-            Grid.SetRow(messageArea, 0);
-            root.Children.Add(messageArea);
+            // The dialog height is bounded. Scroll only its message area so the
+            // complete source text remains reachable and action buttons stay put.
+            var messageViewport = new ScrollViewer
+            {
+                Content = messageArea,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Stretch,
+                CanContentScroll = false
+            };
+            Grid.SetRow(messageViewport, 0);
+            root.Children.Add(messageViewport);
 
             var buttons = new StackPanel
             {

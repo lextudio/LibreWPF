@@ -1,0 +1,30 @@
+<Project>
+  <ItemGroup>
+    <FixtureAsset Include="$(PkgLibreWinForms_System_Windows_Forms)lib/$(TargetFramework)/System.Windows.Forms.dll" />
+    <FixtureAsset Include="$(PkgLibreWinForms_System_Windows_Forms)lib/$(TargetFramework)/LibreWinForms.Platform.dll" />
+    <FixtureAsset Include="$(PkgLibreWinForms_ProGPU)lib/$(TargetFramework)/LibreWinForms.ProGPU.dll" />
+    <FixtureAsset Include="$(PkgLibreWinForms_WindowsFormsIntegration)lib/$(TargetFramework)/WindowsFormsIntegration.dll" />
+  </ItemGroup>
+  <Target Name="ResolveLockFileCopyLocalFiles">
+    <Error Condition="'$(IsCrossTargetingBuild)' == 'true'" Text="Per-framework package resolution ran in the outer build." />
+    <MakeDir Directories="@(FixtureAsset->'%(RootDir)%(Directory)')" />
+    <WriteLinesToFile File="%(FixtureAsset.Identity)" Lines="$(TargetFramework)|%(FixtureAsset.Filename)" Overwrite="true" />
+    <ItemGroup>
+      <RuntimeCopyLocalItems Include="@(FixtureAsset)" NuGetPackageId="LibreWinForms.WindowsFormsIntegration" />
+    </ItemGroup>
+  </Target>
+  <Target Name="VerifyRuntimeCopy" AfterTargets="_ProGpuWpfSdkCopyPortableWinFormsCompatRuntimeAssets">
+    <Error Condition="'$(FixtureCopy)' == 'true' And !Exists('$(TargetDir)%(FixtureAsset.Filename)%(FixtureAsset.Extension)')"
+           Text="The inner build omitted %(FixtureAsset.Filename) for $(TargetFramework)." />
+    <Error Condition="'$(FixtureCopy)' != 'true' And Exists('$(TargetDir)%(FixtureAsset.Filename)%(FixtureAsset.Extension)')"
+           Text="Runtime copy ignored the explicit opt-out." />
+    <ReadLinesFromFile File="$(TargetDir)%(FixtureAsset.Filename)%(FixtureAsset.Extension)" Condition="'$(FixtureCopy)' == 'true'">
+      <Output TaskParameter="Lines" ItemName="CopiedPayload" />
+    </ReadLinesFromFile>
+    <ItemGroup Condition="'$(FixtureCopy)' == 'true'">
+      <ExpectedPayload Include="@(FixtureAsset->'$(TargetFramework)|%(Filename)')" />
+    </ItemGroup>
+    <Error Condition="'@(CopiedPayload)' != '@(ExpectedPayload)'" Text="Runtime assets were copied from the wrong framework or payload." />
+    <Message Importance="High" Text="Verified $(FixtureMode), canonical=$(FixtureCanonical), copy=$(FixtureCopy), $(TargetFramework)." />
+  </Target>
+</Project>

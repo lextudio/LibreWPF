@@ -161,6 +161,7 @@ do
 
     NUGET_PACKAGES="${smoke_packages}" "${dotnet_command}" run \
       --project "${smoke_project}" \
+      --framework net10.0-windows \
       --configuration Release \
       --no-build \
       --no-restore \

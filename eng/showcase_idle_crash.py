@@ -45,7 +45,9 @@ def validate_dump(path, expected_pid):
         header = stream.read(32)
         signature, version, count, table, _, _, flags = struct.unpack("<IIIIIIQ", header)
         if signature != 0x504D444D or version & 0xFFFF != 0xA793 or flags != 0 or not 1 <= count <= 128 or table < 32 or table + count * 12 > size:
-            raise ValueError("Invalid/non-MiniDumpNormal crash dump")
+            # Fixed-size structural evidence only; never log process memory.
+            raise ValueError(f"Invalid/non-MiniDumpNormal crash dump: signature=0x{signature:08x}, "
+                f"version=0x{version:08x}, flags=0x{flags:016x}, streams={count}, table={table}, bytes={size}")
         stream.seek(table)
         entries = [struct.unpack("<III", stream.read(12)) for _ in range(count)]
     if any(offset + length > size for _, length, offset in entries):

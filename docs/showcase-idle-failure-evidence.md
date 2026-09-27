@@ -52,11 +52,23 @@ Offline controls cover PE architecture, malformed receipts, dump correlation and
 original-result preservation. These controls do not qualify ARM64 Showcase or
 establish a crash fix. No new third-party executable/dependency is downloaded.
 
+At `8b4c1945c`, ARM64 passed all three executed child controls; x64 passed launch,
+handled exception and ordinary exit, but its dump failed the strict header gate.
+That error did not retain the header fields, so the rejected flags/version are
+not yet established. The follow-up error reports only bounded numeric header
+fields, never raw memory, without relaxing normal-dump admission. The callback
+now explicitly preserves default module/thread flags, handles cancellation and
+declines alternate I/O, snapshot, kernel-dump and extra-memory requests; it must
+not claim success for operations it does not implement or ignore read failures.
+Native callback controls exercise these decisions before the real child controls.
+Both architecture jobs must pass again; this is not evidence of a product fix.
+
 Implementation provenance is original LibreWPF process/receipt ownership and
 ProGPU's existing installed-Visual-Studio discovery. Public contracts consulted:
 [debug events and handle ownership](https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-waitfordebugevent),
 [MiniDumpWriteDump](https://learn.microsoft.com/en-us/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump),
-and [local exception pointers](https://learn.microsoft.com/en-us/windows/win32/api/minidumpapiset/ns-minidumpapiset-minidump_exception_information).
+[local exception pointers](https://learn.microsoft.com/en-us/windows/win32/api/minidumpapiset/ns-minidumpapiset-minidump_exception_information),
+and [callback-specific return contracts](https://learn.microsoft.com/en-us/windows/win32/api/minidumpapiset/ne-minidumpapiset-minidump_callback_type).
 No debugger/toolkit implementation source was copied.
 
 ## Exact-head follow-up: f2b46c2

@@ -7,6 +7,7 @@
 #include <dbghelp.h>
 #include <cstdint>
 #include <filesystem>
+#include <initializer_list>
 #include <string>
 #include <type_traits>
 
@@ -34,16 +35,58 @@ struct handle {
 struct dump_budget { HANDLE file; ULONGLONG deadline; };
 BOOL CALLBACK check_dump_budget(void* parameter, PMINIDUMP_CALLBACK_INPUT input,
                                MINIDUMP_CALLBACK_OUTPUT* output) {
-    if (input->CallbackType == CancelCallback) {
-        const auto& budget = *static_cast<const dump_budget*>(parameter);
-        LARGE_INTEGER size{};
-        output->CheckCancel = TRUE;
-        output->Cancel = GetTickCount64() >= budget.deadline ||
-            !GetFileSizeEx(budget.file, &size) || size.QuadPart > maximum_dump_bytes;
+    switch (input->CallbackType) {
+        case ModuleCallback:
+        case ThreadCallback:
+        case ThreadExCallback:
+        case IncludeThreadCallback:
+        case IncludeModuleCallback:
+            return TRUE; // Preserve the SDK's default write flags and inclusion.
+        case CancelCallback: {
+            const auto& budget = *static_cast<const dump_budget*>(parameter);
+            LARGE_INTEGER size{};
+            output->CheckCancel = TRUE;
+            output->Cancel = GetTickCount64() >= budget.deadline ||
+                !GetFileSizeEx(budget.file, &size) || size.QuadPart > maximum_dump_bytes;
+            return TRUE;
+        }
+        case VmStartCallback:
+            output->Status = S_OK; // No alternate virtual-memory reader.
+            return TRUE;
+        default:
+            // Do not opt into alternate I/O, snapshot handles, extra memory or
+            // kernel dumps, and never acknowledge an ignored memory-read error.
+            return FALSE;
     }
-    return TRUE;
 }
 static_assert(std::is_same_v<decltype(&check_dump_budget), MINIDUMP_CALLBACK_ROUTINE>);
+
+bool callback_controls() {
+    MINIDUMP_CALLBACK_INPUT input{};
+    MINIDUMP_CALLBACK_OUTPUT output{};
+    constexpr ULONG sentinel = 0x12345678;
+    for (const auto kind : {ModuleCallback, ThreadCallback, ThreadExCallback,
+                           IncludeThreadCallback, IncludeModuleCallback}) {
+        input.CallbackType = kind;
+        output.ModuleWriteFlags = sentinel;
+        if (!check_dump_budget(nullptr, &input, &output) || output.ModuleWriteFlags != sentinel) return false;
+    }
+    for (const auto kind : {MemoryCallback, WriteKernelMinidumpCallback, RemoveMemoryCallback,
+                           IoStartCallback, IoWriteAllCallback, IoFinishCallback,
+                           ReadMemoryFailureCallback, IsProcessSnapshotCallback, SecondaryFlagsCallback}) {
+        input.CallbackType = kind;
+        output.ModuleWriteFlags = sentinel;
+        if (check_dump_budget(nullptr, &input, &output) || output.ModuleWriteFlags != sentinel) return false;
+    }
+    input.CallbackType = MAXDWORD;
+    if (check_dump_budget(nullptr, &input, &output) || output.ModuleWriteFlags != sentinel) return false;
+    input.CallbackType = VmStartCallback;
+    output.Status = E_NOTIMPL;
+    if (!check_dump_budget(nullptr, &input, &output) || output.Status != S_OK) return false;
+    input.CallbackType = CancelCallback;
+    dump_budget expired{INVALID_HANDLE_VALUE, 0};
+    return check_dump_budget(&expired, &input, &output) && output.CheckCancel && output.Cancel;
+}
 
 DWORD write_dump(HANDLE process, const DEBUG_EVENT& event, const std::filesystem::path& path) {
     handle thread(OpenThread(THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION, FALSE, event.dwThreadId));
@@ -179,6 +222,7 @@ int run(const std::filesystem::path& app, const std::filesystem::path& raw,
 }
 
 int wmain(int argc, wchar_t** argv) {
+    if (argc == 2 && std::wstring(argv[1]) == L"--test-callbacks") return callback_controls() ? 0 : 1;
     if (argc != 4) return 2;
     try { return run(argv[1], argv[2], argv[3]); }
     catch (...) { return 2; } // Job/handle scope still releases the owned child.

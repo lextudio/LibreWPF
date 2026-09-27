@@ -144,6 +144,18 @@ class CrashControls(unittest.TestCase):
         path.write_bytes(dump(version=0x1234A793))
         self.assertEqual(42, crash.validate_dump(path, 42)["processId"])
 
+    def test_rejected_header_reports_only_bounded_structure(self):
+        path = self.root / "bad-header.dmp"
+        path.write_bytes(dump(flags=2) + b"PRIVATE-PROCESS-MEMORY")
+        with self.assertRaises(ValueError) as error:
+            crash.validate_dump(path, 42)
+        message = str(error.exception)
+        self.assertIn("flags=0x0000000000000002", message)
+        self.assertIn("signature=0x504d444d", message)
+        self.assertIn("streams=2, table=32", message)
+        self.assertNotIn("PRIVATE", message)
+        self.assertLess(len(message), 256)
+
     def test_dump_hash_reads_are_bounded_and_require_unchanged_length(self):
         path = self.root / "raw" / "hash.dmp"
         path.write_bytes(dump())

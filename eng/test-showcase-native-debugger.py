@@ -141,6 +141,8 @@ def native_controls(directory, architecture):
     expected = {"arm64": 0xAA64, "x64": 0x8664}[architecture]
     if diagnostic.machine(helper) != expected or diagnostic.machine(fixture) != expected:
         raise RuntimeError("Native helper/fixture PE architecture mismatch")
+    subprocess.run([str(helper), "--test-callbacks"], timeout=5, check=True)
+    print(f"PASS native {architecture} debugger: callback contracts", flush=True)
     for mode, expected_exit, captures in (("handled", 0, False), ("exit", 17, False), ("access-violation", 0xC0000005, True)):
         with tempfile.TemporaryDirectory(prefix="showcase-debugger-control-") as temp:
             root = Path(temp)
@@ -152,6 +154,7 @@ def native_controls(directory, architecture):
             result = subprocess.run([str(helper), str(app), str(raw), str(receipt)],
                 env=os.environ | {"SHOWCASE_DEBUGGER_FIXTURE": mode}, timeout=20, capture_output=True)
             value = diagnostic.load_event(receipt, expected)
+            print(f"Native {architecture} {mode}: {json.dumps(value, sort_keys=True)}", flush=True)
             if result.returncode != expected_exit or value["exitCode"] != expected_exit or value["captured"] != captures:
                 raise RuntimeError(f"Native {mode} mismatch: exit={result.returncode}; {value}")
             dumps = list(raw.iterdir())

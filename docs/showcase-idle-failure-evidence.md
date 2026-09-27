@@ -20,6 +20,39 @@ not identify a faulting module or prove a rendering/lifetime cause. No WER dump
 or exactly correlated Application Error record was produced. This Build remains
 failed and must not stage qualified packages or releases.
 
+## Executed follow-up: 35d85a823
+
+[Build 36336975867](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36336975867)
+passed the prerequisite, SDK, consumer, AnyCPU and Linux popup/input jobs, but
+both native Windows application jobs failed. It remains an unqualified producer.
+
+The x64 application returned zero with restored UI and stable `2→2`, `3→3`,
+`4→4`, `5→5` presentation counts. Its runner correctly rejected the scrolled
+interval's actual `1998.105 ms`, below the unchanged `2000 ms` minimum. A single
+`Task.Delay` completion did not prove that the independent monotonic observation
+clock had reached its deadline. The observer now waits only the remainder of
+that original deadline, with upward millisecond rounding and at most four timer
+waits. It never reads presentation counters in that loop, restarts an interval,
+waits for quiet, changes the two-second requirement, or lengthens the existing
+application timeout. Nonadvancing/regressed clocks fail explicitly; the actual
+two-endpoint elapsed result is checked before publication. Focused observer and
+source controls pass 17/17, including an early timer wake and bounded bad clocks.
+
+ARM64's original PID `3260` again exited `0xc0000005` after
+`native-resized-boundary`, without a timeout or original WER dump. The separate
+diagnostic PID `8772` reproduced the same boundary and exception, and retained
+a validated 944,358-byte normal dump with SHA-256
+`581423cc255b4050b5395dee67b9254f0479f421e3c205a5d9500ca49657c386`.
+The faulting thread is `5040`; PC `0x7df4a63200f4` executes `ldrb w1, [x0]`
+with `x0=0x2696e300000` in generated copy code. Its link register
+`0x7fff32b406ec` maps to `d3d10warp.dll+0x306ec`. This directs investigation
+toward the queued copy/resource lifetime; it does not yet establish a driver,
+surface or renderer defect. Replay apphost cleanup also reported access denied
+and remains explicit in its receipt. The replay does not qualify idle or replace
+the original failure. Both downloaded artifact ZIPs match GitHub's recorded
+SHA-256 hashes; logs, receipts, raw dump and LLDB observations are retained in
+`artifacts/idle-current-integration/capture-ci.ofqFRCDQ/` of the isolated worktree.
+
 ## Separate failure-only native debugger replay
 
 CI may explicitly supply the matching `ShowcaseNativeDebugger.exe`. The original

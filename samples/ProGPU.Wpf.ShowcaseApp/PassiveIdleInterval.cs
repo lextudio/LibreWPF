@@ -41,9 +41,33 @@ internal static class PassiveIdleInterval
             throw new ArgumentOutOfRangeException(nameof(duration));
 
         Sample before = Capture(process, readPresentedFrames);
-        await Task.Delay(duration).ConfigureAwait(false);
+        await WaitForDurationAsync(before.Timestamp, duration, Stopwatch.GetTimestamp, Task.Delay).ConfigureAwait(false);
         Sample after = Capture(process, readPresentedFrames);
-        return Difference(before, after);
+        Result result = Difference(before, after);
+        if (result.WallMilliseconds < duration.TotalMilliseconds)
+            throw new InvalidOperationException("The passive observation ended before its monotonic deadline.");
+        return result;
+    }
+
+    internal static async Task WaitForDurationAsync(long started, TimeSpan duration,
+        Func<long> readTimestamp, Func<TimeSpan, Task> delay)
+    {
+        // Timer completion and Stopwatch use different clocks on Windows. A
+        // timer can wake early: wait only for the remainder of this same fixed
+        // interval. Never resample presentations or restart a noisy interval.
+        for (int attempt = 0; attempt < 4; ++attempt)
+        {
+            TimeSpan elapsed = Stopwatch.GetElapsedTime(started, readTimestamp());
+            if (elapsed < TimeSpan.Zero)
+                throw new InvalidOperationException("The passive observation clock regressed.");
+            TimeSpan remaining = duration - elapsed;
+            if (remaining <= TimeSpan.Zero) return;
+            // Task.Delay truncates fractional milliseconds; never spin on a
+            // sub-millisecond remainder that would otherwise become zero.
+            await delay(TimeSpan.FromMilliseconds(Math.Ceiling(remaining.TotalMilliseconds))).ConfigureAwait(false);
+        }
+        if (Stopwatch.GetElapsedTime(started, readTimestamp()) < duration)
+            throw new InvalidOperationException("The passive observation clock did not reach its deadline.");
     }
 
     private static Sample Capture(Process process, Func<long> readPresentedFrames)

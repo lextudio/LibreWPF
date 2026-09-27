@@ -29,6 +29,9 @@ debugger controls and instrumented replays never qualify the original idle gate.
 Normal dump writers may include the documented AVX register-state flag on x64;
 admit only that exact extension with intrinsic system-stream architecture proof.
 Keep actual flags, bounded dumps, full-memory rejection and original failure status.
+Passive interval timers must reach the original monotonic deadline despite early
+timer wakeups. Remainder waits are time-only and bounded: never resample frame
+counters, restart an interval, wait for quiet or relax the measured minimum.
 Resize checkpoints are per-host and scoped only around the synchronous action,
 never a measured idle interval. Read cached state without native queries or
 pumping; defer diagnostic failures so they cannot escape unmanaged callbacks or

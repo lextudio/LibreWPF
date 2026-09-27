@@ -110,7 +110,12 @@ public class ShowcasePassiveIdleSourceContractTests
         foreach (string forbidden in new[] { "WakeLive", "UpdateLayout(", "Dispatcher.", "TryGetWindowHost(",
             "TryGetNativePerformanceSnapshot(", "TryPollNativeMemoryCheckpoint(", "GetGpuHitTest", "Console.", "File.", "GC.Collect(" })
             Assert.DoesNotContain(forbidden, source, StringComparison.Ordinal);
-        Assert.Contains("await Task.Delay(duration).ConfigureAwait(false);", source, StringComparison.Ordinal);
+        Assert.Contains("await WaitForDurationAsync(before.Timestamp, duration, Stopwatch.GetTimestamp, Task.Delay).ConfigureAwait(false);", source, StringComparison.Ordinal);
+        Assert.Contains("for (int attempt = 0; attempt < 4; ++attempt)", source, StringComparison.Ordinal);
+        Assert.Contains("result.WallMilliseconds < duration.TotalMilliseconds", source, StringComparison.Ordinal);
+        string wait = source[source.IndexOf("internal static async Task WaitForDurationAsync(", StringComparison.Ordinal)..source.IndexOf("private static Sample Capture(", StringComparison.Ordinal)];
+        Assert.DoesNotContain("Capture(", wait, StringComparison.Ordinal);
+        Assert.DoesNotContain("readPresentedFrames", wait, StringComparison.Ordinal);
         Assert.Contains("GC.GetTotalAllocatedBytes(precise: true)", source, StringComparison.Ordinal);
         Assert.Contains("ExtraPresentations != 0", source, StringComparison.Ordinal);
         Assert.DoesNotContain("while (", source, StringComparison.Ordinal);

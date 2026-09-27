@@ -29,10 +29,14 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
-def instant(value: str) -> datetime:
-    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?Z", value):
+def instant(value: str) -> tuple[datetime, int]:
+    match = re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.(\d{1,7}))?Z", value) if isinstance(value, str) else None
+    if match is None:
         raise ValueError("Expected UTC event boundary")
-    return datetime.fromisoformat(value[:-1] + "+00:00")
+    # Event timestamps retain 100ns precision. datetime alone truncates the
+    # seventh fractional digit and can admit an event just beyond a boundary.
+    whole_second = datetime.fromisoformat(value[:-1] + "+00:00").replace(microsecond=0)
+    return whole_second, int((match.group(1) or "").ljust(7, "0"))
 
 
 def validate_identity(image: str, pid: int, start: str, end: str) -> None:

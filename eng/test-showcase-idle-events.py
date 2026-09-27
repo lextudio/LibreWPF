@@ -39,9 +39,14 @@ class EventControls(unittest.TestCase):
         for old, new in (("Application Error", "Windows Error Reporting"), (">1000<", ">1001<"),
                 (">Application<", ">System<"), ("0x1ab0", "999"), ("C:\\owned", "C:\\other"),
                 (f'>{events.ntpath.basename(IMAGE)}<', '>other.exe<'),
-                ("10:00:30.1234567Z", "09:59:59.9999999Z"), ("10:00:30.1234567Z", "10:01:00.000001Z")):
+                ("10:00:30.1234567Z", "09:59:59.9999999Z"), ("10:00:30.1234567Z", "10:01:00.000001Z"),
+                ("10:00:30.1234567Z", "10:01:00.0000001Z")):
             with self.subTest(old=old):
                 self.assertIsNone(self.read(XML.replace(old, new)))
+        lower = START.replace(".000000Z", ".0000001Z")
+        self.assertIsNone(events.event_record(XML.replace("10:00:30.1234567Z", "10:00:00.0000000Z"), IMAGE, PID, lower, END))
+        self.assertIsNotNone(events.event_record(XML.replace("10:00:30.1234567Z", "10:00:00.0000001Z"), IMAGE, PID, lower, END))
+        self.assertIsNotNone(self.read(XML.replace("10:00:30.1234567Z", "10:01:00.0000000Z")))
 
     def test_execution_pid_is_not_faulting_process_identity(self):
         self.assertIsNone(self.read(XML.replace('Name="ProcessId"', 'Name="OtherId"').replace('ProcessID="999"', f'ProcessID="{PID}"')))

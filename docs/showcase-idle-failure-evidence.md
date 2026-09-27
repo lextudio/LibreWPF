@@ -58,6 +58,8 @@ post-failure query boundary. The event logger's System/Execution PID is never
 treated as the crashed process. The unique image also prevents PID reuse from
 matching a different invocation. UTC boundaries are retained; a wall-clock
 regression is unavailable evidence, not an expanded search window.
+Comparison preserves the event's seventh fractional digit (100ns); an event
+just beyond either boundary is not admitted by microsecond truncation.
 
 Only the correlated fault module/path, exception code, offset, process creation
 time/report ID and event identity are retained. Unmatched raw XML, machine names

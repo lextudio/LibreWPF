@@ -413,6 +413,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             frame, compositor.GetGpuMemorySnapshot(), RenderDeviceRecoveryCount, out checkpoint);
     }
 
+    internal bool TryGetRenderActivitySnapshot(out ProGpuWpfRenderActivitySnapshot snapshot)
+    {
+        snapshot = default;
+        if (_isDisposed || _hasNativeWindowCloseStarted || !PlatformServices.Dispatcher.CheckAccess())
+            return false;
+
+        snapshot = new(
+            _isRendering,
+            // A consumed request is no longer pending even while its frame is
+            // being assembled. Keep IsRendering independent of this field.
+            WpfRenderScheduler.HasPendingRenderRequest && Volatile.Read(ref _pendingRenderRequestIsWakeOnly) == 0,
+            _hasPendingDeviceRecovery,
+            _hasPendingNativeDpiChange,
+            PresentedFrameCount,
+            RenderDeviceRecoveryCount);
+        return true;
+    }
+
     internal void RecordNativePerformanceSnapshot(
         ProGpuWpfDiagnostics.NativePerformanceSnapshot snapshot)
     {

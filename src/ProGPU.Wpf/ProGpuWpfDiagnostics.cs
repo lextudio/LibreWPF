@@ -125,6 +125,18 @@ public static class ProGpuWpfDiagnostics
             host.TryGetNativePerformanceSnapshot(out snapshot);
     }
 
+    /// <summary>
+    /// Reads current host activity on its dispatcher owner thread. Does not
+    /// consume pending work, query GPU handles or promise that future work is absent.
+    /// </summary>
+    public static bool TryGetRenderActivitySnapshot(
+        object? window, out ProGpuWpfRenderActivitySnapshot snapshot)
+    {
+        snapshot = default;
+        return TryGetWindowHost(window, out var host) && host is not null &&
+            host.TryGetRenderActivitySnapshot(out snapshot);
+    }
+
     public readonly record struct NativeMemoryCheckpoint(
         NativePerformanceSnapshot PresentedFrame,
         global::ProGPU.Backend.Native.NativeGpuMemorySnapshot CompletedMemory);

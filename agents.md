@@ -1,5 +1,13 @@
 # Agent Guidance
 
+Passive Showcase endpoints must run once from the captured native window's Update
+callback, not a dispatcher callback that can execute inside an unfinished render.
+Read owner-thread render activity without consuming requests or polling GPU memory;
+reject active/current presentation work and recovery instead of waiting for quiet.
+Passive resize geometry reads wake only the native loop. Delayed callbacks remain
+live and count normally in the unchanged exact-zero interval. Source controls do
+not qualify native idle or attribute a previous access violation.
+
 Retained layout clips compare typed geometry values, not freshly allocated source
 objects. Keep primitive capture inline, and own path/figure/segment snapshots;
 mutable source DTO or array identity is never proof of equality. Reuse a retained

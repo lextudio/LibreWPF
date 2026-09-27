@@ -78,11 +78,44 @@ public class ShowcasePassiveIdleSourceContractTests
         Assert.Contains("PresentNativePerformanceFrameAsync(host)", Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.NativePerformance.cs"), StringComparison.Ordinal);
         Assert.Contains("run: python3 ./eng/test-progpu-wpf-showcase-idle.py -v", Read(".github/workflows/progpu-wpf-sdk.yml"), StringComparison.Ordinal);
         string gate = Read("eng/progpu-wpf-layout-clip.sh");
-        foreach (string name in new[] { "PassiveIdleIntervalTests", "ShowcasePassiveIdleSourceContractTests" })
+        foreach (string name in new[] { "PassiveIdleIntervalTests", "ShowcasePassiveIdleSourceContractTests", "PassiveIdleBoundaryTests" })
         {
             Assert.Contains($"FullyQualifiedName~ProGPU.Wpf.Tests.{name}.", gate, StringComparison.Ordinal);
             Assert.Contains($"\"ProGPU.Wpf.Tests.{name}\": ", gate, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void PassiveEndpointUsesOneNativeUpdateAndReadOnlyResizeObservations()
+    {
+        string fixture = Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.IdleLayoutClip.cs");
+        Assert.Equal(2, fixture.Split("requestRenderWhileObserving: false", StringSplitOptions.None).Length - 1);
+        Assert.Contains("window.Update += update", fixture, StringComparison.Ordinal);
+        Assert.Contains("window.Update -= update", fixture, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(host.SilkWindow, window)", fixture, StringComparison.Ordinal);
+        Assert.Contains("activity.HasImmediatePresentationWork", fixture, StringComparison.Ordinal);
+        Assert.Contains("after != activity", fixture, StringComparison.Ordinal);
+        Assert.Contains("ReadIdleBoundaryAsync(host, fixture)", fixture, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan.FromSeconds(1)", fixture, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan.FromSeconds(2)", fixture, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan.FromTicks(LiveValidationRetryDelay.Ticks * LiveValidationMaxAttempts)", fixture, StringComparison.Ordinal);
+        string shared = Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.xaml.cs");
+        Assert.Contains("bool requestRenderWhileObserving = true", shared, StringComparison.Ordinal);
+        Assert.Contains(": await InvokeWithLiveNativeLoopWakeAsync(liveHost, ReadLayout, DispatcherPriority.Send)", shared, StringComparison.Ordinal);
+        string host = Read("src/ProGPU.Wpf/ProGpuWpfWindowHost.cs");
+        int reader = host.IndexOf("internal bool TryGetRenderActivitySnapshot(", StringComparison.Ordinal);
+        int end = host.IndexOf("internal void RecordNativePerformanceSnapshot(", reader, StringComparison.Ordinal);
+        string body = host[reader..end];
+        Assert.Contains("PlatformServices.Dispatcher.CheckAccess()", body, StringComparison.Ordinal);
+        Assert.Contains("_isRendering,", body, StringComparison.Ordinal);
+        foreach (string forbidden in new[] { "ConsumeRenderRequest(", "RequestRender(", "Reset(", "ProcessPending(", "GetGpuMemorySnapshot(" })
+            Assert.DoesNotContain(forbidden, body, StringComparison.Ordinal);
+        // Original ordering explains why an ordinary dispatcher callback is not
+        // an after-render boundary; the native update is outside that callback.
+        int render = host.IndexOf("private void OnRender(double deltaSeconds)", StringComparison.Ordinal);
+        Assert.True(host.IndexOf("_isRendering = true;", render, StringComparison.Ordinal) <
+            host.IndexOf("ProcessDispatcherQueueCore();", render, StringComparison.Ordinal));
+        Assert.Contains("TaskCreationOptions.RunContinuationsAsynchronously", Read("samples/ProGPU.Wpf.ShowcaseApp/PassiveIdleBoundary.cs"));
     }
 
     private static string Read(string relative)

@@ -105,3 +105,26 @@ this change. Actual settled-window frame counts and native application/package
 qualification remain required; source contract success alone does not close
 the application report. DPI lookup cost and transparent-control input policy
 are separate issues, not implicitly fixed here.
+# Passive native boundary follow-up
+
+The b0a78 Windows x64 receipt retained initial and scrolled exact-zero intervals,
+then native-resized presented frame 5 → 6 despite equal source/frame-state fields.
+ARM64 exited with `0xC0000005` after creating an empty application receipt; it
+provided no fault stack. Neither failure is waived or attributed to layout clips.
+
+Source inspection identified an independent observer ordering defect: resize
+geometry polls requested unconditional frames, and a dispatcher read could finish
+inside `OnRender` before its presentation. Passive-only resize polls now use the
+native-loop wake. Each endpoint observes once from the actual captured Silk window
+Update callback, revalidates source/native identity and reads host activity before
+and after source state. Active rendering (including an already-consumed request),
+current explicit presentation requests, recovery and DPI work reject admission;
+no pending work is canceled, consumed or retried until quiet. Delayed scheduler
+callbacks are not claimed absent and still count in the observation.
+
+The 1-second fixed settling, 2-second interval, 30-second initial-frame limit,
+600 × 16 ms existing native observation budget, 120-second child deadline and all
+four exact-zero phase assertions remain. The focused retained gate adds 17 cases
+(minimum 647). A small linked-source executable passed all 21 BCL/predicate/source
+controls; seven added actual-host cases are authored, pending the full build.
+This is not a native application pass or an ARM64 crash fix.

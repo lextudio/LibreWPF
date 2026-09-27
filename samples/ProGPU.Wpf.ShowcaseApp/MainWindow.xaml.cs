@@ -1262,7 +1262,8 @@ public partial class MainWindow : Window
         uint requestedWidth,
         uint requestedHeight,
         string description,
-        Func<LiveLayoutSize, bool> layoutReady)
+        Func<LiveLayoutSize, bool> layoutReady,
+        bool requestRenderWhileObserving = true)
     {
         string lastState = "not checked";
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
@@ -1270,24 +1271,26 @@ public partial class MainWindow : Window
             await Task.Delay(LiveValidationRetryDelay);
             try
             {
-                var layout = await InvokeWithLiveHostWakeAsync(
-                    liveHost,
-                    () =>
-                    {
-                        var current = CaptureLiveLayoutSize(liveHost);
-                        bool geometryReady = NativeResizeGeometryIsReady(
-                            current.Geometry,
-                            requestedWidth,
-                            requestedHeight);
-                        bool layoutSizeReady = layoutReady(current);
-                        lastState =
-                            $"{description}: {current.GeometryStatus}, " +
-                            $"window actual {current.WindowWidth:0.###}x{current.WindowHeight:0.###}, " +
-                            $"content actual {current.ContentWidth:0.###}x{current.ContentHeight:0.###}, " +
-                            $"layoutReady={layoutSizeReady}";
-                        return geometryReady && layoutSizeReady ? current : default;
-                    },
-                    DispatcherPriority.Send);
+                LiveLayoutSize ReadLayout()
+                {
+                    var current = CaptureLiveLayoutSize(liveHost);
+                    bool geometryReady = NativeResizeGeometryIsReady(
+                        current.Geometry,
+                        requestedWidth,
+                        requestedHeight);
+                    bool layoutSizeReady = layoutReady(current);
+                    lastState =
+                        $"{description}: {current.GeometryStatus}, " +
+                        $"window actual {current.WindowWidth:0.###}x{current.WindowHeight:0.###}, " +
+                        $"content actual {current.ContentWidth:0.###}x{current.ContentHeight:0.###}, " +
+                        $"layoutReady={layoutSizeReady}";
+                    return geometryReady && layoutSizeReady ? current : default;
+                }
+                // Ordinary live validation retains its original explicit wake.
+                // A passive observer must not queue a frame on every size read.
+                var layout = requestRenderWhileObserving
+                    ? await InvokeWithLiveHostWakeAsync(liveHost, ReadLayout, DispatcherPriority.Send)
+                    : await InvokeWithLiveNativeLoopWakeAsync(liveHost, ReadLayout, DispatcherPriority.Send);
 
                 if (layout.IsValid)
                 {

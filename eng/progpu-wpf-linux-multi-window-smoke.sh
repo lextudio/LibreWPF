@@ -7,7 +7,8 @@ set -euo pipefail
 # crosses the native boundary and cannot be caught in managed code, so the test is
 # simply that the harness runs to completion.
 #
-# This runs against whatever adapter wgpu selects, and reports the actual backend.
+# The default keeps wgpu selection; an explicit smoke backend uses typed window
+# options and requires the actual presented device to match in every window.
 # A pass is not evidence for an unselected backend. The harness also checks that
 # Silk never takes back ownership of the unused alpha-visual client context; see
 # docs/progpu-wpf-multi-window-render-device.md.
@@ -52,6 +53,7 @@ cleanup() {
   status=$?
   if [[ -n "${xvfb_pid}" ]] && kill -0 "${xvfb_pid}" 2>/dev/null; then
     kill "${xvfb_pid}" 2>/dev/null || true
+    wait "${xvfb_pid}" 2>/dev/null || true
   fi
   if ((status != 0)); then
     echo "LibreWPF Linux multi-window smoke log:" >&2
@@ -91,8 +93,12 @@ export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
 export GALLIUM_DRIVER="${GALLIUM_DRIVER:-llvmpipe}"
 
 echo "Running ProGPU WPF multi-window smoke on ${display}..."
+backend_args=()
+if [[ -n "${PROGPU_WPF_MULTI_WINDOW_SMOKE_BACKEND:-}" ]]; then
+  backend_args=(--backend "${PROGPU_WPF_MULTI_WINDOW_SMOKE_BACKEND}")
+fi
 set +e
-"${dotnet}" "${harness_output}/ProGPU.Wpf.MultiWindowSmokeHarness.dll" >>"${smoke_log}" 2>&1
+"${dotnet}" "${harness_output}/ProGPU.Wpf.MultiWindowSmokeHarness.dll" "${backend_args[@]}" >>"${smoke_log}" 2>&1
 harness_status=$?
 set -e
 

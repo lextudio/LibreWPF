@@ -1,4 +1,5 @@
 using ProGPU.Scene;
+using ProGPU.Backend;
 
 namespace System.Windows.Media.ProGPU;
 
@@ -32,6 +33,14 @@ public sealed class ProGpuWpfWindowOptions
     /// </summary>
     public ProGpuWpfRendererMode RendererMode { get; set; } =
         ProGpuWpfRendererMode.ManagedPortable;
+
+    /// <summary>
+    /// Selects the native WebGPU backend before creating a render device. Null
+    /// inherits a shared device's configuration, or the ProGPU startup environment
+    /// for a new device. Explicit choices must match an existing shared device;
+    /// they never select another renderer or silently fall back to another backend.
+    /// </summary>
+    public WgpuNativeBackendOptions? NativeBackendOptions { get; set; }
 
     /// <summary>
     /// Requires native MIL to emit a complete GPU input index and uses that

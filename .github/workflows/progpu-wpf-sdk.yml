@@ -455,3 +455,15 @@ jobs:
 
       - name: Run headless multi-window smoke
         run: ./eng/progpu-wpf-linux-multi-window-smoke.sh
+
+      - name: Require OpenGL multi-window presentation
+        if: ${{ !cancelled() }}
+        env:
+          PROGPU_WPF_MULTI_WINDOW_SMOKE_BACKEND: gl
+        run: ./eng/progpu-wpf-linux-multi-window-smoke.sh
+
+      - name: Require Vulkan multi-window presentation
+        if: ${{ !cancelled() }}
+        env:
+          PROGPU_WPF_MULTI_WINDOW_SMOKE_BACKEND: vulkan
+        run: ./eng/progpu-wpf-linux-multi-window-smoke.sh

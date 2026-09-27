@@ -960,6 +960,7 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
             ShowActivated = fallback.ShowActivated,
             TransparentFramebuffer = fallback.TransparentFramebuffer,
             RendererMode = fallback.RendererMode,
+            NativeBackendOptions = fallback.NativeBackendOptions,
             EnableNativeMilHitTesting = fallback.EnableNativeMilHitTesting,
             WindowBorder = fallback.WindowBorder,
             CanMinimize = fallback.CanMinimize,

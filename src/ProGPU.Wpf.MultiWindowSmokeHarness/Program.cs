@@ -99,6 +99,7 @@ internal static class Program
         });
         hosts.Add(host);
         host.Show();
+        RequireWebGpuContextOwnership(host);
         PumpUntilPresented(hosts, timeoutSeconds);
 
         Console.WriteLine(
@@ -145,6 +146,7 @@ internal static class Program
                 // its first surface configuration.
                 ProGpuWpfDiagnostics.TryRequestRender(hosts[index]);
                 hosts[index].DoEvents();
+                RequireWebGpuContextOwnership(hosts[index]);
                 presented &= hosts[index].PresentedFrameCount >= RequiredFrames;
             }
 
@@ -159,6 +161,17 @@ internal static class Program
         throw new TimeoutException(
             $"Expected {hosts.Count} window(s) to present {RequiredFrames} frame(s) within " +
             $"{timeoutSeconds} seconds.");
+    }
+
+    private static void RequireWebGpuContextOwnership(ProGpuWpfWindowHost host)
+    {
+        var window = host.SilkWindow ?? throw new InvalidOperationException("Missing actual native window.");
+        if (!window.IsContextControlDisabled || window.ShouldSwapAutomatically ||
+            window.GLContext?.IsCurrent == true)
+        {
+            throw new InvalidOperationException(
+                "WebGPU presentation must not bind or swap the unused client graphics context.");
+        }
     }
 
     private static string DescribeAdapter(ProGpuWpfWindowHost host)

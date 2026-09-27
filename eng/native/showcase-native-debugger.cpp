@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <type_traits>
 
 namespace {
 constexpr ULONGLONG child_deadline_ms = 110000;
@@ -31,7 +32,7 @@ struct handle {
 };
 
 struct dump_budget { HANDLE file; ULONGLONG deadline; };
-BOOL CALLBACK check_dump_budget(void* parameter, const MINIDUMP_CALLBACK_INPUT* input,
+BOOL CALLBACK check_dump_budget(void* parameter, PMINIDUMP_CALLBACK_INPUT input,
                                MINIDUMP_CALLBACK_OUTPUT* output) {
     if (input->CallbackType == CancelCallback) {
         const auto& budget = *static_cast<const dump_budget*>(parameter);
@@ -42,6 +43,7 @@ BOOL CALLBACK check_dump_budget(void* parameter, const MINIDUMP_CALLBACK_INPUT* 
     }
     return TRUE;
 }
+static_assert(std::is_same_v<decltype(&check_dump_budget), MINIDUMP_CALLBACK_ROUTINE>);
 
 DWORD write_dump(HANDLE process, const DEBUG_EVENT& event, const std::filesystem::path& path) {
     handle thread(OpenThread(THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION, FALSE, event.dwThreadId));

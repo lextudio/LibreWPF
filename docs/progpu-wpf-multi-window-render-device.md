@@ -56,11 +56,15 @@ managed exception handler.
 
 ## Selecting a backend
 
-The current LibreWPF dependency does not expose a backend choice. ProGPU
-[#205](https://github.com/wieslawsoltes/ProGPU/pull/205) adds native instance selection
-through `PROGPU_WGPU_BACKEND` and the `WGPU_BACKEND` alias. Its merge, dependency
-integration and exact-package qualification remain separate from this host fix;
-do not assume preview.65 reads either setting. Hiding EGL drivers is not a safe
+The updated source dependency includes merged ProGPU
+[#205](https://github.com/wieslawsoltes/ProGPU/pull/205), providing native instance
+selection through `PROGPU_WGPU_BACKEND` and the `WGPU_BACKEND` alias. Typed
+`ProGpuWpfWindowOptions.NativeBackendOptions` also carries an explicit choice
+through source activation and owned/shared device creation. See
+[window backend configuration](native-backend-window-options.md) for inheritance
+and the independent forced-GL/Vulkan gates. Exact-package qualification and a
+new release are still required; preview.65 does not acquire these changes merely
+because source was updated. Hiding EGL drivers is not a safe
 selection mechanism: the issue reports an earlier instance-creation panic too.
 Report the actual selected backend for every run with
 `ProGpuWpfDiagnostics.TryGetWindowHost(window, out var host)`, then

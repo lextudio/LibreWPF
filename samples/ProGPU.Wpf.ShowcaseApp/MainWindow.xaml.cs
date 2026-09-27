@@ -1182,35 +1182,69 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(statusDirectory);
         }
 
-        File.WriteAllText(statusPath, "ready");
-        Console.WriteLine("ProGPU WPF Showcase external native drag ready.");
-        Console.Out.Flush();
-
-        bool completed = false;
-        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        var receipt = new NativeDragInputReceipt();
+        MouseButtonEventHandler sourceButton = (_, e) =>
         {
-            await Task.Delay(LiveValidationRetryDelay);
-            if (File.Exists(statusPath) &&
-                string.Equals(File.ReadAllText(statusPath).Trim(), "completed", StringComparison.Ordinal))
+            if (e.ChangedButton == MouseButton.Left)
             {
-                completed = true;
-                break;
+                receipt.ObserveLeftButton(e.ButtonState == MouseButtonState.Pressed);
             }
-        }
-
-        if (!completed)
+        };
+        await InvokeWithLiveHostWakeAsync(liveHost, () =>
         {
-            throw new InvalidOperationException("Expected the external native drag driver to report completion.");
-        }
+            AddHandler(Mouse.PreviewMouseDownEvent, sourceButton, handledEventsToo: true);
+            AddHandler(Mouse.PreviewMouseUpEvent, sourceButton, handledEventsToo: true);
+        }, DispatcherPriority.Send);
 
-        int dispatcherCheckpoint = 0;
-        await InvokeWithLiveHostWakeAsync(
-            liveHost,
-            () => dispatcherCheckpoint++,
-            DispatcherPriority.Background);
-        AssertEqual(1, dispatcherCheckpoint, "Showcase live dispatcher checkpoint after external native drag");
-        Console.WriteLine("ProGPU WPF Showcase external native drag dispatcher checkpoint passed.");
-        return "external 36-step native drag returned to dispatcher processing";
+        try
+        {
+            File.WriteAllText(statusPath, "ready");
+            Console.WriteLine("ProGPU WPF Showcase external native drag ready.");
+            Console.Out.Flush();
+
+            bool driverCompleted = false;
+            bool completed = false;
+            for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+            {
+                await Task.Delay(LiveValidationRetryDelay);
+                driverCompleted |= File.Exists(statusPath) &&
+                    string.Equals(File.ReadAllText(statusPath).Trim(), "completed", StringComparison.Ordinal);
+                if (receipt.IsComplete(driverCompleted))
+                {
+                    completed = true;
+                    break;
+                }
+            }
+
+            if (!completed)
+            {
+                throw new InvalidOperationException(
+                    "Expected external native drag submission and source left-button press/release delivery; " +
+                    $"driverCompleted={driverCompleted}, sourceReleased={receipt.HasSourceRelease}.");
+            }
+
+            // A background dispatcher callback alone can run before GLFW polls the
+            // driver's final mouse-up. Opening a menu then correctly dismisses it
+            // when that outstanding outside release reaches MenuBase.OnClickThrough.
+            // Keep the checkpoint, but only after the actual source release.
+            int dispatcherCheckpoint = 0;
+            await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () => dispatcherCheckpoint++,
+                DispatcherPriority.Background);
+            AssertEqual(1, dispatcherCheckpoint, "Showcase live dispatcher checkpoint after external native drag");
+            Console.WriteLine("ProGPU WPF Showcase external native drag source press/release received.");
+            Console.WriteLine("ProGPU WPF Showcase external native drag dispatcher checkpoint passed.");
+            return "external 36-step native drag returned to dispatcher processing";
+        }
+        finally
+        {
+            await InvokeWithLiveHostWakeAsync(liveHost, () =>
+            {
+                RemoveHandler(Mouse.PreviewMouseDownEvent, sourceButton);
+                RemoveHandler(Mouse.PreviewMouseUpEvent, sourceButton);
+            }, DispatcherPriority.Send);
+        }
     }
 
     private static bool IsLiveExternalNativeDragRequested()

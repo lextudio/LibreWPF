@@ -139,11 +139,12 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     internal static ProGpuWpfCompositionTarget CreateForWindow(
         IWindow window,
         ProGpuWgpuContext? sharedDeviceContext,
-        global::ProGPU.Scene.CompositorOptions? compositorOptions)
+        global::ProGPU.Scene.CompositorOptions? compositorOptions,
+        global::ProGPU.Backend.WgpuNativeBackendOptions? nativeBackendOptions = null)
     {
         ArgumentNullException.ThrowIfNull(window);
 
-        var context = new ProGpuWgpuContext();
+        var context = CreateDeviceContext(nativeBackendOptions, sharedDeviceContext);
         ProGpuCompositor? compositor = null;
         try
         {
@@ -169,6 +170,16 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             context.Dispose();
             throw;
         }
+    }
+
+    internal static ProGpuWgpuContext CreateDeviceContext(
+        global::ProGPU.Backend.WgpuNativeBackendOptions? requested,
+        ProGpuWgpuContext? deviceOwner)
+    {
+        var inherited = requested ?? deviceOwner?.NativeBackendOptions;
+        return inherited is null
+            ? new ProGpuWgpuContext()
+            : new ProGpuWgpuContext { NativeBackendOptions = inherited };
     }
 
     public MediaDrawingContext OpenDrawingContext(uint pixelWidth, uint pixelHeight)

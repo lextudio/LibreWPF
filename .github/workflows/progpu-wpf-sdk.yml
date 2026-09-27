@@ -48,6 +48,9 @@ jobs:
           python3 ./eng/test-showcase-idle-crash.py -v
           python3 ./eng/test-showcase-idle-events.py -v
 
+      - name: Validate Showcase launcher input receipts
+        run: python3 ./eng/tests/test_showcase_launcher_receipt.py -v
+
       - name: Upload retained invalidation evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -488,4 +491,16 @@ jobs:
             xvfb
 
       - name: Run headless multi-window smoke
+        run: ./eng/progpu-wpf-linux-multi-window-smoke.sh
+
+      - name: Require OpenGL multi-window presentation
+        if: ${{ !cancelled() }}
+        env:
+          PROGPU_WPF_MULTI_WINDOW_SMOKE_BACKEND: gl
+        run: ./eng/progpu-wpf-linux-multi-window-smoke.sh
+
+      - name: Require Vulkan multi-window presentation
+        if: ${{ !cancelled() }}
+        env:
+          PROGPU_WPF_MULTI_WINDOW_SMOKE_BACKEND: vulkan
         run: ./eng/progpu-wpf-linux-multi-window-smoke.sh

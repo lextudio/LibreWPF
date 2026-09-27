@@ -551,7 +551,7 @@
   <Target Name="_ProGpuWpfSdkCopyPortableWinFormsCompatRuntimeAssets"
           DependsOnTargets="ResolveLockFileCopyLocalFiles;_ProGpuWpfSdkPreservePortableWinFormsRuntimeAssetsInDependencyFile"
           AfterTargets="Build"
-          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfCopyPackageRuntimeAssets)' == 'true' And '$(ProGpuWpfUsePortableWinFormsCompat)' == 'true'">
+          Condition="'$(IsCrossTargetingBuild)' != 'true' And '$(TargetFramework)' != '' And '$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfCopyPackageRuntimeAssets)' == 'true' And '$(ProGpuWpfUsePortableWinFormsCompat)' == 'true'">
     <PropertyGroup>
       <_ProGpuWpfNuGetPackagesEnvironment>$([System.Environment]::GetEnvironmentVariable('NUGET_PACKAGES'))</_ProGpuWpfNuGetPackagesEnvironment>
       <_ProGpuWpfPackageRoot Condition="'$(NuGetPackageRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))</_ProGpuWpfPackageRoot>

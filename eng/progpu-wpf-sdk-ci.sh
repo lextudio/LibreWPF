@@ -58,6 +58,7 @@ else
 fi
 
 if [[ "${build_packages_only}" == "0" ]]; then
+  "${dotnet}" msbuild "${repo_root}/eng/sdk-runtime-copy/Run.proj" -nologo -v:minimal
   command -v python3 >/dev/null 2>&1 || {
     echo "python3 is required to verify the generated MIL protocol contract." >&2
     exit 1

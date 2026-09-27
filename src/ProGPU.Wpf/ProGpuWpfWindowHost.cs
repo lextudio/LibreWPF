@@ -1934,6 +1934,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 ? GraphicsAPI.Default
                 : GraphicsAPI.None;
         windowOptions.ShouldSwapAutomatically = false;
+        // Silk can otherwise rebind the unused alpha-visual GL context before
+        // every Render callback, undoing OnLoad's initial detach. WebGPU owns
+        // context binding and presentation in both renderer modes.
+        windowOptions.IsContextControlDisabled = true;
         windowOptions.Size = new Vector2D<int>(_clientWidth, _clientHeight);
         windowOptions.Title = _windowTitle;
         windowOptions.VSync = _options.VSync;
@@ -2187,7 +2191,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 target = ProGpuWpfCompositionTarget.CreateForWindow(
                     window,
                     deviceOwner,
-                    _options.CompositorOptions);
+                    _options.CompositorOptions,
+                    _options.NativeBackendOptions);
             }
             catch (InvalidOperationException) when (
                 usesProcessRenderDevice && (deviceOwner.IsDisposed || deviceOwner.IsDeviceLost))
@@ -2206,7 +2211,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         target ??= ProGpuWpfCompositionTarget.CreateForWindow(
             window,
             sharedDeviceContext: null,
-            _options.CompositorOptions);
+            _options.CompositorOptions,
+            _options.NativeBackendOptions);
         if (usesProcessRenderDevice)
         {
             ProGpuWpfRenderDeviceSharing.RegisterDeviceOwnerContext(target.Context);

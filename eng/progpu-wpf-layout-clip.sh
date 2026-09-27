@@ -20,6 +20,9 @@ minimum = {
     "ProGPU.Wpf.Tests.PassiveIdleBoundaryTests": 17,
     "ProGPU.Wpf.Tests.MenuLifecycleJournalTests": 7,
     "ProGPU.Wpf.Tests.ProGpuWpfResizePolicyTests": 17,
+    "ProGPU.Wpf.Tests.NativeDragInputReceiptTests": 10,
+    "ProGPU.Wpf.Tests.NativeBackendWindowOptionsTests": 18,
+    "ProGPU.Wpf.Tests.Platform.WebGpuClientContextContractTests": 3,
 }
 ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
 
@@ -122,10 +125,13 @@ filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Composition.Mil.WpfVisualInvalidat
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRendererTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleIntervalTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeDragInputReceiptTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeBackendWindowOptionsTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleBoundaryTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.MenuLifecycleJournalTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ProGpuWpfResizePolicyTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Platform.WebGpuClientContextContractTests.'
 
 # Use VSTest explicitly: the repository's MTP default is not this xUnit adapter.
 # Preserve its actual nonzero status even when receipt validation also fails.

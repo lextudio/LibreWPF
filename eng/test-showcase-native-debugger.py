@@ -38,6 +38,53 @@ class Controls(unittest.TestCase):
     def test_missing_metadata_never_launches(self):
         self.assertFalse(diagnostic.should_replay({}))
 
+    def test_managed_failure_replay_requires_unchanged_payload_and_actual_exit(self):
+        original = dict(success=False, timedOut=False, childExitCode=1, cleanupErrors=[],
+                        error="ContractError: Showcase idle child exited 1",
+                        crashEvidence={"captured": False}, payloadSha256Before={"source": "a"},
+                        payloadSha256After={"source": "a"})
+        self.assertTrue(diagnostic.should_replay(original))
+        for changes in (dict(success=True), dict(timedOut=True), dict(childExitCode=0),
+                        dict(childExitCode=True), dict(childExitCode=124), dict(error="payload changed"),
+                        dict(payloadSha256Before={}), dict(payloadSha256After={"source": "b"}),
+                        dict(crashEvidence={"captured": True}), dict(cleanupErrors=["failed"])):
+            with self.subTest(changes=changes):
+                self.assertFalse(diagnostic.should_replay(original | changes))
+
+    def test_replay_enables_trace_only_in_fresh_environment_with_bounded_logs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            app = root / "ProGPU.Wpf.ShowcaseApp.exe"
+            debugger = root / "ShowcaseNativeDebugger.exe"
+            hashes = {"source": "a"}
+            environment = {"original": "unchanged"}
+            captured = {}
+            def child(command, cwd, env, directory, **kwargs):
+                self.assertEqual("1", env["PROGPU_WPF_TRACE_NATIVE_LOOP"])
+                self.assertEqual(root, cwd)
+                self.assertEqual(120, kwargs["timeout"])
+                self.assertEqual(8 * 1024 * 1024, kwargs["log_limit_bytes"])
+                self.assertEqual(directory, Path(env["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_PHASE_PATH"]).parent)
+                kwargs["outcome"].update(childProcessId=42, cleanupErrors=[])
+                return 1, False
+            def write(path, value):
+                captured.update(value)
+            with mock.patch.object(diagnostic, "machine", return_value=0xAA64), \
+                 mock.patch.object(Path, "resolve", return_value=debugger), \
+                 mock.patch.object(crash, "digest", return_value="digest"), \
+                 mock.patch.object(crash, "WindowsRegistry"), mock.patch.object(crash, "Capture") as capture, \
+                 mock.patch.object(diagnostic, "load_event", return_value=event() | {
+                     "processId": 43, "exitCode": 1, "captured": False, "exceptionCode": 0}):
+                capture.return_value.prepare.return_value = root / "unique.exe"
+                capture.return_value.collect.return_value = {"captured": False}
+                capture.return_value.close.return_value = []
+                result = diagnostic.replay(app, debugger, root, environment, child, write, lambda _: hashes, hashes)
+                self.assertFalse(result["qualifiesIdle"])
+                self.assertIsNone(result["error"])
+                self.assertEqual(hashes, captured["payloadSha256After"])
+                self.assertEqual({"original": "unchanged"}, environment)
+                capture.return_value.close.assert_called_once()
+
     def test_pe_machine_is_read_not_inferred_from_name(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "arm64.exe"
@@ -125,6 +172,7 @@ class Controls(unittest.TestCase):
             original_code = 0xC0000005
             fail_replay = True
             def child(*args, **kwargs):
+                self.assertNotIn("PROGPU_WPF_TRACE_NATIVE_LOOP", args[2])
                 kwargs["outcome"].update(childProcessId=42, childExitCode=original_code, timedOut=False, cleanupErrors=[])
                 return original_code, False
             def finish(capture, metadata, code):
@@ -139,7 +187,7 @@ class Controls(unittest.TestCase):
                 return {"diagnosticOnly": True, "qualifiesIdle": False, "captured": True}
             with mock.patch.object(runner, "os", types.SimpleNamespace(name="nt", environ=os.environ)), \
                  mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}, clear=True), \
-                 mock.patch.object(runner, "payload_hashes", return_value={}), \
+                 mock.patch.object(runner, "payload_hashes", return_value={"source": "a"}), \
                  mock.patch.object(diagnostic, "machine", return_value=0xAA64), \
                  mock.patch.object(crash, "WindowsRegistry"), mock.patch.object(crash, "Capture") as capture, \
                  mock.patch.object(runner, "run_child", side_effect=child), \
@@ -147,11 +195,15 @@ class Controls(unittest.TestCase):
                  mock.patch.object(runner, "collect_failure_events"), \
                  mock.patch.object(diagnostic, "replay", side_effect=replay) as replay_call:
                 capture.return_value.prepare.return_value = app
-                self.assertEqual(runner.run(app, None, root, True, debugger), original_code)
-                replay_call.assert_called_once()
-                fail_replay = False
-                self.assertEqual(runner.run(app, None, root, True, debugger), original_code)
-                self.assertEqual(replay_call.call_count, 2)
+                for original_code in (0xC0000005, 1):
+                    with self.subTest(original_code=original_code):
+                        replay_call.reset_mock()
+                        fail_replay = True
+                        self.assertEqual(runner.run(app, None, root, True, debugger), original_code)
+                        replay_call.assert_called_once()
+                        fail_replay = False
+                        self.assertEqual(runner.run(app, None, root, True, debugger), original_code)
+                        self.assertEqual(replay_call.call_count, 2)
 
 
 def native_controls(directory, architecture):

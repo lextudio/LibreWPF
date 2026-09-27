@@ -6,6 +6,7 @@ These tests never launch Showcase and do not qualify rendering or idle cost.
 
 import copy
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -159,6 +160,75 @@ class ReceiptTests(unittest.TestCase):
 
 
 class ProcessTests(unittest.TestCase):
+    def test_log_ring_wraps_at_arbitrary_read_boundaries_with_fixed_storage(self):
+        data = bytes(range(251)) * 5
+        for limit in (1, 7, 32, 2048):
+            for chunk_size in (1, 3, 31, 64):
+                with self.subTest(limit=limit, chunk_size=chunk_size):
+                    class ShortReads(io.BytesIO):
+                        def read(self, count):
+                            return super().read(min(count, chunk_size))
+                    output = io.BytesIO()
+                    capture = runner.showcase_idle_output.TailCapture(ShortReads(data), output, limit)
+                    result = capture.finish(5)
+                    self.assertTrue(result["complete"])
+                    self.assertEqual(data[-limit:], output.getvalue())
+                    self.assertEqual(limit, len(capture.buffer))
+                    self.assertEqual(len(data), result["totalBytes"])
+                    self.assertEqual(max(0, len(data) - limit), result["discardedPrefixBytes"])
+
+    def test_bounded_diagnostic_tails_drain_both_streams_and_keep_child_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            outcome = {}
+            command = [sys.executable, "-c", "import os,sys; "
+                       "os.write(1,b'A'*200000+b'final stdout'); "
+                       "os.write(2,b'B'*200000+b'final stderr'); sys.exit(23)"]
+            code, timed_out = runner.run_child(command, root, os.environ.copy(), root,
+                                               outcome=outcome, log_limit_bytes=4096)
+            self.assertEqual((23, False), (code, timed_out))
+            self.assertEqual([], outcome["cleanupErrors"])
+            for name, prefix in (("stdout", b"A"), ("stderr", b"B")):
+                tail = (root / f"{name}.log").read_bytes()
+                suffix = f"final {name}".encode()
+                self.assertEqual(prefix * (4096 - len(suffix)) + suffix, tail)
+                self.assertEqual({"complete": True, "error": None, "limitBytes": 4096,
+                                  "totalBytes": 200000 + len(suffix), "retainedBytes": 4096,
+                                  "discardedPrefixBytes": 200000 + len(suffix) - 4096},
+                                 outcome["diagnosticLogTails"][name])
+
+    def test_bounded_diagnostic_timeout_keeps_tail_and_retires_child(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            outcome = {}
+            code, timed_out = runner.run_child(
+                [sys.executable, "-c", "import os,time; os.write(1,b'X'*10000); time.sleep(30)"],
+                root, os.environ.copy(), root, timeout=0.5, outcome=outcome, log_limit_bytes=32)
+            self.assertTrue(timed_out)
+            self.assertNotEqual(0, code)
+            self.assertEqual([], outcome["cleanupErrors"])
+            self.assertEqual(b"X" * 32, (root / "stdout.log").read_bytes())
+            self.assertEqual(b"", (root / "stderr.log").read_bytes())
+
+    def test_invalid_log_budget_fails_before_launch(self):
+        for budget in (0, -1, True, 0.5, runner.showcase_idle_output.MAX_LOG_BYTES + 1):
+            with self.subTest(budget=budget), mock.patch.object(runner.subprocess, "Popen") as launch:
+                with self.assertRaises(runner.ContractError):
+                    runner.run_child([], Path("unused"), {}, Path("unused"), log_limit_bytes=budget)
+                launch.assert_not_called()
+
+    @unittest.skipUnless(os.name == "posix", "POSIX descendant-pipe cleanup control")
+    def test_bounded_capture_does_not_wait_for_descendant_after_parent_exit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            outcome = {}
+            code, timed_out = runner.run_child([sys.executable, "-c",
+                "import subprocess,sys; subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)']); sys.exit(17)"],
+                root, os.environ.copy(), root, timeout=2, outcome=outcome, log_limit_bytes=32)
+            self.assertEqual((17, False), (code, timed_out))
+            self.assertEqual([], outcome["cleanupErrors"])
+            self.assertTrue(all(value["complete"] for value in outcome["diagnosticLogTails"].values()))
+
     def test_real_child_failure_and_logs_are_preserved(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

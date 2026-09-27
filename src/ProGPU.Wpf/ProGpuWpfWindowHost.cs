@@ -2483,16 +2483,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return;
             }
             TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureEntering, pixelWidth, pixelHeight);
+            TraceNativeLoop(s_traceNativeLoop, $"swapchain configure entering: pixels={pixelWidth}x{pixelHeight}, {CreateNativeLoopTraceState()}");
             // A busy native queue must not keep this event thread inside a
             // synchronous surface drain. Preserve the presentation request until
             // actual completion permits configuration and texture acquisition.
             if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight, waitForNativeCompletion: false))
             {
+                TraceNativeLoop(s_traceNativeLoop, $"swapchain configure pending: {CreateNativeLoopTraceState()}");
                 TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureRejected, pixelWidth, pixelHeight);
                 RequestPresentationRetryAndWakeNativeLoop();
                 return;
             }
             TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureReturned, pixelWidth, pixelHeight);
+            TraceNativeLoop(s_traceNativeLoop, $"swapchain configure returned: {CreateNativeLoopTraceState()}");
 
             if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
             {

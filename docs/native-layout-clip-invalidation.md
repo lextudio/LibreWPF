@@ -1,5 +1,25 @@
 # Retained layout clip invalidation
 
+## Failure-only native loop trace
+
+The Windows idle runner retains its original failed receipt before one optional
+native-debugger replay. Besides native crashes lacking a dump, an ordinary exit
+of 1 is eligible only after the runner verifies unchanged source payload hashes
+and records that exact child failure. Neither a process timeout nor a cleanup or
+payload-identity failure admits the replay.
+
+Only the replay enables `PROGPU_WPF_TRACE_NATIVE_LOOP`. Swapchain configuration
+entry, pending completion and return now join the existing event/render/submit
+checkpoints, using conditional formatting that performs no state reads when
+disabled. Each replay log retains at most its final 8 MiB, with total/retained/
+discarded byte counts. Independent readers keep draining both pipes; the owned
+process tree is retired before log completion. Source hashes are rechecked.
+The original 120-second process bound, resize/idle deadlines and exact-zero
+assertions are unchanged. A traced run cannot qualify idle or replace the first
+failure; real native trace evidence is still needed to attribute the stall.
+
+## Acceptance
+
 Acceptance targets are idle ShowcaseApp and Toolkit/AvalonDock windows after
 layout or scrolling has settled. The blocking source path is
 `FrameworkElement.GetLayoutClipInternal` → the typed portable layout descriptor

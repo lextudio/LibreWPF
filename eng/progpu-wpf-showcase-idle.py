@@ -21,6 +21,7 @@ import uuid
 import showcase_idle_crash
 import showcase_idle_debugger
 import showcase_idle_events
+import showcase_idle_output
 
 
 TIMEOUT_SECONDS = 120
@@ -223,12 +224,16 @@ def signal_owned_group(process: subprocess.Popen, signum: int) -> None:
 
 
 def run_child(command: list[str], cwd: Path, environment: dict[str, str], directory: Path,
-              timeout: float = TIMEOUT_SECONDS, outcome: dict | None = None) -> tuple[int, bool]:
+              timeout: float = TIMEOUT_SECONDS, outcome: dict | None = None,
+              log_limit_bytes: int | None = None) -> tuple[int, bool]:
+    require(log_limit_bytes is None or type(log_limit_bytes) is int and
+            0 < log_limit_bytes <= showcase_idle_output.MAX_LOG_BYTES, "Invalid diagnostic log budget")
     process = None
     job = None
     timed_out = False
     outcome = {} if outcome is None else outcome
     cleanup_errors = []
+    captures = {}
     deadline = time.monotonic() + timeout
     with (directory / "stdout.log").open("xb") as stdout, (directory / "stderr.log").open("xb") as stderr:
         try:
@@ -236,8 +241,14 @@ def run_child(command: list[str], cwd: Path, environment: dict[str, str], direct
                 job = WindowsJob()
             outcome["childLaunchUtc"] = showcase_idle_events.utc_now()
             process = subprocess.Popen(command, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
-                                       stdout=stdout, stderr=stderr, start_new_session=os.name == "posix")
+                                       stdout=stdout if log_limit_bytes is None else subprocess.PIPE,
+                                       stderr=stderr if log_limit_bytes is None else subprocess.PIPE,
+                                       bufsize=-1 if log_limit_bytes is None else 0,
+                                       start_new_session=os.name == "posix")
             outcome["childProcessId"] = process.pid
+            if log_limit_bytes is not None:
+                for name, stream, output in (("stdout", process.stdout, stdout), ("stderr", process.stderr, stderr)):
+                    captures[name] = showcase_idle_output.TailCapture(stream, output, log_limit_bytes)
             if job is not None:
                 job.assign(process)
             try:
@@ -276,6 +287,16 @@ def run_child(command: list[str], cwd: Path, environment: dict[str, str], direct
                         except OSError as error:
                             cleanup_errors.append(str(error))
                     outcome["childExitCode"] = process.poll()
+            if captures:
+                outcome["diagnosticLogTails"] = {}
+                for name, capture in captures.items():
+                    try:
+                        result = capture.finish(CLEANUP_SECONDS)
+                        outcome["diagnosticLogTails"][name] = result
+                        if not result["complete"]:
+                            cleanup_errors.append(f"{name}: {result['error']}")
+                    except Exception as error:
+                        cleanup_errors.append(f"{name} log retention: {type(error).__name__}: {error}")
             outcome["cleanupErrors"] = cleanup_errors
     require(process.returncode is not None, "Owned child did not terminate")
     return process.returncode, timed_out
@@ -399,7 +420,7 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path, windows_crash_dump
         # Neither the first result nor its exit status can be replaced by replay.
         try:
             diagnostic = showcase_idle_debugger.replay(
-                app, windows_debugger, directory, environment, run_child, write_json_new)
+                app, windows_debugger, directory, environment, run_child, write_json_new, payload_hashes, before)
             write_json_new(directory / "native-debugger-replay.json", diagnostic)
         except Exception as error:
             print(f"Supplemental native replay unavailable: {type(error).__name__}: {error}", file=sys.stderr)

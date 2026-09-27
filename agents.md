@@ -47,6 +47,10 @@ first and never replace its result. Launch only a fresh owned apphost, verify na
 architecture, retain OS exception handling and capture a bounded normal dump from
 the real stopped thread. Correlate PID/thread/code/address before publication;
 debugger controls and instrumented replays never qualify the original idle gate.
+An ordinary child failure may also receive one diagnostic native-loop replay only
+after unchanged payload identity and the original nonzero exit are established.
+Retain bounded stdout/stderr tails with explicit discarded-byte counts, drain both
+pipes through owned-child cleanup, and never enable tracing in the original run.
 Normal dump writers may include the documented AVX register-state flag on x64;
 admit only that exact extension with intrinsic system-stream architecture proof.
 Keep actual flags, bounded dumps, full-memory rejection and original failure status.

@@ -41,7 +41,7 @@ public class NativeLoopTraceMessageTests
 
     [Theory]
     [InlineData("public void DoEvents()", "public void Close()", 4)]
-    [InlineData("private void OnRender(double deltaSeconds)", "private bool Present(", 6)]
+    [InlineData("private void OnRender(double deltaSeconds)", "private bool Present(", 9)]
     public void HostPumpAndRenderOnlyUseConditionalTraceMessages(string startMarker, string endMarker, int calls)
     {
         var root = new DirectoryInfo(AppContext.BaseDirectory);

@@ -162,3 +162,11 @@ The first compile exposed an ambiguous throw-only xUnit delegate; an explicit
 synchronous `Action` fixed that test without changing its assertion. Four existing
 async-test analyzer warnings remain in this isolated harness. The ordinary full
 source/package CI is still required; this does not fix or qualify the ARM64 crash.
+
+The first complete source job for `17ffcd925` compiled successfully and executed
+all 672 retained-invalidation cases: 671 passed, one failed, zero skipped. The
+existing framebuffer source guard expected `OnRender` immediately after the
+unattached-root return block; the new checkpoint deliberately occupies that
+position. Its literal assertion now includes the exact intervening checkpoints,
+retaining the unattached-root return and synchronous-render ordering. No product
+behavior, case, deadline or assertion outcome is waived.

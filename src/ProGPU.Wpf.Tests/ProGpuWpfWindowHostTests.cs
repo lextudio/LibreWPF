@@ -742,7 +742,14 @@ public sealed class ProGpuWpfWindowHostTests
             "if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu && _wpfRootVisual == null)",
             source,
             StringComparison.Ordinal);
-        Assert.Contains("return;\n            }\n            OnRender(0d);", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferSourceUnavailable, size.X, size.Y);\n" +
+            "                return;\n            }\n" +
+            "            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderEntering, size.X, size.Y);\n" +
+            "            OnRender(0d);\n" +
+            "            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderReturned, size.X, size.Y);",
+            source,
+            StringComparison.Ordinal);
     }
 
     [Fact]

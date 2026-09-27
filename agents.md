@@ -12,6 +12,10 @@ newly owned per-image WER key. Never mutate caller/global crash policy or upload
 unbounded/full-memory dumps. Keep phase journal writes outside measured intervals,
 preserve actual child failure status through diagnostic cleanup, and treat a
 missing stack as unqualified rather than inventing an ARM64 crash cause.
+Resize checkpoints are per-host and scoped only around the synchronous action,
+never a measured idle interval. Read cached state without native queries or
+pumping; defer diagnostic failures so they cannot escape unmanaged callbacks or
+replace product failures. Rendering activity alone is not surface acquisition.
 
 Retained layout clips compare typed geometry values, not freshly allocated source
 objects. Keep primitive capture inline, and own path/figure/segment snapshots;

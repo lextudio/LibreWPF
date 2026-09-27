@@ -1,5 +1,37 @@
 # Passive Showcase layout-clip gate
 
+## Presented resize preparation
+
+The exact `ee0ecbf663ebd041284786c788d2c61b149aadc1` Build passed every job except
+the ARM64 native Showcase idle case. Its native size setter returned and source
+geometry reached the requested size, but the subsequent one-shot boundary still
+reported pending presentation work. The shared resize helper previously checked
+only source/window geometry and layout, unlike the initial/scroll preparation
+which waits for its actual presented content.
+
+Resize/restore preparation now captures the host's frame count before mutation
+and requires a strictly newer last-presented frame whose logical size, physical
+size and DPI exactly match the current surface geometry. The existing geometry
+and layout checks remain required. Both ordinary live validation and passive
+validation use this acknowledgement inside the same 600-attempt/16-ms retry
+budget; no new timeout, renderer request, GPU poll or completion wait is added.
+Passive reads continue to wake only the native loop.
+
+This acknowledges one specific presentation, not quiescence: pending flags and
+frame stability are not polled. The following fixed one-second settling period,
+one-shot native Update boundary, two-second interval, exact-zero presentation
+assertion, restoration and outer process deadlines are unchanged. Continuously
+redrawing applications still fail. Pure predicate tests reject stale counters,
+old restored frames, every mismatched geometry/DPI field and unavailable/invalid
+frames, and preserve high-DPI logical/physical distinctions. Source guards bind
+the predicate to the actual retained host snapshot and unchanged attempt budget.
+Actual Windows application CI remains required; the earlier ARM64 failure is
+preserved and not reclassified as success by this preparation correction.
+The full local retained-layout gate passes 774/774 with no skips, preserving all
+752 previous cases and adding 21 predicate cases plus one source-admission guard.
+Its actual Release build has zero errors and the existing 117 warnings. These
+host results do not qualify either Windows native application run.
+
 ## Bounded crash evidence
 
 The Windows CI jobs opt into `-CaptureIdleCrashDump` only for the existing

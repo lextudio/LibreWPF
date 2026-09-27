@@ -32,6 +32,11 @@ reject active/current presentation work and recovery instead of waiting for quie
 Passive resize geometry reads wake only the native loop. Delayed callbacks remain
 live and count normally in the unchanged exact-zero interval. Source controls do
 not qualify native idle or attribute a previous access violation.
+Resize preparation also requires a newer actual presented frame with the exact
+current logical/physical size and DPI. Assigned source/window geometry is not a
+presentation acknowledgement. Keep this inside the original resize attempt
+budget; it must never wait for pending work to disappear, restart settling or
+weaken the separate one-shot idle boundary and exact-zero observation.
 Initial CI crash evidence uses only an exact-byte, unique-name Showcase apphost and its
 newly owned per-image WER key. Never mutate caller/global crash policy or upload
 unbounded/full-memory dumps. Keep phase journal writes outside measured intervals,

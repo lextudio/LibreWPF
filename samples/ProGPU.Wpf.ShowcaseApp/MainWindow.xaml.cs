@@ -1260,6 +1260,7 @@ public partial class MainWindow : Window
             () => CaptureLiveLayoutSize(liveHost),
             DispatcherPriority.Send);
 
+        long resizeFrameBefore = liveHost.PresentedFrameCount;
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => SetLiveNativeWindowSize(liveHost, 900, 640),
@@ -1271,8 +1272,10 @@ public partial class MainWindow : Window
             description: "resized",
             layoutReady: layout =>
                 layout.ContentWidth >= initialLayout.ContentWidth + 80.0 &&
-                layout.ContentHeight >= initialLayout.ContentHeight + 40.0);
+                layout.ContentHeight >= initialLayout.ContentHeight + 40.0,
+            previousPresentedFrameCount: resizeFrameBefore);
 
+        resizeFrameBefore = liveHost.PresentedFrameCount;
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => SetLiveNativeWindowSize(liveHost, 760, 560),
@@ -1284,7 +1287,8 @@ public partial class MainWindow : Window
             description: "restored",
             layoutReady: layout =>
                 layout.ContentWidth <= resizedLayout.ContentWidth - 80.0 &&
-                layout.ContentHeight <= resizedLayout.ContentHeight - 40.0);
+                layout.ContentHeight <= resizedLayout.ContentHeight - 40.0,
+            previousPresentedFrameCount: resizeFrameBefore);
 
         return
             $"native resize relaid out WPF content to {resizedLayout.GeometryStatus} " +
@@ -1297,6 +1301,7 @@ public partial class MainWindow : Window
         uint requestedHeight,
         string description,
         Func<LiveLayoutSize, bool> layoutReady,
+        long previousPresentedFrameCount,
         bool requestRenderWhileObserving = true)
     {
         string lastState = "not checked";
@@ -1313,12 +1318,25 @@ public partial class MainWindow : Window
                         requestedWidth,
                         requestedHeight);
                     bool layoutSizeReady = layoutReady(current);
+                    var presented = ReadLivePresentedFrameState(liveHost);
+                    long presentedFrameCount = liveHost.PresentedFrameCount;
+                    bool presentationReady = NativeResizePresentation.IsReady(
+                        previousPresentedFrameCount, presentedFrameCount, presented.HasPresentedFrame,
+                        new(current.Geometry.LogicalWidth, current.Geometry.LogicalHeight,
+                            current.Geometry.PixelWidth, current.Geometry.PixelHeight, current.Geometry.DpiScale),
+                        new(presented.LogicalWidth, presented.LogicalHeight,
+                            presented.PixelWidth, presented.PixelHeight, presented.DpiScale));
                     lastState =
                         $"{description}: {current.GeometryStatus}, " +
                         $"window actual {current.WindowWidth:0.###}x{current.WindowHeight:0.###}, " +
                         $"content actual {current.ContentWidth:0.###}x{current.ContentHeight:0.###}, " +
-                        $"layoutReady={layoutSizeReady}";
-                    return geometryReady && layoutSizeReady ? current : default;
+                        $"layoutReady={layoutSizeReady}, presentationReady={presentationReady}, " +
+                        $"frames {previousPresentedFrameCount}->{presentedFrameCount}, " +
+                        FormatLivePresentedFrameState(presented);
+                    // Source geometry can commit before a deferred surface
+                    // resize presents. Acknowledge that particular new frame,
+                    // never pending-work quiescence or a merely assigned size.
+                    return geometryReady && layoutSizeReady && presentationReady ? current : default;
                 }
                 // Ordinary live validation retains its original explicit wake.
                 // A passive observer must not queue a frame on every size read.

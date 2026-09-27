@@ -153,6 +153,7 @@ public partial class MainWindow
 
             int resizedWidth = checked(fixture!.OriginalWidth + 140);
             int resizedHeight = checked(fixture.OriginalHeight + 80);
+            long resizeFrameBefore = host.PresentedFrameCount;
             journal?.Write("native-resize-request");
             await InvokeWithLiveHostWakeAsync(host, () =>
             {
@@ -171,12 +172,14 @@ public partial class MainWindow
             }, DispatcherPriority.Send);
             await WaitForLiveNativeResizeAsync(host, (uint)resizedWidth, (uint)resizedHeight, "passive native resize",
                 layout => layout.ContentWidth >= initial.ContentWidth + 80 && layout.ContentHeight >= initial.ContentHeight + 40,
+                previousPresentedFrameCount: resizeFrameBefore,
                 requestRenderWhileObserving: false);
             journal?.Write("native-resize-geometry-observed");
             var resized = await ObserveIdlePhaseAsync(host, fixture, process, readFrames, "native-resized", receipt, journal);
             if (resized.Geometry == initial.Geometry)
                 throw new InvalidOperationException("The native resize did not change the actual surface geometry.");
 
+            resizeFrameBefore = host.PresentedFrameCount;
             await InvokeWithLiveHostWakeAsync(host, () =>
             {
                 fixture.Viewer.ScrollToTop();
@@ -185,6 +188,7 @@ public partial class MainWindow
             }, DispatcherPriority.Send);
             await WaitForLiveNativeResizeAsync(host, (uint)fixture.OriginalWidth, (uint)fixture.OriginalHeight, "passive native restore",
                 layout => layout.ContentWidth <= resized.ContentWidth - 80 && layout.ContentHeight <= resized.ContentHeight - 40,
+                previousPresentedFrameCount: resizeFrameBefore,
                 requestRenderWhileObserving: false);
             var restored = await ObserveIdlePhaseAsync(host, fixture, process, readFrames, "restored", receipt, journal);
             if (restored.Geometry != initial.Geometry || restored.ScrollOffset != 0 ||

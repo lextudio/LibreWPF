@@ -16,7 +16,8 @@ minimum = {
     "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRendererTests": 242,
     "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests": 243,
     "ProGPU.Wpf.Tests.PassiveIdleIntervalTests": 8,
-    "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 6,
+    "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 7,
+    "ProGPU.Wpf.Tests.NativeResizePresentationTests": 21,
     "ProGPU.Wpf.Tests.PassiveIdleBoundaryTests": 17,
     "ProGPU.Wpf.Tests.MenuLifecycleJournalTests": 7,
     "ProGPU.Wpf.Tests.ProGpuWpfResizePolicyTests": 17,
@@ -133,6 +134,7 @@ filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleIntervalTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeDragInputReceiptTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeBackendWindowOptionsTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeResizePresentationTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleBoundaryTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.MenuLifecycleJournalTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ProGpuWpfResizePolicyTests.'

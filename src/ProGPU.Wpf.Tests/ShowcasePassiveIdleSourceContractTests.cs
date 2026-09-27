@@ -9,6 +9,27 @@ namespace ProGPU.Wpf.Tests;
 public class ShowcasePassiveIdleSourceContractTests
 {
     [Fact]
+    public void ResizePreparationRequiresItsPresentedFrameWithinTheOriginalAttemptBudget()
+    {
+        string fixture = Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.IdleLayoutClip.cs");
+        Assert.Equal(2, fixture.Split("previousPresentedFrameCount: resizeFrameBefore", StringSplitOptions.None).Length - 1);
+        Assert.Equal(2, fixture.Split("resizeFrameBefore = host.PresentedFrameCount;", StringSplitOptions.None).Length - 1);
+        string shared = Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.xaml.cs");
+        int start = shared.IndexOf("private async Task<LiveLayoutSize> WaitForLiveNativeResizeAsync(", StringComparison.Ordinal);
+        int end = shared.IndexOf("private async Task<string> ValidateLiveInputAsync(", start, StringComparison.Ordinal);
+        string preparation = shared[start..end];
+        Assert.Contains("attempt < LiveValidationMaxAttempts", preparation, StringComparison.Ordinal);
+        Assert.Contains("await Task.Delay(LiveValidationRetryDelay)", preparation, StringComparison.Ordinal);
+        Assert.Contains("ReadLivePresentedFrameState(liveHost)", preparation, StringComparison.Ordinal);
+        Assert.Contains("NativeResizePresentation.IsReady(", preparation, StringComparison.Ordinal);
+        Assert.Contains("geometryReady && layoutSizeReady && presentationReady", preparation, StringComparison.Ordinal);
+        Assert.DoesNotContain("HasImmediatePresentationWork", preparation, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetRenderActivitySnapshot", preparation, StringComparison.Ordinal);
+        Assert.DoesNotContain("WaitIdle", preparation, StringComparison.Ordinal);
+        Assert.DoesNotContain("Poll", preparation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BoundaryMarkersCompleteBeforeTheUnchangedMeasuredInterval()
     {
         string source = Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.IdleLayoutClip.cs");

@@ -27,6 +27,24 @@ exercise skipped side effects, throwing expressions and enabled formatting,
 and guard actual pump/render call-site wiring. They do not qualify native GPU
 completion, resolve the ARM64 callback timeout, or establish near-zero app CPU.
 
+The later `a73f6f344` Build `36344542300` passes x64 but still fails the ARM64
+native-resized boundary with `TimeoutException` and restored UI. Initial/scrolled
+observations remain 4→4 / 5→5 frames, with 2453.125 / 6437.5 ms process CPU and
+129328 / 147224 allocated bytes. The diagnostic artifact `10941206347` has SHA-256
+`5363b0ad0a0fae6d670c5b0a1f7e75335d675af35887fc34b84fe39a6653b3b2`.
+Disabled trace formatting was therefore not sufficient to resolve the stall.
+
+The host render boundary now explicitly opts into ProGPU's native queue deferral
+overload. If actual completion is pending, it preserves the existing presentation
+retry and returns before texture acquisition; a later normal render tick retries
+configuration. It does not pump a nested event loop, spin until quiet, reset the
+idle observer, infer completion from counters or extend any deadline. Original
+one-shot ProGPU presentation calls keep their synchronous behavior. This removes
+the host's explicit synchronous resize-drain path, but attribution of the observed
+timeout and successful native application/idle qualification remain unproven.
+The ProGPU and canonical LibreWinForms dependency links stay aligned; no packages
+from the failed `a73f6f344` Build may be staged as qualified release inputs.
+
 ## Diagnostic scope
 
 This is diagnostic localization, not a resize fix or native idle qualification.

@@ -57,7 +57,7 @@ public sealed class ProGpuWpfResizePolicyTests
             source.IndexOf("private bool PresentNativeMil(", StringComparison.Ordinal)];
         int guard = frame.IndexOf("if (_isRendering)", StringComparison.Ordinal);
         int begin = frame.IndexOf("_isRendering = true;", guard, StringComparison.Ordinal);
-        int configure = frame.IndexOf("if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight))", begin, StringComparison.Ordinal);
+        int configure = frame.IndexOf("if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight, waitForNativeCompletion: false))", begin, StringComparison.Ordinal);
         int present = frame.IndexOf("if (RenderNativeMilFrame(", configure, StringComparison.Ordinal);
         Assert.True(guard >= 0 && begin > guard && configure > begin && present > configure);
         string wakeup = source[source.IndexOf("internal bool TryProcessRenderSchedulerWakeup()", StringComparison.Ordinal)..

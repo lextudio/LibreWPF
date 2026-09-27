@@ -2483,7 +2483,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return;
             }
             TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureEntering, pixelWidth, pixelHeight);
-            if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight))
+            // A busy native queue must not keep this event thread inside a
+            // synchronous surface drain. Preserve the presentation request until
+            // actual completion permits configuration and texture acquisition.
+            if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight, waitForNativeCompletion: false))
             {
                 TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureRejected, pixelWidth, pixelHeight);
                 RequestPresentationRetryAndWakeNativeLoop();

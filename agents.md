@@ -14,6 +14,10 @@ or application performance qualification.
 
 Resize callbacks retain source geometry and invalidate the scene; only the
 guarded render boundary configures the swap chain before acquiring a texture.
+The render boundary opts into native queue deferral and retains its presentation
+retry when completion is pending. Do not acquire an old-size surface, clear the
+retry to appear idle, or relax the one-shot idle boundary/deadlines. Original
+one-shot ProGPU presenters keep their synchronous configuration contract.
 Native size setters defer presentation until their complete nested assignment
 unwinds, including synchronous scheduler wakeups. Win32 inline resize rendering
 requires the controller's actual interactive move/size state, not any WM_SIZE;

@@ -34,12 +34,14 @@ $expectedApp = Join-Path $testRoot "package with spaces/ProGPU.Wpf.ShowcaseApp.e
 $caseCalls = 0
 $caseCode = 0
 $caseThrows = $false
+$caseCapture = $false
 
 function Invoke-ControlPython {
     # Deliberately not a renderer or receipt substitute. Observe the launch
     # boundary and inject only native process status/launch exceptions.
     $script:caseCalls++
-    Assert-Control ($args.Count -eq 5) "Unexpected Python runner argument count."
+    Assert-Control ($args.Count -eq $(if ($script:caseCapture) { 6 } else { 5 })) "Unexpected Python runner argument count."
+    if ($script:caseCapture) { Assert-Control ($args[5] -eq "--windows-crash-dumps") "Missing explicit crash capture." }
     Assert-Control ($args[0] -eq (Join-Path $repoRoot "eng/progpu-wpf-showcase-idle.py")) "Wrong existing strict runner."
     Assert-Control ($args[1] -eq "--app" -and $args[2] -eq $expectedApp) "Exact package apphost was not preserved."
     Assert-Control ($args[3] -eq "--evidence-parent") "Missing explicit evidence parent."
@@ -62,7 +64,8 @@ try {
         @{ Name = "child-failure"; Code = 7; Throws = $false },
         @{ Name = "timeout"; Code = 124; Throws = $false },
         @{ Name = "invalid-receipt"; Code = 1; Throws = $false },
-        @{ Name = "launch-exception"; Code = 0; Throws = $true }
+        @{ Name = "launch-exception"; Code = 0; Throws = $true },
+        @{ Name = "crash-capture-opt-in"; Code = 0; Throws = $false; Capture = $true }
     )
     foreach ($case in $cases) {
         for ($index = 0; $index -lt $modes.Count; $index++) {
@@ -75,6 +78,7 @@ try {
         $env:PROGPU_WPF_IDLE_CONTROL_SENTINEL = "untouched"
         $caseCode = $case.Code
         $caseThrows = $case.Throws
+        $caseCapture = [bool] $case.Capture
         $observed = $null
         # The stub deliberately writes a synthetic native-process status. Scope
         # that mutation to this control, including the throwing launch case;
@@ -83,7 +87,7 @@ try {
         $hadExitCode = $null -ne $previousExitCodeVariable
         $previousExitCode = if ($hadExitCode) { $previousExitCodeVariable.Value } else { $null }
         try {
-            Invoke-ShowcaseIdleCheck $expectedApp $testRoot -PythonCommand Invoke-ControlPython
+            Invoke-ShowcaseIdleCheck $expectedApp $testRoot -PythonCommand Invoke-ControlPython -CaptureCrashDump:$caseCapture
         }
         catch { $observed = $_.Exception.Message }
         finally {
@@ -117,7 +121,7 @@ try {
     foreach ($directory in $directories) {
         Assert-Control (Test-Path -LiteralPath (Join-Path $directory.FullName "launcher.log") -PathType Leaf) "Failed launcher transcript was not retained."
     }
-    Write-Host "PASS all 5 offline native idle launcher controls; no Showcase was launched."
+    Write-Host "PASS all 6 offline native idle launcher controls; no Showcase was launched."
 }
 finally {
     foreach ($name in $saved.Keys) {

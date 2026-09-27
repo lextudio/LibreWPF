@@ -1,5 +1,35 @@
 # Passive Showcase layout-clip gate
 
+## Bounded crash evidence
+
+The Windows CI jobs opt into `-CaptureIdleCrashDump` only for the existing
+120-second passive child. The runner copies the already checked apphost to a
+fresh UUID basename beside its unchanged managed entrypoint, verifies all bytes
+and the embedded DLL binding, and exclusively creates that image's
+[WER LocalDumps key](https://learn.microsoft.com/en-us/windows/win32/wer/collecting-user-mode-dumps).
+An existing key is never changed. `finally` removes only the newly owned key and
+copied image; configuration, collection and cleanup errors preserve a nonzero
+child result and fail an otherwise successful run. Original package, PE,
+displayed-window, mode and payload-hash checks remain mandatory.
+
+WER is configured for one mini dump, never a full-memory dump. Raw output is
+outside the upload tree. Only a regular, exact-image/exact-PID dump at most 32 MiB
+with a normal-minidump header, bounded stream directory and one exception stream
+may enter the existing retained artifact. Other dump flags/full-memory streams
+fail closed. A mini dump contains thread stacks and module metadata; it is not
+safe evidence for arbitrary applications containing private data. This capture
+is restricted to the ephemeral CI Showcase fixture and records no environment
+values. No dump or a rejected dump leaves the fault stack explicitly unavailable.
+No local registry operation or native crash was executed to validate this code.
+
+The child also writes an exclusive, at-most-32-record phase journal containing
+only phase, PID and monotonic timestamp. Writes occur before admission or after
+an observed interval, never between its endpoints. These diagnostics do not
+change settling, observation or process deadlines, and do not attribute the
+retained ARM64 `0xC0000005` failure. The headless minimum is now 649, preserving
+all prior 630 cases and adding seven actual-host and twelve boundary/journal/source
+cases. Offline synthetic dump/registry controls are not Windows crash qualification.
+
 This is a separate opt-in native application gate for the retained layout-clip
 change in #179. Implementation and source/metric controls are not evidence that
 the application has passed idle qualification. No native run is claimed here.

@@ -43,7 +43,9 @@ jobs:
         run: bash ./eng/progpu-wpf-layout-clip.sh
 
       - name: Validate passive Showcase launcher controls
-        run: python3 ./eng/test-progpu-wpf-showcase-idle.py -v
+        run: |
+          python3 ./eng/test-progpu-wpf-showcase-idle.py -v
+          python3 ./eng/test-showcase-idle-crash.py -v
 
       - name: Upload retained invalidation evidence
         if: always()
@@ -352,7 +354,7 @@ jobs:
 
       - name: Run package-only x64 native MIL Showcase
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle -CaptureIdleCrashDump
 
       - name: Upload x64 passive native idle evidence
         if: always()
@@ -396,7 +398,7 @@ jobs:
 
       - name: Run package-only ARM64 native MIL Showcase
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle -CaptureIdleCrashDump
 
       - name: Upload ARM64 passive native idle evidence
         if: always()

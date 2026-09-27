@@ -63,7 +63,7 @@ public class ShowcasePassiveIdleSourceContractTests
         Assert.Contains("fixture.Viewer.ScrollToVerticalOffset(", source, StringComparison.Ordinal);
         Assert.Contains("SetLiveNativeWindowSize(host, resizedWidth, resizedHeight)", source, StringComparison.Ordinal);
         foreach (string phase in new[] { "initial", "scrolled", "native-resized", "restored" })
-            Assert.Contains($"\"{phase}\", receipt)", source, StringComparison.Ordinal);
+            Assert.Contains($"\"{phase}\", receipt, journal)", source, StringComparison.Ordinal);
         Assert.Contains("finally", source, StringComparison.Ordinal);
         Assert.Contains("fixture.Panel.Children.Remove(fixture.Zero)", source, StringComparison.Ordinal);
         Assert.Contains("receipt.UiRestored = true", source, StringComparison.Ordinal);
@@ -76,7 +76,8 @@ public class ShowcasePassiveIdleSourceContractTests
         Assert.Contains("StartIdleLayoutClipValidationIfRequested()", Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.xaml.cs"), StringComparison.Ordinal);
         // Keep forced-frame performance validation separate, not relabelled idle.
         Assert.Contains("PresentNativePerformanceFrameAsync(host)", Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.NativePerformance.cs"), StringComparison.Ordinal);
-        Assert.Contains("run: python3 ./eng/test-progpu-wpf-showcase-idle.py -v", Read(".github/workflows/progpu-wpf-sdk.yml"), StringComparison.Ordinal);
+        Assert.Contains("python3 ./eng/test-progpu-wpf-showcase-idle.py -v", Read(".github/workflows/progpu-wpf-sdk.yml"), StringComparison.Ordinal);
+        Assert.Contains("python3 ./eng/test-showcase-idle-crash.py -v", Read(".github/workflows/progpu-wpf-sdk.yml"), StringComparison.Ordinal);
         string gate = Read("eng/progpu-wpf-layout-clip.sh");
         foreach (string name in new[] { "PassiveIdleIntervalTests", "ShowcasePassiveIdleSourceContractTests", "PassiveIdleBoundaryTests" })
         {
@@ -116,6 +117,9 @@ public class ShowcasePassiveIdleSourceContractTests
         Assert.True(host.IndexOf("_isRendering = true;", render, StringComparison.Ordinal) <
             host.IndexOf("ProcessDispatcherQueueCore();", render, StringComparison.Ordinal));
         Assert.Contains("TaskCreationOptions.RunContinuationsAsynchronously", Read("samples/ProGPU.Wpf.ShowcaseApp/PassiveIdleBoundary.cs"));
+        int begin = fixture.IndexOf("IdleSourceState before = await ReadIdleBoundaryAsync(", StringComparison.Ordinal);
+        int endInterval = fixture.IndexOf("receipt.Phases.Add(phase)", begin, StringComparison.Ordinal);
+        Assert.DoesNotContain("journal", fixture[begin..endInterval], StringComparison.Ordinal);
     }
 
     private static string Read(string relative)

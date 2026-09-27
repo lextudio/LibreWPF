@@ -18,6 +18,7 @@ import sys
 import tempfile
 import time
 import uuid
+import showcase_idle_crash
 
 
 TIMEOUT_SECONDS = 120
@@ -233,6 +234,7 @@ def run_child(command: list[str], cwd: Path, environment: dict[str, str], direct
                 job = WindowsJob()
             process = subprocess.Popen(command, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
                                        stdout=stdout, stderr=stderr, start_new_session=os.name == "posix")
+            outcome["childProcessId"] = process.pid
             if job is not None:
                 job.assign(process)
             try:
@@ -281,7 +283,27 @@ def write_json_new(path: Path, value: dict) -> None:
         stream.write("\n")
 
 
-def run(app: Path, dotnet: str | None, evidence_parent: Path) -> int:
+def finish_crash_capture(crash, metadata, exit_code):
+    try:
+        metadata["crashEvidence"] = crash.collect(metadata.get("childProcessId"),
+            metadata.get("childExitCode"), metadata.get("timedOut"))
+    except Exception as error:
+        metadata["crashEvidenceError"] = f"{type(error).__name__}: {error}"
+        metadata["success"] = False
+        exit_code = exit_code or 1
+    finally:
+        try:
+            errors = crash.close()
+        except Exception as error:
+            errors = [f"Crash evidence cleanup: {type(error).__name__}: {error}"]
+        if errors:
+            metadata.setdefault("cleanupErrors", []).extend(errors)
+            metadata["success"] = False
+            exit_code = exit_code or 1
+    return exit_code
+
+
+def run(app: Path, dotnet: str | None, evidence_parent: Path, windows_crash_dumps: bool = False) -> int:
     app = app.resolve(strict=True)
     require(app.is_file() and app.name in ("ProGPU.Wpf.ShowcaseApp", "ProGPU.Wpf.ShowcaseApp.exe", "ProGPU.Wpf.ShowcaseApp.dll"),
             "--app must be the prebuilt genuine Showcase apphost or DLL")
@@ -291,6 +313,9 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path) -> int:
         require(os.environ.get(name) != "1", f"Conflicting Showcase mode: {name}")
     before = payload_hashes(app.parent)
     app_hash = sha256(app)
+    if windows_crash_dumps:
+        require(os.name == "nt" and os.environ.get("GITHUB_ACTIONS") == "true" and app.suffix.lower() == ".exe",
+                "WER capture is restricted to the CI Windows apphost child")
     if app.suffix.lower() == ".dll":
         executable = shutil.which(dotnet or "dotnet")
         require(executable is not None, "A .NET host is required for a prebuilt DLL")
@@ -303,13 +328,19 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path) -> int:
     environment = os.environ.copy()
     environment["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_VALIDATE"] = "1"
     environment["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_STATUS_PATH"] = str(status_path)
+    environment["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_PHASE_PATH"] = str(directory / "application-phases.jsonl")
     metadata = {"schemaVersion": 1, "command": command, "workingDirectory": str(app.parent),
                 "timeoutSeconds": TIMEOUT_SECONDS, "appSha256": app_hash, "payloadSha256Before": before,
                 "success": False, "childExitCode": None, "timedOut": False}
-    write_json_new(directory / "launch.json", metadata)
     print(f"Showcase idle evidence: {directory}", flush=True)
     exit_code = 1
+    crash = None
     try:
+        if windows_crash_dumps:
+            crash = showcase_idle_crash.Capture(app, directory, showcase_idle_crash.WindowsRegistry())
+            command = [str(crash.prepare())]
+            metadata["command"] = command
+        write_json_new(directory / "launch.json", metadata)
         child_code, timed_out = run_child(command, app.parent, environment, directory, outcome=metadata)
         metadata.update(childExitCode=child_code, timedOut=timed_out)
         exit_code = 124 if timed_out else child_code if child_code >= 0 else 128 - child_code
@@ -333,6 +364,9 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path) -> int:
         if exit_code == 0:
             exit_code = 1
         metadata["error"] = f"{type(error).__name__}: {error}"
+    finally:
+        if crash is not None:
+            exit_code = finish_crash_capture(crash, metadata, exit_code)
     metadata["runnerExitCode"] = exit_code
     try:
         write_json_new(directory / "runner-receipt.json", metadata)
@@ -348,12 +382,13 @@ def main() -> int:
     parser.add_argument("--app", required=True, type=Path, help="Prebuilt Showcase apphost or DLL; never builds")
     parser.add_argument("--dotnet", help=".NET host for DLL input only")
     parser.add_argument("--evidence-parent", required=True, type=Path, help="Existing directory for a fresh evidence child")
+    parser.add_argument("--windows-crash-dumps", action="store_true", help="CI only: task-owned per-image WER stack minidump")
     args = parser.parse_args()
     handlers = {}
     try:
         for signum in (signal.SIGINT, signal.SIGTERM):
             handlers[signum] = signal.signal(signum, lambda received, frame: (_ for _ in ()).throw(Interrupted(received)))
-        return run(args.app, args.dotnet, args.evidence_parent)
+        return run(args.app, args.dotnet, args.evidence_parent, args.windows_crash_dumps)
     except Interrupted as interrupted:
         return 128 + interrupted.signum
     except (OSError, ContractError) as error:

@@ -31,8 +31,8 @@ public sealed class WpfManagedProjectGraphTests
             Assert.Contains("uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'", job, StringComparison.Ordinal);
             Assert.Contains("run: ./eng/test-progpu-wpf-windows-native-idle.ps1", job, StringComparison.Ordinal);
             string command = architecture == "x64"
-                ? "run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle"
-                : "run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle";
+                ? "run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle -CaptureIdleCrashDump"
+                : "run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle -CaptureIdleCrashDump";
             Assert.Contains(command, job, StringComparison.Ordinal);
             AssertGuardBefore(job, "uses: actions/setup-python@v5", "run: ./eng/test-progpu-wpf-windows-native-idle.ps1");
             AssertGuardBefore(job, "run: ./eng/test-progpu-wpf-windows-native-idle.ps1", command);

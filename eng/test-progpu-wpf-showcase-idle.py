@@ -48,6 +48,24 @@ def synthetic_receipt(hashes=None):
 
 
 class ReceiptTests(unittest.TestCase):
+    def test_crash_diagnostic_failures_preserve_observed_child_status(self):
+        for status in (0, 7, 124, 3221225477):
+            for cleanup in (OSError("cleanup"), ["cleanup failure"]):
+                with self.subTest(status=status, cleanup=cleanup):
+                    capture = mock.Mock()
+                    capture.collect.side_effect = ValueError("invalid dump")
+                    if isinstance(cleanup, Exception):
+                        capture.close.side_effect = cleanup
+                    else:
+                        capture.close.return_value = cleanup
+                    metadata = {"success": status == 0, "childExitCode": status,
+                                "childProcessId": 123, "timedOut": status == 124}
+                    self.assertEqual(status or 1, runner.finish_crash_capture(capture, metadata, status))
+                    self.assertEqual(status, metadata["childExitCode"])
+                    self.assertFalse(metadata["success"])
+                    self.assertTrue(metadata["cleanupErrors"])
+                    capture.close.assert_called_once()
+
     def setUp(self):
         self.hashes = {name: "a" * 64 for name in runner.ASSEMBLIES}
 

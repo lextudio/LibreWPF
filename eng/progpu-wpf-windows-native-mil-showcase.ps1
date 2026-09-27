@@ -4,7 +4,8 @@ param(
     [ValidateSet("x64", "arm64")]
     [string] $TargetArchitecture = "x64",
     [switch] $AllowEmulatedX64,
-    [switch] $ValidatePassiveIdle
+    [switch] $ValidatePassiveIdle,
+    [switch] $CaptureIdleCrashDump
 )
 
 $ErrorActionPreference = "Stop"
@@ -233,7 +234,8 @@ function Invoke-ShowcaseIdleCheck {
     param(
         [string] $AppHost,
         [string] $EvidenceParent,
-        [string] $PythonCommand = "python"
+        [string] $PythonCommand = "python",
+        [switch] $CaptureCrashDump
     )
 
     # Preserve the existing self-test modes outside this separate real native
@@ -260,8 +262,10 @@ function Invoke-ShowcaseIdleCheck {
         # Capture the native exit explicitly even when the caller opts into
         # PowerShell's native-command error preference. Never waive a failure.
         $PSNativeCommandUseErrorActionPreference = $false
+        $crashArguments = @()
+        if ($CaptureCrashDump) { $crashArguments = @("--windows-crash-dumps") }
         & $PythonCommand (Join-Path $repoRoot "eng/progpu-wpf-showcase-idle.py") `
-            --app $AppHost --evidence-parent $evidence
+            --app $AppHost --evidence-parent $evidence @crashArguments
         if ($LASTEXITCODE -ne 0) {
             throw "Windows native MIL Showcase passive idle gate exited $LASTEXITCODE; evidence: $evidence."
         }
@@ -491,7 +495,7 @@ Invoke-ShowcaseCheck "pre-display" "ProGPU WPF Showcase validation succeeded." $
 Invoke-ShowcaseCheck "displayed" "ProGPU WPF Showcase Application.Run validation succeeded." $appHost $smokeRoot
 
 if ($ValidatePassiveIdle) {
-    Invoke-ShowcaseIdleCheck $appHost (Join-Path $repoRoot "artifacts/showcase-native-idle/$targetRid")
+    Invoke-ShowcaseIdleCheck $appHost (Join-Path $repoRoot "artifacts/showcase-native-idle/$targetRid") -CaptureCrashDump:$CaptureIdleCrashDump
 }
 
 # Compile one source-only WPF fixture under both SDKs. The stock Windows WPF

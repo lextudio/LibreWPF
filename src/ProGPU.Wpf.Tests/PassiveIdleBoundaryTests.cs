@@ -6,6 +6,43 @@ namespace ProGPU.Wpf.Tests;
 
 public class PassiveIdleBoundaryTests
 {
+    [Fact]
+    public void PhaseJournalPreservesCallerFilesAndRecordsOnlyPhaseIdentity()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"idle-journal-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        string path = Path.Combine(directory, "phases.jsonl");
+        try
+        {
+            using (var journal = new PassiveIdlePhaseJournal(path)) journal.Write("loaded");
+            string original = File.ReadAllText(path);
+            using var record = System.Text.Json.JsonDocument.Parse(original);
+            Assert.Equal("loaded", record.RootElement.GetProperty("phase").GetString());
+            Assert.Equal(Environment.ProcessId, record.RootElement.GetProperty("processId").GetInt32());
+            Assert.Equal(3, record.RootElement.EnumerateObject().Count());
+            Assert.Throws<IOException>(() => new PassiveIdlePhaseJournal(path));
+            Assert.Equal(original, File.ReadAllText(path));
+        }
+        finally { File.Delete(path); Directory.Delete(directory); }
+    }
+
+    [Fact]
+    public void PhaseJournalHasFixedRecordBudget()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"idle-journal-{Guid.NewGuid():N}.jsonl");
+        try
+        {
+            using (var journal = new PassiveIdlePhaseJournal(path))
+            {
+                for (int index = 0; index < 32; index++) journal.Write("phase");
+                Assert.Throws<InvalidOperationException>(() => journal.Write("overflow"));
+            }
+            Assert.Equal(32, File.ReadAllLines(path).Length);
+            Assert.InRange(new FileInfo(path).Length, 1, 16384);
+        }
+        finally { File.Delete(path); }
+    }
+
     [Theory]
     [InlineData(true, false, false, false)] // Current explicit request was already consumed.
     [InlineData(false, true, false, false)]

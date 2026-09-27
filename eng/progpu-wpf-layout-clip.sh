@@ -17,6 +17,7 @@ minimum = {
     "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests": 236,
     "ProGPU.Wpf.Tests.PassiveIdleIntervalTests": 8,
     "ProGPU.Wpf.Tests.NativeDragInputReceiptTests": 10,
+    "ProGPU.Wpf.Tests.NativeBackendWindowOptionsTests": 18,
     "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 2,
     "ProGPU.Wpf.Tests.Platform.WebGpuClientContextContractTests": 3,
 }
@@ -122,6 +123,7 @@ filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRende
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleIntervalTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeDragInputReceiptTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeBackendWindowOptionsTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Platform.WebGpuClientContextContractTests.'
 

@@ -1961,55 +1961,81 @@ public partial class MainWindow : Window
         for (int i = 0; i < s_frameworkThemes.Length; i++)
         {
             FrameworkThemeDefinition theme = s_frameworkThemes[i];
-            await InvokeWithLiveHostWakeAsync(
-                liveHost,
-                () =>
-                {
-                    var themeItem = Require<MenuItem>(
-                        FindName($"{theme.Name}ThemeMenuItem"),
-                        $"Showcase live {theme.Name} theme MenuItem");
-                    themeItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, themeItem));
-                    UpdateLayout();
-                    AssertEqual(theme.Name, ActiveFrameworkThemeName, $"Showcase live active {theme.Name} framework theme");
-                    AssertEqual(true, themeItem.IsChecked, $"Showcase live checked {theme.Name} framework theme item");
-                    AssertEqual(
-                        theme.Source,
-                        _activeFrameworkThemeDictionary?.Source?.OriginalString,
-                        $"Showcase live {theme.Name} framework theme source");
-
-                    var menu = Require<Menu>(FindName("MainMenu"), $"Showcase live {theme.Name} main Menu");
-                    var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), $"Showcase live {theme.Name} File MenuItem");
-                    var comboBox = Require<ComboBox>(FindName("SelectedValueComboBox"), $"Showcase live {theme.Name} ComboBox");
-                    menu.ApplyTemplate();
-                    fileMenuItem.ApplyTemplate();
-                    comboBox.ApplyTemplate();
-                    AssertEqual(true, menu.Template != null, $"Showcase live {theme.Name} Menu template available");
-                    AssertEqual(true, fileMenuItem.Template != null, $"Showcase live {theme.Name} MenuItem template available");
-                    AssertEqual(true, comboBox.Template != null, $"Showcase live {theme.Name} ComboBox template available");
-                    fileMenuItem.IsSubmenuOpen = true;
-                    WakeLiveRenderHost(liveHost);
-                },
-                DispatcherPriority.Send);
-
-            LivePopupSurfaceSnapshot snapshot = await WaitForLivePopupLayerChildCountAsync(
-                liveHost,
-                expectedPopupChildren: 1,
-                exact: false,
-                $"{theme.Name} File menu popup layer");
-            bool usesNativeWindow = snapshot.Portable.NativeWindowCount >= 1;
-            bool hasPopupLayerContent = snapshot.Composition.PopupLayerChildCount >= 1;
-            AssertEqual(
-                true,
-                usesNativeWindow || hasPopupLayerContent,
-                $"Showcase live {theme.Name} menu popup presentation");
-            if (OperatingSystem.IsMacOS())
+            ThemeMenuDiagnostics? diagnostics = null;
+            try
             {
-                AssertEqual(true, usesNativeWindow, $"Showcase live {theme.Name} macOS native menu popup count");
-            }
+                await InvokeWithLiveHostWakeAsync(
+                    liveHost,
+                    () =>
+                    {
+                        diagnostics = new ThemeMenuDiagnostics(this,
+                            Require<MenuItem>(FindName("FileMenuItem"), "Showcase live theme diagnostic File MenuItem"));
+                        diagnostics.Record($"theme-request:{theme.Name}");
+                        var themeItem = Require<MenuItem>(
+                            FindName($"{theme.Name}ThemeMenuItem"),
+                            $"Showcase live {theme.Name} theme MenuItem");
+                        themeItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, themeItem));
+                        UpdateLayout();
+                        diagnostics.Record("theme-layout-returned");
+                        AssertEqual(theme.Name, ActiveFrameworkThemeName, $"Showcase live active {theme.Name} framework theme");
+                        AssertEqual(true, themeItem.IsChecked, $"Showcase live checked {theme.Name} framework theme item");
+                        AssertEqual(
+                            theme.Source,
+                            _activeFrameworkThemeDictionary?.Source?.OriginalString,
+                            $"Showcase live {theme.Name} framework theme source");
 
-            allMenusUsedNativeWindows &= usesNativeWindow;
-            validatedThemes.Add(theme.Name);
-            await CloseLivePopupSurfacesAsync(liveHost);
+                        var menu = Require<Menu>(FindName("MainMenu"), $"Showcase live {theme.Name} main Menu");
+                        var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), $"Showcase live {theme.Name} File MenuItem");
+                        var comboBox = Require<ComboBox>(FindName("SelectedValueComboBox"), $"Showcase live {theme.Name} ComboBox");
+                        menu.ApplyTemplate();
+                        fileMenuItem.ApplyTemplate();
+                        comboBox.ApplyTemplate();
+                        AssertEqual(true, menu.Template != null, $"Showcase live {theme.Name} Menu template available");
+                        AssertEqual(true, fileMenuItem.Template != null, $"Showcase live {theme.Name} MenuItem template available");
+                        AssertEqual(true, comboBox.Template != null, $"Showcase live {theme.Name} ComboBox template available");
+                        diagnostics.Record("templates-applied");
+                        fileMenuItem.IsSubmenuOpen = true;
+                        diagnostics.Record("submenu-setter-returned");
+                        WakeLiveRenderHost(liveHost);
+                    },
+                    DispatcherPriority.Send);
+
+                LivePopupSurfaceSnapshot snapshot = await WaitForLivePopupLayerChildCountAsync(
+                    liveHost,
+                    expectedPopupChildren: 1,
+                    exact: false,
+                    $"{theme.Name} File menu popup layer");
+                bool usesNativeWindow = snapshot.Portable.NativeWindowCount >= 1;
+                bool hasPopupLayerContent = snapshot.Composition.PopupLayerChildCount >= 1;
+                AssertEqual(
+                    true,
+                    usesNativeWindow || hasPopupLayerContent,
+                    $"Showcase live {theme.Name} menu popup presentation");
+                if (OperatingSystem.IsMacOS())
+                {
+                    AssertEqual(true, usesNativeWindow, $"Showcase live {theme.Name} macOS native menu popup count");
+                }
+
+                allMenusUsedNativeWindows &= usesNativeWindow;
+                validatedThemes.Add(theme.Name);
+                await CloseLivePopupSurfacesAsync(liveHost, diagnostics);
+            }
+            catch
+            {
+                // Failure-only reporting, on the same source dispatcher. This
+                // neither repeats an attempt nor requests another render.
+                try
+                {
+                    await InvokeWithLiveNativeLoopWakeAsync(liveHost, () =>
+                    {
+                        try { diagnostics?.WriteFailure(); }
+                        finally { diagnostics?.Dispose(); }
+                        return true;
+                    }, DispatcherPriority.Send);
+                }
+                catch { /* Diagnostics must not replace the original validation failure. */ }
+                throw;
+            }
         }
 
         await InvokeWithLiveHostWakeAsync(
@@ -2479,7 +2505,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task CloseLivePopupSurfacesAsync(ProGpuWpfWindowHost liveHost)
+    private async Task CloseLivePopupSurfacesAsync(
+        ProGpuWpfWindowHost liveHost,
+        ThemeMenuDiagnostics? diagnostics = null)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -2502,6 +2530,9 @@ public partial class MainWindow : Window
 
                 UpdateLayout();
                 WakeLiveRenderHost(liveHost);
+                // Reuse the existing successful close callback; no additional
+                // source dispatch, layout pass or native wake on success.
+                diagnostics?.Dispose();
             },
             DispatcherPriority.Send);
     }

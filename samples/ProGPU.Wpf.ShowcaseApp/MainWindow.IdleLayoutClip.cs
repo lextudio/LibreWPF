@@ -227,9 +227,10 @@ public partial class MainWindow
         journal?.Write(name + "-boundary");
         // A dispatcher operation may run inside OnRender before presentation.
         // Observe once from the actual native Update callback, not that drain.
+        Action? onBoundaryEntered = journal is null ? null : () => journal.Write(name + "-boundary-entered");
+        Action? onSourceCaptured = journal is null ? null : () => journal.Write(name + "-boundary-source-captured");
         IdleSourceState before = await ReadIdleBoundaryAsync(host, fixture,
-            () => journal?.Write(name + "-boundary-entered"));
-        journal?.Write(name + "-boundary-captured");
+            onBoundaryEntered, onSourceCaptured);
         PassiveIdleInterval.Result interval = await PassiveIdleInterval.ObserveAsync(process, readFrames,
             IdleObservationTime).ConfigureAwait(false);
         var phase = new IdlePhaseReceipt(name, interval, before);
@@ -244,7 +245,7 @@ public partial class MainWindow
     }
 
     private Task<IdleSourceState> ReadIdleBoundaryAsync(ProGpuWpfWindowHost host, IdleFixture fixture,
-        Action? onBoundaryEntered = null)
+        Action? onBoundaryEntered = null, Action? onSourceCaptured = null)
     {
         var window = host.SilkWindow ?? throw new InvalidOperationException("Missing actual native window.");
         Action<double>? update = null;
@@ -263,6 +264,7 @@ public partial class MainWindow
                     activity.DeviceRecoveryCount != fixture.OriginalRecovery)
                     throw new InvalidOperationException("Passive endpoint has an obsolete owner, active frame or pending presentation/recovery work.");
                 IdleSourceState source = ReadIdleSourceState(host, fixture);
+                onSourceCaptured?.Invoke();
                 if (!ReferenceEquals(host.SilkWindow, window) ||
                     !ProGpuWpfDiagnostics.TryGetRenderActivitySnapshot(host, out var after) ||
                     after != activity || after.HasImmediatePresentationWork)

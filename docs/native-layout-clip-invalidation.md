@@ -168,11 +168,16 @@ The earlier failure at swap-chain configuration is no longer the last observed
 operation; the new trace still does not establish a native fault cause.
 
 Two bounded markers now distinguish entry into the native Update observer from
-completion of its first source snapshot. Both finish before process-metric
-sampling begins; no output is added inside the measured interval. All four
+completion of its first source snapshot. Both execute inside that first endpoint
+callback, before final owner/activity revalidation and publication; no journal
+output is added between the returned endpoint and interval completion. All four
 phases, exact-zero assertions, owner checks and deadlines remain unchanged, and
 the 25 possible phase records stay within the original 32-record journal budget.
 This is failure localization, not an ARM64 crash fix or a passing native gate.
+The complete linked boundary/source/resize-policy harness passes 41 cases. The
+first marker placement failed the existing no-output-between-endpoints guard in
+CI; moving both callbacks before endpoint publication preserves that guard
+unchanged. No failure is waived and the native producer must run again.
 
 # Passive native boundary follow-up
 

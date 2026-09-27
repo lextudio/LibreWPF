@@ -16,8 +16,8 @@ minimum = {
     "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRendererTests": 242,
     "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests": 243,
     "ProGPU.Wpf.Tests.PassiveIdleIntervalTests": 8,
-    "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 4,
-    "ProGPU.Wpf.Tests.PassiveIdleBoundaryTests": 11,
+    "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 5,
+    "ProGPU.Wpf.Tests.PassiveIdleBoundaryTests": 17,
     "ProGPU.Wpf.Tests.MenuLifecycleJournalTests": 7,
 }
 ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}

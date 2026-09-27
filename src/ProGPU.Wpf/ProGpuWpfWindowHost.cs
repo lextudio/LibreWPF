@@ -52,6 +52,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private readonly ProGpuWpfWindowOptions _options;
     private readonly ProGpuWpfNativeHitTesting _nativeMilHitTests = new();
     private IWindow? _window;
+    private ProGpuWpfResizeDiagnosticScope? _resizeDiagnostics;
     private ProGpuWpfCompositionTarget? _target;
     private NativeCompositor? _nativeMilCompositor;
     private WpfNativeMilCompilationSession? _nativeMilSession;
@@ -1430,6 +1431,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void SetClientSizeCore(int width, int height, bool updatePortablePresentationSource)
     {
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.ClientSizeEntered, width, height);
         _clientWidth = Math.Max(1, width);
         _clientHeight = Math.Max(1, height);
         _requestedLogicalClientWidth = _clientWidth;
@@ -1438,10 +1440,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _declaredLogicalClientHeight = _clientHeight;
         if (_window != null)
         {
-            _window.Size = ResolveNativeWindowSizeForLogicalClientSize(
+            var window = _window;
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeSizeResolving, _clientWidth, _clientHeight);
+            var nativeSize = ResolveNativeWindowSizeForLogicalClientSize(
                 new Vector2D<int>(_clientWidth, _clientHeight),
                 ResolveCurrentWindowContentScale(),
                 UsesMonitorScaledWindowCoordinates());
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeSizeAssigning, nativeSize.X, nativeSize.Y);
+            window.Size = nativeSize;
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeSizeAssigned, nativeSize.X, nativeSize.Y);
         }
 
         if (updatePortablePresentationSource)
@@ -1450,6 +1457,45 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         RequestRenderAndWakeNativeLoop();
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.ClientSizeReturned, width, height);
+    }
+
+    internal ProGpuWpfResizeDiagnosticScope ObserveNativeResize(Action<ProGpuWpfResizeCheckpoint> observe)
+    {
+        ThrowIfDisposed();
+        if (_hasNativeWindowCloseStarted || !PlatformServices.Dispatcher.CheckAccess())
+            throw new InvalidOperationException("Resize diagnostics require the live host owner thread.");
+        if (_resizeDiagnostics is not null)
+            throw new InvalidOperationException("Resize diagnostics are already registered on this host.");
+        ProGpuWpfResizeDiagnosticScope? scope = null;
+        scope = new(observe, () =>
+        {
+            if (ReferenceEquals(_resizeDiagnostics, scope)) _resizeDiagnostics = null;
+        }, _window, _target, _portablePresentationSourceBridge);
+        return _resizeDiagnostics = scope;
+    }
+
+    private void TraceResizeCheckpoint(ProGpuWpfResizeStage stage, long width, long height)
+    {
+        // Normal resize performs no diagnostic allocation, callback, clock or
+        // native/dispatcher query. The opt-in scope reads cached state only.
+        var scope = _resizeDiagnostics;
+        if (scope is null || !scope.CanRecord) return;
+        try
+        {
+            bool ownerThread = PlatformServices.Dispatcher.CheckAccess();
+            bool hasActivity = TryGetRenderActivitySnapshot(out var activity);
+            scope.Record(new(stage, Environment.CurrentManagedThreadId, scope.RegistrationThreadId,
+                ownerThread, hasActivity, activity, width, height, _clientWidth, _clientHeight,
+                _portablePresentationSourceClientWidth, _portablePresentationSourceClientHeight,
+                _requestedLogicalClientWidth, _requestedLogicalClientHeight,
+                _window is not null, _target is not null, _portablePresentationSourceBridge is not null,
+                ReferenceEquals(scope.Window, _window), ReferenceEquals(scope.Target, _target),
+                ReferenceEquals(scope.Source, _portablePresentationSourceBridge), _isDisposed,
+                _hasNativeWindowCloseStarted, _isRenderingLiveResize, _isProcessingDispatcherWorkWakeup,
+                Volatile.Read(ref s_activeNativeEventDispatchDepth)));
+        }
+        catch (Exception error) { scope.Fail(error); }
     }
 
     public void DoEvents()
@@ -2178,6 +2224,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnResize(Vector2D<int> size)
     {
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeResizeEntered, size.X, size.Y);
         if (_window == null)
         {
             UpdateClientSizeFromNativeResize(size);
@@ -2196,27 +2243,34 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         if (_target == null || _window == null)
         {
             RequestRenderAndWakeNativeLoop();
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeResizeReturned, size.X, size.Y);
             return;
         }
 
         var geometry = ResolveCurrentRenderSurfaceGeometry();
         SynchronizePortablePresentationSourceGeometry(geometry);
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureEntering, geometry.PixelWidth, geometry.PixelHeight);
         if (!_target.Context.TryConfigureSwapChain(
                 geometry.PixelWidth,
                 geometry.PixelHeight))
         {
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureRejected, geometry.PixelWidth, geometry.PixelHeight);
             RequestRenderAndWakeNativeLoop();
             return;
         }
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureReturned, geometry.PixelWidth, geometry.PixelHeight);
         _target.SceneRootVisual.Invalidate();
         _target.RootVisual.Invalidate();
         RequestRenderAndWakeNativeLoop();
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeResizeReturned, size.X, size.Y);
     }
 
     private void OnFramebufferResize(Vector2D<int> size)
     {
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferResizeEntered, size.X, size.Y);
         if (size.X <= 0 || size.Y <= 0 || _window == null || _isDisposed || _isRenderingLiveResize)
         {
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferResizeSkipped, size.X, size.Y);
             return;
         }
 
@@ -2233,14 +2287,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 // presentation source is still attaching its root. OnResize has
                 // retained the new geometry and queued a frame; the bridge will
                 // publish the typed root before that frame is rendered.
+                TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferSourceUnavailable, size.X, size.Y);
                 return;
             }
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderEntering, size.X, size.Y);
             OnRender(0d);
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderReturned, size.X, size.Y);
         }
         finally
         {
             _isRenderingLiveResize = false;
         }
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferResizeReturned, size.X, size.Y);
     }
 
     private void AttachNativeDpiService()
@@ -5125,10 +5183,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.SourceLayoutEntering, clientWidth, clientHeight);
         if (!_portablePresentationSourceBridge.TrySetClientSize(clientWidth, clientHeight))
         {
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.SourceLayoutRejected, clientWidth, clientHeight);
             return false;
         }
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.SourceLayoutReturned, clientWidth, clientHeight);
 
         _portablePresentationSourceClientWidth = clientWidth;
         _portablePresentationSourceClientHeight = clientHeight;

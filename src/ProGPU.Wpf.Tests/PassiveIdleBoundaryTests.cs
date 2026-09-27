@@ -7,6 +7,134 @@ namespace ProGPU.Wpf.Tests;
 public class PassiveIdleBoundaryTests
 {
     [Fact]
+    public void ResizeDiagnosticObserverFailureIsDeferredAndScopeDetachesOnce()
+    {
+        var expected = new IOException("owned journal failure");
+        int observed = 0, detached = 0;
+        var scope = new ProGpuWpfResizeDiagnosticScope(_ => { observed++; throw expected; },
+            () => detached++, new object(), new object(), new object());
+        scope.Record(default); // Must not throw into a native callback.
+        scope.Record(default);
+        Assert.Same(expected, Assert.Throws<IOException>(scope.ThrowIfFailed));
+        scope.Dispose();
+        scope.Dispose();
+        scope.Record(default);
+        Assert.Equal(1, observed);
+        Assert.Equal(1, detached);
+        Assert.False(scope.CanRecord);
+    }
+
+    [Fact]
+    public void ResizeDiagnosticCapacityRejectsOverflowWithoutExtraCallback()
+    {
+        int observed = 0;
+        using var scope = new ProGpuWpfResizeDiagnosticScope(_ => observed++, () => { }, null, null, null);
+        for (int index = 0; index < 64; index++) scope.Record(default);
+        scope.ThrowIfFailed();
+        scope.Record(default);
+        scope.Record(default);
+        Assert.Throws<InvalidOperationException>(scope.ThrowIfFailed);
+        Assert.Equal(64, observed);
+    }
+
+    [Fact]
+    public void ResizeDiagnosticDisposePreservesOriginalProductException()
+    {
+        var expected = new InvalidOperationException("original resize failure");
+        int detached = 0;
+        var actual = Assert.Throws<InvalidOperationException>((Action)(() =>
+        {
+            using var scope = new ProGpuWpfResizeDiagnosticScope(_ => throw new IOException("journal"),
+                () => detached++, null, null, null);
+            scope.Record(default);
+            throw expected;
+        }));
+        Assert.Same(expected, actual);
+        Assert.Equal(1, detached);
+    }
+
+    [Fact]
+    public void ResizeDiagnosticPreservesTypedIdentityAndActivityWithoutInferringAcquisition()
+    {
+        var expected = ResizeCheckpoint();
+        ProGpuWpfResizeCheckpoint observed = default;
+        var window = new object();
+        using var scope = new ProGpuWpfResizeDiagnosticScope(value => observed = value,
+            () => { }, window, null, null);
+        scope.Record(expected);
+        scope.ThrowIfFailed();
+        Assert.Equal(expected, observed);
+        Assert.Same(window, scope.Window);
+        Assert.Null(scope.Target);
+        Assert.Null(scope.Source);
+        Assert.Equal(Environment.CurrentManagedThreadId, scope.RegistrationThreadId);
+        Assert.True(observed.Activity.IsRendering);
+        Assert.False(observed.Activity.HasPendingPresentationRequest);
+    }
+
+    [Fact]
+    public void ResizeJournalPreservesPrimitiveStateAndHasIndependentFixedBudget()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"idle-resize-{Guid.NewGuid():N}.jsonl");
+        try
+        {
+            using (var journal = new PassiveIdlePhaseJournal(path))
+            {
+                for (int index = 0; index < 64; index++) journal.WriteResize(ResizeCheckpoint());
+                Assert.Throws<InvalidOperationException>(() => journal.WriteResize(ResizeCheckpoint()));
+                for (int index = 0; index < 32; index++) journal.Write("phase");
+                Assert.Throws<InvalidOperationException>(() => journal.Write("overflow"));
+            }
+            string[] lines = File.ReadAllLines(path);
+            Assert.Equal(96, lines.Length);
+            Assert.InRange(new FileInfo(path).Length, 1, 64 * 2049 + 16384);
+            using var parsed = System.Text.Json.JsonDocument.Parse(lines[0]);
+            var root = parsed.RootElement;
+            Assert.Equal("native-resize-checkpoint", root.GetProperty("phase").GetString());
+            Assert.Equal(Environment.ProcessId, root.GetProperty("processId").GetInt32());
+            Assert.Equal(1, root.GetProperty("sequence").GetInt32());
+            var state = root.GetProperty("checkpoint");
+            Assert.Equal("NativeSizeAssigning", state.GetProperty("stage").GetString());
+            Assert.Equal(19, state.GetProperty("managedThreadId").GetInt32());
+            Assert.Equal(17, state.GetProperty("registrationThreadId").GetInt32());
+            Assert.False(state.GetProperty("isOwnerThread").GetBoolean());
+            Assert.Equal(900, state.GetProperty("argumentWidth").GetInt32());
+            Assert.Equal(640, state.GetProperty("argumentHeight").GetInt32());
+            Assert.Equal(760, state.GetProperty("clientWidth").GetInt32());
+            Assert.Equal(560, state.GetProperty("sourceHeight").GetInt32());
+            Assert.Equal(900, state.GetProperty("requestedWidth").GetInt32());
+            Assert.True(state.GetProperty("sameWindow").GetBoolean());
+            Assert.False(state.GetProperty("sameTarget").GetBoolean());
+            Assert.True(state.GetProperty("activity").GetProperty("isRendering").GetBoolean());
+            Assert.False(state.GetProperty("activity").GetProperty("hasPendingPresentationRequest").GetBoolean());
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void ResizeJournalFailedWriteDoesNotEscapeObserverAndRetainsFirstFailure()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"idle-resize-{Guid.NewGuid():N}.jsonl");
+        try
+        {
+            var journal = new PassiveIdlePhaseJournal(path);
+            journal.Dispose();
+            using var scope = new ProGpuWpfResizeDiagnosticScope(journal.WriteResize, () => { }, null, null, null);
+            scope.Record(ResizeCheckpoint());
+            Assert.Throws<ObjectDisposedException>(scope.ThrowIfFailed);
+            scope.Fail(new IOException("later"));
+            Assert.Throws<ObjectDisposedException>(scope.ThrowIfFailed);
+            Assert.Empty(File.ReadAllBytes(path));
+        }
+        finally { File.Delete(path); }
+    }
+
+    private static ProGpuWpfResizeCheckpoint ResizeCheckpoint() => new(
+        ProGpuWpfResizeStage.NativeSizeAssigning, 19, 17, false, true,
+        new(true, false, false, false, 3, 0), 900, 640, 760, 560, 760, 560,
+        900, 640, true, true, true, true, false, true, false, false, true, true, 2);
+
+    [Fact]
     public void PhaseJournalPreservesCallerFilesAndRecordsOnlyPhaseIdentity()
     {
         string directory = Path.Combine(Path.GetTempPath(), $"idle-journal-{Guid.NewGuid():N}");

@@ -128,3 +128,37 @@ four exact-zero phase assertions remain. The focused retained gate adds 17 cases
 (minimum 647). A small linked-source executable passed all 21 BCL/predicate/source
 controls; seven added actual-host cases are authored, pending the full build.
 This is not a native application pass or an ARM64 crash fix.
+
+## ARM64 native resize failure location
+
+Exact head `40fe7f9fdac9382ef86708130bb0f420a7327dad`, Build
+[36291351738](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36291351738),
+passed nine of ten jobs. Windows x64 completed all four unchanged idle phases
+with zero additional presentations. ARM64 exited with `0xC0000409` after
+`native-resize-callback-entered` and before `native-resize-setter-returned`.
+The child did not time out; no dump or exact-correlated Application Error record
+was available to the collector. The exit code is not a proven crash cause.
+
+The next diagnostic connection surrounds only this synchronous resize action.
+One bounded, per-host observer records native size resolution/assignment,
+framebuffer and size callbacks, source client-layout publication, and swapchain
+configuration into the existing phase journal. Records retain cached dimensions,
+managed thread/registration identity, existing render activity and whether the
+window, target and source still match the registered objects. No extra native
+geometry query, dispatcher pump, resource inspection or render request is made.
+`IsRendering` does not establish that a surface has already been acquired.
+
+The observer is removed before the fixed settling/observation intervals. Its
+64 records have a separate 2048-byte per-record budget; the original phase budget
+is unchanged. Observer failures are deferred until the setter returns, and scope
+disposal cannot replace the original resize exception. Rejected source updates
+and unready framebuffer sources have distinct checkpoints. All original native
+assertions, deadlines, jobs and renderer selection remain unchanged.
+
+Seven actual new test bodies passed through a linked-source executable on macOS
+ARM64 with SDK 10.0.201: observer failure/retirement, capacity, original exception
+preservation, typed state, journal bounds, failed writes and source ordering.
+The first compile exposed an ambiguous throw-only xUnit delegate; an explicit
+synchronous `Action` fixed that test without changing its assertion. Four existing
+async-test analyzer warnings remain in this isolated harness. The ordinary full
+source/package CI is still required; this does not fix or qualify the ARM64 crash.

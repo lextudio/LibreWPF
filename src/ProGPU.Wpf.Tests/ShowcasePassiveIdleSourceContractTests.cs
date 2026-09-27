@@ -9,6 +9,44 @@ namespace ProGPU.Wpf.Tests;
 public class ShowcasePassiveIdleSourceContractTests
 {
     [Fact]
+    public void ResizeDiagnosticsBracketTheActualOperationAndNeverObserveAnIdleInterval()
+    {
+        string fixture = Read("samples/ProGPU.Wpf.ShowcaseApp/MainWindow.IdleLayoutClip.cs");
+        int registration = fixture.IndexOf("using (var resizeDiagnostics = journal is null ? null :", StringComparison.Ordinal);
+        int setter = fixture.IndexOf("host.SetClientSize(resizedWidth, resizedHeight);", registration, StringComparison.Ordinal);
+        int check = fixture.IndexOf("resizeDiagnostics?.ThrowIfFailed();", setter, StringComparison.Ordinal);
+        int disposed = fixture.IndexOf("}", check, StringComparison.Ordinal);
+        int completed = fixture.IndexOf("journal?.Write(\"native-resize-setter-returned\")", disposed, StringComparison.Ordinal);
+        int interval = fixture.IndexOf("var resized = await ObserveIdlePhaseAsync", completed, StringComparison.Ordinal);
+        Assert.True(registration >= 0 && setter > registration && check > setter && disposed > check && completed > disposed && interval > completed);
+        Assert.Contains("ProGpuWpfDiagnostics.ObserveNativeResize(host, journal.WriteResize)", fixture, StringComparison.Ordinal);
+        string host = Read("src/ProGPU.Wpf/ProGpuWpfWindowHost.cs");
+        string capture = host[host.IndexOf("private void TraceResizeCheckpoint(", StringComparison.Ordinal)..host.IndexOf("public void DoEvents()", StringComparison.Ordinal)];
+        Assert.Contains("if (scope is null || !scope.CanRecord) return;", capture, StringComparison.Ordinal);
+        Assert.Contains("catch (Exception error) { scope.Fail(error); }", capture, StringComparison.Ordinal);
+        foreach (string forbidden in new[] { "RequestRender(", "ProcessPending(", "DoRender(", "Consume", "FramebufferSize", "NativeWindowHandle", "GetGpuMemory", "File.", "Console." })
+            Assert.DoesNotContain(forbidden, capture, StringComparison.Ordinal);
+        Assert.Contains("Resize diagnostics are already registered on this host.", host, StringComparison.Ordinal);
+        Assert.Contains("if (ReferenceEquals(_resizeDiagnostics, scope)) _resizeDiagnostics = null;", host, StringComparison.Ordinal);
+        foreach (string[] ordered in new[]
+        {
+            new[] { "ProGpuWpfResizeStage.ClientSizeEntered", "ProGpuWpfResizeStage.NativeSizeResolving", "ResolveNativeWindowSizeForLogicalClientSize(", "ProGpuWpfResizeStage.NativeSizeAssigning", "window.Size = nativeSize;", "ProGpuWpfResizeStage.NativeSizeAssigned" },
+            new[] { "ProGpuWpfResizeStage.SwapChainConfigureEntering", "if (!_target.Context.TryConfigureSwapChain(", "ProGpuWpfResizeStage.SwapChainConfigureRejected", "ProGpuWpfResizeStage.SwapChainConfigureReturned" },
+            new[] { "ProGpuWpfResizeStage.FramebufferResizeEntered", "ProGpuWpfResizeStage.FramebufferResizeSkipped", "ProGpuWpfResizeStage.FramebufferSourceUnavailable", "ProGpuWpfResizeStage.FramebufferRenderEntering", "OnRender(0d);", "ProGpuWpfResizeStage.FramebufferRenderReturned" },
+            new[] { "ProGpuWpfResizeStage.SourceLayoutEntering", "if (!_portablePresentationSourceBridge.TrySetClientSize(clientWidth, clientHeight))", "ProGpuWpfResizeStage.SourceLayoutRejected", "ProGpuWpfResizeStage.SourceLayoutReturned" }
+        })
+        {
+            int previous = -1;
+            foreach (string item in ordered)
+            {
+                int current = host.IndexOf(item, previous + 1, StringComparison.Ordinal);
+                Assert.True(current > previous, $"Missing or reordered checkpoint: {item}");
+                previous = current;
+            }
+        }
+    }
+
+    [Fact]
     public void IdleStartupWaitsForLoadedAndDoesNotRestart()
     {
         bool started = false;

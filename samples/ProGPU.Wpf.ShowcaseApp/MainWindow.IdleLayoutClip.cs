@@ -156,7 +156,14 @@ public partial class MainWindow
             await InvokeWithLiveHostWakeAsync(host, () =>
             {
                 journal?.Write("native-resize-callback-entered");
-                host.SetClientSize(resizedWidth, resizedHeight);
+                using (var resizeDiagnostics = journal is null ? null :
+                    ProGpuWpfDiagnostics.ObserveNativeResize(host, journal.WriteResize))
+                {
+                    host.SetClientSize(resizedWidth, resizedHeight);
+                    // Do not replace a product exception or throw a journal IO
+                    // failure through an unmanaged resize callback.
+                    resizeDiagnostics?.ThrowIfFailed();
+                }
                 journal?.Write("native-resize-setter-returned");
                 WakeLiveRenderHost(host);
                 journal?.Write("native-resize-wake-returned");

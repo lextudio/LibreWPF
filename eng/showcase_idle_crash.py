@@ -7,8 +7,8 @@ are checked. MiniDumpNormal contains stacks; it is not a full-memory/env capture
 
 import ctypes
 import hashlib
+import os
 from pathlib import Path
-import shutil
 import struct
 import tempfile
 import uuid
@@ -23,24 +23,71 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def validate_dump(path):
+def bounded_dump_digest(path, expected_size):
+    checksum = hashlib.sha256()
+    count = 0
+    with path.open("rb") as stream:
+        while chunk := stream.read(min(1024 * 1024, expected_size - count + 1)):
+            count += len(chunk)
+            if count > expected_size or count > MAX_DUMP_BYTES:
+                raise ValueError("Crash dump grew during validation")
+            checksum.update(chunk)
+    if count != expected_size:
+        raise ValueError("Crash dump shrank during validation")
+    return checksum.hexdigest()
+
+
+def validate_dump(path, expected_pid):
     size = path.stat().st_size
     if path.is_symlink() or not path.is_file() or not 32 <= size <= MAX_DUMP_BYTES:
         raise ValueError("Crash dump is not a bounded regular minidump")
     with path.open("rb") as stream:
         header = stream.read(32)
         signature, version, count, table, _, _, flags = struct.unpack("<IIIIIIQ", header)
-        if signature != 0x504D444D or flags != 0 or not 1 <= count <= 128 or table < 32 or table + count * 12 > size:
+        if signature != 0x504D444D or version & 0xFFFF != 0xA793 or flags != 0 or not 1 <= count <= 128 or table < 32 or table + count * 12 > size:
             raise ValueError("Invalid/non-MiniDumpNormal crash dump")
         stream.seek(table)
         entries = [struct.unpack("<III", stream.read(12)) for _ in range(count)]
     if any(offset + length > size for _, length, offset in entries):
         raise ValueError("Truncated crash dump stream")
-    if sum(kind == 6 and length >= 168 for kind, length, _ in entries) != 1:
+    exceptions = [length for kind, length, _ in entries if kind == 6]
+    if len(exceptions) != 1 or exceptions[0] < 168:
         raise ValueError("Crash dump has no unique exception stream")
     if any(kind == 9 for kind, _, _ in entries):
         raise ValueError("Full-memory stream is not admitted")
-    return dict(bytes=size, sha256=digest(path), dumpFlags=flags, streamCount=count)
+    identity = [(length, offset) for kind, length, offset in entries if kind == 15]
+    if len(identity) != 1 or identity[0][0] < 24:
+        raise ValueError("Crash dump has no unique process identity stream")
+    length, offset = identity[0]
+    with path.open("rb") as stream:
+        stream.seek(offset)
+        info_size, valid, pid = struct.unpack("<III", stream.read(12))
+    if not 24 <= info_size <= length or not valid & 1 or pid != expected_pid:
+        raise ValueError("Crash dump process identity does not match the owned child")
+    return dict(bytes=size, sha256=bounded_dump_digest(path, size), dumpFlags=flags,
+                streamCount=count, processId=pid)
+
+
+def publish_dump(source, destination, expected_pid, report):
+    # Stage outside the artifact tree, bounding actual reads, not only stat.
+    # Link publication is atomic and fails if destination exists or volumes differ.
+    staged = source.with_name(f"validated-{uuid.uuid4().hex}.dmp")
+    owned = False
+    try:
+        with source.open("rb") as incoming, staged.open("xb") as output:
+            owned = True
+            copied = 0
+            while chunk := incoming.read(min(1024 * 1024, MAX_DUMP_BYTES - copied + 1)):
+                copied += len(chunk)
+                if copied > MAX_DUMP_BYTES or copied > report["bytes"]:
+                    raise ValueError("Crash dump grew beyond its validated byte budget")
+                output.write(chunk)
+        if validate_dump(staged, expected_pid) != report:
+            raise ValueError("Retained crash dump bytes changed")
+        os.link(staged, destination)  # Never overwrite caller-owned evidence.
+    finally:
+        if owned:
+            staged.unlink()
 
 
 class WindowsRegistry:
@@ -70,7 +117,9 @@ class WindowsRegistry:
     def configure(self, handle, directory):
         self.winreg.SetValueEx(handle, "DumpFolder", 0, self.winreg.REG_EXPAND_SZ, str(directory))
         self.winreg.SetValueEx(handle, "DumpCount", 0, self.winreg.REG_DWORD, 1)
-        self.winreg.SetValueEx(handle, "DumpType", 0, self.winreg.REG_DWORD, 1)
+        # Explicit MiniDumpNormal; DumpType=1 does not document exact flags.
+        self.winreg.SetValueEx(handle, "DumpType", 0, self.winreg.REG_DWORD, 0)
+        self.winreg.SetValueEx(handle, "CustomDumpFlags", 0, self.winreg.REG_DWORD, 0)
 
     def close(self, handle):
         self.winreg.CloseKey(handle)
@@ -124,12 +173,10 @@ class Capture:
             return report
         if files != [expected] or not expected.is_file():
             raise ValueError("Unexpected files/PID in the task-owned raw dump directory")
-        report.update(validate_dump(expected))
+        validated = validate_dump(expected, pid)
         destination = self.evidence / "native-crash.dmp"
-        with expected.open("rb") as source, destination.open("xb") as output:
-            shutil.copyfileobj(source, output)
-        if digest(destination) != report["sha256"]:
-            raise ValueError("Retained crash dump bytes changed")
+        publish_dump(expected, destination, pid, validated)
+        report.update(validated)
         report.update(captured=True, path=destination.name, processId=pid)
         return report
 

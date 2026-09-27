@@ -12,11 +12,18 @@ copied image; configuration, collection and cleanup errors preserve a nonzero
 child result and fail an otherwise successful run. Original package, PE,
 displayed-window, mode and payload-hash checks remain mandatory.
 
-WER is configured for one mini dump, never a full-memory dump. Raw output is
+WER is configured for one `MiniDumpNormal` (`DumpType=0`, `CustomDumpFlags=0`),
+never a full-memory dump; the generic `DumpType=1` does not document exact flags.
+Raw output is
 outside the upload tree. Only a regular, exact-image/exact-PID dump at most 32 MiB
-with a normal-minidump header, bounded stream directory and one exception stream
+with a normal-minidump header/version, bounded stream directory, one exception
+stream and intrinsic valid-bit-qualified process ID matching the owned child
 may enter the existing retained artifact. Other dump flags/full-memory streams
-fail closed. A mini dump contains thread stacks and module metadata; it is not
+fail closed. Hashing and copying also enforce the byte budget. A validated copy
+is staged outside uploads and published with an exclusive hard link; copy/hash
+failure cannot leave rejected evidence in the uploaded tree, and an existing
+destination is never replaced. Cross-volume publication fails closed.
+A mini dump contains thread stacks and module metadata; it is not
 safe evidence for arbitrary applications containing private data. This capture
 is restricted to the ephemeral CI Showcase fixture and records no environment
 values. No dump or a rejected dump leaves the fault stack explicitly unavailable.
@@ -37,7 +44,7 @@ seven actual host cases, eleven boundary/journal cases, eight original interval
 cases, four source contracts and two workflow guards. The unchanged full suite
 was compiled, not executed. Evidence is `artifacts/passive-canonical/`, with TRX
 SHA-256 `85a1be9ada25310b779e849abedad03c7326ac818c088fa816d269d86b28b763`.
-The runner's nineteen Python controls, ten crash-policy controls and six
+The runner's nineteen Python controls, fifteen crash-policy controls and six
 PowerShell launcher controls also pass without native/registry execution.
 Both actual Windows native idle results and a useful ARM64 fault stack remain
 outstanding; the earlier failures are retained without reinterpretation.

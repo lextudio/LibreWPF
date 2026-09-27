@@ -1,5 +1,4 @@
 """Offline policy/ownership controls; synthetic PE/dumps are never executed."""
-import importlib.util
 from pathlib import Path
 import struct
 import tempfile
@@ -33,11 +32,24 @@ class Registry:
         self.removed.append(name)
 
 
-def dump(flags=0, kind=6, length=168):
-    return struct.pack("<IIIIIIQ", 0x504D444D, 0xA793, 1, 32, 0, 0, flags) + struct.pack("<III", kind, length, 44) + bytes(168)
+def dump(flags=0, kind=6, length=168, pid=42, valid=1, version=0xA793, identity_kind=15):
+    return (struct.pack("<IIIIIIQ", 0x504D444D, version, 2, 32, 0, 0, flags)
+        + struct.pack("<III", kind, length, 56) + struct.pack("<III", identity_kind, 24, 224)
+        + bytes(168) + struct.pack("<IIIIII", 24, valid, pid, 0, 0, 0))
 
 
 class CrashControls(unittest.TestCase):
+    def test_exact_owned_registry_values_request_only_normal_stacks(self):
+        registry = object.__new__(crash.WindowsRegistry)  # No DLL or registry access.
+        registry.winreg = mock.Mock(REG_EXPAND_SZ=2, REG_DWORD=4)
+        registry.configure(123, Path("owned-raw-directory"))
+        self.assertEqual(registry.winreg.SetValueEx.call_args_list, [
+            mock.call(123, "DumpFolder", 0, 2, "owned-raw-directory"),
+            mock.call(123, "DumpCount", 0, 4, 1),
+            mock.call(123, "DumpType", 0, 4, 0),
+            mock.call(123, "CustomDumpFlags", 0, 4, 0),
+        ])
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -107,15 +119,65 @@ class CrashControls(unittest.TestCase):
 
     def test_full_memory_missing_exception_truncation_and_oversize_reject(self):
         path = self.root / "bad.dmp"
-        for data in (dump(flags=2), dump(flags=1), dump(kind=9), dump(length=1000), b"MDMP"):
+        duplicate_exception = (struct.pack("<IIIIIIQ", 0x504D444D, 0xA793, 3, 32, 0, 0, 0)
+            + struct.pack("<III", 6, 168, 68) + struct.pack("<III", 15, 24, 236)
+            + struct.pack("<III", 6, 0, 260) + bytes(168)
+            + struct.pack("<IIIIII", 24, 1, 42, 0, 0, 0))
+        for data in (dump(flags=2), dump(flags=1), dump(kind=9), dump(length=1000), b"MDMP", duplicate_exception):
             with self.subTest(data=data[:32]):
                 path.write_bytes(data)
                 with self.assertRaises(ValueError):
-                    crash.validate_dump(path)
+                    crash.validate_dump(path, 42)
         path.write_bytes(dump())
         with mock.patch.object(crash, "MAX_DUMP_BYTES", 64):
             with self.assertRaises(ValueError):
-                crash.validate_dump(path)
+                crash.validate_dump(path, 42)
+
+    def test_intrinsic_pid_validity_and_format_version_are_required(self):
+        path = self.root / "identity.dmp"
+        for data in (dump(pid=99), dump(valid=0), dump(version=0xA794),
+                     dump(identity_kind=0), dump(kind=15)):
+            with self.subTest(data=data[:56]):
+                path.write_bytes(data)
+                with self.assertRaises(ValueError):
+                    crash.validate_dump(path, 42)
+        path.write_bytes(dump(version=0x1234A793))
+        self.assertEqual(42, crash.validate_dump(path, 42)["processId"])
+
+    def test_dump_hash_reads_are_bounded_and_require_unchanged_length(self):
+        path = self.root / "raw" / "hash.dmp"
+        path.write_bytes(dump())
+        size = path.stat().st_size
+        self.assertEqual(crash.digest(path), crash.bounded_dump_digest(path, size))
+        for wrong in (size - 1, size + 1):
+            with self.assertRaises(ValueError):
+                crash.bounded_dump_digest(path, wrong)
+
+    def test_growing_or_changed_copy_never_enters_uploaded_evidence(self):
+        path = self.root / "raw" / "source.dmp"
+        path.write_bytes(dump())
+        report = crash.validate_dump(path, 42)
+        for data in (dump() + b"growth", dump(pid=99)):
+            path.write_bytes(data)
+            with self.assertRaises(ValueError):
+                crash.publish_dump(path, self.evidence / "native-crash.dmp", 42, report)
+            self.assertEqual(list(self.evidence.iterdir()), [])
+            self.assertEqual(list((self.root / "raw").iterdir()), [path])
+
+    def test_publication_failure_or_existing_destination_is_preserved(self):
+        path = self.root / "raw" / "source.dmp"
+        path.write_bytes(dump())
+        report = crash.validate_dump(path, 42)
+        destination = self.evidence / "native-crash.dmp"
+        with mock.patch.object(crash.os, "link", side_effect=OSError("cross-device")):
+            with self.assertRaises(OSError):
+                crash.publish_dump(path, destination, 42, report)
+        self.assertFalse(destination.exists())
+        destination.write_bytes(b"caller-owned")
+        with self.assertRaises(FileExistsError):
+            crash.publish_dump(path, destination, 42, report)
+        self.assertEqual(destination.read_bytes(), b"caller-owned")
+        self.assertEqual(list((self.root / "raw").iterdir()), [path])
 
     def test_success_timeout_or_missing_pid_do_not_admit_a_dump(self):
         self.capture.prepare()

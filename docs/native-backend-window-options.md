@@ -1,7 +1,9 @@
 # Native WebGPU backend configuration for WPF windows
 
-The source dependency now includes ProGPU #205 at merged commit
-`bb0b64124dbc9d3107d0419e6c6b35bba75b7c27`. Applications can configure the owned
+The aligned source dependency now includes ProGPU #205 and #207 at
+`32334efa90076e47f4d0d74fdec76a89f6cec478`. LibreWinForms #95 pins that same
+revision; the canonical integration guard continues to require exact equality.
+Applications can configure the owned
 native instance before adapter/device creation with `PROGPU_WGPU_BACKEND=vulkan`
 or the `WGPU_BACKEND` alias. The core parser, precedence, exact backend masks,
 adapter verification and failure behavior are unchanged.
@@ -47,6 +49,11 @@ backend, not its name. Failures remain failures; no driver hiding, fallback,
 longer deadlines or waived popup assertions are used.
 
 Those native runs and the full exact-head package Build must pass before merge.
+The earlier `958f5e56762abe6cc31318a6e182443b48092836` head passed automatic,
+forced OpenGL and forced Vulkan presentation, but its canonical source job
+correctly rejected the old LibreWinForms dependency pin. That failed whole Build
+is not package qualification. The aligned revision must pass the complete gates
+again; neither the pin guard nor any tests have been bypassed.
 The published preview.65 packages do not contain this update. Backend selection
 does not convert an EGL non-unwinding panic to an exception; #187 remains open
 until forced-GL application/docking and transparent-pixel qualification completes.

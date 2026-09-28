@@ -89,6 +89,34 @@ jobs:
           PROGPU_WPF_RUN_DRAWING_QUALITY_GATES: 0
         run: ./eng/progpu-wpf-canonical-winforms-integration.sh
 
+      - name: Upload canonical WinForms package closure
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-librewinforms-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/packages/CanonicalWinForms/*.nupkg
+          if-no-files-found: error
+
+  portable-source-contracts:
+    name: Portable MessageBox, layout-clip and popup source contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    # These contracts build their own original source test project; they do not
+    # consume the canonical WinForms package closure. Keep the three checks in
+    # order so layout clips and popups reuse that exact MessageBox test build.
+    # A failure still fails this Build; no successful-producer gate is relaxed.
+    steps:
+      - name: Checkout aligned source graph
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
       - name: Validate public MessageBox source modality
         run: bash ./eng/progpu-wpf-messagebox-modal.sh
 
@@ -97,13 +125,6 @@ jobs:
 
       - name: Validate portable popup source dismissal
         run: bash ./eng/progpu-wpf-popup-dismissal-source.sh
-
-      - name: Upload canonical WinForms package closure
-        uses: actions/upload-artifact@v4
-        with:
-          name: canonical-librewinforms-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
-          path: artifacts/packages/CanonicalWinForms/*.nupkg
-          if-no-files-found: error
 
   windows-managed-runtime:
     name: Windows managed runtime payload

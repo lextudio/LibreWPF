@@ -551,6 +551,20 @@ namespace System.Windows.Interop
         protected abstract HandleRef BuildWindowCore(HandleRef hwndParent);
 
         /// <summary>
+        ///     Opts into ordinary visual-tree hosting when this element belongs
+        ///     to a portable presentation source. The default is false.
+        /// </summary>
+        /// <remarks>
+        ///     A derived control returning true owns its visual and logical
+        ///     children, layout, input and disposal in the usual WPF way.
+        ///     BuildWindowCore and DestroyWindowCore are not called for this
+        ///     mode, and Handle remains zero. No child HwndSource is created or
+        ///     adopted. Native HWND presentation sources keep the existing
+        ///     BuildWindowCore/DestroyWindowCore contract on Windows.
+        /// </remarks>
+        protected virtual bool UsesPortableVisualHosting => false;
+
+        /// <summary>
         ///     Derived classes override this method to destroy the
         ///     window being hosted.
         /// </summary>
@@ -1010,6 +1024,29 @@ namespace System.Windows.Interop
 
             try
             {
+                bool usePortableVisualHosting = portableParent != null && UsesPortableVisualHosting;
+                if (_isPortableVisualHost &&
+                    (!usePortableVisualHosting || !ReferenceEquals(_portableParentSource, portableParent)))
+                {
+                    DestroyWindow();
+                }
+
+                if (usePortableVisualHosting)
+                {
+                    if (_hwnd.Handle != IntPtr.Zero)
+                    {
+                        DestroyWindow();
+                    }
+
+                    // The derived class already owns its ordinary WPF children.
+                    // Never borrow the parent's handle or graft a source root
+                    // back into the tree which already contains this host.
+                    _isPortableVisualHost = true;
+                    _isPortableWindow = true;
+                    _portableParentSource = portableParent;
+                    return;
+                }
+
                 if(hwndParent != IntPtr.Zero)
                 {
                     if (_hwnd.Handle != IntPtr.Zero &&
@@ -1206,7 +1243,7 @@ namespace System.Windows.Interop
         private void DestroyWindow()
         {
             // Destroy the window if we are hosting one.
-            if( Handle == IntPtr.Zero)
+            if( Handle == IntPtr.Zero && !_isPortableVisualHost)
                 return;
 
             if(!CheckAccess())
@@ -1224,6 +1261,20 @@ namespace System.Windows.Interop
             HandleRef hwnd = _hwnd;
             _hwnd = new HandleRef(null, IntPtr.Zero);
 
+            LayoutUpdated -= _handlerLayoutUpdated;
+            IsEnabledChanged -= _handlerEnabledChanged;
+            IsVisibleChanged -= _handlerVisibleChanged;
+
+            if (_isPortableVisualHost)
+            {
+                // There is no native child to destroy. In particular, derived
+                // visual ownership must not pass through DestroyWindowCore.
+                _isPortableVisualHost = false;
+                _portableParentSource = null;
+                _isPortableWindow = false;
+                return;
+            }
+
             DetachPortableChildVisual();
             DestroyWindowCore(hwnd);
             _portableParentSource = null;
@@ -1235,6 +1286,7 @@ namespace System.Windows.Interop
             HwndSource childSource = HwndSource.CriticalFromHwnd(_hwnd.Handle);
             if (childSource == null ||
                 !childSource.IsPortable ||
+                ReferenceEquals(childSource, _portableParentSource.HwndSource) ||
                 !ReferenceEquals(childSource.PortableOwner, _portableParentSource))
             {
                 throw new InvalidOperationException(SR.ChildWindowNotCreated);
@@ -1260,7 +1312,10 @@ namespace System.Windows.Interop
             try
             {
                 DetachPortableChildVisual();
-                if (hwnd.Handle != IntPtr.Zero)
+                // A rejected alias is not a child owned by this host. Do not
+                // let derived cleanup destroy the containing source either.
+                if (hwnd.Handle != IntPtr.Zero &&
+                    (_portableParentSource == null || hwnd.Handle != _portableParentSource.Handle))
                 {
                     DestroyWindowCore(hwnd);
                 }
@@ -1325,6 +1380,7 @@ namespace System.Windows.Interop
         private HwndSource _portableChildSource;
         private Visual _portableChildVisual;
         private bool _isPortableWindow;
+        private bool _isPortableVisualHost;
 
         private ArrayList _hooks;
         private Size _desiredSize;

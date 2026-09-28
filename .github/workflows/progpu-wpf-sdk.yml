@@ -123,6 +123,9 @@ jobs:
       - name: Validate actual source layout clip producers
         run: bash ./eng/progpu-wpf-layout-clip-source.sh
 
+      - name: Validate portable visual-only host ownership
+        run: bash ./eng/progpu-wpf-visual-host-source.sh
+
       - name: Validate portable popup source dismissal
         run: bash ./eng/progpu-wpf-popup-dismissal-source.sh
 

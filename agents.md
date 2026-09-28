@@ -72,6 +72,13 @@ never a measured idle interval. Read cached state without native queries or
 pumping; defer diagnostic failures so they cannot escape unmanaged callbacks or
 replace product failures. Rendering activity alone is not surface acquisition.
 
+Portable visual-only HwndHost is an explicit derived-class opt-in under an actual
+portable presentation source, including Windows. Keep derived visual/logical
+ownership and zero Handle; never invoke native build/destroy callbacks or adopt
+the parent source as a child. Default portable child-source and native HWND paths
+remain distinct; reject parent-handle aliases before detaching any source root.
+Source ownership tests do not qualify AvalonDock auto-hide or WindowsFormsHost.
+
 Retained layout clips compare typed geometry values, not freshly allocated source
 objects. Keep primitive capture inline, and own path/figure/segment snapshots;
 mutable source DTO or array identity is never proof of equality. Reuse a retained

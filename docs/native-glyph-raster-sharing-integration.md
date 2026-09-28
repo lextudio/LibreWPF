@@ -1,7 +1,7 @@
 # Exact native glyph raster sharing integration
 
 This graph pins ProGPU `2f47c475cf9143e1943452b40885c37c2de3e849` and
-LibreWinForms `f9fb5413273812da06d3edb8d94da320fa97082b`. Forms pins the
+LibreWinForms `31b0fe6f413bc5c03a09ce0a26c8e2486b4527a2`. Forms pins the
 same ProGPU commit, preserving canonical source-graph alignment.
 
 The producer pin includes the atlas-growth fixture correction after Build
@@ -16,6 +16,11 @@ arena offsets. Original outline indices, source glyphs, positioned draws, styles
 and clips remain separate. The same work list reaches native compute, raster,
 SIMD and scalar implementations without changing shader quality or defaults.
 Forms additionally retains its owned startup-hover popup harness precondition.
+Its window UI-cue correction separates built-in ComboBox/ListBox focus painting
+from the managed properties that initialize hidden cues. It preserves canonical
+notifications, hierarchy/subtree propagation and exact child-handle lifetimes.
+All 735 local Forms lifecycle cases pass, including nine dedicated cue cases and
+two offscreen focus-pixel comparisons. This does not replace desktop qualification.
 
 ## Existing failure and new evidence
 

@@ -43,7 +43,11 @@ jobs:
         run: bash ./eng/progpu-wpf-layout-clip.sh
 
       - name: Validate passive Showcase launcher controls
-        run: python3 ./eng/test-progpu-wpf-showcase-idle.py -v
+        run: |
+          python3 ./eng/test-progpu-wpf-showcase-idle.py -v
+          python3 ./eng/test-showcase-idle-crash.py -v
+          python3 ./eng/test-showcase-idle-events.py -v
+          python3 ./eng/test-showcase-native-debugger.py
 
       - name: Validate Showcase launcher input receipts
         run: python3 ./eng/tests/test_showcase_launcher_receipt.py -v
@@ -85,6 +89,34 @@ jobs:
           PROGPU_WPF_RUN_DRAWING_QUALITY_GATES: 0
         run: ./eng/progpu-wpf-canonical-winforms-integration.sh
 
+      - name: Upload canonical WinForms package closure
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-librewinforms-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/packages/CanonicalWinForms/*.nupkg
+          if-no-files-found: error
+
+  portable-source-contracts:
+    name: Portable MessageBox, layout-clip and popup source contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    # These contracts build their own original source test project; they do not
+    # consume the canonical WinForms package closure. Keep the three checks in
+    # order so layout clips and popups reuse that exact MessageBox test build.
+    # A failure still fails this Build; no successful-producer gate is relaxed.
+    steps:
+      - name: Checkout aligned source graph
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
       - name: Validate public MessageBox source modality
         run: bash ./eng/progpu-wpf-messagebox-modal.sh
 
@@ -96,13 +128,6 @@ jobs:
 
       - name: Validate portable popup source dismissal
         run: bash ./eng/progpu-wpf-popup-dismissal-source.sh
-
-      - name: Upload canonical WinForms package closure
-        uses: actions/upload-artifact@v4
-        with:
-          name: canonical-librewinforms-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
-          path: artifacts/packages/CanonicalWinForms/*.nupkg
-          if-no-files-found: error
 
   windows-managed-runtime:
     name: Windows managed runtime payload
@@ -324,9 +349,40 @@ jobs:
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Release
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Debug
 
+  windows-native-debugger:
+    name: Windows native crash capture controls (${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            architecture: x64
+          - os: windows-11-arm
+            architecture: arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+      - name: Setup diagnostic control Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and exercise owned native crash capture
+        shell: pwsh
+        run: ./eng/build-showcase-native-debugger.ps1 -Architecture ${{ matrix.architecture }} -OutputDirectory "${{ runner.temp }}/showcase-native-debugger"
+      - name: Upload exact-head diagnostic helper
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-native-debugger-${{ matrix.architecture }}-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: ${{ runner.temp }}/showcase-native-debugger/ShowcaseNativeDebugger.exe
+          if-no-files-found: error
+
   windows-native-mil-showcase:
     name: Windows x64 native MIL package Showcase
-    needs: sdk-smoke
+    needs: [sdk-smoke, windows-native-debugger]
     runs-on: windows-2025
     timeout-minutes: 40
 
@@ -341,19 +397,42 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Setup passive idle runner Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate native idle launcher isolation
+        shell: pwsh
+        run: ./eng/test-progpu-wpf-windows-native-idle.ps1
+
       - name: Download exact CI package bundle
         uses: actions/download-artifact@v4
         with:
           name: librewpf-ci-packages-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/packages/Release/NonShipping
 
+      - name: Download exact-head native diagnostic helper
+        uses: actions/download-artifact@v4
+        with:
+          name: showcase-native-debugger-x64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: ${{ runner.temp }}/showcase-native-debugger
+
       - name: Run package-only x64 native MIL Showcase
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle -CaptureIdleCrashDump -IdleNativeDebugger (Join-Path $env:RUNNER_TEMP "showcase-native-debugger/ShowcaseNativeDebugger.exe")
+
+      - name: Upload x64 passive native idle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-native-idle-win-x64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/showcase-native-idle/win-x64/**
+          if-no-files-found: warn
 
   windows-arm64-native-mil-showcase:
     name: Windows ARM64 native MIL package Showcase
-    needs: sdk-smoke
+    needs: [sdk-smoke, windows-native-debugger]
     runs-on: windows-11-arm
     timeout-minutes: 40
 
@@ -368,15 +447,38 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Setup passive idle runner Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate native idle launcher isolation
+        shell: pwsh
+        run: ./eng/test-progpu-wpf-windows-native-idle.ps1
+
       - name: Download exact CI package bundle
         uses: actions/download-artifact@v4
         with:
           name: librewpf-ci-packages-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/packages/Release/NonShipping
 
+      - name: Download exact-head native diagnostic helper
+        uses: actions/download-artifact@v4
+        with:
+          name: showcase-native-debugger-arm64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: ${{ runner.temp }}/showcase-native-debugger
+
       - name: Run package-only ARM64 native MIL Showcase
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle -CaptureIdleCrashDump -IdleNativeDebugger (Join-Path $env:RUNNER_TEMP "showcase-native-debugger/ShowcaseNativeDebugger.exe")
+
+      - name: Upload ARM64 passive native idle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-native-idle-win-arm64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/showcase-native-idle/win-arm64/**
+          if-no-files-found: warn
 
   linux-xwayland-smoke:
     name: Linux Wayland-session XWayland input and popup smoke

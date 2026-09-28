@@ -1,5 +1,25 @@
 # Retained layout clip invalidation
 
+## Failure-only native loop trace
+
+The Windows idle runner retains its original failed receipt before one optional
+native-debugger replay. Besides native crashes lacking a dump, an ordinary exit
+of 1 is eligible only after the runner verifies unchanged source payload hashes
+and records that exact child failure. Neither a process timeout nor a cleanup or
+payload-identity failure admits the replay.
+
+Only the replay enables `PROGPU_WPF_TRACE_NATIVE_LOOP`. Swapchain configuration
+entry, pending completion and return now join the existing event/render/submit
+checkpoints, using conditional formatting that performs no state reads when
+disabled. Each replay log retains at most its final 8 MiB, with total/retained/
+discarded byte counts. Independent readers keep draining both pipes; the owned
+process tree is retired before log completion. Source hashes are rechecked.
+The original 120-second process bound, resize/idle deadlines and exact-zero
+assertions are unchanged. A traced run cannot qualify idle or replace the first
+failure; real native trace evidence is still needed to attribute the stall.
+
+## Acceptance
+
 Acceptance targets are idle ShowcaseApp and Toolkit/AvalonDock windows after
 layout or scrolling has settled. The blocking source path is
 `FrameworkElement.GetLayoutClipInternal` → the typed portable layout descriptor
@@ -105,3 +125,142 @@ this change. Actual settled-window frame counts and native application/package
 qualification remain required; source contract success alone does not close
 the application report. DPI lookup cost and transparent-control input policy
 are separate issues, not implicitly fixed here.
+# Resize presentation ownership — 2026-09-27
+
+Acceptance path: package-mode native-MIL Showcase, scroll its real source
+ScrollViewer, resize the native client, then restore it. Build
+[36300654843](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36300654843)
+at `8c920aaeb0fd85caf4230797ec3beb120b95c7f9` failed both Windows native idle
+jobs. Its bounded ARM64 journal ends at `SwapChainConfigureEntering` inside
+`window.Size = nativeSize`, after source layout returned. The owner thread,
+native window, target and source identities match; `IsRendering` is false.
+The process exits `0xc0000409`, without a WER dump or correlated Application
+Error record. This locates the operation, not its native crash stack or cause.
+The x64 journal passes resized observation but times out before the restored
+observation; its empty final receipt does not establish successful cleanup.
+
+The host previously configured on every client/framebuffer resize and again
+through the render path. `OnResize` now retains geometry, synchronizes the
+source, invalidates both roots and requests presentation without configuring.
+Both managed and C++ MIL presentation use the existing guarded `OnRender`
+configuration/retry path before acquiring their external target. No C++ scene,
+WebGPU completion, renderer selection or recovery policy changes.
+
+Native size assignments use a nested depth counter restored in `finally`.
+Their framebuffer callbacks and synchronous scheduler notifications retain the
+pending request but cannot present inside the native setter. On Windows, only
+`SilkWindowController.IsInteractiveMoveResize` admits inline resize rendering,
+following the existing ProGPU Avalonia host at dependency `08f4343e`:
+`src/ProGPU.Avalonia.SilkNet/SilkNetDesktopWindow.cs:OnResize`. Other platforms
+retain their existing live-resize callbacks except while a programmatic setter
+or frame is active. There is no additional frame queue, allocation, blocking
+wait, native crossing, GPU readback or copied external implementation.
+
+Seventeen additive policy/source cases cover the full four-boolean policy,
+configuration ownership, setter unwind, invalidation, and scheduler admission.
+The CI selector retains every original case and adds this class. The existing
+surface-transition guard still requires failure-aware configuration and retry;
+its unconditional resize configuration assertion is replaced with rejection of
+that path. These checks do not prove native crash resolution, interactive drag
+fidelity or final package qualification. Exact-head Windows x64/ARM64 CI and
+final macOS/Linux/Windows application validation remain required, with the same
+deadlines, exact-zero passive intervals and identity assertions.
+
+Local implementation check: the linked .NET 10 harness executed 25 actual
+diagnostic/policy/source-guard cases successfully. It compiles the shared policy
+and diagnostic classes, not the complete host or source-WPF package graph.
+
+### Exact Windows follow-up at 360da4c3
+
+Build 36303457299 retains a successful x64 receipt: all four phases have zero
+extra presentations, stable source/native identity, unchanged recovery count,
+and restored UI. Its diagnostic artifact SHA-256 is
+`06d6bede0ba4b6146eadeaa5e6a5efe9ef84e0930311b351f50e93d666860768`.
+This qualifies that x64 idle run, not every Windows/native application contract.
+
+ARM64 PID 6136 completes the source resize, defers inline framebuffer rendering,
+returns from the native setter and observes the resized geometry. It later exits
+`0xC0000409` after `native-resized-boundary`, without a timeout, WER dump or exact
+Application Error record. Artifact SHA-256 is
+`24925cd8c09658b05c33438916df7f47a89f525953c8252da2bc0aa45f5a814a`.
+The complete producer Build remains failed and cannot supply qualified staging.
+The earlier failure at swap-chain configuration is no longer the last observed
+operation; the new trace still does not establish a native fault cause.
+
+Two bounded markers now distinguish entry into the native Update observer from
+completion of its first source snapshot. Both execute inside that first endpoint
+callback, before final owner/activity revalidation and publication; no journal
+output is added between the returned endpoint and interval completion. All four
+phases, exact-zero assertions, owner checks and deadlines remain unchanged, and
+the 25 possible phase records stay within the original 32-record journal budget.
+This is failure localization, not an ARM64 crash fix or a passing native gate.
+The complete linked boundary/source/resize-policy harness passes 41 cases. The
+first marker placement failed the existing no-output-between-endpoints guard in
+CI; moving both callbacks before endpoint publication preserves that guard
+unchanged. No failure is waived and the native producer must run again.
+
+# Passive native boundary follow-up
+
+The b0a78 Windows x64 receipt retained initial and scrolled exact-zero intervals,
+then native-resized presented frame 5 → 6 despite equal source/frame-state fields.
+ARM64 exited with `0xC0000005` after creating an empty application receipt; it
+provided no fault stack. Neither failure is waived or attributed to layout clips.
+
+Source inspection identified an independent observer ordering defect: resize
+geometry polls requested unconditional frames, and a dispatcher read could finish
+inside `OnRender` before its presentation. Passive-only resize polls now use the
+native-loop wake. Each endpoint observes once from the actual captured Silk window
+Update callback, revalidates source/native identity and reads host activity before
+and after source state. Active rendering (including an already-consumed request),
+current explicit presentation requests, recovery and DPI work reject admission;
+no pending work is canceled, consumed or retried until quiet. Delayed scheduler
+callbacks are not claimed absent and still count in the observation.
+
+The 1-second fixed settling, 2-second interval, 30-second initial-frame limit,
+600 × 16 ms existing native observation budget, 120-second child deadline and all
+four exact-zero phase assertions remain. The focused retained gate adds 17 cases
+(minimum 647). A small linked-source executable passed all 21 BCL/predicate/source
+controls; seven added actual-host cases are authored, pending the full build.
+This is not a native application pass or an ARM64 crash fix.
+
+## ARM64 native resize failure location
+
+Exact head `40fe7f9fdac9382ef86708130bb0f420a7327dad`, Build
+[36291351738](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36291351738),
+passed nine of ten jobs. Windows x64 completed all four unchanged idle phases
+with zero additional presentations. ARM64 exited with `0xC0000409` after
+`native-resize-callback-entered` and before `native-resize-setter-returned`.
+The child did not time out; no dump or exact-correlated Application Error record
+was available to the collector. The exit code is not a proven crash cause.
+
+The next diagnostic connection surrounds only this synchronous resize action.
+One bounded, per-host observer records native size resolution/assignment,
+framebuffer and size callbacks, source client-layout publication, and swapchain
+configuration into the existing phase journal. Records retain cached dimensions,
+managed thread/registration identity, existing render activity and whether the
+window, target and source still match the registered objects. No extra native
+geometry query, dispatcher pump, resource inspection or render request is made.
+`IsRendering` does not establish that a surface has already been acquired.
+
+The observer is removed before the fixed settling/observation intervals. Its
+64 records have a separate 2048-byte per-record budget; the original phase budget
+is unchanged. Observer failures are deferred until the setter returns, and scope
+disposal cannot replace the original resize exception. Rejected source updates
+and unready framebuffer sources have distinct checkpoints. All original native
+assertions, deadlines, jobs and renderer selection remain unchanged.
+
+Seven actual new test bodies passed through a linked-source executable on macOS
+ARM64 with SDK 10.0.201: observer failure/retirement, capacity, original exception
+preservation, typed state, journal bounds, failed writes and source ordering.
+The first compile exposed an ambiguous throw-only xUnit delegate; an explicit
+synchronous `Action` fixed that test without changing its assertion. Four existing
+async-test analyzer warnings remain in this isolated harness. The ordinary full
+source/package CI is still required; this does not fix or qualify the ARM64 crash.
+
+The first complete source job for `17ffcd925` compiled successfully and executed
+all 672 retained-invalidation cases: 671 passed, one failed, zero skipped. The
+existing framebuffer source guard expected `OnRender` immediately after the
+unattached-root return block; the new checkpoint deliberately occupies that
+position. Its literal assertion now includes the exact intervening checkpoints,
+retaining the unattached-root return and synchronous-render ordering. No product
+behavior, case, deadline or assertion outcome is waived.

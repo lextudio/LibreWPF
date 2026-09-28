@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using ProGPU.Backend;
@@ -52,6 +53,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private readonly ProGpuWpfWindowOptions _options;
     private readonly ProGpuWpfNativeHitTesting _nativeMilHitTests = new();
     private IWindow? _window;
+    private ProGpuWpfResizeDiagnosticScope? _resizeDiagnostics;
+    private int _nativeSizeAssignmentDepth;
     private ProGpuWpfCompositionTarget? _target;
     private NativeCompositor? _nativeMilCompositor;
     private WpfNativeMilCompilationSession? _nativeMilSession;
@@ -411,6 +414,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         return ProGpuWpfDiagnostics.TryCreateNativeMemoryCheckpoint(
             frame, compositor.GetGpuMemorySnapshot(), RenderDeviceRecoveryCount, out checkpoint);
+    }
+
+    internal bool TryGetRenderActivitySnapshot(out ProGpuWpfRenderActivitySnapshot snapshot)
+    {
+        snapshot = default;
+        if (_isDisposed || _hasNativeWindowCloseStarted || !PlatformServices.Dispatcher.CheckAccess())
+            return false;
+
+        snapshot = new(
+            _isRendering,
+            // A consumed request is no longer pending even while its frame is
+            // being assembled. Keep IsRendering independent of this field.
+            WpfRenderScheduler.HasPendingRenderRequest && Volatile.Read(ref _pendingRenderRequestIsWakeOnly) == 0,
+            _hasPendingDeviceRecovery,
+            _hasPendingNativeDpiChange,
+            PresentedFrameCount,
+            RenderDeviceRecoveryCount);
+        return true;
     }
 
     internal void RecordNativePerformanceSnapshot(
@@ -1412,6 +1433,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void SetClientSizeCore(int width, int height, bool updatePortablePresentationSource)
     {
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.ClientSizeEntered, width, height);
         _clientWidth = Math.Max(1, width);
         _clientHeight = Math.Max(1, height);
         _requestedLogicalClientWidth = _clientWidth;
@@ -1420,10 +1442,26 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _declaredLogicalClientHeight = _clientHeight;
         if (_window != null)
         {
-            _window.Size = ResolveNativeWindowSizeForLogicalClientSize(
+            var window = _window;
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeSizeResolving, _clientWidth, _clientHeight);
+            var nativeSize = ResolveNativeWindowSizeForLogicalClientSize(
                 new Vector2D<int>(_clientWidth, _clientHeight),
                 ResolveCurrentWindowContentScale(),
                 UsesMonitorScaledWindowCoordinates());
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeSizeAssigning, nativeSize.X, nativeSize.Y);
+            // Win32 can dispatch framebuffer callbacks before this assignment
+            // returns. Publish their geometry, but leave presentation to the
+            // owner loop after the native setter has unwound.
+            _nativeSizeAssignmentDepth++;
+            try
+            {
+                window.Size = nativeSize;
+            }
+            finally
+            {
+                _nativeSizeAssignmentDepth--;
+            }
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeSizeAssigned, nativeSize.X, nativeSize.Y);
         }
 
         if (updatePortablePresentationSource)
@@ -1432,6 +1470,45 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         RequestRenderAndWakeNativeLoop();
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.ClientSizeReturned, width, height);
+    }
+
+    internal ProGpuWpfResizeDiagnosticScope ObserveNativeResize(Action<ProGpuWpfResizeCheckpoint> observe)
+    {
+        ThrowIfDisposed();
+        if (_hasNativeWindowCloseStarted || !PlatformServices.Dispatcher.CheckAccess())
+            throw new InvalidOperationException("Resize diagnostics require the live host owner thread.");
+        if (_resizeDiagnostics is not null)
+            throw new InvalidOperationException("Resize diagnostics are already registered on this host.");
+        ProGpuWpfResizeDiagnosticScope? scope = null;
+        scope = new(observe, () =>
+        {
+            if (ReferenceEquals(_resizeDiagnostics, scope)) _resizeDiagnostics = null;
+        }, _window, _target, _portablePresentationSourceBridge);
+        return _resizeDiagnostics = scope;
+    }
+
+    private void TraceResizeCheckpoint(ProGpuWpfResizeStage stage, long width, long height)
+    {
+        // Normal resize performs no diagnostic allocation, callback, clock or
+        // native/dispatcher query. The opt-in scope reads cached state only.
+        var scope = _resizeDiagnostics;
+        if (scope is null || !scope.CanRecord) return;
+        try
+        {
+            bool ownerThread = PlatformServices.Dispatcher.CheckAccess();
+            bool hasActivity = TryGetRenderActivitySnapshot(out var activity);
+            scope.Record(new(stage, Environment.CurrentManagedThreadId, scope.RegistrationThreadId,
+                ownerThread, hasActivity, activity, width, height, _clientWidth, _clientHeight,
+                _portablePresentationSourceClientWidth, _portablePresentationSourceClientHeight,
+                _requestedLogicalClientWidth, _requestedLogicalClientHeight,
+                _window is not null, _target is not null, _portablePresentationSourceBridge is not null,
+                ReferenceEquals(scope.Window, _window), ReferenceEquals(scope.Target, _target),
+                ReferenceEquals(scope.Source, _portablePresentationSourceBridge), _isDisposed,
+                _hasNativeWindowCloseStarted, _isRenderingLiveResize, _isProcessingDispatcherWorkWakeup,
+                Volatile.Read(ref s_activeNativeEventDispatchDepth)));
+        }
+        catch (Exception error) { scope.Fail(error); }
     }
 
     public void DoEvents()
@@ -1481,7 +1558,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             // before its first presentation. The bounded dispatcher turn after
             // native polling will process that work without starving DoRender.
             NativeRenderPumpCount++;
-            TraceNativeLoop("pre-event render entering: " + CreateNativeLoopTraceState());
+            TraceNativeLoop(s_traceNativeLoop, $"pre-event render entering: {CreateNativeLoopTraceState()}");
             Interlocked.Increment(ref s_activeNativeEventDispatchDepth);
             try
             {
@@ -1494,7 +1571,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     ProcessDeferredNativeWindowDisposals();
                 }
             }
-            TraceNativeLoop("pre-event render leaving: " + CreateNativeLoopTraceState());
+            TraceNativeLoop(s_traceNativeLoop, $"pre-event render leaving: {CreateNativeLoopTraceState()}");
         }
 
         bool restoreEventDriven = window.IsEventDriven;
@@ -1515,11 +1592,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             try
             {
-                TraceNativeLoop(
-                    $"native event poll entering: nonBlocking={useNonBlockingNativePoll}, " +
-                    CreateNativeLoopTraceState());
+                TraceNativeLoop(s_traceNativeLoop,
+                    $"native event poll entering: nonBlocking={useNonBlockingNativePoll}, {CreateNativeLoopTraceState()}");
                 if (!NativeWindowModalSession.TryPumpEvents()) window.DoEvents();
-                TraceNativeLoop("native event poll leaving: " + CreateNativeLoopTraceState());
+                TraceNativeLoop(s_traceNativeLoop, $"native event poll leaving: {CreateNativeLoopTraceState()}");
             }
             finally
             {
@@ -2166,6 +2242,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnResize(Vector2D<int> size)
     {
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeResizeEntered, size.X, size.Y);
         if (_window == null)
         {
             UpdateClientSizeFromNativeResize(size);
@@ -2184,36 +2261,37 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         if (_target == null || _window == null)
         {
             RequestRenderAndWakeNativeLoop();
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeResizeReturned, size.X, size.Y);
             return;
         }
 
         var geometry = ResolveCurrentRenderSurfaceGeometry();
         SynchronizePortablePresentationSourceGeometry(geometry);
-        if (!_target.Context.TryConfigureSwapChain(
-                geometry.PixelWidth,
-                geometry.PixelHeight))
-        {
-            RequestRenderAndWakeNativeLoop();
-            return;
-        }
+        // Configuration belongs to OnRender, before surface acquisition. A
+        // native resize callback may be nested inside a setter or presentation;
+        // it must not reconfigure an acquired surface or configure twice for
+        // the framebuffer/client-size notifications of one native resize.
         _target.SceneRootVisual.Invalidate();
         _target.RootVisual.Invalidate();
         RequestRenderAndWakeNativeLoop();
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.NativeResizeReturned, size.X, size.Y);
     }
 
     private void OnFramebufferResize(Vector2D<int> size)
     {
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferResizeEntered, size.X, size.Y);
         if (size.X <= 0 || size.Y <= 0 || _window == null || _isDisposed || _isRenderingLiveResize)
         {
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferResizeSkipped, size.X, size.Y);
             return;
         }
 
         _isRenderingLiveResize = true;
         try
         {
-            // Native resize tracking can keep Silk.NET's owner event loop inside
-            // DoEvents until the drag completes. Render synchronously from the
-            // framebuffer callback so layout and the swap chain follow every step.
+            // Always retain current source geometry. Only native interactive
+            // tracking needs an inline frame while the owner event loop cannot
+            // advance; programmatic changes use its next render opportunity.
             OnResize(_window.Size);
             if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu && _wpfRootVisual == null)
             {
@@ -2221,14 +2299,27 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 // presentation source is still attaching its root. OnResize has
                 // retained the new geometry and queued a frame; the bridge will
                 // publish the typed root before that frame is rendered.
+                TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferSourceUnavailable, size.X, size.Y);
                 return;
             }
+            if (!ProGpuWpfResizePolicy.ShouldRenderInline(
+                    _isRendering,
+                    _nativeSizeAssignmentDepth != 0,
+                    OperatingSystem.IsWindows(),
+                    _windowController?.IsInteractiveMoveResize == true))
+            {
+                TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderDeferred, size.X, size.Y);
+                return;
+            }
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderEntering, size.X, size.Y);
             OnRender(0d);
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderReturned, size.X, size.Y);
         }
         finally
         {
             _isRenderingLiveResize = false;
         }
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferResizeReturned, size.X, size.Y);
     }
 
     private void AttachNativeDpiService()
@@ -2316,7 +2407,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _isRendering = true;
         try
         {
-            TraceNativeLoop("render callback entering: " + CreateNativeLoopTraceState());
+            TraceNativeLoop(s_traceNativeLoop, $"render callback entering: {CreateNativeLoopTraceState()}");
             if (_isDisposed)
             {
                 return;
@@ -2348,11 +2439,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 // The typed retained root is already complete enough for its
                 // initial native MIL snapshot. Process self-rescheduling WPF
                 // callbacks after that first frame is visible.
-                TraceNativeLoop(
-                    "native MIL cold-start dispatcher deferred: " +
-                    CreateNativeLoopTraceState());
+                TraceNativeLoop(s_traceNativeLoop,
+                    $"native MIL cold-start dispatcher deferred: {CreateNativeLoopTraceState()}");
             }
-            TraceNativeLoop("render dispatcher drained: " + CreateNativeLoopTraceState());
+            TraceNativeLoop(s_traceNativeLoop, $"render dispatcher drained: {CreateNativeLoopTraceState()}");
 
             if (_target == null || _window == null || _target.Context.Surface == null)
             {
@@ -2392,15 +2482,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 RequestPresentationRetryAndWakeNativeLoop();
                 return;
             }
-            if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight))
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureEntering, pixelWidth, pixelHeight);
+            TraceNativeLoop(s_traceNativeLoop, $"swapchain configure entering: pixels={pixelWidth}x{pixelHeight}, {CreateNativeLoopTraceState()}");
+            // A busy native queue must not keep this event thread inside a
+            // synchronous surface drain. Preserve the presentation request until
+            // actual completion permits configuration and texture acquisition.
+            if (!_target.Context.TryReconfigureIfNeeded(pixelWidth, pixelHeight, waitForNativeCompletion: false))
             {
+                TraceNativeLoop(s_traceNativeLoop, $"swapchain configure pending: {CreateNativeLoopTraceState()}");
+                TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureRejected, pixelWidth, pixelHeight);
                 RequestPresentationRetryAndWakeNativeLoop();
                 return;
             }
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.SwapChainConfigureReturned, pixelWidth, pixelHeight);
+            TraceNativeLoop(s_traceNativeLoop, $"swapchain configure returned: {CreateNativeLoopTraceState()}");
 
             if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu)
             {
-                TraceNativeLoop("native MIL render entering: " + CreateNativeLoopTraceState());
+                TraceNativeLoop(s_traceNativeLoop, $"native MIL render entering: {CreateNativeLoopTraceState()}");
                 if (RenderNativeMilFrame(
                         pixelWidth,
                         pixelHeight,
@@ -2421,7 +2520,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     RecordNativePerformanceSnapshot(_pendingNativeMilPerformance);
                     TraceRenderSurfaceGeometryIfRequested(geometry);
                 }
-                TraceNativeLoop("native MIL render leaving: " + CreateNativeLoopTraceState());
+                TraceNativeLoop(s_traceNativeLoop, $"native MIL render leaving: {CreateNativeLoopTraceState()}");
                 return;
             }
 
@@ -2578,7 +2677,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         finally
         {
             _isRendering = false;
-            TraceNativeLoop("render callback leaving: " + CreateNativeLoopTraceState());
+            TraceNativeLoop(s_traceNativeLoop, $"render callback leaving: {CreateNativeLoopTraceState()}");
         }
     }
 
@@ -3107,9 +3206,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             FormattableString.Invariant($", elapsedMs={Stopwatch.GetElapsedTime(s_nativeLoopTraceOrigin).TotalMilliseconds:0.000}"));
     }
 
+    private void TraceNativeLoop(bool enabled,
+        [InterpolatedStringHandlerArgument(nameof(enabled))] ref NativeLoopTraceMessage message)
+    {
+        if (enabled) TraceNativeLoop(message.GetFormattedText());
+    }
+
     internal void TraceNativeActivation(string message)
     {
-        TraceNativeLoop($"window={Title}, {message}");
+        TraceNativeLoop(s_traceNativeLoop, $"window={Title}, {message}");
     }
 
     private string CreateNativeLoopTraceState()
@@ -4957,6 +5062,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal bool TryProcessRenderSchedulerWakeup()
     {
+        // Resize invalidation may synchronously notify the scheduler even for
+        // an externally driven host. Do not bypass the framebuffer policy via
+        // that wakeup while a native size setter/callback is still on the stack.
+        if (_nativeSizeAssignmentDepth != 0 || _isRenderingLiveResize)
+        {
+            return false;
+        }
+
         var window = _window;
         if (!ShouldProcessRenderSchedulerWakeupInline(
                 _isDisposed,
@@ -5113,10 +5226,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.SourceLayoutEntering, clientWidth, clientHeight);
         if (!_portablePresentationSourceBridge.TrySetClientSize(clientWidth, clientHeight))
         {
+            TraceResizeCheckpoint(ProGpuWpfResizeStage.SourceLayoutRejected, clientWidth, clientHeight);
             return false;
         }
+        TraceResizeCheckpoint(ProGpuWpfResizeStage.SourceLayoutReturned, clientWidth, clientHeight);
 
         _portablePresentationSourceClientWidth = clientWidth;
         _portablePresentationSourceClientHeight = clientHeight;

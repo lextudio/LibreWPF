@@ -11,6 +11,19 @@ public enum ProGpuWpfWindowingBackend
 
 public static class ProGpuWpfDiagnostics
 {
+    /// <summary>
+    /// Installs one bounded observer on the actual host's owner thread. Use only
+    /// around a synchronous resize, never during a measured passive interval.
+    /// Does not query native geometry, pump work or request a presentation.
+    /// </summary>
+    public static ProGpuWpfResizeDiagnosticScope ObserveNativeResize(
+        ProGpuWpfWindowHost host, Action<ProGpuWpfResizeCheckpoint> observe)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(observe);
+        return host.ObserveNativeResize(observe);
+    }
+
     private const int HitTestOwnerBufferCapacity = 64;
 
     public readonly record struct RenderSurfaceGeometrySnapshot(
@@ -123,6 +136,18 @@ public static class ProGpuWpfDiagnostics
         snapshot = default;
         return TryGetWindowHost(window, out var host) && host is not null &&
             host.TryGetNativePerformanceSnapshot(out snapshot);
+    }
+
+    /// <summary>
+    /// Reads current host activity on its dispatcher owner thread. Does not
+    /// consume pending work, query GPU handles or promise that future work is absent.
+    /// </summary>
+    public static bool TryGetRenderActivitySnapshot(
+        object? window, out ProGpuWpfRenderActivitySnapshot snapshot)
+    {
+        snapshot = default;
+        return TryGetWindowHost(window, out var host) && host is not null &&
+            host.TryGetRenderActivitySnapshot(out snapshot);
     }
 
     public readonly record struct NativeMemoryCheckpoint(

@@ -1,5 +1,77 @@
 # Agent Guidance
 
+Native compute dispatch tracing belongs only to the separate failure replay.
+Reject its enabled opt-in in original idle acceptance, preserve the caller's
+environment and report requested tracing separately from emitted records.
+Encoding/submission logs never qualify completion or the original failed run.
+
+Linux glyph shader qualification must execute the actual compute atlas on the
+selected window device and read coverage for every requested glyph, including
+after the device owner closes. Empty presented windows do not compile lazy glyph
+pipelines. Keep explicit probe policy scoped to its atlas, preserve host defaults,
+font provenance, real submission/readback deadlines and independent GL/Vulkan
+gates; this probe is not source-text or transparent-pixel application parity.
+
+Native event-pump/render diagnostics must skip state reads and interpolation
+when disabled, not just skip their final write. Retain enabled message semantics
+and original scheduling/deadlines; skipped formatting is not native GPU idle
+or application performance qualification.
+
+Resize callbacks retain source geometry and invalidate the scene; only the
+guarded render boundary configures the swap chain before acquiring a texture.
+The render boundary opts into native queue deferral and retains its presentation
+retry when completion is pending. Do not acquire an old-size surface, clear the
+retry to appear idle, or relax the one-shot idle boundary/deadlines. Original
+one-shot ProGPU presenters keep their synchronous configuration contract.
+Native size setters defer presentation until their complete nested assignment
+unwinds, including synchronous scheduler wakeups. Win32 inline resize rendering
+requires the controller's actual interactive move/size state, not any WM_SIZE;
+preserve other platforms' live-resize callbacks and pending presentation retries.
+Missing native crash stacks must not turn this ordering correction into a claim
+that a prior fail-fast or all platform resize behavior is qualified.
+
+Passive Showcase endpoints must run once from the captured native window's Update
+callback, not a dispatcher callback that can execute inside an unfinished render.
+Read owner-thread render activity without consuming requests or polling GPU memory;
+reject active/current presentation work and recovery instead of waiting for quiet.
+Passive resize geometry reads wake only the native loop. Delayed callbacks remain
+live and count normally in the unchanged exact-zero interval. Source controls do
+not qualify native idle or attribute a previous access violation.
+Resize preparation also requires a newer actual presented frame with the exact
+current logical/physical size and DPI. Assigned source/window geometry is not a
+presentation acknowledgement. Keep this inside the original resize attempt
+budget; it must never wait for pending work to disappear, restart settling or
+weaken the separate one-shot idle boundary and exact-zero observation.
+Initial CI crash evidence uses only an exact-byte, unique-name Showcase apphost and its
+newly owned per-image WER key. Never mutate caller/global crash policy or upload
+unbounded/full-memory dumps. Keep phase journal writes outside measured intervals,
+preserve actual child failure status through diagnostic cleanup, and treat a
+missing stack as unqualified rather than inventing an ARM64 crash cause.
+An explicit failure-only debugger replay must persist the original failed receipt
+first and never replace its result. Launch only a fresh owned apphost, verify native
+architecture, retain OS exception handling and capture a bounded normal dump from
+the real stopped thread. Correlate PID/thread/code/address before publication;
+debugger controls and instrumented replays never qualify the original idle gate.
+An optional live-stack snapshot belongs only to that failed-run replay and the
+same owned child. Keep its exception-free normal dump, raw directory and receipt
+separate from crash evidence; require intrinsic architecture, PID and complete
+thread contexts before publication. Never inject a breakpoint, infer an atomic
+frame, extend the original deadlines or enable it in the acceptance run.
+An ordinary child failure may also receive one diagnostic native-loop replay only
+after unchanged payload identity and the original nonzero exit are established.
+Retain bounded stdout/stderr tails with explicit discarded-byte counts, drain both
+pipes through owned-child cleanup, and never enable tracing in the original run.
+Normal dump writers may include the documented AVX register-state flag on x64;
+admit only that exact extension with intrinsic system-stream architecture proof.
+Keep actual flags, bounded dumps, full-memory rejection and original failure status.
+Passive interval timers must reach the original monotonic deadline despite early
+timer wakeups. Remainder waits are time-only and bounded: never resample frame
+counters, restart an interval, wait for quiet or relax the measured minimum.
+Resize checkpoints are per-host and scoped only around the synchronous action,
+never a measured idle interval. Read cached state without native queries or
+pumping; defer diagnostic failures so they cannot escape unmanaged callbacks or
+replace product failures. Rendering activity alone is not surface acquisition.
+
 Portable visual-only HwndHost is an explicit derived-class opt-in under an actual
 portable presentation source, including Windows. Keep derived visual/logical
 ownership and zero Handle; never invoke native build/destroy callbacks or adopt

@@ -26,6 +26,70 @@ namespace ProGPU.Wpf.Tests;
 [Collection(PortableRenderDataSinkProviderCollection.Name)]
 public sealed class ProGpuWpfWindowHostTests
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("_isRendering")]
+    [InlineData("_hasPendingDeviceRecovery")]
+    [InlineData("_hasPendingNativeDpiChange")]
+    public void RenderActivityReadsArePassiveAndKeepConsumedRenderDistinct(string? field)
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            PlatformServices = CreatePlatformServices(new TestDispatcherService(false)),
+            WpfRenderScheduler = scheduler
+        };
+        host.RecordPresentedFrame(new ProGpuWpfFrameState(100, 50, 1, 2, 3));
+        host.RequestRenderAndWakeNativeLoop();
+        Assert.True(host.ConsumeScheduledRenderRequest());
+        if (field is not null)
+            typeof(ProGpuWpfWindowHost).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(host, true);
+        int requests = scheduler.RequestCount;
+        long wakeups = host.NativeLoopWakeupCount;
+        Assert.True(ProGpuWpfDiagnostics.TryGetRenderActivitySnapshot(host, out var first));
+        Assert.True(ProGpuWpfDiagnostics.TryGetRenderActivitySnapshot(host, out var second));
+        Assert.Equal(first, second);
+        Assert.False(first.HasPendingPresentationRequest);
+        Assert.Equal(field is not null, first.HasImmediatePresentationWork);
+        Assert.Equal(1, first.PresentedFrameCount);
+        Assert.Equal(requests, scheduler.RequestCount);
+        Assert.Equal(wakeups, host.NativeLoopWakeupCount);
+        Assert.False(scheduler.HasPendingRenderRequest);
+        if (field is not null)
+            typeof(ProGpuWpfWindowHost).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(host, false);
+    }
+
+    [Fact]
+    public void RenderActivityDoesNotConsumePendingPresentation()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            PlatformServices = CreatePlatformServices(new TestDispatcherService(false)),
+            WpfRenderScheduler = scheduler
+        };
+        host.RequestRenderAndWakeNativeLoop();
+        Assert.True(ProGpuWpfDiagnostics.TryGetRenderActivitySnapshot(host, out var state));
+        Assert.True(state.HasPendingPresentationRequest);
+        Assert.True(state.HasImmediatePresentationWork);
+        Assert.True(scheduler.HasPendingRenderRequest);
+        Assert.True(host.ConsumeScheduledRenderRequest());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RenderActivityRejectsWrongThreadOrDisposedOwner(bool disposed)
+    {
+        using var host = new ProGpuWpfWindowHost
+        {
+            PlatformServices = CreatePlatformServices(new TestDispatcherService(false, hasAccess: disposed))
+        };
+        if (disposed) host.Dispose();
+        Assert.False(ProGpuWpfDiagnostics.TryGetRenderActivitySnapshot(host, out var state));
+        Assert.Equal(default, state);
+    }
+
     [Fact]
     public void TransparentWindowUsesNativeBackdropBeforeCreatingItsSurface()
     {
@@ -603,7 +667,7 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Contains("DoEvents();", source, StringComparison.Ordinal);
         Assert.Contains("if (!EnsureCompositionTargetLoaded() || !ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("window.IsEventDriven = false;", source, StringComparison.Ordinal);
-        Assert.Contains("window.DoEvents();\n                TraceNativeLoop(\"native event poll leaving:", source, StringComparison.Ordinal);
+        Assert.Contains("window.DoEvents();\n                TraceNativeLoop(s_traceNativeLoop, $\"native event poll leaving:", source, StringComparison.Ordinal);
         Assert.Contains("if (useNonBlockingNativePoll)\n                {\n                    window.IsEventDriven = restoreEventDriven;", source, StringComparison.Ordinal);
         Assert.Contains("Interlocked.Increment(ref s_activeNativeEventDispatchDepth);", source, StringComparison.Ordinal);
         Assert.Contains("if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)", source, StringComparison.Ordinal);
@@ -663,7 +727,7 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void NativeFramebufferResizeDefersUnattachedRootAndOtherwiseRendersSynchronously()
+    public void NativeFramebufferResizeDefersUnattachedRootAndGuardsInlineRendering()
     {
         var source = File.ReadAllText(FindRepoPath(
             "src",
@@ -678,7 +742,16 @@ public sealed class ProGpuWpfWindowHostTests
             "if (RendererMode == ProGpuWpfRendererMode.NativeMilWgpu && _wpfRootVisual == null)",
             source,
             StringComparison.Ordinal);
-        Assert.Contains("return;\n            }\n            OnRender(0d);", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderDeferred, size.X, size.Y);\n" +
+            "                return;\n            }\n" +
+            "            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderEntering, size.X, size.Y);\n" +
+            "            OnRender(0d);\n" +
+            "            TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferRenderReturned, size.X, size.Y);",
+            source,
+            StringComparison.Ordinal);
+        Assert.Contains("TraceResizeCheckpoint(ProGpuWpfResizeStage.FramebufferSourceUnavailable, size.X, size.Y);", source, StringComparison.Ordinal);
+        Assert.Contains("if (!ProGpuWpfResizePolicy.ShouldRenderInline(", source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -3908,17 +3981,19 @@ public sealed class ProGpuWpfWindowHostTests
     {
         private readonly Queue<TestDispatcherOperation> _operations = new();
         private readonly bool _raiseWorkAvailableOnPost;
+        private readonly bool _hasAccess;
 
-        public TestDispatcherService(bool raiseWorkAvailableOnPost)
+        public TestDispatcherService(bool raiseWorkAvailableOnPost, bool hasAccess = true)
         {
             _raiseWorkAvailableOnPost = raiseWorkAvailableOnPost;
+            _hasAccess = hasAccess;
         }
 
         public event EventHandler? WorkAvailable;
 
         public bool CheckAccess()
         {
-            return true;
+            return _hasAccess;
         }
 
         public IWpfDispatcherOperation Post(Action callback, WpfDispatcherPriority priority = WpfDispatcherPriority.Normal)

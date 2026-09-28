@@ -48,6 +48,24 @@ public sealed class WebGpuClientContextContractTests
         Assert.Contains("\"smoke reopened\", transparent: true", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EveryPresentedWindowRequiresActualGlyphComputeReadback()
+    {
+        string source = Read("src/ProGPU.Wpf.MultiWindowSmokeHarness/Program.cs");
+        string show = Between(source, "private static ProGpuWpfWindowHost ShowWindow(", "private static void AssertExactlyOneRenderDeviceOwner(");
+        Assert.Contains("GlyphComputeReadback.Validate(host.CompositionTarget!.Context);", show, StringComparison.Ordinal);
+        string probe = Read("src/ProGPU.Wpf.MultiWindowSmokeHarness/GlyphComputeReadback.cs");
+        Assert.Contains("GpuComputeExecutionPreference.NativeCompute", probe, StringComparison.Ordinal);
+        Assert.Contains("finally { context.ComputeExecutionPreference = original; }", probe, StringComparison.Ordinal);
+        Assert.Contains("atlas.AtlasTexture.ReadPixels()", probe, StringComparison.Ordinal);
+        Assert.Contains("atlas.RasterComputePassCount == 0", probe, StringComparison.Ordinal);
+        Assert.Contains("foreach (GlyphInfo glyph in glyphs)", probe, StringComparison.Ordinal);
+        Assert.Contains("RequireCoverage(pixels, atlas.AtlasTexture.Width, atlas.AtlasTexture.Height, glyph)", probe, StringComparison.Ordinal);
+        string project = Read("src/ProGPU.Wpf.MultiWindowSmokeHarness/ProGPU.Wpf.MultiWindowSmokeHarness.csproj");
+        Assert.Contains("Link=\"Fonts/Inter-Regular.ttf\"", project, StringComparison.Ordinal);
+        Assert.Contains("Link=\"Fonts/LICENSE.txt\"", project, StringComparison.Ordinal);
+    }
+
     private static string Between(string source, string start, string end)
     {
         int first = source.IndexOf(start, StringComparison.Ordinal);

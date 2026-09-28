@@ -40,7 +40,50 @@ public class PassiveIdleIntervalTests
         var result = await PassiveIdleInterval.ObserveAsync(process, () => { reads++; return 3; },
             TimeSpan.FromMilliseconds(1));
         Assert.Equal(2, reads);
+        Assert.True(result.WallMilliseconds >= 1);
         result.RequireIdle();
+    }
+
+    [Fact]
+    public async Task EarlyTimerWakeWaitsOnlyForOriginalDeadlineRemainder()
+    {
+        long now = 0;
+        var delays = new List<TimeSpan>();
+        await PassiveIdleInterval.WaitForDurationAsync(0, TimeSpan.FromSeconds(2), () => now, duration =>
+        {
+            delays.Add(duration);
+            now = delays.Count == 1 ? Stopwatch.Frequency * 1998 / 1000 : Stopwatch.Frequency * 2;
+            return Task.CompletedTask;
+        });
+        Assert.Equal(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(2) }, delays);
+    }
+
+    [Fact]
+    public async Task FractionalRemainderUsesANonzeroTimerAndElapsedDeadlineDoesNotWait()
+    {
+        long now = 0;
+        var delays = new List<TimeSpan>();
+        await PassiveIdleInterval.WaitForDurationAsync(0, TimeSpan.FromTicks(1), () => now, duration =>
+        {
+            delays.Add(duration);
+            now = Stopwatch.Frequency;
+            return Task.CompletedTask;
+        });
+        Assert.Equal(new[] { TimeSpan.FromMilliseconds(1) }, delays);
+        await PassiveIdleInterval.WaitForDurationAsync(0, TimeSpan.FromSeconds(1), () => now,
+            _ => throw new InvalidOperationException("An elapsed deadline must not wait again."));
+    }
+
+    [Fact]
+    public async Task NonadvancingAndRegressedClocksFailWithoutUnboundedRetries()
+    {
+        int delays = 0;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => PassiveIdleInterval.WaitForDurationAsync(
+            0, TimeSpan.FromSeconds(2), () => 0, _ => { ++delays; return Task.CompletedTask; }));
+        Assert.Equal(4, delays);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => PassiveIdleInterval.WaitForDurationAsync(
+            0, TimeSpan.FromSeconds(2), () => -Stopwatch.Frequency,
+            _ => throw new InvalidOperationException("A regressed clock must fail before another wait.")));
     }
 
     [Theory]

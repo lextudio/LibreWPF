@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -38,7 +39,10 @@ public partial class MainWindow
     {
         if (Environment.GetEnvironmentVariable(IdleLayoutClipEnvironmentVariable) != "1") return false;
         ValidateIdleLayoutClipConfiguration();
-        _liveValidationStarted = true;
+        // The constructor also calls this method, before native initialization.
+        // Wait for the existing Loaded callback before starting the first-frame
+        // clock. Loaded itself does not satisfy the actual presentation check.
+        if (!PassiveIdleStartup.TryStart(IsLoaded, ref _liveValidationStarted)) return true;
         _ = Task.Run(async () =>
         {
             var receipt = new IdleLayoutClipReceipt();
@@ -48,10 +52,14 @@ public partial class MainWindow
                 // Caller-owned files are never replaced, including failed receipts.
                 using var output = new FileStream(Environment.GetEnvironmentVariable(IdleLayoutClipStatusEnvironmentVariable)!,
                     FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+                string? journalPath = Environment.GetEnvironmentVariable("PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_PHASE_PATH");
+                using var journal = journalPath is null ? null : new PassiveIdlePhaseJournal(journalPath);
+                journal?.Write("loaded");
                 try
                 {
                     receipt.AssemblyIdentities = CaptureIdleAssemblyIdentities();
-                    await ValidatePassiveLayoutClipAsync(receipt).ConfigureAwait(false);
+                    journal?.Write("identities-captured");
+                    await ValidatePassiveLayoutClipAsync(receipt, journal).ConfigureAwait(false);
                     if (!receipt.AssemblyIdentities.SequenceEqual(CaptureIdleAssemblyIdentities()))
                         throw new InvalidOperationException("The loaded managed closure changed during idle validation.");
                     receipt.Success = true;
@@ -80,7 +88,7 @@ public partial class MainWindow
         return true;
     }
 
-    private async Task ValidatePassiveLayoutClipAsync(IdleLayoutClipReceipt receipt)
+    private async Task ValidatePassiveLayoutClipAsync(IdleLayoutClipReceipt receipt, PassiveIdlePhaseJournal? journal)
     {
         ProGpuWpfWindowHost? host = null;
         long started = Stopwatch.GetTimestamp();
@@ -92,6 +100,7 @@ public partial class MainWindow
         }
         if (host is null || !host.HasPresentedFrame)
             throw new InvalidOperationException("No actual Showcase native presentation within 30 seconds.");
+        journal?.Write("first-frame");
 
         using var process = Process.GetCurrentProcess();
         Func<long> readFrames = () => host.PresentedFrameCount;
@@ -128,7 +137,7 @@ public partial class MainWindow
             }, DispatcherPriority.Send);
             await WaitForLiveInputPresentedFrameAsync(host, frameBefore, "passive clipped scroll preparation");
 
-            var initial = await ObserveIdlePhaseAsync(host, fixture!, process, readFrames, "initial", receipt);
+            var initial = await ObserveIdlePhaseAsync(host, fixture!, process, readFrames, "initial", receipt, journal);
             frameBefore = await CaptureLivePresentedFrameStateAsync(host);
             await InvokeWithLiveHostWakeAsync(host, () =>
             {
@@ -137,20 +146,40 @@ public partial class MainWindow
                 UpdateLayout();
             }, DispatcherPriority.Send);
             await WaitForLiveInputPresentedFrameAsync(host, frameBefore, "passive clipped content scroll");
-            var scrolled = await ObserveIdlePhaseAsync(host, fixture!, process, readFrames, "scrolled", receipt);
+            var scrolled = await ObserveIdlePhaseAsync(host, fixture!, process, readFrames, "scrolled", receipt, journal);
             if (initial.ScrollOffset != 0 || scrolled.ScrollOffset <= 0 ||
                 Math.Abs(scrolled.TextTop - initial.TextTop + scrolled.ScrollOffset) > 0.01)
                 throw new InvalidOperationException("Actual source scroll placement did not follow its pixel offset.");
 
             int resizedWidth = checked(fixture!.OriginalWidth + 140);
             int resizedHeight = checked(fixture.OriginalHeight + 80);
-            await InvokeWithLiveHostWakeAsync(host, () => SetLiveNativeWindowSize(host, resizedWidth, resizedHeight), DispatcherPriority.Send);
+            long resizeFrameBefore = host.PresentedFrameCount;
+            journal?.Write("native-resize-request");
+            await InvokeWithLiveHostWakeAsync(host, () =>
+            {
+                journal?.Write("native-resize-callback-entered");
+                using (var resizeDiagnostics = journal is null ? null :
+                    ProGpuWpfDiagnostics.ObserveNativeResize(host, journal.WriteResize))
+                {
+                    host.SetClientSize(resizedWidth, resizedHeight);
+                    // Do not replace a product exception or throw a journal IO
+                    // failure through an unmanaged resize callback.
+                    resizeDiagnostics?.ThrowIfFailed();
+                }
+                journal?.Write("native-resize-setter-returned");
+                WakeLiveRenderHost(host);
+                journal?.Write("native-resize-wake-returned");
+            }, DispatcherPriority.Send);
             await WaitForLiveNativeResizeAsync(host, (uint)resizedWidth, (uint)resizedHeight, "passive native resize",
-                layout => layout.ContentWidth >= initial.ContentWidth + 80 && layout.ContentHeight >= initial.ContentHeight + 40);
-            var resized = await ObserveIdlePhaseAsync(host, fixture, process, readFrames, "native-resized", receipt);
+                layout => layout.ContentWidth >= initial.ContentWidth + 80 && layout.ContentHeight >= initial.ContentHeight + 40,
+                previousPresentedFrameCount: resizeFrameBefore,
+                requestRenderWhileObserving: false);
+            journal?.Write("native-resize-geometry-observed");
+            var resized = await ObserveIdlePhaseAsync(host, fixture, process, readFrames, "native-resized", receipt, journal);
             if (resized.Geometry == initial.Geometry)
                 throw new InvalidOperationException("The native resize did not change the actual surface geometry.");
 
+            resizeFrameBefore = host.PresentedFrameCount;
             await InvokeWithLiveHostWakeAsync(host, () =>
             {
                 fixture.Viewer.ScrollToTop();
@@ -158,8 +187,10 @@ public partial class MainWindow
                 UpdateLayout();
             }, DispatcherPriority.Send);
             await WaitForLiveNativeResizeAsync(host, (uint)fixture.OriginalWidth, (uint)fixture.OriginalHeight, "passive native restore",
-                layout => layout.ContentWidth <= resized.ContentWidth - 80 && layout.ContentHeight <= resized.ContentHeight - 40);
-            var restored = await ObserveIdlePhaseAsync(host, fixture, process, readFrames, "restored", receipt);
+                layout => layout.ContentWidth <= resized.ContentWidth - 80 && layout.ContentHeight <= resized.ContentHeight - 40,
+                previousPresentedFrameCount: resizeFrameBefore,
+                requestRenderWhileObserving: false);
+            var restored = await ObserveIdlePhaseAsync(host, fixture, process, readFrames, "restored", receipt, journal);
             if (restored.Geometry != initial.Geometry || restored.ScrollOffset != 0 ||
                 restored.ContentWidth != initial.ContentWidth || restored.ContentHeight != initial.ContentHeight)
                 throw new InvalidOperationException("Restored native surface and source viewport differ from the initial phase.");
@@ -187,31 +218,66 @@ public partial class MainWindow
                         throw new InvalidOperationException("The original Showcase UI was not restored.");
                     receipt.UiRestored = true;
                 }, DispatcherPriority.Send);
+                journal?.Write("source-restored");
             }
         }
     }
 
     private async Task<IdleSourceState> ObserveIdlePhaseAsync(ProGpuWpfWindowHost host, IdleFixture fixture,
-        Process process, Func<long> readFrames, string name, IdleLayoutClipReceipt receipt)
+        Process process, Func<long> readFrames, string name, IdleLayoutClipReceipt receipt, PassiveIdlePhaseJournal? journal)
     {
         // Fixed settling, not a retry-until-quiet loop. A continuously redrawing
         // baseline still produces bounded metrics and then fails exact zero.
         await Task.Delay(IdleSettlingTime).ConfigureAwait(false);
-        // Wake only the native event loop to read source state, never request a
-        // render immediately before measuring. This remains outside the interval.
-        IdleSourceState before = await InvokeWithLiveNativeLoopWakeAsync(host,
-            () => ReadIdleSourceState(host, fixture), DispatcherPriority.Send);
+        journal?.Write(name + "-boundary");
+        // A dispatcher operation may run inside OnRender before presentation.
+        // Observe once from the actual native Update callback, not that drain.
+        Action? onBoundaryEntered = journal is null ? null : () => journal.Write(name + "-boundary-entered");
+        Action? onSourceCaptured = journal is null ? null : () => journal.Write(name + "-boundary-source-captured");
+        IdleSourceState before = await ReadIdleBoundaryAsync(host, fixture,
+            onBoundaryEntered, onSourceCaptured);
         PassiveIdleInterval.Result interval = await PassiveIdleInterval.ObserveAsync(process, readFrames,
             IdleObservationTime).ConfigureAwait(false);
         var phase = new IdlePhaseReceipt(name, interval, before);
         receipt.Phases.Add(phase); // Preserve measured failure evidence before validation.
-        IdleSourceState after = await InvokeWithLiveNativeLoopWakeAsync(host,
-            () => ReadIdleSourceState(host, fixture), DispatcherPriority.Send);
+        journal?.Write(name + "-observed");
+        IdleSourceState after = await ReadIdleBoundaryAsync(host, fixture);
+        phase.After = after; // Retain both endpoints even when the comparison below fails.
         phase.StableIdentity = before == after;
         if (!phase.StableIdentity)
             throw new InvalidOperationException($"{name}: source/native identity, geometry or recovery changed during observation.");
         interval.RequireIdle();
         return after;
+    }
+
+    private Task<IdleSourceState> ReadIdleBoundaryAsync(ProGpuWpfWindowHost host, IdleFixture fixture,
+        Action? onBoundaryEntered = null, Action? onSourceCaptured = null)
+    {
+        var window = host.SilkWindow ?? throw new InvalidOperationException("Missing actual native window.");
+        Action<double>? update = null;
+        return PassiveIdleBoundary.ObserveOnceAsync(
+            callback => { update = _ => callback(); window.Update += update; },
+            _ => { if (update is not null) window.Update -= update; },
+            () => WakeLiveNativeLoop(host),
+            () =>
+            {
+                // Diagnostic setup only, before the interval starts. Exceptions
+                // are captured by ObserveOnceAsync, never an unmanaged callback.
+                onBoundaryEntered?.Invoke();
+                if (!Dispatcher.CheckAccess() || !ReferenceEquals(host.SilkWindow, window) ||
+                    !ProGpuWpfDiagnostics.TryGetRenderActivitySnapshot(host, out var activity) ||
+                    activity.HasImmediatePresentationWork || activity.PresentedFrameCount <= 0 ||
+                    activity.DeviceRecoveryCount != fixture.OriginalRecovery)
+                    throw new InvalidOperationException("Passive endpoint has an obsolete owner, active frame or pending presentation/recovery work.");
+                IdleSourceState source = ReadIdleSourceState(host, fixture);
+                onSourceCaptured?.Invoke();
+                if (!ReferenceEquals(host.SilkWindow, window) ||
+                    !ProGpuWpfDiagnostics.TryGetRenderActivitySnapshot(host, out var after) ||
+                    after != activity || after.HasImmediatePresentationWork)
+                    throw new InvalidOperationException("Passive endpoint source read changed the native owner or render activity.");
+                return source;
+            },
+            TimeSpan.FromTicks(LiveValidationRetryDelay.Ticks * LiveValidationMaxAttempts));
     }
 
     private void RequireIdleNativeOwner(ProGpuWpfWindowHost host)
@@ -283,9 +349,14 @@ public partial class MainWindow
         WpfPortablePresentationSourceBridge Bridge, long OriginalRecovery);
 
     private readonly record struct IdleSourceState(LiveRenderSurfaceGeometry Geometry, LivePresentedFrameState Presented,
-        string Text, double ScrollOffset,
+        [property: JsonIgnore] string Text, double ScrollOffset,
         double TextTop, double ContentWidth, double ContentHeight, IdleRect Clip, IdleRect Zero,
-        long Recovery, uint Commands, uint Draws, ulong Submissions);
+        long Recovery, uint Commands, uint Draws, ulong Submissions)
+    {
+        // Equality still compares the full original text, but failure receipts
+        // need not duplicate the overflowing source paragraphs at each endpoint.
+        public int TextLength => Text.Length;
+    }
 
     private readonly record struct IdleRect(double X, double Y, double Width, double Height, bool IsEmpty);
 
@@ -308,6 +379,11 @@ public partial class MainWindow
         public string Name => name;
         public PassiveIdleInterval.Result Interval => interval;
         public bool StableIdentity { get; set; }
+        public IdleSourceState Before => state;
+        public IdleSourceState? After { get; set; }
+        public bool? TextChanged => After is { } after
+            ? !string.Equals(state.Text, after.Text, StringComparison.Ordinal)
+            : null;
         public uint LogicalWidth => state.Geometry.LogicalWidth;
         public uint LogicalHeight => state.Geometry.LogicalHeight;
         public uint PixelWidth => state.Geometry.PixelWidth;

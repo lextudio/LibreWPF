@@ -14,12 +14,21 @@ minimum = {
     "ProGPU.Wpf.Tests.Composition.Mil.WpfLayoutClipKeyEqualityTests": 6,
     "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualInvalidationTrackerTests": 38,
     "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRendererTests": 242,
-    "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests": 236,
+    "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests": 243,
     "ProGPU.Wpf.Tests.PassiveIdleIntervalTests": 8,
+    "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 7,
+    "ProGPU.Wpf.Tests.NativeResizePresentationTests": 21,
+    "ProGPU.Wpf.Tests.PassiveIdleBoundaryTests": 17,
+    "ProGPU.Wpf.Tests.MenuLifecycleJournalTests": 7,
+    "ProGPU.Wpf.Tests.ProGpuWpfResizePolicyTests": 17,
     "ProGPU.Wpf.Tests.NativeDragInputReceiptTests": 10,
     "ProGPU.Wpf.Tests.NativeBackendWindowOptionsTests": 18,
-    "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 2,
-    "ProGPU.Wpf.Tests.Platform.WebGpuClientContextContractTests": 3,
+    "ProGPU.Wpf.Tests.Platform.WebGpuClientContextContractTests": 4,
+    "ProGPU.Wpf.Tests.GlyphComputeReadbackTests": 9,
+    "ProGPU.Wpf.Tests.NativeLoopTraceMessageTests": 6,
+    "ProGPU.Wpf.Tests.Composition.WgpuSurfaceTransitionContractTests": 1,
+    "ProGPU.Wpf.Tests.Platform.DispatcherWpfRenderSchedulerTests": 8,
+    "ProGPU.Wpf.Tests.Platform.CoalescingWpfRenderSchedulerTests": 3,
 }
 ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
 
@@ -125,7 +134,16 @@ filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleIntervalTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeDragInputReceiptTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeBackendWindowOptionsTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeResizePresentationTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleBoundaryTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.MenuLifecycleJournalTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ProGpuWpfResizePolicyTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Platform.WebGpuClientContextContractTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.GlyphComputeReadbackTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeLoopTraceMessageTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Composition.WgpuSurfaceTransitionContractTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Platform.DispatcherWpfRenderSchedulerTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Platform.CoalescingWpfRenderSchedulerTests.'
 
 # Use VSTest explicitly: the repository's MTP default is not this xUnit adapter.
 # Preserve its actual nonzero status even when receipt validation also fails.

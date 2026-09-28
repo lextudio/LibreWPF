@@ -18,6 +18,10 @@ import sys
 import tempfile
 import time
 import uuid
+import showcase_idle_crash
+import showcase_idle_debugger
+import showcase_idle_events
+import showcase_idle_output
 
 
 TIMEOUT_SECONDS = 120
@@ -220,23 +224,36 @@ def signal_owned_group(process: subprocess.Popen, signum: int) -> None:
 
 
 def run_child(command: list[str], cwd: Path, environment: dict[str, str], directory: Path,
-              timeout: float = TIMEOUT_SECONDS, outcome: dict | None = None) -> tuple[int, bool]:
+              timeout: float = TIMEOUT_SECONDS, outcome: dict | None = None,
+              log_limit_bytes: int | None = None) -> tuple[int, bool]:
+    require(log_limit_bytes is None or type(log_limit_bytes) is int and
+            0 < log_limit_bytes <= showcase_idle_output.MAX_LOG_BYTES, "Invalid diagnostic log budget")
     process = None
     job = None
     timed_out = False
     outcome = {} if outcome is None else outcome
     cleanup_errors = []
+    captures = {}
     deadline = time.monotonic() + timeout
     with (directory / "stdout.log").open("xb") as stdout, (directory / "stderr.log").open("xb") as stderr:
         try:
             if os.name == "nt":
                 job = WindowsJob()
+            outcome["childLaunchUtc"] = showcase_idle_events.utc_now()
             process = subprocess.Popen(command, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
-                                       stdout=stdout, stderr=stderr, start_new_session=os.name == "posix")
+                                       stdout=stdout if log_limit_bytes is None else subprocess.PIPE,
+                                       stderr=stderr if log_limit_bytes is None else subprocess.PIPE,
+                                       bufsize=-1 if log_limit_bytes is None else 0,
+                                       start_new_session=os.name == "posix")
+            outcome["childProcessId"] = process.pid
+            if log_limit_bytes is not None:
+                for name, stream, output in (("stdout", process.stdout, stdout), ("stderr", process.stderr, stderr)):
+                    captures[name] = showcase_idle_output.TailCapture(stream, output, log_limit_bytes)
             if job is not None:
                 job.assign(process)
             try:
                 process.wait(timeout=max(0, deadline - time.monotonic()))
+                outcome["childExitObservedUtc"] = showcase_idle_events.utc_now()
             except subprocess.TimeoutExpired:
                 timed_out = True
         finally:
@@ -270,6 +287,16 @@ def run_child(command: list[str], cwd: Path, environment: dict[str, str], direct
                         except OSError as error:
                             cleanup_errors.append(str(error))
                     outcome["childExitCode"] = process.poll()
+            if captures:
+                outcome["diagnosticLogTails"] = {}
+                for name, capture in captures.items():
+                    try:
+                        result = capture.finish(CLEANUP_SECONDS)
+                        outcome["diagnosticLogTails"][name] = result
+                        if not result["complete"]:
+                            cleanup_errors.append(f"{name}: {result['error']}")
+                    except Exception as error:
+                        cleanup_errors.append(f"{name} log retention: {type(error).__name__}: {error}")
             outcome["cleanupErrors"] = cleanup_errors
     require(process.returncode is not None, "Owned child did not terminate")
     return process.returncode, timed_out
@@ -281,7 +308,37 @@ def write_json_new(path: Path, value: dict) -> None:
         stream.write("\n")
 
 
-def run(app: Path, dotnet: str | None, evidence_parent: Path) -> int:
+def finish_crash_capture(crash, metadata, exit_code):
+    try:
+        metadata["crashEvidence"] = crash.collect(metadata.get("childProcessId"),
+            metadata.get("childExitCode"), metadata.get("timedOut"))
+    except Exception as error:
+        metadata["crashEvidenceError"] = f"{type(error).__name__}: {error}"
+        metadata["success"] = False
+        exit_code = exit_code or 1
+    finally:
+        try:
+            errors = crash.close()
+        except Exception as error:
+            errors = [f"Crash evidence cleanup: {type(error).__name__}: {error}"]
+        if errors:
+            metadata.setdefault("cleanupErrors", []).extend(errors)
+            metadata["success"] = False
+            exit_code = exit_code or 1
+    return exit_code
+
+
+def collect_failure_events(image, metadata, directory):
+    try:
+        metadata["applicationErrorEvidence"] = showcase_idle_events.collect(image, metadata, directory)
+    except Exception as error:
+        # Supplemental diagnostics must never replace the original child status.
+        metadata["applicationErrorEvidence"] = {"collected": False,
+            "reason": f"Read-only event collection unavailable ({type(error).__name__})"}
+
+
+def run(app: Path, dotnet: str | None, evidence_parent: Path, windows_crash_dumps: bool = False,
+        windows_debugger: Path | None = None) -> int:
     app = app.resolve(strict=True)
     require(app.is_file() and app.name in ("ProGPU.Wpf.ShowcaseApp", "ProGPU.Wpf.ShowcaseApp.exe", "ProGPU.Wpf.ShowcaseApp.dll"),
             "--app must be the prebuilt genuine Showcase apphost or DLL")
@@ -289,8 +346,18 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path) -> int:
     require(evidence_parent.is_dir(), "Evidence parent must already exist")
     for name in CONFLICTING_MODES:
         require(os.environ.get(name) != "1", f"Conflicting Showcase mode: {name}")
+    require(os.environ.get("PROGPU_NATIVE_TRACE_COMPUTE") != "1",
+            "Native compute tracing belongs only to the separate failure replay")
     before = payload_hashes(app.parent)
     app_hash = sha256(app)
+    if windows_crash_dumps:
+        require(os.name == "nt" and os.environ.get("GITHUB_ACTIONS") == "true" and app.suffix.lower() == ".exe",
+                "WER capture is restricted to the CI Windows apphost child")
+    if windows_debugger is not None:
+        require(windows_crash_dumps, "Diagnostic replay requires the original CI-only crash-capture gate")
+        require(windows_debugger.name == "ShowcaseNativeDebugger.exe" and
+                showcase_idle_debugger.machine(windows_debugger) == showcase_idle_debugger.machine(app),
+                "Diagnostic debugger must match the original apphost architecture")
     if app.suffix.lower() == ".dll":
         executable = shutil.which(dotnet or "dotnet")
         require(executable is not None, "A .NET host is required for a prebuilt DLL")
@@ -303,13 +370,19 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path) -> int:
     environment = os.environ.copy()
     environment["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_VALIDATE"] = "1"
     environment["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_STATUS_PATH"] = str(status_path)
+    environment["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_PHASE_PATH"] = str(directory / "application-phases.jsonl")
     metadata = {"schemaVersion": 1, "command": command, "workingDirectory": str(app.parent),
                 "timeoutSeconds": TIMEOUT_SECONDS, "appSha256": app_hash, "payloadSha256Before": before,
                 "success": False, "childExitCode": None, "timedOut": False}
-    write_json_new(directory / "launch.json", metadata)
     print(f"Showcase idle evidence: {directory}", flush=True)
     exit_code = 1
+    crash = None
     try:
+        if windows_crash_dumps:
+            crash = showcase_idle_crash.Capture(app, directory, showcase_idle_crash.WindowsRegistry())
+            command = [str(crash.prepare())]
+            metadata["command"] = command
+        write_json_new(directory / "launch.json", metadata)
         child_code, timed_out = run_child(command, app.parent, environment, directory, outcome=metadata)
         metadata.update(childExitCode=child_code, timedOut=timed_out)
         exit_code = 124 if timed_out else child_code if child_code >= 0 else 128 - child_code
@@ -333,6 +406,10 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path) -> int:
         if exit_code == 0:
             exit_code = 1
         metadata["error"] = f"{type(error).__name__}: {error}"
+    finally:
+        if crash is not None:
+            exit_code = finish_crash_capture(crash, metadata, exit_code)
+            collect_failure_events(command[0], metadata, directory)
     metadata["runnerExitCode"] = exit_code
     try:
         write_json_new(directory / "runner-receipt.json", metadata)
@@ -340,6 +417,15 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path) -> int:
         print(f"Could not retain runner receipt: {error}", file=sys.stderr)
         return exit_code or 1
     print(f"Showcase passive idle {'passed' if metadata['success'] else 'failed'}; evidence retained at {directory}")
+    if windows_debugger is not None and showcase_idle_debugger.should_replay(metadata):
+        # Persist the original receipt BEFORE a separate instrumented process.
+        # Neither the first result nor its exit status can be replaced by replay.
+        try:
+            diagnostic = showcase_idle_debugger.replay(
+                app, windows_debugger, directory, environment, run_child, write_json_new, payload_hashes, before)
+            write_json_new(directory / "native-debugger-replay.json", diagnostic)
+        except Exception as error:
+            print(f"Supplemental native replay unavailable: {type(error).__name__}: {error}", file=sys.stderr)
     return exit_code
 
 
@@ -348,12 +434,15 @@ def main() -> int:
     parser.add_argument("--app", required=True, type=Path, help="Prebuilt Showcase apphost or DLL; never builds")
     parser.add_argument("--dotnet", help=".NET host for DLL input only")
     parser.add_argument("--evidence-parent", required=True, type=Path, help="Existing directory for a fresh evidence child")
+    parser.add_argument("--windows-crash-dumps", action="store_true", help="CI only: task-owned per-image WER stack minidump")
+    parser.add_argument("--windows-debugger", type=Path,
+                        help="CI only: native-architecture debugger for one separate failure-only replay")
     args = parser.parse_args()
     handlers = {}
     try:
         for signum in (signal.SIGINT, signal.SIGTERM):
             handlers[signum] = signal.signal(signum, lambda received, frame: (_ for _ in ()).throw(Interrupted(received)))
-        return run(args.app, args.dotnet, args.evidence_parent)
+        return run(args.app, args.dotnet, args.evidence_parent, args.windows_crash_dumps, args.windows_debugger)
     except Interrupted as interrupted:
         return 128 + interrupted.signum
     except (OSError, ContractError) as error:

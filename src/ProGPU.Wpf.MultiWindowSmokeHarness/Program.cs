@@ -112,6 +112,8 @@ internal static class Program
         RequireWebGpuContextOwnership(host);
         PumpUntilPresented(hosts, timeoutSeconds);
         RequireRequestedBackend(host, requestedBackend ?? WgpuNativeBackendOptions.FromEnvironment());
+        GlyphComputeReadback.Validate(host.CompositionTarget!.Context);
+        RequireWebGpuContextOwnership(host);
 
         Console.WriteLine(
             $"'{title}' presented {host.PresentedFrameCount} frame(s): " +

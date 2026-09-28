@@ -1260,6 +1260,7 @@ public partial class MainWindow : Window
             () => CaptureLiveLayoutSize(liveHost),
             DispatcherPriority.Send);
 
+        long resizeFrameBefore = liveHost.PresentedFrameCount;
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => SetLiveNativeWindowSize(liveHost, 900, 640),
@@ -1271,8 +1272,10 @@ public partial class MainWindow : Window
             description: "resized",
             layoutReady: layout =>
                 layout.ContentWidth >= initialLayout.ContentWidth + 80.0 &&
-                layout.ContentHeight >= initialLayout.ContentHeight + 40.0);
+                layout.ContentHeight >= initialLayout.ContentHeight + 40.0,
+            previousPresentedFrameCount: resizeFrameBefore);
 
+        resizeFrameBefore = liveHost.PresentedFrameCount;
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => SetLiveNativeWindowSize(liveHost, 760, 560),
@@ -1284,7 +1287,8 @@ public partial class MainWindow : Window
             description: "restored",
             layoutReady: layout =>
                 layout.ContentWidth <= resizedLayout.ContentWidth - 80.0 &&
-                layout.ContentHeight <= resizedLayout.ContentHeight - 40.0);
+                layout.ContentHeight <= resizedLayout.ContentHeight - 40.0,
+            previousPresentedFrameCount: resizeFrameBefore);
 
         return
             $"native resize relaid out WPF content to {resizedLayout.GeometryStatus} " +
@@ -1296,7 +1300,9 @@ public partial class MainWindow : Window
         uint requestedWidth,
         uint requestedHeight,
         string description,
-        Func<LiveLayoutSize, bool> layoutReady)
+        Func<LiveLayoutSize, bool> layoutReady,
+        long previousPresentedFrameCount,
+        bool requestRenderWhileObserving = true)
     {
         string lastState = "not checked";
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
@@ -1304,24 +1310,39 @@ public partial class MainWindow : Window
             await Task.Delay(LiveValidationRetryDelay);
             try
             {
-                var layout = await InvokeWithLiveHostWakeAsync(
-                    liveHost,
-                    () =>
-                    {
-                        var current = CaptureLiveLayoutSize(liveHost);
-                        bool geometryReady = NativeResizeGeometryIsReady(
-                            current.Geometry,
-                            requestedWidth,
-                            requestedHeight);
-                        bool layoutSizeReady = layoutReady(current);
-                        lastState =
-                            $"{description}: {current.GeometryStatus}, " +
-                            $"window actual {current.WindowWidth:0.###}x{current.WindowHeight:0.###}, " +
-                            $"content actual {current.ContentWidth:0.###}x{current.ContentHeight:0.###}, " +
-                            $"layoutReady={layoutSizeReady}";
-                        return geometryReady && layoutSizeReady ? current : default;
-                    },
-                    DispatcherPriority.Send);
+                LiveLayoutSize ReadLayout()
+                {
+                    var current = CaptureLiveLayoutSize(liveHost);
+                    bool geometryReady = NativeResizeGeometryIsReady(
+                        current.Geometry,
+                        requestedWidth,
+                        requestedHeight);
+                    bool layoutSizeReady = layoutReady(current);
+                    var presented = ReadLivePresentedFrameState(liveHost);
+                    long presentedFrameCount = liveHost.PresentedFrameCount;
+                    bool presentationReady = NativeResizePresentation.IsReady(
+                        previousPresentedFrameCount, presentedFrameCount, presented.HasPresentedFrame,
+                        new(current.Geometry.LogicalWidth, current.Geometry.LogicalHeight,
+                            current.Geometry.PixelWidth, current.Geometry.PixelHeight, current.Geometry.DpiScale),
+                        new(presented.LogicalWidth, presented.LogicalHeight,
+                            presented.PixelWidth, presented.PixelHeight, presented.DpiScale));
+                    lastState =
+                        $"{description}: {current.GeometryStatus}, " +
+                        $"window actual {current.WindowWidth:0.###}x{current.WindowHeight:0.###}, " +
+                        $"content actual {current.ContentWidth:0.###}x{current.ContentHeight:0.###}, " +
+                        $"layoutReady={layoutSizeReady}, presentationReady={presentationReady}, " +
+                        $"frames {previousPresentedFrameCount}->{presentedFrameCount}, " +
+                        FormatLivePresentedFrameState(presented);
+                    // Source geometry can commit before a deferred surface
+                    // resize presents. Acknowledge that particular new frame,
+                    // never pending-work quiescence or a merely assigned size.
+                    return geometryReady && layoutSizeReady && presentationReady ? current : default;
+                }
+                // Ordinary live validation retains its original explicit wake.
+                // A passive observer must not queue a frame on every size read.
+                var layout = requestRenderWhileObserving
+                    ? await InvokeWithLiveHostWakeAsync(liveHost, ReadLayout, DispatcherPriority.Send)
+                    : await InvokeWithLiveNativeLoopWakeAsync(liveHost, ReadLayout, DispatcherPriority.Send);
 
                 if (layout.IsValid)
                 {
@@ -1992,55 +2013,81 @@ public partial class MainWindow : Window
         for (int i = 0; i < s_frameworkThemes.Length; i++)
         {
             FrameworkThemeDefinition theme = s_frameworkThemes[i];
-            await InvokeWithLiveHostWakeAsync(
-                liveHost,
-                () =>
-                {
-                    var themeItem = Require<MenuItem>(
-                        FindName($"{theme.Name}ThemeMenuItem"),
-                        $"Showcase live {theme.Name} theme MenuItem");
-                    themeItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, themeItem));
-                    UpdateLayout();
-                    AssertEqual(theme.Name, ActiveFrameworkThemeName, $"Showcase live active {theme.Name} framework theme");
-                    AssertEqual(true, themeItem.IsChecked, $"Showcase live checked {theme.Name} framework theme item");
-                    AssertEqual(
-                        theme.Source,
-                        _activeFrameworkThemeDictionary?.Source?.OriginalString,
-                        $"Showcase live {theme.Name} framework theme source");
-
-                    var menu = Require<Menu>(FindName("MainMenu"), $"Showcase live {theme.Name} main Menu");
-                    var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), $"Showcase live {theme.Name} File MenuItem");
-                    var comboBox = Require<ComboBox>(FindName("SelectedValueComboBox"), $"Showcase live {theme.Name} ComboBox");
-                    menu.ApplyTemplate();
-                    fileMenuItem.ApplyTemplate();
-                    comboBox.ApplyTemplate();
-                    AssertEqual(true, menu.Template != null, $"Showcase live {theme.Name} Menu template available");
-                    AssertEqual(true, fileMenuItem.Template != null, $"Showcase live {theme.Name} MenuItem template available");
-                    AssertEqual(true, comboBox.Template != null, $"Showcase live {theme.Name} ComboBox template available");
-                    fileMenuItem.IsSubmenuOpen = true;
-                    WakeLiveRenderHost(liveHost);
-                },
-                DispatcherPriority.Send);
-
-            LivePopupSurfaceSnapshot snapshot = await WaitForLivePopupLayerChildCountAsync(
-                liveHost,
-                expectedPopupChildren: 1,
-                exact: false,
-                $"{theme.Name} File menu popup layer");
-            bool usesNativeWindow = snapshot.Portable.NativeWindowCount >= 1;
-            bool hasPopupLayerContent = snapshot.Composition.PopupLayerChildCount >= 1;
-            AssertEqual(
-                true,
-                usesNativeWindow || hasPopupLayerContent,
-                $"Showcase live {theme.Name} menu popup presentation");
-            if (OperatingSystem.IsMacOS())
+            ThemeMenuDiagnostics? diagnostics = null;
+            try
             {
-                AssertEqual(true, usesNativeWindow, $"Showcase live {theme.Name} macOS native menu popup count");
-            }
+                await InvokeWithLiveHostWakeAsync(
+                    liveHost,
+                    () =>
+                    {
+                        diagnostics = new ThemeMenuDiagnostics(this,
+                            Require<MenuItem>(FindName("FileMenuItem"), "Showcase live theme diagnostic File MenuItem"));
+                        diagnostics.Record($"theme-request:{theme.Name}");
+                        var themeItem = Require<MenuItem>(
+                            FindName($"{theme.Name}ThemeMenuItem"),
+                            $"Showcase live {theme.Name} theme MenuItem");
+                        themeItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, themeItem));
+                        UpdateLayout();
+                        diagnostics.Record("theme-layout-returned");
+                        AssertEqual(theme.Name, ActiveFrameworkThemeName, $"Showcase live active {theme.Name} framework theme");
+                        AssertEqual(true, themeItem.IsChecked, $"Showcase live checked {theme.Name} framework theme item");
+                        AssertEqual(
+                            theme.Source,
+                            _activeFrameworkThemeDictionary?.Source?.OriginalString,
+                            $"Showcase live {theme.Name} framework theme source");
 
-            allMenusUsedNativeWindows &= usesNativeWindow;
-            validatedThemes.Add(theme.Name);
-            await CloseLivePopupSurfacesAsync(liveHost);
+                        var menu = Require<Menu>(FindName("MainMenu"), $"Showcase live {theme.Name} main Menu");
+                        var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), $"Showcase live {theme.Name} File MenuItem");
+                        var comboBox = Require<ComboBox>(FindName("SelectedValueComboBox"), $"Showcase live {theme.Name} ComboBox");
+                        menu.ApplyTemplate();
+                        fileMenuItem.ApplyTemplate();
+                        comboBox.ApplyTemplate();
+                        AssertEqual(true, menu.Template != null, $"Showcase live {theme.Name} Menu template available");
+                        AssertEqual(true, fileMenuItem.Template != null, $"Showcase live {theme.Name} MenuItem template available");
+                        AssertEqual(true, comboBox.Template != null, $"Showcase live {theme.Name} ComboBox template available");
+                        diagnostics.Record("templates-applied");
+                        fileMenuItem.IsSubmenuOpen = true;
+                        diagnostics.Record("submenu-setter-returned");
+                        WakeLiveRenderHost(liveHost);
+                    },
+                    DispatcherPriority.Send);
+
+                LivePopupSurfaceSnapshot snapshot = await WaitForLivePopupLayerChildCountAsync(
+                    liveHost,
+                    expectedPopupChildren: 1,
+                    exact: false,
+                    $"{theme.Name} File menu popup layer");
+                bool usesNativeWindow = snapshot.Portable.NativeWindowCount >= 1;
+                bool hasPopupLayerContent = snapshot.Composition.PopupLayerChildCount >= 1;
+                AssertEqual(
+                    true,
+                    usesNativeWindow || hasPopupLayerContent,
+                    $"Showcase live {theme.Name} menu popup presentation");
+                if (OperatingSystem.IsMacOS())
+                {
+                    AssertEqual(true, usesNativeWindow, $"Showcase live {theme.Name} macOS native menu popup count");
+                }
+
+                allMenusUsedNativeWindows &= usesNativeWindow;
+                validatedThemes.Add(theme.Name);
+                await CloseLivePopupSurfacesAsync(liveHost, diagnostics);
+            }
+            catch
+            {
+                // Failure-only reporting, on the same source dispatcher. This
+                // neither repeats an attempt nor requests another render.
+                try
+                {
+                    await InvokeWithLiveNativeLoopWakeAsync(liveHost, () =>
+                    {
+                        try { diagnostics?.WriteFailure(); }
+                        finally { diagnostics?.Dispose(); }
+                        return true;
+                    }, DispatcherPriority.Send);
+                }
+                catch { /* Diagnostics must not replace the original validation failure. */ }
+                throw;
+            }
         }
 
         await InvokeWithLiveHostWakeAsync(
@@ -2510,7 +2557,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task CloseLivePopupSurfacesAsync(ProGpuWpfWindowHost liveHost)
+    private async Task CloseLivePopupSurfacesAsync(
+        ProGpuWpfWindowHost liveHost,
+        ThemeMenuDiagnostics? diagnostics = null)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -2533,6 +2582,9 @@ public partial class MainWindow : Window
 
                 UpdateLayout();
                 WakeLiveRenderHost(liveHost);
+                // Reuse the existing successful close callback; no additional
+                // source dispatch, layout pass or native wake on success.
+                diagnostics?.Dispose();
             },
             DispatcherPriority.Send);
     }

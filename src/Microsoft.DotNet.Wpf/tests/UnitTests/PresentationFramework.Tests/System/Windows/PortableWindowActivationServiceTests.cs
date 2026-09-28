@@ -589,6 +589,143 @@ public class PortableWindowActivationServiceTests
     }
 
     [PortableInputFact]
+    public void PointerSourceDisposalReleasesOnlyOwnedButtonsAndCaptureWithoutMouseUp()
+    {
+        RunInUiApartment(() =>
+        {
+            using var first = PortablePresentationSourceHost.Create();
+            using var second = PortablePresentationSourceHost.Create();
+            var firstRoot = new HitTestElement();
+            var secondRoot = new HitTestElement();
+            first.RootVisual = firstRoot; first.SetClientSize(200, 100);
+            second.RootVisual = secondRoot; second.SetClientSize(200, 100);
+            int ups = 0, captureLost = 0;
+            firstRoot.MouseUp += (_, _) => ups++;
+            secondRoot.MouseUp += (_, _) => ups++;
+            firstRoot.LostMouseCapture += (_, _) => captureLost++;
+            SendPointerButton(first, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            SendPointerButton(second, PortableInputEventKind.MouseDown, PortableMouseButton.Right);
+            Mouse.Capture(firstRoot).Should().BeTrue();
+            first.Dispose();
+            Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+            Mouse.RightButton.Should().Be(MouseButtonState.Pressed);
+            Mouse.Captured.Should().BeNull();
+            captureLost.Should().Be(1);
+            ups.Should().Be(0);
+            second.Dispose();
+            Mouse.RightButton.Should().Be(MouseButtonState.Released);
+            ups.Should().Be(0);
+        });
+    }
+
+    [PortableInputFact]
+    public void PointerSourceDisposalPreservesAnotherSourcesLaterPressAndCapture()
+    {
+        RunInUiApartment(() =>
+        {
+            using var first = PortablePresentationSourceHost.Create();
+            using var second = PortablePresentationSourceHost.Create();
+            first.RootVisual = new HitTestElement(); first.SetClientSize(200, 100);
+            var root = new HitTestElement();
+            second.RootVisual = root; second.SetClientSize(200, 100);
+            SendPointerButton(first, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            SendPointerButton(second, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            Mouse.Capture(root).Should().BeTrue();
+            first.Dispose();
+            Mouse.LeftButton.Should().Be(MouseButtonState.Pressed);
+            Mouse.Captured.Should().BeSameAs(root);
+            SendPointerButton(second, PortableInputEventKind.MouseUp, PortableMouseButton.Left);
+            Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+            Mouse.Capture(null);
+        });
+    }
+
+    [PortableInputFact]
+    public void PointerSourceReplacementClearsButtonsButMovementAcrossSourcesDoesNot()
+    {
+        RunInUiApartment(() =>
+        {
+            using var first = PortablePresentationSourceHost.Create();
+            using var second = PortablePresentationSourceHost.Create();
+            var firstRoot = new HitTestElement();
+            first.RootVisual = firstRoot; first.SetClientSize(200, 100);
+            second.RootVisual = new HitTestElement(); second.SetClientSize(200, 100);
+            SendPointerButton(first, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            PortableWindowActivationService.ProcessInput((PresentationSource)second,
+                new PortableInputEventArgs(PortableInputEventKind.MouseMove, x: 10, y: 10));
+            Mouse.LeftButton.Should().Be(MouseButtonState.Pressed);
+            first.RootVisual = firstRoot;
+            Mouse.LeftButton.Should().Be(MouseButtonState.Pressed);
+            first.RootVisual = new HitTestElement();
+            Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+            SendPointerButton(first, PortableInputEventKind.MouseDown, PortableMouseButton.Right);
+            first.RootVisual = null;
+            Mouse.RightButton.Should().Be(MouseButtonState.Released);
+        });
+    }
+
+    [PortableInputFact]
+    public void PointerSourceCaptureRoutingRetainsOriginalAndRoutedPressOwnership()
+    {
+        RunInUiApartment(() =>
+        {
+            foreach (bool disposeOrigin in new[] { true, false })
+            {
+                using var origin = PortablePresentationSourceHost.Create();
+                using var captured = PortablePresentationSourceHost.Create();
+                var originRoot = new HitTestElement();
+                var capturedRoot = new HitTestElement();
+                origin.RootVisual = originRoot; origin.SetClientSize(200, 100);
+                captured.RootVisual = capturedRoot; captured.SetClientSize(200, 100);
+                int capturedDowns = 0, originDowns = 0;
+                originRoot.MouseDown += (_, _) => originDowns++;
+                capturedRoot.MouseDown += (_, _) => capturedDowns++;
+                PortableWindowActivationService.ProcessInput((PresentationSource)captured,
+                    new PortableInputEventArgs(PortableInputEventKind.MouseMove, x: 10, y: 10));
+                Mouse.Capture(capturedRoot, CaptureMode.Element).Should().BeTrue();
+                SendPointerButton(origin, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+                capturedDowns.Should().Be(1); originDowns.Should().Be(0);
+                Mouse.LeftButton.Should().Be(MouseButtonState.Pressed);
+                (disposeOrigin ? origin : captured).Dispose();
+                Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+                if (disposeOrigin) Mouse.Captured.Should().BeSameAs(capturedRoot);
+                else Mouse.Captured.Should().BeNull();
+                Mouse.Capture(null);
+            }
+        });
+    }
+
+    [PortableInputFact]
+    public void PointerSourceDisposalInsideDownCallbackDoesNotLeaveAPressedButton()
+    {
+        RunInUiApartment(() =>
+        {
+            using var host = PortablePresentationSourceHost.Create();
+            var root = new HitTestElement();
+            host.RootVisual = root; host.SetClientSize(200, 100);
+            int downs = 0, ups = 0;
+            root.MouseUp += (_, _) => ups++;
+            root.MouseDown += (_, _) =>
+            {
+                Mouse.LeftButton.Should().Be(MouseButtonState.Pressed);
+                host.Dispose();
+                Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+                downs++;
+            };
+            SendPointerButton(host, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            downs.Should().Be(1); ups.Should().Be(0);
+            Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+        });
+    }
+
+    private static void SendPointerButton(IPortablePresentationSourceHost host,
+        PortableInputEventKind kind, PortableMouseButton button)
+    {
+        PortableWindowActivationService.ProcessInput((PresentationSource)host,
+            new PortableInputEventArgs(kind, x: 10, y: 10, button: button));
+    }
+
+    [PortableInputFact]
     public void PointerModifiersSurviveNestedKeyAndTextInputWithoutRestoringReleasedKeys()
     {
         RunInUiApartment(() =>

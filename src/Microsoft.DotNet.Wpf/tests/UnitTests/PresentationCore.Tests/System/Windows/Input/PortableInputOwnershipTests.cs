@@ -49,18 +49,86 @@ public sealed class PortableInputOwnershipTests
             Assert.True(manager.UsesPortableInput);
             var keyboard = Assert.IsType<PortableKeyboardDevice>(manager.PrimaryKeyboardDevice);
             var mouse = Assert.IsType<PortableMouseDevice>(manager.PrimaryMouseDevice);
+            using var source = new PortablePresentationSource();
             keyboard.SetKeyStates(Key.A, KeyStates.Down);
             Assert.True(keyboard.IsKeyDown(Key.A));
             keyboard.SetKeyStates(Key.A, KeyStates.None);
             Assert.False(keyboard.IsKeyDown(Key.A));
-            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Pressed);
+            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Pressed, source, source);
             Assert.Equal(MouseButtonState.Pressed, mouse.LeftButton);
-            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Released);
+            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Released, source, source);
             Assert.Equal(MouseButtonState.Released, mouse.LeftButton);
             if (OperatingSystem.IsWindows())
                 Assert.Throws<InvalidOperationException>(() => PortableWpfRuntime.SelectMediaBackend(PortableWpfMediaBackend.WindowsMil));
             else
                 Assert.Throws<PlatformNotSupportedException>(() => PortableWpfRuntime.SelectMediaBackend(PortableWpfMediaBackend.WindowsMil));
+        });
+    }
+
+    [PortableInputFact]
+    public void PointerSourceButtonsRetainBothOriginAndCaptureRoute()
+    {
+        RunInUiApartment(() =>
+        {
+            var mouse = Assert.IsType<PortableMouseDevice>(InputManager.Current.PrimaryMouseDevice);
+            using var origin = new PortablePresentationSource();
+            using var routed = new PortablePresentationSource();
+            using var other = new PortablePresentationSource();
+            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Pressed, origin, routed);
+            mouse.SetButtonState(MouseButton.Right, MouseButtonState.Pressed, other, other);
+            mouse.ReleaseSourceButtons(origin);
+            Assert.Equal(MouseButtonState.Released, mouse.LeftButton);
+            Assert.Equal(MouseButtonState.Pressed, mouse.RightButton);
+            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Pressed, origin, routed);
+            mouse.ReleaseSourceButtons(routed);
+            Assert.Equal(MouseButtonState.Released, mouse.LeftButton);
+            Assert.Equal(MouseButtonState.Pressed, mouse.RightButton);
+
+            foreach (MouseButton button in Enum.GetValues<MouseButton>())
+                mouse.SetButtonState(button, MouseButtonState.Pressed, origin, routed);
+            mouse.ReleaseSourceButtons(origin);
+            foreach (MouseButton button in Enum.GetValues<MouseButton>())
+                Assert.Equal(MouseButtonState.Released, mouse.GetButtonStateFromSystem(button));
+        });
+    }
+
+    [PortableInputFact]
+    public void PointerSourceCancellationDoesNotClearLaterPressButRealUpDoes()
+    {
+        RunInUiApartment(() =>
+        {
+            var mouse = Assert.IsType<PortableMouseDevice>(InputManager.Current.PrimaryMouseDevice);
+            using var first = new PortablePresentationSource();
+            using var second = new PortablePresentationSource();
+            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Pressed, first, first);
+            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Pressed, second, second);
+            mouse.ReleaseSourceButtons(first);
+            Assert.Equal(MouseButtonState.Pressed, mouse.LeftButton);
+            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Released, first, first);
+            Assert.Equal(MouseButtonState.Released, mouse.LeftButton);
+            // An unmatched real up is still delivered; it does not fabricate a down.
+            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Released, first, first);
+            Assert.Equal(MouseButtonState.Released, mouse.LeftButton);
+        });
+    }
+
+    [PortableInputFact]
+    public void PointerSourceInvalidOrDisposedReportsCannotReplaceLivePresses()
+    {
+        RunInUiApartment(() =>
+        {
+            var mouse = Assert.IsType<PortableMouseDevice>(InputManager.Current.PrimaryMouseDevice);
+            using var live = new PortablePresentationSource();
+            using var retired = new PortablePresentationSource();
+            retired.Dispose();
+            mouse.SetButtonState(MouseButton.Left, MouseButtonState.Pressed, live, live);
+            Assert.Throws<ObjectDisposedException>(() => mouse.SetButtonState(MouseButton.Left, MouseButtonState.Pressed, retired, live));
+            Assert.Throws<ObjectDisposedException>(() => mouse.SetButtonState(MouseButton.Left, MouseButtonState.Pressed, live, retired));
+            Assert.Throws<ArgumentOutOfRangeException>(() => mouse.SetButtonState(MouseButton.Left, (MouseButtonState)2, live, live));
+            Assert.Throws<ArgumentOutOfRangeException>(() => mouse.SetButtonState((MouseButton)5, MouseButtonState.Pressed, live, live));
+            Assert.Equal(MouseButtonState.Pressed, mouse.LeftButton);
+            mouse.ReleaseSourceButtons(retired);
+            Assert.Equal(MouseButtonState.Pressed, mouse.LeftButton);
         });
     }
 

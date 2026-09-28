@@ -123,6 +123,9 @@ jobs:
       - name: Validate source event-time input modifiers
         run: bash ./eng/progpu-wpf-input-modifiers-source.sh
 
+      - name: Validate source pointer press ownership
+        run: bash ./eng/progpu-wpf-pointer-ownership-source.sh
+
       - name: Validate actual source layout clip producers
         run: bash ./eng/progpu-wpf-layout-clip-source.sh
 

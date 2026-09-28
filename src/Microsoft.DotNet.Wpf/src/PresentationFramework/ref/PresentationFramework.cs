@@ -11359,6 +11359,7 @@ namespace System.Windows.Interop
         public static readonly System.Windows.RoutedEvent DpiChangedEvent;
         protected HwndHost() { }
         public System.IntPtr Handle { get { throw null; } }
+        protected virtual bool UsesPortableVisualHosting { get { throw null; } }
         System.Windows.Interop.IKeyboardInputSite System.Windows.Interop.IKeyboardInputSink.KeyboardInputSite { get { throw null; } set { } }
         public event System.Windows.DpiChangedEventHandler DpiChanged { add { } remove { } }
         public event System.Windows.Interop.HwndSourceHook MessageHook { add { } remove { } }

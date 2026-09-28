@@ -589,6 +589,98 @@ public class PortableWindowActivationServiceTests
     }
 
     [PortableInputFact]
+    public void PointerModifiersSurviveNestedKeyAndTextInputWithoutRestoringReleasedKeys()
+    {
+        RunInUiApartment(() =>
+        {
+            using IPortablePresentationSourceHost host = PortablePresentationSourceHost.Create();
+            var source = (PresentationSource)host;
+            var root = new HitTestElement { Focusable = true };
+            host.RootVisual = root; host.SetClientSize(200, 100);
+            Keyboard.Focus(root).Should().BeSameAs(root);
+            int downs = 0, ups = 0, texts = 0, wheels = 0;
+            root.KeyUp += (_, _) =>
+            {
+                Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+                Keyboard.IsKeyDown(Key.LeftCtrl).Should().BeFalse();
+                ++ups;
+            };
+            root.TextInput += (_, _) =>
+            {
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Alt);
+                ++texts;
+            };
+            root.MouseDown += (_, _) =>
+            {
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Shift | ModifierKeys.Control);
+                PortableWindowActivationService.ProcessInput(source,
+                    new PortableInputEventArgs(PortableInputEventKind.KeyUp, key: "LeftCtrl"));
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Shift | ModifierKeys.Control);
+                PortableWindowActivationService.ProcessInput(source,
+                    new PortableInputEventArgs(PortableInputEventKind.TextInput, character: 'x', modifiers: PortableInputModifiers.Alt));
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Shift | ModifierKeys.Control);
+                Keyboard.IsKeyDown(Key.LeftCtrl).Should().BeFalse();
+                ++downs;
+            };
+            root.MouseWheel += (_, _) =>
+            {
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Control);
+                ++wheels;
+            };
+            try
+            {
+                PortableWindowActivationService.ProcessInput(source,
+                    new PortableInputEventArgs(PortableInputEventKind.KeyDown, key: "LeftCtrl", modifiers: PortableInputModifiers.Control));
+                PortableWindowActivationService.ProcessInput(source,
+                    new PortableInputEventArgs(PortableInputEventKind.MouseDown, x: 10, y: 10, button: PortableMouseButton.Left,
+                        modifiers: PortableInputModifiers.Shift | PortableInputModifiers.Control));
+                downs.Should().Be(1); ups.Should().Be(1); texts.Should().Be(1);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+                PortableWindowActivationService.ProcessInput(source,
+                    new PortableInputEventArgs(PortableInputEventKind.MouseUp, x: 10, y: 10, button: PortableMouseButton.Left));
+                PortableWindowActivationService.ProcessInput(source,
+                    new PortableInputEventArgs(PortableInputEventKind.MouseWheel, x: 10, y: 10, deltaY: 1,
+                        modifiers: PortableInputModifiers.Control));
+                wheels.Should().Be(1);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+            }
+            finally { Keyboard.ClearFocus(); Mouse.Capture(null); }
+        });
+    }
+
+    [PortableInputFact]
+    public void PointerModifierSnapshotUnwindsAfterSourceHandlerThrows()
+    {
+        RunInUiApartment(() =>
+        {
+            using IPortablePresentationSourceHost host = PortablePresentationSourceHost.Create();
+            var source = (PresentationSource)host;
+            var root = new HitTestElement();
+            host.RootVisual = root; host.SetClientSize(200, 100);
+            var failure = new InvalidOperationException("Pointer handler failed.");
+            root.MouseDown += (_, _) =>
+            {
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Shift);
+                throw failure;
+            };
+            try
+            {
+                Action deliver = () => PortableWindowActivationService.ProcessInput(source,
+                    new PortableInputEventArgs(PortableInputEventKind.MouseDown, x: 10, y: 10,
+                        button: PortableMouseButton.Left, modifiers: PortableInputModifiers.Shift));
+                deliver.Should().Throw<InvalidOperationException>().Which.Should().BeSameAs(failure);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+            }
+            finally
+            {
+                PortableWindowActivationService.ProcessInput(source,
+                    new PortableInputEventArgs(PortableInputEventKind.MouseUp, x: 10, y: 10, button: PortableMouseButton.Left));
+                Keyboard.ClearFocus(); Mouse.Capture(null);
+            }
+        });
+    }
+
+    [PortableInputFact]
     public void SystemMenuUsesTypedRegistrationAndDesktopCoordinatesWithoutSourceHandleAccess()
     {
         RunInUiApartment(() =>

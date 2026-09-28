@@ -191,7 +191,7 @@ public class PortableVisualHwndHostTests
             AddLogicalChild(Child);
         }
         protected override bool UsesPortableVisualHosting => true;
-        protected override System.Collections.IEnumerator LogicalChildren => new[] { Child }.GetEnumerator();
+        protected internal override System.Collections.IEnumerator LogicalChildren => new[] { Child }.GetEnumerator();
         protected override int VisualChildrenCount => 1;
         protected override Visual GetVisualChild(int index) => index == 0 ? Child : throw new ArgumentOutOfRangeException(nameof(index));
         protected override Size MeasureOverride(Size available)

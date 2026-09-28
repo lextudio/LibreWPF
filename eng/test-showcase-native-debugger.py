@@ -61,6 +61,8 @@ class Controls(unittest.TestCase):
             captured = {}
             def child(command, cwd, env, directory, **kwargs):
                 self.assertEqual("1", env["PROGPU_WPF_TRACE_NATIVE_LOOP"])
+                self.assertEqual("1", env["PROGPU_NATIVE_TRACE_SCENE_ENCODE"])
+                self.assertEqual("1", env["PROGPU_NATIVE_TRACE_VECTOR_CLIP"])
                 self.assertEqual(root, cwd)
                 self.assertEqual(120, kwargs["timeout"])
                 self.assertEqual(8 * 1024 * 1024, kwargs["log_limit_bytes"])
@@ -82,6 +84,8 @@ class Controls(unittest.TestCase):
                 self.assertFalse(result["qualifiesIdle"])
                 self.assertIsNone(result["error"])
                 self.assertEqual(hashes, captured["payloadSha256After"])
+                self.assertTrue(captured["nativeSceneEncodeTrace"])
+                self.assertTrue(captured["nativeVectorClipTrace"])
                 self.assertEqual({"original": "unchanged"}, environment)
                 capture.return_value.close.assert_called_once()
 
@@ -173,6 +177,8 @@ class Controls(unittest.TestCase):
             fail_replay = True
             def child(*args, **kwargs):
                 self.assertNotIn("PROGPU_WPF_TRACE_NATIVE_LOOP", args[2])
+                self.assertNotIn("PROGPU_NATIVE_TRACE_SCENE_ENCODE", args[2])
+                self.assertNotIn("PROGPU_NATIVE_TRACE_VECTOR_CLIP", args[2])
                 kwargs["outcome"].update(childProcessId=42, childExitCode=original_code, timedOut=False, cleanupErrors=[])
                 return original_code, False
             def finish(capture, metadata, code):

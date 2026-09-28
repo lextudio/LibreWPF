@@ -346,6 +346,8 @@ def run(app: Path, dotnet: str | None, evidence_parent: Path, windows_crash_dump
     require(evidence_parent.is_dir(), "Evidence parent must already exist")
     for name in CONFLICTING_MODES:
         require(os.environ.get(name) != "1", f"Conflicting Showcase mode: {name}")
+    require(os.environ.get("PROGPU_NATIVE_TRACE_COMPUTE") != "1",
+            "Native compute tracing belongs only to the separate failure replay")
     before = payload_hashes(app.parent)
     app_hash = sha256(app)
     if windows_crash_dumps:

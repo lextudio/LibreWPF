@@ -102,7 +102,8 @@ def replay(app, debugger, evidence_parent, environment, run_child, write_json, p
     report = {"schemaVersion": 1, "diagnosticOnly": True, "qualifiesIdle": False,
               "debuggerSha256": crash.digest(debugger), "timeoutSeconds": 120, "captured": False,
               "nativeLoopTrace": True, "nativeSceneEncodeTrace": True,
-              "nativeVectorClipTrace": True, "logTailLimitBytesPerStream": MAX_LOG_BYTES}
+              "nativeVectorClipTrace": True, "nativeComputeTraceRequested": True,
+              "logTailLimitBytesPerStream": MAX_LOG_BYTES}
     capture = crash.Capture(app, directory, crash.WindowsRegistry())
     # Keep raw/partial stack snapshots out of uploaded evidence and separate
     # from the strict exception-only WER directory. Publish only validated bytes.
@@ -119,6 +120,7 @@ def replay(app, debugger, evidence_parent, environment, run_child, write_json, p
         # existing traces must not perturb or qualify the original idle run.
         env["PROGPU_NATIVE_TRACE_SCENE_ENCODE"] = "1"
         env["PROGPU_NATIVE_TRACE_VECTOR_CLIP"] = "1"
+        env["PROGPU_NATIVE_TRACE_COMPUTE"] = "1"
         env["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_STATUS_PATH"] = str(directory / "application-receipt.json")
         env["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_PHASE_PATH"] = str(directory / "application-phases.jsonl")
         event_path = directory / "native-debugger-event.json"

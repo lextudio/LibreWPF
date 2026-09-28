@@ -1,5 +1,24 @@
 # Passive Showcase failure evidence
 
+## Bounded native compute attribution
+
+The failure-only replay requests `PROGPU_NATIVE_TRACE_COMPUTE=1` in its private
+child environment. ProGPU #221 supplies bounded owned-pipeline, workgroup and
+submission records for both native providers. `nativeComputeTraceRequested`
+records the request, not proof that a particular native payload emitted records.
+The ordinary acceptance run rejects an inherited enabled compute trace before
+payload inspection or child launch; its original uninstrumented result remains
+authoritative. Existing log-tail, snapshot, child and application deadlines are
+unchanged. Neither encoded work nor a queue submission proves GPU completion.
+
+WPF Build 36411654709 at `68c11d9c` remains failed at ARM64 resize. Its replay
+keeps the owner loop running and records 296 pending surface-configuration polls,
+five native MIL frames and no sixth frame after resize. The 40,047 ms normal dump
+establishes WARP compute execution, but its resource heap is absent. Do not name
+the shader from generated instruction patterns alone. The new trace must be
+consumed with the exact successful upstream producer and original application
+before attributing that work; it does not itself fix or qualify resize/idle.
+
 ## ARM64 result after real-fence surface reconfiguration
 
 Exact head `800d15fd5`, Build `36340593124`, passes the x64 native Showcase,

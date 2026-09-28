@@ -355,6 +355,21 @@ class RunnerTests(unittest.TestCase):
                 runner.write_json_new(path, {"replacement": True})
             self.assertEqual({"original": True}, json.loads(path.read_text()))
 
+    def test_compute_trace_cannot_contaminate_original_acceptance_run(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            app = root / "ProGPU.Wpf.ShowcaseApp.dll"
+            app.write_bytes(b"offline preflight input; never executed")
+            with mock.patch.dict(os.environ, {"PROGPU_NATIVE_TRACE_COMPUTE": "1"}, clear=True), \
+                    mock.patch.object(runner, "run_child") as launch, \
+                    mock.patch.object(runner, "payload_hashes") as inspect:
+                with self.assertRaisesRegex(runner.ContractError, "separate failure replay"):
+                    runner.run(app, sys.executable, root)
+                inspect.assert_not_called()
+                launch.assert_not_called()
+                self.assertEqual("1", os.environ["PROGPU_NATIVE_TRACE_COMPUTE"])
+            self.assertEqual([app], list(root.iterdir()))
+
     def test_conflicting_validation_mode_fails_before_child_launch(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -89,6 +89,7 @@ public sealed class WpfManagedProjectGraphTests
         {
             "run: bash ./eng/progpu-wpf-messagebox-modal.sh",
             "run: bash ./eng/progpu-wpf-layout-clip-source.sh",
+            "run: bash ./eng/progpu-wpf-visual-host-source.sh",
             "run: bash ./eng/progpu-wpf-popup-dismissal-source.sh",
         };
         Assert.Equal(commands, job.Split('\n').Select(line => line.Trim())

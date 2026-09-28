@@ -123,6 +123,7 @@ public class PortableVisualHwndHostTests
             using var host = new InvalidHandleHost(returnParent: false);
             Assert.Throws<InvalidOperationException>(() => Attach(source, host));
             Assert.Equal(1, host.BuildCalls);
+            Assert.Equal(0, host.DestroyCalls);
             Assert.Equal(IntPtr.Zero, host.Handle);
         });
     }
@@ -145,6 +146,7 @@ public class PortableVisualHwndHostTests
             Assert.Same(root, VisualTreeHelper.GetParent(host));
             Assert.NotEqual(IntPtr.Zero, source.Handle);
             Assert.Equal(IntPtr.Zero, host.Handle);
+            Assert.Equal(0, host.DestroyCalls);
         });
     }
 
@@ -219,12 +221,13 @@ public class PortableVisualHwndHostTests
     private sealed class InvalidHandleHost(bool returnParent) : HwndHost
     {
         public int BuildCalls { get; private set; }
+        public int DestroyCalls { get; private set; }
         protected override HandleRef BuildWindowCore(HandleRef parent)
         {
             BuildCalls++;
             return returnParent ? parent : new HandleRef(this, IntPtr.Zero);
         }
-        protected override void DestroyWindowCore(HandleRef child) { }
+        protected override void DestroyWindowCore(HandleRef child) => DestroyCalls++;
     }
 
     private sealed class ChildSourceHost : HwndHost
@@ -242,8 +245,7 @@ public class PortableVisualHwndHostTests
                 WindowStyle = 0x40000000, // WS_CHILD remains required by the child-source contract.
                 Width = 80,
                 Height = 40,
-            });
-            _source.RootVisual = Child;
+            }) { RootVisual = Child };
             return new HandleRef(this, _source.Handle);
         }
         protected override void DestroyWindowCore(HandleRef child)

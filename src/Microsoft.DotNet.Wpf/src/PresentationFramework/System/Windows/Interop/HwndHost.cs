@@ -1312,7 +1312,10 @@ namespace System.Windows.Interop
             try
             {
                 DetachPortableChildVisual();
-                if (hwnd.Handle != IntPtr.Zero)
+                // A rejected alias is not a child owned by this host. Do not
+                // let derived cleanup destroy the containing source either.
+                if (hwnd.Handle != IntPtr.Zero &&
+                    (_portableParentSource == null || hwnd.Handle != _portableParentSource.Handle))
                 {
                     DestroyWindowCore(hwnd);
                 }

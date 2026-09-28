@@ -33,7 +33,8 @@ not opt in and retains its separate portable compatibility path.
 
 The existing default portable child-source path still requires a real,
 source-owned `HwndSource`. Zero handles remain invalid. Returning the containing
-source's handle is rejected before changing its root visual.
+source's handle is rejected before changing its root visual, and is never passed
+to the derived class's child-destruction callback.
 
 ## Validation
 

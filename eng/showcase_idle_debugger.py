@@ -47,16 +47,34 @@ def load_event(path, expected_machine):
     event = json.loads(data)
     integers = {"processId": 0xFFFFFFFF, "machine": 0xFFFF, "exitCode": 0xFFFFFFFF,
                 "exceptionCode": 0xFFFFFFFF, "exceptionThreadId": 0xFFFFFFFF,
-                "exceptionAddress": 0xFFFFFFFFFFFFFFFF, "dumpError": 0xFFFFFFFF, "loopError": 0xFFFFFFFF}
+                "exceptionAddress": 0xFFFFFFFFFFFFFFFF, "dumpError": 0xFFFFFFFF, "loopError": 0xFFFFFFFF,
+                "snapshotAfterMs": 60000, "snapshotElapsedMs": 110000, "snapshotError": 0xFFFFFFFF}
     if (not isinstance(event, dict) or
             any(type(event.get(key)) is not int or not 0 <= event[key] <= limit for key, limit in integers.items()) or
-            type(event.get("schemaVersion")) is not int or event["schemaVersion"] != 1 or event.get("diagnosticOnly") is not True
+            type(event.get("schemaVersion")) is not int or event["schemaVersion"] != 2 or event.get("diagnosticOnly") is not True
             or event.get("machine") != expected_machine
             or event["processId"] == 0 or type(event.get("captured")) is not bool
             or event.get("exited") is not True or event.get("loopError") != 0
-            or (event["captured"] and (event["dumpError"] != 0 or event["exceptionCode"] == 0 or event["exceptionThreadId"] == 0))):
+            or (event["captured"] and (event["dumpError"] != 0 or event["exceptionCode"] == 0 or event["exceptionThreadId"] == 0))
+            or type(event.get("snapshotAttempted")) is not bool
+            or (event["snapshotAfterMs"] != 0 and event["snapshotAfterMs"] < 100)
+            or (event["snapshotAttempted"] and (event["snapshotAfterMs"] == 0 or event["snapshotElapsedMs"] < event["snapshotAfterMs"]))
+            or (not event["snapshotAttempted"] and (event["snapshotElapsedMs"] != 0 or event["snapshotError"] != 0))):
         raise ValueError("Debugger did not report a completed, architecture-matched owned child")
     return event
+
+
+def collect_snapshot(raw, directory, event, expected_machine):
+    report = {"kind": "live-process-MiniDumpNormal", "diagnosticOnly": True,
+              "qualifiesIdle": False, "captured": False,
+              "requestedAfterMs": event["snapshotAfterMs"], "elapsedMs": event["snapshotElapsedMs"],
+              "attempted": event["snapshotAttempted"], "dumpError": event["snapshotError"]}
+    if not event["snapshotAttempted"] or event["snapshotError"] != 0:
+        return report
+    validated = crash.validate_dump(raw, event["processId"], snapshot_machine=expected_machine)
+    destination = directory / "native-stack.dmp"
+    crash.publish_dump(raw, destination, event["processId"], validated, snapshot_machine=expected_machine)
+    return report | validated | {"captured": True, "path": destination.name}
 
 
 def correlate_exception(path, event):
@@ -86,6 +104,10 @@ def replay(app, debugger, evidence_parent, environment, run_child, write_json, p
               "nativeLoopTrace": True, "nativeSceneEncodeTrace": True,
               "nativeVectorClipTrace": True, "logTailLimitBytesPerStream": MAX_LOG_BYTES}
     capture = crash.Capture(app, directory, crash.WindowsRegistry())
+    # Keep raw/partial stack snapshots out of uploaded evidence and separate
+    # from the strict exception-only WER directory. Publish only validated bytes.
+    snapshot_root = Path(tempfile.mkdtemp(prefix="showcase-live-stack-"))
+    snapshot_path = snapshot_root / "native-stack.dmp"
     try:
         report["payloadSha256Before"] = payload_hashes(app.parent)
         if report["payloadSha256Before"] != expected_hashes:
@@ -100,7 +122,8 @@ def replay(app, debugger, evidence_parent, environment, run_child, write_json, p
         env["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_STATUS_PATH"] = str(directory / "application-receipt.json")
         env["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_PHASE_PATH"] = str(directory / "application-phases.jsonl")
         event_path = directory / "native-debugger-event.json"
-        code, timed_out = run_child([str(debugger), str(image), str(capture.dump_directory), str(event_path)],
+        code, timed_out = run_child([str(debugger), str(image), str(capture.dump_directory), str(event_path),
+                                    "--snapshot-after-ms=40000", str(snapshot_path)],
                                    app.parent, env, directory, timeout=120, outcome=report,
                                    log_limit_bytes=MAX_LOG_BYTES)
         report.update(debuggerExitCode=code, timedOut=timed_out)
@@ -112,6 +135,9 @@ def replay(app, debugger, evidence_parent, environment, run_child, write_json, p
         if event["processId"] == report["childProcessId"] or event["exitCode"] != code:
             raise ValueError("Debugger/helper child identities or exit status disagree")
         report["nativeEvent"] = event
+        if event["snapshotAfterMs"] != 40000:
+            raise ValueError("Debugger snapshot schedule differs from the requested diagnostic")
+        report["stackSnapshot"] = collect_snapshot(snapshot_path, directory, event, machine(app))
         correlated = None
         if event["captured"]:
             correlated = correlate_exception(capture.dump_directory / f"{image.name}.{event['processId']}.dmp", event)

@@ -17,10 +17,11 @@ import showcase_idle_crash as crash
 
 
 def event():
-    return dict(schemaVersion=1, diagnosticOnly=True, processId=42, machine=0xAA64,
+    return dict(schemaVersion=2, diagnosticOnly=True, processId=42, machine=0xAA64,
                 exitCode=0xC0000005, exited=True, exceptionCode=0xC0000005,
                 exceptionThreadId=7, exceptionAddress=0x12345678, captured=True,
-                dumpError=0, loopError=0)
+                dumpError=0, loopError=0, snapshotAfterMs=0, snapshotAttempted=False,
+                snapshotElapsedMs=0, snapshotError=0)
 
 
 class Controls(unittest.TestCase):
@@ -67,6 +68,8 @@ class Controls(unittest.TestCase):
                 self.assertEqual(120, kwargs["timeout"])
                 self.assertEqual(8 * 1024 * 1024, kwargs["log_limit_bytes"])
                 self.assertEqual(directory, Path(env["PROGPU_WPF_SHOWCASE_IDLE_LAYOUT_CLIP_PHASE_PATH"]).parent)
+                self.assertEqual("--snapshot-after-ms=40000", command[-2])
+                self.assertNotEqual(directory, Path(command[-1]).parent)
                 kwargs["outcome"].update(childProcessId=42, cleanupErrors=[])
                 return 1, False
             def write(path, value):
@@ -76,7 +79,8 @@ class Controls(unittest.TestCase):
                  mock.patch.object(crash, "digest", return_value="digest"), \
                  mock.patch.object(crash, "WindowsRegistry"), mock.patch.object(crash, "Capture") as capture, \
                  mock.patch.object(diagnostic, "load_event", return_value=event() | {
-                     "processId": 43, "exitCode": 1, "captured": False, "exceptionCode": 0}):
+                     "processId": 43, "exitCode": 1, "captured": False, "exceptionCode": 0,
+                     "snapshotAfterMs": 40000}):
                 capture.return_value.prepare.return_value = root / "unique.exe"
                 capture.return_value.collect.return_value = {"captured": False}
                 capture.return_value.close.return_value = []
@@ -86,6 +90,7 @@ class Controls(unittest.TestCase):
                 self.assertEqual(hashes, captured["payloadSha256After"])
                 self.assertTrue(captured["nativeSceneEncodeTrace"])
                 self.assertTrue(captured["nativeVectorClipTrace"])
+                self.assertFalse(captured["stackSnapshot"]["captured"])
                 self.assertEqual({"original": "unchanged"}, environment)
                 capture.return_value.close.assert_called_once()
 
@@ -121,12 +126,57 @@ class Controls(unittest.TestCase):
                            dict(processId=0), dict(exitCode=-1), dict(exited=False),
                            dict(loopError=5), dict(loopError=1460), dict(exited=1),
                            dict(captured="true"), dict(exceptionThreadId=0),
-                           dict(exceptionCode=0), dict(dumpError=5), dict(schemaVersion=True)):
+                           dict(exceptionCode=0), dict(dumpError=5), dict(schemaVersion=True),
+                           dict(snapshotAfterMs=True), dict(snapshotAfterMs=99), dict(snapshotAfterMs=60001),
+                           dict(snapshotAttempted=1), dict(snapshotAttempted=True),
+                           dict(snapshotElapsedMs=1), dict(snapshotError=5),
+                           dict(snapshotAfterMs=40000, snapshotAttempted=True, snapshotElapsedMs=39999)):
                 path.write_text(json.dumps(event() | change), encoding="utf-8")
                 with self.subTest(change=change), self.assertRaises(ValueError):
                     diagnostic.load_event(path, 0xAA64)
             path.write_text(" " * 4097, encoding="utf-8")
             with self.assertRaises(ValueError): diagnostic.load_event(path, 0xAA64)
+
+    def test_live_snapshot_is_not_crash_evidence_and_requires_complete_native_threads(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            path = root / "raw.dmp"
+            # Structural transport control only, not an executed Windows dump.
+            start = 32 + 4 * 12
+            identity = struct.pack("<IIIIII", 24, 1, 42, 0, 0, 0)
+            system = struct.pack("<H", 12) + bytes(54)
+            thread = bytearray(52)
+            struct.pack_into("<II", thread, 0, 1, 7)
+            context_offset = start + 24 + 56 + 52 + 112
+            struct.pack_into("<II", thread, 44, 16, context_offset)
+            module = struct.pack("<I", 1) + bytes(108)
+            data = (struct.pack("<IIIIIIQ", 0x504D444D, 0xA793, 4, 32, 0, 0, 0)
+                    + struct.pack("<III", 15, 24, start) + struct.pack("<III", 7, 56, start + 24)
+                    + struct.pack("<III", 3, 52, start + 80) + struct.pack("<III", 4, 112, start + 132)
+                    + identity + system + thread + module + bytes(16))
+            path.write_bytes(data)
+            snapshot_event = event() | dict(snapshotAfterMs=100, snapshotAttempted=True,
+                snapshotElapsedMs=103, captured=False, exceptionCode=0, exceptionThreadId=0, exitCode=17)
+            with self.assertRaises(ValueError): crash.validate_dump(path, 42)
+            report = diagnostic.collect_snapshot(path, root, snapshot_event, 0xAA64)
+            self.assertTrue(report["captured"])
+            self.assertFalse(report["qualifiesIdle"])
+            self.assertEqual(data, (root / "native-stack.dmp").read_bytes())
+            with self.assertRaises(FileExistsError): diagnostic.collect_snapshot(path, root, snapshot_event, 0xAA64)
+            for pid, machine in ((43, 0xAA64), (42, 0x8664), (42, 0xA641)):
+                with self.subTest(pid=pid, machine=machine), self.assertRaises(ValueError):
+                    crash.validate_dump(path, pid, snapshot_machine=machine)
+            for offset, value in ((32, 6), (start + 80, 0), (start + 80, 4097),
+                                  (start + 124, 0), (start + 128, len(data)), (start + 132, 0)):
+                invalid = bytearray(data)
+                struct.pack_into("<I", invalid, offset, value)
+                path.write_bytes(invalid)
+                with self.subTest(offset=offset, value=value), self.assertRaises(ValueError):
+                    crash.validate_dump(path, 42, snapshot_machine=0xAA64)
+            for changes in (dict(snapshotAttempted=False), dict(snapshotError=5)):
+                with mock.patch.object(crash, "validate_dump") as validate:
+                    self.assertFalse(diagnostic.collect_snapshot(path, root, snapshot_event | changes, 0xAA64)["captured"])
+                    validate.assert_not_called()
 
     def test_exit_event_requires_continuation_and_actual_process_termination(self):
         source = (Path(__file__).parent / "native" / "showcase-native-debugger.cpp").read_text()
@@ -221,7 +271,8 @@ def native_controls(directory, architecture):
         raise RuntimeError("Native helper/fixture PE architecture mismatch")
     subprocess.run([str(helper), "--test-callbacks"], timeout=5, check=True)
     print(f"PASS native {architecture} debugger: callback contracts", flush=True)
-    for mode, expected_exit, captures in (("handled", 0, False), ("exit", 17, False), ("access-violation", 0xC0000005, True)):
+    for mode, expected_exit, captures in (("handled", 0, False), ("exit", 17, False),
+                                        ("access-violation", 0xC0000005, True), ("live-stack", 17, False)):
         with tempfile.TemporaryDirectory(prefix="showcase-debugger-control-") as temp:
             root = Path(temp)
             app = root / f"ShowcaseIdle-{uuid.uuid4().hex}.exe"
@@ -229,7 +280,12 @@ def native_controls(directory, architecture):
             raw = root / "raw"
             raw.mkdir()
             receipt = root / "event.json"
-            result = subprocess.run([str(helper), str(app), str(raw), str(receipt)],
+            command = [str(helper), str(app), str(raw), str(receipt)]
+            if mode == "live-stack":
+                snapshot_raw = root / "stack-raw"
+                snapshot_raw.mkdir()
+                command += ["--snapshot-after-ms=100", str(snapshot_raw / "native-stack.dmp")]
+            result = subprocess.run(command,
                 env=os.environ | {"SHOWCASE_DEBUGGER_FIXTURE": mode}, timeout=20, capture_output=True)
             # No sleep, retry, or dump-validation work before testing image release.
             app.unlink()
@@ -244,6 +300,10 @@ def native_controls(directory, architecture):
                 print(f"Validated native {architecture} dump: {json.dumps(report, sort_keys=True)}", flush=True)
             elif dumps or value["exceptionCode"] != 0:
                 raise RuntimeError("Handled/ordinary exit created false crash evidence")
+            if mode == "live-stack":
+                report = diagnostic.collect_snapshot(snapshot_raw / "native-stack.dmp", root, value, expected)
+                if not report["captured"]: raise RuntimeError("Owned live thread was not captured")
+                print(f"Validated native {architecture} live stack: {json.dumps(report, sort_keys=True)}", flush=True)
             print(f"PASS native {architecture} debugger: {mode}", flush=True)
 
 

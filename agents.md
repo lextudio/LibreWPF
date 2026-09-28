@@ -47,6 +47,11 @@ first and never replace its result. Launch only a fresh owned apphost, verify na
 architecture, retain OS exception handling and capture a bounded normal dump from
 the real stopped thread. Correlate PID/thread/code/address before publication;
 debugger controls and instrumented replays never qualify the original idle gate.
+An optional live-stack snapshot belongs only to that failed-run replay and the
+same owned child. Keep its exception-free normal dump, raw directory and receipt
+separate from crash evidence; require intrinsic architecture, PID and complete
+thread contexts before publication. Never inject a breakpoint, infer an atomic
+frame, extend the original deadlines or enable it in the acceptance run.
 An ordinary child failure may also receive one diagnostic native-loop replay only
 after unchanged payload identity and the original nonzero exit are established.
 Retain bounded stdout/stderr tails with explicit discarded-byte counts, drain both

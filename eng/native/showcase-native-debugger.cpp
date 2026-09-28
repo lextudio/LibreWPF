@@ -88,6 +88,20 @@ bool callback_controls() {
     return check_dump_budget(&expired, &input, &output) && output.CheckCancel && output.Cancel;
 }
 
+DWORD write_minidump(HANDLE process, DWORD pid, const std::filesystem::path& path,
+                     MINIDUMP_EXCEPTION_INFORMATION* exception) {
+    handle file(CreateFileW(path.c_str(), GENERIC_WRITE | GENERIC_READ, 0, nullptr,
+                            CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr));
+    if (!file.valid()) return GetLastError();
+    dump_budget budget{file.value, GetTickCount64() + 5000};
+    MINIDUMP_CALLBACK_INFORMATION callback{check_dump_budget, &budget};
+    if (!MiniDumpWriteDump(process, pid, file.value, MiniDumpNormal,
+                           exception, nullptr, &callback)) return GetLastError();
+    LARGE_INTEGER size{};
+    if (!GetFileSizeEx(file.value, &size)) return GetLastError();
+    return size.QuadPart >= 32 && size.QuadPart <= maximum_dump_bytes ? ERROR_SUCCESS : ERROR_FILE_TOO_LARGE;
+}
+
 DWORD write_dump(HANDLE process, const DEBUG_EVENT& event, const std::filesystem::path& path) {
     handle thread(OpenThread(THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION, FALSE, event.dwThreadId));
     if (!thread.valid()) return GetLastError();
@@ -102,16 +116,7 @@ DWORD write_dump(HANDLE process, const DEBUG_EVENT& event, const std::filesystem
     if (record.ExceptionRecord != nullptr) return ERROR_NOT_SUPPORTED;
     EXCEPTION_POINTERS pointers{&record, &context};
     MINIDUMP_EXCEPTION_INFORMATION exception{event.dwThreadId, &pointers, FALSE};
-    handle file(CreateFileW(path.c_str(), GENERIC_WRITE | GENERIC_READ, 0, nullptr,
-                            CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr));
-    if (!file.valid()) return GetLastError();
-    dump_budget budget{file.value, GetTickCount64() + 5000};
-    MINIDUMP_CALLBACK_INFORMATION callback{check_dump_budget, &budget};
-    if (!MiniDumpWriteDump(process, event.dwProcessId, file.value, MiniDumpNormal,
-                           &exception, nullptr, &callback)) return GetLastError();
-    LARGE_INTEGER size{};
-    if (!GetFileSizeEx(file.value, &size)) return GetLastError();
-    return size.QuadPart >= 32 && size.QuadPart <= maximum_dump_bytes ? ERROR_SUCCESS : ERROR_FILE_TOO_LARGE;
+    return write_minidump(process, event.dwProcessId, path, &exception);
 }
 
 bool owned_name(const std::filesystem::path& app) {
@@ -123,10 +128,16 @@ bool owned_name(const std::filesystem::path& app) {
 }
 
 int run(const std::filesystem::path& app, const std::filesystem::path& raw,
-        const std::filesystem::path& receipt) {
+        const std::filesystem::path& receipt, DWORD snapshot_after_ms,
+        const std::filesystem::path& snapshot) {
     if (!app.is_absolute() || !raw.is_absolute() || !receipt.is_absolute() ||
         !owned_name(app) || !std::filesystem::is_regular_file(app) ||
         !std::filesystem::is_directory(raw) || !std::filesystem::is_empty(raw)) return 2;
+    if (snapshot_after_ms != 0 &&
+        (!snapshot.is_absolute() || snapshot.filename() != L"native-stack.dmp" ||
+         !std::filesystem::is_directory(snapshot.parent_path()) ||
+         !std::filesystem::is_empty(snapshot.parent_path()) ||
+         std::filesystem::equivalent(snapshot.parent_path(), raw))) return 2;
     handle report(CreateFileW(receipt.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
                               FILE_ATTRIBUTE_NORMAL, nullptr));
     if (!report.valid()) return 2;
@@ -157,8 +168,20 @@ int run(const std::filesystem::path& app, const std::filesystem::path& raw,
     DWORD exit_code = 124, exception_code = 0, thread_id = 0, dump_error = 0, loop_error = 0;
     std::uintptr_t exception_address = 0;
     bool captured = false, exited = false, exit_event_seen = false, loader_breakpoint = false;
+    bool snapshot_attempted = false;
+    DWORD snapshot_error = 0;
+    ULONGLONG snapshot_elapsed_ms = 0;
     const ULONGLONG deadline = GetTickCount64() + child_deadline_ms;
     while (!exit_event_seen && GetTickCount64() < deadline) {
+        const auto elapsed = GetTickCount64() - (deadline - child_deadline_ms);
+        if (snapshot_after_ms != 0 && !snapshot_attempted && elapsed >= snapshot_after_ms) {
+            snapshot_attempted = true;
+            snapshot_elapsed_ms = elapsed;
+            // External, live-process snapshot, not an exception. Never inject a
+            // breakpoint, change a register or call into the renderer. DbgHelp
+            // runs only here on the debugger thread, outside a pending event.
+            snapshot_error = write_minidump(process.value, created.dwProcessId, snapshot, nullptr);
+        }
         DEBUG_EVENT event{};
         if (!WaitForDebugEventEx(&event, 100)) {
             const DWORD error = GetLastError();
@@ -223,13 +246,17 @@ int run(const std::filesystem::path& app, const std::filesystem::path& raw,
         }
     }
     // Closing our job also retires the child if the debugger deadline/API failed.
-    const std::string json = "{\"schemaVersion\":1,\"diagnosticOnly\":true,\"processId\":" +
+    const std::string json = "{\"schemaVersion\":2,\"diagnosticOnly\":true,\"processId\":" +
         std::to_string(created.dwProcessId) + ",\"machine\":" + std::to_string(machine) +
         ",\"exitCode\":" + std::to_string(exit_code) + ",\"exited\":" + (exited ? "true" : "false") +
         ",\"exceptionCode\":" + std::to_string(exception_code) + ",\"exceptionThreadId\":" +
         std::to_string(thread_id) + ",\"exceptionAddress\":" + std::to_string(exception_address) +
         ",\"captured\":" + (captured ? "true" : "false") + ",\"dumpError\":" +
-        std::to_string(dump_error) + ",\"loopError\":" + std::to_string(loop_error) + "}\n";
+        std::to_string(dump_error) + ",\"loopError\":" + std::to_string(loop_error) +
+        ",\"snapshotAfterMs\":" + std::to_string(snapshot_after_ms) +
+        ",\"snapshotAttempted\":" + (snapshot_attempted ? "true" : "false") +
+        ",\"snapshotElapsedMs\":" + std::to_string(snapshot_elapsed_ms) +
+        ",\"snapshotError\":" + std::to_string(snapshot_error) + "}\n";
     DWORD written = 0;
     if (json.size() > 4096) return 2;
     if (!WriteFile(report.value, json.data(), static_cast<DWORD>(json.size()), &written, nullptr) ||
@@ -240,7 +267,19 @@ int run(const std::filesystem::path& app, const std::filesystem::path& raw,
 
 int wmain(int argc, wchar_t** argv) {
     if (argc == 2 && std::wstring(argv[1]) == L"--test-callbacks") return callback_controls() ? 0 : 1;
-    if (argc != 4) return 2;
-    try { return run(argv[1], argv[2], argv[3]); }
+    if (argc != 4 && argc != 6) return 2;
+    try {
+        DWORD delay = 0;
+        if (argc == 6) {
+            const std::wstring argument(argv[4]);
+            const std::wstring prefix = L"--snapshot-after-ms=";
+            if (!argument.starts_with(prefix)) return 2;
+            const auto value = argument.substr(prefix.size());
+            if (value.empty() || value.size() > 5 || value.find_first_not_of(L"0123456789") != std::wstring::npos) return 2;
+            delay = std::stoul(value);
+            if (delay < 100 || delay > 60000) return 2;
+        }
+        return run(argv[1], argv[2], argv[3], delay, argc == 6 ? argv[5] : L"");
+    }
     catch (...) { return 2; } // Job/handle scope still releases the owned child.
 }

@@ -47,6 +47,38 @@ from the failed `a73f6f344` Build may be staged as qualified release inputs.
 
 ## Diagnostic scope
 
+### Pending-queue localization
+
+At `36397d1549c67d76db6e3bc20af395cba4d16c7f`,
+[Build 36389031885](https://github.com/wieslawsoltes/LibreWPF/actions/runs/36389031885)
+passes the x64 application but fails ARM64's passive resize. Both the original
+and the diagnostic child exit normally with code 1; no native exception was
+captured. The replay repeatedly reaches the render boundary for 884×601, while
+the native queue is pending and the last presented frame remains 744×521.
+This excludes a lost resize request in that replay, but does not identify the
+unfinished GPU operation. CPU encode-stage times are not GPU completion times.
+
+The failure-only replay now requests one external live-process `MiniDumpNormal`
+at 40 seconds. It uses only the debugger's owned child handle, without injecting
+a breakpoint, calling renderer APIs or extending the existing 110/120-second
+bounds. The five-second/32-MiB dump cancellation limits still apply. A child
+which exits sooner produces no snapshot. This observation can perturb the
+replay; it never runs in or qualifies the original acceptance test.
+
+Live stacks are explicitly distinct from crashes: `ExceptionParam=nullptr`, a
+separate raw directory, and `stackSnapshot` receipt with actual elapsed time,
+PID, architecture and hash. Publication requires no exception stream, complete
+thread contexts/module tables, matching intrinsic architecture, bounded normal
+dump flags and exact PID. The existing exception dump validator still requires
+its unique, correlated exception. Partial/raw snapshots stay outside uploaded
+evidence. Live snapshots do not claim an atomic frame or prove which queued
+command owns a sampled thread; correlate them with the replay's phase journal.
+
+The installed-tool Windows controls include an owned sleeping fixture whose
+ordinary exit must remain 17, with a valid live stack and no false crash dump.
+Both architecture jobs exercise it before publishing the diagnostic helper.
+This adds failure localization, not a rendering fix or release qualification.
+
 This is diagnostic localization, not a resize fix or native idle qualification.
 The original native presentation assertions, four exact-zero intervals,
 30-second post-Loaded first-frame bound and 120-second child deadline remain

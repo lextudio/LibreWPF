@@ -38,7 +38,7 @@ def bounded_dump_digest(path, expected_size):
     return checksum.hexdigest()
 
 
-def validate_dump(path, expected_pid):
+def validate_dump(path, expected_pid, *, snapshot_machine=None):
     size = path.stat().st_size
     if path.is_symlink() or not path.is_file() or not 32 <= size <= MAX_DUMP_BYTES:
         raise ValueError("Crash dump is not a bounded regular minidump")
@@ -54,8 +54,35 @@ def validate_dump(path, expected_pid):
     if any(offset + length > size for _, length, offset in entries):
         raise ValueError("Truncated crash dump stream")
     exceptions = [length for kind, length, _ in entries if kind == 6]
-    if len(exceptions) != 1 or exceptions[0] < 168:
-        raise ValueError("Crash dump has no unique exception stream")
+    if snapshot_machine is None:
+        if len(exceptions) != 1 or exceptions[0] < 168:
+            raise ValueError("Crash dump has no unique exception stream")
+    elif exceptions or snapshot_machine not in (0xAA64, 0x8664):
+        raise ValueError("Live snapshot must be exception-free and architecture-qualified")
+    else:
+        def unique(kind, minimum):
+            found = [(length, offset) for entry_kind, length, offset in entries if entry_kind == kind]
+            if len(found) != 1 or found[0][0] < minimum or found[0][1] < table + count * 12:
+                raise ValueError("Live snapshot is missing a complete unique structural stream")
+            return found[0]
+        _, system_offset = unique(7, 56)
+        with path.open("rb") as stream:
+            stream.seek(system_offset)
+            architecture, = struct.unpack("<H", stream.read(2))
+            if architecture != {0xAA64: 12, 0x8664: 9}[snapshot_machine]:
+                raise ValueError("Live snapshot intrinsic architecture does not match its child")
+            for kind, record_size in ((3, 48), (4, 108)):
+                length, offset = unique(kind, 4)
+                stream.seek(offset)
+                records, = struct.unpack("<I", stream.read(4))
+                if not 1 <= records <= 4096 or 4 + records * record_size > length:
+                    raise ValueError("Live snapshot thread/module table is incomplete")
+                if kind == 3:
+                    for _ in range(records):
+                        record = stream.read(record_size)
+                        context_size, context_offset = struct.unpack_from("<II", record, 40)
+                        if context_size == 0 or context_offset < table + count * 12 or context_offset + context_size > size:
+                            raise ValueError("Live snapshot contains an invalid thread context")
     if any(kind == 9 for kind, _, _ in entries):
         raise ValueError("Full-memory stream is not admitted")
     if flags == AVX_CONTEXT_FLAG:
@@ -83,7 +110,7 @@ def validate_dump(path, expected_pid):
                 streamCount=count, processId=pid)
 
 
-def publish_dump(source, destination, expected_pid, report):
+def publish_dump(source, destination, expected_pid, report, *, snapshot_machine=None):
     # Stage outside the artifact tree, bounding actual reads, not only stat.
     # Link publication is atomic and fails if destination exists or volumes differ.
     staged = source.with_name(f"validated-{uuid.uuid4().hex}.dmp")
@@ -97,7 +124,7 @@ def publish_dump(source, destination, expected_pid, report):
                 if copied > MAX_DUMP_BYTES or copied > report["bytes"]:
                     raise ValueError("Crash dump grew beyond its validated byte budget")
                 output.write(chunk)
-        if validate_dump(staged, expected_pid) != report:
+        if validate_dump(staged, expected_pid, snapshot_machine=snapshot_machine) != report:
             raise ValueError("Retained crash dump bytes changed")
         os.link(staged, destination)  # Never overwrite caller-owned evidence.
     finally:

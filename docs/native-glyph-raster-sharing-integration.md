@@ -1,8 +1,14 @@
 # Exact native glyph raster sharing integration
 
-This graph pins ProGPU `60e1f7bab521e377b2109af411f0443856046bd3` and
-LibreWinForms `64ff6b43791d2bf23bfee2ba1401f2b8f4bfd9a4`. Forms pins the
+This graph pins ProGPU `2f47c475cf9143e1943452b40885c37c2de3e849` and
+LibreWinForms `f9fb5413273812da06d3edb8d94da320fa97082b`. Forms pins the
 same ProGPU commit, preserving canonical source-graph alignment.
+
+The producer pin includes the atlas-growth fixture correction after Build
+`36459867439` failed. Distinct unused control-point bytes preserve rendered
+coverage while requiring separate raster jobs. Existing growth, warm replay and
+pixel checks remain, with an added exact cold job-count assertion. Five local
+execution-mode passes do not substitute for the new complete producer Build.
 
 ProGPU shares first-owner raster tiles for bit-identical outline bounds, scale,
 phase and all selected segment bytes, including duplicate ranges at different

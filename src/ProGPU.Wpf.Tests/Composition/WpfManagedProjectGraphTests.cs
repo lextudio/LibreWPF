@@ -14,9 +14,9 @@ public sealed class WpfManagedProjectGraphTests
 
     private static void AssertWindowsNativePassiveIdleWorkflow(string workflow)
     {
-        Assert.Equal(11, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        // Eleven checkout refs plus nineteen exact-head artifact producer/consumer names.
-        Assert.Equal(30, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(12, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        // Twelve checkout refs plus nineteen exact-head artifact producer/consumer names.
+        Assert.Equal(31, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
         foreach (string architecture in new[] { "x64", "arm64" })
         {
             string jobName = architecture == "x64" ? "windows-native-mil-showcase" : "windows-arm64-native-mil-showcase";
@@ -49,8 +49,8 @@ public sealed class WpfManagedProjectGraphTests
     public void ShowcaseFailureArchiveStaysSeparateFromQualifiedPackages()
     {
         string workflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
-        Assert.Equal(11, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        Assert.Equal(30, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(12, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(31, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
         Assert.Equal(19, workflow.Split('\n').Count(line =>
             line.TrimStart().StartsWith("name: ", StringComparison.Ordinal) &&
             line.Contains("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringComparison.Ordinal)));
@@ -67,6 +67,42 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("if: always()", upload, StringComparison.Ordinal);
         Assert.Contains("name: showcase-failure-diagnostics-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", upload, StringComparison.Ordinal);
         Assert.Contains("path: artifacts/showcase-failure/**", upload, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PortableSourceContractsRunIndependentlyWithOriginalOrderedChecks()
+    {
+        string workflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
+        int start = workflow.IndexOf("  portable-source-contracts:\n", StringComparison.Ordinal);
+        Assert.True(start >= 0, "Missing independent portable source contract job.");
+        int end = workflow.IndexOf("\n  windows-managed-runtime:", start, StringComparison.Ordinal);
+        Assert.True(end > start, "Missing job boundary after portable source contracts.");
+        string job = workflow[start..end];
+        Assert.Contains("runs-on: ubuntu-24.04", job, StringComparison.Ordinal);
+        Assert.Contains("timeout-minutes: 45", job, StringComparison.Ordinal);
+        Assert.Contains("uses: actions/checkout@v4", job, StringComparison.Ordinal);
+        Assert.Contains("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", job, StringComparison.Ordinal);
+        Assert.Contains("submodules: recursive", job, StringComparison.Ordinal);
+        Assert.Contains("uses: actions/setup-dotnet@v4", job, StringComparison.Ordinal);
+        Assert.Contains("global-json-file: global.json", job, StringComparison.Ordinal);
+        string[] commands =
+        {
+            "run: bash ./eng/progpu-wpf-messagebox-modal.sh",
+            "run: bash ./eng/progpu-wpf-layout-clip-source.sh",
+            "run: bash ./eng/progpu-wpf-popup-dismissal-source.sh",
+        };
+        Assert.Equal(commands, job.Split('\n').Select(line => line.Trim())
+            .Where(line => line.StartsWith("run:", StringComparison.Ordinal)).ToArray());
+        foreach (string command in commands)
+        {
+            Assert.Equal(1, workflow.Split(command, StringSplitOptions.None).Length - 1);
+        }
+        AssertGuardBefore(job, "uses: actions/checkout@v4", "uses: actions/setup-dotnet@v4");
+        AssertGuardBefore(job, "uses: actions/setup-dotnet@v4", commands[0]);
+        Assert.DoesNotContain("needs:", job, StringComparison.Ordinal);
+        Assert.DoesNotContain("if:", job, StringComparison.Ordinal);
+        Assert.DoesNotContain("continue-on-error:", job, StringComparison.Ordinal);
+        Assert.DoesNotContain("actions/download-artifact", job, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -13495,6 +13531,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PROGPU_WPF_QUALIFIED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
         AssertWindowsNativePassiveIdleWorkflow(sdkCiWorkflow);
         ShowcaseFailureArchiveStaysSeparateFromQualifiedPackages();
+        PortableSourceContractsRunIndependentlyWithOriginalOrderedChecks();
         int retainedJobStart = sdkCiWorkflow.IndexOf("  retained-invalidation:\n", StringComparison.Ordinal);
         Assert.True(retainedJobStart >= 0, "The fast retained-invalidation job must be present.");
         int retainedJobEnd = sdkCiWorkflow.IndexOf("\n  canonical-winforms-integration:", retainedJobStart, StringComparison.Ordinal);

@@ -1,12 +1,14 @@
 # Native pipeline startup integration
 
-This graph pins ProGPU `9e471863b351770ad59a23bdfe79579bb3c3a9f2` and
+The preceding graph pinned ProGPU `9e471863b351770ad59a23bdfe79579bb3c3a9f2` and
 LibreWinForms `906953405013f987baa88ffc968204dd6412a2ce`. LibreWinForms pins
 that same ProGPU revision. The integration carries original ProGPU all-line,
 operation-zero path raster specialization in both native providers and managed
 rendering, exact managed single-sample pipeline reuse, opt-in pipeline timing,
 and the Forms original-grid source/painting changes. No WPF-local rendering
 algorithm or source workaround is added.
+The subsequent aligned source graph is recorded in
+[native compute trace integration](native-compute-trace-integration.md).
 
 The specialization retains the canonical winding/sampling/packing algorithm,
 with full curved/Boolean paths for all other inputs. Managed cache reuse retains

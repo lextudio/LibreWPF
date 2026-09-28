@@ -1,5 +1,10 @@
 # Agent Guidance
 
+Native compute dispatch tracing belongs only to the separate failure replay.
+Reject its enabled opt-in in original idle acceptance, preserve the caller's
+environment and report requested tracing separately from emitted records.
+Encoding/submission logs never qualify completion or the original failed run.
+
 Linux glyph shader qualification must execute the actual compute atlas on the
 selected window device and read coverage for every requested glyph, including
 after the device owner closes. Empty presented windows do not compile lazy glyph

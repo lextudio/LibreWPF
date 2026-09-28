@@ -646,6 +646,11 @@ frozen before any composition lock, channel or media-system ownership. Preserve
 that choice across shutdown/device recovery and reject late backend switches.
 Extend this typed policy to remaining MIL resource consumers; do not equate a
 portable transport selection with completed Windows package support.
+Portable input modifiers belong to synchronous event delivery, including nested
+pointer/key/text callbacks. Scope the aggregate without rewriting physical key or
+toggle state; never resurrect a key released during a nested callback. Keep native
+Windows modifier queries unchanged and do not invent left/right identity from
+aggregate flags. See docs/portable-input-modifiers.md.
 InputManager must freeze this same choice before creating keyboard/mouse devices.
 Portable raw reports require host-owned device state on Windows too; do not use
 Win32 asynchronous state for those reports or promote their keys through WPF TSF

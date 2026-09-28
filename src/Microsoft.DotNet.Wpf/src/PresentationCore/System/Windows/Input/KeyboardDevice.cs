@@ -173,26 +173,28 @@ namespace System.Windows.Input
         /// </summary>
         public ModifierKeys Modifiers
         {
-            get
+            get => GetModifiers();
+        }
+
+        // Portable input can carry an event-time aggregate without rewriting the
+        // physical key cache. Native Windows devices retain the original query.
+        internal virtual ModifierKeys GetModifiers()
+        {
+            ModifierKeys modifiers = ModifierKeys.None;
+            if(IsKeyDown_private(Key.LeftAlt) || IsKeyDown_private(Key.RightAlt))
             {
-//                 VerifyAccess();
-
-                ModifierKeys modifiers = ModifierKeys.None;
-                if(IsKeyDown_private(Key.LeftAlt) || IsKeyDown_private(Key.RightAlt))
-                {
-                    modifiers |= ModifierKeys.Alt;
-                }
-                if(IsKeyDown_private(Key.LeftCtrl) || IsKeyDown_private(Key.RightCtrl))
-                {
-                    modifiers |= ModifierKeys.Control;
-                }
-                if(IsKeyDown_private(Key.LeftShift) || IsKeyDown_private(Key.RightShift))
-                {
-                    modifiers |= ModifierKeys.Shift;
-                }
-
-                return modifiers;
+                modifiers |= ModifierKeys.Alt;
             }
+            if(IsKeyDown_private(Key.LeftCtrl) || IsKeyDown_private(Key.RightCtrl))
+            {
+                modifiers |= ModifierKeys.Control;
+            }
+            if(IsKeyDown_private(Key.LeftShift) || IsKeyDown_private(Key.RightShift))
+            {
+                modifiers |= ModifierKeys.Shift;
+            }
+
+            return modifiers;
         }
 
         /// <summary>
@@ -1069,4 +1071,3 @@ namespace System.Windows.Input
         private readonly TextServicesManager _TsfManager;
 }
 }
-

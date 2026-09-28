@@ -419,6 +419,13 @@ namespace System.Windows
                 return true;
 
             InputManager inputManager = InputManager.UnsecureCurrent;
+            // Keep each event's modifier snapshot through source callbacks. A
+            // nested keyboard/text event gets its own snapshot; unwinding only
+            // restores the outer aggregate, never the physical key-state cache.
+            using PortableKeyboardDevice.EventModifierScope modifiers =
+                inputManager.PrimaryKeyboardDevice is PortableKeyboardDevice keyboard
+                    ? keyboard.PushEventModifiers(ToEventModifierKeys(input.Modifiers))
+                    : default;
             if (IsMouseInputKind(input.Kind) && Mouse.Captured != null &&
                 !IsModalInputElementAllowed(Mouse.Captured))
                 return true;
@@ -860,6 +867,17 @@ namespace System.Windows
             SetModifierKeyState(keyboardDevice, Key.RightAlt, modifiers, PortableInputModifiers.Alt);
             SetModifierKeyState(keyboardDevice, Key.LWin, modifiers, PortableInputModifiers.Super);
             SetModifierKeyState(keyboardDevice, Key.RWin, modifiers, PortableInputModifiers.Super);
+        }
+
+        private static ModifierKeys ToEventModifierKeys(PortableInputModifiers modifiers)
+        {
+            ModifierKeys result = ModifierKeys.None;
+            if ((modifiers & PortableInputModifiers.Alt) != 0) result |= ModifierKeys.Alt;
+            if ((modifiers & PortableInputModifiers.Control) != 0) result |= ModifierKeys.Control;
+            if ((modifiers & PortableInputModifiers.Shift) != 0) result |= ModifierKeys.Shift;
+            // Keyboard.Modifiers excludes the Windows/Super key on the native
+            // source path too. Host Command-to-Control normalization is separate.
+            return result;
         }
 
         private static void SetModifierKeyState(

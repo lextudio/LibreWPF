@@ -102,8 +102,8 @@ jobs:
     timeout-minutes: 45
 
     # These contracts build their own original source test project; they do not
-    # consume the canonical WinForms package closure. Keep the three checks in
-    # order so layout clips and popups reuse that exact MessageBox test build.
+    # consume the canonical WinForms package closure. Keep the checks in order
+    # so input, layout clips and popups reuse that exact MessageBox test build.
     # A failure still fails this Build; no successful-producer gate is relaxed.
     steps:
       - name: Checkout aligned source graph
@@ -119,6 +119,9 @@ jobs:
 
       - name: Validate public MessageBox source modality
         run: bash ./eng/progpu-wpf-messagebox-modal.sh
+
+      - name: Validate source event-time input modifiers
+        run: bash ./eng/progpu-wpf-input-modifiers-source.sh
 
       - name: Validate actual source layout clip producers
         run: bash ./eng/progpu-wpf-layout-clip-source.sh

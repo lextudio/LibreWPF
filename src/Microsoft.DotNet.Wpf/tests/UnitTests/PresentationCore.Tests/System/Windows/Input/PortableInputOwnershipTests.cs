@@ -65,6 +65,96 @@ public sealed class PortableInputOwnershipTests
     }
 
     [PortableInputFact]
+    public void EventModifiersDoNotRewritePhysicalKeysOrToggleState()
+    {
+        RunInUiApartment(() =>
+        {
+            var keyboard = Assert.IsType<PortableKeyboardDevice>(InputManager.Current.PrimaryKeyboardDevice);
+            keyboard.SetKeyStates(Key.RightCtrl, KeyStates.Down);
+            keyboard.SetKeyStates(Key.A, KeyStates.Down);
+            keyboard.SetKeyStates(Key.CapsLock, KeyStates.Toggled);
+            using (keyboard.PushEventModifiers(ModifierKeys.Shift | ModifierKeys.Alt))
+            {
+                Assert.Equal(ModifierKeys.Shift | ModifierKeys.Alt, Keyboard.Modifiers);
+                Assert.True(keyboard.IsKeyDown(Key.RightCtrl));
+                Assert.False(keyboard.IsKeyDown(Key.LeftShift)); // Aggregate input has no side identity.
+                Assert.True(keyboard.IsKeyDown(Key.A));
+                Assert.True(keyboard.IsKeyToggled(Key.CapsLock));
+            }
+            Assert.Equal(ModifierKeys.Control, Keyboard.Modifiers);
+            Assert.True(keyboard.IsKeyToggled(Key.CapsLock));
+        });
+    }
+
+    [PortableInputFact]
+    public void NestedEventModifiersRestoreSnapshotsWithoutResurrectingReleasedKeys()
+    {
+        RunInUiApartment(() =>
+        {
+            var keyboard = Assert.IsType<PortableKeyboardDevice>(InputManager.Current.PrimaryKeyboardDevice);
+            keyboard.SetKeyStates(Key.LeftCtrl, KeyStates.Down);
+            using (keyboard.PushEventModifiers(ModifierKeys.Shift))
+            {
+                using (keyboard.PushEventModifiers(ModifierKeys.None))
+                {
+                    keyboard.SetKeyStates(Key.LeftCtrl, KeyStates.None);
+                    Assert.Equal(ModifierKeys.None, Keyboard.Modifiers);
+                }
+                Assert.Equal(ModifierKeys.Shift, Keyboard.Modifiers);
+                Assert.False(keyboard.IsKeyDown(Key.LeftCtrl));
+            }
+            Assert.Equal(ModifierKeys.None, Keyboard.Modifiers);
+        });
+    }
+
+    [PortableInputFact]
+    public void EventModifierScopesRestoreOnFailureAndRejectUnknownFlagsAtomically()
+    {
+        RunInUiApartment(() =>
+        {
+            var keyboard = Assert.IsType<PortableKeyboardDevice>(InputManager.Current.PrimaryKeyboardDevice);
+            keyboard.SetKeyStates(Key.RightAlt, KeyStates.Down);
+            Action fail = () =>
+            {
+                using var scope = keyboard.PushEventModifiers(ModifierKeys.Control);
+                Assert.Throws<ArgumentOutOfRangeException>(() => keyboard.PushEventModifiers((ModifierKeys)16));
+                Assert.Equal(ModifierKeys.Control, Keyboard.Modifiers);
+                throw new InvalidOperationException("Source callback failed.");
+            };
+            Assert.Throws<InvalidOperationException>(fail);
+            Assert.Equal(ModifierKeys.Alt, Keyboard.Modifiers);
+        });
+    }
+
+    [PortableInputFact]
+    public void EventModifierScopesRejectOutOfOrderAndStaleRelease()
+    {
+        RunInUiApartment(() =>
+        {
+            var keyboard = Assert.IsType<PortableKeyboardDevice>(InputManager.Current.PrimaryKeyboardDevice);
+            var outer = keyboard.PushEventModifiers(ModifierKeys.Control);
+            var stale = outer;
+            var inner = keyboard.PushEventModifiers(ModifierKeys.Shift);
+            try { outer.Dispose(); Assert.Fail("Out-of-order release was accepted."); }
+            catch (InvalidOperationException) { }
+            Assert.Equal(ModifierKeys.Shift, Keyboard.Modifiers);
+            inner.Dispose();
+            Assert.Equal(ModifierKeys.Control, Keyboard.Modifiers);
+            outer.Dispose();
+            outer.Dispose();
+            using (keyboard.PushEventModifiers(ModifierKeys.Alt))
+            {
+                try { stale.Dispose(); Assert.Fail("Stale release was accepted."); }
+                catch (InvalidOperationException) { }
+                Assert.Equal(ModifierKeys.Alt, Keyboard.Modifiers);
+            }
+            Assert.Equal(ModifierKeys.None, Keyboard.Modifiers);
+            PortableKeyboardDevice.EventModifierScope empty = default;
+            empty.Dispose();
+        });
+    }
+
+    [PortableInputFact]
     public void PortableFocusDoesNotAssociateWin32ContextsOrPretendToApplyPreferences()
     {
         RunInUiApartment(() =>

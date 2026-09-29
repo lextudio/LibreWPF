@@ -56,19 +56,34 @@ a newer nested dispatch. Modal admission resolves the actual source root/owning
 window, not a child ScrollViewer as if it were a top-level owner. A full selected
 queue throws rather than silently redirecting the overflow to another control.
 
-Twenty-two authored source cases now cover the consumer and routing, including
+Existing cross-source event routes now map point vectors through the originating
+root, each source's explicit desktop transform, and the receiving root before
+viewer-local consumption. Framebuffer DPI is not a desktop scale. Remainders
+return to the original source frame, while line quantities remain unscaled.
+Singular/nonfinite mappings reject consumption without publishing a new remainder.
+This does not add routes to unrelated windows or bypass Popup's existing event
+isolation. Each phase lease weakly retains its originating source generation, so
+closing/cancelling/replacing that source also retires commands already accepted by
+another source, including after normal End. Receiving source/provider ownership
+continues to be checked independently.
+
+Twenty-six authored source cases now cover the consumer and routing, including
 normal retargeting, momentum pinning/retirement, source and gesture cancellation,
 unchanged state after invalid phase packets, preview handling/failure, nested
 dispatch, owning modal roots, fractional handoff, native hit-provider ownership,
-independent nested line axes, rotated point remainders and partial queue failure.
+independent nested line axes, rotated point remainders, partial queue failure,
+cross-source desktop/root mapping independent of raster DPI, unchanged line units,
+origin retirement and singular frame rejection. Cross-source cases exercise an
+explicit logical route between actual source hosts; native popup UI qualification
+remains separate.
 Compilation is not execution evidence. Earlier consumer-only CI passed all nine cases after its
 transform fixture published layout before input.
 
-Still required: deferred boundary/overscroll chaining, cross-presentation-source
-coordinate transport through popup ancestors, default handling for undeclared
+Still required: deferred boundary/overscroll chaining, actual popup-route
+qualification, default handling for undeclared
 custom scroll providers and legacy-only application handlers, complete source
 registrar/factory integration, Forms source input and native UI/package validation
 on all supported platforms. Unclaimed components remain visible to ancestors and
 application handlers; source providers retain their existing edge clamping rather
-than forwarding deferred boundary overflow. The source path never interprets another
-source's coordinates as local, or advertises complete application compatibility.
+than forwarding deferred boundary overflow. No complete application compatibility
+is claimed.

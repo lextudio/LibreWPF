@@ -433,7 +433,7 @@ public sealed class PortableScrollSourceTests
             {
                 window.Show(); fixture.Host.RootVisual = window; fixture.Host.SetClientSize(400, 200);
                 window.UpdateLayout();
-                Assert.Same(fixture.Host, PresentationSource.FromVisual(fixture.Viewer));
+                Assert.Same(window, PresentationSource.FromVisual(fixture.Viewer)?.RootVisual);
                 Assert.True(fixture.Viewer.IsVisible);
                 Assert.Same(fixture.Info, fixture.Viewer.ScrollInfo);
                 Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
@@ -558,6 +558,126 @@ public sealed class PortableScrollSourceTests
         });
     }
 
+    [PortableScrollFact]
+    public void NativeScrollExistingCrossSourceRouteUsesDesktopAndRootFramesNotRasterDpi()
+    {
+        Run(() =>
+        {
+            using var owner = new ScrollFixture(PortableScrollAxes.Pixels);
+            var bridge = new ScrollRouteRoot { InputParent = owner.Viewer };
+            using var origin = new ScrollFixture(PortableScrollAxes.Pixels, root: bridge);
+            origin.Info.CanHorizontallyScroll = origin.Info.CanVerticallyScroll = false;
+            origin.Host.HitTestOverride = (_, _) => origin.Viewer;
+            ((IPortableDesktopGeometryHost)origin.Host).SetDesktopTransform(new(-1920.25, 31.5, 2, 3));
+            ((IPortableDesktopGeometryHost)owner.Host).SetDesktopTransform(new(2560.5, -1440.25, 4, 0.75));
+            origin.Host.SetDeviceScale(4, 5); owner.Host.SetDeviceScale(7, 9);
+            origin.Root.RenderTransform = new ScaleTransform(3, 2);
+            owner.Root.RenderTransform = new ScaleTransform(2, 4);
+            origin.Root.UpdateLayout(); owner.Root.UpdateLayout();
+            Assert.Equal(new Matrix(3, 0, 0, 2, 0, 0), VisualTreeHelper.GetTransform(origin.Root).Value);
+            Assert.Equal(new Matrix(2, 0, 0, 4, 0, 0), VisualTreeHelper.GetTransform(owner.Root).Value);
+            Assert.True(Route(origin, Packet(-8, -6, PortablePointerScrollUnit.Points), out bool handled));
+            Assert.True(handled);
+            owner.Viewer.UpdateLayout(); origin.Viewer.UpdateLayout();
+            Assert.Equal(46, owner.Info.HorizontalOffset); // 8 * 3 * 2 / 4 / 2
+            Assert.Equal(52, owner.Info.VerticalOffset); // 6 * 2 * 3 / .75 / 4
+            Assert.Equal(40, origin.Info.HorizontalOffset); Assert.Equal(40, origin.Info.VerticalOffset);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollCrossSourceLinesRemainUnscaledAndRemaindersKeepOriginalFrame()
+    {
+        Run(() =>
+        {
+            using var owner = new ScrollFixture(PortableScrollAxes.Pixels);
+            var bridge = new ScrollRouteRoot { InputParent = owner.Viewer };
+            using var origin = new ScrollFixture(PortableScrollAxes.Pixels, root: bridge);
+            origin.Info.CanHorizontallyScroll = origin.Info.CanVerticallyScroll = false;
+            owner.Info.CanVerticallyScroll = false;
+            origin.Host.HitTestOverride = (_, _) => origin.Viewer;
+            ((IPortableDesktopGeometryHost)origin.Host).SetDesktopTransform(new(-1234.5, 98.75, 2, 3));
+            ((IPortableDesktopGeometryHost)owner.Host).SetDesktopTransform(new(987.25, -12.5, 4, 6));
+            Vector observed = default;
+            PortablePointerInput packet = Packet(-8, -6, PortablePointerScrollUnit.Points);
+            owner.Root.AddHandler(PortableScroll.ScrollEvent, new RoutedEventHandler((_, value) =>
+            {
+                var args = (PortableScrollEventArgs)value;
+                Assert.Same(packet, args.NativeInput);
+                Assert.False(args.Handled);
+                observed = args.RemainingScroll;
+            }));
+            Assert.True(Route(origin, packet, out bool handled)); Assert.True(handled);
+            owner.Viewer.UpdateLayout();
+            Assert.Equal(new Vector(0, -6), observed);
+            Assert.Equal(44, owner.Info.HorizontalOffset); Assert.Equal(40, owner.Info.VerticalOffset);
+            packet = Packet(-2, -3, PortablePointerScrollUnit.Lines);
+            Assert.True(Route(origin, packet, out handled)); Assert.True(handled);
+            owner.Viewer.UpdateLayout();
+            Assert.Equal(new Vector(0, -3), observed);
+            Assert.Equal(new[] { "right", "right" }, owner.Info.Lines);
+            Assert.Equal(59, owner.Info.HorizontalOffset); Assert.Equal(40, owner.Info.VerticalOffset);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollCrossSourceQueueRetainsOriginRetirementAfterGestureEnd()
+    {
+        Run(() =>
+        {
+            foreach (int retirement in new[] { 0, 1, 2 })
+            {
+                using var owner = new ScrollFixture(PortableScrollAxes.Pixels);
+                var bridge = new ScrollRouteRoot { InputParent = owner.Viewer };
+                using var origin = new ScrollFixture(PortableScrollAxes.Pixels, root: bridge);
+                origin.Info.CanHorizontallyScroll = origin.Info.CanVerticallyScroll = false;
+                origin.Host.HitTestOverride = (_, _) => origin.Viewer;
+                Assert.True(Route(origin, RoutedPacket(150, -5, phase: 1), out bool handled)); Assert.True(handled);
+                Assert.True(Route(origin, RoutedPacket(150, 0, phase: 8), out _));
+                switch (retirement)
+                {
+                    case 0:
+                        Assert.True(PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)origin.Host,
+                            new(PortablePointerEventKind.Cancel, 150, 75, 4, -1, 0, 0), 0, out _));
+                        break;
+                    case 1: origin.Host.RootVisual = new Grid(); break;
+                    case 2: origin.Host.Dispose(); break;
+                }
+                owner.Viewer.UpdateLayout();
+                Assert.Equal(40, owner.Info.HorizontalOffset); Assert.Equal(40, owner.Info.VerticalOffset);
+            }
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollSingularCrossSourceFrameCannotPublishPartialConsumption()
+    {
+        Run(() =>
+        {
+            using var owner = new ScrollFixture(PortableScrollAxes.Pixels);
+            var bridge = new ScrollRouteRoot { InputParent = owner.Viewer };
+            using var origin = new ScrollFixture(PortableScrollAxes.Pixels, root: bridge);
+            origin.Info.CanHorizontallyScroll = origin.Info.CanVerticallyScroll = false;
+            origin.Host.HitTestOverride = (_, _) => origin.Viewer;
+            owner.Root.RenderTransform = new ScaleTransform(0, 1);
+            owner.Root.UpdateLayout();
+            Vector remaining = default;
+            owner.Root.AddHandler(PortableScroll.ScrollEvent, new RoutedEventHandler((_, value) =>
+                remaining = ((PortableScrollEventArgs)value).RemainingScroll));
+            Assert.True(Route(origin, Packet(-8, -6, PortablePointerScrollUnit.Points), out bool handled));
+            Assert.False(handled);
+            owner.Viewer.UpdateLayout();
+            Assert.Equal(new Vector(-8, -6), remaining);
+            Assert.Equal(40, owner.Info.HorizontalOffset); Assert.Equal(40, owner.Info.VerticalOffset);
+        });
+    }
+
+    private sealed class ScrollRouteRoot : Grid
+    {
+        internal DependencyObject InputParent { get; init; } = null!;
+        protected internal override DependencyObject GetUIParentCore() => InputParent;
+    }
+
     private static PortablePointerInput RoutedPacket(double x, double delta, uint phase = 0, uint momentum = 0) =>
         new(PortablePointerEventKind.Scroll, PortablePointerScrollProtocol.AppKit, x, 75, 3.125, -1, 0,
             PortablePointerModifiers.Super, 0, delta, PortablePointerScrollUnit.Points, phase, momentum);
@@ -584,10 +704,11 @@ public sealed class PortableScrollSourceTests
         internal IPortablePresentationSourceHost Host { get; } = PortablePresentationSourceHost.Create();
         internal ScrollViewer Viewer { get; }
         internal MeasuredScrollInfo Info { get; }
-        internal Grid Root { get; } = new();
+        internal Grid Root { get; }
 
-        internal ScrollFixture(PortableScrollAxes axes, bool deferredOffsets = false)
+        internal ScrollFixture(PortableScrollAxes axes, bool deferredOffsets = false, Grid? root = null)
         {
+            Root = root ?? new Grid();
             var viewer = CreateViewer();
             Viewer = viewer;
             Root.Children.Add(Viewer);
@@ -622,7 +743,9 @@ public sealed class PortableScrollSourceTests
             var info = new MeasuredScrollInfo { ScrollOwner = viewer };
             viewer.Info = info; viewer.ScrollInfo = info;
             viewer.UpdateLayout();
-            Assert.Same(Host, PresentationSource.FromVisual(Viewer));
+            // Public source lookup intentionally projects a compatibility HWND
+            // wrapper. Its actual root must still be this portable source's root.
+            Assert.Same(Host.RootVisual, PresentationSource.FromVisual(Viewer)?.RootVisual);
             return (viewer, info);
         }
 

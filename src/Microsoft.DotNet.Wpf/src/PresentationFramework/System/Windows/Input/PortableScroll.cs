@@ -74,11 +74,10 @@ namespace System.Windows.Input
             if (!input.IsCurrent) return;
             if (input.IsCancellation) { input.Handled = true; return; }
             var viewer = (ScrollViewer)sender;
-            if (viewer.TryGetPortableScrollSession(input.Sequence, out var session) &&
-                ReferenceEquals(session.Source, input.PresentationSource) && input.IsCurrent)
+            if (viewer.TryGetPortableScrollSession(input.Sequence, out var session) && input.IsCurrent)
             {
                 if (session.TryQueueRemaining(input.NativeInput, input.Lifetime, input.RemainingScroll,
-                    out Vector remaining, out bool queueFull)) input.AcceptRemaining(remaining);
+                    input.PresentationSource, out Vector remaining, out bool queueFull)) input.AcceptRemaining(remaining);
                 else if (queueFull) throw new InvalidOperationException("The native scroll source queue is full.");
             }
         }
@@ -105,7 +104,7 @@ namespace System.Windows.Input
                 if (phase == 1) // AppKit momentum begins at the current pointer target.
                 {
                     state.Momentum?.Cancel();
-                    state.Momentum = new PortableScrollLifetime();
+                    state.Momentum = new PortableScrollLifetime(source);
                     // Preserve deferred fractional state across the handoff, but
                     // keep cancellation of momentum separate from accepted touch motion.
                     state.MomentumSequence = state.CompletedSequence is { IsCancelled: false } completed ? completed :
@@ -128,7 +127,7 @@ namespace System.Windows.Input
             else
             {
                 state.Momentum?.Cancel(); state.Momentum = state.MomentumSequence = null; state.MomentumTarget = null;
-                if (state.Normal == null || phase is 1 or 32) state.Normal = new PortableScrollLifetime();
+                if (state.Normal == null || phase is 1 or 32) state.Normal = new PortableScrollLifetime(source);
                 state.CompletedSequence = null;
                 lifetime = state.Normal;
                 sequence = state.Normal;

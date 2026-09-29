@@ -4,13 +4,24 @@
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using ProGPU.Wpf.Interop;
+using MS.Internal;
 
 namespace System.Windows.Controls
 {
     internal sealed class PortableScrollLifetime
     {
-        internal bool IsCancelled { get; private set; }
-        internal void Cancel() => IsCancelled = true;
+        private readonly WeakReference<PortablePresentationSource> _origin;
+        private readonly ulong _generation;
+        private bool _cancelled;
+        internal PortableScrollLifetime(PortablePresentationSource origin = null)
+        {
+            if (origin == null) return;
+            _origin = new WeakReference<PortablePresentationSource>(origin);
+            _generation = origin.PointerInputGeneration;
+        }
+        internal bool IsCancelled => _cancelled || _origin != null &&
+            (!_origin.TryGetTarget(out var origin) || origin.IsDisposed || origin.PointerInputGeneration != _generation);
+        internal void Cancel() => _cancelled = true;
     }
 
     [Flags]
@@ -85,19 +96,25 @@ namespace System.Windows.Controls
 
         internal bool TryQueue(PortablePointerInput input, PortableScrollLifetime lifetime, out bool queueFull)
             => TryQueueCore(input, lifetime, input == null ? default : new Vector(input.ScrollX, input.ScrollY),
-                false, out _, out queueFull);
+                _source, false, out _, out queueFull);
 
         internal bool TryQueueRemaining(PortablePointerInput input, PortableScrollLifetime lifetime,
             Vector remaining, out Vector nextRemaining, out bool queueFull)
-            => TryQueueCore(input, lifetime, remaining, true, out nextRemaining, out queueFull);
+            => TryQueueRemaining(input, lifetime, remaining, _source, out nextRemaining, out queueFull);
+
+        internal bool TryQueueRemaining(PortablePointerInput input, PortableScrollLifetime lifetime,
+            Vector remaining, PortablePresentationSource origin, out Vector nextRemaining, out bool queueFull)
+            => TryQueueCore(input, lifetime, remaining, origin, true, out nextRemaining, out queueFull);
 
         private bool TryQueueCore(PortablePointerInput input, PortableScrollLifetime lifetime,
-            Vector remaining, bool partial, out Vector nextRemaining, out bool queueFull)
+            Vector remaining, PortablePresentationSource origin, bool partial, out Vector nextRemaining, out bool queueFull)
         {
             nextRemaining = remaining;
             queueFull = false;
             _owner.VerifyAccess();
-            if (input == null || input.Kind != PortablePointerEventKind.Scroll || lifetime?.IsCancelled == true || !IsCurrent) return false;
+            if (input == null || input.Kind != PortablePointerEventKind.Scroll || origin == null || origin.IsDisposed ||
+                lifetime?.IsCancelled == true || !IsCurrent) return false;
+            ulong originGeneration = origin.PointerInputGeneration;
             if (!double.IsFinite(remaining.X) || !double.IsFinite(remaining.Y)) return false;
             Vector delta = -remaining;
             Vector remainder = default;
@@ -115,8 +132,10 @@ namespace System.Windows.Controls
                     !ValidMetrics(_info.VerticalOffset, _info.ExtentHeight, _info.ViewportHeight)) return false;
                 // Point vectors belong to the source frame. Transform both ends
                 // through the actual visual mapping, without scaling wheel lines.
+                if (!TrySourceFrame(origin, _source, out Matrix sourceFrame, out Matrix inverseSourceFrame)) return false;
                 GeneralTransform transform = _source.RootVisual.TransformToDescendant(_owner);
-                Point start = new(input.X, input.Y);
+                Point start = sourceFrame.Transform(new Point(input.X, input.Y));
+                delta = sourceFrame.Transform(delta);
                 if (!transform.TryTransform(start, out Point localStart) ||
                     !transform.TryTransform(start + delta, out Point localEnd)) return false;
                 delta = localEnd - localStart;
@@ -128,7 +147,7 @@ namespace System.Windows.Controls
                         !inverse.TryTransform(localStart + localRemainder, out Point sourceEnd)) return false;
                     // The next routed owner receives the unconsumed vector back
                     // in the original source frame, not this viewer's local axes.
-                    remainder = sourceStart - sourceEnd;
+                    remainder = inverseSourceFrame.Transform(sourceStart - sourceEnd);
                 }
                 delta = new Vector(_horizontalEnabled ? delta.X : 0, _verticalEnabled ? delta.Y : 0);
                 Vector scale = _owner.GetScrollPointScale(_info.ViewportWidth, _info.ViewportHeight, _axes);
@@ -138,7 +157,8 @@ namespace System.Windows.Controls
             }
             if (!double.IsFinite(delta.X) || !double.IsFinite(delta.Y) ||
                 !double.IsFinite(remainder.X) || !double.IsFinite(remainder.Y) ||
-                lifetime?.IsCancelled == true || !IsCurrent) return false;
+                lifetime?.IsCancelled == true || origin.IsDisposed || origin.PointerInputGeneration != originGeneration ||
+                !IsCurrent) return false;
             if (delta == default)
             {
                 if (remaining != default) return false;
@@ -150,6 +170,34 @@ namespace System.Windows.Controls
             if (queued) nextRemaining = remainder;
             return queued;
         }
+
+        private static bool TrySourceFrame(PortablePresentationSource origin, PortablePresentationSource target,
+            out Matrix forward, out Matrix inverse)
+        {
+            forward = inverse = Matrix.Identity;
+            if (ReferenceEquals(origin, target)) return true;
+            if (origin.RootVisual == null || target.RootVisual == null) return false;
+            // Portable clients already use native logical coordinates. Framebuffer
+            // DPI is intentionally absent from this desktop/root conversion.
+            PortableDesktopTransform from = origin.DesktopTransform, to = target.DesktopTransform;
+            Matrix targetRoot = PointUtil.GetVisualTransform(target.RootVisual);
+            if (!from.IsValid || !to.IsValid || !targetRoot.HasInverse) return false;
+            targetRoot.Invert();
+            forward = PointUtil.GetVisualTransform(origin.RootVisual);
+            forward.Scale(from.ScaleX, from.ScaleY);
+            forward.Translate(from.OriginX, from.OriginY);
+            forward.Translate(-to.OriginX, -to.OriginY);
+            forward.Scale(1 / to.ScaleX, 1 / to.ScaleY);
+            forward.Append(targetRoot);
+            if (!Finite(forward) || !forward.HasInverse) return false;
+            inverse = forward;
+            inverse.Invert();
+            return Finite(inverse);
+        }
+
+        private static bool Finite(Matrix value) => double.IsFinite(value.M11) && double.IsFinite(value.M12) &&
+            double.IsFinite(value.M21) && double.IsFinite(value.M22) &&
+            double.IsFinite(value.OffsetX) && double.IsFinite(value.OffsetY);
 
         private static bool TryScale(double value, double scale, bool enabled, out double result)
         {

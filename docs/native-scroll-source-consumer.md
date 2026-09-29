@@ -53,7 +53,7 @@ publication with layout reentry. Compilation is not test execution evidence.
 
 The routed path adds explicit AppKit phase validation, normal/momentum ownership
 and lossless routed events with independent nested axes. Still required before
-factory admission: deferred boundary chaining, cross-source routing,
+factory admission: deferred boundary chaining, native popup cross-source qualification,
 custom/legacy handler capability, source
 registrar/factory integration, Forms integration
 and actual native popup/application qualification on every supported platform.

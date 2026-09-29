@@ -54,8 +54,9 @@ The [source scroll consumer](native-scroll-source-consumer.md) preserves point/l
 units through real source metrics and the command queue. Its internal
 [routed path](native-scroll-routing.md) now validates declared AppKit phases and
 retains momentum targets, generations and fractional state. Independent nested
-axes now route through source-frame remainders. Deferred boundary chaining and
-cross-source scrolling, custom/legacy handlers and source admission remain unfinished.
+axes now route through source-frame remainders, and existing cross-source routes
+use explicit desktop/root transforms. Deferred boundary chaining, custom/legacy
+handlers, actual popup-route qualification and source admission remain unfinished.
 The owned Cocoa factory is therefore still not selected. Complete
 source consumption, callback/queued-dispatch lifetime, Forms integration and real
 native popup interaction/visual tests remain required. No automatic modality,

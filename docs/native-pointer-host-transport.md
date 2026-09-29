@@ -34,6 +34,11 @@ existing fast CI gate now includes these classes and per-class minimum counts.
 Activation and popup fixtures share the same test collection because both replace
 the process-wide source registry; this does not serialize unrelated test classes.
 
+The canonical LibreWinForms dependency pins the same ProGPU commit as this host.
+The existing source-integration identity check remains unchanged; upgrading only
+the outer ProGPU pin fails that check. Package staging still requires the entire
+producer Build to succeed on the exact shared commit.
+
 ## Remaining source and application work
 
 The actual source registrar does not advertise native-pointer capability yet.

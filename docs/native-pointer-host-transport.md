@@ -48,6 +48,13 @@ The ordinary float path and rejection of genuinely unrepresentable mappings stay
 unchanged. This is a drawing dependency repair, not a change to native pointer or
 scroll coordinate policy, and it does not opt the source registrar into native input.
 
+The canonical Forms dependency also guards source pointer continuations across
+public hover/focus callbacks. Nested input owns its new hover and capture; a
+disposed, hidden, disabled, reparented or recreated recipient cannot receive the
+old event. Reopening the same Forms popup object starts a fresh handle-bound hover
+lifetime. The fix and its source regressions belong to LibreWinForms, not a WPF
+host copy, and do not enable either framework's owned native input factory.
+
 ## Remaining source and application work
 
 The actual source registrar does not advertise native-pointer capability yet.

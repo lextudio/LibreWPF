@@ -61,6 +61,14 @@ submenu retires the previous hover before callbacks, reusing canonical item-leav
 and timer cancellation. Twelve additional source regressions cover that boundary;
 they do not qualify native OS leave, cross-window capture or WPF pointer routing.
 
+Canonical Forms also handles its backend's input-loss notification independently
+of whether a nonactivating popup ever held keyboard focus. Capture, pressed state
+and hover retire before public callbacks; per-button window ownership protects
+another window's input. New pointer/focus generations survive old cleanup, while
+throwing callbacks cannot roll back a still-current focus loss. This remains the
+existing Forms input contract, with fifteen authored source regression cases;
+it does not opt either source registrar into the native pointer provider.
+
 ## Remaining source and application work
 
 The actual source registrar does not advertise native-pointer capability yet.

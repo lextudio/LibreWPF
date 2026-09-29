@@ -3089,8 +3089,24 @@ public sealed partial class WpfPortableWindowActivationTests
         }
     }
 
-    private class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
+    private class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar, IPortableWindowInputDispatcher
     {
+        private readonly System.Collections.Concurrent.ConcurrentQueue<Action> _postedInput = new();
+
+        public bool AcceptPostedInput { get; set; } = true;
+
+        public bool TryPostInput(object window, Action callback)
+        {
+            if (!AcceptPostedInput) return false;
+            _postedInput.Enqueue(callback);
+            return true;
+        }
+
+        public void RunPostedInput()
+        {
+            while (_postedInput.TryDequeue(out Action? callback)) callback();
+        }
+
         public int RegisterCount { get; private set; }
 
         public PortableWindowActivationCallbacks? Callbacks { get; private set; }

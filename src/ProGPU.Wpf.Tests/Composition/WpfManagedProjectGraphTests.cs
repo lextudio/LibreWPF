@@ -173,7 +173,7 @@ public sealed class WpfManagedProjectGraphTests
         string harness = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf.SdkExternalSmokeHarness", "Program.cs"));
         string fixture = File.ReadAllText(FindRepoPath("eng", "SliderDragContract", "Program.cs"));
         Assert.Contains("PrepareSliderDragContract(repoRoot, workRoot)", harness, StringComparison.Ordinal);
-        Assert.Contains("scenario < 12", harness, StringComparison.Ordinal);
+        Assert.Contains("scenario < 13", harness, StringComparison.Ordinal);
         Assert.Contains("RunBoundedProcess(dotnetPath, sliderOutputRoot, TimeSpan.FromSeconds(30)", harness, StringComparison.Ordinal);
         Assert.Contains("File.ReadAllText(Path.Combine(repoRoot, \"eng\", \"SliderDragContract\", \"Program.cs\"))", harness, StringComparison.Ordinal);
         Assert.Contains("var slider = new Slider", fixture, StringComparison.Ordinal);
@@ -182,6 +182,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("!track.IsArrangeValid", fixture, StringComparison.Ordinal);
         Assert.Contains("DispatcherPriority.Render, new Action", fixture, StringComparison.Ordinal);
         Assert.Contains("second reentrant move (not cumulative 35)", fixture, StringComparison.Ordinal);
+        Assert.Contains("DispatcherPriority.ApplicationIdle, new Action", fixture, StringComparison.Ordinal);
+        Assert.Contains("accepted down before Background/Send barrier", fixture, StringComparison.Ordinal);
         Assert.Contains("host.SilkWindow is not null", fixture, StringComparison.Ordinal);
         Assert.DoesNotContain("RaiseEvent(", fixture, StringComparison.Ordinal);
         Assert.DoesNotContain("DragDeltaEventArgs", fixture, StringComparison.Ordinal);

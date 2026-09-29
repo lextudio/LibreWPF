@@ -12,11 +12,18 @@ The same activation now owns a lazy, lock-protected FIFO during its flush or
 deferred replay. Each packet retains its native metadata and immutable input
 fields; a separate `Handled` result claims native ingress without publishing
 the later source result back into an already returned callback. No lock covers
-application callbacks. Normal nested input outside a flush is unchanged.
+application callbacks. Direct nested input outside both a flush and deferred
+processing is unchanged.
 
-After the outer flush unwinds, each packet follows original input dispatch,
-press-generation cleanup and the pressed-event Render boundary. Reentry during
-replay appends behind existing packets. Cancellation immediately retires older
+Each packet runs in its own real source Dispatcher Input operation through the
+optional typed `IPortableWindowInputDispatcher` capability. Source Render/layout
+work precedes the next Input packet, and accepted packets precede Background
+barriers even inside an ApplicationIdle frame. There is no synchronous
+post-flush replay or fallback when the capability is absent/rejects admission.
+An operation identity prevents a retired scheduled callback from consuming a
+replacement queue. Original input dispatch, press-generation cleanup and the
+pressed-event Render boundary remain. Reentry appends behind existing packets.
+Cancellation immediately retires older
 pending packets and retains the original source capture-cancel delivery; new
 presses from cancellation callbacks belong to a new generation. Hide,
 deactivation and disposal also retire pending work. Replaced roots/bridges and
@@ -31,11 +38,25 @@ sleep, coordinate correction, changed Slider algorithm or renderer fallback.
 The original ten real Slider/Track/Thumb source cases and their 30-second process
 deadline remain. Two additional cases (1× and 2× source DPI) deliver two moves
 from an actual Render-priority callback and require values 25 then 30, arranged
-Track state and real capture release. Eleven bridge ownership cases cover FIFO,
-replay reentry, cancellation, retirement, exceptions and off-thread enqueueing.
+Track state and real capture release. A thirteenth case injects Move/Down/Up
+from Send inside ApplicationIdle and requires the original down and release to
+precede a Background/Send assertion. Twelve bridge ownership cases cover FIFO,
+replay reentry, cancellation, retirement, exceptions, off-thread enqueueing and
+rejected asynchronous admission.
 These are authored regression controls, not executed evidence or native pixels.
 This implementation phase permits compilation only; no application, tests,
 clipboard, image capture or VM execution qualifies this change.
+
+The first queue implementation (`91bef835a`) failed the existing macOS external
+SDK live mouse probe in Build `36635795621`: the unchanged down-count assertion
+observed zero. Its private queue drained only after the entire source flush, so
+the probe's Background barrier and subsequent Send assertion could run inside
+that still-active ApplicationIdle frame before accepted Down delivery. Posting
+each packet at actual Input priority repairs that supported ordering defect;
+the external probe's actions, waits and assertions are unchanged. This is not
+evidence that an OS click was lost, or that the original Gallery issue is closed.
+The dependency order is ProGPU PR229 (typed optional capability), Forms PR134
+(aligned engine pin), then WPF PR219 (source implementation and consumer).
 
 One isolated compile-only attempt used SDK `11.0.100-preview.5.26302.115`
 through `/usr/local/share/dotnet/dotnet`, current bridge source and read-only
@@ -48,3 +69,16 @@ an exact-current package build; ordinary PR CI must compile and run the gates.
 The retained log is
 `/Volumes/1TB-macOS/librewpf-slider-compile.M0mPBFyz/compilation.log`, SHA-256
 `e3103878559c9c9ca5a4e6d1b0e02cea65330fdb9b165975e933df8062b57748`.
+
+One follow-up compile-only attempt imported the original checked-in bridge and
+test `Directory.Build.props` (including their existing analyzer policy) and used
+the actual compiled `bb66c0f83622a68fd41a8f81f2a78134139a4f59` Interop DLL.
+The bridge and actual 13-case Slider program compiled; the bridge reported one
+existing unused-event `CS0067` warning. The isolated test project stopped on
+seven missing-type errors because its narrow source include omitted existing
+`WpfPortableWindowActivationServiceTestShim.cs` and the collection declaration
+in `WpfRenderDataSinkProviderBridgeTests.cs`. No retry or execution followed.
+The source registrar's full PresentationFramework compilation remains a CI gate,
+and these mixed warm-reference outputs are not package qualification. Log:
+`/Volumes/1TB-macOS/librewpf-slider-compile.M0mPBFyz/input-dispatch-compilation.log`,
+SHA-256 `b6bce9ba6f718e776109a8c392ce268be736568335ab116c3701e5da9b2ec082`.

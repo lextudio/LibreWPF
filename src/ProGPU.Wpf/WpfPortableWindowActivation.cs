@@ -1584,7 +1584,7 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
             return;
         }
 
-        DrainDeferredHostInput();
+        ScheduleDeferredHostInput();
         if (_isDisposed) return;
         TryPromoteDispatcherTimers(Window);
         if (TryCloseHostWhenWindowDisposed())
@@ -1650,9 +1650,9 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
             }
         }
 
-        // Never run more source callbacks from an exception's finally path.
-        // A failed flush leaves its unattempted packets for the next host turn.
-        DrainDeferredHostInput();
+        // Deferred input is already posted to the source dispatcher. Do not
+        // replay it here: that would let a Background barrier inside this frame
+        // overtake accepted packets or race their scheduled operation.
     }
 
     private void FlushWpfDispatcherOperation(string markerPriorityName, TimeSpan? timeout)
@@ -1688,7 +1688,7 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
 
         if (TryDeferHostInput(e))
         {
-            DrainDeferredHostInput();
+            ScheduleDeferredHostInput();
             return;
         }
 

@@ -19,8 +19,8 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
-        if (args.Length != 1 || !int.TryParse(args[0], out int scenario) || scenario < 0 || scenario >= 12)
-            throw new ArgumentException("Specify exactly one Slider scenario index from 0 through 11.");
+        if (args.Length != 1 || !int.TryParse(args[0], out int scenario) || scenario < 0 || scenario >= 13)
+            throw new ArgumentException("Specify exactly one Slider scenario index from 0 through 12.");
         PortableWpfRuntime.SelectMediaBackend(PortableWpfMediaBackend.Portable);
         RuntimeHelpers.RunModuleConstructor(typeof(Application).Module.ModuleHandle);
         if (!WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation())
@@ -28,14 +28,16 @@ internal static class Program
 
         // Each invocation owns one real Window/dispatcher lifetime and one
         // process-global headless registration. Preserve the original ten cases;
-        // two additional processes exercise an actual reentrant Render callback.
+        // two additional processes exercise an actual reentrant Render callback,
+        // and one checks accepted input against nested dispatcher barriers.
         int kind = scenario < 10 ? scenario % 5 : 0;
         Validate(scenario < 5 || scenario == 10 ? 1 : 2, vertical: kind is 2 or 3,
-            reversed: kind is 1 or 3, snappedRange: kind == 4, reentrant: scenario >= 10);
+            reversed: kind is 1 or 3, snappedRange: kind == 4, reentrant: scenario >= 10,
+            idleBarrier: scenario == 12);
         Console.WriteLine($"Slider drag source contract passed: case {scenario}; no native window or renderer qualification.");
     }
 
-    private static void Validate(double dpi, bool vertical, bool reversed, bool snappedRange, bool reentrant)
+    private static void Validate(double dpi, bool vertical, bool reversed, bool snappedRange, bool reentrant, bool idleBarrier)
     {
         Console.WriteLine($"Slider drag: dpi={dpi}, vertical={vertical}, reversed={reversed}, snappedRange={snappedRange}");
         using var source = PortablePresentationSourceHost.Create(dpi, dpi);
@@ -80,6 +82,39 @@ internal static class Program
             Equal(200, vertical ? track.ActualHeight : track.ActualWidth, "track extent");
             Equal(20, vertical ? thumb.ActualHeight : thumb.ActualWidth, "thumb extent");
             Point start = thumb.TranslatePoint(new Point(10, 10), window);
+            if (idleBarrier)
+            {
+                int downCount = 0;
+                bool barrierChecked = false;
+                thumb.PreviewMouseLeftButtonDown += (_, _) => downCount++;
+                window.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
+                {
+                    window.Dispatcher.BeginInvoke(DispatcherPriority.Send, new Action(() =>
+                    {
+                        Send(WpfInputEventKind.MouseMove, 0);
+                        Send(WpfInputEventKind.MouseDown, 0);
+                        Send(WpfInputEventKind.MouseUp, 0);
+                        window.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                        {
+                            window.Dispatcher.BeginInvoke(DispatcherPriority.Send, new Action(() =>
+                            {
+                                Equal(1, downCount, "accepted down before Background/Send barrier");
+                                if (thumb.IsDragging || Mouse.Captured is not null)
+                                    throw new InvalidOperationException("Accepted up did not precede Background barrier.");
+                                barrierChecked = true;
+                            }));
+                        }));
+                    }));
+                }));
+                // Enter the real activation's Input/Render/ApplicationIdle flush,
+                // including the failing live-probe priority sequence. No native
+                // window, input bypass or manual queue-drain hook is involved.
+                host.WpfRenderScheduler.ConsumeRenderRequest();
+                host.WpfRenderScheduler.RequestRender();
+                if (!barrierChecked || host.SilkWindow is not null)
+                    throw new InvalidOperationException("Source dispatcher barrier did not complete headlessly.");
+                return;
+            }
             Send(WpfInputEventKind.MouseMove, 0);
             Send(WpfInputEventKind.MouseDown, 0);
             if (!thumb.IsDragging || !ReferenceEquals(Mouse.Captured, thumb))
@@ -96,6 +131,10 @@ internal static class Program
                     Send(WpfInputEventKind.MouseMove, 18);
                 }));
                 Send(WpfInputEventKind.MouseMove, 0); // Enters the product Render flush.
+                // Posted Input must precede this ordinary source barrier; the
+                // higher-priority Render marker itself need not consume Input.
+                if (!registrar.TryFlushDispatcherOperations(window, "Background", null))
+                    throw new InvalidOperationException("Source Background barrier was unavailable.");
                 Equal(2, values.Count, "reentrant value event count");
                 Equal(25, values[0], "first reentrant move");
                 Equal(30, values[1], "second reentrant move (not cumulative 35)");

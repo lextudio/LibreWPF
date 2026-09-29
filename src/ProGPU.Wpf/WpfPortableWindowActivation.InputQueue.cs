@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Media.ProGPU;
 
@@ -10,6 +11,7 @@ public sealed partial class WpfPortableWindowActivation
     private readonly object _deferredHostInputGate = new();
     private Queue<DeferredHostInput>? _deferredHostInput;
     private bool _isDrainingDeferredHostInput;
+    private object? _deferredHostInputOperation;
     private ulong _deferredHostInputGeneration;
 
     private sealed record DeferredHostInput(
@@ -55,37 +57,73 @@ public sealed partial class WpfPortableWindowActivation
         {
             unchecked { ++_deferredHostInputGeneration; }
             _deferredHostInput?.Clear();
+            _deferredHostInputOperation = null;
         }
     }
 
-    private void DrainDeferredHostInput()
+    private void ScheduleDeferredHostInput()
     {
+        object operation;
         lock (_deferredHostInputGate)
         {
-            if (_isDisposed || _isFlushingWpfDispatcher || _isDrainingDeferredHostInput ||
+            if (_isDisposed || _isDrainingDeferredHostInput || _deferredHostInputOperation != null ||
                 _deferredHostInput is not { Count: > 0 })
             {
                 return;
             }
 
+            operation = new object();
+            _deferredHostInputOperation = operation;
+        }
+
+        try
+        {
+            if (!TryGetWindowActivationService(out var service) || service is not IPortableWindowInputDispatcher dispatcher)
+            {
+                throw new PlatformNotSupportedException("Deferred host input requires the source window's Input-priority dispatcher.");
+            }
+
+            if (!dispatcher.TryPostInput(Window, () => ProcessDeferredHostInput(operation)))
+            {
+                throw new InvalidOperationException("The source window rejected deferred input dispatch.");
+            }
+        }
+        catch
+        {
+            lock (_deferredHostInputGate)
+            {
+                // A post can invoke source hooks before returning. Retire only
+                // this operation, never a replacement established by those hooks.
+                if (ReferenceEquals(_deferredHostInputOperation, operation))
+                {
+                    unchecked { ++_deferredHostInputGeneration; }
+                    _deferredHostInput?.Clear();
+                    _deferredHostInputOperation = null;
+                }
+            }
+
+            throw;
+        }
+    }
+
+    private void ProcessDeferredHostInput(object operation)
+    {
+        DeferredHostInput next;
+        lock (_deferredHostInputGate)
+        {
+            if (!ReferenceEquals(_deferredHostInputOperation, operation)) return;
+            _deferredHostInputOperation = null;
+            if (_isDisposed || _deferredHostInput is not { Count: > 0 }) return;
+            next = _deferredHostInput.Dequeue();
             _isDrainingDeferredHostInput = true;
         }
 
         try
         {
-            while (true)
-            {
-                DeferredHostInput next;
-                lock (_deferredHostInputGate)
-                {
-                    if (_isDisposed || _deferredHostInput is not { Count: > 0 }) return;
-                    next = _deferredHostInput.Dequeue();
-                }
-
-                // Use the original dispatch/press cleanup and per-event layout
-                // boundary. Reentry appends to this FIFO, not the current stack.
-                DispatchHostInput(next.Input, next);
-            }
+            // One packet per real source Input operation: pending Render work
+            // runs before the next packet, while Background barriers cannot pass
+            // accepted input even inside an ApplicationIdle flush frame.
+            DispatchHostInput(next.Input, next);
         }
         finally
         {
@@ -97,5 +135,6 @@ public sealed partial class WpfPortableWindowActivation
         // A throwing packet is attempted exactly once. Unattempted packets stay
         // ahead of new ingress until an ordinary host turn resumes this queue;
         // cancellation/hide/deactivation/disposal can still retire them first.
+        ScheduleDeferredHostInput();
     }
 }

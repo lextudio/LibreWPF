@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
@@ -38,6 +37,7 @@ public sealed partial class WpfPortableWindowActivationTests
             };
         };
         RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseDown, button: WpfMouseButton.Left));
+        service.RunPostedInput();
         Assert.Equal(new[] { "ProcessInput:0", "Flush:Render", "ProcessInput:10", "Flush:Render",
             "ProcessInput:20", "Flush:Render", "ProcessInput:30", "Flush:Render", "ProcessInput:40" }, service.InputDispatchLog);
     }
@@ -76,6 +76,7 @@ public sealed partial class WpfPortableWindowActivationTests
             }
         };
         RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseDown, button: WpfMouseButton.Left));
+        service.RunPostedInput();
         Assert.Equal(1, service.CancelCount);
         Assert.Equal(duringReplay ? new[] { "ProcessInput:0", "ProcessInput:10", "ProcessInput:30", "ProcessInput:40" }
             : new[] { "ProcessInput:0", "ProcessInput:30", "ProcessInput:40" },
@@ -114,6 +115,7 @@ public sealed partial class WpfPortableWindowActivationTests
         try
         {
             RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseDown, button: WpfMouseButton.Left));
+            service.RunPostedInput();
             Assert.Equal(1, service.InputCount);
         }
         finally { modal?.Dispose(); }
@@ -145,10 +147,15 @@ public sealed partial class WpfPortableWindowActivationTests
                 throw failure;
             }
         };
-        Assert.Same(failure, Assert.Throws<TargetInvocationException>(() => RaiseHostInputEvent(host,
-            new WpfInputEventArgs(WpfInputEventKind.MouseDown, button: WpfMouseButton.Left))).InnerException);
+        Exception observed = Assert.ThrowsAny<Exception>(() =>
+        {
+            RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseDown, button: WpfMouseButton.Left));
+            service.RunPostedInput();
+        });
+        Assert.Same(failure, observed.GetBaseException());
         Assert.Equal(throwDuringReplay ? 2 : 1, service.InputCount);
         RaiseHostInputEvent(host, Move(30));
+        service.RunPostedInput();
         Assert.Equal(new[] { "ProcessInput:0", "ProcessInput:10", "ProcessInput:20", "ProcessInput:30" },
             service.InputDispatchLog.Where(item => item.StartsWith("ProcessInput:", StringComparison.Ordinal)));
     }
@@ -170,7 +177,34 @@ public sealed partial class WpfPortableWindowActivationTests
             Assert.Equal(1, service.InputCount);
         };
         RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseDown, button: WpfMouseButton.Left));
+        service.RunPostedInput();
         Assert.Equal(2, service.InputCount);
+    }
+
+    [Fact]
+    public void RejectedDeferredPostDoesNotReplayOrLeavePendingOwnership()
+    {
+        var service = new TestWindowActivationServiceRegistrar { AcceptPostedInput = false };
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost { WpfRenderScheduler = new CoalescingWpfRenderScheduler() };
+        Assert.True(WpfPortableWindowActivation.TryAttach(host, new FakeWindow(), new FakePortablePresentationSource(), out var activation));
+        using var lease = activation;
+        var packet = Move(10);
+        service.FlushCallback = _ =>
+        {
+            service.FlushCallback = null;
+            RaiseHostInputEvent(host, packet);
+        };
+        Exception failure = Assert.ThrowsAny<Exception>(() => RaiseHostInputEvent(host,
+            new WpfInputEventArgs(WpfInputEventKind.MouseDown, button: WpfMouseButton.Left)));
+        Assert.IsType<InvalidOperationException>(failure.GetBaseException());
+        Assert.True(packet.Handled);
+        Assert.Equal(1, service.InputCount);
+        service.AcceptPostedInput = true;
+        RaiseHostInputEvent(host, Move(20));
+        service.RunPostedInput();
+        Assert.Equal(2, service.InputCount);
+        Assert.Equal(20, service.LastInput!.X);
     }
 
     private static WpfInputEventArgs Move(double x) => new(WpfInputEventKind.MouseMove, x: x);

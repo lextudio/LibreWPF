@@ -1298,7 +1298,7 @@ namespace System.Windows
             }
         }
 
-        private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
+        private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar, IPortableWindowInputDispatcher
         {
             public PortableWpfServiceKey ServiceKey
             {
@@ -1428,6 +1428,22 @@ namespace System.Windows
 
                 typedWindow.Dispatcher.BeginInvoke(DispatcherPriority.Input, callback);
                 return true;
+            }
+
+            public bool TryPostInput(object window, Action callback)
+            {
+                if (window is not Window typedWindow || callback == null ||
+                    typedWindow.IsDisposed || typedWindow.Dispatcher == null ||
+                    typedWindow.Dispatcher.HasShutdownStarted || typedWindow.Dispatcher.HasShutdownFinished)
+                {
+                    return false;
+                }
+
+                // Always enqueue, including owner-thread calls. Render/layout
+                // precedes the next packet, while Input precedes Background
+                // barriers within the same nested source dispatcher frame.
+                DispatcherOperation operation = typedWindow.Dispatcher.BeginInvoke(DispatcherPriority.Input, callback);
+                return operation.Status != DispatcherOperationStatus.Aborted;
             }
 
             public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)

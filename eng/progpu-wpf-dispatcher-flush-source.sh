@@ -28,7 +28,7 @@ export LIBREWPF_TEST_MEDIA_BACKEND=Portable
 base_status=0
 "${dotnet_command}" "${base_assembly}" \
   --filter-class System.Windows.Threading.Tests.PortableDispatcherFlushTests \
-  --minimum-expected-tests 18 --fail-skips on --timeout 60s --no-progress || base_status=$?
+  --minimum-expected-tests 20 --fail-skips on --timeout 60s --no-progress || base_status=$?
 framework_status=0
 "${dotnet_command}" "${framework_assembly}" \
   --filter-class System.Windows.PortableDispatcherFlushTests \

@@ -52,6 +52,9 @@ jobs:
       - name: Validate Showcase launcher input receipts
         run: python3 ./eng/tests/test_showcase_launcher_receipt.py -v
 
+      - name: Validate original Gallery clipboard acceptance controls
+        run: python3 ./eng/WindowsGalleryClipboardConsumer/test_contract.py -v
+
       - name: Upload retained invalidation evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -1020,7 +1020,7 @@ public sealed class PortableScrollSourceTests
         {
             using var fixture = new ScrollFixture(PortableScrollAxes.VerticalItems);
             fixture.Info.ViewportHeight = 4; // 20 source points per provider item.
-            PortablePointerInput nested = RoutedPacket(150, -12, phase: 1);
+            PortablePointerInput nested = RoutedPacket(150, -8, phase: 1);
             PortableScrollEventArgs? nestedArgs = null;
             PortableScrollSession? nestedSession = null;
             fixture.Root.AddHandler(PortableScroll.PreviewScrollEvent, new RoutedEventHandler((_, value) =>
@@ -1036,7 +1036,7 @@ public sealed class PortableScrollSourceTests
                 Assert.NotNull(nestedArgs);
                 Assert.True(fixture.Viewer.TryGetPortableScrollSession(nestedArgs.Sequence, out nestedSession));
                 fixture.Viewer.UpdateLayout();
-                Assert.Equal(40, fixture.Info.VerticalOffset); // Retain the first 0.6 item.
+                Assert.Equal(40, fixture.Info.VerticalOffset); // Rounding retains the first 0.4 item.
             };
             Assert.True(Route(fixture, RoutedPacket(150, -180, phase: 1), out bool retiredHandled));
             Assert.True(retiredHandled);
@@ -1044,7 +1044,7 @@ public sealed class PortableScrollSourceTests
             Assert.NotNull(nestedSession);
             Assert.True(fixture.Viewer.TryGetPortableScrollSession(nestedArgs.Sequence, out var retained));
             Assert.Same(nestedSession, retained);
-            Assert.True(Route(fixture, RoutedPacket(150, -12, phase: 4), out bool nextHandled));
+            Assert.True(Route(fixture, RoutedPacket(150, -8, phase: 4), out bool nextHandled));
             Assert.True(nextHandled);
             fixture.Viewer.UpdateLayout();
             Assert.Equal(41, fixture.Info.VerticalOffset);
@@ -1064,7 +1064,7 @@ public sealed class PortableScrollSourceTests
             origin.Viewer.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
             origin.Viewer.UpdateLayout();
             origin.Host.HitTestOverride = (_, _) => origin.Viewer;
-            PortablePointerInput nested = RoutedPacket(150, -12, phase: 1);
+            PortablePointerInput nested = RoutedPacket(150, -8, phase: 1);
             PortableScrollEventArgs? nestedArgs = null;
             PortableScrollSession? nestedSession = null;
             owner.Root.AddHandler(PortableScroll.PreviewScrollEvent, new RoutedEventHandler((_, value) =>
@@ -1080,7 +1080,7 @@ public sealed class PortableScrollSourceTests
                 Assert.NotNull(nestedArgs);
                 Assert.True(owner.Viewer.TryGetPortableScrollSession(nestedArgs.Sequence, out nestedSession));
                 owner.Viewer.UpdateLayout();
-                Assert.Equal(40, owner.Info.VerticalOffset); // First 0.6 item belongs to B.
+                Assert.Equal(40, owner.Info.VerticalOffset); // Rounding retains B's first 0.4 item.
             };
             Assert.True(Route(origin, RoutedPacket(150, -20, phase: 1), out bool outerHandled));
             Assert.True(outerHandled); // Origin A remains valid and contributes one item.
@@ -1090,7 +1090,7 @@ public sealed class PortableScrollSourceTests
             Assert.Same(nestedSession, retained);
             owner.Viewer.UpdateLayout();
             Assert.Equal(41, owner.Info.VerticalOffset);
-            Assert.True(Route(owner, RoutedPacket(150, -12, phase: 4), out bool nextHandled));
+            Assert.True(Route(owner, RoutedPacket(150, -8, phase: 4), out bool nextHandled));
             Assert.True(nextHandled);
             owner.Viewer.UpdateLayout();
             Assert.Equal(42, owner.Info.VerticalOffset); // B's two fractions remain connected.

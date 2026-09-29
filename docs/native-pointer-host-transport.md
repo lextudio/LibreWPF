@@ -69,6 +69,22 @@ throwing callbacks cannot roll back a still-current focus loss. This remains the
 existing Forms input contract, with fifteen authored source regression cases;
 it does not opt either source registrar into the native pointer provider.
 
+The aligned dependencies also carry Forms' explicit pointer Leave/Cancel
+boundaries. Leave retires exact-window hover while preserving capture and held
+buttons; Cancel retires only that window's capture, presses and hover without
+keyboard focus loss or synthetic up/click delivery. Nested input and another
+window's held-button ownership remain authoritative.
+
+ProGPU's native popup owner can now be assigned after hidden panel creation,
+without replacing the rendering view. Its provider-aware retirement API reports
+pending callback/view ownership. Forms' actual dispatcher retains the native
+window and failed renderer-cleanup owner until both retire, hides separately,
+and never destroys the native surface after renderer cleanup fails. Retries run
+after existing polling/callbacks; dispatcher shutdown cannot abandon a pending
+owner. Both superproject pins select the same immutable ProGPU revision. These
+dependency changes do not select either framework's unfinished native factory,
+change scroll compatibility or establish native modal/UI qualification.
+
 ## Remaining source and application work
 
 The actual source registrar does not advertise native-pointer capability yet.

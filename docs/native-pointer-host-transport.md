@@ -30,7 +30,7 @@ legacy wheel event. Legacy constructors, input services and source paths remain
 available unchanged. Cancellation/leave without their native packet also fails
 instead of reaching a provider that cannot interpret those new event kinds.
 
-The focused host run passes 401 cases: 249 window-host cases, 44 Silk input cases,
+The earlier focused host run passed 401 cases: 249 window-host cases, 44 Silk input cases,
 15 native transport cases and 93 activation cases. It includes complete popup
 routes with typed recording source/native hosts, not real AppKit windows. The
 existing fast CI gate now includes these classes and per-class minimum counts.
@@ -45,6 +45,15 @@ producer Build to succeed on the exact shared commit.
 ## Remaining source and application work
 
 The actual source registrar does not advertise native-pointer capability yet.
+The host now has an owned Cocoa factory connection gated by a bound portable
+source, that explicit registrar capability, and the shared owner's actual Cocoa
+identity. Ordinary windows and non-Cocoa owners retain their existing factory.
+Once the owned path is admitted, a missing owner or creation failure propagates;
+it cannot silently create an ordinary NSWindow. The same shared-device and
+surface-before-window teardown paths remain in use. Seven authored factory cases
+raise the host-class CI minimum to 256; no native panel or UI qualification is
+claimed. Because the real registrar has not opted in, this connection does not
+yet select the owned factory in applications.
 The internal [source report path](native-pointer-source-reports.md) now retains
 native positions, time, click identity and source generations for movement and
 five-button input. Source hide/modal cancellation now retires owned presses and

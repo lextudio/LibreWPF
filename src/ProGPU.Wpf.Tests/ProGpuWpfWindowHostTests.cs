@@ -28,6 +28,42 @@ namespace ProGPU.Wpf.Tests;
 public sealed class ProGpuWpfWindowHostTests
 {
     [Theory]
+    [InlineData(true, true, NativeWindowKind.Cocoa, true, true)]
+    [InlineData(false, true, NativeWindowKind.Cocoa, true, false)]
+    [InlineData(true, false, NativeWindowKind.Cocoa, true, false)]
+    [InlineData(true, true, NativeWindowKind.Cocoa, false, false)]
+    [InlineData(true, true, NativeWindowKind.Win32, true, false)]
+    [InlineData(true, true, NativeWindowKind.X11, true, false)]
+    public void PopupFactoryRequiresActualCocoaOwnerAndSourceAdmission(
+        bool popup, bool source, NativeWindowKind kind, bool nativeInput, bool owned)
+    {
+        int standardCalls = 0, ownedCalls = 0;
+        IPortableWindowActivationServiceRegistrar service = nativeInput
+            ? new NativePointerActivationService() : new TestWindowActivationServiceRegistrar();
+        Assert.Null(WpfPopupWindowFactory.Create(popup, source, new(kind, 42, 0, "fixture"), service,
+            () => { standardCalls++; return null!; },
+            () => { ownedCalls++; return null!; }));
+        Assert.Equal(owned ? 0 : 1, standardCalls);
+        Assert.Equal(owned ? 1 : 0, ownedCalls);
+    }
+
+    [Fact]
+    public void OwnedPopupFactoryFailureCannotCreateAnOrdinaryWindowReplacement()
+    {
+        int standardCalls = 0;
+        var failure = new InvalidOperationException("Owned view initialization failed.");
+        var actual = Assert.Throws<InvalidOperationException>(() => WpfPopupWindowFactory.Create(
+            true, true, new(NativeWindowKind.Cocoa, 42, 0, "fixture"), new NativePointerActivationService(),
+            () => { standardCalls++; return null!; }, () => throw failure));
+        Assert.Same(failure, actual);
+        Assert.Equal(0, standardCalls);
+        Assert.Throws<InvalidOperationException>(() => WpfPopupWindowFactory.Create(
+            true, true, new(NativeWindowKind.Cocoa, 0, 0, "fixture"), new NativePointerActivationService(),
+            () => { standardCalls++; return null!; }, () => throw failure));
+        Assert.Equal(0, standardCalls);
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("_isRendering")]
     [InlineData("_hasPendingDeviceRecovery")]

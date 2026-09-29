@@ -1952,8 +1952,25 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             windowOptions.Position = new Vector2D<int>(_windowLeft.Value, _windowTop.Value);
         }
 
-        _window = Window.Create(windowOptions);
-        _dpiWindowHintsConfigured = SilkNetGlfwDpiService.TryConfigureDpiWindowHints();
+        IPortableWindowActivationServiceRegistrar? sourceService = null;
+        if (_options.IsPopupSurface && PortablePresentationSource != null)
+            PortableWpfServiceRegistry.TryGetWindowActivationService(
+                PortableWpfServiceKey.PresentationFramework, out sourceService);
+        var popupOwner = _options.SharedRenderDeviceOwner;
+        bool createdOwnedCocoa = false;
+        _window = WpfPopupWindowFactory.Create(_options.IsPopupSurface,
+            PortablePresentationSource != null,
+            popupOwner?.NativeWindowHandle ?? global::ProGPU.Backend.NativeWindowHandle.Empty,
+            sourceService,
+            () => Window.Create(windowOptions),
+            () =>
+            {
+                createdOwnedCocoa = true;
+                return NativePopupWindow.CreateOwnedCocoaWindow(
+                    popupOwner?._window ?? throw new InvalidOperationException("The popup owner has no native window."),
+                    windowOptions);
+            });
+        _dpiWindowHintsConfigured = !createdOwnedCocoa && SilkNetGlfwDpiService.TryConfigureDpiWindowHints();
         _windowController = new SilkWindowController(_window);
         _windowController.SetIsPopup(_options.IsPopupSurface);
         ApplyWindowBorderToController();

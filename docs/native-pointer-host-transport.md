@@ -55,6 +55,12 @@ old event. Reopening the same Forms popup object starts a fresh handle-bound hov
 lifetime. The fix and its source regressions belong to LibreWinForms, not a WPF
 host copy, and do not enable either framework's owned native input factory.
 
+The same canonical dependency transfers physical hover across Forms top-level
+windows independently of keyboard focus. Moving between an owner, dropdown and
+submenu retires the previous hover before callbacks, reusing canonical item-leave
+and timer cancellation. Twelve additional source regressions cover that boundary;
+they do not qualify native OS leave, cross-window capture or WPF pointer routing.
+
 ## Remaining source and application work
 
 The actual source registrar does not advertise native-pointer capability yet.

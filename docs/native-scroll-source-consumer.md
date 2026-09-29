@@ -37,6 +37,27 @@ pass, so a provider can publish its new offsets during layout before the next
 line. Remaining lines precede later commands. Reentrant layout from a provider
 callback cannot execute the active command again or drain later commands.
 
+The queue now separates unused boundary input from its retained fractional state.
+Point commands expose the clamped request overflow in the admitted provider's
+offset units, including carried logical fractions; correction of an offset outside
+a shrinking extent never creates extra input. Line commands check both axes'
+published metrics between layout passes and after the final issued line. At an
+edge they retire only the unissued lines and their fractional remainder. A line
+which moved partly to the edge is still one provider command: no pixels-per-line
+ratio is inferred. Fractional outward input cannot become reverse-scroll debt.
+This also applies when an ordinary queued scroll or a layout change reaches the
+edge between native packets: retire the old outward fraction before combining
+the new motion, for both logical points and lines.
+Completed commands cannot execute twice, and cancellation suppresses their unused
+result. Invalid line metrics fail before changing existing fractional state.
+
+This internal consumption result is not a new routed event and is not yet sent to
+ancestors. Point values require the retained admission-frame conversion before
+they can become original-source motion; line values retain native line units.
+Original-route ownership, bounded ancestor queue admission and the source edge
+policy must connect before deferred chaining. Existing legacy wheel handling and
+native routed-event handling are unchanged.
+
 The existing bounded queue retains 31 pending commands, plus at most one active
 native command. Full native admission fails before changing fractional state.
 An ordinary command cannot silently evict an accepted native packet; a required
@@ -54,11 +75,16 @@ axis callback so cancellation cannot continue writing through a retired session.
 Queue fetch releases the stored session reference; later sessions do not inherit
 fractional state.
 
-Nine source regression cases are authored for the existing automatic CI gate:
+The original nine source regression cases cover:
 fractional transformed points, measured logical points, line/ordinary-command
 ordering, source retirement, queue exhaustion, invalid units/metrics/axes, source
 provider traits, callback cancellation/atomic validation, and deferred offset
 publication with layout reentry. Compilation is not test execution evidence.
+Eight additional cases cover deferred physical/logical overflow, final-line layout,
+following command order, fractional reversal, changed extents, provider-owned
+partial line movement, invalid-metric atomicity, cancellation and completed-command
+idempotence. The hosted source gate now requires all 36 consumer/routing cases with
+the original no-skips policy and 60-second deadline.
 
 The routed path adds explicit AppKit phase validation, normal/momentum ownership
 and lossless routed events with independent nested axes. Still required before

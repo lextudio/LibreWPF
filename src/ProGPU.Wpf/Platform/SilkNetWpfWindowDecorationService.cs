@@ -139,13 +139,10 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
             return false;
         }
 
-        if (OperatingSystem.IsMacOS())
-        {
-            return TryShowCocoaWithoutActivation(GetCocoaWindow(view)) ||
-                TryShowGlfwWithoutActivation(view);
-        }
-
-        return TryShowGlfwWithoutActivation(view);
+        // A rejected provider or native failure must propagate, not request the
+        // host's ordinary activating visibility fallback.
+        NativePopupWindow.ShowWithoutActivation(view);
+        return true;
     }
 
     public bool TryActivate(object window)
@@ -208,24 +205,31 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
 
     public bool TryPreparePopupOwner(object ownerWindow, object popupWindow)
     {
-        if (!OperatingSystem.IsMacOS()) return TryConfigurePopupOwner(ownerWindow, popupWindow);
-        if (ownerWindow is not IView owner || popupWindow is not IView popup) return false;
-        return NativePopupWindow.TryPrepareOwner(
-            new(NativeWindowKind.Cocoa, GetCocoaWindow(owner), 0, "NSWindow"),
-            new NativeWindowHandle(NativeWindowKind.Cocoa, GetCocoaWindow(popup), 0, "NSWindow"));
+        if (ownerWindow is not IView owner || popupWindow is not IWindow popup) return false;
+        NativeWindowHandle nativeOwner = ResolvePopupOwner(owner);
+        return nativeOwner.IsValid && NativePopupWindow.TryPrepareOwner(nativeOwner, popup);
     }
 
     public bool TryShowOwnedPopup(object ownerWindow, object popupWindow, Action showWithoutActivation)
     {
-        if (!OperatingSystem.IsMacOS())
+        ArgumentNullException.ThrowIfNull(showWithoutActivation);
+        if (ownerWindow is not IView owner || popupWindow is not IWindow popup) return false;
+        NativeWindowHandle nativeOwner = ResolvePopupOwner(owner);
+        return nativeOwner.IsValid && NativePopupWindow.TryShowOwned(nativeOwner, popup, showWithoutActivation);
+    }
+
+    private static NativeWindowHandle ResolvePopupOwner(IView owner)
+    {
+        if (OperatingSystem.IsWindows())
+            return new(NativeWindowKind.Win32, GetWin32Hwnd(owner), 0, "HWND");
+        if (OperatingSystem.IsMacOS())
+            return new(NativeWindowKind.Cocoa, GetCocoaWindow(owner), 0, "NSWindow");
+        if (OperatingSystem.IsLinux())
         {
-            showWithoutActivation();
-            return true;
+            var x11 = GetX11Window(owner);
+            return new(NativeWindowKind.X11, unchecked((nint)x11.Window), x11.Display, "XID");
         }
-        if (ownerWindow is not IView owner || popupWindow is not IView popup) return false;
-        return NativePopupWindow.TryShowOwned(
-            new(NativeWindowKind.Cocoa, GetCocoaWindow(owner), 0, "NSWindow"),
-            new NativeWindowHandle(NativeWindowKind.Cocoa, GetCocoaWindow(popup), 0, "NSWindow"), showWithoutActivation);
+        return NativeWindowHandle.Empty;
     }
 
     private static INativeWindow? GetNativeWindow(IView view)
@@ -263,46 +267,6 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
 
         var cocoa = nativeWindow.Cocoa;
         return cocoa.GetValueOrDefault();
-    }
-
-    private static bool TryShowGlfwWithoutActivation(IWindow view)
-    {
-        var nativeWindow = GetNativeWindow(view);
-        var glfwWindow = (WindowHandle*)(nativeWindow?.Glfw ?? IntPtr.Zero);
-        if (glfwWindow == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            var glfw = Glfw.GetApi();
-            glfw.SetWindowAttrib(
-                glfwWindow,
-                WindowAttributeSetter.FocusOnShow,
-                false);
-            try
-            {
-                view.IsVisible = true;
-            }
-            finally
-            {
-                glfw.SetWindowAttrib(
-                    glfwWindow,
-                    WindowAttributeSetter.FocusOnShow,
-                    true);
-            }
-
-            return true;
-        }
-        catch (DllNotFoundException)
-        {
-            return false;
-        }
-        catch (EntryPointNotFoundException)
-        {
-            return false;
-        }
     }
 
     private static bool TryActivateGlfwWindow(IWindow view)
@@ -379,35 +343,6 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         try
         {
             return SetForegroundWindow(hwnd);
-        }
-        catch (DllNotFoundException)
-        {
-            return false;
-        }
-        catch (EntryPointNotFoundException)
-        {
-            return false;
-        }
-    }
-
-    [SupportedOSPlatform("macos")]
-    private static bool TryShowCocoaWithoutActivation(IntPtr nsWindow)
-    {
-        if (nsWindow == IntPtr.Zero)
-        {
-            return false;
-        }
-
-        try
-        {
-            IntPtr orderFront = SelRegisterName("orderFront:");
-            if (orderFront == IntPtr.Zero)
-            {
-                return false;
-            }
-
-            ObjCMsgSend(nsWindow, orderFront, IntPtr.Zero);
-            return true;
         }
         catch (DllNotFoundException)
         {

@@ -3089,7 +3089,7 @@ public sealed partial class WpfPortableWindowActivationTests
         }
     }
 
-    private sealed class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
+    private class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
     {
         public int RegisterCount { get; private set; }
 

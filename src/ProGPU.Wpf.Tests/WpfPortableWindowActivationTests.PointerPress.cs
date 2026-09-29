@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Backend;
 using ProGPU.Wpf.Interop;
 using Xunit;
 
@@ -24,7 +25,7 @@ public sealed partial class WpfPortableWindowActivationTests
     [InlineData(true, "cancel", true)]
     public void MouseUpRetainsReentrantPressLayout(bool queued, string boundary, bool throwAfterPress)
     {
-        var service = new TestWindowActivationServiceRegistrar
+        var service = new NativeCancelActivationService
         {
             QueueInputCallbacks = queued,
             RunQueuedInputOnInputFlush = true
@@ -49,7 +50,9 @@ public sealed partial class WpfPortableWindowActivationTests
                 switch (boundary)
                 {
                     case "cancel":
-                        RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseCancel));
+                        RaiseHostInputEvent(host, SilkNetWpfInputService.CreateNativePointerEvent(
+                            new NativePointerEvent(NativePointerEventKind.Cancel, 10, 20, 1,
+                                -1, 0, NativePointerModifiers.None)));
                         break;
                     case "deactivate":
                         RaiseHostWindowEvent(host, WpfWindowEventKind.Deactivated);
@@ -77,6 +80,7 @@ public sealed partial class WpfPortableWindowActivationTests
         else
             release();
 
+        Assert.Equal(boundary == "cancel" ? 1 : 0, service.CancelCount);
         service.InputDispatchLog.Clear();
         RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseMove, x: 30));
         Assert.Contains("Flush:Render", service.InputDispatchLog);
@@ -134,5 +138,29 @@ public sealed partial class WpfPortableWindowActivationTests
         service.InputDispatchLog.Clear();
         RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseMove, x: 40));
         Assert.DoesNotContain("Flush:Render", service.InputDispatchLog);
+    }
+
+    private sealed class NativeCancelActivationService : TestWindowActivationServiceRegistrar,
+        IPortableNativePointerInputService
+    {
+        public int CancelCount { get; private set; }
+
+        public bool TryProcessNativePointerInputEvent(object window, PortablePointerInput input,
+            int shortcutModifiers, out bool handled)
+        {
+            Assert.Equal(PortablePointerEventKind.Cancel, input.Kind);
+            Assert.Equal((10d, 20d, 1d), (input.X, input.Y, input.Timestamp));
+            Assert.Equal(-1, input.Button);
+            CancelCount++;
+            handled = true;
+            return true;
+        }
+
+        public bool TryProcessPresentationSourceNativePointerInputEvent(object source, PortablePointerInput input,
+            int shortcutModifiers, out bool handled)
+        {
+            handled = false;
+            return false;
+        }
     }
 }

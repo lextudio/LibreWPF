@@ -50,17 +50,18 @@ public sealed class ProGpuWpfWindowHostTests
     [Fact]
     public void OwnedPopupFactoryFailureCannotCreateAnOrdinaryWindowReplacement()
     {
-        int standardCalls = 0;
+        int standardCalls = 0, ownedCalls = 0;
         var failure = new InvalidOperationException("Owned view initialization failed.");
         var actual = Assert.Throws<InvalidOperationException>(() => WpfPopupWindowFactory.Create(
             true, true, new(NativeWindowKind.Cocoa, 42, 0, "fixture"), new NativePointerActivationService(),
-            () => { standardCalls++; return null!; }, () => throw failure));
+            () => { standardCalls++; return null!; }, () => { ownedCalls++; throw failure; }));
         Assert.Same(failure, actual);
         Assert.Equal(0, standardCalls);
         Assert.Throws<InvalidOperationException>(() => WpfPopupWindowFactory.Create(
             true, true, new(NativeWindowKind.Cocoa, 0, 0, "fixture"), new NativePointerActivationService(),
-            () => { standardCalls++; return null!; }, () => throw failure));
+            () => { standardCalls++; return null!; }, () => { ownedCalls++; throw failure; }));
         Assert.Equal(0, standardCalls);
+        Assert.Equal(1, ownedCalls); // Invalid identity was rejected before allocation.
     }
 
     [Theory]

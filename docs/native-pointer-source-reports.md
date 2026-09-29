@@ -50,6 +50,21 @@ An original popup's cancellation invalidates its pending capture-routed down
 without cancelling the other provider's capture. Ordinary native Windows capture
 and its synchronization path remain separate.
 
+Portable capture also completes property publication when an application callback
+throws before LostMouseCapture. Reverse-inherited capture-within values continue
+through the actual ancestor paths using the existing changed flags; bindings do
+not retain old dependency-property values while the fast cache already says false.
+Direct captured flags and capture loss/gain notifications complete against live
+ownership, then the original failure escapes. Multiple failures are retained in
+an AggregateException. A callback's newer capture owns its own gain and hover
+synchronization, never the retired transition's tail. The opt-in completion mode
+does not change native Windows capture or other reverse-inherited properties.
+
+Five additional source cases cover throwing capture-within/direct callbacks,
+ancestor dependency-property publication, same/different-element recapture,
+multiple simultaneous failures and acquisition failures. These are authored for
+the automatic source CI gate; compilation alone does not establish their result.
+
 Native hover notifications retain the source packet, original timestamp and
 event modifier scope through the existing reverse-inherited MouseEnter/MouseLeave
 properties. Each notification scope is restored after nested delivery or failure.

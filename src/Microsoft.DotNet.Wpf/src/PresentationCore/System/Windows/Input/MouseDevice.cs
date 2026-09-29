@@ -1171,6 +1171,8 @@ namespace System.Windows.Input
                 // Update the critical pieces of data.
                 IInputElement oldMouseCapture = _mouseCapture;
                 _mouseCapture = mouseCapture;
+                bool portableCapture = this is PortableMouseDevice;
+                ExceptionDispatchInfo failure = null;
                 ulong captureGeneration = unchecked(++_captureGeneration);
                 if (_mouseCapture != null)
                 {
@@ -1240,7 +1242,12 @@ namespace System.Windows.Input
                 // Oddly enough, update the IsMouseCaptureWithin property first.  This is
                 // so any callbacks will see the more-common IsMouseCaptureWithin property
                 // set correctly.
-                UIElement.MouseCaptureWithinProperty.OnOriginValueChanged(oldMouseCapture as DependencyObject, _mouseCapture as DependencyObject, ref _mouseCaptureWithinTreeState);
+                try
+                {
+                    UIElement.MouseCaptureWithinProperty.OnOriginValueChanged(oldMouseCapture as DependencyObject,
+                        _mouseCapture as DependencyObject, ref _mouseCaptureWithinTreeState, portableCapture);
+                }
+                catch (Exception exception) when (portableCapture) { RecordCaptureFailure(ref failure, exception); }
 
                 // Invalidate the IsMouseCaptured properties.
                 if (oldMouseCapture != null)
@@ -1248,13 +1255,18 @@ namespace System.Windows.Input
                     o = oldMouseCapture as DependencyObject;
                     // A portable property callback may already have recaptured
                     // the old element. Do not overwrite that newer state.
-                    o.SetValue(UIElement.IsMouseCapturedPropertyKey,
-                        this is PortableMouseDevice && ReferenceEquals(oldMouseCapture, _mouseCapture));
+                    try
+                    {
+                        o.SetValue(UIElement.IsMouseCapturedPropertyKey,
+                            portableCapture && ReferenceEquals(oldMouseCapture, _mouseCapture));
+                    }
+                    catch (Exception exception) when (portableCapture) { RecordCaptureFailure(ref failure, exception); }
                 }
                 if (_mouseCapture != null)
                 {
                     o = _mouseCapture as DependencyObject;
-                    o.SetValue(UIElement.IsMouseCapturedPropertyKey, true); // Same property for ContentElements
+                    try { o.SetValue(UIElement.IsMouseCapturedPropertyKey, true); } // Same property for ContentElements
+                    catch (Exception exception) when (portableCapture) { RecordCaptureFailure(ref failure, exception); }
                 }
 
                 // Send the LostMouseCapture and GotMouseCapture events.
@@ -1265,13 +1277,17 @@ namespace System.Windows.Input
                         nativeCancellation, Mouse.LostMouseCaptureEvent);
                     lostCapture.Source = oldMouseCapture;
                     //ProcessInput has a linkdemand
-                    _inputManager.ProcessInput(lostCapture);
+                    try { _inputManager.ProcessInput(lostCapture); }
+                    catch (Exception exception) when (portableCapture) { RecordCaptureFailure(ref failure, exception); }
                 }
                 // A LostMouseCapture/property callback can acquire a new capture,
                 // including on this same provider. It owns its own Got event and
                 // synchronization; the retired transition must not repeat them.
                 if (this is PortableMouseDevice && captureGeneration != _captureGeneration)
+                {
+                    failure?.Throw();
                     return;
+                }
                 if (_mouseCapture != null)
                 {
                     MouseEventArgs gotCapture = new MouseEventArgs(this, timestamp, _stylusDevice)
@@ -1280,19 +1296,29 @@ namespace System.Windows.Input
                         Source = _mouseCapture
                     };
                     //ProcessInput has a linkdemand
-                    _inputManager.ProcessInput(gotCapture);
+                    try { _inputManager.ProcessInput(gotCapture); }
+                    catch (Exception exception) when (portableCapture) { RecordCaptureFailure(ref failure, exception); }
                 }
 
                 // Force a mouse move so we can update the mouse over.
-                if (nativeCancellation == null)
+                if (nativeCancellation == null && (!portableCapture || captureGeneration == _captureGeneration))
                 {
-                    if (this is PortableMouseDevice { NativePointerOutside: true })
-                        ChangeMouseOver(_mouseCapture, timestamp);
-                    else
-                        Synchronize();
+                    try
+                    {
+                        if (this is PortableMouseDevice { NativePointerOutside: true })
+                            ChangeMouseOver(_mouseCapture, timestamp);
+                        else
+                            Synchronize();
+                    }
+                    catch (Exception exception) when (portableCapture) { RecordCaptureFailure(ref failure, exception); }
                 }
+                failure?.Throw();
             }
         }
+
+        private static void RecordCaptureFailure(ref ExceptionDispatchInfo failure, Exception exception) =>
+            failure = ExceptionDispatchInfo.Capture(failure == null ? exception :
+                new AggregateException(failure.SourceException, exception));
 
         private bool IsActiveSourceOrCapturedProviderCancel(RawMouseInputReport rawMouseInputReport)
         {

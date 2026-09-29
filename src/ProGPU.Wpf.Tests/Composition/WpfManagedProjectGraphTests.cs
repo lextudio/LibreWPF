@@ -111,7 +111,7 @@ public sealed class WpfManagedProjectGraphTests
         string nativePointerRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-native-pointer-source.sh"));
         Assert.Contains("--filter-method '*NativePointerReports*'", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--filter-method '*NativePointerReport*'", nativePointerRunner, StringComparison.Ordinal);
-        Assert.Contains("--minimum-expected-tests 23 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 28 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--minimum-expected-tests 4 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--filter-class System.Windows.PortableScrollSourceTests", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--filter-method '*NativeScroll*'", nativePointerRunner, StringComparison.Ordinal);

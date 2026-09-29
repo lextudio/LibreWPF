@@ -2115,6 +2115,226 @@ public class PortableWindowActivationServiceTests
     }
 
     [PortableInputFact]
+    public void NativePointerReportsCaptureWithinFailureStillPublishesAncestorAndDirectState()
+    {
+        RunInUiApartment(() =>
+        {
+            using var tree = new CapturePropertyTree();
+            SendPointerButton(tree.Host, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            Mouse.Capture(tree.First).Should().BeTrue();
+            var failure = new InvalidOperationException("Capture-within callback failed.");
+            var packet = new PortablePointerInput(PortablePointerEventKind.Cancel, 10, 10, 3.25, -1, 0, 0);
+            int ancestors = 0, lost = 0;
+            DependencyPropertyChangedEventHandler fail = (_, args) => { if (!(bool)args.NewValue) throw failure; };
+            DependencyPropertyChangedEventHandler parent = (_, args) => { if (!(bool)args.NewValue) ++ancestors; };
+            MouseEventHandler loss = (_, args) =>
+            {
+                ++lost;
+                args.Timestamp.Should().Be(3250);
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeSameAs(packet);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Control);
+                AssertCaptureProperties(tree.First, false, false);
+                AssertCaptureProperties(tree.Parent, false, false);
+            };
+            tree.First.IsMouseCaptureWithinChanged += fail;
+            tree.Parent.IsMouseCaptureWithinChanged += parent;
+            tree.First.LostMouseCapture += loss;
+            try
+            {
+                Action cancel = () => PortableWindowActivationService.TryProcessNativePointerInput(
+                    (PresentationSource)tree.Host, packet, PortableInputModifiers.Control, out _);
+                cancel.Should().Throw<InvalidOperationException>().Which.Should().BeSameAs(failure);
+                Mouse.Captured.Should().BeNull(); Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+                AssertCaptureProperties(tree.First, false, false);
+                AssertCaptureProperties(tree.Parent, false, false);
+                ancestors.Should().Be(1); lost.Should().Be(1);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+            }
+            finally
+            {
+                tree.First.IsMouseCaptureWithinChanged -= fail;
+                tree.Parent.IsMouseCaptureWithinChanged -= parent;
+                tree.First.LostMouseCapture -= loss;
+            }
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsDirectCaptureFailureStillDeliversLoss()
+    {
+        RunInUiApartment(() =>
+        {
+            using var tree = new CapturePropertyTree();
+            Mouse.Capture(tree.First).Should().BeTrue();
+            var failure = new InvalidOperationException("Direct capture callback failed.");
+            int lost = 0;
+            DependencyPropertyChangedEventHandler fail = (_, args) => { if (!(bool)args.NewValue) throw failure; };
+            MouseEventHandler loss = (_, _) => ++lost;
+            tree.First.IsMouseCapturedChanged += fail;
+            tree.First.LostMouseCapture += loss;
+            try
+            {
+                Action cancel = () => CancelCaptureTree(tree);
+                cancel.Should().Throw<InvalidOperationException>().Which.Should().BeSameAs(failure);
+                Mouse.Captured.Should().BeNull(); lost.Should().Be(1);
+                AssertCaptureProperties(tree.First, false, false);
+                AssertCaptureProperties(tree.Parent, false, false);
+            }
+            finally
+            {
+                tree.First.IsMouseCapturedChanged -= fail;
+                tree.First.LostMouseCapture -= loss;
+            }
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsPropertyRecaptureSurvivesTheRetiredCallbackFailure()
+    {
+        RunInUiApartment(() =>
+        {
+            foreach (bool sameElement in new[] { false, true })
+            {
+                using var tree = new CapturePropertyTree();
+                Mouse.Capture(tree.First).Should().BeTrue();
+                UIElement target = sameElement ? tree.First : tree.Second;
+                var failure = new InvalidOperationException("Retired capture-within callback failed.");
+                int got = 0, lost = 0;
+                bool recaptured = false;
+                MouseEventHandler gain = (_, _) => ++got;
+                MouseEventHandler loss = (_, _) => ++lost;
+                DependencyPropertyChangedEventHandler recapture = (_, args) =>
+                {
+                    if ((bool)args.NewValue || recaptured) return;
+                    recaptured = true;
+                    Mouse.Capture(target).Should().BeTrue();
+                    throw failure;
+                };
+                target.GotMouseCapture += gain;
+                tree.First.LostMouseCapture += loss;
+                tree.First.IsMouseCaptureWithinChanged += recapture;
+                try
+                {
+                    Action cancel = () => CancelCaptureTree(tree);
+                    cancel.Should().Throw<InvalidOperationException>().Which.Should().BeSameAs(failure);
+                    Mouse.Captured.Should().BeSameAs(target);
+                    AssertCaptureProperties(tree.First, sameElement, sameElement);
+                    AssertCaptureProperties(target, true, true);
+                    AssertCaptureProperties(tree.Parent, false, true);
+                    got.Should().Be(1); lost.Should().Be(sameElement ? 0 : 1);
+                }
+                finally
+                {
+                    target.GotMouseCapture -= gain;
+                    tree.First.LostMouseCapture -= loss;
+                    tree.First.IsMouseCaptureWithinChanged -= recapture;
+                }
+            }
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsCaptureCleanupRetainsEveryCallbackFailure()
+    {
+        RunInUiApartment(() =>
+        {
+            using var tree = new CapturePropertyTree();
+            Mouse.Capture(tree.First).Should().BeTrue();
+            var withinFailure = new InvalidOperationException("Child capture-within failed.");
+            var parentFailure = new InvalidOperationException("Parent capture-within failed.");
+            var directFailure = new InvalidOperationException("Direct capture failed.");
+            var lostFailure = new InvalidOperationException("Capture loss failed.");
+            DependencyPropertyChangedEventHandler within = (_, _) => throw withinFailure;
+            DependencyPropertyChangedEventHandler parent = (_, _) => throw parentFailure;
+            DependencyPropertyChangedEventHandler direct = (_, _) => throw directFailure;
+            MouseEventHandler lost = (_, _) => throw lostFailure;
+            tree.First.IsMouseCaptureWithinChanged += within;
+            tree.Parent.IsMouseCaptureWithinChanged += parent;
+            tree.First.IsMouseCapturedChanged += direct;
+            tree.First.LostMouseCapture += lost;
+            try
+            {
+                Action cancel = () => CancelCaptureTree(tree);
+                var failures = cancel.Should().Throw<AggregateException>().Which.Flatten().InnerExceptions;
+                failures.Should().HaveCount(4);
+                failures.Should().Contain(withinFailure).And.Contain(parentFailure).And.Contain(directFailure).And.Contain(lostFailure);
+                Mouse.Captured.Should().BeNull();
+                AssertCaptureProperties(tree.First, false, false);
+                AssertCaptureProperties(tree.Parent, false, false);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+            }
+            finally
+            {
+                tree.First.IsMouseCaptureWithinChanged -= within;
+                tree.Parent.IsMouseCaptureWithinChanged -= parent;
+                tree.First.IsMouseCapturedChanged -= direct;
+                tree.First.LostMouseCapture -= lost;
+            }
+            CancelCaptureTree(tree); // A late cancel cannot replay a retired loss.
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsCaptureAcquisitionFinishesBeforePropertyFailureEscapes()
+    {
+        RunInUiApartment(() =>
+        {
+            foreach (bool withinProperty in new[] { false, true })
+            {
+                using var tree = new CapturePropertyTree();
+                var failure = new InvalidOperationException("Capture acquisition property failed.");
+                DependencyPropertyChangedEventHandler fail = (_, args) => { if ((bool)args.NewValue) throw failure; };
+                int got = 0;
+                tree.First.GotMouseCapture += (_, _) => ++got;
+                if (withinProperty) tree.First.IsMouseCaptureWithinChanged += fail;
+                else tree.First.IsMouseCapturedChanged += fail;
+                try
+                {
+                    Action acquire = () => Mouse.Capture(tree.First);
+                    acquire.Should().Throw<InvalidOperationException>().Which.Should().BeSameAs(failure);
+                    Mouse.Captured.Should().BeSameAs(tree.First); got.Should().Be(1);
+                    AssertCaptureProperties(tree.First, true, true);
+                    AssertCaptureProperties(tree.Parent, false, true);
+                }
+                finally
+                {
+                    tree.First.IsMouseCaptureWithinChanged -= fail;
+                    tree.First.IsMouseCapturedChanged -= fail;
+                }
+            }
+        });
+    }
+
+    private static void AssertCaptureProperties(UIElement element, bool captured, bool within)
+    {
+        element.IsMouseCaptured.Should().Be(captured);
+        element.IsMouseCaptureWithin.Should().Be(within);
+        element.GetValue(UIElement.IsMouseCaptureWithinProperty).Should().Be(within);
+    }
+
+    private static void CancelCaptureTree(CapturePropertyTree tree) =>
+        PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)tree.Host,
+            new(PortablePointerEventKind.Cancel, 10, 10, 3, -1, 0, 0), PortableInputModifiers.Control, out _).Should().BeTrue();
+
+    private sealed class CapturePropertyTree : IDisposable
+    {
+        internal IPortablePresentationSourceHost Host { get; } = PortablePresentationSourceHost.Create();
+        internal System.Windows.Controls.Grid Parent { get; } = new();
+        internal HitTestElement First { get; } = new();
+        internal HitTestElement Second { get; } = new();
+        internal CapturePropertyTree()
+        {
+            Parent.Children.Add(First); Parent.Children.Add(Second);
+            Host.RootVisual = Parent; Host.SetClientSize(200, 100);
+        }
+        public void Dispose()
+        {
+            try { Mouse.Capture(null); }
+            finally { Host.Dispose(); }
+        }
+    }
+
+    [PortableInputFact]
     public void NativePointerReportsOriginCancelRetiresCapturedDownWithoutReleasingOtherCapture()
     {
         RunInUiApartment(() =>

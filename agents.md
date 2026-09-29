@@ -1,5 +1,12 @@
 # Agent Guidance
 
+Native scroll dispatch identity guards session and command publication after
+application-owned capability, metric and transform reads. Keep the guard out of
+accepted commands: later input must not cancel already accepted gesture work.
+Independent source routes may accept an uncached session, but cannot overwrite
+a newer reentrant viewer cache or lose its fractional state. Stale input must
+not replay through host fallback. Legacy MouseWheel policy remains separate.
+
 Empty source dispatcher flushes may bypass a frame only on the managed pump,
 with no eligible queued work or due timer and current owner/processing/lifetime
 state checked under the dispatcher lock. Keep Windows native message pumping

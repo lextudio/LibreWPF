@@ -10,20 +10,25 @@ namespace System.Windows.Input
     internal sealed class PortableMouseInputReport : RawMouseInputReport
     {
         private readonly ulong _sourceGeneration;
+        private readonly PortablePresentationSource _originSource;
+        private readonly ulong _originGeneration;
 
         internal PortableMouseInputReport(InputMode mode, int timestamp, PresentationSource source,
             RawMouseActions actions, int x, int y, int wheel, IntPtr extraInformation,
-            Point clientPoint, PortablePointerInput input)
+            Point clientPoint, PortablePointerInput input, PortablePresentationSource originSource = null)
             : this(mode, timestamp, source, actions, x, y, wheel, extraInformation, clientPoint, input,
                 source is PortablePresentationSource portable ? portable.PointerInputGeneration
-                    : throw new ArgumentException("Native pointer input requires its portable source.", nameof(source)))
+                    : throw new ArgumentException("Native pointer input requires its portable source.", nameof(source)),
+                originSource ?? (PortablePresentationSource)source,
+                (originSource ?? (PortablePresentationSource)source).PointerInputGeneration)
         {
             ArgumentNullException.ThrowIfNull(input);
         }
 
         private PortableMouseInputReport(InputMode mode, int timestamp, PresentationSource source,
             RawMouseActions actions, int x, int y, int wheel, IntPtr extraInformation,
-            Point clientPoint, PortablePointerInput input, ulong sourceGeneration)
+            Point clientPoint, PortablePointerInput input, ulong sourceGeneration,
+            PortablePresentationSource originSource, ulong originGeneration)
             : base(mode, timestamp, source, actions, x, y, wheel, extraInformation)
         {
             if (!double.IsFinite(clientPoint.X) || !double.IsFinite(clientPoint.Y))
@@ -31,16 +36,20 @@ namespace System.Windows.Input
             ClientPoint = clientPoint;
             NativePointer = input;
             _sourceGeneration = sourceGeneration;
+            _originSource = originSource;
+            _originGeneration = originGeneration;
         }
 
         internal override Point ClientPoint { get; }
         internal override PortablePointerInput NativePointer { get; }
         internal override bool IsCurrent => InputSource is PortablePresentationSource source &&
-            !source.IsDisposed && source.PointerInputGeneration == _sourceGeneration;
+            !source.IsDisposed && source.PointerInputGeneration == _sourceGeneration &&
+            !_originSource.IsDisposed && _originSource.PointerInputGeneration == _originGeneration;
 
         internal static RawMouseInputReport Synchronize(int timestamp, PortablePresentationSource source, Point clientPoint) =>
             new PortableMouseInputReport(InputMode.Foreground, timestamp, source, RawMouseActions.AbsoluteMove,
-                (int)clientPoint.X, (int)clientPoint.Y, 0, IntPtr.Zero, clientPoint, null, source.PointerInputGeneration)
+                (int)clientPoint.X, (int)clientPoint.Y, 0, IntPtr.Zero, clientPoint, null,
+                source.PointerInputGeneration, source, source.PointerInputGeneration)
             {
                 // This is source synchronization, not another physical native
                 // event. Preserve the double frame without inventing a packet.
@@ -49,7 +58,7 @@ namespace System.Windows.Input
 
         internal override RawMouseInputReport WithActions(RawMouseActions actions, int x, int y, int wheel, IntPtr extraInformation) =>
             new PortableMouseInputReport(Mode, Timestamp, InputSource, actions, x, y, wheel,
-                extraInformation, ClientPoint, NativePointer, _sourceGeneration)
+                extraInformation, ClientPoint, NativePointer, _sourceGeneration, _originSource, _originGeneration)
             {
                 // Activation seeds the last point. Its following exact move
                 // must still hit-test, without an integer-only synthetic move.

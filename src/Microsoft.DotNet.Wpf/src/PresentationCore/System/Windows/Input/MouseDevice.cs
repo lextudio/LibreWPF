@@ -1051,7 +1051,24 @@ namespace System.Windows.Input
                 }
             }
         }
-        private void ChangeMouseCapture(IInputElement mouseCapture, IMouseInputProvider providerCapture, CaptureMode captureMode, int timestamp)
+        internal void CancelPortableSourceCapture(PortablePresentationSource source, int timestamp,
+            ProGPU.Wpf.Interop.PortablePointerInput input)
+        {
+            VerifyAccess();
+            if (this is not PortableMouseDevice || _providerCapture == null ||
+                !ReferenceEquals(source.GetInputProvider(typeof(MouseDevice)), _providerCapture))
+                return;
+
+            // Lifecycle cancellation is not suppressible ordinary input. Clear
+            // capture before any routed callback; the report only carries the
+            // native event identity, and never changes the cursor position.
+            var report = new PortableMouseInputReport(InputMode.Foreground, timestamp, source,
+                RawMouseActions.CancelCapture, 0, 0, 0, IntPtr.Zero, default, input);
+            ChangeMouseCapture(null, null, CaptureMode.None, timestamp, report);
+        }
+
+        private void ChangeMouseCapture(IInputElement mouseCapture, IMouseInputProvider providerCapture, CaptureMode captureMode, int timestamp,
+            PortableMouseInputReport nativeCancellation = null)
         {
             DependencyObject o = null;
 
@@ -1062,6 +1079,7 @@ namespace System.Windows.Input
                 // Update the critical pieces of data.
                 IInputElement oldMouseCapture = _mouseCapture;
                 _mouseCapture = mouseCapture;
+                ulong captureGeneration = unchecked(++_captureGeneration);
                 if (_mouseCapture != null)
                 {
                     _providerCapture = providerCapture;
@@ -1136,7 +1154,10 @@ namespace System.Windows.Input
                 if (oldMouseCapture != null)
                 {
                     o = oldMouseCapture as DependencyObject;
-                    o.SetValue(UIElement.IsMouseCapturedPropertyKey, false); // Same property for ContentElements
+                    // A portable property callback may already have recaptured
+                    // the old element. Do not overwrite that newer state.
+                    o.SetValue(UIElement.IsMouseCapturedPropertyKey,
+                        this is PortableMouseDevice && ReferenceEquals(oldMouseCapture, _mouseCapture));
                 }
                 if (_mouseCapture != null)
                 {
@@ -1145,16 +1166,20 @@ namespace System.Windows.Input
                 }
 
                 // Send the LostMouseCapture and GotMouseCapture events.
-                if (oldMouseCapture != null)
+                if (oldMouseCapture != null &&
+                    (this is not PortableMouseDevice || !ReferenceEquals(oldMouseCapture, _mouseCapture)))
                 {
-                    MouseEventArgs lostCapture = new MouseEventArgs(this, timestamp, _stylusDevice)
-                    {
-                        RoutedEvent = Mouse.LostMouseCaptureEvent,
-                        Source = oldMouseCapture
-                    };
+                    MouseEventArgs lostCapture = PortableMouseEvents.Move(this, timestamp, _stylusDevice,
+                        nativeCancellation, Mouse.LostMouseCaptureEvent);
+                    lostCapture.Source = oldMouseCapture;
                     //ProcessInput has a linkdemand
                     _inputManager.ProcessInput(lostCapture);
                 }
+                // A LostMouseCapture/property callback can acquire a new capture,
+                // including on this same provider. It owns its own Got event and
+                // synchronization; the retired transition must not repeat them.
+                if (this is PortableMouseDevice && captureGeneration != _captureGeneration)
+                    return;
                 if (_mouseCapture != null)
                 {
                     MouseEventArgs gotCapture = new MouseEventArgs(this, timestamp, _stylusDevice)
@@ -1167,12 +1192,21 @@ namespace System.Windows.Input
                 }
 
                 // Force a mouse move so we can update the mouse over.
-                Synchronize();
+                if (nativeCancellation == null)
+                    Synchronize();
             }
         }
 
         private bool IsActiveSourceOrCapturedProviderCancel(RawMouseInputReport rawMouseInputReport)
         {
+            if (rawMouseInputReport.InputSource is PortablePresentationSource &&
+                rawMouseInputReport.Actions == RawMouseActions.CancelCapture)
+            {
+                // A retired provider can still remember having capture after
+                // another provider acquired it. Being active is not ownership.
+                return _providerCapture != null && ReferenceEquals(_providerCapture,
+                    rawMouseInputReport.InputSource.GetInputProvider(typeof(MouseDevice)));
+            }
             if ((_inputSource is not null) && (rawMouseInputReport.InputSource == _inputSource))
             {
                 return true;
@@ -2332,6 +2366,7 @@ namespace System.Windows.Input
         private WeakReference _rawMouseOver;
 
         private IInputElement _mouseCapture;
+        private ulong _captureGeneration;
         private DeferredElementTreeState _mouseCaptureWithinTreeState;
         private IMouseInputProvider _providerCapture;
         private CaptureMode _captureMode;

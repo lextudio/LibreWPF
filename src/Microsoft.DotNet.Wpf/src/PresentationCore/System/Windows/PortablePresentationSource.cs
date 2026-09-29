@@ -475,6 +475,18 @@ namespace System.Windows
                 mouse.ReleaseSourceButtons(this);
         }
 
+        internal void CancelNativePointerInput(int timestamp, PortablePointerInput input)
+        {
+            VerifyAccess();
+            ObjectDisposedException.ThrowIf(_isDisposed, this);
+            ArgumentNullException.ThrowIfNull(input);
+            if (input.Kind != PortablePointerEventKind.Cancel)
+                throw new ArgumentException("Source cancellation requires a native cancel packet.", nameof(input));
+            unchecked { ++_pointerInputGeneration; }
+            ReleasePressedButtons();
+            _mouseInputProvider.CancelNativePointerInput(timestamp, input);
+        }
+
         private void OnLayoutUpdated(object sender, EventArgs e)
         {
             QueueContentRendered();
@@ -1400,6 +1412,14 @@ namespace System.Windows
             void IMouseInputProvider.ReleaseMouseCapture()
             {
                 ReleaseMouseCapture(reportInput: true);
+            }
+
+            internal void CancelNativePointerInput(int timestamp, PortablePointerInput input)
+            {
+                // Retire provider state before callbacks can recapture it. Core
+                // independently checks exact provider ownership, not this flag.
+                _haveCapture = false;
+                InputManager.UnsecureCurrent.PrimaryMouseDevice.CancelPortableSourceCapture(_source, timestamp, input);
             }
 
             int IMouseInputProvider.GetIntermediatePoints(IInputElement relativeTo, Point[] points)

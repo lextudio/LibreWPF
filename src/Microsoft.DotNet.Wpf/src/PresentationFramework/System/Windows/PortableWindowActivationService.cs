@@ -359,20 +359,34 @@ namespace System.Windows
             input.Handled = ProcessInput(source, source.RootVisual as UIElement, input);
         }
 
-        // Internal source path until scrolling and lifecycle cancellation are
+        // Internal source path until scrolling and leave handling are
         // complete. The registrar must not advertise the native capability yet.
         internal static bool TryProcessNativePointerInput(PresentationSource source, PortablePointerInput input,
             PortableInputModifiers modifiers, out bool handled)
         {
             handled = false;
-            if (source is not PortablePresentationSource || input == null ||
+            if (source is not PortablePresentationSource portableSource || input == null ||
                 (modifiers & ~(PortableInputModifiers.Shift | PortableInputModifiers.Control |
                     PortableInputModifiers.Alt | PortableInputModifiers.Super)) != 0 ||
                 !double.IsFinite(input.Timestamp * 1000d) || input.Button > 4)
                 return false;
             source.VerifyAccess();
-            if (source.IsDisposed || source.RootVisual is not UIElement root ||
+            if (source.IsDisposed ||
                 InputManager.UnsecureCurrent.PrimaryMouseDevice is not PortableMouseDevice)
+                return false;
+
+            if (input.Kind == PortablePointerEventKind.Cancel)
+            {
+                // Hidden/modal-blocked sources still need ownership cleanup.
+                // No hit-test, activation, capture redirection or synthetic up.
+                using PortableKeyboardDevice.EventModifierScope scope =
+                    InputManager.UnsecureCurrent.PrimaryKeyboardDevice is PortableKeyboardDevice keyboard
+                        ? keyboard.PushEventModifiers(ToEventModifierKeys(modifiers)) : default;
+                portableSource.CancelNativePointerInput(NativePointerTimestamp(input.Timestamp), input);
+                handled = true;
+                return true;
+            }
+            if (source.RootVisual is not UIElement root)
                 return false;
 
             PortableInputEventKind kind;
@@ -829,7 +843,7 @@ namespace System.Windows
             RawMouseInputReport report = input.NativePointer != null
                 ? new PortableMouseInputReport(InputMode.Foreground, timestamp, source, actions,
                     ToInputCoordinate(clientPoint.X), ToInputCoordinate(clientPoint.Y), wheel, IntPtr.Zero,
-                    clientPoint, input.NativePointer)
+                    clientPoint, input.NativePointer, originSource as PortablePresentationSource)
                 : new RawMouseInputReport(
                 InputMode.Foreground,
                 timestamp,

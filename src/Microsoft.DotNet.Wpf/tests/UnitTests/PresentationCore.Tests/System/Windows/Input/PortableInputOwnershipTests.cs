@@ -324,6 +324,30 @@ public sealed class PortableInputOwnershipTests
         });
     }
 
+    [PortableInputFact]
+    public void NativePointerReportsRetainOriginAndDestinationGenerationsIndependently()
+    {
+        RunInUiApartment(() =>
+        {
+            using var origin = new PortablePresentationSource { RootVisual = new UIElement() };
+            using var destination = new PortablePresentationSource { RootVisual = new UIElement() };
+            var packet = new PortablePointerInput(PortablePointerEventKind.Down, 1.25, 2.5, 3, 0, 1, 0);
+            var report = new PortableMouseInputReport(InputMode.Foreground, 3000, destination,
+                RawMouseActions.AbsoluteMove | RawMouseActions.Button1Press, 1, 2, 0, IntPtr.Zero,
+                new Point(1.25, 2.5), packet, origin);
+            Assert.True(report.IsCurrent);
+            origin.RootVisual = new UIElement();
+            Assert.False(report.IsCurrent);
+            Assert.False(report.WithActions(RawMouseActions.Button1Press, 0, 0, 0, IntPtr.Zero).IsCurrent);
+            var current = new PortableMouseInputReport(InputMode.Foreground, 3000, destination,
+                RawMouseActions.AbsoluteMove, 1, 2, 0, IntPtr.Zero, new Point(1.25, 2.5), packet, origin);
+            Assert.True(current.IsCurrent);
+            destination.RootVisual = new UIElement();
+            Assert.False(current.IsCurrent);
+            Assert.Same(packet, current.NativePointer);
+        });
+    }
+
     private static void RunInUiApartment(Action action)
     {
         Exception? failure = null;

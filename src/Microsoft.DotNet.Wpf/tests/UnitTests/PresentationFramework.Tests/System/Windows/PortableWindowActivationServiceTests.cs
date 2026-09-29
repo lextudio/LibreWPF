@@ -1912,6 +1912,211 @@ public class PortableWindowActivationServiceTests
         });
     }
 
+    [PortableInputFact]
+    public void NativePointerReportsCancelOwnedStateWithNativeMetadataEvenWhenModalBlocked()
+    {
+        RunInUiApartment(() =>
+        {
+            using var first = PortablePresentationSourceHost.Create();
+            using var second = PortablePresentationSourceHost.Create();
+            var root = new HitTestElement();
+            first.RootVisual = root; first.SetClientSize(200, 100);
+            second.RootVisual = new HitTestElement(); second.SetClientSize(200, 100);
+            SendPointerButton(first, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            SendPointerButton(second, PortableInputEventKind.MouseDown, PortableMouseButton.Right);
+            Mouse.Capture(root).Should().BeTrue();
+            var cancel = new PortablePointerInput(PortablePointerEventKind.Cancel, 10.25, 12.75, 3.75025, -1, 0,
+                PortablePointerModifiers.Shift);
+            int lost = 0, ups = 0, moves = 0;
+            root.MouseUp += (_, _) => ++ups;
+            root.MouseMove += (_, _) => ++moves;
+            root.LostMouseCapture += (_, args) =>
+            {
+                ++lost;
+                Mouse.Captured.Should().BeNull(); root.IsMouseCaptured.Should().BeFalse();
+                Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+                Mouse.RightButton.Should().Be(MouseButtonState.Pressed);
+                args.Timestamp.Should().Be(3750);
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeSameAs(cancel);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Control);
+            };
+            using (PortableModalInputScope.Enter(new object()))
+            {
+                PortableWindowActivationService.IsModalInputAllowed(root).Should().BeFalse();
+                PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)first,
+                    cancel, PortableInputModifiers.Control, out bool handled).Should().BeTrue();
+                handled.Should().BeTrue();
+            }
+            lost.Should().Be(1); ups.Should().Be(0); moves.Should().Be(0);
+            Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+            // Repeated cancellation is harmless and does not invent another loss.
+            PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)first,
+                cancel, 0, out _).Should().BeTrue();
+            lost.Should().Be(1);
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsCancelPreservesAnotherProvidersCaptureAndLaterPress()
+    {
+        RunInUiApartment(() =>
+        {
+            using var first = PortablePresentationSourceHost.Create();
+            using var second = PortablePresentationSourceHost.Create();
+            var firstRoot = new HitTestElement(); var secondRoot = new HitTestElement();
+            first.RootVisual = firstRoot; first.SetClientSize(200, 100);
+            second.RootVisual = secondRoot; second.SetClientSize(200, 100);
+            Mouse.Capture(firstRoot, CaptureMode.SubTree).Should().BeTrue();
+            SendPointerButton(first, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            Mouse.Capture(secondRoot, CaptureMode.SubTree).Should().BeTrue();
+            SendPointerButton(second, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            // Leave the stale provider active; activity must not imply capture ownership.
+            PortableWindowActivationService.ProcessInput((PresentationSource)first,
+                new PortableInputEventArgs(PortableInputEventKind.MouseMove, x: 10, y: 10));
+            int lost = 0;
+            secondRoot.LostMouseCapture += (_, _) => ++lost;
+            try
+            {
+                var cancel = new PortablePointerInput(PortablePointerEventKind.Cancel, 10, 10, 2, -1, 0, 0);
+                PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)first,
+                    cancel, 0, out _).Should().BeTrue();
+                Mouse.Captured.Should().BeSameAs(secondRoot);
+                Mouse.LeftButton.Should().Be(MouseButtonState.Pressed);
+                first.Dispose();
+                Mouse.Captured.Should().BeSameAs(secondRoot);
+                lost.Should().Be(0);
+            }
+            finally { Mouse.Capture(null); }
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsCancelRetainsReentrantSameProviderCaptureAndNewPress()
+    {
+        RunInUiApartment(() =>
+        {
+            using var host = PortablePresentationSourceHost.Create();
+            var source = (PresentationSource)host;
+            var root = new HitTestElement(); host.RootVisual = root; host.SetClientSize(200, 100);
+            SendPointerButton(host, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            Mouse.Capture(root).Should().BeTrue();
+            var replacement = new PortablePointerInput(PortablePointerEventKind.Down, 20.25, 12.75, 4, 0, 1, 0);
+            int got = 0, lost = 0, downs = 0;
+            root.GotMouseCapture += (_, _) => ++got;
+            root.MouseDown += (_, args) =>
+            {
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeSameAs(replacement);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Shift);
+                ++downs;
+            };
+            MouseEventHandler recapture = (sender, args) =>
+            {
+                ++lost;
+                Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+                Mouse.Capture(root).Should().BeTrue();
+                PortableWindowActivationService.TryProcessNativePointerInput(source, replacement,
+                    PortableInputModifiers.Shift, out _).Should().BeTrue();
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Control);
+            };
+            root.LostMouseCapture += recapture;
+            try
+            {
+                var cancel = new PortablePointerInput(PortablePointerEventKind.Cancel, 10, 10, 3, -1, 0, 0);
+                PortableWindowActivationService.TryProcessNativePointerInput(source, cancel,
+                    PortableInputModifiers.Control, out _).Should().BeTrue();
+                Mouse.Captured.Should().BeSameAs(root); root.IsMouseCaptured.Should().BeTrue();
+                Mouse.LeftButton.Should().Be(MouseButtonState.Pressed);
+                lost.Should().Be(1); got.Should().Be(1); downs.Should().Be(1);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+            }
+            finally { root.LostMouseCapture -= recapture; Mouse.Capture(null); }
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsCancelRetiresStateBeforeThrowingLostCaptureCallback()
+    {
+        RunInUiApartment(() =>
+        {
+            using var host = PortablePresentationSourceHost.Create();
+            var root = new HitTestElement(); host.RootVisual = root; host.SetClientSize(200, 100);
+            SendPointerButton(host, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            Mouse.Capture(root).Should().BeTrue();
+            var failure = new InvalidOperationException("Capture callback failed.");
+            MouseEventHandler fail = (_, _) => throw failure;
+            root.LostMouseCapture += fail;
+            try
+            {
+                var cancel = new PortablePointerInput(PortablePointerEventKind.Cancel, 10, 10, 3, -1, 0, 0);
+                Action deliver = () => PortableWindowActivationService.TryProcessNativePointerInput(
+                    (PresentationSource)host, cancel, PortableInputModifiers.Control, out _);
+                deliver.Should().Throw<InvalidOperationException>().Which.Should().BeSameAs(failure);
+                Mouse.Captured.Should().BeNull(); root.IsMouseCaptured.Should().BeFalse();
+                Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+            }
+            finally { root.LostMouseCapture -= fail; Mouse.Capture(null); }
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsCancelCannotBeSuppressedByOrdinaryInputFiltering()
+    {
+        RunInUiApartment(() =>
+        {
+            using var host = PortablePresentationSourceHost.Create();
+            var root = new HitTestElement(); host.RootVisual = root; host.SetClientSize(200, 100);
+            SendPointerButton(host, PortableInputEventKind.MouseDown, PortableMouseButton.Left);
+            Mouse.Capture(root).Should().BeTrue();
+            int filtered = 0;
+            PreProcessInputEventHandler filter = (_, args) => { ++filtered; args.Cancel(); };
+            InputManager.Current.PreProcessInput += filter;
+            try
+            {
+                var cancel = new PortablePointerInput(PortablePointerEventKind.Cancel, 10, 10, 3, -1, 0, 0);
+                PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)host,
+                    cancel, 0, out _).Should().BeTrue();
+                filtered.Should().BeGreaterThan(0);
+                Mouse.Captured.Should().BeNull(); root.IsMouseCaptured.Should().BeFalse();
+                Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+            }
+            finally { InputManager.Current.PreProcessInput -= filter; Mouse.Capture(null); }
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsOriginCancelRetiresCapturedDownWithoutReleasingOtherCapture()
+    {
+        RunInUiApartment(() =>
+        {
+            using var origin = PortablePresentationSourceHost.Create();
+            using var target = PortablePresentationSourceHost.Create();
+            origin.RootVisual = new HitTestElement(); origin.SetClientSize(200, 100);
+            var root = new HitTestElement(); target.RootVisual = root; target.SetClientSize(200, 100);
+            Mouse.Capture(root).Should().BeTrue();
+            int downs = 0, cancellations = 0;
+            root.MouseDown += (_, _) => ++downs;
+            root.PreviewMouseMove += (sender, args) =>
+            {
+                if (PortableWindowActivationService.GetNativePointerInput(args) == null) return;
+                var cancel = new PortablePointerInput(PortablePointerEventKind.Cancel, 10, 10, 3, -1, 0, 0);
+                PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)origin,
+                    cancel, 0, out _).Should().BeTrue();
+                ++cancellations;
+            };
+            try
+            {
+                var down = new PortablePointerInput(PortablePointerEventKind.Down, 20.25, 12.75, 2, 0, 1, 0);
+                PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)origin,
+                    down, 0, out _).Should().BeTrue();
+                cancellations.Should().Be(1); downs.Should().Be(0);
+                Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+                Mouse.Captured.Should().BeSameAs(root);
+            }
+            finally { Mouse.Capture(null); }
+        });
+    }
+
     private static void RunInUiApartment(Action action)
     {
         Exception? exception = null;

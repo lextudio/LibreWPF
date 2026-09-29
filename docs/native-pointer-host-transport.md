@@ -118,6 +118,14 @@ qualification remain independent; source factory/scroll admission is unchanged.
 
 ## Remaining source and application work
 
+The canonical Forms dependency now binds each drag operation to its own input
+registration. Old queued input cannot enter a later drag, registration/teardown
+failures release the service state, and teardown preserves the original source
+error. This updates the actual canonical dependency graph without changing its
+shared ProGPU identity. Native drag cancellation, source factory selection and
+desktop qualification remain separate; only a whole successful exact producer
+Build may supply release packages.
+
 Host drag-layout tracking retains an identity for each button press. Mouse-up
 cleanup retires only the press observed before its source callback; a nested
 same-button press survives cancellation, deactivate/reactivate or hide/show,

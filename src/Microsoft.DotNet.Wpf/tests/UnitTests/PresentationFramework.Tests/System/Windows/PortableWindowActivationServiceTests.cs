@@ -1692,6 +1692,71 @@ public class PortableWindowActivationServiceTests
         Mouse.Captured.Should().BeNull();
     }
 
+    [PortableInputFact]
+    public void WheelEventStateSurvivesNestedPreviewDelivery() =>
+        VerifyNestedWheelEventState(handleNested: false, throwNested: false);
+
+    [PortableInputFact]
+    public void WheelEventStateSurvivesHandledNestedPreviewDelivery() =>
+        VerifyNestedWheelEventState(handleNested: true, throwNested: false);
+
+    [PortableInputFact]
+    public void WheelEventStateSurvivesThrowingNestedPreviewDelivery() =>
+        VerifyNestedWheelEventState(handleNested: false, throwNested: true);
+
+    private static void VerifyNestedWheelEventState(bool handleNested, bool throwNested)
+    {
+        RunInUiApartment(() =>
+        {
+            using IPortablePresentationSourceHost host = PortablePresentationSourceHost.Create();
+            var source = (PresentationSource)host;
+            var root = new HitTestElement();
+            host.RootVisual = root;
+            host.SetClientSize(200, 100);
+            bool nested = false;
+            int nestedPreviews = 0;
+            var bubbles = new List<int>();
+            MouseWheelEventArgs? outer = null;
+            void Send(double delta) => PortableWindowActivationService.ProcessInput(source,
+                new PortableInputEventArgs(PortableInputEventKind.MouseWheel, x: 10, y: 10, deltaY: delta));
+
+            root.PreviewMouseWheel += (_, args) =>
+            {
+                if (nested)
+                {
+                    ++nestedPreviews;
+                    args.Delta.Should().Be(-240);
+                    if (throwNested) throw new InvalidOperationException("Nested wheel callback failed.");
+                    args.Handled = handleNested;
+                    return;
+                }
+
+                outer = args;
+                args.Delta.Should().Be(120);
+                nested = true;
+                try
+                {
+                    if (throwNested)
+                    {
+                        Action dispatch = () => Send(-2);
+                        dispatch.Should().Throw<InvalidOperationException>().WithMessage("Nested wheel callback failed.");
+                    }
+                    else Send(-2);
+                }
+                finally { nested = false; }
+                args.Delta.Should().Be(120);
+                args.Handled.Should().BeFalse();
+            };
+            root.MouseWheel += (_, args) => bubbles.Add(args.Delta);
+
+            Send(1);
+            nestedPreviews.Should().Be(1);
+            outer.Should().NotBeNull();
+            outer!.Delta.Should().Be(120);
+            bubbles.Should().Equal(handleNested || throwNested ? new[] { 120 } : new[] { -240, 120 });
+        });
+    }
+
     private static void RunInUiApartment(Action action)
     {
         Exception? exception = null;

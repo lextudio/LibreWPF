@@ -84,17 +84,30 @@ namespace System.Windows.Controls
             => TryQueue(input, Lifetime, out queueFull);
 
         internal bool TryQueue(PortablePointerInput input, PortableScrollLifetime lifetime, out bool queueFull)
+            => TryQueueCore(input, lifetime, input == null ? default : new Vector(input.ScrollX, input.ScrollY),
+                false, out _, out queueFull);
+
+        internal bool TryQueueRemaining(PortablePointerInput input, PortableScrollLifetime lifetime,
+            Vector remaining, out Vector nextRemaining, out bool queueFull)
+            => TryQueueCore(input, lifetime, remaining, true, out nextRemaining, out queueFull);
+
+        private bool TryQueueCore(PortablePointerInput input, PortableScrollLifetime lifetime,
+            Vector remaining, bool partial, out Vector nextRemaining, out bool queueFull)
         {
+            nextRemaining = remaining;
             queueFull = false;
             _owner.VerifyAccess();
             if (input == null || input.Kind != PortablePointerEventKind.Scroll || lifetime?.IsCancelled == true || !IsCurrent) return false;
-            Vector delta = new(-input.ScrollX, -input.ScrollY);
+            if (!double.IsFinite(remaining.X) || !double.IsFinite(remaining.Y)) return false;
+            Vector delta = -remaining;
+            Vector remainder = default;
             if (input.ScrollUnit == PortablePointerScrollUnit.Lines)
             {
                 if (Math.Abs(delta.X) > MaximumLinesPerPacket || Math.Abs(delta.Y) > MaximumLinesPerPacket)
                     return false;
-                if ((!_info.CanHorizontallyScroll && delta.X != 0) || (!_info.CanVerticallyScroll && delta.Y != 0))
-                    return false;
+                remainder = new Vector(_horizontalEnabled ? 0 : remaining.X, _verticalEnabled ? 0 : remaining.Y);
+                if (!partial && remainder != default) return false;
+                delta = new Vector(_horizontalEnabled ? delta.X : 0, _verticalEnabled ? delta.Y : 0);
             }
             else
             {
@@ -107,15 +120,34 @@ namespace System.Windows.Controls
                 if (!transform.TryTransform(start, out Point localStart) ||
                     !transform.TryTransform(start + delta, out Point localEnd)) return false;
                 delta = localEnd - localStart;
+                Vector localRemainder = new(_horizontalEnabled ? 0 : delta.X, _verticalEnabled ? 0 : delta.Y);
+                if (localRemainder != default)
+                {
+                    if (!partial || transform.Inverse is not GeneralTransform inverse ||
+                        !inverse.TryTransform(localStart, out Point sourceStart) ||
+                        !inverse.TryTransform(localStart + localRemainder, out Point sourceEnd)) return false;
+                    // The next routed owner receives the unconsumed vector back
+                    // in the original source frame, not this viewer's local axes.
+                    remainder = sourceStart - sourceEnd;
+                }
+                delta = new Vector(_horizontalEnabled ? delta.X : 0, _verticalEnabled ? delta.Y : 0);
                 Vector scale = _owner.GetScrollPointScale(_info.ViewportWidth, _info.ViewportHeight, _axes);
                 if (!TryScale(delta.X, scale.X, _info.CanHorizontallyScroll, out double x) ||
                     !TryScale(delta.Y, scale.Y, _info.CanVerticallyScroll, out double y)) return false;
                 delta = new Vector(x, y);
             }
-            if (!double.IsFinite(delta.X) || !double.IsFinite(delta.Y) || lifetime?.IsCancelled == true || !IsCurrent) return false;
-            if (delta == default) return true;
+            if (!double.IsFinite(delta.X) || !double.IsFinite(delta.Y) ||
+                !double.IsFinite(remainder.X) || !double.IsFinite(remainder.Y) ||
+                lifetime?.IsCancelled == true || !IsCurrent) return false;
+            if (delta == default)
+            {
+                if (remaining != default) return false;
+                nextRemaining = default;
+                return true;
+            }
             bool queued = _owner.TryEnqueuePortableScroll(new PortableScrollCommand(this, input.ScrollUnit, delta, lifetime));
             queueFull = !queued;
+            if (queued) nextRemaining = remainder;
             return queued;
         }
 

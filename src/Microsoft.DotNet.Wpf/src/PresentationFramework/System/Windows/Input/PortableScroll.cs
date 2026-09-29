@@ -25,12 +25,22 @@ namespace System.Windows.Input
             _state = state; _revision = state.Revision; _generation = state.Source.PointerInputGeneration;
             _target = target; NativeInput = input; Lifetime = lifetime; IsCancellation = cancellation;
             Sequence = sequence;
+            RemainingScroll = new Vector(input.ScrollX, input.ScrollY);
             Timestamp = PortableWindowActivationService.NativePointerTimestamp(input.Timestamp);
             Modifiers = Keyboard.Modifiers;
             Source = target;
         }
 
         public PortablePointerInput NativeInput { get; }
+        /// <summary>Unconsumed motion, in the original source frame and native units/sign.</summary>
+        public Vector RemainingScroll { get; private set; }
+        internal bool HasConsumedMotion { get; private set; }
+        internal void AcceptRemaining(Vector remaining)
+        {
+            HasConsumedMotion |= remaining != RemainingScroll;
+            RemainingScroll = remaining;
+            if (remaining == default) Handled = true;
+        }
         public int Timestamp { get; }
         public ModifierKeys Modifiers { get; }
         internal PortablePresentationSource PresentationSource => _state.Source;
@@ -67,7 +77,8 @@ namespace System.Windows.Input
             if (viewer.TryGetPortableScrollSession(input.Sequence, out var session) &&
                 ReferenceEquals(session.Source, input.PresentationSource) && input.IsCurrent)
             {
-                if (session.TryQueue(input.NativeInput, input.Lifetime, out bool queueFull)) input.Handled = true;
+                if (session.TryQueueRemaining(input.NativeInput, input.Lifetime, input.RemainingScroll,
+                    out Vector remaining, out bool queueFull)) input.AcceptRemaining(remaining);
                 else if (queueFull) throw new InvalidOperationException("The native scroll source queue is full.");
             }
         }
@@ -139,7 +150,9 @@ namespace System.Windows.Input
                     args.RoutedEvent = ScrollEvent;
                     target.RaiseEvent(args);
                 }
-                handled = args.Handled;
+                // A partial default consumption must not replay the original
+                // complete packet through an independent host fallback.
+                handled = args.Handled || args.HasConsumedMotion;
                 return true;
             }
             catch

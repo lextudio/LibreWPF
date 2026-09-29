@@ -15,6 +15,15 @@ handling suppresses default scrolling; handled-event observers can still inspect
 the bubble. These are separate events, not integer MouseWheel deltas fabricated
 from points or line counts. Legacy wheel dispatch remains unchanged.
 
+`RemainingScroll` exposes the unconsumed vector with the original native sign and
+units. Each source-owned ScrollViewer queues its enabled axes and lets the other
+components continue bubbling. Point remainders return through the inverse visual
+mapping to the original source frame, including rotated/scaled viewers; line
+counts remain unscaled. NativeInput is never rewritten. Routed Handled becomes
+true only when all motion is claimed (or an application handles it). The host also
+recognizes partial consumption so it cannot replay the original complete packet
+through a separate fallback. Queue rejection never publishes a changed remainder.
+
 The actual input provider declares the phase protocol. Untagged packets are only
 admitted with both phase fields zero. Explicit AppKit input admits None, Began,
 Stationary, Changed, Ended, Cancelled and normal MayBegin, using the exact SDK
@@ -47,18 +56,19 @@ a newer nested dispatch. Modal admission resolves the actual source root/owning
 window, not a child ScrollViewer as if it were a top-level owner. A full selected
 queue throws rather than silently redirecting the overflow to another control.
 
-Eighteen authored source cases now cover the consumer and routing, including
+Twenty-two authored source cases now cover the consumer and routing, including
 normal retargeting, momentum pinning/retirement, source and gesture cancellation,
 unchanged state after invalid phase packets, preview handling/failure, nested
-dispatch, owning modal roots, fractional handoff and native hit-provider ownership.
+dispatch, owning modal roots, fractional handoff, native hit-provider ownership,
+independent nested line axes, rotated point remainders and partial queue failure.
 Compilation is not execution evidence. Earlier consumer-only CI passed all nine cases after its
 transform fixture published layout before input.
 
-Still required: independent per-axis nested consumption, cross-presentation-source
+Still required: deferred boundary/overscroll chaining, cross-presentation-source
 coordinate transport through popup ancestors, default handling for undeclared
 custom scroll providers and legacy-only application handlers, complete source
 registrar/factory integration, Forms source input and native UI/package validation
-on all supported platforms. Default source handling currently consumes a complete
-vector only when one source-owned provider supports it; otherwise it leaves the
-event unhandled. It never drops an unsupported component, interprets another
+on all supported platforms. Unclaimed components remain visible to ancestors and
+application handlers; source providers retain their existing edge clamping rather
+than forwarding deferred boundary overflow. The source path never interprets another
 source's coordinates as local, or advertises complete application compatibility.

@@ -30,4 +30,4 @@ export LIBREWPF_TEST_MEDIA_BACKEND=Portable
 "${dotnet_command}" "${framework_assembly}" \
   --filter-class System.Windows.PortableScrollSourceTests \
   --filter-method '*NativeScroll*' \
-  --minimum-expected-tests 18 --fail-skips on --timeout 60s --no-progress
+  --minimum-expected-tests 22 --fail-skips on --timeout 60s --no-progress

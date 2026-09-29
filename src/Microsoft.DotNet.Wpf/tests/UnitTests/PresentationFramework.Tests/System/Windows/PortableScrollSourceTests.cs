@@ -442,6 +442,111 @@ public sealed class PortableScrollSourceTests
         });
     }
 
+    [PortableScrollFact]
+    public void NativeScrollNestedOwnersConsumeIndependentLineAxesOnce()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            var ancestor = fixture.AddAncestor();
+            fixture.Info.CanVerticallyScroll = false;
+            ancestor.Info.CanHorizontallyScroll = false;
+            fixture.Host.HitTestOverride = (_, _) => fixture.Viewer;
+            Vector observed = default;
+            int legacy = 0;
+            ancestor.Viewer.MouseWheel += (_, _) => ++legacy;
+            fixture.Root.AddHandler(PortableScroll.ScrollEvent, new RoutedEventHandler((_, value) =>
+            {
+                var args = Assert.IsType<PortableScrollEventArgs>(value);
+                Assert.False(args.Handled);
+                Assert.Equal(-2, args.NativeInput.ScrollX); Assert.Equal(-3, args.NativeInput.ScrollY);
+                observed = args.RemainingScroll;
+            }));
+            Assert.True(Route(fixture, Packet(-2, -3, PortablePointerScrollUnit.Lines), out bool handled));
+            Assert.True(handled);
+            ancestor.Viewer.UpdateLayout();
+            Assert.Equal(new Vector(0, -3), observed);
+            Assert.Equal(new[] { "right", "right" }, fixture.Info.Lines);
+            Assert.Equal(new[] { "down", "down", "down" }, ancestor.Info.Lines);
+            Assert.Equal(55, fixture.Info.HorizontalOffset); Assert.Equal(40, fixture.Info.VerticalOffset);
+            Assert.Equal(40, ancestor.Info.HorizontalOffset); Assert.Equal(73.75, ancestor.Info.VerticalOffset);
+            Assert.Equal(0, legacy);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollPointRemainderReturnsToSourceAxesAfterRotation()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            var ancestor = fixture.AddAncestor();
+            fixture.Info.CanVerticallyScroll = false;
+            ancestor.Info.CanVerticallyScroll = false;
+            fixture.Viewer.RenderTransform = new MatrixTransform(0, 2, -4, 0, 0, 0);
+            ancestor.Viewer.UpdateLayout();
+            GeneralTransform transform = fixture.Viewer.TransformToAncestor(ancestor.Viewer);
+            Assert.Equal(new Vector(0, 2), transform.Transform(new Point(1, 0)) - transform.Transform(default));
+            Assert.Equal(new Vector(-4, 0), transform.Transform(new Point(0, 1)) - transform.Transform(default));
+            fixture.Host.HitTestOverride = (_, _) => fixture.Viewer;
+            Vector remaining = default;
+            fixture.Root.AddHandler(PortableScroll.ScrollEvent, new RoutedEventHandler((_, value) =>
+                remaining = ((PortableScrollEventArgs)value).RemainingScroll));
+            Assert.True(Route(fixture, Packet(-8, -6, PortablePointerScrollUnit.Points), out bool handled));
+            Assert.True(handled);
+            ancestor.Viewer.UpdateLayout();
+            Assert.Equal(new Vector(-8, 0), remaining);
+            Assert.Equal(43, fixture.Info.HorizontalOffset); Assert.Equal(40, fixture.Info.VerticalOffset);
+            Assert.Equal(48, ancestor.Info.HorizontalOffset); Assert.Equal(40, ancestor.Info.VerticalOffset);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollPartialQueueFailureLeavesTheOriginalRemainderUntouched()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            fixture.Info.CanVerticallyScroll = false;
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
+            Vector original = new(-1, -2);
+            for (int i = 0; i < 31; ++i)
+            {
+                Assert.True(session.TryQueueRemaining(Packet(-1, -2, PortablePointerScrollUnit.Points),
+                    null, original, out Vector remaining, out bool full));
+                Assert.Equal(new Vector(0, -2), remaining); Assert.False(full);
+            }
+            Assert.False(session.TryQueueRemaining(Packet(-1, -2, PortablePointerScrollUnit.Points),
+                null, original, out Vector rejected, out bool queueFull));
+            Assert.True(queueFull); Assert.Equal(original, rejected);
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(71, fixture.Info.HorizontalOffset); Assert.Equal(40, fixture.Info.VerticalOffset);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollUnclaimedAxisRemainsVisibleWithoutReplayingAcceptedMotion()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            fixture.Info.CanVerticallyScroll = false;
+            fixture.Host.HitTestOverride = (_, _) => fixture.Viewer;
+            Vector remaining = default;
+            fixture.Root.AddHandler(PortableScroll.ScrollEvent, new RoutedEventHandler((_, value) =>
+            {
+                var args = (PortableScrollEventArgs)value;
+                Assert.False(args.Handled);
+                remaining = args.RemainingScroll;
+            }));
+            Assert.True(Route(fixture, Packet(-1, -2, PortablePointerScrollUnit.Points), out bool handled));
+            Assert.True(handled); // Some motion was accepted; do not replay the entire native packet.
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(new Vector(0, -2), remaining);
+            Assert.Equal(41, fixture.Info.HorizontalOffset); Assert.Equal(40, fixture.Info.VerticalOffset);
+        });
+    }
+
     private static PortablePointerInput RoutedPacket(double x, double delta, uint phase = 0, uint momentum = 0) =>
         new(PortablePointerEventKind.Scroll, PortablePointerScrollProtocol.AppKit, x, 75, 3.125, -1, 0,
             PortablePointerModifiers.Super, 0, delta, PortablePointerScrollUnit.Points, phase, momentum);
@@ -489,6 +594,24 @@ public sealed class PortableScrollSourceTests
             var info = new MeasuredScrollInfo { ScrollOwner = viewer };
             viewer.Info = info; viewer.ScrollInfo = info;
             Viewer.UpdateLayout();
+            return (viewer, info);
+        }
+
+        internal (ScrollViewer Viewer, MeasuredScrollInfo Info) AddAncestor()
+        {
+            Host.RootVisual = null;
+            var viewer = CreateViewer();
+            viewer.Width = 400; viewer.Height = 200;
+            var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+            presenter.SetValue(ContentPresenter.ContentProperty, new TemplateBindingExtension(ContentControl.ContentProperty));
+            viewer.Template = new ControlTemplate(typeof(ScrollViewer)) { VisualTree = presenter };
+            viewer.Content = Root;
+            Host.RootVisual = viewer; Host.SetClientSize(400, 200);
+            viewer.ApplyTemplate();
+            var info = new MeasuredScrollInfo { ScrollOwner = viewer };
+            viewer.Info = info; viewer.ScrollInfo = info;
+            viewer.UpdateLayout();
+            Assert.Same(Host, PresentationSource.FromVisual(Viewer));
             return (viewer, info);
         }
 

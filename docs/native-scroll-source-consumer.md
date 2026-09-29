@@ -32,8 +32,11 @@ The existing bounded queue retains 31 pending commands, plus at most one active
 native command. Full native admission fails before changing fractional state.
 An ordinary command cannot silently evict an accepted native packet; a required
 eviction throws instead. Existing safe ordinary-command coalescence is retained.
-Each line packet is bounded to 4096 lines per axis. Unsupported requested axes
-reject the complete packet instead of dropping part of its motion.
+Each line packet is bounded to 4096 lines per axis. The direct consumer retains
+all-or-nothing axis admission. Routed consumption queues enabled axes and returns
+the others in the original source frame, publishing the new remainder only after
+queue acceptance. Rotated point remainders use the actual inverse visual mapping;
+line counts are not visually scaled.
 
 Sessions retain the exact source generation, viewer and provider. Source/root
 retirement, provider replacement, unit/axis enablement changes, modal blocking and explicit
@@ -49,8 +52,9 @@ provider traits, callback cancellation/atomic validation, and deferred offset
 publication with layout reentry. Compilation is not test execution evidence.
 
 The routed path adds explicit AppKit phase validation, normal/momentum ownership
-and lossless routed events. Still required before factory admission: per-axis nested
-scrolling, cross-source routing, custom/legacy handler capability, source
+and lossless routed events with independent nested axes. Still required before
+factory admission: deferred boundary chaining, cross-source routing,
+custom/legacy handler capability, source
 registrar/factory integration, Forms integration
 and actual native popup/application qualification on every supported platform.
 The legacy Windows and portable wheel paths are unchanged; there is no conversion

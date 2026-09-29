@@ -53,7 +53,8 @@ native metadata and original physical-source ownership without cancelling captur
 The [source scroll consumer](native-scroll-source-consumer.md) preserves point/line
 units through real source metrics and the command queue. Its internal
 [routed path](native-scroll-routing.md) now validates declared AppKit phases and
-retains momentum targets, generations and fractional state. Per-axis nested and
+retains momentum targets, generations and fractional state. Independent nested
+axes now route through source-frame remainders. Deferred boundary chaining and
 cross-source scrolling, custom/legacy handlers and source admission remain unfinished.
 The owned Cocoa factory is therefore still not selected. Complete
 source consumption, callback/queued-dispatch lifetime, Forms integration and real

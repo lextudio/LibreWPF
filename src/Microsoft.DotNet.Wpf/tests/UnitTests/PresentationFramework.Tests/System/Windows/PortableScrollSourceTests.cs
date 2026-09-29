@@ -29,7 +29,7 @@ public sealed class PortableScrollSourceTests
         Run(() =>
         {
             using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
-            fixture.Viewer.RenderTransform = new ScaleTransform(2, 4);
+            PublishVisualScale(fixture);
             Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
             Assert.True(session.TryQueue(Packet(-5.5, -6.75, PortablePointerScrollUnit.Points)));
             fixture.Viewer.UpdateLayout();
@@ -64,7 +64,7 @@ public sealed class PortableScrollSourceTests
         Run(() =>
         {
             using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
-            fixture.Viewer.RenderTransform = new ScaleTransform(2, 4);
+            PublishVisualScale(fixture);
             Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
             Assert.True(session.TryQueue(Packet(-0.4, -0.4, PortablePointerScrollUnit.Lines)));
             Assert.True(session.TryQueue(Packet(-1.6, -2.6, PortablePointerScrollUnit.Lines)));
@@ -209,6 +209,16 @@ public sealed class PortableScrollSourceTests
 
     private static PortablePointerInput Packet(double x, double y, PortablePointerScrollUnit unit) =>
         new(PortablePointerEventKind.Scroll, 10, 10, 1, -1, 0, 0, x, y, unit);
+
+    private static void PublishVisualScale(ScrollFixture fixture)
+    {
+        fixture.Viewer.RenderTransform = new ScaleTransform(2, 4);
+        // RenderTransform assignment invalidates arrange. Native input uses the
+        // published visual frame, so arrange before delivering the scaled packet.
+        fixture.Viewer.UpdateLayout();
+        GeneralTransform toRoot = fixture.Viewer.TransformToAncestor((Visual)fixture.Host.RootVisual);
+        Assert.Equal(new Vector(2, 4), toRoot.Transform(new Point(1, 1)) - toRoot.Transform(default));
+    }
 
     private sealed class ScrollFixture : IDisposable
     {

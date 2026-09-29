@@ -47,7 +47,9 @@ native positions, time, click identity and source generations for movement and
 five-button input. Source hide/modal cancellation now retires owned presses and
 exact-provider capture before callbacks. Source hover/leave retirement retains
 native metadata and original physical-source ownership without cancelling capture.
-Precision scrolling with real source scroll metrics and phase ownership remains unfinished.
+The [source scroll consumer](native-scroll-source-consumer.md) preserves point/line
+units through real source metrics and the command queue. Native scroll routing,
+phase ownership and source admission remain unfinished.
 The owned Cocoa factory is therefore still not selected. Complete
 source consumption, callback/queued-dispatch lifetime, Forms integration and real
 native popup interaction/visual tests remain required. No automatic modality,

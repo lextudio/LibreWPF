@@ -46,8 +46,10 @@ namespace System.Windows.Controls
     /// <summary>
     /// StackPanel is used to arrange children into single line.
     /// </summary>
-    public class StackPanel : Panel, IScrollInfo, IStackMeasure
+    public class StackPanel : Panel, IScrollInfo, IStackMeasure, IPortableScrollInfo
     {
+        PortableScrollAxes IPortableScrollInfo.ScrollAxes => Orientation == Orientation.Horizontal
+            ? PortableScrollAxes.HorizontalItems : PortableScrollAxes.VerticalItems;
         //-------------------------------------------------------------------
         //
         //  Constructors
@@ -1171,4 +1173,3 @@ namespace System.Windows.Controls
         #endregion Private Structures Classes
     }
 }
-

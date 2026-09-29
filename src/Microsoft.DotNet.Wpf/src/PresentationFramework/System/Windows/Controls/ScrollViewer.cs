@@ -1415,6 +1415,18 @@ namespace System.Windows.Controls
             }
         }
 
+        internal Vector GetScrollPointScale(double viewportWidth, double viewportHeight, PortableScrollAxes axes)
+        {
+            var viewport = GetTemplateChild(ScrollContentPresenterTemplateName) as ScrollContentPresenter;
+            // Logical axes use the existing WPF panning measurement, including
+            // its partially visible last item. Physical offsets remain exact DIPs.
+            double width = viewportWidth + 1d, height = viewportHeight + 1d;
+            return new Vector((axes & PortableScrollAxes.HorizontalItems) == 0 ? 1 :
+                    (DoubleUtil.AreClose(width, 0) ? 0 : (viewport?.ActualWidth ?? ActualWidth) / width),
+                (axes & PortableScrollAxes.VerticalItems) == 0 ? 1 :
+                    (DoubleUtil.AreClose(height, 0) ? 0 : (viewport?.ActualHeight ?? ActualHeight) / height));
+        }
+
         #endregion
 
         #region Scroll Manipulations
@@ -1619,18 +1631,10 @@ namespace System.Windows.Controls
 
                     // Determine pixels per offset value. This is useful when performing non-pixel scrolling.
 
-                    double viewportWidth = ViewportWidth + 1d; // Using +1 to account for last partially visible item in viewport
-                    double viewportHeight = ViewportHeight + 1d; // Using +1 to account for last partially visible item in viewport
-                    if (viewport != null)
-                    {
-                        _panningInfo.DeltaPerHorizontalOffet = (DoubleUtil.AreClose(viewportWidth, 0) ? 0 : viewport.ActualWidth / viewportWidth);
-                        _panningInfo.DeltaPerVerticalOffset = (DoubleUtil.AreClose(viewportHeight, 0) ? 0 : viewport.ActualHeight / viewportHeight);
-                    }
-                    else
-                    {
-                        _panningInfo.DeltaPerHorizontalOffet = (DoubleUtil.AreClose(viewportWidth, 0) ? 0 : ActualWidth / viewportWidth);
-                        _panningInfo.DeltaPerVerticalOffset = (DoubleUtil.AreClose(viewportHeight, 0) ? 0 : ActualHeight / viewportHeight);
-                    }
+                    Vector pointScale = GetScrollPointScale(ViewportWidth, ViewportHeight,
+                        PortableScrollAxes.HorizontalItems | PortableScrollAxes.VerticalItems);
+                    _panningInfo.DeltaPerHorizontalOffet = pointScale.X;
+                    _panningInfo.DeltaPerVerticalOffset = pointScale.Y;
 
                     // Template bind other Scroll Manipulation properties if needed.
                     if (!ManipulationBindingsInitialized)
@@ -2098,21 +2102,24 @@ namespace System.Windows.Controls
             PageRight,
             SetHorizontalOffset,
             SetVerticalOffset,
+            PortableScroll,
             MakeVisible,
         }
 
         private struct Command
         {
-            internal Command(Commands code, double param, MakeVisibleParams mvp)
+            internal Command(Commands code, double param, MakeVisibleParams mvp, PortableScrollCommand portableScroll = null)
             {
                 Code = code;
                 Param = param;
                 MakeVisibleParam = mvp;
+                PortableScroll = portableScroll;
             }
 
             internal Commands Code;
             internal double Param;
             internal MakeVisibleParams MakeVisibleParam;
+            internal PortableScrollCommand PortableScroll;
         }
 
         private class MakeVisibleParams
@@ -2131,6 +2138,14 @@ namespace System.Windows.Controls
         {
             private const int _capacity = 32;
 
+            internal bool TryEnqueuePortable(Command command)
+            {
+                if (_lastWritePosition != _lastReadPosition &&
+                    (_lastWritePosition + 1) % _capacity == _lastReadPosition) return false;
+                Enqueue(command);
+                return true;
+            }
+
             //returns false if capacity is used up and entry ignored
             internal void Enqueue(Command command)
             {
@@ -2142,6 +2157,9 @@ namespace System.Windows.Controls
 
                 if(!OptimizeCommand(command)) //regular insertion, if optimization didn't happen
                 {
+                    if ((_lastWritePosition + 1) % _capacity == _lastReadPosition &&
+                        _array[(_lastReadPosition + 1) % _capacity].PortableScroll != null)
+                        throw new InvalidOperationException("The scroll command queue cannot discard accepted native input.");
                     _lastWritePosition = (_lastWritePosition + 1) % _capacity;
 
                     if(_lastWritePosition == _lastReadPosition) //buffer is full
@@ -2190,7 +2208,7 @@ namespace System.Windows.Controls
 
                 //array exists always if writePos != readPos
                 Command command = _array[_lastReadPosition];
-                _array[_lastReadPosition].MakeVisibleParam = null; //to release the allocated object
+                _array[_lastReadPosition] = default; // Release all object and native-session payloads.
 
                 if(_lastWritePosition == _lastReadPosition) //it was the last command
                 {
@@ -2213,6 +2231,11 @@ namespace System.Windows.Controls
         private bool ExecuteNextCommand()
         {
             IScrollInfo isi = ScrollInfo;
+            if (_activePortableScroll != null)
+            {
+                AdvancePortableScroll();
+                return true;
+            }
             if(isi == null) return false;
 
             Command cmd = _queue.Fetch();
@@ -2230,6 +2253,11 @@ namespace System.Windows.Controls
 
                 case Commands.SetHorizontalOffset: isi.SetHorizontalOffset(cmd.Param); break;
                 case Commands.SetVerticalOffset:   isi.SetVerticalOffset(cmd.Param);   break;
+
+                case Commands.PortableScroll:
+                    _activePortableScroll = cmd.PortableScroll;
+                    AdvancePortableScroll();
+                    break;
 
                 case Commands.MakeVisible:
                 {
@@ -2298,9 +2326,24 @@ namespace System.Windows.Controls
             EnsureQueueProcessing();
         }
 
+        private void AdvancePortableScroll()
+        {
+            _executingPortableScroll = true;
+            try { if (_activePortableScroll.Advance()) _activePortableScroll = null; }
+            catch { _activePortableScroll = null; throw; }
+            finally { _executingPortableScroll = false; }
+        }
+
+        internal bool TryEnqueuePortableScroll(PortableScrollCommand command)
+        {
+            if (!_queue.TryEnqueuePortable(new Command(Commands.PortableScroll, 0, null, command))) return false;
+            EnsureQueueProcessing();
+            return true;
+        }
+
         private void EnsureQueueProcessing()
         {
-            if(!_queue.IsEmpty())
+            if(!_queue.IsEmpty() || _activePortableScroll != null)
             {
                 EnsureLayoutUpdatedHandler();
             }
@@ -2311,6 +2354,7 @@ namespace System.Windows.Controls
         // 2. If no commands to execute, updates properties and fires events
         private void OnLayoutUpdated(object sender, EventArgs e)
         {
+            if (_executingPortableScroll) return;
             // if there was a command, execute it and leave the handler for the next pass
             if(ExecuteNextCommand())
             {
@@ -2896,6 +2940,8 @@ namespace System.Windows.Controls
         // Event/infrastructure
         private EventHandler _layoutUpdatedHandler;
         private IScrollInfo _scrollInfo;
+        private PortableScrollCommand _activePortableScroll;
+        private bool _executingPortableScroll;
 
         private CommandQueue _queue;
 

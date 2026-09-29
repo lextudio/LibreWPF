@@ -22,6 +22,9 @@ Down and up retain actual click counts for all five mapped buttons. Native
 modifier flags remain separate from the normalized source shortcut snapshot.
 Capture routing transforms only the target client frame, not the original packet.
 Legacy constructors, event types and click-count calculation remain unchanged.
+`PortableInputEventArgs` retains its original ten-argument constructor identity;
+native metadata uses a separate overload. An optional extra argument is not
+reflection/binary compatibility, as the SDK Application.Run harness exposed.
 
 Each native report captures both its original and capture-routed presentation
 source's input generation. Root replacement, cancellation or disposal invalidates
@@ -77,5 +80,7 @@ native enter/leave metadata, outside synchronization, late leaves, nested hover,
 throwing hover and capture callbacks, and legacy raw/event behavior. Regressions are authored for the
 existing source CI gate; compilation alone is not their execution evidence.
 This path does not use real AppKit windows, qualify native capture, or admit
-precision scrolling. Unadmitted events are rejected before any
+precision scrolling. Its [scroll consumer](native-scroll-source-consumer.md) now
+queues actual point/line commands, but routing and phase ownership remain separate
+requirements before admission. Unadmitted events are rejected before any
 legacy wheel conversion or button mutation.

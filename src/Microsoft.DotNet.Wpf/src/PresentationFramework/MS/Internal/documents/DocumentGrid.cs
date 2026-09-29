@@ -26,8 +26,9 @@ namespace MS.Internal.Documents
     /// document inside of a DocumentViewer control.
     /// </summary>
     /// <speclink>http://d2/DRX/default.aspx</speclink>
-    internal class DocumentGrid : FrameworkElement, IDocumentScrollInfo
+    internal class DocumentGrid : FrameworkElement, IDocumentScrollInfo, IPortableScrollInfo
     {
+        PortableScrollAxes IPortableScrollInfo.ScrollAxes => PortableScrollAxes.Pixels;
         //------------------------------------------------------
         //
         //  Constructors
@@ -3377,4 +3378,3 @@ namespace MS.Internal.Documents
         #endregion Private Fields
     }
 }
-

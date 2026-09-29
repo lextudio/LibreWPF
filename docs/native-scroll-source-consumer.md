@@ -1,0 +1,55 @@
+# Native scroll source consumer
+
+Acceptance target: scrolling content in ShowcaseApp dialogs and dropdowns.
+The internal `PortableScrollSession` connects native point/line units to the real
+`ScrollViewer` command queue and `IScrollInfo` provider. It does not yet admit
+native scroll packets through the source registrar or select the Cocoa factory.
+
+`IScrollInfo` does not specify offset units. Source providers explicitly declare
+physical or logical units per axis through `IPortableScrollInfo`; the consumer
+does not infer them from `CanContentScroll`. ScrollContentPresenter, TextBoxView,
+FlowDocumentView and DocumentGrid use physical offsets. StackPanel declares its
+stacking axis logical. VirtualizingStackPanel uses its actual pixel/item mode.
+Undeclared custom providers and unknown unit flags are rejected.
+
+Point vectors use the actual source-to-viewer visual transform, including scale
+and mirroring, without applying a desktop translation to the vector. Physical
+offsets retain fractions. Logical offsets share WPF's existing measured panning
+ratio and rounding, including the partially visible last item; they do not use
+a guessed line height. Each session carries fractional residuals, resets them
+when units change, and discards boundary overscroll debt. Both axes' current
+metrics are checked before queueing and before any provider offset write.
+
+Line deltas remain unscaled, retain fractional remainders and invoke the
+provider's LineLeft/Right/Up/Down commands. They are not converted into wheel
+notches or fixed point deltas. One line advances per existing layout/command
+pass, so a provider can publish its new offsets during layout before the next
+line. Remaining lines precede later commands. Reentrant layout from a provider
+callback cannot execute the active command again or drain later commands.
+
+The existing bounded queue retains 31 pending commands, plus at most one active
+native command. Full native admission fails before changing fractional state.
+An ordinary command cannot silently evict an accepted native packet; a required
+eviction throws instead. Existing safe ordinary-command coalescence is retained.
+Each line packet is bounded to 4096 lines per axis. Unsupported requested axes
+reject the complete packet instead of dropping part of its motion.
+
+Sessions retain the exact source generation, viewer and provider. Source/root
+retirement, provider replacement, unit/axis enablement changes, modal blocking and explicit
+cancellation prevent queued writes. The second axis is rechecked after a first
+axis callback so cancellation cannot continue writing through a retired session.
+Queue fetch releases the stored session reference; later sessions do not inherit
+fractional state.
+
+Nine source regression cases are authored for the existing automatic CI gate:
+fractional transformed points, measured logical points, line/ordinary-command
+ordering, source retirement, queue exhaustion, invalid units/metrics/axes, source
+provider traits, callback cancellation/atomic validation, and deferred offset
+publication with layout reentry. Compilation is not test execution evidence.
+
+Still required before source admission: native phase validation, normal versus
+momentum target ownership, routed-handler semantics and per-axis nested scrolling,
+custom-provider capability, source registrar/factory integration, Forms integration
+and actual native popup/application qualification on every supported platform.
+The legacy Windows and portable wheel paths are unchanged; there is no conversion
+fallback when the native path is unavailable.

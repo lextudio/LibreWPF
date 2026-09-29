@@ -19,8 +19,9 @@ namespace MS.Internal.Documents
     /// <summary>
     /// Provides a view port for content of FlowDocument formatted bottomless area.
     /// </summary>
-    internal partial class FlowDocumentView : FrameworkElement, IScrollInfo, IServiceProvider
+    internal partial class FlowDocumentView : FrameworkElement, IScrollInfo, IServiceProvider, IPortableScrollInfo
     {
+        PortableScrollAxes IPortableScrollInfo.ScrollAxes => PortableScrollAxes.Pixels;
         //-------------------------------------------------------------------
         //
         //  Constructors

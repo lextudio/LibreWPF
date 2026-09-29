@@ -393,6 +393,14 @@ namespace System.Windows
             if (source.RootVisual is not UIElement root)
                 return false;
 
+            if (input.Kind == PortablePointerEventKind.Scroll)
+            {
+                using PortableKeyboardDevice.EventModifierScope scope =
+                    InputManager.UnsecureCurrent.PrimaryKeyboardDevice is PortableKeyboardDevice keyboard
+                        ? keyboard.PushEventModifiers(ToEventModifierKeys(modifiers)) : default;
+                return PortableScroll.TryProcess(portableSource, input, out handled);
+            }
+
             PortableInputEventKind kind;
             switch (input.Kind)
             {

@@ -5,6 +5,9 @@ context supplies native pointer events it subscribes to that stream alone, not
 the equivalent Silk mouse callbacks. Keyboard delivery remains separate. Native
 double coordinates, timestamp, button/click identity, modifier snapshot, scroll
 units and phases cross the host as immutable `PortablePointerInput` data.
+The actual provider's scroll-protocol tag travels with them, including through
+coordinate copies. Neither the host OS nor recognizable raw phase bits select
+AppKit semantics for an untagged provider.
 Command-to-Control shortcut normalization is separate from the original flags;
 pointer delivery never polls a later keyboard state to replace its snapshot.
 
@@ -48,8 +51,10 @@ five-button input. Source hide/modal cancellation now retires owned presses and
 exact-provider capture before callbacks. Source hover/leave retirement retains
 native metadata and original physical-source ownership without cancelling capture.
 The [source scroll consumer](native-scroll-source-consumer.md) preserves point/line
-units through real source metrics and the command queue. Native scroll routing,
-phase ownership and source admission remain unfinished.
+units through real source metrics and the command queue. Its internal
+[routed path](native-scroll-routing.md) now validates declared AppKit phases and
+retains momentum targets, generations and fractional state. Per-axis nested and
+cross-source scrolling, custom/legacy handlers and source admission remain unfinished.
 The owned Cocoa factory is therefore still not selected. Complete
 source consumption, callback/queued-dispatch lifetime, Forms integration and real
 native popup interaction/visual tests remain required. No automatic modality,

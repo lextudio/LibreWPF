@@ -115,7 +115,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("--minimum-expected-tests 4 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--filter-class System.Windows.PortableScrollSourceTests", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--filter-method '*NativeScroll*'", nativePointerRunner, StringComparison.Ordinal);
-        Assert.Contains("--minimum-expected-tests 9 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 18 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
         string wheelRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-wheel-input-source.sh"));
         Assert.Contains("--filter-method '*WheelEventState*'", wheelRunner, StringComparison.Ordinal);
         Assert.Contains("--minimum-expected-tests 3 --fail-skips on --timeout 60s", wheelRunner, StringComparison.Ordinal);

@@ -7,6 +7,12 @@ using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Controls
 {
+    internal sealed class PortableScrollLifetime
+    {
+        internal bool IsCancelled { get; private set; }
+        internal void Cancel() => IsCancelled = true;
+    }
+
     [Flags]
     internal enum PortableScrollAxes { Pixels = 0, HorizontalItems = 1, VerticalItems = 2 }
 
@@ -30,25 +36,31 @@ namespace System.Windows.Controls
         private Vector _lineRemainder;
         private PortablePointerScrollUnit? _lastUnit;
         private bool _cancelled;
+        internal PortableScrollLifetime Lifetime { get; }
+        internal PortablePresentationSource Source => _source;
 
         private PortableScrollSession(ScrollViewer owner, IScrollInfo info,
-            PortablePresentationSource source, PortableScrollAxes axes)
+            PortablePresentationSource source, PortableScrollAxes axes, PortableScrollLifetime lifetime)
         {
             _owner = owner; _info = info; _source = source;
             _sourceGeneration = source.PointerInputGeneration; _axes = axes;
             _horizontalEnabled = info.CanHorizontallyScroll; _verticalEnabled = info.CanVerticallyScroll;
+            Lifetime = lifetime;
         }
 
         internal static bool TryCreate(ScrollViewer owner, out PortableScrollSession session)
+            => TryCreate(owner, null, out session);
+
+        internal static bool TryCreate(ScrollViewer owner, PortableScrollLifetime lifetime, out PortableScrollSession session)
         {
             owner.VerifyAccess();
             session = null;
-            if (!owner.HandlesMouseWheelScrolling || owner.ScrollInfo is not IPortableScrollInfo units ||
+            if (!owner.IsEnabled || !owner.IsVisible || !owner.HandlesMouseWheelScrolling || owner.ScrollInfo is not IPortableScrollInfo units ||
                 !ReferenceEquals(owner.ScrollInfo.ScrollOwner, owner) ||
                 PresentationSource.CriticalFromVisual(owner) is not PortablePresentationSource source || source.IsDisposed ||
                 (units.ScrollAxes & ~(PortableScrollAxes.HorizontalItems | PortableScrollAxes.VerticalItems)) != 0)
                 return false;
-            session = new PortableScrollSession(owner, owner.ScrollInfo, source, units.ScrollAxes);
+            session = new PortableScrollSession(owner, owner.ScrollInfo, source, units.ScrollAxes, lifetime);
             return true;
         }
 
@@ -58,16 +70,24 @@ namespace System.Windows.Controls
             ReferenceEquals(PresentationSource.CriticalFromVisual(_owner), _source) &&
             ((IPortableScrollInfo)_info).ScrollAxes == _axes &&
             _info.CanHorizontallyScroll == _horizontalEnabled && _info.CanVerticallyScroll == _verticalEnabled &&
-            _owner.HandlesMouseWheelScrolling && PortableWindowActivationService.IsModalInputAllowed(_owner);
+            _owner.IsEnabled && _owner.IsVisible && _owner.HandlesMouseWheelScrolling &&
+            PortableWindowActivationService.IsModalInputAllowed(_source.RootVisual as UIElement);
 
         internal void Cancel() { _owner.VerifyAccess(); _cancelled = true; }
 
-        // The eventual source router owns phase validation and target selection.
+        // The source router owns phase validation and target selection.
         // This consumer keeps native units; it never creates a MouseWheel delta.
         internal bool TryQueue(PortablePointerInput input)
+            => TryQueue(input, out _);
+
+        internal bool TryQueue(PortablePointerInput input, out bool queueFull)
+            => TryQueue(input, Lifetime, out queueFull);
+
+        internal bool TryQueue(PortablePointerInput input, PortableScrollLifetime lifetime, out bool queueFull)
         {
+            queueFull = false;
             _owner.VerifyAccess();
-            if (input == null || input.Kind != PortablePointerEventKind.Scroll || !IsCurrent) return false;
+            if (input == null || input.Kind != PortablePointerEventKind.Scroll || lifetime?.IsCancelled == true || !IsCurrent) return false;
             Vector delta = new(-input.ScrollX, -input.ScrollY);
             if (input.ScrollUnit == PortablePointerScrollUnit.Lines)
             {
@@ -92,8 +112,11 @@ namespace System.Windows.Controls
                     !TryScale(delta.Y, scale.Y, _info.CanVerticallyScroll, out double y)) return false;
                 delta = new Vector(x, y);
             }
-            if (!double.IsFinite(delta.X) || !double.IsFinite(delta.Y) || !IsCurrent) return false;
-            return _owner.TryEnqueuePortableScroll(new PortableScrollCommand(this, input.ScrollUnit, delta));
+            if (!double.IsFinite(delta.X) || !double.IsFinite(delta.Y) || lifetime?.IsCancelled == true || !IsCurrent) return false;
+            if (delta == default) return true;
+            bool queued = _owner.TryEnqueuePortableScroll(new PortableScrollCommand(this, input.ScrollUnit, delta, lifetime));
+            queueFull = !queued;
+            return queued;
         }
 
         private static bool TryScale(double value, double scale, bool enabled, out double result)
@@ -112,9 +135,9 @@ namespace System.Windows.Controls
             _lastUnit = unit; _pointRemainder = default; _lineRemainder = default;
         }
 
-        internal void ApplyPoints(Vector delta)
+        internal void ApplyPoints(Vector delta, PortableScrollLifetime lifetime = null)
         {
-            if (!IsCurrent) return;
+            if (!IsCurrent || lifetime?.IsCancelled == true) return;
             SelectUnit(PortablePointerScrollUnit.Points);
             bool horizontal = _info.CanHorizontallyScroll, vertical = _info.CanVerticallyScroll;
             // Validate both axes before calling the application-owned provider.
@@ -124,7 +147,7 @@ namespace System.Windows.Controls
                 vertical ? delta.Y : 0, _pointRemainder.Y, (_axes & PortableScrollAxes.VerticalItems) != 0, out double remainderY);
             _pointRemainder = new Vector(horizontal ? remainderX : 0, vertical ? remainderY : 0);
             if (horizontal && x != _info.HorizontalOffset) _info.SetHorizontalOffset(x);
-            if (IsCurrent && vertical && y != _info.VerticalOffset) _info.SetVerticalOffset(y);
+            if (IsCurrent && lifetime?.IsCancelled != true && vertical && y != _info.VerticalOffset) _info.SetVerticalOffset(y);
         }
 
         private static double PointOffset(double offset, double extent, double viewport, double delta,
@@ -173,18 +196,20 @@ namespace System.Windows.Controls
         private readonly PortableScrollSession _session;
         private readonly PortablePointerScrollUnit _unit;
         private readonly Vector _delta;
+        private readonly PortableScrollLifetime _lifetime;
         private bool _started;
         private int _horizontal, _vertical;
 
-        internal PortableScrollCommand(PortableScrollSession session, PortablePointerScrollUnit unit, Vector delta)
-        { _session = session; _unit = unit; _delta = delta; }
+        internal PortableScrollCommand(PortableScrollSession session, PortablePointerScrollUnit unit, Vector delta,
+            PortableScrollLifetime lifetime = null)
+        { _session = session; _unit = unit; _delta = delta; _lifetime = lifetime; }
 
         // One line per existing layout/command pass preserves providers whose
         // actual offsets publish only after measure. Later commands cannot pass it.
         internal bool Advance()
         {
-            if (!_session.IsCurrent) return true;
-            if (_unit == PortablePointerScrollUnit.Points) { _session.ApplyPoints(_delta); return true; }
+            if (!_session.IsCurrent || _lifetime?.IsCancelled == true) return true;
+            if (_unit == PortablePointerScrollUnit.Points) { _session.ApplyPoints(_delta, _lifetime); return true; }
             if (!_started)
             {
                 _started = true;

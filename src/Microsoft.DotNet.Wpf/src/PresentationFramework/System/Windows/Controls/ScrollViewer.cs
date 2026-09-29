@@ -2341,6 +2341,15 @@ namespace System.Windows.Controls
             return true;
         }
 
+        internal bool TryGetPortableScrollSession(PortableScrollLifetime lifetime, out PortableScrollSession session)
+        {
+            session = _portableScrollSession;
+            if (session != null && ReferenceEquals(session.Lifetime, lifetime) && session.IsCurrent) return true;
+            if (!PortableScrollSession.TryCreate(this, lifetime, out session)) return false;
+            _portableScrollSession = session;
+            return true;
+        }
+
         private void EnsureQueueProcessing()
         {
             if(!_queue.IsEmpty() || _activePortableScroll != null)
@@ -2941,6 +2950,7 @@ namespace System.Windows.Controls
         private EventHandler _layoutUpdatedHandler;
         private IScrollInfo _scrollInfo;
         private PortableScrollCommand _activePortableScroll;
+        private PortableScrollSession _portableScrollSession;
         private bool _executingPortableScroll;
 
         private CommandQueue _queue;

@@ -1842,8 +1842,9 @@ public class PortableWindowActivationServiceTests
             {
                 new PortablePointerInput(PortablePointerEventKind.Down, 10, 10, 1, 5, 1, 0),
                 new PortablePointerInput(PortablePointerEventKind.Down, 10, 10, double.MaxValue, 0, 1, 0),
-                new PortablePointerInput(PortablePointerEventKind.Scroll, 10, 10, 1, -1, 0, 0, 0, 1),
-                new PortablePointerInput(PortablePointerEventKind.Scroll, 10, 10, 1, -1, 0, 0, 1, 2, PortablePointerScrollUnit.Points)
+                new PortablePointerInput(PortablePointerEventKind.Scroll, 10, 10, 1, -1, 0, 0, 0, 1, scrollPhase: 1),
+                new PortablePointerInput(PortablePointerEventKind.Scroll, PortablePointerScrollProtocol.AppKit,
+                    10, 10, 1, -1, 0, 0, 1, 2, PortablePointerScrollUnit.Points, scrollPhase: 64)
             };
             foreach (var packet in unsupported)
             {

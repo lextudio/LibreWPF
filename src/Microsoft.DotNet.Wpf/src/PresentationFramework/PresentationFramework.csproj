@@ -759,6 +759,7 @@
     <Compile Include="System\Windows\Controls\ScrollUnit.cs" />
     <Compile Include="System\Windows\Controls\ScrollViewer.cs" />
     <Compile Include="System\Windows\Controls\PortableScrollSession.cs" />
+    <Compile Include="System\Windows\Input\PortableScroll.cs" />
     <Compile Include="System\Windows\Controls\SelectedCellsChangedEventArgs.cs" />
     <Compile Include="System\Windows\Controls\SelectedCellsChangedEventHandler.cs" />
     <Compile Include="System\Windows\Controls\SelectedCellsCollection.cs" />

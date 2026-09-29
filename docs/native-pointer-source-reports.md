@@ -3,8 +3,10 @@
 The internal source path consumes native move, drag, enter and five-button
 down/up packets without replacing native coordinates, event time or click counts
 with dispatch-time state. Its registrar does not advertise native-pointer
-capability yet: scroll units/phases must connect
-before an application can select the owned native factory.
+capability yet: the remaining scroll and source integration gates must finish
+before an application can select the owned native factory. The internal
+[native scroll route](native-scroll-routing.md) now connects explicit units/phases
+to source hit testing and routed events independently of legacy wheel dispatch.
 
 The original raw report keeps its existing scalar storage. A portable derived
 report retains the immutable native packet and separately mapped double client
@@ -95,7 +97,8 @@ native enter/leave metadata, outside synchronization, late leaves, nested hover,
 throwing hover and capture callbacks, and legacy raw/event behavior. Regressions are authored for the
 existing source CI gate; compilation alone is not their execution evidence.
 This path does not use real AppKit windows, qualify native capture, or admit
-precision scrolling. Its [scroll consumer](native-scroll-source-consumer.md) now
-queues actual point/line commands, but routing and phase ownership remain separate
-requirements before admission. Unadmitted events are rejected before any
+full precision-scroll application compatibility. Its
+[scroll consumer](native-scroll-source-consumer.md) queues actual point/line
+commands through the routed path; the remaining admission boundaries are documented
+there. Unadmitted events are rejected before any
 legacy wheel conversion or button mutation.

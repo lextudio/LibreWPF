@@ -2,8 +2,9 @@
 
 Acceptance target: scrolling content in ShowcaseApp dialogs and dropdowns.
 The internal `PortableScrollSession` connects native point/line units to the real
-`ScrollViewer` command queue and `IScrollInfo` provider. It does not yet admit
-native scroll packets through the source registrar or select the Cocoa factory.
+`ScrollViewer` command queue and `IScrollInfo` provider. The internal
+[routed source path](native-scroll-routing.md) now connects this consumer; the
+registrar does not yet advertise native input or select the Cocoa factory.
 
 `IScrollInfo` does not specify offset units. Source providers explicitly declare
 physical or logical units per axis through `IPortableScrollInfo`; the consumer
@@ -47,9 +48,10 @@ ordering, source retirement, queue exhaustion, invalid units/metrics/axes, sourc
 provider traits, callback cancellation/atomic validation, and deferred offset
 publication with layout reentry. Compilation is not test execution evidence.
 
-Still required before source admission: native phase validation, normal versus
-momentum target ownership, routed-handler semantics and per-axis nested scrolling,
-custom-provider capability, source registrar/factory integration, Forms integration
+The routed path adds explicit AppKit phase validation, normal/momentum ownership
+and lossless routed events. Still required before factory admission: per-axis nested
+scrolling, cross-source routing, custom/legacy handler capability, source
+registrar/factory integration, Forms integration
 and actual native popup/application qualification on every supported platform.
 The legacy Windows and portable wheel paths are unchanged; there is no conversion
 fallback when the native path is unavailable.

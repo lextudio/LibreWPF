@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows
 {
@@ -49,7 +50,8 @@ namespace System.Windows
             double deltaX = 0,
             double deltaY = 0,
             PortableMouseButton button = PortableMouseButton.None,
-            PortableInputModifiers modifiers = PortableInputModifiers.None)
+            PortableInputModifiers modifiers = PortableInputModifiers.None,
+            PortablePointerInput nativePointer = null)
         {
             Kind = kind;
             Key = key;
@@ -61,6 +63,7 @@ namespace System.Windows
             DeltaY = deltaY;
             Button = button;
             Modifiers = modifiers;
+            NativePointer = nativePointer;
         }
 
         public PortableInputEventKind Kind { get; }
@@ -82,6 +85,8 @@ namespace System.Windows
         public PortableMouseButton Button { get; }
 
         public PortableInputModifiers Modifiers { get; }
+
+        internal PortablePointerInput NativePointer { get; }
 
         public bool Handled { get; set; }
     }

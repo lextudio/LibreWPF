@@ -90,6 +90,7 @@ public sealed class WpfManagedProjectGraphTests
             "run: bash ./eng/progpu-wpf-messagebox-modal.sh",
             "run: bash ./eng/progpu-wpf-input-modifiers-source.sh",
             "run: bash ./eng/progpu-wpf-pointer-ownership-source.sh",
+            "run: bash ./eng/progpu-wpf-native-pointer-source.sh",
             "run: bash ./eng/progpu-wpf-layout-clip-source.sh",
             "run: bash ./eng/progpu-wpf-visual-host-source.sh",
             "run: bash ./eng/progpu-wpf-popup-dismissal-source.sh",
@@ -106,6 +107,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("if:", job, StringComparison.Ordinal);
         Assert.DoesNotContain("continue-on-error:", job, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/download-artifact", job, StringComparison.Ordinal);
+        string nativePointerRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-native-pointer-source.sh"));
+        Assert.Contains("--filter-method '*NativePointerReports*'", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--filter-method '*NativePointerReport*'", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 8 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 3 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
     }
 
     [Fact]

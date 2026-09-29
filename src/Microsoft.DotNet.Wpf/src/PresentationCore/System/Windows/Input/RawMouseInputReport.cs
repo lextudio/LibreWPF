@@ -88,6 +88,15 @@ namespace System.Windows.Input
         /// </summary>
         public IntPtr ExtraInformation => _extraInformation;
 
+        internal virtual Point ClientPoint => new Point(X, Y);
+
+        internal virtual bool IsCurrent => true;
+
+        internal virtual ProGPU.Wpf.Interop.PortablePointerInput NativePointer => null;
+
+        internal virtual RawMouseInputReport WithActions(RawMouseActions actions, int x, int y, int wheel, IntPtr extraInformation) =>
+            new RawMouseInputReport(Mode, Timestamp, InputSource, actions, x, y, wheel, extraInformation);
+
         // IsValid Method for RawMouseActions. Relies on the enum being flags.
         internal static bool IsValidRawMouseActions(RawMouseActions actions)
         {

@@ -359,6 +359,64 @@ namespace System.Windows
             input.Handled = ProcessInput(source, source.RootVisual as UIElement, input);
         }
 
+        // Internal source path until scrolling and lifecycle cancellation are
+        // complete. The registrar must not advertise the native capability yet.
+        internal static bool TryProcessNativePointerInput(PresentationSource source, PortablePointerInput input,
+            PortableInputModifiers modifiers, out bool handled)
+        {
+            handled = false;
+            if (source is not PortablePresentationSource || input == null ||
+                (modifiers & ~(PortableInputModifiers.Shift | PortableInputModifiers.Control |
+                    PortableInputModifiers.Alt | PortableInputModifiers.Super)) != 0 ||
+                !double.IsFinite(input.Timestamp * 1000d) || input.Button > 4)
+                return false;
+            source.VerifyAccess();
+            if (source.IsDisposed || source.RootVisual is not UIElement root ||
+                InputManager.UnsecureCurrent.PrimaryMouseDevice is not PortableMouseDevice)
+                return false;
+
+            PortableInputEventKind kind;
+            switch (input.Kind)
+            {
+                case PortablePointerEventKind.Move:
+                case PortablePointerEventKind.Drag:
+                case PortablePointerEventKind.Enter:
+                    kind = PortableInputEventKind.MouseMove;
+                    break;
+                case PortablePointerEventKind.Down:
+                    kind = PortableInputEventKind.MouseDown;
+                    break;
+                case PortablePointerEventKind.Up:
+                    kind = PortableInputEventKind.MouseUp;
+                    break;
+                default:
+                    return false;
+            }
+
+            PortableMouseButton button = input.Button switch
+            {
+                0 => PortableMouseButton.Left, 1 => PortableMouseButton.Right,
+                2 => PortableMouseButton.Middle, 3 => PortableMouseButton.XButton1,
+                4 => PortableMouseButton.XButton2, _ => PortableMouseButton.None
+            };
+            handled = ProcessInput(source, root, new PortableInputEventArgs(kind,
+                x: input.X, y: input.Y, button: button, modifiers: modifiers, nativePointer: input));
+            return true;
+        }
+
+        internal static PortablePointerInput GetNativePointerInput(MouseEventArgs input) =>
+            PortableMouseEvents.GetNativePointer(input);
+
+        internal static int NativePointerTimestamp(double seconds)
+        {
+            double milliseconds = Math.Truncate(seconds * 1000d);
+            if (!double.IsFinite(milliseconds) || seconds < 0)
+                throw new ArgumentOutOfRangeException(nameof(seconds));
+            // WPF timestamps use the wrapping signed 32-bit millisecond domain.
+            // Retain the full original native double beside the routed event.
+            return unchecked((int)(uint)(milliseconds % 4294967296d));
+        }
+
         internal static int ProcessDragDrop(
             Window window,
             string[] files,
@@ -432,7 +490,8 @@ namespace System.Windows
             if (!IsMouseInputKind(input.Kind) && Keyboard.FocusedElement != null &&
                 !IsModalInputElementAllowed(Keyboard.FocusedElement))
                 return true;
-            int timestamp = Environment.TickCount;
+            int timestamp = input.NativePointer is { } nativePointer
+                ? NativePointerTimestamp(nativePointer.Timestamp) : Environment.TickCount;
             PresentationSource mouseInputSource = source;
             UIElement mouseRootHitTestElement = rootHitTestElement;
             Point mouseRootPoint = new Point(input.X, input.Y);
@@ -475,7 +534,8 @@ namespace System.Windows
                         && ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
                 case PortableInputEventKind.MouseUp:
                     return TryGetMouseButtonAction(input.Button, isDown: false, out RawMouseActions mouseUpAction)
-                        && ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | mouseUpAction);
+                        && ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp,
+                            mouseActivation | mouseUpAction | (input.NativePointer != null ? RawMouseActions.AbsoluteMove : RawMouseActions.None));
                 case PortableInputEventKind.MouseWheel:
                     int wheel = ToMouseWheelDelta(input.DeltaY);
                     return wheel != 0
@@ -749,6 +809,9 @@ namespace System.Windows
             RawMouseActions actions,
             int wheel = 0)
         {
+            Point? nativeClientPoint = input.NativePointer == null ? null : PointUtil.RootToClient(rootPoint, source);
+            if (nativeClientPoint is Point nativePoint && (!double.IsFinite(nativePoint.X) || !double.IsFinite(nativePoint.Y)))
+                throw new ArgumentOutOfRangeException(nameof(rootPoint));
             if (inputManager.PrimaryMouseDevice is PortableMouseDevice mouseDevice &&
                 TryGetMouseButton(input.Button, out MouseButton mouseButton))
             {
@@ -762,8 +825,12 @@ namespace System.Windows
                 }
             }
 
-            Point clientPoint = ToMouseClientPoint(source, rootHitTestElement, rootPoint);
-            RawMouseInputReport report = new RawMouseInputReport(
+            Point clientPoint = nativeClientPoint ?? ToMouseClientPoint(source, rootHitTestElement, rootPoint);
+            RawMouseInputReport report = input.NativePointer != null
+                ? new PortableMouseInputReport(InputMode.Foreground, timestamp, source, actions,
+                    ToInputCoordinate(clientPoint.X), ToInputCoordinate(clientPoint.Y), wheel, IntPtr.Zero,
+                    clientPoint, input.NativePointer)
+                : new RawMouseInputReport(
                 InputMode.Foreground,
                 timestamp,
                 source,

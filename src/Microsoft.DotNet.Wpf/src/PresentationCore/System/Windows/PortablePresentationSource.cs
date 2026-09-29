@@ -23,6 +23,8 @@ namespace System.Windows
         private readonly PortableMouseInputProvider _mouseInputProvider;
         private readonly HwndSource _portableHwndSource;
         private readonly IntPtr _handle;
+        private ulong _pointerInputGeneration;
+        internal ulong PointerInputGeneration => _pointerInputGeneration;
         private const int HitTestOwnerBufferCapacity = 64;
         private Visual _rootVisual;
         private Size _clientSize;
@@ -367,6 +369,7 @@ namespace System.Windows
             try
             {
                 VerifyAccess();
+                unchecked { ++_pointerInputGeneration; }
                 ReleasePressedButtons();
                 SetRootVisual(null);
                 RemoveSource();
@@ -414,6 +417,8 @@ namespace System.Windows
             {
                 return;
             }
+
+            unchecked { ++_pointerInputGeneration; }
 
             Visual oldRootVisual = _rootVisual;
             if (oldRootVisual != null)

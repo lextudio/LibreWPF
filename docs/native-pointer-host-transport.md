@@ -42,9 +42,11 @@ producer Build to succeed on the exact shared commit.
 ## Remaining source and application work
 
 The actual source registrar does not advertise native-pointer capability yet.
-It still needs explicit live-source hide/modal cancellation, native timestamp/
-click handling and precision scrolling with real source scroll metrics and phase
-ownership. The owned Cocoa factory is therefore still not selected. Complete
+The internal [source report path](native-pointer-source-reports.md) now retains
+native positions, time, click identity and source generations for movement and
+five-button input. It still needs explicit live-source hide/modal cancellation,
+leave and precision scrolling with real source scroll metrics and phase ownership.
+The owned Cocoa factory is therefore still not selected. Complete
 source consumption, callback/queued-dispatch lifetime, Forms integration and real
 native popup interaction/visual tests remain required. No automatic modality,
 package/UI parity or native capture qualification is claimed by this host bridge.

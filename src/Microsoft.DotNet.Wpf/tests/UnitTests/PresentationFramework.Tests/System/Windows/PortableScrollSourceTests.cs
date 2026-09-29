@@ -215,6 +215,200 @@ public sealed class PortableScrollSourceTests
     }
 
     [PortableScrollFact]
+    public void NativeScrollPointOverflowRetainsFractionsAndCannotReplayCompletedCommands()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels, deferredOffsets: true);
+            fixture.Info.ExtentWidth = 242.5;
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
+            var command = new PortableScrollCommand(session, PortablePointerScrollUnit.Points, new Vector(5.5, -42.25));
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(command));
+            Assert.Equal(default, command.Unconsumed);
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(42.5, fixture.Info.HorizontalOffset); Assert.Equal(0, fixture.Info.VerticalOffset);
+            Assert.Equal(new Vector(3, -2.25), command.Unconsumed);
+            Assert.True(command.Advance());
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(42.5, fixture.Info.HorizontalOffset); Assert.Equal(0, fixture.Info.VerticalOffset);
+            Assert.Equal(new Vector(3, -2.25), command.Unconsumed);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollLogicalOverflowTransfersTheCarriedFractionWithoutBoundaryDebt()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.VerticalItems);
+            fixture.Info.ViewportHeight = 4; fixture.Info.ExtentHeight = 46;
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(
+                new PortableScrollCommand(session, PortablePointerScrollUnit.Points, new Vector(0, 0.25))));
+            var command = new PortableScrollCommand(session, PortablePointerScrollUnit.Points, new Vector(0, 2));
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(command));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(42, fixture.Info.VerticalOffset);
+            Assert.Equal(new Vector(0, 0.25), command.Unconsumed); // Provider item units, not guessed source points.
+            foreach (double delta in new[] { -0.25, -0.75 })
+                Assert.True(fixture.Viewer.TryEnqueuePortableScroll(
+                    new PortableScrollCommand(session, PortablePointerScrollUnit.Points, new Vector(0, delta))));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(41, fixture.Info.VerticalOffset);
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(
+                new PortableScrollCommand(session, PortablePointerScrollUnit.Points, new Vector(0, 0.25))));
+            fixture.Viewer.ScrollToVerticalOffset(42);
+            var reversed = new PortableScrollCommand(session, PortablePointerScrollUnit.Points, new Vector(0, -1));
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(reversed));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(41, fixture.Info.VerticalOffset);
+            Assert.Equal(new Vector(0, 0.25), reversed.Unconsumed);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollLineOverflowWaitsForPublishedOffsetsAndKeepsFollowingCommandsOrdered()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels, deferredOffsets: true);
+            fixture.Info.ExtentWidth = 255; fixture.Info.ExtentHeight = 151.25;
+            fixture.Info.AfterHorizontalOffsetSet = fixture.Viewer.UpdateLayout;
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
+            var command = new PortableScrollCommand(session, PortablePointerScrollUnit.Lines, new Vector(4.5, 2.25));
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(command));
+            fixture.Viewer.ScrollToVerticalOffset(50);
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(new[] { "right", "right", "down" }, fixture.Info.Lines);
+            Assert.Equal(55, fixture.Info.HorizontalOffset); Assert.Equal(50, fixture.Info.VerticalOffset);
+            Assert.Equal(new Vector(2.5, 1.25), command.Unconsumed);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollFractionalLinesAtTheBoundaryDoNotCreateReverseScrollDebt()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            fixture.Info.SetHorizontalOffset(800); fixture.Info.SetVerticalOffset(0);
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
+            var command = new PortableScrollCommand(session, PortablePointerScrollUnit.Lines, new Vector(0.25, -0.5));
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(command));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(new Vector(0.25, -0.5), command.Unconsumed);
+            Assert.Empty(fixture.Info.Lines);
+            foreach (Vector delta in new[] { new Vector(-0.25, 0.5), new Vector(-0.75, 0.5) })
+                Assert.True(fixture.Viewer.TryEnqueuePortableScroll(
+                    new PortableScrollCommand(session, PortablePointerScrollUnit.Lines, delta)));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(new[] { "left", "down" }, fixture.Info.Lines);
+            Assert.Equal(792.5, fixture.Info.HorizontalOffset); Assert.Equal(11.25, fixture.Info.VerticalOffset);
+            Assert.True(session.TryQueue(Packet(-0.25, 0, PortablePointerScrollUnit.Lines)));
+            fixture.Viewer.ScrollToHorizontalOffset(800);
+            var reversed = new PortableScrollCommand(session, PortablePointerScrollUnit.Lines, new Vector(-1, 0));
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(reversed));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(new[] { "left", "down", "left" }, fixture.Info.Lines);
+            Assert.Equal(792.5, fixture.Info.HorizontalOffset);
+            Assert.Equal(new Vector(0.25, 0), reversed.Unconsumed);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollLineOverflowUsesChangedMetricsWithoutInventingPartialLineDistances()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels, deferredOffsets: true);
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
+            var changed = new PortableScrollCommand(session, PortablePointerScrollUnit.Lines, new Vector(3.5, 0));
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(changed));
+            fixture.Info.AfterHorizontalOffsetSet = () => fixture.Info.ExtentWidth = 247.5;
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(47.5, fixture.Info.HorizontalOffset);
+            Assert.Equal(new Vector(2.5, 0), changed.Unconsumed);
+            Assert.Equal(new[] { "right" }, fixture.Info.Lines);
+            fixture.Info.AfterHorizontalOffsetSet = null;
+            fixture.Info.ExtentWidth = 250;
+            var partial = new PortableScrollCommand(session, PortablePointerScrollUnit.Lines, new Vector(2.5, 0));
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(partial));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(50, fixture.Info.HorizontalOffset);
+            Assert.Equal(new Vector(1.5, 0), partial.Unconsumed); // One real LineRight consumed; its distance is provider-owned.
+            Assert.Equal(new[] { "right", "right" }, fixture.Info.Lines);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollInvalidLineMetricsCannotMutatePreviouslyCarriedFractions()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
+            Assert.True(session.TryQueue(Packet(-0.25, 0, PortablePointerScrollUnit.Lines)));
+            fixture.Viewer.UpdateLayout();
+            fixture.Info.ViewportHeight = double.NaN;
+            Assert.False(session.TryQueue(Packet(-3, 0, PortablePointerScrollUnit.Lines)));
+            var invalid = new PortableScrollCommand(session, PortablePointerScrollUnit.Lines, new Vector(3, 0));
+            Assert.Throws<InvalidOperationException>(() => invalid.Advance());
+            Assert.Empty(fixture.Info.Lines); Assert.Equal(default, invalid.Unconsumed);
+            fixture.Info.ViewportHeight = 100;
+            Assert.True(session.TryQueue(Packet(-0.75, 0, PortablePointerScrollUnit.Lines)));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(new[] { "right" }, fixture.Info.Lines);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollCancelledCommandsCannotPublishOverflowOrWriteTheSecondAxis()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            fixture.Info.ExtentWidth = 245; fixture.Info.ExtentHeight = 145;
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
+            var lifetime = new PortableScrollLifetime();
+            var command = new PortableScrollCommand(session, PortablePointerScrollUnit.Points, new Vector(20, 20), lifetime);
+            fixture.Info.AfterHorizontalOffsetSet = lifetime.Cancel;
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(command));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(45, fixture.Info.HorizontalOffset); Assert.Equal(40, fixture.Info.VerticalOffset);
+            Assert.Equal(default, command.Unconsumed);
+            Assert.True(command.Advance());
+            Assert.Equal(40, fixture.Info.VerticalOffset);
+            fixture.Info.AfterHorizontalOffsetSet = null;
+            var lineLifetime = new PortableScrollLifetime();
+            var lines = new PortableScrollCommand(session, PortablePointerScrollUnit.Lines, new Vector(3, 2), lineLifetime);
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(lines));
+            fixture.Info.ReadHorizontalOffset = lineLifetime.Cancel;
+            fixture.Viewer.UpdateLayout();
+            Assert.Empty(fixture.Info.Lines); Assert.Equal(default, lines.Unconsumed);
+            Assert.Equal(45, fixture.Info.HorizontalOffset); Assert.Equal(40, fixture.Info.VerticalOffset);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollShrinkingExtentCorrectionIsNotAdditionalPointInput()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            fixture.Info.ExtentWidth = 220; fixture.Info.ExtentHeight = 120;
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
+            var lifetime = new PortableScrollLifetime();
+            var command = new PortableScrollCommand(session, PortablePointerScrollUnit.Points, new Vector(5, -1), lifetime);
+            Assert.True(fixture.Viewer.TryEnqueuePortableScroll(command));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(20, fixture.Info.HorizontalOffset); Assert.Equal(20, fixture.Info.VerticalOffset);
+            Assert.Equal(new Vector(5, 0), command.Unconsumed);
+            lifetime.Cancel();
+            Assert.Equal(default, command.Unconsumed);
+        });
+    }
+
+    [PortableScrollFact]
     public void NativeScrollRoutingRetargetsNormalInputAndPreservesRoutedMetadata()
     {
         Run(() =>

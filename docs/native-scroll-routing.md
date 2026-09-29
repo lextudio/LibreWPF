@@ -70,7 +70,7 @@ closing/cancelling/replacing that source also retires commands already accepted 
 another source, including after normal End. Receiving source/provider ownership
 continues to be checked independently.
 
-Twenty-eight authored source cases now cover the consumer and routing, including
+Thirty-six authored source cases now cover the consumer and routing, including
 normal retargeting, momentum pinning/retirement, source and gesture cancellation,
 unchanged state after invalid phase packets, preview handling/failure, nested
 dispatch, owning modal roots, fractional handoff, native hit-provider ownership,
@@ -80,6 +80,9 @@ origin retirement, singular frame rejection, undeclared custom line providers an
 reentrant capability admission. Cross-source cases exercise an
 explicit logical route between actual source hosts; native popup UI qualification
 remains separate.
+The consumer also records execution-time point overflow and unissued boundary
+lines, waits for final-line layout, and prevents fractional reverse-scroll debt.
+That internal result is not forwarded through a synthesized event route.
 Compilation is not execution evidence. Earlier consumer-only CI passed all nine cases after its
 transform fixture published layout before input.
 

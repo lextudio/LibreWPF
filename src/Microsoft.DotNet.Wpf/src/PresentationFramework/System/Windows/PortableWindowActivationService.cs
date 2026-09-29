@@ -462,7 +462,7 @@ namespace System.Windows
                 case PortableInputEventKind.TextInput:
                     return ProcessTextInput(inputManager, source, input, timestamp);
                 case PortableInputEventKind.MouseMove:
-                    return ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
+                    return ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
                 case PortableInputEventKind.MouseDown:
                     if (input.Button == PortableMouseButton.Left &&
                         rootHitTestElement is Window window &&
@@ -472,14 +472,14 @@ namespace System.Windows
                     }
 
                     return TryGetMouseButtonAction(input.Button, isDown: true, out RawMouseActions mouseDownAction)
-                        && ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
+                        && ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
                 case PortableInputEventKind.MouseUp:
                     return TryGetMouseButtonAction(input.Button, isDown: false, out RawMouseActions mouseUpAction)
-                        && ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | mouseUpAction);
+                        && ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | mouseUpAction);
                 case PortableInputEventKind.MouseWheel:
                     int wheel = ToMouseWheelDelta(input.DeltaY);
                     return wheel != 0
-                        && ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
+                        && ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
                 default:
                     return false;
             }
@@ -741,6 +741,7 @@ namespace System.Windows
         private static bool ProcessMouseInput(
             InputManager inputManager,
             PresentationSource source,
+            PresentationSource originSource,
             UIElement rootHitTestElement,
             Point rootPoint,
             PortableInputEventArgs input,
@@ -753,11 +754,11 @@ namespace System.Windows
             {
                 if ((actions & GetMouseButtonPressAction(mouseButton)) != 0)
                 {
-                    mouseDevice.SetButtonState(mouseButton, MouseButtonState.Pressed);
+                    mouseDevice.SetButtonState(mouseButton, MouseButtonState.Pressed, originSource, source);
                 }
                 else if ((actions & GetMouseButtonReleaseAction(mouseButton)) != 0)
                 {
-                    mouseDevice.SetButtonState(mouseButton, MouseButtonState.Released);
+                    mouseDevice.SetButtonState(mouseButton, MouseButtonState.Released, originSource, source);
                 }
             }
 

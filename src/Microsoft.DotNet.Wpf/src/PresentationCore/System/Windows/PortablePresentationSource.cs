@@ -367,6 +367,7 @@ namespace System.Windows
             try
             {
                 VerifyAccess();
+                ReleasePressedButtons();
                 SetRootVisual(null);
                 RemoveSource();
                 _portableHwndSource.Dispose();
@@ -415,6 +416,8 @@ namespace System.Windows
             }
 
             Visual oldRootVisual = _rootVisual;
+            if (oldRootVisual != null)
+                ReleasePressedButtons();
             if (oldRootVisual is UIElement oldRootUIElement)
             {
                 oldRootUIElement.LayoutUpdated -= OnLayoutUpdated;
@@ -459,6 +462,12 @@ namespace System.Windows
             }
             QueueContentRendered();
             RequestRender();
+        }
+
+        private void ReleasePressedButtons()
+        {
+            if (InputManager.UnsecureCurrent.PrimaryMouseDevice is PortableMouseDevice mouse)
+                mouse.ReleaseSourceButtons(this);
         }
 
         private void OnLayoutUpdated(object sender, EventArgs e)

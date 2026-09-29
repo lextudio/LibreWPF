@@ -651,6 +651,11 @@ pointer/key/text callbacks. Scope the aggregate without rewriting physical key o
 toggle state; never resurrect a key released during a nested callback. Keep native
 Windows modifier queries unchanged and do not invent left/right identity from
 aggregate flags. See docs/portable-input-modifiers.md.
+Portable pointer presses retain both original and capture-routed source identity.
+Root detachment/disposal clears only still-owned presses, without synthetic up or
+click events or canceling another provider's capture. Ordinary source switches
+preserve presses; real cross-source ups remain authoritative. Never use a global
+button reset for source-local teardown. See docs/portable-pointer-source-ownership.md.
 InputManager must freeze this same choice before creating keyboard/mouse devices.
 Portable raw reports require host-owned device state on Windows too; do not use
 Win32 asynchronous state for those reports or promote their keys through WPF TSF

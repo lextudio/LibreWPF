@@ -7,7 +7,7 @@ using System.Windows.Media.ProGPU.Platform;
 
 namespace System.Windows.Media.ProGPU;
 
-public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwner
+public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWindowOwner
 {
     private const int WM_ACTIVATE = 0x0006;
     private const int WM_ACTIVATEAPP = 0x001C;
@@ -51,7 +51,7 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
     private bool _isDisposed;
     private bool _isClosingFromNative;
     private bool _isClosingFromWpf;
-    private bool _isFlushingWpfDispatcher;
+    private volatile bool _isFlushingWpfDispatcher;
     private int _dispatcherIdleWorkPosted;
     private bool _isNativeRunStarted;
     private bool _showDeferredUntilRun;
@@ -699,6 +699,7 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
         _dispatcherIdleWorkRegistration = null;
         _mediaContextRenderRegistration?.Dispose();
         _mediaContextRenderRegistration = null;
+        RetireDeferredHostInput();
         _pressedMouseButtons.Clear();
         RemoveNonActivatingOwnedWindowRegistration();
         s_activeActivations.Remove(Window);
@@ -1334,6 +1335,7 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
                 TrySetWindowActivationStateForHostEvent(isActive: true);
                 break;
             case WpfWindowEventKind.Deactivated:
+                RetireDeferredHostInput();
                 _pressedMouseButtons.Clear();
                 DispatchPortableActivationHooks(isActive: false);
                 TrySetWindowActivationStateForHostEvent(isActive: false);
@@ -1342,6 +1344,7 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
                 DispatchPortableShowWindowHook(isShown: true);
                 break;
             case WpfWindowEventKind.Hidden:
+                RetireDeferredHostInput();
                 _pressedMouseButtons.Clear();
                 DispatchPortableShowWindowHook(isShown: false);
                 break;
@@ -1581,6 +1584,8 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
             return;
         }
 
+        DrainDeferredHostInput();
+        if (_isDisposed) return;
         TryPromoteDispatcherTimers(Window);
         if (TryCloseHostWhenWindowDisposed())
         {
@@ -1617,12 +1622,16 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
 
     private void FlushWpfDispatcherOperations(params string[] markerPriorityNames)
     {
-        if (_isFlushingWpfDispatcher)
+        lock (_deferredHostInputGate)
         {
-            return;
+            if (_isFlushingWpfDispatcher)
+            {
+                return;
+            }
+
+            _isFlushingWpfDispatcher = true;
         }
 
-        _isFlushingWpfDispatcher = true;
         try
         {
             foreach (string markerPriorityName in markerPriorityNames)
@@ -1635,8 +1644,15 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
         }
         finally
         {
-            _isFlushingWpfDispatcher = false;
+            lock (_deferredHostInputGate)
+            {
+                _isFlushingWpfDispatcher = false;
+            }
         }
+
+        // Never run more source callbacks from an exception's finally path.
+        // A failed flush leaves its unattempted packets for the next host turn.
+        DrainDeferredHostInput();
     }
 
     private void FlushWpfDispatcherOperation(string markerPriorityName, TimeSpan? timeout)
@@ -1653,8 +1669,36 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
 
         if (e.Kind != WpfInputEventKind.MouseCancel && !PortableModalInputScope.AllowsInput(Window))
         {
+            RetireDeferredHostInput();
             _pressedMouseButtons.Clear();
             e.Handled = true;
+            return;
+        }
+
+        if (e.Kind == WpfInputEventKind.MouseCancel)
+        {
+            // Cancellation invalidates older queued motion immediately, not
+            // after replaying it against a capture which is being retired.
+            RetireDeferredHostInput();
+            // Preserve the original synchronous source capture-cancel path.
+            // A new press from its callbacks belongs to the new generation.
+            DispatchHostInput(e);
+            return;
+        }
+
+        if (TryDeferHostInput(e))
+        {
+            DrainDeferredHostInput();
+            return;
+        }
+
+        DispatchHostInput(e);
+    }
+
+    private void DispatchHostInput(WpfInputEventArgs e, DeferredHostInput? deferred = null)
+    {
+        if (_isDisposed || (deferred != null && !IsDeferredHostInputCurrent(deferred)))
+        {
             return;
         }
 
@@ -1670,12 +1714,12 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
 
         try
         {
-            if (TryDispatchHostInputToWindowDispatcher(e))
+            if (TryDispatchHostInputToWindowDispatcher(e, deferred))
             {
                 return;
             }
 
-            ProcessHostInputAndRequestRender(e);
+            ProcessHostInputAndRequestRender(e, deferred);
             if (_pressedMouseButtons.Count != 0)
             {
                 // Native callbacks can also run on the WPF dispatcher itself.
@@ -1698,8 +1742,9 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
         }
     }
 
-    private void ProcessHostInputAndRequestRender(WpfInputEventArgs e)
+    private void ProcessHostInputAndRequestRender(WpfInputEventArgs e, DeferredHostInput? deferred = null)
     {
+        if (_isDisposed || (deferred != null && !IsDeferredHostInputCurrent(deferred))) return;
         // Recheck after queueing and do not schedule a frame for rejected input.
         if (e.Kind != WpfInputEventKind.MouseCancel && !PortableModalInputScope.AllowsInput(Window))
         {
@@ -1799,9 +1844,9 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
         }
     }
 
-    private bool TryDispatchHostInputToWindowDispatcher(WpfInputEventArgs e)
+    private bool TryDispatchHostInputToWindowDispatcher(WpfInputEventArgs e, DeferredHostInput? deferred)
     {
-        var callback = new Action(() => ProcessHostInputAndRequestRender(e));
+        var callback = new Action(() => ProcessHostInputAndRequestRender(e, deferred));
         if (TryGetWindowActivationService(out var activationService) &&
             activationService.TryBeginInvokeInput(Window, callback))
         {

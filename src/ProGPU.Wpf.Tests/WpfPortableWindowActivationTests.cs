@@ -3137,6 +3137,8 @@ public sealed partial class WpfPortableWindowActivationTests
 
         public Action<PortableWindowInputEvent>? ProcessInputCallback { get; set; }
 
+        public Action<string>? FlushCallback { get; set; }
+
         public object? LastFlushWindow { get; private set; }
 
         public List<string> FlushedPriorities { get; } = new List<string>();
@@ -3279,6 +3281,7 @@ public sealed partial class WpfPortableWindowActivationTests
             FlushedPriorities.Add(markerPriorityName);
             InputDispatchLog.Add($"Flush:{markerPriorityName}");
             FlushTimeouts.Add(timeout);
+            FlushCallback?.Invoke(markerPriorityName);
             if (ThrowOnDispatcherFlush)
             {
                 throw new InvalidOperationException("Cannot perform this operation while dispatcher processing is suspended.");

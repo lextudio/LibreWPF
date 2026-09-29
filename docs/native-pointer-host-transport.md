@@ -42,6 +42,12 @@ The existing source-integration identity check remains unchanged; upgrading only
 the outer ProGPU pin fails that check. Package staging still requires the entire
 producer Build to succeed on the exact shared commit.
 
+That shared revision also repairs System.Drawing's captured clip mapping when a
+float determinant or inverse overflows but the relative mapping is representable.
+The ordinary float path and rejection of genuinely unrepresentable mappings stay
+unchanged. This is a drawing dependency repair, not a change to native pointer or
+scroll coordinate policy, and it does not opt the source registrar into native input.
+
 ## Remaining source and application work
 
 The actual source registrar does not advertise native-pointer capability yet.

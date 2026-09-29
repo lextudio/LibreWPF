@@ -1,0 +1,116 @@
+# Original Gallery clipboard-image acceptance
+
+This opt-in Windows acceptance case hosts the original WPFGallery ClipboardPage,
+its ViewModel, ControlExample/PageHeader templates and **unchanged pack-resource
+PNG** from microsoft/WPF-Samples commit
+`811d01e95c8c929e68539d698d0a0609e94fd185`. The twelve-file manifest includes the
+upstream MIT license, original byte lengths, Git blob IDs and SHA256 values.
+No substitute control, reconstructed image or copied clipboard handler is used.
+
+The reported action in [issue117](https://github.com/wieslawsoltes/LibreWPF/issues/117)
+is Copy Image → Paste Image → displayed result on Windows11/preview45. Current
+main already includes the Windows OLE bitmap implementation and four real native
+package contracts. This fixture covers the original page/resource action; it does
+not establish the historical hang's cause or close the issue merely by compiling.
+
+## Prepare or compile without running
+
+The Python tools require Python3.11 or later. `prepare.py` performs no network requests, application launch, image decoding,
+desktop operation or clipboard access. Supply locally retained **complete**
+`gh run view --json databaseId,name,headSha,status,conclusion,jobs` receipts for
+Build and Docs, the original artifact metadata from `gh api .../actions/artifacts/ID`,
+and that exact downloaded package ZIP. Do not fetch one successful job's output
+from a failed, canceled, incomplete or different-head Build.
+
+The preparer requires at least all thirteen current Build jobs, every additional
+reported Build job, and the Docs job to have succeeded, including the SDK bundle
+upload. Docs remains a separate documentation check, never a package producer.
+It binds the artifact's run/head/name
+and SHA256 to the archive, checks source-package commit/version identities, and
+uses a fresh private feed, SDK resolver cache, NuGet cache, CLI home and temporary
+directory. It retains the original package bytes. Missing receipts, packages,
+source files or a missing original job fail explicitly; there is no source
+DLL substitution or automatic producer selection.
+
+`--original-source` names an already staged directory with the twelve relative
+paths in `source-manifest.json`. The existing reviewed original fixture is
+`/Volumes/1TB-macOS/librewpf-gallery-clipboard-probe.k3C6Hsjz/original`.
+Alternatively stage those exact paths from the pinned upstream commit (the MIT
+LICENSE is from its repository root). Every file is verified before and after
+copying; the asset must retain its original pack URI
+`pack://application:,,,/Assets/ControlImages/Clipboard.png`.
+
+Example **preparation command**, with explicit reviewed values substituted:
+
+```text
+python prepare.py --original-source <original-directory> --build-receipt <build.json> --docs-receipt <docs.json> --artifact-receipt <artifact.json> --package-archive <original.zip> --expected-head <40-hex-head> --expected-build <run-id> --expected-docs <run-id> --architecture arm64 --output <new-consumer-directory>
+```
+
+Adding `--build-only --dotnet <explicit-installed-dotnet>` compiles the real
+installed-SDK consumer with its normal bootstrap, XAML compiler and original
+CommunityToolkit8.2.2 source generator. The compiler SDK is pinned from the
+repository's global.json. The build is single-node, has a300-second limit and
+never executes its output. It checks the actual native apphost architecture,
+requested NativeMilWgpu mode, and exact package bytes for PresentationCore,
+PresentationFramework, WindowsBase, WinCore, PresentationNative, bridge, interop
+and native engine. `preparation.json` and `build.log` retain failures; even a
+successful compile keeps `qualified:false` and `applicationExecuted:false`.
+
+Build staging is separate from the existing shared Showcase gates. This initial
+acceptance addition does not change any workflow, gate, timeout or product code.
+
+## Later execution requires explicit coordination and clipboard permission
+
+Do **not** invoke the following during the implementation/compile-only phase.
+The actual clipboard may contain user data. This case cannot preserve/restore all
+OLE formats or delayed renderers; obtain explicit permission to replace its
+contents before using the opt-in. It never logs previous contents or format names.
+
+```text
+python run-windows.py --app <verified-GalleryClipboardApp.exe> --output <fresh-evidence-directory> --allow-replace-clipboard
+```
+
+The real page is displayed in a source Window. The host raises routed Click on
+the page's original Copy Image and Paste Image Buttons, invoking their unchanged
+handlers (not OS pointer injection). It validates the decoded72×73 original,
+all copied opaque RGB pixels, original status/visibility, a newer actual presented
+frame and changed source revision. It brings the actual pasted Image into view.
+Then it clears the clipboard only while its sequence number is still owned,
+verifies retained/frozen image ownership, captures the displayed image again,
+and republishes it through the original paste handler. External clipboard
+mutation fails without clearing or overwriting that new state.
+
+The existing Windows runner retains the original60-second total limit and
+57-second host cleanup reserve. It checks actual HWND/PID/foreground ownership,
+exact native/source client geometry without inferred scale/titlebar offsets,
+the entire visible image rectangle, and before/after obstruction inventories.
+It captures actual desktop pixels with BitBlt, never source pixels as a substitute.
+Nonzero child exits, timeout, clipboard cleanup, image/geometry/ownership failures
+and changed retained capture remain failures. Only the owned child is terminated.
+
+**Rendered-result qualification remains explicit:** two nonuniform, equal RGB
+captures are not an oracle for correct rendering. The original Image stretches
+inside its real198×198 content area. A reviewer must inspect the retained actual
+image-region captures against the original image before qualifying that result.
+Receipts deliberately remain `qualified:false`; no DPI/alpha/Gallery-wide/native
+input parity or issue closure is implied. Conservative obstruction checks can
+reject transparent/shadow rectangles, and endpoint checks cannot prove the absence
+of every intervening obstruction.
+
+## Authored checks and current status
+
+`test_contract.py` contains fifteen authored offline tests: the reused
+native-geometry admission controls and new complete-producer rejection controls.
+These are not app or clipboard validation and have not been executed in the
+current compile-only phase. All three Python files were syntax-compiled without
+importing/executing the fixture. The C# installed consumer has not yet been
+compiled or executed; no new desktop evidence is claimed. Original package CI
+coverage remains separate from this exact Gallery acceptance case.
+
+The currently identified qualified input is PR217 head
+`45b1cffaa47c3c5e4eb7fe05c938c977886128aa`, whole Build36604077464 and
+Docs36604077406. Its package artifact11053355676 is118464911 bytes with SHA256
+`24c794bb80c975aad4b58a7c3072b3fb74e3c22d1e4359fc6648a691050d648d`.
+This metadata was checked read-only; no archive was downloaded or staged for
+this fixture. Revalidate it when staging. A later producer requires explicit
+matching arguments and complete receipts, never an implicit latest-success lookup.

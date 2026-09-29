@@ -66,6 +66,13 @@ class AdmissionTests(unittest.TestCase):
 
 
 class ProducerTests(unittest.TestCase):
+    def test_explicit_rid_output_layout_matches_asset_verifier(self):
+        for architecture in ("arm64", "x64"):
+            command = prepare.build_command(None, Path("case.csproj"), architecture, Path("NuGet.config"), Path("packages"))
+            self.assertEqual("win-" + architecture, command[command.index("-r") + 1])
+            self.assertIn("-p:AppendRuntimeIdentifierToOutputPath=false", command)
+            self.assertEqual(Path("bin/Release/net10.0-windows"), prepare.OUTPUT_RELATIVE)
+
     def receipts(self):
         head = "1" * 40
         success = {"status": "completed", "conclusion": "success"}

@@ -13,6 +13,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent
+OUTPUT_RELATIVE = Path("bin/Release/net10.0-windows")
 BUILD_JOBS = {
     "Linux headless multi-window render device smoke",
     "Retained layout-clip invalidation contracts",
@@ -158,7 +159,7 @@ def seed_sdk(package, packages, version):
 
 
 def verify_output(output, inventory, architecture):
-    directory = output / "bin/Release/net10.0-windows"
+    directory = output / OUTPUT_RELATIVE
     rid = "win-" + architecture
     assets = {
         "PresentationCore.dll": ("LibreWPF.Transport", f"runtimes/{rid}/lib/net10.0/PresentationCore.dll"),
@@ -191,6 +192,15 @@ def verify_output(output, inventory, architecture):
     hashes[apphost.name] = sha(apphost)
     hashes["GalleryClipboardApp.dll"] = sha(directory / "GalleryClipboardApp.dll")
     return {"directory": str(directory), "sha256": hashes, "executed": False}
+
+
+def build_command(dotnet, project, architecture, config, cache):
+    return [str(dotnet.resolve()) if dotnet else "<explicit-dotnet>", "build", str(project),
+            "-c", "Release", "-r", "win-" + architecture, "-m:1", "-nodeReuse:false",
+            "-p:UseSharedCompilation=false", "-p:PlatformTarget=" + architecture,
+            "-p:AppendRuntimeIdentifierToOutputPath=false",
+            "-p:RestoreConfigFile=" + str(config), "-p:RestorePackagesPath=" + str(cache),
+            "-p:RestoreFallbackFolders=", "-p:RestoreAdditionalProjectSources="]
 
 
 def main():
@@ -253,11 +263,7 @@ def main():
             directory = output / relative
             directory.mkdir(exist_ok=True)
             environment[name] = str(directory)
-        command = [str(args.dotnet.resolve()) if args.dotnet else "<explicit-dotnet>", "build", str(project),
-                   "-c", "Release", "-r", "win-" + args.architecture, "-m:1", "-nodeReuse:false",
-                   "-p:UseSharedCompilation=false", "-p:PlatformTarget=" + args.architecture,
-                   "-p:RestoreConfigFile=" + str(output / "NuGet.config"), "-p:RestorePackagesPath=" + str(cache),
-                   "-p:RestoreFallbackFolders=", "-p:RestoreAdditionalProjectSources="]
+        command = build_command(args.dotnet, project, args.architecture, output / "NuGet.config", cache)
         receipt["buildCommand"] = command
         receipt["inputs"] = {name: sha(output / name) for name in ("GalleryClipboardApp.cs", "GalleryClipboardApp.csproj", "source-manifest.json", "run-windows.py")}
         if args.build_only:

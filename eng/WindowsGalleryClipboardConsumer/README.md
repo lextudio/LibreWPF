@@ -50,7 +50,10 @@ Adding `--build-only --dotnet <explicit-installed-dotnet>` compiles the real
 installed-SDK consumer with its normal bootstrap, XAML compiler and original
 CommunityToolkit8.2.2 source generator. The compiler SDK is pinned from the
 repository's global.json. The build is single-node, has a300-second limit and
-never executes its output. It checks the actual native apphost architecture,
+never executes its output. The explicit
+`AppendRuntimeIdentifierToOutputPath=false` build property matches the verifier's
+`bin/Release/net10.0-windows` directory while retaining the requested Windows RID.
+It checks the actual native apphost architecture,
 requested NativeMilWgpu mode, and exact package bytes for PresentationCore,
 PresentationFramework, WindowsBase, WinCore, PresentationNative, bridge, interop
 and native engine. `preparation.json` and `build.log` retain failures; even a
@@ -99,11 +102,13 @@ of every intervening obstruction.
 
 ## Authored checks and current status
 
-`test_contract.py` contains fifteen authored offline tests: the reused
+`test_contract.py` contains sixteen authored offline tests: the reused
 native-geometry admission controls and new complete-producer rejection controls.
 These are not app or clipboard validation and have not been executed in the
-current compile-only phase. All three Python files were syntax-compiled without
-importing/executing the fixture. The C# installed consumer has not yet been
+current compile-only phase. All three initial Python files were syntax-compiled
+at commit14092e1a8 without importing/executing the fixture. The subsequent explicit
+RID-layout command/helper and its source-contract test are authored but not rerun.
+The C# installed consumer has not yet been
 compiled or executed; no new desktop evidence is claimed. Original package CI
 coverage remains separate from this exact Gallery acceptance case.
 

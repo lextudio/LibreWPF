@@ -942,15 +942,150 @@ public sealed class PortableScrollSourceTests
         });
     }
 
+    [PortableScrollFact]
+    public void NativeScrollNestedMetricCallbackRetiresOnlyUnacceptedDispatch()
+    {
+        Run(() =>
+        {
+            foreach (var unit in new[] { PortablePointerScrollUnit.Points, PortablePointerScrollUnit.Lines })
+            foreach (uint nestedPhase in new uint[] { 1, 4 })
+            {
+                using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+                var peer = fixture.AddPeer();
+                int legacy = 0;
+                fixture.Root.MouseWheel += (_, _) => ++legacy;
+                Assert.True(Route(fixture, RoutedPacket(50, -2, phase: 1), out _));
+                PortablePointerInput outer = RoutedPacket(50, -9, phase: 4, unit: unit);
+                PortableScrollEventArgs? retired = null;
+                fixture.Root.AddHandler(PortableScroll.PreviewScrollEvent, new RoutedEventHandler((_, value) =>
+                {
+                    var args = (PortableScrollEventArgs)value;
+                    if (!ReferenceEquals(args.NativeInput, outer)) return;
+                    retired = args;
+                    fixture.Info.ReadHorizontalOffset = () =>
+                    {
+                        fixture.Info.ReadHorizontalOffset = null;
+                        Assert.True(Route(fixture, RoutedPacket(250, -3, phase: nestedPhase, unit: unit), out bool handled));
+                        Assert.True(handled);
+                    };
+                }));
+                Assert.True(Route(fixture, outer, out bool retiredHandled));
+                Assert.True(retiredHandled); // Never replay the stale packet through host fallback.
+                Assert.NotNull(retired);
+                Assert.False(retired.HasConsumedMotion);
+                Assert.Equal(new Vector(0, -9), retired.RemainingScroll);
+                fixture.Viewer.UpdateLayout();
+                Assert.Equal(42, fixture.Info.VerticalOffset); // Previously accepted work survives.
+                Assert.Equal(unit == PortablePointerScrollUnit.Points ? 43 : 73.75, peer.Info.VerticalOffset);
+                Assert.Empty(fixture.Info.Lines);
+                Assert.Equal(0, legacy);
+            }
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollFinalCapabilityCallbackCannotQueueRetiredDispatch()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            var peer = fixture.AddPeer();
+            bool nested = false;
+            fixture.Info.ReadHorizontalOffset = () =>
+            {
+                fixture.Info.ReadHorizontalOffset = null;
+                // The next capability read is the final session check, after
+                // all metrics and vector mapping but before queue publication.
+                fixture.Info.ReadUnits = () =>
+                {
+                    fixture.Info.ReadUnits = null;
+                    nested = true;
+                    Assert.True(Route(fixture, RoutedPacket(250, -3, phase: 4), out bool handled));
+                    Assert.True(handled);
+                };
+            };
+            Assert.True(Route(fixture, RoutedPacket(50, -9, phase: 1), out bool retiredHandled));
+            Assert.True(nested);
+            Assert.True(retiredHandled);
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(40, fixture.Info.VerticalOffset);
+            Assert.Equal(43, peer.Info.VerticalOffset);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollReentrantSessionCreationPreservesNewerFractionalState()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.VerticalItems);
+            fixture.Info.ViewportHeight = 4; // 20 source points per provider item.
+            PortablePointerInput nested = RoutedPacket(150, -12, phase: 1);
+            PortableScrollEventArgs? nestedArgs = null;
+            PortableScrollSession? nestedSession = null;
+            fixture.Root.AddHandler(PortableScroll.PreviewScrollEvent, new RoutedEventHandler((_, value) =>
+            {
+                var args = (PortableScrollEventArgs)value;
+                if (ReferenceEquals(args.NativeInput, nested)) nestedArgs = args;
+            }));
+            fixture.Info.ReadUnits = () =>
+            {
+                fixture.Info.ReadUnits = null;
+                Assert.True(Route(fixture, nested, out bool handled));
+                Assert.True(handled);
+                Assert.NotNull(nestedArgs);
+                Assert.True(fixture.Viewer.TryGetPortableScrollSession(nestedArgs.Sequence, out nestedSession));
+                fixture.Viewer.UpdateLayout();
+                Assert.Equal(40, fixture.Info.VerticalOffset); // Retain the first 0.6 item.
+            };
+            Assert.True(Route(fixture, RoutedPacket(150, -180, phase: 1), out bool retiredHandled));
+            Assert.True(retiredHandled);
+            Assert.NotNull(nestedArgs);
+            Assert.NotNull(nestedSession);
+            Assert.True(fixture.Viewer.TryGetPortableScrollSession(nestedArgs.Sequence, out var retained));
+            Assert.Same(nestedSession, retained);
+            Assert.True(Route(fixture, RoutedPacket(150, -12, phase: 4), out bool nextHandled));
+            Assert.True(nextHandled);
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(41, fixture.Info.VerticalOffset);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollFailingMetricCallbackCannotCancelNewerAcceptedInput()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            var peer = fixture.AddPeer();
+            Assert.True(Route(fixture, RoutedPacket(50, -2, phase: 1), out _));
+            var failure = new InvalidOperationException("Source metric callback failed after newer input.");
+            fixture.Info.ReadHorizontalOffset = () =>
+            {
+                fixture.Info.ReadHorizontalOffset = null;
+                Assert.True(Route(fixture, RoutedPacket(250, -3, phase: 4), out bool handled));
+                Assert.True(handled);
+                throw failure;
+            };
+            Assert.Same(failure, Assert.Throws<InvalidOperationException>(() =>
+                Route(fixture, RoutedPacket(50, -9, phase: 4), out _)));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(42, fixture.Info.VerticalOffset);
+            Assert.Equal(43, peer.Info.VerticalOffset);
+            Assert.Equal(ModifierKeys.None, Keyboard.Modifiers);
+        });
+    }
+
     private sealed class ScrollRouteRoot : Grid
     {
         internal DependencyObject InputParent { get; init; } = null!;
         protected internal override DependencyObject GetUIParentCore() => InputParent;
     }
 
-    private static PortablePointerInput RoutedPacket(double x, double delta, uint phase = 0, uint momentum = 0) =>
+    private static PortablePointerInput RoutedPacket(double x, double delta, uint phase = 0, uint momentum = 0,
+        PortablePointerScrollUnit unit = PortablePointerScrollUnit.Points) =>
         new(PortablePointerEventKind.Scroll, PortablePointerScrollProtocol.AppKit, x, 75, 3.125, -1, 0,
-            PortablePointerModifiers.Super, 0, delta, PortablePointerScrollUnit.Points, phase, momentum);
+            PortablePointerModifiers.Super, 0, delta, unit, phase, momentum);
 
     private static bool Route(ScrollFixture fixture, PortablePointerInput input, out bool handled) =>
         PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)fixture.Host,

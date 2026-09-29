@@ -2341,12 +2341,23 @@ namespace System.Windows.Controls
             return true;
         }
 
-        internal bool TryGetPortableScrollSession(PortableScrollLifetime lifetime, out PortableScrollSession session)
+        internal bool TryGetPortableScrollSession(PortableScrollLifetime lifetime, out PortableScrollSession session,
+            PortableScrollEventArgs dispatch = null)
         {
-            session = _portableScrollSession;
-            if (session != null && ReferenceEquals(session.Lifetime, lifetime) && session.IsCurrent) return true;
-            if (!PortableScrollSession.TryCreate(this, lifetime, out session)) return false;
-            _portableScrollSession = session;
+            session = null;
+            PortableScrollSession retained = _portableScrollSession;
+            if (retained != null && ReferenceEquals(retained.Lifetime, lifetime) && retained.IsCurrent)
+            {
+                if (dispatch != null && !dispatch.IsCurrent) return false;
+                session = retained;
+                return true;
+            }
+            if (dispatch != null && !dispatch.IsCurrent) return false;
+            if (!PortableScrollSession.TryCreate(this, lifetime, out var candidate) ||
+                dispatch != null && !dispatch.IsCurrent) return false;
+            // Capability getters can reenter routing and install a newer
+            // session. A retired dispatch must not replace its fractional state.
+            _portableScrollSession = session = candidate;
             return true;
         }
 

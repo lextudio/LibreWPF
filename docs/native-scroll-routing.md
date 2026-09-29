@@ -51,7 +51,12 @@ fraction copy, owns that handoff.
 
 Routing uses weak source/target ownership and viewer-owned session caches. Source
 generations and dispatch revisions reject replacement roots and stale outer work
-after reentrant hit tests or preview handlers. A failing old callback cannot cancel
+after reentrant hit tests, preview handlers, or application-owned scroll capability,
+metric and transform reads. Recheck the dispatch after those reads, immediately
+before queue or session-cache publication. This admission guard never retires
+previously accepted commands on ordinary later input; their gesture leases remain
+authoritative. A stale dispatch is host-handled without consuming its remainder,
+so host fallback cannot replay it. A failing old callback cannot cancel
 a newer nested dispatch. Modal admission resolves the actual source root/owning
 window, not a child ScrollViewer as if it were a top-level owner. A full selected
 queue throws rather than silently redirecting the overflow to another control.

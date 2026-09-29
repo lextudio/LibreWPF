@@ -74,10 +74,9 @@ namespace System.Windows.Input
             if (!input.IsCurrent) return;
             if (input.IsCancellation) { input.Handled = true; return; }
             var viewer = (ScrollViewer)sender;
-            if (viewer.TryGetPortableScrollSession(input.Sequence, out var session) && input.IsCurrent)
+            if (viewer.TryGetPortableScrollSession(input.Sequence, out var session, input) && input.IsCurrent)
             {
-                if (session.TryQueueRemaining(input.NativeInput, input.Lifetime, input.RemainingScroll,
-                    input.PresentationSource, out Vector remaining, out bool queueFull)) input.AcceptRemaining(remaining);
+                if (session.TryQueueRemaining(input, out Vector remaining, out bool queueFull)) input.AcceptRemaining(remaining);
                 else if (queueFull) throw new InvalidOperationException("The native scroll source queue is full.");
             }
         }
@@ -150,7 +149,9 @@ namespace System.Windows.Input
                 }
                 // A partial default consumption must not replay the original
                 // complete packet through an independent host fallback.
-                handled = args.Handled || args.HasConsumedMotion;
+                // A reentrant callback can retire this packet before queue
+                // admission. Do not replay that obsolete input through the host.
+                handled = !args.IsCurrent || args.Handled || args.HasConsumedMotion;
                 return true;
             }
             catch

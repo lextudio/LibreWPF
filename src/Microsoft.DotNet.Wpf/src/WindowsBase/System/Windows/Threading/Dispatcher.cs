@@ -2647,6 +2647,15 @@ namespace System.Windows.Threading
                         {
                             timer = null;
 
+                            // Promotion runs hooks outside this lock. A hook
+                            // may complete shutdown and release _timers/_queue;
+                            // the list captured before that callback is no
+                            // longer dispatcher-owned work to promote.
+                            if (_hasShutdownFinished)
+                            {
+                                return;
+                            }
+
                             // If the timers collection changed while we are in the middle of
                             // looking for timers, start over.
                             if(timersVersion != _timersVersion)

@@ -13,6 +13,9 @@ state checked under the dispatcher lock. Keep Windows native message pumping
 and due-timer promotion in their original frame/context; preserve invalid and
 immediate timeout behavior. Removing synthetic markers is not Windows CPU or
 native idle qualification. See docs/portable-dispatcher-empty-flush.md.
+Timer-promotion hooks can finish shutdown and release dispatcher storage; recheck
+completed shutdown under the original lock before the next timer-list access.
+Keep original callback failures and the timer-update finally path intact.
 
 Native compute dispatch tracing belongs only to the separate failure replay.
 Reject its enabled opt-in in original idle acceptance, preserve the caller's

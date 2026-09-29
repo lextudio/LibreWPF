@@ -193,6 +193,59 @@ public class PortableDispatcherFlushTests
         }
     });
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PromotionHookShutdownRetiresRemainingTimersAndPreservesCallbackFailure(bool throwAfterShutdown) => Run(dispatcher =>
+    {
+        var operations = new List<DispatcherOperation>();
+        DispatcherHookEventHandler posted = (_, e) =>
+        {
+            if (e.Operation.Priority == DispatcherPriority.Inactive) operations.Add(e.Operation);
+        };
+        dispatcher.Hooks.OperationPosted += posted;
+        var first = new DispatcherTimer(DispatcherPriority.Background, dispatcher) { Interval = TimeSpan.Zero };
+        var second = new DispatcherTimer(DispatcherPriority.Background, dispatcher) { Interval = TimeSpan.Zero };
+        int ticks = 0;
+        first.Tick += (_, _) => ticks++;
+        second.Tick += (_, _) => ticks++;
+        StartDueTimer(dispatcher, first);
+        StartDueTimer(dispatcher, second);
+        dispatcher.Hooks.OperationPosted -= posted;
+        Assert.Equal(2, operations.Count);
+
+        int promotions = 0;
+        var failure = new InvalidOperationException("shutdown hook failure");
+        DispatcherHookEventHandler promoted = (_, e) =>
+        {
+            promotions++;
+            Assert.Same(operations[0], e.Operation);
+            dispatcher.InvokeShutdown();
+            if (throwAfterShutdown) throw failure;
+        };
+        dispatcher.Hooks.OperationPriorityChanged += promoted;
+        try
+        {
+            if (throwAfterShutdown)
+                Assert.Same(failure, Assert.Throws<InvalidOperationException>(() =>
+                    dispatcher.PromoteTimers(Environment.TickCount)));
+            else
+                dispatcher.PromoteTimers(Environment.TickCount);
+
+            Assert.True(dispatcher.HasShutdownFinished);
+            Assert.Equal(1, promotions);
+            Assert.Equal(0, ticks);
+            Assert.All(operations, operation => Assert.Equal(DispatcherOperationStatus.Aborted, operation.Status));
+            Assert.False(dispatcher.CanCompletePortableFlushWithoutFrame(DispatcherPriority.Background));
+        }
+        finally
+        {
+            dispatcher.Hooks.OperationPriorityChanged -= promoted;
+            first.Stop();
+            second.Stop();
+        }
+    });
+
     private static void StartDueTimer(Dispatcher dispatcher, DispatcherTimer timer)
     {
         DispatcherOperation? update = null;

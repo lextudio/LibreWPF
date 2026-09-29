@@ -33,8 +33,9 @@ a Windows CPU improvement or qualify native idle/application performance.
 Authored actual-source controls (not executed in the compilation-only phase):
 
 - `WindowsBase.Tests`: `System.Windows.Threading.Tests.PortableDispatcherFlushTests`,
-  18 cases covering admission, priority retention, owner thread, disabled/shutdown/
-  frame-exit state, real due/future timers and earlier reentrant promotion hooks.
+  20 cases covering admission, priority retention, owner thread, disabled/shutdown/
+  frame-exit state, real due/future timers and earlier reentrant promotion hooks,
+  including completed shutdown with remaining timers and original callback errors.
 - `PresentationFramework.Tests`: `System.Windows.PortableDispatcherFlushTests`,
   11 cases covering the consumer's empty path, original FIFO/priority work, lower
   priorities, invalid/immediate timeouts, disabled/shutdown behavior and actual
@@ -45,6 +46,17 @@ filter, the above minimum, `--fail-skips on --timeout 60s --no-progress`. Preser
 all existing source and native gates. No local runtime, GUI, VM or profile was
 executed while authoring this change; source compilation and execution evidence
 must be reported separately.
+
+The first hosted WindowsBase gate at WPF218 `18997bd17` (Build `36631655009`,
+job `109622110458`) passed 17/18 cases and exposed the unchanged timer promotion
+loop reading `_timers.Count` after a priority-change hook completed shutdown and
+released timer storage. The loop now rechecks completed shutdown under its lock
+after every promotion callback, before reading that storage. It still executes
+the original timer-update `finally`, does not swallow callback errors and does
+not equate shutdown-started with shutdown-finished. The original failing case is
+retained; two additional source cases verify remaining timers are not promoted
+or invoked and a hook's post-shutdown exception remains the original exception.
+These corrected cases have not been executed locally.
 
 ## Remaining CPU attribution
 

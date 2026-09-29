@@ -24,13 +24,24 @@ namespace System.Windows.Controls
         internal void Cancel() => _cancelled = true;
     }
 
+    /// <summary>Declares which IScrollInfo offset axes use items instead of device-independent pixels.</summary>
     [Flags]
-    internal enum PortableScrollAxes { Pixels = 0, HorizontalItems = 1, VerticalItems = 2 }
+    public enum PortableScrollAxes
+    {
+        /// <summary>Both axes use device-independent pixels, not framebuffer pixels.</summary>
+        Pixels = 0,
+        /// <summary>The horizontal offset, extent and viewport use item units.</summary>
+        HorizontalItems = 1,
+        /// <summary>The vertical offset, extent and viewport use item units.</summary>
+        VerticalItems = 2
+    }
 
     // IScrollInfo deliberately does not declare the units of its offsets. Source
     // implementations publish that fact; CanContentScroll alone cannot prove it.
-    internal interface IPortableScrollInfo
+    /// <summary>Optional native point-scroll unit declaration for built-in and application scroll providers.</summary>
+    public interface IPortableScrollInfo : IScrollInfo
     {
+        /// <summary>Current offset units; changing them retires previously queued point or line input.</summary>
         PortableScrollAxes ScrollAxes { get; }
     }
 
@@ -39,6 +50,7 @@ namespace System.Windows.Controls
         internal const int MaximumLinesPerPacket = 4096;
         private readonly ScrollViewer _owner;
         private readonly IScrollInfo _info;
+        private readonly IPortableScrollInfo _units;
         private readonly PortablePresentationSource _source;
         private readonly ulong _sourceGeneration;
         private readonly PortableScrollAxes _axes;
@@ -54,6 +66,7 @@ namespace System.Windows.Controls
             PortablePresentationSource source, PortableScrollAxes axes, PortableScrollLifetime lifetime)
         {
             _owner = owner; _info = info; _source = source;
+            _units = info as IPortableScrollInfo;
             _sourceGeneration = source.PointerInputGeneration; _axes = axes;
             _horizontalEnabled = info.CanHorizontallyScroll; _verticalEnabled = info.CanVerticallyScroll;
             Lifetime = lifetime;
@@ -66,12 +79,16 @@ namespace System.Windows.Controls
         {
             owner.VerifyAccess();
             session = null;
-            if (!owner.IsEnabled || !owner.IsVisible || !owner.HandlesMouseWheelScrolling || owner.ScrollInfo is not IPortableScrollInfo units ||
-                !ReferenceEquals(owner.ScrollInfo.ScrollOwner, owner) ||
-                PresentationSource.CriticalFromVisual(owner) is not PortablePresentationSource source || source.IsDisposed ||
-                (units.ScrollAxes & ~(PortableScrollAxes.HorizontalItems | PortableScrollAxes.VerticalItems)) != 0)
+            IScrollInfo info = owner.ScrollInfo;
+            if (!owner.IsEnabled || !owner.IsVisible || !owner.HandlesMouseWheelScrolling || info == null ||
+                !ReferenceEquals(info.ScrollOwner, owner) ||
+                PresentationSource.CriticalFromVisual(owner) is not PortablePresentationSource source || source.IsDisposed)
                 return false;
-            session = new PortableScrollSession(owner, owner.ScrollInfo, source, units.ScrollAxes, lifetime);
+            PortableScrollAxes axes = info is IPortableScrollInfo units ? units.ScrollAxes : PortableScrollAxes.Pixels;
+            if ((axes & ~(PortableScrollAxes.HorizontalItems | PortableScrollAxes.VerticalItems)) != 0) return false;
+            var candidate = new PortableScrollSession(owner, info, source, axes, lifetime);
+            if (!candidate.IsCurrent) return false;
+            session = candidate;
             return true;
         }
 
@@ -79,10 +96,14 @@ namespace System.Windows.Controls
             _sourceGeneration == _source.PointerInputGeneration &&
             ReferenceEquals(_owner.ScrollInfo, _info) && ReferenceEquals(_info.ScrollOwner, _owner) &&
             ReferenceEquals(PresentationSource.CriticalFromVisual(_owner), _source) &&
-            ((IPortableScrollInfo)_info).ScrollAxes == _axes &&
+            (_units == null || _units.ScrollAxes == _axes) &&
             _info.CanHorizontallyScroll == _horizontalEnabled && _info.CanVerticallyScroll == _verticalEnabled &&
             _owner.IsEnabled && _owner.IsVisible && _owner.HandlesMouseWheelScrolling &&
-            PortableWindowActivationService.IsModalInputAllowed(_source.RootVisual as UIElement);
+            PortableWindowActivationService.IsModalInputAllowed(_source.RootVisual as UIElement) &&
+            // Application-owned capability getters can replace their provider or source.
+            !_source.IsDisposed && _sourceGeneration == _source.PointerInputGeneration &&
+            ReferenceEquals(_owner.ScrollInfo, _info) &&
+            ReferenceEquals(PresentationSource.CriticalFromVisual(_owner), _source);
 
         internal void Cancel() { _owner.VerifyAccess(); _cancelled = true; }
 
@@ -128,6 +149,10 @@ namespace System.Windows.Controls
             }
             else
             {
+                // Line commands have their own provider-defined meaning. Point
+                // offsets require an explicit unit declaration; never guess from
+                // CanContentScroll, provider type names or wheel preferences.
+                if (_units == null) return false;
                 if (!ValidMetrics(_info.HorizontalOffset, _info.ExtentWidth, _info.ViewportWidth) ||
                     !ValidMetrics(_info.VerticalOffset, _info.ExtentHeight, _info.ViewportHeight)) return false;
                 // Point vectors belong to the source frame. Transform both ends
@@ -217,17 +242,20 @@ namespace System.Windows.Controls
 
         internal void ApplyPoints(Vector delta, PortableScrollLifetime lifetime = null)
         {
+            if (_units == null || !IsCurrent || lifetime?.IsCancelled == true) return;
+            bool horizontal = _horizontalEnabled, vertical = _verticalEnabled;
+            Vector remainder = _lastUnit == PortablePointerScrollUnit.Points ? _pointRemainder : default;
+            double oldX = _info.HorizontalOffset, oldY = _info.VerticalOffset;
+            // Validate both axes before calling the application-owned provider.
+            double x = PointOffset(oldX, _info.ExtentWidth, _info.ViewportWidth,
+                horizontal ? delta.X : 0, remainder.X, (_axes & PortableScrollAxes.HorizontalItems) != 0, out double remainderX);
+            double y = PointOffset(oldY, _info.ExtentHeight, _info.ViewportHeight,
+                vertical ? delta.Y : 0, remainder.Y, (_axes & PortableScrollAxes.VerticalItems) != 0, out double remainderY);
             if (!IsCurrent || lifetime?.IsCancelled == true) return;
             SelectUnit(PortablePointerScrollUnit.Points);
-            bool horizontal = _info.CanHorizontallyScroll, vertical = _info.CanVerticallyScroll;
-            // Validate both axes before calling the application-owned provider.
-            double x = PointOffset(_info.HorizontalOffset, _info.ExtentWidth, _info.ViewportWidth,
-                horizontal ? delta.X : 0, _pointRemainder.X, (_axes & PortableScrollAxes.HorizontalItems) != 0, out double remainderX);
-            double y = PointOffset(_info.VerticalOffset, _info.ExtentHeight, _info.ViewportHeight,
-                vertical ? delta.Y : 0, _pointRemainder.Y, (_axes & PortableScrollAxes.VerticalItems) != 0, out double remainderY);
             _pointRemainder = new Vector(horizontal ? remainderX : 0, vertical ? remainderY : 0);
-            if (horizontal && x != _info.HorizontalOffset) _info.SetHorizontalOffset(x);
-            if (IsCurrent && lifetime?.IsCancelled != true && vertical && y != _info.VerticalOffset) _info.SetVerticalOffset(y);
+            if (horizontal && x != oldX) _info.SetHorizontalOffset(x);
+            if (IsCurrent && lifetime?.IsCancelled != true && vertical && y != oldY) _info.SetVerticalOffset(y);
         }
 
         private static double PointOffset(double offset, double extent, double viewport, double delta,
@@ -249,23 +277,23 @@ namespace System.Windows.Controls
         internal void BeginLines(Vector delta, out int horizontal, out int vertical)
         {
             SelectUnit(PortablePointerScrollUnit.Lines);
-            double x = _info.CanHorizontallyScroll ? delta.X + _lineRemainder.X : 0;
-            double y = _info.CanVerticallyScroll ? delta.Y + _lineRemainder.Y : 0;
+            double x = _horizontalEnabled ? delta.X + _lineRemainder.X : 0;
+            double y = _verticalEnabled ? delta.Y + _lineRemainder.Y : 0;
             horizontal = (int)Math.Truncate(x); vertical = (int)Math.Truncate(y);
             _lineRemainder = new Vector(x - horizontal, y - vertical);
         }
 
-        internal void ApplyLine(bool horizontal, bool positive)
+        internal void ApplyLine(bool horizontal, bool positive, PortableScrollLifetime lifetime = null)
         {
-            if (!IsCurrent) return;
+            if (!IsCurrent || lifetime?.IsCancelled == true) return;
             if (horizontal)
             {
-                if (!_info.CanHorizontallyScroll) return;
+                if (!_horizontalEnabled) return;
                 if (positive) _info.LineRight(); else _info.LineLeft();
             }
             else
             {
-                if (!_info.CanVerticallyScroll) return;
+                if (!_verticalEnabled) return;
                 if (positive) _info.LineDown(); else _info.LineUp();
             }
         }
@@ -298,12 +326,12 @@ namespace System.Windows.Controls
             if (_horizontal != 0)
             {
                 int direction = Math.Sign(_horizontal); _horizontal -= direction;
-                _session.ApplyLine(true, direction > 0);
+                _session.ApplyLine(true, direction > 0, _lifetime);
             }
             else if (_vertical != 0)
             {
                 int direction = Math.Sign(_vertical); _vertical -= direction;
-                _session.ApplyLine(false, direction > 0);
+                _session.ApplyLine(false, direction > 0, _lifetime);
             }
             return _horizontal == 0 && _vertical == 0;
         }

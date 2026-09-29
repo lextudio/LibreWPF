@@ -67,21 +67,21 @@ closing/cancelling/replacing that source also retires commands already accepted 
 another source, including after normal End. Receiving source/provider ownership
 continues to be checked independently.
 
-Twenty-six authored source cases now cover the consumer and routing, including
+Twenty-eight authored source cases now cover the consumer and routing, including
 normal retargeting, momentum pinning/retirement, source and gesture cancellation,
 unchanged state after invalid phase packets, preview handling/failure, nested
 dispatch, owning modal roots, fractional handoff, native hit-provider ownership,
 independent nested line axes, rotated point remainders, partial queue failure,
 cross-source desktop/root mapping independent of raster DPI, unchanged line units,
-origin retirement and singular frame rejection. Cross-source cases exercise an
+origin retirement, singular frame rejection, undeclared custom line providers and
+reentrant capability admission. Cross-source cases exercise an
 explicit logical route between actual source hosts; native popup UI qualification
 remains separate.
 Compilation is not execution evidence. Earlier consumer-only CI passed all nine cases after its
 transform fixture published layout before input.
 
 Still required: deferred boundary/overscroll chaining, actual popup-route
-qualification, default handling for undeclared
-custom scroll providers and legacy-only application handlers, complete source
+qualification, legacy-only application handlers, complete source
 registrar/factory integration, Forms source input and native UI/package validation
 on all supported platforms. Unclaimed components remain visible to ancestors and
 application handlers; source providers retain their existing edge clamping rather

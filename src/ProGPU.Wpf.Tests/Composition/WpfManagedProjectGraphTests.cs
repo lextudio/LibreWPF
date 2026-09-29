@@ -6,6 +6,22 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WpfManagedProjectGraphTests
 {
     [Fact]
+    public void NativeScrollReferenceSurfaceExposesProviderUnitsAndLosslessRoutedEvents()
+    {
+        string reference = File.ReadAllText(FindRepoPath("src", "Microsoft.DotNet.Wpf", "src",
+            "PresentationFramework", "ref", "PresentationFramework.cs"));
+        Assert.Contains("public enum PortableScrollAxes", reference, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableScrollInfo : System.Windows.Controls.Primitives.IScrollInfo", reference, StringComparison.Ordinal);
+        Assert.Equal(3, reference.Split("System.Windows.Controls.IPortableScrollInfo.ScrollAxes", StringSplitOptions.None).Length - 1);
+        Assert.Contains("public sealed class PortableScrollEventArgs : System.Windows.RoutedEventArgs", reference, StringComparison.Ordinal);
+        Assert.Contains("public ProGPU.Wpf.Interop.PortablePointerInput NativeInput", reference, StringComparison.Ordinal);
+        Assert.Contains("public System.Windows.Vector RemainingScroll", reference, StringComparison.Ordinal);
+        Assert.Contains("public static class PortableScroll", reference, StringComparison.Ordinal);
+        Assert.Contains("public static readonly System.Windows.RoutedEvent PreviewScrollEvent;", reference, StringComparison.Ordinal);
+        Assert.Contains("public static readonly System.Windows.RoutedEvent ScrollEvent;", reference, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WindowsNativePassiveIdleWorkflowKeepsBothArchitectureContracts()
     {
         string workflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
@@ -109,13 +125,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("continue-on-error:", job, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/download-artifact", job, StringComparison.Ordinal);
         string nativePointerRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-native-pointer-source.sh"));
+        string[] nativeInvocations = nativePointerRunner.Split("\n\"${dotnet_command}\" ", StringSplitOptions.None);
+        Assert.Equal(4, nativeInvocations.Length);
         Assert.Contains("--filter-method '*NativePointerReports*'", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--filter-method '*NativePointerReport*'", nativePointerRunner, StringComparison.Ordinal);
-        Assert.Contains("--minimum-expected-tests 28 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
-        Assert.Contains("--minimum-expected-tests 4 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 28 --fail-skips on --timeout 60s", nativeInvocations[1], StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 4 --fail-skips on --timeout 60s", nativeInvocations[2], StringComparison.Ordinal);
         Assert.Contains("--filter-class System.Windows.PortableScrollSourceTests", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--filter-method '*NativeScroll*'", nativePointerRunner, StringComparison.Ordinal);
-        Assert.Contains("--minimum-expected-tests 26 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 28 --fail-skips on --timeout 60s", nativeInvocations[3], StringComparison.Ordinal);
         string wheelRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-wheel-input-source.sh"));
         Assert.Contains("--filter-method '*WheelEventState*'", wheelRunner, StringComparison.Ordinal);
         Assert.Contains("--minimum-expected-tests 3 --fail-skips on --timeout 60s", wheelRunner, StringComparison.Ordinal);

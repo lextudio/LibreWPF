@@ -7,11 +7,20 @@ The internal `PortableScrollSession` connects native point/line units to the rea
 registrar does not yet advertise native input or select the Cocoa factory.
 
 `IScrollInfo` does not specify offset units. Source providers explicitly declare
-physical or logical units per axis through `IPortableScrollInfo`; the consumer
+physical or logical units per axis through the public optional `IPortableScrollInfo`
+interface, which extends `IScrollInfo`; the consumer
 does not infer them from `CanContentScroll`. ScrollContentPresenter, TextBoxView,
 FlowDocumentView and DocumentGrid use physical offsets. StackPanel declares its
 stacking axis logical. VirtualizingStackPanel uses its actual pixel/item mode.
-Undeclared custom providers and unknown unit flags are rejected.
+Applications may implement the same interface. `Pixels` means source DIPs, not
+framebuffer pixels; HorizontalItems/VerticalItems declare the actual offset,
+extent and viewport units independently. Unknown flags are rejected atomically.
+Providers implementing only `IScrollInfo` may receive native line commands, whose
+meaning is already defined by their LineLeft/Right/Up/Down methods. Native points
+remain rejected for those providers; CanContentScroll does not prove their units.
+Capability getters are application code, so admission rechecks source/provider
+identity after reading them. The public reference surface includes this contract
+and the lossless routed scroll events.
 
 Point vectors use the actual source-to-viewer visual transform, including scale
 and mirroring, without applying a desktop translation to the vector. Physical
@@ -54,7 +63,7 @@ publication with layout reentry. Compilation is not test execution evidence.
 The routed path adds explicit AppKit phase validation, normal/momentum ownership
 and lossless routed events with independent nested axes. Still required before
 factory admission: deferred boundary chaining, native popup cross-source qualification,
-custom/legacy handler capability, source
+legacy-only application handler compatibility, source
 registrar/factory integration, Forms integration
 and actual native popup/application qualification on every supported platform.
 The legacy Windows and portable wheel paths are unchanged; there is no conversion

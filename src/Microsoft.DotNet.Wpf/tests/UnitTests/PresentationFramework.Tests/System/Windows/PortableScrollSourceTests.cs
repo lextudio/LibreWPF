@@ -150,7 +150,8 @@ public sealed class PortableScrollSourceTests
             fixture.Info.Axes = (PortableScrollAxes)4;
             Assert.False(PortableScrollSession.TryCreate(fixture.Viewer, out _));
             fixture.Viewer.ScrollInfo = new RecordingScrollInfo { ScrollOwner = fixture.Viewer };
-            Assert.False(PortableScrollSession.TryCreate(fixture.Viewer, out _));
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var linesOnly));
+            Assert.False(linesOnly.TryQueue(Packet(-1, -1, PortablePointerScrollUnit.Points)));
         });
     }
 
@@ -159,6 +160,9 @@ public sealed class PortableScrollSourceTests
     {
         Run(() =>
         {
+            Assert.True(typeof(IPortableScrollInfo).IsPublic);
+            Assert.True(typeof(PortableScrollAxes).IsPublic);
+            Assert.True(typeof(IScrollInfo).IsAssignableFrom(typeof(IPortableScrollInfo)));
             Assert.Equal(PortableScrollAxes.Pixels, ((IPortableScrollInfo)new ScrollContentPresenter()).ScrollAxes);
             var stack = new StackPanel();
             Assert.Equal(PortableScrollAxes.VerticalItems, ((IPortableScrollInfo)stack).ScrollAxes);
@@ -566,7 +570,10 @@ public sealed class PortableScrollSourceTests
             using var owner = new ScrollFixture(PortableScrollAxes.Pixels);
             var bridge = new ScrollRouteRoot { InputParent = owner.Viewer };
             using var origin = new ScrollFixture(PortableScrollAxes.Pixels, root: bridge);
-            origin.Info.CanHorizontallyScroll = origin.Info.CanVerticallyScroll = false;
+            // DPI relayout republishes these flags from ScrollBarVisibility.
+            // Use the real source policy rather than a transient provider edit.
+            origin.Viewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            origin.Viewer.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
             origin.Host.HitTestOverride = (_, _) => origin.Viewer;
             ((IPortableDesktopGeometryHost)origin.Host).SetDesktopTransform(new(-1920.25, 31.5, 2, 3));
             ((IPortableDesktopGeometryHost)owner.Host).SetDesktopTransform(new(2560.5, -1440.25, 4, 0.75));
@@ -574,6 +581,8 @@ public sealed class PortableScrollSourceTests
             origin.Root.RenderTransform = new ScaleTransform(3, 2);
             owner.Root.RenderTransform = new ScaleTransform(2, 4);
             origin.Root.UpdateLayout(); owner.Root.UpdateLayout();
+            Assert.False(origin.Info.CanHorizontallyScroll); Assert.False(origin.Info.CanVerticallyScroll);
+            Assert.True(owner.Info.CanHorizontallyScroll); Assert.True(owner.Info.CanVerticallyScroll);
             Assert.Equal(new Matrix(3, 0, 0, 2, 0, 0), VisualTreeHelper.GetTransform(origin.Root).Value);
             Assert.Equal(new Matrix(2, 0, 0, 4, 0, 0), VisualTreeHelper.GetTransform(owner.Root).Value);
             Assert.True(Route(origin, Packet(-8, -6, PortablePointerScrollUnit.Points), out bool handled));
@@ -669,6 +678,65 @@ public sealed class PortableScrollSourceTests
             owner.Viewer.UpdateLayout();
             Assert.Equal(new Vector(-8, -6), remaining);
             Assert.Equal(40, owner.Info.HorizontalOffset); Assert.Equal(40, owner.Info.VerticalOffset);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollUndeclaredProvidersAcceptRealLinesWithoutGuessingPointUnits()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            var custom = new RecordingScrollInfo { ScrollOwner = fixture.Viewer };
+            fixture.Viewer.ScrollInfo = custom;
+            fixture.Host.HitTestOverride = (_, _) => fixture.Viewer;
+            Assert.True(Route(fixture, Packet(-1, -1, PortablePointerScrollUnit.Points), out bool handled));
+            Assert.False(handled);
+            Assert.True(Route(fixture, Packet(-0.25, -0.5, PortablePointerScrollUnit.Lines), out handled));
+            Assert.True(handled);
+            Assert.True(Route(fixture, Packet(-1.75, -2.5, PortablePointerScrollUnit.Lines), out handled));
+            Assert.True(handled);
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(new[] { "right", "right", "down", "down", "down" }, custom.Lines);
+            Assert.Equal(55, custom.HorizontalOffset); Assert.Equal(73.75, custom.VerticalOffset);
+        });
+    }
+
+    [PortableScrollFact]
+    public void NativeScrollCustomCapabilityCallbacksCannotPublishRetiredSessionsOrCommands()
+    {
+        Run(() =>
+        {
+            using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
+            fixture.Info.ReadUnits = () =>
+            {
+                fixture.Info.ReadUnits = null;
+                fixture.Viewer.ScrollInfo = new RecordingScrollInfo { ScrollOwner = fixture.Viewer };
+            };
+            Assert.False(PortableScrollSession.TryCreate(fixture.Viewer, out var rejected));
+            Assert.Null(rejected);
+            fixture.Viewer.ScrollInfo = fixture.Info;
+            Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
+            fixture.Info.ReadUnits = () =>
+            {
+                fixture.Info.ReadUnits = null;
+                fixture.Host.RootVisual = null;
+            };
+            Assert.False(session.TryQueue(Packet(-1, -2, PortablePointerScrollUnit.Points)));
+            fixture.Viewer.UpdateLayout();
+            Assert.Equal(40, fixture.Info.HorizontalOffset); Assert.Equal(40, fixture.Info.VerticalOffset);
+
+            using var metrics = new ScrollFixture(PortableScrollAxes.Pixels);
+            Assert.True(PortableScrollSession.TryCreate(metrics.Viewer, out var metricSession));
+            var phase = new PortableScrollLifetime();
+            Assert.True(metricSession.TryQueue(Packet(-3, -4, PortablePointerScrollUnit.Points), phase, out _));
+            metrics.Info.ReadHorizontalOffset = () =>
+            {
+                metrics.Info.ReadHorizontalOffset = null;
+                phase.Cancel();
+            };
+            metrics.Viewer.UpdateLayout();
+            Assert.Equal(40, metrics.Info.HorizontalOffset); Assert.Equal(40, metrics.Info.VerticalOffset);
         });
     }
 
@@ -768,7 +836,13 @@ public sealed class PortableScrollSourceTests
         public double ExtentHeight { get; set; } = 1000;
         public double ViewportWidth { get; set; } = 200;
         public double ViewportHeight { get; set; } = 100;
-        public double HorizontalOffset { get; private set; } = 40;
+        private double _horizontalOffset = 40;
+        internal Action? ReadHorizontalOffset { get; set; }
+        public double HorizontalOffset
+        {
+            get { ReadHorizontalOffset?.Invoke(); return _horizontalOffset; }
+            private set => _horizontalOffset = value;
+        }
         public double VerticalOffset { get; private set; } = 40;
         public ScrollViewer ScrollOwner { get; set; } = null!;
         internal List<string> Lines { get; } = new();
@@ -810,7 +884,8 @@ public sealed class PortableScrollSourceTests
     private sealed class MeasuredScrollInfo : RecordingScrollInfo, IPortableScrollInfo
     {
         internal PortableScrollAxes Axes { get; set; }
-        public PortableScrollAxes ScrollAxes => Axes;
+        internal Action? ReadUnits { get; set; }
+        public PortableScrollAxes ScrollAxes { get { ReadUnits?.Invoke(); return Axes; } }
     }
 
     private sealed class LayoutScrollViewer : ScrollViewer

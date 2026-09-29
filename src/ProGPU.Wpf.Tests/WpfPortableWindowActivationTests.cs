@@ -15,7 +15,7 @@ namespace ProGPU.Wpf.Tests;
 // These fixtures replace the same process-wide activation registry used by the
 // popup/host fixtures. They must share its collection, not race each other's providers.
 [Collection(PortableRenderDataSinkProviderCollection.Name)]
-public sealed class WpfPortableWindowActivationTests
+public sealed partial class WpfPortableWindowActivationTests
 {
     [Fact]
     public void StartupWorkAreaUsesPrimaryMonitorWithoutOwner()
@@ -3135,6 +3135,8 @@ public sealed class WpfPortableWindowActivationTests
 
         public PortableWindowInputEvent? LastInput { get; private set; }
 
+        public Action<PortableWindowInputEvent>? ProcessInputCallback { get; set; }
+
         public object? LastFlushWindow { get; private set; }
 
         public List<string> FlushedPriorities { get; } = new List<string>();
@@ -3267,6 +3269,7 @@ public sealed class WpfPortableWindowActivationTests
             InputDispatchLog.Add(
                 "ProcessInput:" + input.X.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture));
             input.Handled = true;
+            ProcessInputCallback?.Invoke(input);
             return true;
         }
 

@@ -1052,6 +1052,53 @@ public sealed class PortableScrollSourceTests
     }
 
     [PortableScrollFact]
+    public void NativeScrollIndependentOriginCannotReplaceNewerSessionDuringCreation()
+    {
+        Run(() =>
+        {
+            using var owner = new ScrollFixture(PortableScrollAxes.VerticalItems);
+            owner.Info.ViewportHeight = 4;
+            var bridge = new ScrollRouteRoot { InputParent = owner.Viewer };
+            using var origin = new ScrollFixture(PortableScrollAxes.Pixels, root: bridge);
+            origin.Viewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            origin.Viewer.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            origin.Viewer.UpdateLayout();
+            origin.Host.HitTestOverride = (_, _) => origin.Viewer;
+            PortablePointerInput nested = RoutedPacket(150, -12, phase: 1);
+            PortableScrollEventArgs? nestedArgs = null;
+            PortableScrollSession? nestedSession = null;
+            owner.Root.AddHandler(PortableScroll.PreviewScrollEvent, new RoutedEventHandler((_, value) =>
+            {
+                var args = (PortableScrollEventArgs)value;
+                if (ReferenceEquals(args.NativeInput, nested)) nestedArgs = args;
+            }));
+            owner.Info.ReadUnits = () =>
+            {
+                owner.Info.ReadUnits = null;
+                Assert.True(Route(owner, nested, out bool handled));
+                Assert.True(handled);
+                Assert.NotNull(nestedArgs);
+                Assert.True(owner.Viewer.TryGetPortableScrollSession(nestedArgs.Sequence, out nestedSession));
+                owner.Viewer.UpdateLayout();
+                Assert.Equal(40, owner.Info.VerticalOffset); // First 0.6 item belongs to B.
+            };
+            Assert.True(Route(origin, RoutedPacket(150, -20, phase: 1), out bool outerHandled));
+            Assert.True(outerHandled); // Origin A remains valid and contributes one item.
+            Assert.NotNull(nestedArgs);
+            Assert.NotNull(nestedSession);
+            Assert.True(owner.Viewer.TryGetPortableScrollSession(nestedArgs.Sequence, out var retained));
+            Assert.Same(nestedSession, retained);
+            owner.Viewer.UpdateLayout();
+            Assert.Equal(41, owner.Info.VerticalOffset);
+            Assert.True(Route(owner, RoutedPacket(150, -12, phase: 4), out bool nextHandled));
+            Assert.True(nextHandled);
+            owner.Viewer.UpdateLayout();
+            Assert.Equal(42, owner.Info.VerticalOffset); // B's two fractions remain connected.
+            Assert.Equal(40, origin.Info.VerticalOffset);
+        });
+    }
+
+    [PortableScrollFact]
     public void NativeScrollFailingMetricCallbackCannotCancelNewerAcceptedInput()
     {
         Run(() =>

@@ -2355,9 +2355,11 @@ namespace System.Windows.Controls
             if (dispatch != null && !dispatch.IsCurrent) return false;
             if (!PortableScrollSession.TryCreate(this, lifetime, out var candidate) ||
                 dispatch != null && !dispatch.IsCurrent) return false;
-            // Capability getters can reenter routing and install a newer
-            // session. A retired dispatch must not replace its fractional state.
-            _portableScrollSession = session = candidate;
+            // Another origin can also reenter this routed viewer while this
+            // dispatch remains valid. Accept its candidate without replacing
+            // the newer origin's retained fractional state.
+            if (ReferenceEquals(_portableScrollSession, retained)) _portableScrollSession = candidate;
+            session = candidate;
             return true;
         }
 

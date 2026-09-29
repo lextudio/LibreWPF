@@ -212,7 +212,7 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         if (ownerWindow is not IView owner || popupWindow is not IView popup) return false;
         return NativePopupWindow.TryPrepareOwner(
             new(NativeWindowKind.Cocoa, GetCocoaWindow(owner), 0, "NSWindow"),
-            new(NativeWindowKind.Cocoa, GetCocoaWindow(popup), 0, "NSWindow"));
+            new NativeWindowHandle(NativeWindowKind.Cocoa, GetCocoaWindow(popup), 0, "NSWindow"));
     }
 
     public bool TryShowOwnedPopup(object ownerWindow, object popupWindow, Action showWithoutActivation)
@@ -225,7 +225,7 @@ public sealed unsafe class SilkNetWpfWindowDecorationService : IWpfWindowDecorat
         if (ownerWindow is not IView owner || popupWindow is not IView popup) return false;
         return NativePopupWindow.TryShowOwned(
             new(NativeWindowKind.Cocoa, GetCocoaWindow(owner), 0, "NSWindow"),
-            new(NativeWindowKind.Cocoa, GetCocoaWindow(popup), 0, "NSWindow"), showWithoutActivation);
+            new NativeWindowHandle(NativeWindowKind.Cocoa, GetCocoaWindow(popup), 0, "NSWindow"), showWithoutActivation);
     }
 
     private static INativeWindow? GetNativeWindow(IView view)

@@ -108,16 +108,26 @@ of every intervening obstruction.
 native-geometry admission controls and new complete-producer rejection controls.
 These are not app or clipboard validation and have not been executed in the
 current compile-only phase. All three initial Python files were syntax-compiled
-at commit14092e1a8 without importing/executing the fixture. The subsequent explicit
-RID-layout command/helper and its source-contract test are authored but not rerun.
-The C# installed consumer compiled successfully for win-arm64 against the exact
-PR217 package bundle (0 errors, 6 unsuppressed warnings from three original-source
-nullable sites emitted in both markup and final compilation). The first attempt
+at commit14092e1a8 without importing/executing the fixture. The explicit RID-layout
+command and fixed first-run environment subsequently completed both real installed
+consumer builds; the offline source-contract tests themselves remain unexecuted.
+The C# consumer compiled successfully for win-arm64 and win-x64 against the exact
+PR217 package bundle, using `/usr/local/share/dotnet/dotnet` and SDK
+11.0.100-preview.5.26302.115. ARM64 completed in18.92s, x64 in19.22s, each with
+0 errors and6 unsuppressed warnings from three original-source nullable sites
+emitted in both markup and final compilation. The original twelve files remained
+unchanged; actual XAML compilation and the CommunityToolkit generator were used.
+Each fresh private feed contains all23 unchanged producer packages, and all eight
+required package/output asset comparisons, apphost PE architecture and native-mode
+checks passed. The workload-verification advisory was retained without running
+update/repair. These are PR217 compile receipts, **not PR218 qualification**.
+
+The earlier first attempt
 used the repository-local SDK11.0.100-preview.5 and its isolated CLI home emitted
 the first-run development-certificate banner. The original log is retained; this
 does not establish actual keychain installation. No trust/cleanup action was taken.
-The helper now sets the explicit first-run overrides above for subsequent builds.
-The consumer has not been executed; no new desktop evidence is claimed. Original package CI
+Both subsequent builds used the explicit first-run overrides above and emitted no
+certificate-generation banner. The consumer has not been executed; no new desktop evidence is claimed. Original package CI
 coverage remains separate from this exact Gallery acceptance case.
 
 The currently identified qualified input is PR217 head
@@ -126,6 +136,20 @@ Docs36604077406. Its package artifact11053355676 is118464911 bytes with SHA256
 `24c794bb80c975aad4b58a7c3072b3fb74e3c22d1e4359fc6648a691050d648d`.
 The original archive was subsequently downloaded and its full byte length/digest
 verified before staging the first compile-only attempt. Evidence is retained in
-`/Volumes/1TB-macOS/librewpf-gallery-installed.a83ZsqZ0/arm64-attempt1`.
+`/Volumes/1TB-macOS/librewpf-gallery-installed.a83ZsqZ0/`:
+
+- `arm64-attempt1/`: earlier SDK-path/first-run banner, preserved unchanged.
+- `arm64-isolated/preparation.json`: SHA256
+  `9648e5a7ea01e56a9ede0cc251f938743aad78f8361ffd5f0c1dbed2a5645888`;
+  `build.log`: `eb3d4de4f840164b769c2a0932d57f42265ee7cd3c681ac1034c69f777b09cbe`.
+- `x64-isolated/preparation.json`: SHA256
+  `1f722ab7770ff3c17e670547216f80b2470151f3a0fe3bb5f1d368a5966690ec`;
+  `build.log`: `9da778c203da2f6f266e8e8654623e8ea7ebb4e1221e2ad56057c0d4dbf2d03a`.
+
+Both final receipts retain `compiled:true`, `qualified:false`,
+`applicationExecuted:false` and `clipboardAccessed:false`, with the exact compiler
+command/environment and app/package hashes. No tests, runner, clipboard, captures,
+image viewers or VM operations were executed during this compile-only preparation.
+
 Revalidate it when staging. A later producer requires explicit
 matching arguments and complete receipts, never an implicit latest-success lookup.

@@ -50,8 +50,26 @@ namespace System.Windows
             double deltaX = 0,
             double deltaY = 0,
             PortableMouseButton button = PortableMouseButton.None,
-            PortableInputModifiers modifiers = PortableInputModifiers.None,
-            PortablePointerInput nativePointer = null)
+            PortableInputModifiers modifiers = PortableInputModifiers.None)
+            : this(kind, null, key, scanCode, character, x, y, deltaX, deltaY, button, modifiers)
+        {
+        }
+
+        // Preserve the original constructor identity for existing source hosts,
+        // including the application harness. Optional parameters do not preserve
+        // an existing reflection/binary signature.
+        internal PortableInputEventArgs(
+            PortableInputEventKind kind,
+            PortablePointerInput nativePointer,
+            string key = null,
+            int scanCode = 0,
+            char? character = null,
+            double x = 0,
+            double y = 0,
+            double deltaX = 0,
+            double deltaY = 0,
+            PortableMouseButton button = PortableMouseButton.None,
+            PortableInputModifiers modifiers = PortableInputModifiers.None)
         {
             Kind = kind;
             Key = key;

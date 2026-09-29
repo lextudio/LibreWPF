@@ -15,6 +15,36 @@ namespace System.Windows;
 [Collection("Sequential")]
 public class PortableWindowActivationServiceTests
 {
+    [Fact]
+    public void NativePointerReportsPreserveLegacyConstructorIdentity()
+    {
+        var arguments = new object?[]
+        {
+            PortableInputEventKind.MouseWheel, "A", 17, 'a', 1.25, 2.75, -0.5, 3.5,
+            PortableMouseButton.XButton1, PortableInputModifiers.Control
+        };
+        var legacy = (PortableInputEventArgs)Activator.CreateInstance(typeof(PortableInputEventArgs),
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+            binder: null, args: arguments, culture: null)!;
+        Assert.Equal(PortableInputEventKind.MouseWheel, legacy.Kind);
+        Assert.Equal("A", legacy.Key);
+        Assert.Equal(17, legacy.ScanCode);
+        Assert.Equal('a', legacy.Character);
+        Assert.Equal(1.25, legacy.X); Assert.Equal(2.75, legacy.Y);
+        Assert.Equal(-0.5, legacy.DeltaX); Assert.Equal(3.5, legacy.DeltaY);
+        Assert.Equal(PortableMouseButton.XButton1, legacy.Button);
+        Assert.Equal(PortableInputModifiers.Control, legacy.Modifiers);
+        Assert.Null(legacy.NativePointer);
+        Assert.False(legacy.Handled);
+
+        var packet = new PortablePointerInput(PortablePointerEventKind.Move, 1.25, 2.75, 1, -1, 0, 0);
+        var native = new PortableInputEventArgs(PortableInputEventKind.MouseMove,
+            x: packet.X, y: packet.Y, nativePointer: packet);
+        Assert.Same(packet, native.NativePointer);
+        Assert.Equal(packet.X, native.X); Assert.Equal(packet.Y, native.Y);
+        Assert.Null(native.Key); Assert.Null(native.Character);
+    }
+
     [PortableInputFact]
     public void MenuEntryWithoutFocusUsesActiveVisibleUnblockedPortableWindow()
     {

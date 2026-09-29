@@ -121,7 +121,10 @@ qualification remain independent; source factory/scroll admission is unchanged.
 The canonical Forms dependency now binds each drag operation to its own input
 registration. Old queued input cannot enter a later drag, registration/teardown
 failures release the service state, and teardown preserves the original source
-error. This updates the actual canonical dependency graph without changing its
+error. Drag completion is committed before application Drop or cancellation Leave
+callbacks, so reentrant release/Escape cannot finish that operation again. This
+does not qualify reentrancy in nonterminal drag callbacks. The update changes the
+actual canonical dependency graph without changing its
 shared ProGPU identity. Native drag cancellation, source factory selection and
 desktop qualification remain separate; only a whole successful exact producer
 Build may supply release packages.

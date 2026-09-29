@@ -2182,6 +2182,259 @@ public class PortableWindowActivationServiceTests
         });
     }
 
+    [PortableInputFact]
+    public void NativePointerReportsEnterLeaveRetainNativeMetadataWithoutSyntheticMotion()
+    {
+        RunInUiApartment(() =>
+        {
+            using var host = PortablePresentationSourceHost.Create();
+            var root = new HitTestElement(); host.RootVisual = root; host.SetClientSize(200, 100);
+            var enter = new PortablePointerInput(PortablePointerEventKind.Enter, 10.25, 12.75, 1.25, -1, 0, 0);
+            var leave = new PortablePointerInput(PortablePointerEventKind.Leave, 210.125, 12.75, 2.5, -1, 0, 0);
+            int enters = 0, leaves = 0, moves = 0;
+            root.MouseEnter += (_, args) =>
+            {
+                ++enters;
+                args.Timestamp.Should().Be(1250);
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeSameAs(enter);
+                args.GetPosition(root).Should().Be(new Point(10.25, 12.75));
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Control);
+            };
+            root.MouseLeave += (_, args) =>
+            {
+                ++leaves;
+                args.Timestamp.Should().Be(2500);
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeSameAs(leave);
+                args.GetPosition(root).Should().Be(new Point(210.125, 12.75));
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Shift);
+            };
+            root.MouseMove += (_, _) => ++moves;
+            DeliverNativePointer(host, enter, PortableInputModifiers.Control);
+            root.IsMouseOver.Should().BeTrue(); root.IsMouseDirectlyOver.Should().BeTrue();
+            int movesBeforeLeave = moves;
+            DeliverNativePointer(host, leave, PortableInputModifiers.Shift);
+            Mouse.DirectlyOver.Should().BeNull(); root.IsMouseOver.Should().BeFalse();
+            root.IsMouseDirectlyOver.Should().BeFalse();
+            Mouse.Synchronize();
+            DeliverNativePointer(host, leave, PortableInputModifiers.Shift);
+            moves.Should().Be(movesBeforeLeave); leaves.Should().Be(1);
+            Mouse.DirectlyOver.Should().BeNull();
+            DeliverNativePointer(host, enter, PortableInputModifiers.Control);
+            enters.Should().Be(2); root.IsMouseOver.Should().BeTrue();
+            Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsPopupLeavePreservesElementAndSubtreeOwnerCapture()
+    {
+        RunInUiApartment(() =>
+        {
+            foreach (var mode in new[] { CaptureMode.Element, CaptureMode.SubTree })
+            {
+                using var owner = PortablePresentationSourceHost.Create();
+                using var popup = PortablePresentationSourceHost.Create();
+                var ownerRoot = new HitTestElement(); var popupRoot = new HitTestElement(ownerRoot);
+                owner.RootVisual = ownerRoot; owner.SetClientSize(200, 100);
+                popup.RootVisual = popupRoot; popup.SetClientSize(200, 100);
+                owner.SetClientOrigin(100, 200); popup.SetClientOrigin(400, 500);
+                DeliverNativePointer(owner, new(PortablePointerEventKind.Down, 10, 10, 1, 0, 1, 0));
+                Mouse.Capture(ownerRoot, mode).Should().BeTrue();
+                try
+                {
+                    DeliverNativePointer(popup, new(PortablePointerEventKind.Enter, 20.25, 12.75, 2, -1, 0, 0));
+                    int lost = 0, ups = 0;
+                    ownerRoot.LostMouseCapture += (_, _) => ++lost;
+                    ownerRoot.MouseUp += (_, _) => ++ups;
+                    DeliverNativePointer(popup, new(PortablePointerEventKind.Leave, 210.25, 12.75, 3, -1, 0, 0));
+                    Mouse.Captured.Should().BeSameAs(ownerRoot);
+                    Mouse.DirectlyOver.Should().BeSameAs(ownerRoot);
+                    Mouse.LeftButton.Should().Be(MouseButtonState.Pressed);
+                    Mouse.GetPosition(ownerRoot).Should().Be(new Point(510.25, 312.75));
+                    Mouse.Synchronize();
+                    Mouse.DirectlyOver.Should().BeSameAs(ownerRoot);
+                    lost.Should().Be(0); ups.Should().Be(0);
+                }
+                finally { Mouse.Capture(null); }
+            }
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsLateLeaveCannotRetireAnotherSourcesHover()
+    {
+        RunInUiApartment(() =>
+        {
+            using var first = PortablePresentationSourceHost.Create();
+            using var second = PortablePresentationSourceHost.Create();
+            first.RootVisual = new HitTestElement(); first.SetClientSize(200, 100);
+            var root = new HitTestElement(); second.RootVisual = root; second.SetClientSize(200, 100);
+            DeliverNativePointer(first, new(PortablePointerEventKind.Enter, 10, 10, 1, -1, 0, 0));
+            DeliverNativePointer(second, new(PortablePointerEventKind.Enter, 20.25, 12.75, 2, -1, 0, 0));
+            int leaves = 0;
+            root.MouseLeave += (_, _) => ++leaves;
+            DeliverNativePointer(first, new(PortablePointerEventKind.Leave, 210, 10, 3, -1, 0, 0));
+            Mouse.DirectlyOver.Should().BeSameAs(root); root.IsMouseDirectlyOver.Should().BeTrue();
+            Mouse.GetPosition(root).Should().Be(new Point(20.25, 12.75));
+            leaves.Should().Be(0);
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsNestedEnterDuringLeaveOwnsFinalHover()
+    {
+        RunInUiApartment(() =>
+        {
+            using var first = PortablePresentationSourceHost.Create();
+            using var second = PortablePresentationSourceHost.Create();
+            var oldRoot = new HitTestElement(); var newRoot = new HitTestElement();
+            first.RootVisual = oldRoot; first.SetClientSize(200, 100);
+            second.RootVisual = newRoot; second.SetClientSize(200, 100);
+            var leave = new PortablePointerInput(PortablePointerEventKind.Leave, 210, 10, 2, -1, 0, 0);
+            var enter = new PortablePointerInput(PortablePointerEventKind.Enter, 30.25, 14.75, 3, -1, 0, 0);
+            int enters = 0;
+            newRoot.MouseEnter += (_, args) =>
+            {
+                ++enters;
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeSameAs(enter);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Control);
+            };
+            oldRoot.MouseLeave += (_, args) =>
+            {
+                DeliverNativePointer(second, enter, PortableInputModifiers.Control);
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeSameAs(leave);
+                Keyboard.Modifiers.Should().Be(ModifierKeys.Shift);
+            };
+            DeliverNativePointer(first, new(PortablePointerEventKind.Enter, 10, 10, 1, -1, 0, 0));
+            DeliverNativePointer(first, leave, PortableInputModifiers.Shift);
+            enters.Should().Be(1); Mouse.DirectlyOver.Should().BeSameAs(newRoot);
+            newRoot.IsMouseDirectlyOver.Should().BeTrue(); oldRoot.IsMouseDirectlyOver.Should().BeFalse();
+            Mouse.GetPosition(newRoot).Should().Be(new Point(30.25, 14.75));
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsNestedLeaveDuringEnterSuppressesRetiredMotion()
+    {
+        RunInUiApartment(() =>
+        {
+            using var host = PortablePresentationSourceHost.Create();
+            var root = new HitTestElement(); host.RootVisual = root; host.SetClientSize(200, 100);
+            int moves = 0, leaves = 0;
+            var enter = new PortablePointerInput(PortablePointerEventKind.Enter, 10, 10, 1, -1, 0, 0);
+            var leave = new PortablePointerInput(PortablePointerEventKind.Leave, 210, 10, 2, -1, 0, 0);
+            root.MouseMove += (_, _) => ++moves;
+            root.MouseLeave += (_, args) =>
+            {
+                ++leaves;
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeSameAs(leave);
+            };
+            root.MouseEnter += (_, args) =>
+            {
+                DeliverNativePointer(host, leave);
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeSameAs(enter);
+            };
+            DeliverNativePointer(host, enter);
+            Mouse.Synchronize();
+            leaves.Should().Be(1); moves.Should().Be(0);
+            Mouse.DirectlyOver.Should().BeNull(); root.IsMouseOver.Should().BeFalse();
+            root.IsMouseDirectlyOver.Should().BeFalse();
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsThrowingLeaveStillRetiresDirectHoverAndRestoresScope()
+    {
+        RunInUiApartment(() =>
+        {
+            using var host = PortablePresentationSourceHost.Create();
+            var root = new HitTestElement(); host.RootVisual = root; host.SetClientSize(200, 100);
+            DeliverNativePointer(host, new(PortablePointerEventKind.Enter, 10, 10, 1, -1, 0, 0));
+            var failure = new InvalidOperationException("Leave callback failed.");
+            MouseEventHandler fail = (_, _) => throw failure;
+            root.MouseLeave += fail;
+            try
+            {
+                Action leave = () => DeliverNativePointer(host,
+                    new(PortablePointerEventKind.Leave, 210, 10, 2, -1, 0, 0), PortableInputModifiers.Shift);
+                leave.Should().Throw<InvalidOperationException>().Which.Should().BeSameAs(failure);
+                Mouse.DirectlyOver.Should().BeNull(); root.IsMouseDirectlyOver.Should().BeFalse();
+                Keyboard.Modifiers.Should().Be(ModifierKeys.None);
+                Mouse.Synchronize(); root.IsMouseOver.Should().BeFalse();
+            }
+            finally { root.MouseLeave -= fail; }
+            var current = new PortablePointerInput(PortablePointerEventKind.Enter, 20, 10, 3, -1, 0, 0);
+            root.MouseEnter += (_, args) =>
+            {
+                args.Timestamp.Should().Be(3000);
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeSameAs(current);
+            };
+            DeliverNativePointer(host, current);
+            Mouse.DirectlyOver.Should().BeSameAs(root);
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsCancelRetiresHoverAndPreservesBothCallbackFailures()
+    {
+        RunInUiApartment(() =>
+        {
+            using var host = PortablePresentationSourceHost.Create();
+            var root = new HitTestElement(); host.RootVisual = root; host.SetClientSize(200, 100);
+            DeliverNativePointer(host, new(PortablePointerEventKind.Down, 10, 10, 1, 0, 1, 0));
+            Mouse.Capture(root).Should().BeTrue();
+            var lostFailure = new InvalidOperationException("Lost capture failed.");
+            var leaveFailure = new InvalidOperationException("Leave failed.");
+            MouseEventHandler lose = (_, _) => throw lostFailure;
+            MouseEventHandler leave = (_, _) => throw leaveFailure;
+            root.LostMouseCapture += lose; root.MouseLeave += leave;
+            try
+            {
+                Action cancel = () => DeliverNativePointer(host,
+                    new(PortablePointerEventKind.Cancel, 10, 10, 2, -1, 0, 0));
+                var failure = cancel.Should().Throw<AggregateException>().Which;
+                failure.InnerExceptions.Should().Equal(lostFailure, leaveFailure);
+                Mouse.Captured.Should().BeNull(); Mouse.DirectlyOver.Should().BeNull();
+                root.IsMouseCaptured.Should().BeFalse(); root.IsMouseDirectlyOver.Should().BeFalse();
+                Mouse.LeftButton.Should().Be(MouseButtonState.Released);
+            }
+            finally { root.LostMouseCapture -= lose; root.MouseLeave -= leave; Mouse.Capture(null); }
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsCaptureOutsideUsesLogicalHoverWithoutPhysicalMotion()
+    {
+        RunInUiApartment(() =>
+        {
+            using var host = PortablePresentationSourceHost.Create();
+            var root = new HitTestElement(); host.RootVisual = root; host.SetClientSize(200, 100);
+            DeliverNativePointer(host, new(PortablePointerEventKind.Enter, 10, 10, 1, -1, 0, 0));
+            DeliverNativePointer(host, new(PortablePointerEventKind.Leave, 210, 10, 2, -1, 0, 0));
+            int moves = 0, enters = 0;
+            root.MouseMove += (_, _) => ++moves;
+            root.MouseEnter += (_, args) =>
+            {
+                PortableWindowActivationService.GetNativePointerInput(args).Should().BeNull();
+                ++enters;
+            };
+            try
+            {
+                Mouse.Capture(root).Should().BeTrue();
+                Mouse.DirectlyOver.Should().BeSameAs(root);
+                Mouse.Capture(null);
+                Mouse.DirectlyOver.Should().BeNull();
+                enters.Should().Be(1); moves.Should().Be(0);
+            }
+            finally { Mouse.Capture(null); }
+        });
+    }
+
+    private static void DeliverNativePointer(IPortablePresentationSourceHost host, PortablePointerInput input,
+        PortableInputModifiers modifiers = PortableInputModifiers.None) =>
+        PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)host, input,
+            modifiers, out _).Should().BeTrue();
+
     private static void RunInUiApartment(Action action)
     {
         Exception? exception = null;

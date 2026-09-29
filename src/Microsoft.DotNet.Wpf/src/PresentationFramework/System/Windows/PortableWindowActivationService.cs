@@ -359,7 +359,7 @@ namespace System.Windows
             input.Handled = ProcessInput(source, source.RootVisual as UIElement, input);
         }
 
-        // Internal source path until scrolling and leave handling are
+        // Internal source path until native scrolling is
         // complete. The registrar must not advertise the native capability yet.
         internal static bool TryProcessNativePointerInput(PresentationSource source, PortablePointerInput input,
             PortableInputModifiers modifiers, out bool handled)
@@ -375,14 +375,18 @@ namespace System.Windows
                 InputManager.UnsecureCurrent.PrimaryMouseDevice is not PortableMouseDevice)
                 return false;
 
-            if (input.Kind == PortablePointerEventKind.Cancel)
+            if (input.Kind is PortablePointerEventKind.Cancel or PortablePointerEventKind.Leave)
             {
                 // Hidden/modal-blocked sources still need ownership cleanup.
                 // No hit-test, activation, capture redirection or synthetic up.
                 using PortableKeyboardDevice.EventModifierScope scope =
                     InputManager.UnsecureCurrent.PrimaryKeyboardDevice is PortableKeyboardDevice keyboard
                         ? keyboard.PushEventModifiers(ToEventModifierKeys(modifiers)) : default;
-                portableSource.CancelNativePointerInput(NativePointerTimestamp(input.Timestamp), input);
+                if (input.Kind == PortablePointerEventKind.Cancel)
+                    portableSource.CancelNativePointerInput(NativePointerTimestamp(input.Timestamp), input);
+                else
+                    InputManager.UnsecureCurrent.PrimaryMouseDevice.LeavePortableSource(
+                        portableSource, NativePointerTimestamp(input.Timestamp), input);
                 handled = true;
                 return true;
             }

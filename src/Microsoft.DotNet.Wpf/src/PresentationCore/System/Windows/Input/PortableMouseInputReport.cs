@@ -41,6 +41,7 @@ namespace System.Windows.Input
         }
 
         internal override Point ClientPoint { get; }
+        internal PortablePresentationSource OriginSource => _originSource;
         internal override PortablePointerInput NativePointer { get; }
         internal override bool IsCurrent => InputSource is PortablePresentationSource source &&
             !source.IsDisposed && source.PointerInputGeneration == _sourceGeneration &&

@@ -3,7 +3,7 @@
 The internal source path consumes native move, drag, enter and five-button
 down/up packets without replacing native coordinates, event time or click counts
 with dispatch-time state. Its registrar does not advertise native-pointer
-capability yet: scroll units/phases and source hover/leave retirement must connect
+capability yet: scroll units/phases must connect
 before an application can select the owned native factory.
 
 The original raw report keeps its existing scalar storage. A portable derived
@@ -47,12 +47,35 @@ An original popup's cancellation invalidates its pending capture-routed down
 without cancelling the other provider's capture. Ordinary native Windows capture
 and its synchronization path remain separate.
 
+Native hover notifications retain the source packet, original timestamp and
+event modifier scope through the existing reverse-inherited MouseEnter/MouseLeave
+properties. Each notification scope is restored after nested delivery or failure.
+Pointer/hover revisions reject an older hit-test result or notification after a
+callback changes the current pointer state; direct-hover flags describe the live
+element, not the old callback's target.
+
+Leave matches the original physical source, independently of a capture-routed
+destination. A late leave from a previous source cannot clear the current hover.
+Its exact last point is mapped into the active client frame, and the source is
+marked outside before notifications. Layout/capture synchronization cannot reuse
+that outside point as physical re-entry; a real position report resumes hit testing.
+WPF logical hover stays on the captured element while physically outside its
+source, including owner capture across a separately surfaced popup. Leave neither
+releases presses/capture nor synthesizes a MouseMove. Programmatic capture changes
+outside update logical hover without fabricating native pointer metadata.
+
+Cancellation also retires still-owned hover after capture loss, even when a loss
+callback throws. A new capture or pointer revision from that callback is retained.
+If both loss and hover callbacks fail, both exceptions propagate. Physical origin
+tracking uses one reusable weak reference, not an additional closed-window lease.
+
 The source gate exercises five-button preview/bubble delivery, fractional captured
 coordinates, native timestamps and wrapping, nested click delivery, unsupported
 packet rejection, callback disposal/root replacement, original/routed generation
 retention, modal cancellation, throwing/filtered callbacks, reentrant recapture,
-and legacy raw/event behavior. Cancellation regressions are authored for the
+native enter/leave metadata, outside synchronization, late leaves, nested hover,
+throwing hover and capture callbacks, and legacy raw/event behavior. Regressions are authored for the
 existing source CI gate; compilation alone is not their execution evidence.
-This path does not use real AppKit windows, qualify native capture, retire hover
-on source leave, or admit precision scrolling. Unadmitted events are rejected before any
+This path does not use real AppKit windows, qualify native capture, or admit
+precision scrolling. Unadmitted events are rejected before any
 legacy wheel conversion or button mutation.

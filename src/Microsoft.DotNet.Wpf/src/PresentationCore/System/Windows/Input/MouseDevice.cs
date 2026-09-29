@@ -8,6 +8,8 @@ using System.Windows.Threading;
 using MS.Internal;
 using MS.Win32;
 using System.Runtime.InteropServices;
+using System.Runtime.ExceptionServices;
+using ProGPU.Wpf.Interop;
 
 // There's a choice of where to send MouseWheel events - to the element under
 // the mouse (like IE does) or to the element with keyboard focus (like Win32
@@ -885,6 +887,10 @@ namespace System.Windows.Input
 
             // Simulate a mouse move
             PresentationSource activeSource = CriticalActiveSource;
+            // No OS position is available to re-hit-test after a native leave.
+            // A real native/legacy position report, not layout, ends this state.
+            if (this is PortableMouseDevice { NativePointerOutside: true })
+                return;
             // A portable element-captured drag has no trustworthy OS cursor position when
             // a transient window switches the active source. Do not synthesize a move in
             // that narrow case. Subtree capture (used by menus and popups) still needs the
@@ -966,7 +972,27 @@ namespace System.Windows.Input
             return queryCursor.Handled;
         }
 
-        private void ChangeMouseOver(IInputElement mouseOver, int timestamp)
+        internal PortableMouseInputReport NativeMouseOverReport { get; private set; }
+        private ulong _nativeMouseOverRevision;
+        internal bool IsNativeMouseOverNotificationCurrent => NativeMouseOverReport == null ||
+            (NativeMouseOverReport.IsCurrent && this is PortableMouseDevice mouse &&
+                mouse.NativePointerRevision == _nativeMouseOverRevision);
+
+        private void ChangeMouseOver(IInputElement mouseOver, int timestamp, PortableMouseInputReport nativeReport = null)
+        {
+            PortableMouseInputReport previous = NativeMouseOverReport;
+            ulong previousRevision = _nativeMouseOverRevision;
+            NativeMouseOverReport = nativeReport;
+            _nativeMouseOverRevision = (this as PortableMouseDevice)?.NativePointerRevision ?? 0;
+            try { ChangeMouseOverCore(mouseOver, timestamp); }
+            finally
+            {
+                NativeMouseOverReport = previous;
+                _nativeMouseOverRevision = previousRevision;
+            }
+        }
+
+        private void ChangeMouseOverCore(IInputElement mouseOver, int timestamp)
         {
             DependencyObject o = null;
 
@@ -1036,35 +1062,101 @@ namespace System.Windows.Input
                 // Oddly enough, update the IsMouseOver property first.  This is
                 // so any callbacks will see the more-common IsMouseOver property
                 // set correctly.
-                UIElement.MouseOverProperty.OnOriginValueChanged(oldMouseOver as DependencyObject, _mouseOver as DependencyObject, ref _mouseOverTreeState);
-
-                // Invalidate the IsMouseDirectlyOver property.
-                if (oldMouseOver != null)
+                if (this is PortableMouseDevice)
                 {
-                    o = oldMouseOver as DependencyObject;
-                    o.SetValue(UIElement.IsMouseDirectlyOverPropertyKey, false); // Same property for ContentElements
+                    try
+                    {
+                        UIElement.MouseOverProperty.OnOriginValueChanged(oldMouseOver as DependencyObject,
+                            _mouseOver as DependencyObject, ref _mouseOverTreeState);
+                    }
+                    finally { UpdateMouseDirectlyOver(oldMouseOver); }
                 }
-                if (_mouseOver != null)
+                else
                 {
-                    o = _mouseOver as DependencyObject;
-                    o.SetValue(UIElement.IsMouseDirectlyOverPropertyKey, true); // Same property for ContentElements
+                    UIElement.MouseOverProperty.OnOriginValueChanged(oldMouseOver as DependencyObject,
+                        _mouseOver as DependencyObject, ref _mouseOverTreeState);
+                    UpdateMouseDirectlyOver(oldMouseOver);
                 }
             }
         }
-        internal void CancelPortableSourceCapture(PortablePresentationSource source, int timestamp,
-            ProGPU.Wpf.Interop.PortablePointerInput input)
+
+        private void UpdateMouseDirectlyOver(IInputElement oldMouseOver)
+        {
+            if (oldMouseOver is DependencyObject oldElement)
+                oldElement.SetValue(UIElement.IsMouseDirectlyOverPropertyKey,
+                    this is PortableMouseDevice && ReferenceEquals(oldMouseOver, _mouseOver));
+            if (_mouseOver is DependencyObject currentElement)
+                currentElement.SetValue(UIElement.IsMouseDirectlyOverPropertyKey, true);
+        }
+        internal void LeavePortableSource(PortablePresentationSource source, int timestamp, PortablePointerInput input)
         {
             VerifyAccess();
-            if (this is not PortableMouseDevice || _providerCapture == null ||
-                !ReferenceEquals(source.GetInputProvider(typeof(MouseDevice)), _providerCapture))
+            if (this is not PortableMouseDevice mouse ||
+                (!mouse.IsNativePointerOrigin(source) &&
+                    !(input.Kind == PortablePointerEventKind.Cancel && ReferenceEquals(_inputSource, source))))
                 return;
 
+            bool cancellation = input.Kind == PortablePointerEventKind.Cancel;
+            if (!cancellation && mouse.NativePointerOutside) return;
+            PresentationSource frame = _inputSource;
+            Point point = _lastPosition;
+            if (!cancellation && frame is PortablePresentationSource && !frame.IsDisposed && source.RootVisual != null)
+            {
+                point = PointUtil.RootToClient(new Point(input.X, input.Y), source);
+                if (!ReferenceEquals(frame, source))
+                    point = PointUtil.ScreenToClient(PointUtil.ClientToScreen(point, source), frame);
+                if (!double.IsFinite(point.X) || !double.IsFinite(point.Y))
+                    throw new ArgumentOutOfRangeException(nameof(input));
+            }
+            PresentationSource reportSource = frame is PortablePresentationSource && !frame.IsDisposed ? frame : source;
+            var report = new PortableMouseInputReport(InputMode.Foreground, timestamp, reportSource,
+                RawMouseActions.Deactivate, 0, 0, 0, IntPtr.Zero, point, input, source);
+            mouse.RecordPointerLeave();
+            _lastPosition = point;
+            _isPhysicallyOver = false;
+            _rawMouseOver = null;
+            _forceUpdateLastPosition = true;
+            if (cancellation && ReferenceEquals(_inputSource, source)) _inputSource = null;
+            // Capture governs WPF's logical hover even outside the physical
+            // source. Neither a leave nor a foreign source cancel releases it.
+            ChangeMouseOver(_mouseCapture, timestamp, report);
+        }
+
+        internal void CancelPortableSourceCapture(PortablePresentationSource source, int timestamp, PortablePointerInput input)
+        {
+            VerifyAccess();
+            if (this is not PortableMouseDevice mouse) return;
+            bool ownsCapture = _providerCapture != null &&
+                ReferenceEquals(source.GetInputProvider(typeof(MouseDevice)), _providerCapture);
+            if (mouse.IsNativePointerOrigin(source) || ReferenceEquals(_inputSource, source))
+                mouse.RecordPointerLeave(); // Block stale synchronization during capture callbacks.
+            ulong pointerRevision = mouse.NativePointerRevision;
+            ulong finalCaptureGeneration = unchecked(_captureGeneration + (ownsCapture ? 1UL : 0UL));
             // Lifecycle cancellation is not suppressible ordinary input. Clear
             // capture before any routed callback; the report only carries the
             // native event identity, and never changes the cursor position.
             var report = new PortableMouseInputReport(InputMode.Foreground, timestamp, source,
                 RawMouseActions.CancelCapture, 0, 0, 0, IntPtr.Zero, default, input);
-            ChangeMouseCapture(null, null, CaptureMode.None, timestamp, report);
+            ExceptionDispatchInfo failure = null;
+            try
+            {
+                if (ownsCapture) ChangeMouseCapture(null, null, CaptureMode.None, timestamp, report);
+            }
+            catch (Exception exception) { failure = ExceptionDispatchInfo.Capture(exception); }
+            try
+            {
+                // A callback may have entered another source or taken new
+                // capture. Only retire hover belonging to this invocation.
+                if (report.IsCurrent && pointerRevision == mouse.NativePointerRevision &&
+                    finalCaptureGeneration == _captureGeneration)
+                    LeavePortableSource(source, timestamp, input);
+            }
+            catch (Exception exception)
+            {
+                if (failure != null) throw new AggregateException(failure.SourceException, exception);
+                throw;
+            }
+            failure?.Throw();
         }
 
         private void ChangeMouseCapture(IInputElement mouseCapture, IMouseInputProvider providerCapture, CaptureMode captureMode, int timestamp,
@@ -1193,7 +1285,12 @@ namespace System.Windows.Input
 
                 // Force a mouse move so we can update the mouse over.
                 if (nativeCancellation == null)
-                    Synchronize();
+                {
+                    if (this is PortableMouseDevice { NativePointerOutside: true })
+                        ChangeMouseOver(_mouseCapture, timestamp);
+                    else
+                        Synchronize();
+                }
             }
         }
 
@@ -1557,6 +1654,12 @@ namespace System.Windows.Input
                         {
                             //Console.WriteLine("RawMouseActions.AbsoluteMove: X=" + rawMouseInputReport.X + " Y=" + rawMouseInputReport.Y );
 
+                            PortableMouseDevice portableMouse = this as PortableMouseDevice;
+                            bool nativeReentry = portableMouse?.NativePointerOutside == true &&
+                                (rawMouseInputReport.NativePointer != null || !rawMouseInputReport._isSynchronize);
+                            portableMouse?.RecordPointerPosition(rawMouseInputReport);
+                            ulong positionRevision = portableMouse?.NativePointerRevision ?? 0;
+
                             // Translate the mouse coordinates to both root relative and "mouseOver" relate.
                             // - Note: "mouseOver" in this case is the element the mouse "was" over before this move.
                             bool mouseOverAvailable = false;
@@ -1575,7 +1678,8 @@ namespace System.Windows.Input
                             //      - We are simulating a mouse move (_isSynchronize)
                             //      - mouseOver isn't availabe (!mouseOverAvailable)  Could be caused by a degenerate transform.
                             // - This is to mitigate the redundant AbsoluteMove notifications associated with QueryCursor
-                            if (isGlobalChange || rawMouseInputReport._isSynchronize || !mouseOverAvailable)
+                            if (isGlobalChange || rawMouseInputReport._isSynchronize || !mouseOverAvailable || nativeReentry ||
+                                rawMouseInputReport.NativePointer?.Kind == PortablePointerEventKind.Enter)
                             {
                                 isPhysicallyOver = true;  // assume mouse is physical over element, we'll set it false if it's due to capture
 
@@ -1733,6 +1837,12 @@ namespace System.Windows.Input
                                 }
                             }
 
+                            if (!rawMouseInputReport.IsCurrent ||
+                                (portableMouse != null && positionRevision != portableMouse.NativePointerRevision))
+                            {
+                                inputReportEventArgs.Handled = true;
+                                return;
+                            }
                             _isPhysicallyOver = mouseOver == null ? false : isPhysicallyOver;
 
                             // Now that we've determine what element the mouse is over now (mouseOver)
@@ -1771,7 +1881,14 @@ namespace System.Windows.Input
 
                                 if (isMouseOverChange)
                                 {
-                                    ChangeMouseOver(mouseOver, e.StagingItem.Input.Timestamp);
+                                    ChangeMouseOver(mouseOver, e.StagingItem.Input.Timestamp,
+                                        rawMouseInputReport as PortableMouseInputReport);
+                                }
+                                if (!rawMouseInputReport.IsCurrent ||
+                                    (portableMouse != null && positionRevision != portableMouse.NativePointerRevision))
+                                {
+                                    inputReportEventArgs.Handled = true;
+                                    return;
                                 }
 
                                 if ((_rawMouseOver == null) && (rawMouseOver != null))

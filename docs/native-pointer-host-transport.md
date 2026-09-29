@@ -45,8 +45,9 @@ The actual source registrar does not advertise native-pointer capability yet.
 The internal [source report path](native-pointer-source-reports.md) now retains
 native positions, time, click identity and source generations for movement and
 five-button input. Source hide/modal cancellation now retires owned presses and
-exact-provider capture before callbacks. Source hover/leave retirement and precision
-scrolling with real source scroll metrics and phase ownership remain unfinished.
+exact-provider capture before callbacks. Source hover/leave retirement retains
+native metadata and original physical-source ownership without cancelling capture.
+Precision scrolling with real source scroll metrics and phase ownership remains unfinished.
 The owned Cocoa factory is therefore still not selected. Complete
 source consumption, callback/queued-dispatch lifetime, Forms integration and real
 native popup interaction/visual tests remain required. No automatic modality,

@@ -66,7 +66,8 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
     private object? _ownerWindow;
     private object? _nativeOwnerWindow;
     private bool _isSettingNativeOwner;
-    private readonly HashSet<WpfMouseButton> _pressedMouseButtons = new();
+    private readonly Dictionary<WpfMouseButton, ulong> _pressedMouseButtons = new();
+    private ulong _pointerPressGeneration;
 
     static WpfPortableWindowActivation()
     {
@@ -1657,12 +1658,14 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
             return;
         }
 
+        ulong releasedPress = 0;
         bool releaseButtonAfterDispatch = e.Kind == WpfInputEventKind.MouseUp &&
-            e.Button != WpfMouseButton.None;
+            e.Button != WpfMouseButton.None &&
+            _pressedMouseButtons.TryGetValue(e.Button, out releasedPress);
         if (e.Kind == WpfInputEventKind.MouseCancel) _pressedMouseButtons.Clear();
         if (e.Kind == WpfInputEventKind.MouseDown && e.Button != WpfMouseButton.None)
         {
-            _pressedMouseButtons.Add(e.Button);
+            _pressedMouseButtons[e.Button] = unchecked(++_pointerPressGeneration);
         }
 
         try
@@ -1683,8 +1686,13 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
         }
         finally
         {
-            if (releaseButtonAfterDispatch)
+            if (releaseButtonAfterDispatch &&
+                _pressedMouseButtons.TryGetValue(e.Button, out ulong currentPress) &&
+                currentPress == releasedPress)
             {
+                // Source callbacks may cancel or reopen a popup and start a new
+                // press. Only retire the press this up event actually observed;
+                // the new one still needs per-event drag layout.
                 _pressedMouseButtons.Remove(e.Button);
             }
         }

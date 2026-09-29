@@ -118,6 +118,15 @@ qualification remain independent; source factory/scroll admission is unchanged.
 
 ## Remaining source and application work
 
+Host drag-layout tracking retains an identity for each button press. Mouse-up
+cleanup retires only the press observed before its source callback; a nested
+same-button press survives cancellation, deactivate/reactivate or hide/show,
+including a throwing callback. A different button cannot keep the old press alive,
+and an unmatched release cannot clear a newly started press. Sixteen direct and
+queued-input regression cases join the activation fast gate (minimum 109).
+This preserves the per-drag layout boundary without changing source capture or
+raising synthetic input. Real gallery slider and popup qualification is separate.
+
 The actual source registrar does not advertise native-pointer capability yet.
 The host now has an owned Cocoa factory connection gated by a bound portable
 source, that explicit registrar capability, and the shared owner's actual Cocoa

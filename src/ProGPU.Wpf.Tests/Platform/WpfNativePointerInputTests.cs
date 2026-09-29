@@ -25,6 +25,7 @@ public sealed class WpfNativePointerInputTests
         Assert.Equal(expected, input.Kind);
         Assert.Equal((PortablePointerEventKind)native, input.NativePointer!.Kind);
         Assert.Equal((-2.5, 7.75), (input.X, input.Y));
+        Assert.Equal(PortablePointerScrollProtocol.Unspecified, input.NativePointer.ScrollProtocol);
     }
 
     [Theory]
@@ -33,12 +34,14 @@ public sealed class WpfNativePointerInputTests
     public void DesktopTransformScalesOnlyPointScrollVectors(NativePointerScrollUnit unit, double dx, double dy)
     {
         var input = SilkNetWpfInputService.CreateNativePointerEvent(new NativePointerEvent(
-            NativePointerEventKind.Scroll, 40, 80, 9.125, -1, 0, NativePointerModifiers.Super, 0.25, -0.5, unit, 4, 8));
+            NativePointerEventKind.Scroll, 40, 80, 9.125, -1, 0, NativePointerModifiers.Super, 0.25, -0.5, unit, 4, 8)
+            { ScrollProtocol = NativePointerScrollProtocol.AppKit });
         input.Handled = true;
         var mapped = ProGpuWpfWindowHost.NormalizeNativeDesktopInput(input, new PortableDesktopTransform(-1800, 400, 2, 4));
         Assert.Equal((20d, 20d, dx, dy), (mapped.X, mapped.Y, mapped.DeltaX, mapped.DeltaY));
         Assert.Equal((mapped.X, mapped.Y, dx, dy), (mapped.NativePointer!.X, mapped.NativePointer.Y, mapped.NativePointer.ScrollX, mapped.NativePointer.ScrollY));
         Assert.Equal((9.125, 4u, 8u), (mapped.NativePointer.Timestamp, mapped.NativePointer.ScrollPhase, mapped.NativePointer.MomentumPhase));
+        Assert.Equal(PortablePointerScrollProtocol.AppKit, mapped.NativePointer.ScrollProtocol);
         Assert.Equal(input.NativePointer!.Modifiers, mapped.NativePointer.Modifiers);
         Assert.True(mapped.Handled);
         Assert.Same(input, WpfPortablePopupBridge.CreateNativeDiagnosticInput(true, input, 300, 200));

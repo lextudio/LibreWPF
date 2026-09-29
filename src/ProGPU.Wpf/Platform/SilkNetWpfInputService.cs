@@ -274,6 +274,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
     public static WpfInputEventArgs CreateNativePointerEvent(NativePointerEvent input)
     {
         var packet = new PortablePointerInput((PortablePointerEventKind)input.Kind,
+            (PortablePointerScrollProtocol)input.ScrollProtocol,
             input.X, input.Y, input.Timestamp, input.Button, input.ClickCount,
             (PortablePointerModifiers)input.Modifiers, input.ScrollX, input.ScrollY,
             (PortablePointerScrollUnit)input.ScrollUnit, input.ScrollPhase, input.MomentumPhase);

@@ -386,13 +386,15 @@ public sealed class SilkNetWpfInputServiceTests
         using var subscription = service.Attach(context);
         foreach (var unit in new[] { NativePointerScrollUnit.Points, NativePointerScrollUnit.Lines })
             context.RaiseNative(new NativePointerEvent(NativePointerEventKind.Scroll, 1.125, 2.25, 5,
-                -1, 0, NativePointerModifiers.Super, 0.25, -0.5, unit, 4, 8));
+                -1, 0, NativePointerModifiers.Super, 0.25, -0.5, unit, 4, 8)
+                { ScrollProtocol = NativePointerScrollProtocol.AppKit });
         Assert.Equal(2, received.Count);
         for (int i = 0; i < received.Count; i++)
         {
             Assert.Equal((0.25, -0.5), (received[i].DeltaX, received[i].DeltaY));
             Assert.Equal(i == 0 ? PortablePointerScrollUnit.Points : PortablePointerScrollUnit.Lines, received[i].NativePointer!.ScrollUnit);
             Assert.Equal((4u, 8u), (received[i].NativePointer!.ScrollPhase, received[i].NativePointer!.MomentumPhase));
+            Assert.Equal(PortablePointerScrollProtocol.AppKit, received[i].NativePointer!.ScrollProtocol);
             Assert.Equal(PortablePointerModifiers.Super, received[i].NativePointer!.Modifiers);
             Assert.Equal(OperatingSystem.IsMacOS() ? WpfInputModifiers.Control : WpfInputModifiers.Super, received[i].Modifiers);
         }

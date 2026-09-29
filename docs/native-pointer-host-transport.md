@@ -92,7 +92,7 @@ An opaque Cocoa panel is never treated as a GLFW window. Rejected setup retains
 the existing source teardown/dispatcher retirement path rather than falling back
 to an unowned or activating window.
 
-Source input transparency now uses the same provider-aware boundary. An owned
+Canonical Forms input transparency now uses the same provider-aware boundary. An owned
 panel retains transparency independently of enabled state across owner changes,
 input-context replacement and reopening; policy changes preserve cancellation
 generations and discard stale pointer tails. GLFW pass-through uses the actual
@@ -100,6 +100,9 @@ generations and discard stale pointer tails. GLFW pass-through uses the actual
 advance together to keep the source-first package graph identical to Forms' own
 ProGPU dependency. These changes do not enable a source factory or resolve the
 remaining native-scroll compatibility and desktop qualification requirements.
+WPF's existing Cocoa decoration service still selects the native-handle overload
+explicitly; target-typed construction is ambiguous beside the new `IWindow`
+overloads. Its native owner/display behavior and factory gates remain unchanged.
 
 ## Remaining source and application work
 

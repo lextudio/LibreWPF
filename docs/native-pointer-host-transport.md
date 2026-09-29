@@ -100,9 +100,21 @@ generations and discard stale pointer tails. GLFW pass-through uses the actual
 advance together to keep the source-first package graph identical to Forms' own
 ProGPU dependency. These changes do not enable a source factory or resolve the
 remaining native-scroll compatibility and desktop qualification requirements.
-WPF's existing Cocoa decoration service still selects the native-handle overload
-explicitly; target-typed construction is ambiguous beside the new `IWindow`
-overloads. Its native owner/display behavior and factory gates remain unchanged.
+WPF's decoration service now passes the actual popup `IWindow` to the same shared
+prepare/show APIs. Each show revalidates its current native owner on Windows, X11
+and Cocoa before invoking the source callback. Owned panels retain their dispatch
+lifetime around that callback; ordinary providers retain their native owner checks.
+Closing intent alone does not replace validation of the still-live owner's native
+identity, because an application may cancel closing from its confirmation dialog.
+
+Nonactivating visibility also uses the shared provider operation. GLFW restores
+its actual prior focus-on-show setting on the same surviving native identity;
+owned Cocoa visibility updates the retained window state. A provider/native failure
+propagates instead of requesting the host's ordinary activating fallback. The old
+raw Cocoa ordering and unconditional GLFW flag-reset helpers are removed. Twelve
+authored adapter cases join the existing host-class fast gate (minimum 268), and
+the source-graph checks require these shared calls. Full package and real desktop
+qualification remain independent; source factory/scroll admission is unchanged.
 
 ## Remaining source and application work
 
@@ -113,7 +125,7 @@ identity. Ordinary windows and non-Cocoa owners retain their existing factory.
 Once the owned path is admitted, a missing owner or creation failure propagates;
 it cannot silently create an ordinary NSWindow. The same shared-device and
 surface-before-window teardown paths remain in use. Seven authored factory cases
-raise the host-class CI minimum to 256; no native panel or UI qualification is
+remain in the expanded host-class CI gate; no native panel or UI qualification is
 claimed. Because the real registrar has not opted in, this connection does not
 yet select the owned factory in applications.
 The internal [source report path](native-pointer-source-reports.md) now retains

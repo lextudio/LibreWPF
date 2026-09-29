@@ -1230,9 +1230,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryActivateCocoaWindow(GetCocoaWindow(view))", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("TryActivateWin32Window(GetWin32Hwnd(view))", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("TryActivateGlfwWindow(view)", silkDecorations, StringComparison.Ordinal);
-        Assert.Contains("TryShowCocoaWithoutActivation(GetCocoaWindow(view))", silkDecorations, StringComparison.Ordinal);
-        Assert.Contains("TryShowGlfwWithoutActivation(view)", silkDecorations, StringComparison.Ordinal);
-        Assert.Contains("WindowAttributeSetter.FocusOnShow", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("NativePopupWindow.ShowWithoutActivation(view)", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("NativePopupWindow.TryPrepareOwner(nativeOwner, popup)", silkDecorations, StringComparison.Ordinal);
+        Assert.Contains("NativePopupWindow.TryShowOwned(nativeOwner, popup, showWithoutActivation)", silkDecorations, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryShowCocoaWithoutActivation", silkDecorations, StringComparison.Ordinal);
+        Assert.DoesNotContain("WindowAttributeSetter.FocusOnShow", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("NativePopupWindow.TryConfigureOwner(", silkDecorations, StringComparison.Ordinal);
         Assert.Contains("if (!ownerConfigured)", popupHost, StringComparison.Ordinal);
         int initializePopup = popupHost.IndexOf("private void EnsureInitialized()", StringComparison.Ordinal);

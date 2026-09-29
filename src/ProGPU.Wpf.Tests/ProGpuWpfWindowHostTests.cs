@@ -25,7 +25,7 @@ using SurfaceGetCurrentTextureStatus = Silk.NET.WebGPU.SurfaceGetCurrentTextureS
 namespace ProGPU.Wpf.Tests;
 
 [Collection(PortableRenderDataSinkProviderCollection.Name)]
-public sealed class ProGpuWpfWindowHostTests
+public sealed partial class ProGpuWpfWindowHostTests
 {
     [Theory]
     [InlineData(true, true, NativeWindowKind.Cocoa, true, true)]

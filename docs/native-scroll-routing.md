@@ -61,6 +61,9 @@ root, each source's explicit desktop transform, and the receiving root before
 viewer-local consumption. Framebuffer DPI is not a desktop scale. Remainders
 return to the original source frame, while line quantities remain unscaled.
 Singular/nonfinite mappings reject consumption without publishing a new remainder.
+Affine vectors use matrix-vector multiplication, not subtraction of translated
+positions; even large desktop origins cannot erase small accepted scroll motion.
+Non-affine projections retain their actual endpoint mapping.
 This does not add routes to unrelated windows or bypass Popup's existing event
 isolation. Each phase lease weakly retains its originating source generation, so
 closing/cancelling/replacing that source also retires commands already accepted by

@@ -590,6 +590,14 @@ public sealed class PortableScrollSourceTests
             owner.Viewer.UpdateLayout(); origin.Viewer.UpdateLayout();
             Assert.Equal(46, owner.Info.HorizontalOffset); // 8 * 3 * 2 / 4 / 2
             Assert.Equal(52, owner.Info.VerticalOffset); // 6 * 2 * 3 / .75 / 4
+            // Translation cannot alter vector magnitude, even when subtracting
+            // mapped endpoint positions would lose whole units of motion.
+            ((IPortableDesktopGeometryHost)origin.Host).SetDesktopTransform(new(1e16, -1e16, 2, 3));
+            ((IPortableDesktopGeometryHost)owner.Host).SetDesktopTransform(new(-1e16, 1e16, 4, 0.75));
+            Assert.True(Route(origin, Packet(-8, -6, PortablePointerScrollUnit.Points), out handled));
+            Assert.True(handled);
+            owner.Viewer.UpdateLayout();
+            Assert.Equal(52, owner.Info.HorizontalOffset); Assert.Equal(64, owner.Info.VerticalOffset);
             Assert.Equal(40, origin.Info.HorizontalOffset); Assert.Equal(40, origin.Info.VerticalOffset);
         });
     }

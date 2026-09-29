@@ -162,17 +162,16 @@ namespace System.Windows.Controls
                 Point start = sourceFrame.Transform(new Point(input.X, input.Y));
                 delta = sourceFrame.Transform(delta);
                 if (!transform.TryTransform(start, out Point localStart) ||
-                    !transform.TryTransform(start + delta, out Point localEnd)) return false;
-                delta = localEnd - localStart;
+                    !double.IsFinite(localStart.X) || !double.IsFinite(localStart.Y) ||
+                    !TryTransformVector(transform, start, delta, out delta)) return false;
                 Vector localRemainder = new(_horizontalEnabled ? 0 : delta.X, _verticalEnabled ? 0 : delta.Y);
                 if (localRemainder != default)
                 {
                     if (!partial || transform.Inverse is not GeneralTransform inverse ||
-                        !inverse.TryTransform(localStart, out Point sourceStart) ||
-                        !inverse.TryTransform(localStart + localRemainder, out Point sourceEnd)) return false;
+                        !TryTransformVector(inverse, localStart, -localRemainder, out Vector sourceRemainder)) return false;
                     // The next routed owner receives the unconsumed vector back
                     // in the original source frame, not this viewer's local axes.
-                    remainder = inverseSourceFrame.Transform(sourceStart - sourceEnd);
+                    remainder = inverseSourceFrame.Transform(sourceRemainder);
                 }
                 delta = new Vector(_horizontalEnabled ? delta.X : 0, _verticalEnabled ? delta.Y : 0);
                 Vector scale = _owner.GetScrollPointScale(_info.ViewportWidth, _info.ViewportHeight, _axes);
@@ -223,6 +222,26 @@ namespace System.Windows.Controls
         private static bool Finite(Matrix value) => double.IsFinite(value.M11) && double.IsFinite(value.M12) &&
             double.IsFinite(value.M21) && double.IsFinite(value.M22) &&
             double.IsFinite(value.OffsetX) && double.IsFinite(value.OffsetY);
+
+        private static bool TryTransformVector(GeneralTransform transform, Point start, Vector delta, out Vector result)
+        {
+            if (transform is Transform affine)
+            {
+                // Desktop/visual translations must not erase a small vector
+                // through subtraction of two large transformed positions.
+                result = affine.Value.Transform(delta);
+            }
+            else
+            {
+                result = default;
+                // General projections need their actual endpoint mapping; do
+                // not approximate a non-affine transform by an identity matrix.
+                if (!transform.TryTransform(start, out Point first) ||
+                    !transform.TryTransform(start + delta, out Point last)) return false;
+                result = last - first;
+            }
+            return double.IsFinite(result.X) && double.IsFinite(result.Y);
+        }
 
         private static bool TryScale(double value, double scale, bool enabled, out double result)
         {

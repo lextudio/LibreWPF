@@ -8,6 +8,7 @@ using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using System.Windows.Media.ProGPU.Platform;
 using ProGPU.Backend.Native;
+using ProGPU.Backend;
 using ProGPU.Vector;
 using ProGPU.Wpf.Interop;
 using Silk.NET.Maths;
@@ -2962,6 +2963,90 @@ public sealed class ProGpuWpfWindowHostTests
         }
     }
 
+    [Theory]
+    [InlineData(NativePointerEventKind.Move)]
+    [InlineData(NativePointerEventKind.Drag)]
+    [InlineData(NativePointerEventKind.Up)]
+    [InlineData(NativePointerEventKind.Leave)]
+    public void NativePointerPopupRoutePreservesOutsideLocalCoordinatesAndHiddenCancellation(NativePointerEventKind kind)
+    {
+        var activation = new NativePointerActivationService();
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(activation);
+        var popup = new FakePortablePresentationSource();
+        using var factory = UsePortablePopupSourceFactory(() => popup);
+        var nativeHost = new FakePortableNativePopupHost();
+        WpfPortablePopupBridge.NativePopupHostFactory = (_, _, _, _, _) => nativeHost;
+        using var host = new ProGpuWpfWindowHost();
+        var owner = new FakePortablePresentationSource { RootVisual = new object() };
+        Assert.True(host.TryBindPortablePresentationSource(owner));
+        Assert.True(host.TryCreatePortablePopup(new PortablePopupCreateRequest(null, owner, owner.Handle, 20, 30, false, false), out var source));
+        Assert.True(host.TrySetPortablePopupSize(source!, 100, 80));
+        Assert.True(host.TryShowPortablePopup(source!));
+        int button = kind is NativePointerEventKind.Drag or NativePointerEventKind.Up ? 0 : -1;
+        var input = SilkNetWpfInputService.CreateNativePointerEvent(new NativePointerEvent(kind,
+            -30.125, 300.5, 54.25, button, 0, NativePointerModifiers.Shift));
+        Assert.True(nativeHost.InputHandler!(input));
+        Assert.True(input.Handled);
+        Assert.Same(source, activation.NativeTarget);
+        Assert.Equal((-30.125, 300.5, 54.25), (activation.NativeInput!.X, activation.NativeInput.Y, activation.NativeInput.Timestamp));
+        Assert.Equal((PortablePointerEventKind)kind, activation.NativeInput.Kind);
+        Assert.Equal(0, activation.PresentationSourceInputCount);
+
+        Assert.True(host.TryHidePortablePopup(source!));
+        var cancel = SilkNetWpfInputService.CreateNativePointerEvent(new NativePointerEvent(
+            NativePointerEventKind.Cancel, -30.125, 300.5, 54.25, -1, 0, 0));
+        Assert.True(nativeHost.InputHandler(cancel));
+        Assert.True(cancel.Handled);
+        Assert.Equal(PortablePointerEventKind.Cancel, activation.NativeInput!.Kind);
+        Assert.False(nativeHost.InputHandler(input));
+        Assert.Equal(2, activation.NativeCount);
+    }
+
+    [Fact]
+    public void NativePointerOverlayRouteMapsOnlyItsCoordinates()
+    {
+        var activation = new NativePointerActivationService();
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(activation);
+        using var factory = UsePortablePopupSourceFactory(() => new FakePortablePresentationSource());
+        using var host = new ProGpuWpfWindowHost();
+        var owner = new FakePortablePresentationSource { RootVisual = new object() };
+        Assert.True(host.TryBindPortablePresentationSource(owner));
+        Assert.True(host.TryCreatePortablePopup(new PortablePopupCreateRequest(null, owner, owner.Handle, 20, 30, false, false), out var source));
+        Assert.True(host.TrySetPortablePopupSize(source!, 100, 80));
+        Assert.True(host.TryShowPortablePopup(source!));
+        var input = SilkNetWpfInputService.CreateNativePointerEvent(new NativePointerEvent(
+            NativePointerEventKind.Scroll, 25.125, 35.25, 23.75, -1, 0, NativePointerModifiers.Super,
+            0.25, -0.5, NativePointerScrollUnit.Points, 4, 8));
+        Assert.True(host.TryProcessPortablePopupInput(input));
+        Assert.Same(source, activation.NativeTarget);
+        Assert.Equal((5.125, 5.25, 0.25, -0.5), (activation.NativeInput!.X, activation.NativeInput.Y, activation.NativeInput.ScrollX, activation.NativeInput.ScrollY));
+        Assert.Equal((23.75, 4u, 8u), (activation.NativeInput.Timestamp, activation.NativeInput.ScrollPhase, activation.NativeInput.MomentumPhase));
+        Assert.Equal(PortablePointerModifiers.Super, activation.NativeInput.Modifiers);
+        Assert.Equal((int)input.Modifiers, activation.NativeShortcuts);
+        Assert.True(input.Handled);
+        Assert.Equal(0, activation.PresentationSourceInputCount);
+    }
+
+    [Fact]
+    public void NativePointerPopupRouteRejectsLegacySourceWithoutLosingMetadata()
+    {
+        var activation = new TestWindowActivationServiceRegistrar();
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(activation);
+        using var factory = UsePortablePopupSourceFactory(() => new FakePortablePresentationSource());
+        var nativeHost = new FakePortableNativePopupHost();
+        WpfPortablePopupBridge.NativePopupHostFactory = (_, _, _, _, _) => nativeHost;
+        using var host = new ProGpuWpfWindowHost();
+        var owner = new FakePortablePresentationSource { RootVisual = new object() };
+        Assert.True(host.TryBindPortablePresentationSource(owner));
+        Assert.True(host.TryCreatePortablePopup(new PortablePopupCreateRequest(null, owner, owner.Handle, 0, 0, false, false), out var source));
+        Assert.True(host.TrySetPortablePopupSize(source!, 100, 80));
+        Assert.True(host.TryShowPortablePopup(source!));
+        var input = SilkNetWpfInputService.CreateNativePointerEvent(new NativePointerEvent(
+            NativePointerEventKind.Move, 1, 2, 3, -1, 0, 0));
+        Assert.Throws<PlatformNotSupportedException>(() => nativeHost.InputHandler!(input));
+        Assert.Equal(0, activation.PresentationSourceInputCount);
+    }
+
     [Fact]
     public void PortablePopupUsesNativeHostLifecycleAndLocalInputWhenAvailable()
     {
@@ -4285,7 +4370,21 @@ public sealed class ProGpuWpfWindowHostTests
         public void Dispose() => IsDisposed = true;
     }
 
-    private sealed class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
+    private sealed class NativePointerActivationService : TestWindowActivationServiceRegistrar, IPortableNativePointerInputService
+    {
+        public int NativeCount, NativeShortcuts;
+        public object? NativeTarget;
+        public PortablePointerInput? NativeInput;
+        public bool TryProcessNativePointerInputEvent(object window, PortablePointerInput input, int shortcuts, out bool handled)
+        { handled = false; return false; }
+        public bool TryProcessPresentationSourceNativePointerInputEvent(object source, PortablePointerInput input, int shortcuts, out bool handled)
+        {
+            NativeCount++; NativeTarget = source; NativeInput = input; NativeShortcuts = shortcuts;
+            handled = true; return true;
+        }
+    }
+
+    private class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
     {
         public PortableWpfServiceKey ServiceKey => PortableWpfServiceKey.PresentationFramework;
 

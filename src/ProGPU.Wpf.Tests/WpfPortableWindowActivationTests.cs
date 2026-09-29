@@ -12,6 +12,9 @@ using Xunit;
 
 namespace ProGPU.Wpf.Tests;
 
+// These fixtures replace the same process-wide activation registry used by the
+// popup/host fixtures. They must share its collection, not race each other's providers.
+[Collection(PortableRenderDataSinkProviderCollection.Name)]
 public sealed class WpfPortableWindowActivationTests
 {
     [Fact]

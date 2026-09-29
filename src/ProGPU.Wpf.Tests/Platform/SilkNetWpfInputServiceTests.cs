@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Backend;
+using ProGPU.Wpf.Interop;
 using Silk.NET.Input;
 using Xunit;
 
@@ -350,7 +352,123 @@ public sealed class SilkNetWpfInputServiceTests
         Assert.Equal(1, keyboard.EndInputCount);
     }
 
-    private sealed class FakeInputContext : IInputContext
+    [Fact]
+    public void NativePointerUsesOnlyOneStreamAndRetainsEventTimeModifiersAndPrecision()
+    {
+        var context = new FakeNativeInputContext();
+        var mouse = new FakeMouse();
+        context.AddInitialMouse(mouse);
+        context.AddInitialKeyboard(new FakeKeyboard()); // No key is currently pressed.
+        var service = new SilkNetWpfInputService();
+        var received = new List<WpfInputEventArgs>();
+        service.InputReceived += (_, input) => received.Add(input);
+        using var subscription = service.Attach(context);
+        const double x = 10000000.125, y = -123.123456789;
+        context.RaiseNative(new NativePointerEvent(NativePointerEventKind.Down, x, y, 123.75,
+            0, 2, NativePointerModifiers.Shift | NativePointerModifiers.CapsLock));
+        mouse.RaiseMouseDown(MouseButton.Left);
+        mouse.RaiseMouseMove(new Vector2(1, 2));
+        context.Connect(new FakeMouse());
+        var input = Assert.Single(received);
+        Assert.Equal((x, y), (input.X, input.Y));
+        Assert.Equal(WpfInputModifiers.Shift, input.Modifiers);
+        Assert.Equal(PortablePointerModifiers.Shift | PortablePointerModifiers.CapsLock, input.NativePointer!.Modifiers);
+        Assert.Equal((123.75, 2, 0), (input.NativePointer.Timestamp, input.NativePointer.ClickCount, input.NativePointer.Button));
+    }
+
+    [Fact]
+    public void NativeScrollRetainsPointOrLineUnitsAndBothPhasesWithoutWheelConversion()
+    {
+        var context = new FakeNativeInputContext();
+        var service = new SilkNetWpfInputService();
+        var received = new List<WpfInputEventArgs>();
+        service.InputReceived += (_, input) => received.Add(input);
+        using var subscription = service.Attach(context);
+        foreach (var unit in new[] { NativePointerScrollUnit.Points, NativePointerScrollUnit.Lines })
+            context.RaiseNative(new NativePointerEvent(NativePointerEventKind.Scroll, 1.125, 2.25, 5,
+                -1, 0, NativePointerModifiers.Super, 0.25, -0.5, unit, 4, 8));
+        Assert.Equal(2, received.Count);
+        for (int i = 0; i < received.Count; i++)
+        {
+            Assert.Equal((0.25, -0.5), (received[i].DeltaX, received[i].DeltaY));
+            Assert.Equal(i == 0 ? PortablePointerScrollUnit.Points : PortablePointerScrollUnit.Lines, received[i].NativePointer!.ScrollUnit);
+            Assert.Equal((4u, 8u), (received[i].NativePointer!.ScrollPhase, received[i].NativePointer!.MomentumPhase));
+            Assert.Equal(PortablePointerModifiers.Super, received[i].NativePointer!.Modifiers);
+            Assert.Equal(OperatingSystem.IsMacOS() ? WpfInputModifiers.Control : WpfInputModifiers.Super, received[i].Modifiers);
+        }
+    }
+
+    [Fact]
+    public void NativeDisposalDeliversCancellationBeforeUnsubscribeAndAllowsReentrantDisposal()
+    {
+        var context = new FakeNativeInputContext();
+        var service = new SilkNetWpfInputService();
+        IDisposable? subscription = null;
+        int cancellations = 0;
+        service.InputReceived += (_, input) =>
+        {
+            if (input.Kind != WpfInputEventKind.MouseCancel) return;
+            Assert.False(context.IsDisposed);
+            Assert.Equal(PortablePointerEventKind.Cancel, input.NativePointer!.Kind);
+            cancellations++;
+            subscription!.Dispose();
+        };
+        subscription = service.Attach(context);
+        context.RaiseNative(new NativePointerEvent(NativePointerEventKind.Down, 1, 2, 3, 0, 1, 0));
+        subscription.Dispose();
+        Assert.True(context.IsDisposed);
+        Assert.Equal(1, cancellations);
+        context.RaiseNative(new NativePointerEvent(NativePointerEventKind.Cancel, 1, 2, 3, -1, 0, 0));
+        Assert.Equal(1, cancellations);
+    }
+
+    [Fact]
+    public void ThrowingNativeCancellationStillDisposesAndUnsubscribes()
+    {
+        var context = new FakeNativeInputContext();
+        var service = new SilkNetWpfInputService();
+        var failure = new InvalidOperationException("Source cancellation failed.");
+        int calls = 0;
+        service.InputReceived += (_, input) =>
+        {
+            calls++;
+            if (input.Kind == WpfInputEventKind.MouseCancel) throw failure;
+        };
+        var subscription = service.Attach(context);
+        context.RaiseNative(new NativePointerEvent(NativePointerEventKind.Move, 1, 2, 3, -1, 0, 0));
+        Assert.Same(failure, Assert.Throws<InvalidOperationException>(subscription.Dispose));
+        Assert.True(context.IsDisposed);
+        context.RaiseNative(new NativePointerEvent(NativePointerEventKind.Move, 1, 2, 3, -1, 0, 0));
+        subscription.Dispose();
+        Assert.Equal(2, calls);
+    }
+
+    private sealed class FakeNativeInputContext : FakeInputContext, INativePointerInputContext
+    {
+        private bool _observed;
+        public NativePointerEvent? CurrentEvent { get; private set; }
+        public ulong InputGeneration { get; private set; } = 1;
+        public event Action<NativePointerEvent>? PointerEvent;
+        public void RaiseNative(NativePointerEvent input)
+        {
+            _observed = input.Kind != NativePointerEventKind.Cancel;
+            CurrentEvent = input;
+            try { PointerEvent?.Invoke(input); }
+            finally { CurrentEvent = null; }
+        }
+        public override void Dispose()
+        {
+            if (IsDisposed) return;
+            InputGeneration++;
+            try
+            {
+                if (_observed) RaiseNative(new NativePointerEvent(NativePointerEventKind.Cancel, 1, 2, 3, -1, 0, 0));
+            }
+            finally { base.Dispose(); }
+        }
+    }
+
+    private class FakeInputContext : IInputContext
     {
         private readonly List<IGamepad> _gamepads = new();
         private readonly List<IJoystick> _joysticks = new();
@@ -414,7 +532,7 @@ public sealed class SilkNetWpfInputServiceTests
             _keyboards.Remove(keyboard);
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             IsDisposed = true;
         }

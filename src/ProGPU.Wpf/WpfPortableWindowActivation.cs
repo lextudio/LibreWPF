@@ -1650,7 +1650,7 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
             return;
         }
 
-        if (!PortableModalInputScope.AllowsInput(Window))
+        if (e.Kind != WpfInputEventKind.MouseCancel && !PortableModalInputScope.AllowsInput(Window))
         {
             _pressedMouseButtons.Clear();
             e.Handled = true;
@@ -1659,6 +1659,7 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
 
         bool releaseButtonAfterDispatch = e.Kind == WpfInputEventKind.MouseUp &&
             e.Button != WpfMouseButton.None;
+        if (e.Kind == WpfInputEventKind.MouseCancel) _pressedMouseButtons.Clear();
         if (e.Kind == WpfInputEventKind.MouseDown && e.Button != WpfMouseButton.None)
         {
             _pressedMouseButtons.Add(e.Button);
@@ -1692,7 +1693,7 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
     private void ProcessHostInputAndRequestRender(WpfInputEventArgs e)
     {
         // Recheck after queueing and do not schedule a frame for rejected input.
-        if (!PortableModalInputScope.AllowsInput(Window))
+        if (e.Kind != WpfInputEventKind.MouseCancel && !PortableModalInputScope.AllowsInput(Window))
         {
             _pressedMouseButtons.Clear();
             e.Handled = true;
@@ -1818,7 +1819,10 @@ public sealed class WpfPortableWindowActivation : IDisposable, INativeWindowOwne
 
     private static bool TryForwardInputToWindow(object window, WpfInputEventArgs e)
     {
-        if (TryGetWindowActivationService(out var activationService))
+        bool available = TryGetWindowActivationService(out var activationService);
+        if (WpfNativePointerInput.RequiresNativeDispatch(e))
+            return WpfNativePointerInput.Forward(activationService, window, e, presentationSource: false);
+        if (available)
         {
             var input = CreatePortableWindowInputEvent(e);
             if (activationService.TryProcessInputEvent(window, input))

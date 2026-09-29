@@ -656,6 +656,12 @@ Root detachment/disposal clears only still-owned presses, without synthetic up o
 click events or canceling another provider's capture. Ordinary source switches
 preserve presses; real cross-source ups remain authoritative. Never use a global
 button reset for source-local teardown. See docs/portable-pointer-source-ownership.md.
+Native pointer hosts select one typed event stream, retain native metadata through
+coordinate copies, and scale point deltas but never wheel lines. Keep shortcut
+normalization separate from native modifiers. Missing source capability must not
+fall through to legacy events; hide cancellation retains its exact popup source.
+Do not select owned factories until actual source consumption/lifetime is complete.
+See docs/native-pointer-host-transport.md.
 InputManager must freeze this same choice before creating keyboard/mouse devices.
 Portable raw reports require host-owned device state on Windows too; do not use
 Win32 asynchronous state for those reports or promote their keys through WPF TSF

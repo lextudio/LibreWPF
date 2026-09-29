@@ -13568,7 +13568,10 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf.Tests.Composition.Mil.WpfLayoutClipKeyEqualityTests",
             "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualInvalidationTrackerTests",
             "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRendererTests",
-            "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests"
+            "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests",
+            "ProGPU.Wpf.Tests.Platform.SilkNetWpfInputServiceTests",
+            "ProGPU.Wpf.Tests.Platform.WpfNativePointerInputTests",
+            "ProGPU.Wpf.Tests.WpfPortableWindowActivationTests"
         })
         {
             Assert.Contains($"FullyQualifiedName~{testClass}.", retainedRunner, StringComparison.Ordinal);
@@ -15479,8 +15482,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (var i = 0; i < mice.Count; i++)", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("var keyboards = inputContext.Keyboards;", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < keyboards.Count; i++)", proGpuWpfInputService, StringComparison.Ordinal);
-        Assert.Contains("DisposeSubscriptions(_mouseSubscriptions);", proGpuWpfInputService, StringComparison.Ordinal);
-        Assert.Contains("DisposeSubscriptions(_keyboardSubscriptions);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("DisposeSubscriptions(_mouseSubscriptions, Release);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("DisposeSubscriptions(_keyboardSubscriptions, Release);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("Release(_inputContext.Dispose);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("Release(_unsubscribeNativePointer);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("ExceptionDispatchInfo.Capture(failure).Throw();", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("var subscriptionEnumerator = subscriptions.GetEnumerator();", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("if (subscriptionEnumerator.MoveNext())", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var mouse in inputContext.Mice)", proGpuWpfInputService, StringComparison.Ordinal);

@@ -1,5 +1,12 @@
 # Agent Guidance
 
+Empty source dispatcher flushes may bypass a frame only on the managed pump,
+with no eligible queued work or due timer and current owner/processing/lifetime
+state checked under the dispatcher lock. Keep Windows native message pumping
+and due-timer promotion in their original frame/context; preserve invalid and
+immediate timeout behavior. Removing synthetic markers is not Windows CPU or
+native idle qualification. See docs/portable-dispatcher-empty-flush.md.
+
 Native compute dispatch tracing belongs only to the separate failure replay.
 Reject its enabled opt-in in original idle acceptance, preserve the caller's
 environment and report requested tracing separately from emitted records.

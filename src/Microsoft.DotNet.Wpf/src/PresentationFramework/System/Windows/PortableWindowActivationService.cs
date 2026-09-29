@@ -1216,6 +1216,24 @@ namespace System.Windows
                 return false;
             }
 
+            // Invalid timeout/priority and disabled-processing calls retain the
+            // original marker path and its exception behavior. Keep that path
+            // in a separate method so its captured callbacks are not allocated
+            // before this allocation-free empty-queue check.
+            // A zero/sub-millisecond timeout promotes its Send-priority timer
+            // immediately; do not turn that original timeout into success.
+            bool canShortcutTimeout = timeout == Timeout.InfiniteTimeSpan ||
+                (timeout.TotalMilliseconds >= 1 && timeout.TotalMilliseconds <= Int32.MaxValue);
+            if (canShortcutTimeout && typedWindow.Dispatcher.CanCompletePortableFlushWithoutFrame(markerPriority))
+            {
+                return true;
+            }
+
+            return FlushDispatcherOperationsWithFrame(typedWindow, markerPriority, timeout);
+        }
+
+        private static bool FlushDispatcherOperationsWithFrame(Window typedWindow, DispatcherPriority markerPriority, TimeSpan timeout)
+        {
             bool markerReached = false;
             DispatcherFrame frame = new DispatcherFrame();
             DispatcherOperation markerOperation = typedWindow.Dispatcher.BeginInvoke(

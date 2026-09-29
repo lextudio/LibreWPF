@@ -1952,8 +1952,25 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             windowOptions.Position = new Vector2D<int>(_windowLeft.Value, _windowTop.Value);
         }
 
-        _window = Window.Create(windowOptions);
-        _dpiWindowHintsConfigured = SilkNetGlfwDpiService.TryConfigureDpiWindowHints();
+        IPortableWindowActivationServiceRegistrar? sourceService = null;
+        if (_options.IsPopupSurface && PortablePresentationSource != null)
+            PortableWpfServiceRegistry.TryGetWindowActivationService(
+                PortableWpfServiceKey.PresentationFramework, out sourceService);
+        var popupOwner = _options.SharedRenderDeviceOwner;
+        bool createdOwnedCocoa = false;
+        _window = WpfPopupWindowFactory.Create(_options.IsPopupSurface,
+            PortablePresentationSource != null,
+            popupOwner?.NativeWindowHandle ?? global::ProGPU.Backend.NativeWindowHandle.Empty,
+            sourceService,
+            () => Window.Create(windowOptions),
+            () =>
+            {
+                createdOwnedCocoa = true;
+                return NativePopupWindow.CreateOwnedCocoaWindow(
+                    popupOwner?._window ?? throw new InvalidOperationException("The popup owner has no native window."),
+                    windowOptions);
+            });
+        _dpiWindowHintsConfigured = !createdOwnedCocoa && SilkNetGlfwDpiService.TryConfigureDpiWindowHints();
         _windowController = new SilkWindowController(_window);
         _windowController.SetIsPopup(_options.IsPopupSurface);
         ApplyWindowBorderToController();
@@ -4321,7 +4338,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             {
                 PlatformServices.WindowDecorations.TryContinueDragMove(_window, e);
             }
-            else if (input.Kind == WpfInputEventKind.MouseUp && input.Button == WpfMouseButton.Left)
+            else if (input.Kind == WpfInputEventKind.MouseCancel ||
+                (input.Kind == WpfInputEventKind.MouseUp && input.Button == WpfMouseButton.Left))
             {
                 PlatformServices.WindowDecorations.EndDragMove(_window);
             }
@@ -4386,12 +4404,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return input;
         }
 
-        if (isNativePlatformEvent)
+        if (isNativePlatformEvent || input.NativePointer != null)
         {
             var contentScale = ResolveCurrentWindowContentScale();
             var desktop = PortableDesktopTransform.FromWindowCoordinates(0, 0,
                 contentScale.X, contentScale.Y, UsesMonitorScaledWindowCoordinates());
-            return NormalizeNativeDesktopInput(input, desktop, _options.NativePointerCoordinatesAreOwnerRelative);
+            return NormalizeNativeDesktopInput(input, desktop,
+                input.NativePointer == null && _options.NativePointerCoordinatesAreOwnerRelative);
         }
 
         var geometry = ResolveCurrentRenderSurfaceGeometry();
@@ -4414,9 +4433,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             (desktop.ScaleX == 1 && desktop.ScaleY == 1)) return input;
         // Native pointer positions are client-local desktop units, not framebuffer pixels.
         var point = desktop.DesktopVectorToClient(new PortablePoint(input.X, input.Y));
-        return new WpfInputEventArgs(input.Kind, input.Key, input.ScanCode, input.Character,
-            point.X, point.Y, input.DeltaX, input.DeltaY, input.Button, input.Modifiers)
-        { Handled = input.Handled };
+        var scroll = input.NativePointer?.ScrollUnit == PortablePointerScrollUnit.Points
+            ? desktop.DesktopVectorToClient(new PortablePoint(input.DeltaX, input.DeltaY))
+            : new PortablePoint(input.DeltaX, input.DeltaY);
+        return input.WithPointerCoordinates(point.X, point.Y, scroll.X, scroll.Y);
     }
 
     internal static bool NativeInputCoordinatesArePhysical(
@@ -4450,21 +4470,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         var viewportHeight = ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight);
         var scaleX = viewportWidth / (double)Math.Max(1u, geometry.LogicalWidth);
         var scaleY = viewportHeight / (double)Math.Max(1u, geometry.LogicalHeight);
-        var normalized = new WpfInputEventArgs(
-            input.Kind,
-            input.Key,
-            input.ScanCode,
-            input.Character,
+        bool pointScroll = input.NativePointer?.ScrollUnit == PortablePointerScrollUnit.Points;
+        return input.WithPointerCoordinates(
             NormalizeInputCoordinate(input.X, geometry.ViewportX, scaleX),
             NormalizeInputCoordinate(input.Y, geometry.ViewportY, scaleY),
-            input.DeltaX,
-            input.DeltaY,
-            input.Button,
-            input.Modifiers)
-        {
-            Handled = input.Handled
-        };
-        return normalized;
+            pointScroll ? input.DeltaX / scaleX : input.DeltaX,
+            pointScroll ? input.DeltaY / scaleY : input.DeltaY);
     }
 
     internal static bool NativeInputCoordinatesLookPhysical(
@@ -4552,7 +4563,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return kind is WpfInputEventKind.MouseMove or
             WpfInputEventKind.MouseDown or
             WpfInputEventKind.MouseUp or
-            WpfInputEventKind.MouseWheel;
+            WpfInputEventKind.MouseWheel or WpfInputEventKind.MouseLeave or WpfInputEventKind.MouseCancel;
     }
 
     private static double NormalizeInputCoordinate(double coordinate, uint viewportOffset, double scale)

@@ -126,6 +126,9 @@ jobs:
       - name: Validate source pointer press ownership
         run: bash ./eng/progpu-wpf-pointer-ownership-source.sh
 
+      - name: Validate native pointer source reports
+        run: bash ./eng/progpu-wpf-native-pointer-source.sh
+
       - name: Verify source wheel event state
         run: bash ./eng/progpu-wpf-wheel-input-source.sh
 

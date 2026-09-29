@@ -23,8 +23,10 @@ namespace System.Windows.Controls
     /// <summary>
     /// VirtualizingStackPanel is used to arrange children into single line.
     /// </summary>
-    public class VirtualizingStackPanel : VirtualizingPanel, IScrollInfo, IStackMeasure
+    public class VirtualizingStackPanel : VirtualizingPanel, IScrollInfo, IStackMeasure, IPortableScrollInfo
     {
+        PortableScrollAxes IPortableScrollInfo.ScrollAxes => IsPixelBased ? PortableScrollAxes.Pixels :
+            Orientation == Orientation.Horizontal ? PortableScrollAxes.HorizontalItems : PortableScrollAxes.VerticalItems;
         //-------------------------------------------------------------------
         //
         //  Constructors

@@ -14,7 +14,10 @@ minimum = {
     "ProGPU.Wpf.Tests.Composition.Mil.WpfLayoutClipKeyEqualityTests": 6,
     "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualInvalidationTrackerTests": 38,
     "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRendererTests": 242,
-    "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests": 243,
+    "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests": 256,
+    "ProGPU.Wpf.Tests.Platform.SilkNetWpfInputServiceTests": 44,
+    "ProGPU.Wpf.Tests.Platform.WpfNativePointerInputTests": 15,
+    "ProGPU.Wpf.Tests.WpfPortableWindowActivationTests": 93,
     "ProGPU.Wpf.Tests.PassiveIdleIntervalTests": 8,
     "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 7,
     "ProGPU.Wpf.Tests.NativeResizePresentationTests": 21,
@@ -130,6 +133,9 @@ filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Composition.Mil.WpfLayoutClipKeyEq
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Composition.Mil.WpfVisualInvalidationTrackerTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRendererTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Platform.SilkNetWpfInputServiceTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.Platform.WpfNativePointerInputTests.'
+filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.WpfPortableWindowActivationTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.PassiveIdleIntervalTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeDragInputReceiptTests.'
 filter+='|FullyQualifiedName~ProGPU.Wpf.Tests.NativeBackendWindowOptionsTests.'

@@ -247,6 +247,35 @@ public sealed class PortableInputOwnershipTests
     }
 
     [PortableInputFact]
+    public void NativePointerReportsRetainPacketAndFrameAcrossEverySplit()
+    {
+        RunInUiApartment(() =>
+        {
+            using var source = new PortablePresentationSource();
+            var packet = new PortablePointerInput(PortablePointerEventKind.Down, 10.25, 20.75,
+                1.25025, 0, 3, PortablePointerModifiers.Shift);
+            var point = new Point(30.125, -4.875);
+            RawMouseInputReport report = new PortableMouseInputReport(InputMode.Foreground, 1250, source,
+                RawMouseActions.Activate | RawMouseActions.AbsoluteMove | RawMouseActions.Button1Press,
+                30, -4, 0, (IntPtr)42, point, packet);
+            foreach (RawMouseActions actions in new[] { RawMouseActions.Activate,
+                RawMouseActions.AbsoluteMove | RawMouseActions.Button1Press,
+                RawMouseActions.AbsoluteMove, RawMouseActions.Button1Press })
+            {
+                report = report.WithActions(actions, 0, 0, 0, IntPtr.Zero);
+                Assert.IsType<PortableMouseInputReport>(report);
+                Assert.Same(packet, report.NativePointer);
+                Assert.Equal(point, report.ClientPoint);
+                Assert.Equal(actions, report.Actions);
+                Assert.Equal(1250, report.Timestamp);
+                Assert.Same(source, report.InputSource);
+                Assert.Equal(0, report.X);
+                Assert.Equal(IntPtr.Zero, report.ExtraInformation);
+            }
+        });
+    }
+
+    [PortableInputFact]
     public void WheelEventStateRetainsEachConstructedDeltaAndTimestamp()
     {
         RunInUiApartment(() =>
@@ -261,6 +290,79 @@ public sealed class PortableInputOwnershipTests
                 Assert.Equal(i + 10, events[i].Timestamp);
                 Assert.Same(Mouse.PrimaryDevice, events[i].MouseDevice);
             }
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportExtensionKeepsLegacyStorageAndRejectsInvalidFrames()
+    {
+        RunInUiApartment(() =>
+        {
+            using var source = new PortablePresentationSource();
+            var legacy = new RawMouseInputReport(InputMode.Foreground, 7, source,
+                RawMouseActions.AbsoluteMove, -2, 3, 0, (IntPtr)42);
+            var copy = legacy.WithActions(RawMouseActions.Button1Press, 0, 0, 0, IntPtr.Zero);
+            Assert.IsType<RawMouseInputReport>(copy);
+            Assert.Null(copy.NativePointer);
+            Assert.Equal(new Point(-2, 3), legacy.ClientPoint);
+            Assert.Equal(new Point(0, 0), copy.ClientPoint);
+            Assert.Equal((IntPtr)42, legacy.ExtraInformation);
+            var packet = new PortablePointerInput(PortablePointerEventKind.Move, 1, 2, 3, -1, 0, 0);
+            Assert.Throws<ArgumentOutOfRangeException>(() => new PortableMouseInputReport(InputMode.Foreground,
+                3000, source, RawMouseActions.AbsoluteMove, 0, 0, 0, IntPtr.Zero, new Point(double.NaN, 0), packet));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new PortableMouseInputReport(InputMode.Foreground,
+                3000, source, RawMouseActions.AbsoluteMove, 0, 0, 0, IntPtr.Zero, new Point(0, double.PositiveInfinity), packet));
+            Assert.IsType<MouseEventArgs>(PortableMouseEvents.Move(Mouse.PrimaryDevice, 7, null, null, Mouse.MouseMoveEvent));
+            var button = PortableMouseEvents.Button(Mouse.PrimaryDevice, 7, MouseButton.Left, null, null, Mouse.MouseDownEvent);
+            Assert.IsType<MouseButtonEventArgs>(button);
+            Assert.Equal(1, button.ClickCount);
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsDoNotRefreshAnObsoleteSourceGenerationWhenSplit()
+    {
+        RunInUiApartment(() =>
+        {
+            using var source = new PortablePresentationSource { RootVisual = new UIElement() };
+            var packet = new PortablePointerInput(PortablePointerEventKind.Move, 1.25, 2.5, 3, -1, 0, 0);
+            var report = new PortableMouseInputReport(InputMode.Foreground, 3000, source,
+                RawMouseActions.AbsoluteMove, 1, 2, 0, IntPtr.Zero, new Point(1.25, 2.5), packet);
+            Assert.True(report.IsCurrent);
+            source.RootVisual = source.RootVisual;
+            Assert.True(report.IsCurrent);
+            source.RootVisual = new UIElement();
+            Assert.False(report.IsCurrent);
+            Assert.False(report.WithActions(RawMouseActions.AbsoluteMove, 1, 2, 0, IntPtr.Zero).IsCurrent);
+            var current = new PortableMouseInputReport(InputMode.Foreground, 3000, source,
+                RawMouseActions.AbsoluteMove, 1, 2, 0, IntPtr.Zero, new Point(1.25, 2.5), packet);
+            Assert.True(current.IsCurrent);
+            source.Dispose();
+            Assert.False(current.IsCurrent);
+        });
+    }
+
+    [PortableInputFact]
+    public void NativePointerReportsRetainOriginAndDestinationGenerationsIndependently()
+    {
+        RunInUiApartment(() =>
+        {
+            using var origin = new PortablePresentationSource { RootVisual = new UIElement() };
+            using var destination = new PortablePresentationSource { RootVisual = new UIElement() };
+            var packet = new PortablePointerInput(PortablePointerEventKind.Down, 1.25, 2.5, 3, 0, 1, 0);
+            var report = new PortableMouseInputReport(InputMode.Foreground, 3000, destination,
+                RawMouseActions.AbsoluteMove | RawMouseActions.Button1Press, 1, 2, 0, IntPtr.Zero,
+                new Point(1.25, 2.5), packet, origin);
+            Assert.True(report.IsCurrent);
+            origin.RootVisual = new UIElement();
+            Assert.False(report.IsCurrent);
+            Assert.False(report.WithActions(RawMouseActions.Button1Press, 0, 0, 0, IntPtr.Zero).IsCurrent);
+            var current = new PortableMouseInputReport(InputMode.Foreground, 3000, destination,
+                RawMouseActions.AbsoluteMove, 1, 2, 0, IntPtr.Zero, new Point(1.25, 2.5), packet, origin);
+            Assert.True(current.IsCurrent);
+            destination.RootVisual = new UIElement();
+            Assert.False(current.IsCurrent);
+            Assert.Same(packet, current.NativePointer);
         });
     }
 

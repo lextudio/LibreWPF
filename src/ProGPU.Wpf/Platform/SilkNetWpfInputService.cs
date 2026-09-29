@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.ExceptionServices;
+using ProGPU.Backend;
+using ProGPU.Wpf.Interop;
 using Silk.NET.Windowing;
 using SilkInput = Silk.NET.Input;
 
@@ -25,7 +28,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             throw new ArgumentException("Silk.NET input services require a Silk.NET view instance.", nameof(window));
         }
 
-        var inputContext = SilkInput.InputWindowExtensions.CreateInput(silkView);
+        var inputContext = NativeWindowInput.CreateInput(silkView);
         try
         {
             IDisposable subscription = Attach(
@@ -96,10 +99,11 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
 
         var mouseSubscriptions = new Dictionary<SilkInput.IMouse, Action>();
         var keyboardSubscriptions = new Dictionary<SilkInput.IKeyboard, Action>();
+        var nativePointer = inputContext as INativePointerInputContext;
 
         void AttachMouse(SilkInput.IMouse mouse)
         {
-            if (mouseSubscriptions.ContainsKey(mouse))
+            if (nativePointer != null || mouseSubscriptions.ContainsKey(mouse))
             {
                 return;
             }
@@ -254,13 +258,28 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
         }
 
         inputContext.ConnectionChanged += ConnectionChanged;
+        void NativePointerReceived(NativePointerEvent input) =>
+            OnInputReceived(eventSource, CreateNativePointerEvent(input));
+        if (nativePointer != null) nativePointer.PointerEvent += NativePointerReceived;
 
         return new InputSubscription(
             inputContext,
             mouseSubscriptions,
             keyboardSubscriptions,
             () => inputContext.ConnectionChanged -= ConnectionChanged,
-            onDispose);
+            onDispose,
+            nativePointer == null ? null : () => nativePointer.PointerEvent -= NativePointerReceived);
+    }
+
+    public static WpfInputEventArgs CreateNativePointerEvent(NativePointerEvent input)
+    {
+        var packet = new PortablePointerInput((PortablePointerEventKind)input.Kind,
+            (PortablePointerScrollProtocol)input.ScrollProtocol,
+            input.X, input.Y, input.Timestamp, input.Button, input.ClickCount,
+            (PortablePointerModifiers)input.Modifiers, input.ScrollX, input.ScrollY,
+            (PortablePointerScrollUnit)input.ScrollUnit, input.ScrollPhase, input.MomentumPhase);
+        var shortcuts = NormalizeModifiersForCurrentPlatform((WpfInputModifiers)((int)input.Modifiers & 15));
+        return new WpfInputEventArgs(packet, shortcuts);
     }
 
     public static WpfInputEventArgs CreateKeyEvent(
@@ -473,6 +492,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
         private readonly Dictionary<SilkInput.IKeyboard, Action> _keyboardSubscriptions;
         private readonly Action _unsubscribeConnectionChanged;
         private readonly Action? _onDispose;
+        private readonly Action? _unsubscribeNativePointer;
         private bool _isDisposed;
 
         public InputSubscription(
@@ -480,13 +500,15 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
             Dictionary<SilkInput.IMouse, Action> mouseSubscriptions,
             Dictionary<SilkInput.IKeyboard, Action> keyboardSubscriptions,
             Action unsubscribeConnectionChanged,
-            Action? onDispose)
+            Action? onDispose,
+            Action? unsubscribeNativePointer)
         {
             _inputContext = inputContext;
             _mouseSubscriptions = mouseSubscriptions;
             _keyboardSubscriptions = keyboardSubscriptions;
             _unsubscribeConnectionChanged = unsubscribeConnectionChanged;
             _onDispose = onDispose;
+            _unsubscribeNativePointer = unsubscribeNativePointer;
         }
 
         public void Dispose()
@@ -496,22 +518,36 @@ public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputC
                 return;
             }
 
-            _unsubscribeConnectionChanged();
-            DisposeSubscriptions(_mouseSubscriptions);
-            DisposeSubscriptions(_keyboardSubscriptions);
-
-            _onDispose?.Invoke();
-            _inputContext.Dispose();
             _isDisposed = true;
+            Exception? failure = null;
+            void Release(Action action)
+            {
+                try { action(); }
+                catch (Exception error) { failure = failure == null ? error : new AggregateException(failure, error); }
+            }
+            Release(_unsubscribeConnectionChanged);
+            DisposeSubscriptions(_mouseSubscriptions, Release);
+            DisposeSubscriptions(_keyboardSubscriptions, Release);
+            if (_unsubscribeNativePointer == null && _onDispose != null) Release(_onDispose);
+            // Keep the native subscription alive for the provider's cancellation.
+            // Reentrant disposal is guarded, and a throwing source handler must
+            // not prevent detachment or removal from the registered context map.
+            Release(_inputContext.Dispose);
+            if (_unsubscribeNativePointer != null)
+            {
+                Release(_unsubscribeNativePointer);
+                if (_onDispose != null) Release(_onDispose);
+            }
+            if (failure != null) ExceptionDispatchInfo.Capture(failure).Throw();
         }
 
-        private static void DisposeSubscriptions<TDevice>(Dictionary<TDevice, Action> subscriptions)
+        private static void DisposeSubscriptions<TDevice>(Dictionary<TDevice, Action> subscriptions, Action<Action> release)
             where TDevice : notnull
         {
             while (TryTakeFirstSubscription(subscriptions, out var device, out var unsubscribe))
             {
                 subscriptions.Remove(device);
-                unsubscribe();
+                release(unsubscribe);
             }
         }
 

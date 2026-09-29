@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows
 {
@@ -50,6 +51,25 @@ namespace System.Windows
             double deltaY = 0,
             PortableMouseButton button = PortableMouseButton.None,
             PortableInputModifiers modifiers = PortableInputModifiers.None)
+            : this(kind, null, key, scanCode, character, x, y, deltaX, deltaY, button, modifiers)
+        {
+        }
+
+        // Preserve the original constructor identity for existing source hosts,
+        // including the application harness. Optional parameters do not preserve
+        // an existing reflection/binary signature.
+        internal PortableInputEventArgs(
+            PortableInputEventKind kind,
+            PortablePointerInput nativePointer,
+            string key = null,
+            int scanCode = 0,
+            char? character = null,
+            double x = 0,
+            double y = 0,
+            double deltaX = 0,
+            double deltaY = 0,
+            PortableMouseButton button = PortableMouseButton.None,
+            PortableInputModifiers modifiers = PortableInputModifiers.None)
         {
             Kind = kind;
             Key = key;
@@ -61,6 +81,7 @@ namespace System.Windows
             DeltaY = deltaY;
             Button = button;
             Modifiers = modifiers;
+            NativePointer = nativePointer;
         }
 
         public PortableInputEventKind Kind { get; }
@@ -82,6 +103,8 @@ namespace System.Windows
         public PortableMouseButton Button { get; }
 
         public PortableInputModifiers Modifiers { get; }
+
+        internal PortablePointerInput NativePointer { get; }
 
         public bool Handled { get; set; }
     }

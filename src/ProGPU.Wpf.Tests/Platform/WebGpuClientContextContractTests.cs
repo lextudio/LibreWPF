@@ -12,10 +12,18 @@ public sealed class WebGpuClientContextContractTests
         string source = Read("src/ProGPU.Wpf/ProGpuWpfWindowHost.cs");
         string setup = Between(source, "private void EnsureWindow()", "private void OnLoad()");
         int disable = setup.IndexOf("windowOptions.IsContextControlDisabled = true;", StringComparison.Ordinal);
-        int create = setup.IndexOf("_window = Window.Create(windowOptions);", StringComparison.Ordinal);
+        int create = setup.IndexOf("_window = WpfPopupWindowFactory.Create(", StringComparison.Ordinal);
         Assert.True(disable >= 0 && create > disable,
             "WebGPU windows must disable Silk context rebinding before native window creation.");
-        Assert.Contains("windowOptions.ShouldSwapAutomatically = false;", setup, StringComparison.Ordinal);
+        Assert.Equal(1, setup.Split("windowOptions.IsContextControlDisabled = ", StringSplitOptions.None).Length - 1);
+        int noSwap = setup.IndexOf("windowOptions.ShouldSwapAutomatically = false;", StringComparison.Ordinal);
+        Assert.True(noSwap >= 0 && noSwap < create);
+        int standard = setup.IndexOf("() => Window.Create(windowOptions)", StringComparison.Ordinal);
+        int owned = setup.IndexOf("NativePopupWindow.CreateOwnedCocoaWindow(", StringComparison.Ordinal);
+        Assert.True(standard > create && owned > create,
+            "Both standard and owned popup factories must receive the prepared WebGPU window options.");
+        Assert.Contains("windowOptions);", setup[owned..], StringComparison.Ordinal);
+        Assert.Contains("!createdOwnedCocoa && SilkNetGlfwDpiService.TryConfigureDpiWindowHints()", setup, StringComparison.Ordinal);
         // Transparent X11 windows still require their alpha-capable client visual.
         Assert.Contains("RequiresClientApiForTransparentFramebuffer(", setup, StringComparison.Ordinal);
         Assert.Contains("? GraphicsAPI.Default", setup, StringComparison.Ordinal);

@@ -8,6 +8,32 @@ namespace System.Windows.Input
     internal sealed class PortableMouseDevice : MouseDevice
     {
         private readonly Dictionary<MouseButton, (PresentationSource Origin, PresentationSource Routed)> _pressedButtons = new();
+        private WeakReference<PortablePresentationSource> _nativePointerOrigin;
+        internal ulong NativePointerRevision { get; private set; }
+        internal bool NativePointerOutside { get; private set; }
+
+        internal bool IsNativePointerOrigin(PortablePresentationSource source) =>
+            _nativePointerOrigin != null && _nativePointerOrigin.TryGetTarget(out var origin) && ReferenceEquals(origin, source);
+
+        internal void RecordPointerPosition(RawMouseInputReport report)
+        {
+            // Synchronization reuses a position; it is not physical re-entry.
+            unchecked { ++NativePointerRevision; }
+            if (report._isSynchronize && report.NativePointer == null) return;
+            NativePointerOutside = false;
+            if (report is PortableMouseInputReport native && native.NativePointer != null)
+            {
+                if (_nativePointerOrigin == null) _nativePointerOrigin = new(native.OriginSource);
+                else _nativePointerOrigin.SetTarget(native.OriginSource);
+            }
+            else _nativePointerOrigin?.SetTarget(null);
+        }
+
+        internal void RecordPointerLeave()
+        {
+            unchecked { ++NativePointerRevision; }
+            NativePointerOutside = true;
+        }
 
         internal PortableMouseDevice(InputManager inputManager)
             : base(inputManager)

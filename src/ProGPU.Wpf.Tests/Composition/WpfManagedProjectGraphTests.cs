@@ -6,6 +6,22 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WpfManagedProjectGraphTests
 {
     [Fact]
+    public void NativeScrollReferenceSurfaceExposesProviderUnitsAndLosslessRoutedEvents()
+    {
+        string reference = File.ReadAllText(FindRepoPath("src", "Microsoft.DotNet.Wpf", "src",
+            "PresentationFramework", "ref", "PresentationFramework.cs"));
+        Assert.Contains("public enum PortableScrollAxes", reference, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableScrollInfo : System.Windows.Controls.Primitives.IScrollInfo", reference, StringComparison.Ordinal);
+        Assert.Equal(3, reference.Split("System.Windows.Controls.IPortableScrollInfo.ScrollAxes", StringSplitOptions.None).Length - 1);
+        Assert.Contains("public sealed class PortableScrollEventArgs : System.Windows.RoutedEventArgs", reference, StringComparison.Ordinal);
+        Assert.Contains("public ProGPU.Wpf.Interop.PortablePointerInput NativeInput", reference, StringComparison.Ordinal);
+        Assert.Contains("public System.Windows.Vector RemainingScroll", reference, StringComparison.Ordinal);
+        Assert.Contains("public static class PortableScroll", reference, StringComparison.Ordinal);
+        Assert.Contains("public static readonly System.Windows.RoutedEvent PreviewScrollEvent;", reference, StringComparison.Ordinal);
+        Assert.Contains("public static readonly System.Windows.RoutedEvent ScrollEvent;", reference, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WindowsNativePassiveIdleWorkflowKeepsBothArchitectureContracts()
     {
         string workflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
@@ -90,6 +106,7 @@ public sealed class WpfManagedProjectGraphTests
             "run: bash ./eng/progpu-wpf-messagebox-modal.sh",
             "run: bash ./eng/progpu-wpf-input-modifiers-source.sh",
             "run: bash ./eng/progpu-wpf-pointer-ownership-source.sh",
+            "run: bash ./eng/progpu-wpf-native-pointer-source.sh",
             "run: bash ./eng/progpu-wpf-wheel-input-source.sh",
             "run: bash ./eng/progpu-wpf-layout-clip-source.sh",
             "run: bash ./eng/progpu-wpf-visual-host-source.sh",
@@ -107,6 +124,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("if:", job, StringComparison.Ordinal);
         Assert.DoesNotContain("continue-on-error:", job, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/download-artifact", job, StringComparison.Ordinal);
+        string nativePointerRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-native-pointer-source.sh"));
+        string[] nativeInvocations = nativePointerRunner.Split("\n\"${dotnet_command}\" ", StringSplitOptions.None);
+        Assert.Equal(4, nativeInvocations.Length);
+        Assert.Contains("--filter-method '*NativePointerReports*'", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--filter-method '*NativePointerReport*'", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 28 --fail-skips on --timeout 60s", nativeInvocations[1], StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 4 --fail-skips on --timeout 60s", nativeInvocations[2], StringComparison.Ordinal);
+        Assert.Contains("--filter-class System.Windows.PortableScrollSourceTests", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--filter-method '*NativeScroll*'", nativePointerRunner, StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 28 --fail-skips on --timeout 60s", nativeInvocations[3], StringComparison.Ordinal);
         string wheelRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-wheel-input-source.sh"));
         Assert.Contains("--filter-method '*WheelEventState*'", wheelRunner, StringComparison.Ordinal);
         Assert.Contains("--minimum-expected-tests 3 --fail-skips on --timeout 60s", wheelRunner, StringComparison.Ordinal);
@@ -13574,7 +13601,10 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf.Tests.Composition.Mil.WpfLayoutClipKeyEqualityTests",
             "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualInvalidationTrackerTests",
             "ProGPU.Wpf.Tests.Composition.Mil.WpfVisualTreeRendererTests",
-            "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests"
+            "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests",
+            "ProGPU.Wpf.Tests.Platform.SilkNetWpfInputServiceTests",
+            "ProGPU.Wpf.Tests.Platform.WpfNativePointerInputTests",
+            "ProGPU.Wpf.Tests.WpfPortableWindowActivationTests"
         })
         {
             Assert.Contains($"FullyQualifiedName~{testClass}.", retainedRunner, StringComparison.Ordinal);
@@ -15485,8 +15515,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("for (var i = 0; i < mice.Count; i++)", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("var keyboards = inputContext.Keyboards;", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("for (var i = 0; i < keyboards.Count; i++)", proGpuWpfInputService, StringComparison.Ordinal);
-        Assert.Contains("DisposeSubscriptions(_mouseSubscriptions);", proGpuWpfInputService, StringComparison.Ordinal);
-        Assert.Contains("DisposeSubscriptions(_keyboardSubscriptions);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("DisposeSubscriptions(_mouseSubscriptions, Release);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("DisposeSubscriptions(_keyboardSubscriptions, Release);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("Release(_inputContext.Dispose);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("Release(_unsubscribeNativePointer);", proGpuWpfInputService, StringComparison.Ordinal);
+        Assert.Contains("ExceptionDispatchInfo.Capture(failure).Throw();", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("var subscriptionEnumerator = subscriptions.GetEnumerator();", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.Contains("if (subscriptionEnumerator.MoveNext())", proGpuWpfInputService, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var mouse in inputContext.Mice)", proGpuWpfInputService, StringComparison.Ordinal);

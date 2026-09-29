@@ -137,6 +137,8 @@ namespace System.Windows.Controls
                 lifetime?.IsCancelled == true || !IsCurrent) return false;
             ulong originGeneration = origin.PointerInputGeneration;
             if (!double.IsFinite(remaining.X) || !double.IsFinite(remaining.Y)) return false;
+            if (!ValidMetrics(_info.HorizontalOffset, _info.ExtentWidth, _info.ViewportWidth) ||
+                !ValidMetrics(_info.VerticalOffset, _info.ExtentHeight, _info.ViewportHeight)) return false;
             Vector delta = -remaining;
             Vector remainder = default;
             if (input.ScrollUnit == PortablePointerScrollUnit.Lines)
@@ -153,8 +155,6 @@ namespace System.Windows.Controls
                 // offsets require an explicit unit declaration; never guess from
                 // CanContentScroll, provider type names or wheel preferences.
                 if (_units == null) return false;
-                if (!ValidMetrics(_info.HorizontalOffset, _info.ExtentWidth, _info.ViewportWidth) ||
-                    !ValidMetrics(_info.VerticalOffset, _info.ExtentHeight, _info.ViewportHeight)) return false;
                 // Point vectors belong to the source frame. Transform both ends
                 // through the actual visual mapping, without scaling wheel lines.
                 if (!TrySourceFrame(origin, _source, out Matrix sourceFrame, out Matrix inverseSourceFrame)) return false;
@@ -259,33 +259,49 @@ namespace System.Windows.Controls
             _lastUnit = unit; _pointRemainder = default; _lineRemainder = default;
         }
 
-        internal void ApplyPoints(Vector delta, PortableScrollLifetime lifetime = null)
+        internal Vector ApplyPoints(Vector delta, PortableScrollLifetime lifetime = null)
         {
-            if (_units == null || !IsCurrent || lifetime?.IsCancelled == true) return;
+            if (_units == null || !IsCurrent || lifetime?.IsCancelled == true) return default;
             bool horizontal = _horizontalEnabled, vertical = _verticalEnabled;
             Vector remainder = _lastUnit == PortablePointerScrollUnit.Points ? _pointRemainder : default;
             double oldX = _info.HorizontalOffset, oldY = _info.VerticalOffset;
             // Validate both axes before calling the application-owned provider.
             double x = PointOffset(oldX, _info.ExtentWidth, _info.ViewportWidth,
-                horizontal ? delta.X : 0, remainder.X, (_axes & PortableScrollAxes.HorizontalItems) != 0, out double remainderX);
+                horizontal ? delta.X : 0, remainder.X, (_axes & PortableScrollAxes.HorizontalItems) != 0,
+                out double remainderX, out double unusedX);
             double y = PointOffset(oldY, _info.ExtentHeight, _info.ViewportHeight,
-                vertical ? delta.Y : 0, remainder.Y, (_axes & PortableScrollAxes.VerticalItems) != 0, out double remainderY);
-            if (!IsCurrent || lifetime?.IsCancelled == true) return;
+                vertical ? delta.Y : 0, remainder.Y, (_axes & PortableScrollAxes.VerticalItems) != 0,
+                out double remainderY, out double unusedY);
+            if (!IsCurrent || lifetime?.IsCancelled == true) return default;
             SelectUnit(PortablePointerScrollUnit.Points);
             _pointRemainder = new Vector(horizontal ? remainderX : 0, vertical ? remainderY : 0);
             if (horizontal && x != oldX) _info.SetHorizontalOffset(x);
             if (IsCurrent && lifetime?.IsCancelled != true && vertical && y != oldY) _info.SetVerticalOffset(y);
+            return IsCurrent && lifetime?.IsCancelled != true ?
+                new Vector(horizontal ? unusedX : 0, vertical ? unusedY : 0) : default;
         }
 
         private static double PointOffset(double offset, double extent, double viewport, double delta,
-            double remainder, bool logical, out double nextRemainder)
+            double remainder, bool logical, out double nextRemainder, out double unused)
         {
-            if (!ValidMetrics(offset, extent, viewport) || !double.IsFinite(offset + delta + remainder))
+            if (!ValidMetrics(offset, extent, viewport))
+                throw new InvalidOperationException("Native scrolling requires finite nonnegative IScrollInfo metrics.");
+            // An ordinary queued command or layout may have moved this provider
+            // to an edge since the fraction was retained. Do not let that old
+            // outward fraction cancel new inward motion.
+            double previousUnused = AtBoundary(offset, extent, viewport, remainder) ? remainder : 0;
+            remainder -= previousUnused;
+            double movement = delta + remainder;
+            double requested = offset + delta + remainder;
+            if (!double.IsFinite(movement) || !double.IsFinite(requested))
                 throw new InvalidOperationException("Native scrolling requires finite nonnegative IScrollInfo metrics.");
             double maximum = Math.Max(0, extent - viewport);
-            double desired = Math.Clamp(offset + delta + remainder, 0, maximum);
+            double desired = Math.Clamp(requested, 0, maximum);
             double result = logical ? Math.Clamp(Math.Round(desired), 0, maximum) : desired;
             nextRemainder = desired == 0 || desired == maximum ? 0 : desired - result;
+            // Layout can temporarily leave an offset beyond a shrinking extent.
+            // Its correction is not additional input available to an ancestor.
+            unused = previousUnused + Math.Clamp(requested - desired, Math.Min(0, movement), Math.Max(0, movement));
             return result;
         }
 
@@ -293,14 +309,58 @@ namespace System.Windows.Controls
             double.IsFinite(offset) && double.IsFinite(extent) && double.IsFinite(viewport) &&
             offset >= 0 && extent >= 0 && viewport >= 0;
 
-        internal void BeginLines(Vector delta, out int horizontal, out int vertical)
+        internal bool TryBeginLines(Vector delta, out int horizontal, out int vertical, out Vector unused,
+            PortableScrollLifetime lifetime = null)
         {
+            horizontal = vertical = 0;
+            unused = default;
+            double offsetX = _info.HorizontalOffset, width = _info.ExtentWidth, viewportWidth = _info.ViewportWidth;
+            double offsetY = _info.VerticalOffset, height = _info.ExtentHeight, viewportHeight = _info.ViewportHeight;
+            if (!ValidMetrics(offsetX, width, viewportWidth) || !ValidMetrics(offsetY, height, viewportHeight))
+                throw new InvalidOperationException("Native scrolling requires finite nonnegative IScrollInfo metrics.");
+            if (!IsCurrent || lifetime?.IsCancelled == true) return false;
             SelectUnit(PortablePointerScrollUnit.Lines);
+            if (AtBoundary(offsetX, width, viewportWidth, _lineRemainder.X))
+            {
+                unused.X = _lineRemainder.X; _lineRemainder.X = 0;
+            }
+            if (AtBoundary(offsetY, height, viewportHeight, _lineRemainder.Y))
+            {
+                unused.Y = _lineRemainder.Y; _lineRemainder.Y = 0;
+            }
             double x = _horizontalEnabled ? delta.X + _lineRemainder.X : 0;
             double y = _verticalEnabled ? delta.Y + _lineRemainder.Y : 0;
             horizontal = (int)Math.Truncate(x); vertical = (int)Math.Truncate(y);
             _lineRemainder = new Vector(x - horizontal, y - vertical);
+            return true;
         }
+
+        internal Vector TakeLineOverflow(ref int horizontal, ref int vertical, PortableScrollLifetime lifetime = null)
+        {
+            // Read both axes before changing fractions or invoking a provider.
+            // Line commands do not declare a point distance; only a published
+            // boundary can reject the remaining commands, never an inferred ratio.
+            double x = _info.HorizontalOffset, width = _info.ExtentWidth, viewportWidth = _info.ViewportWidth;
+            double y = _info.VerticalOffset, height = _info.ExtentHeight, viewportHeight = _info.ViewportHeight;
+            if (!ValidMetrics(x, width, viewportWidth) || !ValidMetrics(y, height, viewportHeight))
+                throw new InvalidOperationException("Native scrolling requires finite nonnegative IScrollInfo metrics.");
+            if (!IsCurrent || lifetime?.IsCancelled == true) return default;
+            Vector unused = default;
+            double pendingX = horizontal + _lineRemainder.X;
+            double pendingY = vertical + _lineRemainder.Y;
+            if (AtBoundary(x, width, viewportWidth, pendingX))
+            {
+                unused.X = pendingX; horizontal = 0; _lineRemainder.X = 0;
+            }
+            if (AtBoundary(y, height, viewportHeight, pendingY))
+            {
+                unused.Y = pendingY; vertical = 0; _lineRemainder.Y = 0;
+            }
+            return unused;
+        }
+
+        private static bool AtBoundary(double offset, double extent, double viewport, double direction) =>
+            direction < 0 ? offset <= 0 : direction > 0 && offset >= Math.Max(0, extent - viewport);
 
         internal void ApplyLine(bool horizontal, bool positive, PortableScrollLifetime lifetime = null)
         {
@@ -324,8 +384,15 @@ namespace System.Windows.Controls
         private readonly PortablePointerScrollUnit _unit;
         private readonly Vector _delta;
         private readonly PortableScrollLifetime _lifetime;
-        private bool _started;
+        private bool _started, _completed;
         private int _horizontal, _vertical;
+        private Vector _unconsumed;
+
+        // Point values use the admitted provider's offset units, not native
+        // source coordinates. Line values remain provider commands. A router
+        // must retain the original frame conversion before forwarding either.
+        internal Vector Unconsumed => _completed && _session.IsCurrent && _lifetime?.IsCancelled != true ?
+            _unconsumed : default;
 
         internal PortableScrollCommand(PortableScrollSession session, PortablePointerScrollUnit unit, Vector delta,
             PortableScrollLifetime lifetime = null)
@@ -335,24 +402,35 @@ namespace System.Windows.Controls
         // actual offsets publish only after measure. Later commands cannot pass it.
         internal bool Advance()
         {
-            if (!_session.IsCurrent || _lifetime?.IsCancelled == true) return true;
-            if (_unit == PortablePointerScrollUnit.Points) { _session.ApplyPoints(_delta, _lifetime); return true; }
+            if (_completed) return true;
+            if (!_session.IsCurrent || _lifetime?.IsCancelled == true) return _completed = true;
+            if (_unit == PortablePointerScrollUnit.Points)
+            {
+                _unconsumed = _session.ApplyPoints(_delta, _lifetime);
+                return _completed = true;
+            }
             if (!_started)
             {
+                if (!_session.TryBeginLines(_delta, out _horizontal, out _vertical, out _unconsumed, _lifetime))
+                    return _completed = true;
                 _started = true;
-                _session.BeginLines(_delta, out _horizontal, out _vertical);
             }
+            _unconsumed += _session.TakeLineOverflow(ref _horizontal, ref _vertical, _lifetime);
             if (_horizontal != 0)
             {
                 int direction = Math.Sign(_horizontal); _horizontal -= direction;
                 _session.ApplyLine(true, direction > 0, _lifetime);
+                return false;
             }
             else if (_vertical != 0)
             {
                 int direction = Math.Sign(_vertical); _vertical -= direction;
                 _session.ApplyLine(false, direction > 0, _lifetime);
+                return false;
             }
-            return _horizontal == 0 && _vertical == 0;
+            // Even the last issued line needs a layout pass: fractional input
+            // left at its newly published boundary belongs to the overflow.
+            return _completed = true;
         }
     }
 }

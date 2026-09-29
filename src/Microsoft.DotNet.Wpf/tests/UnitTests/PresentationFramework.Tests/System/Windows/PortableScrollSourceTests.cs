@@ -222,6 +222,8 @@ public sealed class PortableScrollSourceTests
             fixture.Root.AddHandler(PortableScroll.ScrollEvent, new RoutedEventHandler((_, value) =>
             {
                 var args = Assert.IsType<PortableScrollEventArgs>(value);
+                Assert.Same(routed == 0 ? fixture.Viewer : peer.Viewer, args.OriginalSource);
+                Assert.Same(args.OriginalSource, args.Source);
                 Assert.Equal(3125, args.Timestamp);
                 Assert.Equal(ModifierKeys.Control, args.Modifiers);
                 Assert.Equal(ModifierKeys.Control, Keyboard.Modifiers);
@@ -421,10 +423,19 @@ public sealed class PortableScrollSourceTests
             using var fixture = new ScrollFixture(PortableScrollAxes.Pixels);
             fixture.Host.RootVisual = null;
             var window = new Window { Content = fixture.Root, Width = 400, Height = 200 };
+            // This source-only fixture does not load application theme templates.
+            // Connect the content visually before checking source-owned sessions.
+            var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+            presenter.SetValue(ContentPresenter.ContentProperty, new TemplateBindingExtension(ContentControl.ContentProperty));
+            window.Template = new ControlTemplate(typeof(Window)) { VisualTree = presenter };
             PortableWindowActivationService.Register(activate: value => value, getHandle: _ => fixture.Host.Handle);
             try
             {
                 window.Show(); fixture.Host.RootVisual = window; fixture.Host.SetClientSize(400, 200);
+                window.UpdateLayout();
+                Assert.Same(fixture.Host, PresentationSource.FromVisual(fixture.Viewer));
+                Assert.True(fixture.Viewer.IsVisible);
+                Assert.Same(fixture.Info, fixture.Viewer.ScrollInfo);
                 Assert.True(PortableScrollSession.TryCreate(fixture.Viewer, out var session));
                 using (PortableModalInputScope.Enter(window))
                 {

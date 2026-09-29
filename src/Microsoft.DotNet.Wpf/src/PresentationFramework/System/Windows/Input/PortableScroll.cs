@@ -21,6 +21,7 @@ namespace System.Windows.Input
 
         internal PortableScrollEventArgs(PortableScroll.RouteState state, IInputElement target,
             PortablePointerInput input, PortableScrollLifetime lifetime, PortableScrollLifetime sequence, bool cancellation)
+            : base(PortableScroll.PreviewScrollEvent, target)
         {
             _state = state; _revision = state.Revision; _generation = state.Source.PointerInputGeneration;
             _target = target; NativeInput = input; Lifetime = lifetime; IsCancellation = cancellation;
@@ -28,7 +29,6 @@ namespace System.Windows.Input
             RemainingScroll = new Vector(input.ScrollX, input.ScrollY);
             Timestamp = PortableWindowActivationService.NativePointerTimestamp(input.Timestamp);
             Modifiers = Keyboard.Modifiers;
-            Source = target;
         }
 
         public PortablePointerInput NativeInput { get; }
@@ -142,8 +142,7 @@ namespace System.Windows.Input
             try
             {
                 if (target == null) return true;
-                var args = new PortableScrollEventArgs(state, target, input, lifetime, sequence, cancellation)
-                { RoutedEvent = PreviewScrollEvent };
+                var args = new PortableScrollEventArgs(state, target, input, lifetime, sequence, cancellation);
                 target.RaiseEvent(args);
                 if (args.IsCurrent)
                 {

@@ -91,6 +91,7 @@ public sealed class WpfManagedProjectGraphTests
             "run: bash ./eng/progpu-wpf-input-modifiers-source.sh",
             "run: bash ./eng/progpu-wpf-pointer-ownership-source.sh",
             "run: bash ./eng/progpu-wpf-native-pointer-source.sh",
+            "run: bash ./eng/progpu-wpf-wheel-input-source.sh",
             "run: bash ./eng/progpu-wpf-layout-clip-source.sh",
             "run: bash ./eng/progpu-wpf-visual-host-source.sh",
             "run: bash ./eng/progpu-wpf-popup-dismissal-source.sh",
@@ -112,6 +113,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("--filter-method '*NativePointerReport*'", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--minimum-expected-tests 14 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--minimum-expected-tests 4 --fail-skips on --timeout 60s", nativePointerRunner, StringComparison.Ordinal);
+        string wheelRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-wheel-input-source.sh"));
+        Assert.Contains("--filter-method '*WheelEventState*'", wheelRunner, StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 3 --fail-skips on --timeout 60s", wheelRunner, StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 2 --fail-skips on --timeout 60s", wheelRunner, StringComparison.Ordinal);
+        Assert.DoesNotContain("dotnet build", wheelRunner, StringComparison.Ordinal);
     }
 
     [Fact]

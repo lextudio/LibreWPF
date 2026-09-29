@@ -276,6 +276,24 @@ public sealed class PortableInputOwnershipTests
     }
 
     [PortableInputFact]
+    public void WheelEventStateRetainsEachConstructedDeltaAndTimestamp()
+    {
+        RunInUiApartment(() =>
+        {
+            int[] values = [int.MinValue, -240, -1, 0, 1, 120, int.MaxValue];
+            var events = new MouseWheelEventArgs[values.Length];
+            for (int i = 0; i < values.Length; i++)
+                events[i] = new MouseWheelEventArgs(Mouse.PrimaryDevice, i + 10, values[i]);
+            for (int i = 0; i < values.Length; i++)
+            {
+                Assert.Equal(values[i], events[i].Delta);
+                Assert.Equal(i + 10, events[i].Timestamp);
+                Assert.Same(Mouse.PrimaryDevice, events[i].MouseDevice);
+            }
+        });
+    }
+
+    [PortableInputFact]
     public void NativePointerReportExtensionKeepsLegacyStorageAndRejectsInvalidFrames()
     {
         RunInUiApartment(() =>
@@ -345,6 +363,22 @@ public sealed class PortableInputOwnershipTests
             destination.RootVisual = new UIElement();
             Assert.False(current.IsCurrent);
             Assert.Same(packet, current.NativePointer);
+        });
+    }
+
+    [PortableInputFact]
+    public void WheelEventStateDoesNotBorrowAnotherDispatchersDelta()
+    {
+        RunInUiApartment(() =>
+        {
+            var first = new MouseWheelEventArgs(Mouse.PrimaryDevice, 10, 120);
+            RunInUiApartment(() =>
+            {
+                var second = new MouseWheelEventArgs(Mouse.PrimaryDevice, 20, -240);
+                Assert.Equal(-240, second.Delta);
+                Assert.Equal(120, first.Delta);
+            });
+            Assert.Equal(120, first.Delta);
         });
     }
 

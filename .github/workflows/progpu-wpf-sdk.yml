@@ -129,6 +129,9 @@ jobs:
       - name: Validate native pointer source reports
         run: bash ./eng/progpu-wpf-native-pointer-source.sh
 
+      - name: Verify source wheel event state
+        run: bash ./eng/progpu-wpf-wheel-input-source.sh
+
       - name: Validate actual source layout clip producers
         run: bash ./eng/progpu-wpf-layout-clip-source.sh
 

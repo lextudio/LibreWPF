@@ -25,9 +25,15 @@ if [[ ! -f "${base_assembly}" || ! -f "${framework_assembly}" ]]; then
   exit 1
 fi
 export LIBREWPF_TEST_MEDIA_BACKEND=Portable
+base_status=0
 "${dotnet_command}" "${base_assembly}" \
   --filter-class System.Windows.Threading.Tests.PortableDispatcherFlushTests \
-  --minimum-expected-tests 18 --fail-skips on --timeout 60s --no-progress
+  --minimum-expected-tests 18 --fail-skips on --timeout 60s --no-progress || base_status=$?
+framework_status=0
 "${dotnet_command}" "${framework_assembly}" \
   --filter-class System.Windows.PortableDispatcherFlushTests \
-  --minimum-expected-tests 11 --fail-skips on --timeout 60s --no-progress
+  --minimum-expected-tests 11 --fail-skips on --timeout 60s --no-progress || framework_status=$?
+# Run both independent contracts once, but retain the first real failing exit.
+# Neither a later pass nor a partial producer qualifies this Build.
+if [[ "${base_status}" -ne 0 ]]; then exit "${base_status}"; fi
+exit "${framework_status}"

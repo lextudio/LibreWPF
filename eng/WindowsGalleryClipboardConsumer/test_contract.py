@@ -66,6 +66,11 @@ class AdmissionTests(unittest.TestCase):
 
 
 class ProducerTests(unittest.TestCase):
+    def test_private_build_disables_unrelated_first_run_side_effects(self):
+        self.assertEqual({"DOTNET_GENERATE_ASPNET_CERTIFICATE": "false",
+                          "DOTNET_ADD_GLOBAL_TOOLS_TO_PATH": "false",
+                          "DOTNET_CLI_TELEMETRY_OPTOUT": "1"}, prepare.BUILD_ENVIRONMENT)
+
     def test_explicit_rid_output_layout_matches_asset_verifier(self):
         for architecture in ("arm64", "x64"):
             command = prepare.build_command(None, Path("case.csproj"), architecture, Path("NuGet.config"), Path("packages"))

@@ -28,7 +28,9 @@ upload. Docs remains a separate documentation check, never a package producer.
 It binds the artifact's run/head/name
 and SHA256 to the archive, checks source-package commit/version identities, and
 uses a fresh private feed, SDK resolver cache, NuGet cache, CLI home and temporary
-directory. It retains the original package bytes. Missing receipts, packages,
+directory. Every build explicitly disables development-certificate generation,
+global-tools PATH addition and CLI telemetry; these exact environment overrides
+are retained in the receipt. It retains the original package bytes. Missing receipts, packages,
 source files or a missing original job fail explicitly; there is no source
 DLL substitution or automatic producer selection.
 
@@ -102,20 +104,28 @@ of every intervening obstruction.
 
 ## Authored checks and current status
 
-`test_contract.py` contains sixteen authored offline tests: the reused
+`test_contract.py` contains seventeen authored offline tests: the reused
 native-geometry admission controls and new complete-producer rejection controls.
 These are not app or clipboard validation and have not been executed in the
 current compile-only phase. All three initial Python files were syntax-compiled
 at commit14092e1a8 without importing/executing the fixture. The subsequent explicit
 RID-layout command/helper and its source-contract test are authored but not rerun.
-The C# installed consumer has not yet been
-compiled or executed; no new desktop evidence is claimed. Original package CI
+The C# installed consumer compiled successfully for win-arm64 against the exact
+PR217 package bundle (0 errors, 6 unsuppressed warnings from three original-source
+nullable sites emitted in both markup and final compilation). The first attempt
+used the repository-local SDK11.0.100-preview.5 and its isolated CLI home emitted
+the first-run development-certificate banner. The original log is retained; this
+does not establish actual keychain installation. No trust/cleanup action was taken.
+The helper now sets the explicit first-run overrides above for subsequent builds.
+The consumer has not been executed; no new desktop evidence is claimed. Original package CI
 coverage remains separate from this exact Gallery acceptance case.
 
 The currently identified qualified input is PR217 head
 `45b1cffaa47c3c5e4eb7fe05c938c977886128aa`, whole Build36604077464 and
 Docs36604077406. Its package artifact11053355676 is118464911 bytes with SHA256
 `24c794bb80c975aad4b58a7c3072b3fb74e3c22d1e4359fc6648a691050d648d`.
-This metadata was checked read-only; no archive was downloaded or staged for
-this fixture. Revalidate it when staging. A later producer requires explicit
+The original archive was subsequently downloaded and its full byte length/digest
+verified before staging the first compile-only attempt. Evidence is retained in
+`/Volumes/1TB-macOS/librewpf-gallery-installed.a83ZsqZ0/arm64-attempt1`.
+Revalidate it when staging. A later producer requires explicit
 matching arguments and complete receipts, never an implicit latest-success lookup.

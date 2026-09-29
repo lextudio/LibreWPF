@@ -14,6 +14,11 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent
 OUTPUT_RELATIVE = Path("bin/Release/net10.0-windows")
+BUILD_ENVIRONMENT = {
+    "DOTNET_GENERATE_ASPNET_CERTIFICATE": "false",
+    "DOTNET_ADD_GLOBAL_TOOLS_TO_PATH": "false",
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+}
 BUILD_JOBS = {
     "Linux headless multi-window render device smoke",
     "Retained layout-clip invalidation contracts",
@@ -259,12 +264,15 @@ def main():
         config.write(output / "NuGet.config", encoding="utf-8", xml_declaration=True)
         # SDK resolver, restore, compiler outputs and temporary files all stay private.
         environment = os.environ.copy()
+        environment.update(BUILD_ENVIRONMENT)
         for name, relative in (("NUGET_PACKAGES", "packages"), ("DOTNET_CLI_HOME", "cli-home"), ("TEMP", "temp"), ("TMP", "temp"), ("TMPDIR", "temp")):
             directory = output / relative
             directory.mkdir(exist_ok=True)
             environment[name] = str(directory)
         command = build_command(args.dotnet, project, args.architecture, output / "NuGet.config", cache)
         receipt["buildCommand"] = command
+        receipt["buildEnvironment"] = {name: environment[name] for name in
+            (*BUILD_ENVIRONMENT, "NUGET_PACKAGES", "DOTNET_CLI_HOME", "TEMP", "TMP", "TMPDIR")}
         receipt["inputs"] = {name: sha(output / name) for name in ("GalleryClipboardApp.cs", "GalleryClipboardApp.csproj", "source-manifest.json", "run-windows.py")}
         if args.build_only:
             with (output / "build.log").open("xb") as log:

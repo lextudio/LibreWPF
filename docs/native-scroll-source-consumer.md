@@ -26,8 +26,8 @@ Point vectors use the actual source-to-viewer visual transform, including scale
 and mirroring, without applying a desktop translation to the vector. Physical
 offsets retain fractions. Logical offsets share WPF's existing measured panning
 ratio and rounding, including the partially visible last item; they do not use
-a guessed line height. Each session carries fractional residuals, resets them
-when units change, and discards boundary overscroll debt. Both axes' current
+a guessed line height. Each session carries fractional residuals with their
+original owners. Both axes' current
 metrics are checked before queueing and before any provider offset write.
 
 Line deltas remain unscaled, retain fractional remainders and invoke the
@@ -51,12 +51,33 @@ the new motion, for both logical points and lines.
 Completed commands cannot execute twice, and cancellation suppresses their unused
 result. Invalid line metrics fail before changing existing fractional state.
 
-This internal consumption result is not a new routed event and is not yet sent to
-ancestors. Point values require the retained admission-frame conversion before
-they can become original-source motion; line values retain native line units.
-Original-route ownership, bounded ancestor queue admission and the source edge
-policy must connect before deferred chaining. Existing legacy wheel handling and
-native routed-event handling are unchanged.
+The direct consumer's `Unconsumed` result retains its existing provider-unit
+contract. Routed commands additionally carry an immutable admission frame and a
+typed continuation into the original bubble route. Point overflow uses that
+packet's frozen inverse visual mapping, inverse source-frame matrix and logical
+point scale to return to original-source coordinates and sign. The route captures
+its originating root-to-desktop frame before Preview, so later source geometry
+cannot replace it during initial or deferred admission. Lines remain native line
+quantities, without visual or logical-point scaling.
+
+Fractional storage retains ordered provenance segments per axis rather than one
+latest conversion. Opposing movement cancels old fractions in order; item-rounding
+debt keeps the packet that caused it. At a boundary, older outward fractions are
+returned under their own frames before new inward motion is applied. Unit changes
+forward owned fractions through their original point/line continuations, never
+relabel them as the new unit. Cancelled or abandoned owners cannot contribute
+fractions to newer motion. Overflow coalesces both axes per original packet and
+delivers in acceptance order, preserving the first continuation exception and
+preventing replay after completion.
+
+Continuation is not a new routed event: the source retains actual default-handler
+occurrences and application handling decisions, buffers until successful original
+route sealing, and never replays handlers or walks a replacement ancestor tree.
+Same-args nested raises cannot own that capture. Each eligible ancestor tail-admits
+only residual motion known at that time. Earlier accepted ancestor commands remain
+ahead; there is no global ordering or advance reservation across viewer queues.
+Full admission fails explicitly rather than skipping that ancestor. Legacy wheel
+handling and original routed-handler invocation rules remain unchanged.
 
 The existing bounded queue retains 31 pending commands, plus at most one active
 native command. Full native admission fails before changing fractional state.
@@ -67,6 +88,14 @@ all-or-nothing axis admission. Routed consumption queues enabled axes and return
 the others in the original source frame, publishing the new remainder only after
 queue acceptance. Rotated point remainders use the actual inverse visual mapping;
 line counts are not visually scaled.
+
+Each session separately bounds provenance to 64 live packet reservations. A
+reservation covers its queued command, retained fractional pieces and pending
+overflow until all owners release it; it is not an ancestor queue slot. Capacity
+is checked before accepting another owned packet, and cancelled fractional owners
+can release it. This bounds retained tiny fractions without silently dropping or
+combining their frames. The independent 31-pending/one-active command limit and
+4096-lines-per-axis limit remain unchanged.
 
 Sessions retain the exact source generation, viewer and provider. Source/root
 retirement, provider replacement, unit/axis enablement changes, modal blocking and explicit
@@ -83,12 +112,15 @@ publication with layout reentry. Compilation is not test execution evidence.
 Eight additional cases cover deferred physical/logical overflow, final-line layout,
 following command order, fractional reversal, changed extents, provider-owned
 partial line movement, invalid-metric atomicity, cancellation and completed-command
-idempotence. The hosted source gate now requires all 41 consumer/routing cases with
-the original no-skips policy and 60-second deadline.
+idempotence. The original suite contains 41 facts. Ten new provenance cases and
+14 original-route continuation cases bring the source-counted total to 65; the
+hosted gate requires all 65 with the original no-skips policy and 60-second deadline.
+The new cases have not been executed locally; authoring and compilation are not
+native application or package qualification.
 
 The routed path adds explicit AppKit phase validation, normal/momentum ownership
 and lossless routed events with independent nested axes. Still required before
-factory admission: deferred boundary chaining, native popup cross-source qualification,
+factory admission: native popup cross-source qualification,
 legacy-only application handler compatibility, source
 registrar/factory integration, Forms integration
 and actual native popup/application qualification on every supported platform.

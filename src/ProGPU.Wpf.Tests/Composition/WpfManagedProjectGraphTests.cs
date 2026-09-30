@@ -134,7 +134,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("--minimum-expected-tests 4 --fail-skips on --timeout 60s", nativeInvocations[2], StringComparison.Ordinal);
         Assert.Contains("--filter-class System.Windows.PortableScrollSourceTests", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--filter-method '*NativeScroll*'", nativePointerRunner, StringComparison.Ordinal);
-        Assert.Contains("--minimum-expected-tests 41 --fail-skips on --timeout 60s", nativeInvocations[3], StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 65 --fail-skips on --timeout 60s", nativeInvocations[3], StringComparison.Ordinal);
         string dispatcherRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-dispatcher-flush-source.sh"));
         string[] dispatcherInvocations = dispatcherRunner.Split("\n\"${dotnet_command}\" ", StringSplitOptions.None);
         Assert.Equal(4, dispatcherInvocations.Length); // One build and two independent source test processes.

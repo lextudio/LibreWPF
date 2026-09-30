@@ -6,6 +6,18 @@ using MS.Internal;
 
 namespace System.Windows
 {
+    // Source-owned deferred input may retain the actual route without invoking
+    // handlers again. Ordinary routed arguments do not implement this contract.
+    internal interface IPortableRoutedEventObserver
+    {
+        void EnterRaise(EventRoute route);
+        void LeaveRaise(EventRoute route);
+        void EnterRoute(EventRoute route);
+        void LeaveRoute(EventRoute route);
+        void ObserveHandler(object target, Delegate handler);
+        void ObserveHandledAssignment(bool handled);
+    }
+
     /// <summary>
     ///     The container for all state associated
     ///     with a RoutedEvent
@@ -167,6 +179,7 @@ namespace System.Windows
                 // 20284: Input promotion breaks down when lower level input is intercepted
 
                 _flags[ HandledIndex ] = value;
+                (this as IPortableRoutedEventObserver)?.ObserveHandledAssignment(value);
 }
         }
 
@@ -384,4 +397,3 @@ namespace System.Windows
     /// <ExternalAPI/>
     public delegate void RoutedEventHandler(object sender, RoutedEventArgs e);
 }
-

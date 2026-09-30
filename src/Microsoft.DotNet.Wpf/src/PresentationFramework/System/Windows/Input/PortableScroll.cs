@@ -9,12 +9,21 @@ using ProGPU.Wpf.Interop;
 namespace System.Windows.Input
 {
     /// <summary>Lossless source scrolling, separate from integer wheel-notch events.</summary>
-    public sealed class PortableScrollEventArgs : RoutedEventArgs
+    public sealed class PortableScrollEventArgs : RoutedEventArgs, IPortableRoutedEventObserver
     {
         private readonly PortableScroll.RouteState _state;
         private readonly ulong _revision;
         private readonly ulong _generation;
         private readonly IInputElement _target;
+        private readonly PortableScrollRoute _route;
+        private bool _defaultHandling, _applicationHandled;
+        private bool _bubbleArmed, _bubbleCompleted;
+        private int _routeDepth, _bubbleDepth;
+        private EventRoute _bubbleRoute;
+        internal IPortableScrollContinuation Continuation { get; private set; }
+        internal Matrix OriginToDesktop => _route.OriginToDesktop;
+        internal bool IsOriginalBubble => _bubbleRoute != null && !_bubbleCompleted && _bubbleDepth > 0 &&
+            _routeDepth == _bubbleDepth && RoutedEvent == PortableScroll.ScrollEvent;
         internal PortableScrollLifetime Lifetime { get; }
         internal PortableScrollLifetime Sequence { get; }
         internal bool IsCancellation { get; }
@@ -29,6 +38,7 @@ namespace System.Windows.Input
             RemainingScroll = new Vector(input.ScrollX, input.ScrollY);
             Timestamp = PortableWindowActivationService.NativePointerTimestamp(input.Timestamp);
             Modifiers = Keyboard.Modifiers;
+            _route = new PortableScrollRoute(state.Source, input, lifetime, sequence);
         }
 
         public PortablePointerInput NativeInput { get; }
@@ -39,8 +49,60 @@ namespace System.Windows.Input
         {
             HasConsumedMotion |= remaining != RemainingScroll;
             RemainingScroll = remaining;
-            if (remaining == default) Handled = true;
+            if (remaining == default)
+            {
+                _defaultHandling = true;
+                try { Handled = true; }
+                finally { _defaultHandling = false; }
+            }
         }
+        void IPortableRoutedEventObserver.ObserveHandledAssignment(bool handled)
+        {
+            if (!_defaultHandling) _applicationHandled = handled;
+        }
+        void IPortableRoutedEventObserver.EnterRaise(EventRoute route)
+        {
+            if (_bubbleArmed && !_bubbleCompleted && _bubbleRoute == null &&
+                RoutedEvent == PortableScroll.ScrollEvent)
+            {
+                // Claim the real native raise before Source/BuildRoute callbacks
+                // can re-raise the same arguments through another EventRoute.
+                _bubbleRoute = route;
+                _bubbleArmed = false;
+            }
+        }
+        void IPortableRoutedEventObserver.LeaveRaise(EventRoute route)
+        {
+            if (ReferenceEquals(route, _bubbleRoute))
+            {
+                _bubbleRoute = null;
+                _bubbleCompleted = true;
+            }
+        }
+        void IPortableRoutedEventObserver.EnterRoute(EventRoute route)
+        {
+            ++_routeDepth;
+            if (ReferenceEquals(route, _bubbleRoute) && !_bubbleCompleted && _bubbleDepth == 0)
+                _bubbleDepth = _routeDepth;
+        }
+        void IPortableRoutedEventObserver.LeaveRoute(EventRoute route)
+        {
+            if (ReferenceEquals(route, _bubbleRoute) && _routeDepth == _bubbleDepth)
+            {
+                _bubbleDepth = 0;
+                _bubbleCompleted = true;
+            }
+            --_routeDepth;
+        }
+        void IPortableRoutedEventObserver.ObserveHandler(object target, Delegate handler)
+        {
+            if (IsOriginalBubble && !IsCancellation &&
+                PortableScroll.IsDefaultHandler(handler) && target is ScrollViewer viewer)
+                Continuation = _route.Capture(viewer, !_applicationHandled);
+        }
+        internal void ArmBubbleContinuation() => _bubbleArmed = true;
+        internal void SealContinuation() => _route.Seal();
+        internal void AbandonContinuation() => _route.Abandon();
         public int Timestamp { get; }
         public ModifierKeys Modifiers { get; }
         internal PortablePresentationSource PresentationSource => _state.Source;
@@ -59,9 +121,12 @@ namespace System.Windows.Input
         public static readonly RoutedEvent ScrollEvent = EventManager.RegisterRoutedEvent(
             "Scroll", RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(PortableScroll));
         private static readonly ConditionalWeakTable<PortablePresentationSource, RouteState> s_sources = new();
+        private static readonly RoutedEventHandler s_scrollViewerHandler = OnScrollViewer;
 
         static PortableScroll() => EventManager.RegisterClassHandler(typeof(ScrollViewer), ScrollEvent,
-            new RoutedEventHandler(OnScrollViewer));
+            s_scrollViewerHandler);
+
+        internal static bool IsDefaultHandler(Delegate handler) => ReferenceEquals(handler, s_scrollViewerHandler);
 
         public static void AddPreviewScrollHandler(UIElement element, RoutedEventHandler handler) => element.AddHandler(PreviewScrollEvent, handler);
         public static void RemovePreviewScrollHandler(UIElement element, RoutedEventHandler handler) => element.RemoveHandler(PreviewScrollEvent, handler);
@@ -71,12 +136,12 @@ namespace System.Windows.Input
         private static void OnScrollViewer(object sender, RoutedEventArgs value)
         {
             var input = (PortableScrollEventArgs)value;
-            if (!input.IsCurrent) return;
+            if (!input.IsOriginalBubble || !input.IsCurrent || input.Continuation == null && !input.IsCancellation) return;
             if (input.IsCancellation) { input.Handled = true; return; }
             var viewer = (ScrollViewer)sender;
             if (viewer.TryGetPortableScrollSession(input.Sequence, out var session, input) && input.IsCurrent)
             {
-                if (session.TryQueueRemaining(input, out Vector remaining, out bool queueFull)) input.AcceptRemaining(remaining);
+                if (session.TryQueueRemaining(input, input.Continuation, out Vector remaining, out bool queueFull)) input.AcceptRemaining(remaining);
                 else if (queueFull) throw new InvalidOperationException("The native scroll source queue is full.");
             }
         }
@@ -141,12 +206,18 @@ namespace System.Windows.Input
             {
                 if (target == null) return true;
                 var args = new PortableScrollEventArgs(state, target, input, lifetime, sequence, cancellation);
-                target.RaiseEvent(args);
-                if (args.IsCurrent)
+                try
                 {
-                    args.RoutedEvent = ScrollEvent;
                     target.RaiseEvent(args);
+                    if (args.IsCurrent)
+                    {
+                        args.ArmBubbleContinuation();
+                        args.RoutedEvent = ScrollEvent;
+                        target.RaiseEvent(args);
+                    }
+                    args.SealContinuation();
                 }
+                catch { args.AbandonContinuation(); throw; }
                 // A partial default consumption must not replay the original
                 // complete packet through an independent host fallback.
                 // A reentrant callback can retire this packet before queue

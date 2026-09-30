@@ -2354,44 +2354,49 @@ namespace System.Windows
         internal static void RaiseEventImpl(DependencyObject sender, RoutedEventArgs args)
         {
             EventRoute route = EventRouteFactory.FetchObject(args.RoutedEvent);
-
-            if( TraceRoutedEvent.IsEnabled )
-            {
-                TraceRoutedEvent.Trace(
-                    TraceEventType.Start,
-                    TraceRoutedEvent.RaiseEvent,
-                    args.RoutedEvent,
-                    sender,
-                    args,
-                    args.Handled );
-            }
-
+            var observer = args as IPortableRoutedEventObserver;
+            observer?.EnterRaise(route);
             try
-            {
-                // Set Source
-                args.Source = sender;
-
-                UIElement.BuildRouteHelper(sender, route, args);
-
-                route.InvokeHandlers(sender, args);
-
-                // Reset Source to OriginalSource
-                args.Source = args.OriginalSource;
-            }
-
-            finally
             {
                 if( TraceRoutedEvent.IsEnabled )
                 {
                     TraceRoutedEvent.Trace(
-                        TraceEventType.Stop,
+                        TraceEventType.Start,
                         TraceRoutedEvent.RaiseEvent,
                         args.RoutedEvent,
                         sender,
                         args,
                         args.Handled );
                 }
+
+                try
+                {
+                    // Set Source
+                    args.Source = sender;
+
+                    UIElement.BuildRouteHelper(sender, route, args);
+
+                    route.InvokeHandlers(sender, args);
+
+                    // Reset Source to OriginalSource
+                    args.Source = args.OriginalSource;
+                }
+
+                finally
+                {
+                    if( TraceRoutedEvent.IsEnabled )
+                    {
+                        TraceRoutedEvent.Trace(
+                            TraceEventType.Stop,
+                            TraceRoutedEvent.RaiseEvent,
+                            args.RoutedEvent,
+                            sender,
+                            args,
+                            args.Handled );
+                    }
+                }
             }
+            finally { observer?.LeaveRaise(route); }
 
             EventRouteFactory.RecycleObject(route);
         }

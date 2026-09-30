@@ -1,5 +1,18 @@
 # Agent Guidance
 
+Deferred native scroll overflow retains the actual original EventRoute's default
+handler occurrences, not a recreated ancestor walk or event replay. Observe every
+application Handled assignment, including true-to-true, separately from default
+claims. Same-args nested raises cannot own the original continuation. Buffer until
+successful route sealing; abandon only the failing route's pending ownership.
+Keep each packet's frozen admission inverse, ingress source frame, logical scale
+and fractional provenance. Later frames cannot reinterpret older fractions or
+rounding debt. Preserve the 64-live-packet reservation bound and explicit failure
+before acceptance. Ancestor continuation joins each original candidate's queue
+tail when overflow is known; never reserve ancestor slots or claim global order.
+Factory admission, legacy wheel policy and native application qualification remain
+separate. See docs/native-scroll-routing.md and docs/native-scroll-source-consumer.md.
+
 Native scroll dispatch identity guards session and command publication after
 application-owned capability, metric and transform reads. Keep the guard out of
 accepted commands: later input must not cancel already accepted gesture work.

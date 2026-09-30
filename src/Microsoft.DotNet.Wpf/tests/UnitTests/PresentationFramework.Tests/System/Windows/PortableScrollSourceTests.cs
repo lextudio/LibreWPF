@@ -13,7 +13,7 @@ using ProGPU.Wpf.Interop;
 namespace System.Windows;
 
 [Collection("Sequential")]
-public sealed class PortableScrollSourceTests
+public sealed partial class PortableScrollSourceTests
 {
     private sealed class PortableScrollFactAttribute : FactAttribute
     {

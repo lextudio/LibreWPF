@@ -55,7 +55,7 @@ public sealed partial class WpfVisualTreeRendererTests
 
         state.Visibility = PortableVisualVisibility.Visible;
         state.Opacity = 1;
-        owner.Children.Clear();
+        owner.ClearChildren();
         using (var sink = new ProGpuRetainedCompositionCommandSink(frame, owner, null, null))
             Assert.True(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(root, sink, null, null, out _));
         Assert.True(owner.IsVisible);

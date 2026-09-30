@@ -105,3 +105,14 @@ zero errors and the same existing `CS0067` warning. No tests or applications ran
 this remains source-composition evidence, not full-graph or package qualification.
 Log: `/Volumes/1TB-macOS/librewpf-slider-compile.M0mPBFyz/keyboard-dispatch-compilation.log`,
 SHA-256 `31233757d43858edc05914b42b194ed8c2f03a44b0a3bcd7bb52d8cff73315a1`.
+
+Build `36651094363` at `0a56c94b0` reached the final SDK graph guard after the
+external, Showcase, Toolkit and SciChart stages. Its expected source-workflow
+order omitted the existing independent
+dispatcher-flush step. The guard now includes that step exactly once between
+native-pointer and wheel contracts, retains unconditional job ownership and all
+original ordering assertions, and checks the actual paired 20/11 dispatcher
+gates with no skips, unchanged 60-second deadlines and first-failure propagation.
+The directly connected native-scroll expectation is synchronized from 36 to its
+existing 41-case runner minimum. No workflow, runner, product or probe changes
+are part of this expectation-only correction; no local tests/builds were run.

@@ -166,11 +166,18 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawRectangle:
                 case WpfMilCommandId.DrawRectangleAnimate:
-                    sink.DrawRectangle(
-                        ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
-                        ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
-                        ReadRect(payload, 0));
-                    appliedCount++;
+                    if (TryReplayRawTileBrushRectangle(payload, sink, resources, imageSourceAdapter, out var rectangleStatus))
+                    {
+                        CountDrawingReplayStatus(rectangleStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
+                    }
+                    else
+                    {
+                        sink.DrawRectangle(
+                            ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
+                            ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
+                            ReadRect(payload, 0));
+                        appliedCount++;
+                    }
                     if (commandId == WpfMilCommandId.DrawRectangleAnimate)
                     {
                         unsupportedCount += CountUnsupportedAnimationHandles(payload, 40);
@@ -572,11 +579,18 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawRectangle:
                 case WpfMilCommandId.DrawRectangleAnimate:
-                    nativeSink.DrawNativeRectangle(
-                        ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
-                        ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
-                        ReadReplayRect(payload, 0));
-                    appliedCount++;
+                    if (TryReplayRawTileBrushRectangle(payload, sink, resources, imageSourceAdapter, out var rectangleStatus))
+                    {
+                        CountDrawingReplayStatus(rectangleStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
+                    }
+                    else
+                    {
+                        nativeSink.DrawNativeRectangle(
+                            ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
+                            ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
+                            ReadReplayRect(payload, 0));
+                        appliedCount++;
+                    }
                     if (commandId == WpfMilCommandId.DrawRectangleAnimate)
                     {
                         unsupportedCount += CountUnsupportedAnimationHandles(payload, 40);
@@ -1132,6 +1146,61 @@ public sealed class WpfMilRenderDataDecoder
             DrawMediaGeometry(sink, null, pen, mediaGeometry);
         }
 
+        return true;
+    }
+
+    private static bool TryReplayRawTileBrushRectangle(
+        ReadOnlySpan<byte> payload,
+        IWpfCompositionCommandSink sink,
+        IWpfMilResourceResolver resources,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Unsupported;
+        if (!TryResolveRawResource(resources, ReadUInt32(payload, 32), out var brush)
+            || !WpfDrawingReplay.IsTileBrush(brush))
+        {
+            return false;
+        }
+
+        // Retained source RenderData keeps the original TileBrush, whose
+        // generic brush descriptor cannot represent its source drawing/image.
+        // Use the same exact rectangle fill/clip/mapping path as object replay
+        // before generic brush adaptation loses that source identity.
+        var rectangle = ReadRect(payload, 0);
+        if (!WpfDrawingReplay.TryReplayTileBrushFill(brush, rectangle, sink,
+                GetImageSourceAdapter(resources, imageSourceAdapter), out status))
+        {
+            status = WpfDrawingReplayStatus.Unsupported;
+        }
+
+        uint penToken = ReadUInt32(payload, 36);
+        var pen = ResolveOptionalPen(resources, penToken);
+        if (pen != null)
+        {
+            if (sink is IWpfNativePrimitiveCommandSink nativeSink)
+                nativeSink.DrawNativeRectangle(null, pen, ReadReplayRect(payload, 0));
+            else
+                sink.DrawRectangle(null, pen, rectangle);
+
+            // An admitted empty drawing is not a failed fill. Its independent
+            // stroke still applies, unlike an unavailable source descriptor.
+            if (status == WpfDrawingReplayStatus.Skipped)
+                status = WpfDrawingReplayStatus.Applied;
+        }
+
+        if (penToken != 0 && pen == null)
+        {
+            status = status is WpfDrawingReplayStatus.Applied or WpfDrawingReplayStatus.PartiallyApplied
+                ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Unsupported;
+        }
+        else if (status != WpfDrawingReplayStatus.Applied && pen != null)
+        {
+            status = WpfDrawingReplayStatus.PartiallyApplied;
+        }
+
+        // Recognized but unavailable/unsupported source brushes must not fall
+        // through to a null fill that is incorrectly counted as applied.
         return true;
     }
 

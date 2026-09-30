@@ -6,6 +6,31 @@ namespace ProGPU.Wpf.Tests.Composition;
 public sealed class WpfManagedProjectGraphTests
 {
     [Fact]
+    public void RetainedPanelAndBorderBackgroundsKeepRawTileBrushRectangleReplay()
+    {
+        string panel = File.ReadAllText(FindRepoPath("src", "Microsoft.DotNet.Wpf", "src",
+            "PresentationFramework", "System", "Windows", "Controls", "Panel.cs"));
+        string border = File.ReadAllText(FindRepoPath("src", "Microsoft.DotNet.Wpf", "src",
+            "PresentationFramework", "System", "Windows", "Controls", "Border.cs"));
+        string renderData = File.ReadAllText(FindRepoPath("src", "Microsoft.DotNet.Wpf", "src",
+            "PresentationCore", "System", "Windows", "Media", "RenderData.cs"));
+        string decoder = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf", "Composition", "Mil", "WpfMilRenderDataDecoder.cs"));
+        Assert.Contains("dc.DrawRectangle(background", panel, StringComparison.Ordinal);
+        Assert.Contains("dc.DrawRectangle(background", border, StringComparison.Ordinal);
+        Assert.Contains("dependentResources[i] = ExportPortableDependentResource(_dependentResources[i]);", renderData, StringComparison.Ordinal);
+        Assert.Equal(2, decoder.Split("if (TryReplayRawTileBrushRectangle(payload, sink, resources, imageSourceAdapter, out var rectangleStatus))",
+            StringSplitOptions.None).Length - 1);
+        Assert.Contains("!WpfDrawingReplay.IsTileBrush(brush)", decoder, StringComparison.Ordinal);
+        Assert.Contains("WpfDrawingReplay.TryReplayTileBrushFill(brush, rectangle, sink,", decoder, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeRectangle(null, pen, ReadReplayRect(payload, 0))", decoder, StringComparison.Ordinal);
+        Assert.Contains("sink.DrawRectangle(null, pen, rectangle)", decoder, StringComparison.Ordinal);
+        string tests = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf.Tests", "Composition", "Mil", "WpfMilTileBrushRectangleTests.cs"));
+        Assert.Contains("RetainedRectangleReplaysRawTileBrushBeforeGenericAdaptation", tests, StringComparison.Ordinal);
+        Assert.Contains("RetainedRectangleUnavailableTileBrushIsNotReportedAsNullFillSuccess", tests, StringComparison.Ordinal);
+        Assert.Contains("RetainedEmptyTileRectangleDoesNotReadBrushAndPreservesFollowingDraw", tests, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NativeScrollReferenceSurfaceExposesProviderUnitsAndLosslessRoutedEvents()
     {
         string reference = File.ReadAllText(FindRepoPath("src", "Microsoft.DotNet.Wpf", "src",

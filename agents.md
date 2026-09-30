@@ -1,5 +1,16 @@
 # Agent Guidance
 
+## Repository and branch ownership
+
+LibreWPF work branches and pull requests target `progpu-rendering-port`, the
+default branch of `wieslawsoltes/LibreWPF`, not `main` or `dotnet/wpf`.
+Start new work from `origin/progpu-rendering-port` and explicitly select the fork
+and PR base in GitHub commands. Existing work transferred from `main` retains its
+original commits; do not rewrite or delete that history. Release preparation uses
+the qualified default-branch commit. LibreWinForms work likewise targets
+`librewinforms-progpu-port`; ProGPU continues to use `main`. Preserve exact pinned
+submodule commits rather than replacing them with an unqualified branch tip.
+
 Retained source rectangle replay must resolve the original IPortableTileBrushSource
 before generic brush adaptation. Reuse shared tile fill, exact source rectangle
 coverage and destination clips in both decoder sinks; replay a separate pen after

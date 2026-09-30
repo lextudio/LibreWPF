@@ -14,6 +14,12 @@ passed all 49 jobs before ProGPU PR #231 merged. This pins the exact tested
 producer head, not its untested merge commit. The WPF consumer and application
 behavior still require their own qualification.
 
+Canonical Forms integration uses LibreWinForms commit
+`9476d647a68c2cf46a23d0d375ef8b4191d6d23b` from
+[PR #139](https://github.com/wieslawsoltes/LibreWinForms/pull/139), which pins the
+same engine commit. The integration gate requires this shared dependency identity;
+the Forms PR must pass its own Build before the WPF change can merge.
+
 The source `Visual` exporter now preserves local `UIElement.Visibility` as an
 optional typed Visible/Hidden/Collapsed descriptor. It never exports effective
 `UIElement.IsVisible`: detached visible brush sources are not hidden. Plain

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using ProGPU.Backend;
@@ -85,7 +86,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private ulong _nativeMilPopupVersion;
     private ulong _nativeMilCompiledPopupVersion;
     private readonly WpfPortablePopupService? _portablePopupService;
-    private readonly IDisposable? _portablePopupServiceRegistration;
+    private IDisposable? _portablePopupServiceRegistration;
     private object? _wpfRootVisual;
     private double _portablePresentationSourceDpiScaleX = double.NaN;
     private double _portablePresentationSourceDpiScaleY = double.NaN;
@@ -112,6 +113,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private Vector4 _deviceRecoveryClearColor;
     private long _renderDeviceRecoveryCount;
     private bool _disposeNativeWindowWhenLoopExits;
+    private int _nativeWindowThreadId;
+    private WpfNativeWindowRetirement? _nativeWindowRetirement;
+    private bool _hostDisposalServicesReleased;
+    private bool _hostDisposalResourcesReleased;
+    private bool _isDisposingHostServices;
+    private bool _isDisposingHostResources;
+    private bool _isAttemptingNativeWindowRetirement;
+    [ThreadStatic]
+    private static bool s_isDrainingNativeWindowDisposals;
     private bool _hasPresentedFrame;
     private long _presentedFrameCount;
     private int _pendingRenderRequestIsWakeOnly;
@@ -766,20 +776,29 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             throw new PlatformNotSupportedException("The X11 window manager did not accept modal-hint submission.");
         _isNativeLoopRunning = true;
         TraceNativeLoop("run entering: " + CreateNativeLoopTraceState());
+        Exception? runFailure = null;
         try
         {
             RunPortableNativeLoop(continueRunning);
         }
         catch (Exception ex)
         {
+            runFailure = ex;
             TraceNativeLoop("run failed: " + ex);
             throw;
         }
         finally
         {
             _isNativeLoopRunning = false;
-            if (continueRunning != null) ReleaseNativeDialogHint();
-            DisposeDeferredNativeWindowIfNeeded();
+            try
+            {
+                if (continueRunning != null) ReleaseNativeDialogHint();
+                DisposeDeferredNativeWindowIfNeeded();
+            }
+            catch (Exception) when (runFailure != null)
+            {
+                // A failed retirement retains its queue entry for a later drain.
+            }
             TraceNativeLoop("run leaving: " + CreateNativeLoopTraceState());
         }
     }
@@ -1021,13 +1040,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             // The shared GLFW poll can still contain the owner's delayed first-show
             // activation. Drain the requested window's native focus event before the
             // WPF dispatcher resumes and observes IsActive.
+            Exception? activationFailure = null;
             try
             {
                 if (!NativeWindowModalSession.TryPumpEvents()) host._window.DoEvents();
             }
+            catch (Exception error)
+            {
+                activationFailure = error;
+                throw;
+            }
             finally
             {
-                ProcessDeferredNativeWindowDisposals();
+                ProcessDeferredNativeWindowDisposalsPreservingFailure(activationFailure);
             }
         }
 
@@ -1559,17 +1584,28 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             // native polling will process that work without starving DoRender.
             NativeRenderPumpCount++;
             TraceNativeLoop(s_traceNativeLoop, $"pre-event render entering: {CreateNativeLoopTraceState()}");
+            Exception? renderFailure = null;
             Interlocked.Increment(ref s_activeNativeEventDispatchDepth);
             try
             {
                 window.DoRender();
             }
+            catch (Exception error)
+            {
+                renderFailure = error;
+                throw;
+            }
             finally
             {
                 if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)
                 {
-                    ProcessDeferredNativeWindowDisposals();
+                    ProcessDeferredNativeWindowDisposalsPreservingFailure(renderFailure);
                 }
+            }
+            if (!ReferenceEquals(_window, window) || !ShouldKeepPortableNativeRunLoopAlive())
+            {
+                DisposeDeferredNativeWindowIfNeeded();
+                return;
             }
             TraceNativeLoop(s_traceNativeLoop, $"pre-event render leaving: {CreateNativeLoopTraceState()}");
         }
@@ -1587,6 +1623,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             window.IsEventDriven = false;
         }
 
+        Exception? dispatchFailure = null;
         Interlocked.Increment(ref s_activeNativeEventDispatchDepth);
         try
         {
@@ -1630,11 +1667,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 SkippedNativeRenderPumpCount++;
             }
         }
+        catch (Exception error)
+        {
+            dispatchFailure = error;
+            throw;
+        }
         finally
         {
             if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)
             {
-                ProcessDeferredNativeWindowDisposals();
+                ProcessDeferredNativeWindowDisposalsPreservingFailure(dispatchFailure);
             }
         }
 
@@ -1751,77 +1793,86 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public void Dispose()
     {
+        if (_window != null && _nativeWindowThreadId != Environment.CurrentManagedThreadId)
+            throw new InvalidOperationException("Native window disposal belongs to its creating thread.");
+
         if (_isDisposed)
         {
+            if (_isDisposingHostServices || _isDisposingHostResources) return;
+            if (_window != null) DisposeDeferredNativeWindowIfNeeded();
+            else DisposeHostResources();
             return;
         }
 
-        ReleaseNativeDialogHint();
-        _portablePresentationSourceBridge?.ReleaseNativeCaret();
         _isDisposed = true;
-        _modalInputRegistration?.Dispose();
-        _modalInputRegistration = null;
-        _modalInputOwner = null;
         ClearNativeActivationForHost(this);
 
         IWindow? window = _window;
-        bool deferNativeWindowDispose = window != null &&
-            (_isNativeLoopRunning ||
-                IsNativeWindowRetainedByModalSession(window) ||
-                _isRendering ||
-                _isProcessingDispatcherWorkWakeup ||
-                _isInNativeWindowCloseCallback ||
-                // Not just this instance's own reentrancy: GLFW's poll is process-global, so a
-                // *different* host's DoEvents() can be the one currently dispatching the native
-                // callback (e.g. a modal dialog's Cancel click) that led here.
-                Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0);
-        bool disposeNativeWindow = window != null && !deferNativeWindowDispose;
-
-        if (window != null && !deferNativeWindowDispose)
+        if (window != null)
         {
-            DetachNativeDpiService();
-            window.Load -= OnLoad;
-            window.Update -= OnUpdate;
-            window.Render -= OnRender;
-            window.Resize -= OnResize;
-            window.FramebufferResize -= OnFramebufferResize;
-            window.Closing -= OnClosing;
-        }
-        else if (deferNativeWindowDispose)
-        {
+            // Publish retirement ownership before any source/provider callback.
+            _nativeWindowRetirement = new WpfNativeWindowRetirement(window,
+                _nativeWindowThreadId, DisposeHostResources);
             _disposeNativeWindowWhenLoopExits = true;
-            RequestNativeWindowClose(window!);
-            if (_isInNativeWindowCloseCallback ||
-                IsNativeWindowRetainedByModalSession(window!) ||
-                Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0)
-            {
-                QueueDeferredNativeWindowDisposal(this);
-            }
+            QueueDeferredNativeWindowDisposal(this);
         }
 
-        DetachInputService();
-        DetachDragDropService();
-        DetachWindowEventService();
-        DetachDispatcherService();
-        DisposePortablePopupService();
-        DisposePortablePresentationSourceBridge();
-        DisposeTarget();
-        _windowController?.Dispose();
-        _windowController = null;
-        if (disposeNativeWindow)
+        // Source input/owner leases retire immediately. GPU resources wait until
+        // active render/native callbacks unwind; native destruction follows them.
+        DisposeHostServices();
+        if (window == null)
+            DisposeHostResources();
+        else
         {
-            window!.Dispose();
-        }
-
-        DetachRenderScheduler(_wpfRenderScheduler);
-        DisposeOwnedRenderScheduler();
-
-        _target = null;
-        if (!deferNativeWindowDispose)
-        {
-            _window = null;
+            if (MustDeferNativeWindowRetirement(window)) RequestNativeWindowClose(window);
+            DisposeDeferredNativeWindowIfNeeded();
         }
     }
+
+    private void DisposeHostServices()
+    {
+        if (_hostDisposalServicesReleased) return;
+        _isDisposingHostServices = true;
+        try
+        {
+            ReleaseNativeDialogHint();
+            _portablePresentationSourceBridge?.ReleaseNativeCaret();
+            _modalInputRegistration?.Dispose();
+            _modalInputRegistration = null;
+            _modalInputOwner = null;
+            DetachInputService();
+            DetachDragDropService();
+            DetachWindowEventService();
+            DetachDispatcherService();
+            DisposePortablePopupService();
+            DisposePortablePresentationSourceBridge();
+            _hostDisposalServicesReleased = true;
+        }
+        finally { _isDisposingHostServices = false; }
+    }
+
+    private void DisposeHostResources()
+    {
+        if (_hostDisposalResourcesReleased) return;
+        _isDisposingHostResources = true;
+        try
+        {
+            DisposeHostServices();
+            DisposeTarget();
+            _windowController?.Dispose();
+            _windowController = null;
+            DetachRenderScheduler(_wpfRenderScheduler);
+            DisposeOwnedRenderScheduler();
+            _hostDisposalResourcesReleased = true;
+        }
+        finally { _isDisposingHostResources = false; }
+    }
+
+    private bool MustDeferNativeWindowRetirement(IWindow window) =>
+        _isNativeLoopRunning || _isRendering || _isProcessingDispatcherWorkWakeup ||
+        _isInNativeWindowCloseCallback || _isDisposingHostServices || _isDisposingHostResources ||
+        Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0 ||
+        IsNativeWindowRetainedByModalSession(window);
 
     private void DisposeDeferredNativeWindowIfNeeded()
     {
@@ -1830,13 +1881,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
-        if (Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0)
-        {
-            QueueDeferredNativeWindowDisposal(this);
-            return;
-        }
-
-        if (_window != null && IsNativeWindowRetainedByModalSession(_window))
+        IWindow? window = _window;
+        if (window != null && _nativeWindowThreadId != Environment.CurrentManagedThreadId)
+            throw new InvalidOperationException("Native window disposal belongs to its creating thread.");
+        if (_isAttemptingNativeWindowRetirement) return;
+        if (window != null && MustDeferNativeWindowRetirement(window))
         {
             // A callback can close a host while AppKit still owns its native
             // session. Keep the deferred host queued until its lease has ended.
@@ -1844,22 +1893,38 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
-        _disposeNativeWindowWhenLoopExits = false;
-        IWindow? window = _window;
         if (window == null)
         {
             return;
         }
 
-        window.Load -= OnLoad;
-        window.Update -= OnUpdate;
-        window.Render -= OnRender;
-        window.Resize -= OnResize;
-        window.FramebufferResize -= OnFramebufferResize;
-        window.Closing -= OnClosing;
-        DetachNativeDpiService();
-        window.Dispose();
-        _window = null;
+        _isAttemptingNativeWindowRetirement = true;
+        try
+        {
+            WpfNativeWindowRetirement retirement = _nativeWindowRetirement ??
+                throw new InvalidOperationException("The native window has no retirement owner.");
+            if (!ReferenceEquals(window, retirement.Window))
+                throw new InvalidOperationException("The native window changed during retirement.");
+            window.Load -= OnLoad;
+            window.Update -= OnUpdate;
+            window.Render -= OnRender;
+            window.Resize -= OnResize;
+            window.FramebufferResize -= OnFramebufferResize;
+            window.Closing -= OnClosing;
+            DetachNativeDpiService();
+            if (!retirement.TryComplete())
+            {
+                QueueDeferredNativeWindowDisposal(this);
+                return;
+            }
+
+            _window = null;
+            _nativeWindowRetirement = null;
+            _disposeNativeWindowWhenLoopExits = false;
+            lock (s_deferredNativeWindowDisposalGate)
+                s_deferredNativeWindowDisposals.Remove(this);
+        }
+        finally { _isAttemptingNativeWindowRetirement = false; }
     }
 
     private static bool IsNativeWindowRetainedByModalSession(IWindow window) =>
@@ -1877,7 +1942,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private static void ProcessDeferredNativeWindowDisposals()
     {
-        if (Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0)
+        if (Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0 || s_isDrainingNativeWindowDisposals)
         {
             return;
         }
@@ -1891,12 +1956,35 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             }
 
             pending = [.. s_deferredNativeWindowDisposals];
-            s_deferredNativeWindowDisposals.Clear();
         }
 
-        foreach (ProGpuWpfWindowHost host in pending)
+        s_isDrainingNativeWindowDisposals = true;
+        ExceptionDispatchInfo? failure = null;
+        try
         {
-            host.DisposeDeferredNativeWindowIfNeeded();
+            foreach (ProGpuWpfWindowHost host in pending)
+            {
+                // The list is process-wide, native ownership is not. Other
+                // creating threads keep their entries for their own boundary.
+                if (host._nativeWindowThreadId != Environment.CurrentManagedThreadId) continue;
+                try { host.DisposeDeferredNativeWindowIfNeeded(); }
+                catch (Exception error)
+                {
+                    failure ??= ExceptionDispatchInfo.Capture(error);
+                }
+            }
+        }
+        finally { s_isDrainingNativeWindowDisposals = false; }
+        failure?.Throw();
+    }
+
+    private static void ProcessDeferredNativeWindowDisposalsPreservingFailure(Exception? primaryFailure)
+    {
+        try { ProcessDeferredNativeWindowDisposals(); }
+        catch (Exception) when (primaryFailure != null)
+        {
+            // Failed retirements remain queued. Preserve the callback's original
+            // exception without invoking its potentially custom Data dictionary.
         }
     }
 
@@ -1958,6 +2046,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 PortableWpfServiceKey.PresentationFramework, out sourceService);
         var popupOwner = _options.SharedRenderDeviceOwner;
         bool createdOwnedCocoa = false;
+        _nativeWindowThreadId = Environment.CurrentManagedThreadId;
         _window = WpfPopupWindowFactory.Create(_options.IsPopupSurface,
             PortablePresentationSource != null,
             popupOwner?.NativeWindowHandle ?? global::ProGPU.Backend.NativeWindowHandle.Empty,
@@ -3744,7 +3833,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             }
 
             _isHostVisible = false;
-            DisposeTarget();
+            // A source Closing handler may have published deferred host
+            // retirement. Its renderer still belongs to that queued owner until
+            // this native callback unwinds.
+            if (!_isDisposed) DisposeTarget();
             TraceNativeLoop("closing event accepted: " + CreateNativeLoopTraceState());
         }
         finally
@@ -4778,13 +4870,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         ProGpuWpfCompositionTarget target = _target;
-        _target = null;
-        _usesSharedRenderDevice = false;
         _directXDevice?.Dispose();
         _directXDevice = null;
         target.RenderInvalidated -= OnCompositionTargetRenderInvalidated;
         ProGpuWpfRenderDeviceSharing.RetireDeviceOwnerContext(target.Context);
         target.Dispose();
+        _target = null;
+        _usesSharedRenderDevice = false;
         WpfRenderScheduler.Reset();
         Volatile.Write(ref _pendingRenderRequestIsWakeOnly, 0);
         LastPresentedFrameState = default;
@@ -5106,6 +5198,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         _isProcessingRenderSchedulerWakeup = true;
+        Exception? renderFailure = null;
         try
         {
             try
@@ -5120,10 +5213,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
             return true;
         }
+        catch (Exception error)
+        {
+            renderFailure = error;
+            throw;
+        }
         finally
         {
             _isProcessingRenderSchedulerWakeup = false;
-            DisposeDeferredNativeWindowIfNeeded();
+            try { DisposeDeferredNativeWindowIfNeeded(); }
+            catch (Exception) when (renderFailure != null)
+            {
+                // Do not replace the original render failure with cleanup.
+            }
         }
     }
 
@@ -5544,6 +5646,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private void DisposePortablePopupService()
     {
         _portablePopupServiceRegistration?.Dispose();
+        _portablePopupServiceRegistration = null;
         DisposePortablePopupBridges();
     }
 

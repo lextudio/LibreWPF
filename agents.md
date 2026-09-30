@@ -8,6 +8,14 @@ admitted empty drawing is distinct from failure. Object-context replay alone doe
 not cover canonical RenderData. Keep native MIL separate and require actual package
 application qualification. See docs/retained-tile-brush-backgrounds.md.
 
+Source-host native retirement retains the exact window and renderer cleanup owner
+until provider-aware disposal completes on the creating thread. A false result or
+exception is not native release. Publish deferred ownership before source callbacks,
+keep failed queue entries while draining other hosts, and preserve the original
+callback failure. Unwind render/native/modal leases before destroying GPU resources
+and the native view; reentrant cleanup must not repeat an active attempt. This does
+not admit the Cocoa factory or choose legacy MouseWheel compatibility.
+
 Deferred native scroll overflow retains the actual original EventRoute's default
 handler occurrences, not a recreated ancestor walk or event replay. Observe every
 application Handled assignment, including true-to-true, separately from default

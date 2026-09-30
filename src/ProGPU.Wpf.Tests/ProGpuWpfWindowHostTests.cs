@@ -168,13 +168,17 @@ public sealed partial class ProGpuWpfWindowHostTests
         Assert.Contains("_windowController?.Handle.Kind == NativeWindowKind.X11", source);
         Assert.Contains("TryBeginModalHint(out _nativeDialogHint)", source);
         Assert.Contains("finally { ReleaseNativeDialogHint(); }", source);
-        Assert.Contains("if (continueRunning != null) ReleaseNativeDialogHint();\n            DisposeDeferredNativeWindowIfNeeded();", source);
+        Assert.Contains("if (continueRunning != null) ReleaseNativeDialogHint();\n                DisposeDeferredNativeWindowIfNeeded();", source);
         Assert.Contains("private void HideNativeWindowAfterModalRelease()\n    {\n        ReleaseNativeDialogHint();", source);
         int release = source.IndexOf("internal void ReleaseNativeDialog(Action completed)", StringComparison.Ordinal);
         int sourceCompletion = source.IndexOf("completed();", release, StringComparison.Ordinal);
         int hintRelease = source.IndexOf("ReleaseNativeDialogHint();", release, StringComparison.Ordinal);
         Assert.True(hintRelease > release && hintRelease < sourceCompletion);
-        Assert.Contains("ReleaseNativeDialogHint();\n        _portablePresentationSourceBridge?.ReleaseNativeCaret();\n        _isDisposed = true;", source);
+        Assert.Contains("ReleaseNativeDialogHint();\n            _portablePresentationSourceBridge?.ReleaseNativeCaret();", source);
+        int disposeHost = source.IndexOf("public void Dispose()", StringComparison.Ordinal);
+        int markDisposed = source.IndexOf("_isDisposed = true;", disposeHost, StringComparison.Ordinal);
+        int disposeServices = source.IndexOf("DisposeHostServices();", disposeHost, StringComparison.Ordinal);
+        Assert.True(markDisposed > disposeHost && disposeServices > markDisposed);
         // Native input-gate admission remains distinct from the advisory hint.
         Assert.Contains("if (OperatingSystem.IsWindows() || NativeInputAllowedSetterOverride != null)", source);
     }

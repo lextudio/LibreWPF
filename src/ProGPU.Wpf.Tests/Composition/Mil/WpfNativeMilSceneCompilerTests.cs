@@ -9,7 +9,7 @@ using Xunit;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
-public sealed class WpfNativeMilSceneCompilerTests
+public sealed partial class WpfNativeMilSceneCompilerTests
 {
     [Theory]
     [InlineData(NativeMilBackend.WgpuNative)]

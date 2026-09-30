@@ -53,6 +53,7 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
     private WpfNativeMilBatch? _lastBatch;
     private NativeMilViewport3DSnapshot[] _viewportSnapshots = [];
     private NativeMilPointHitRectangle[] _pointHitRegionsSnapshot = [];
+    private NativeMilVisualVisibility[] _visualVisibilitiesSnapshot = [];
     private bool _requiresRebuild;
     private int _disposeState;
 
@@ -261,6 +262,7 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
         _lastBatch = null;
         _viewportSnapshots = [];
         _pointHitRegionsSnapshot = [];
+        _visualVisibilitiesSnapshot = [];
     }
 
     private WpfNativeMilSessionUpdate ReplaceChannel(
@@ -270,12 +272,14 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
         NativeMilBatchMetrics metrics;
         NativeMilViewport3DSnapshot[] viewportSnapshots;
         NativeMilPointHitRectangle[] pointSnapshot;
+        NativeMilVisualVisibility[] visibilitySnapshot;
         try
         {
             metrics = WpfNativeMilSceneCompiler.ApplyBatch(
                 replacement, batch);
             viewportSnapshots = CaptureViewportSnapshots(batch);
             pointSnapshot = batch.PointHitRegions.ToArray();
+            visibilitySnapshot = batch.VisualVisibilities.ToArray();
         }
         catch
         {
@@ -288,6 +292,7 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
         _lastBatch = batch;
         _viewportSnapshots = viewportSnapshots;
         _pointHitRegionsSnapshot = pointSnapshot;
+        _visualVisibilitiesSnapshot = visibilitySnapshot;
         _requiresRebuild = false;
         previous?.Dispose();
         return new WpfNativeMilSessionUpdate(
@@ -419,6 +424,14 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
             channel, previous, current);
         appliedCount += ApplyChangedVisualCacheBounds(
             channel, previous, current);
+        if (!MemoryMarshal.AsBytes(_visualVisibilitiesSnapshot.AsSpan()).SequenceEqual(
+                MemoryMarshal.AsBytes(current.VisualVisibilities.Span)))
+        {
+            var nextVisibilitySnapshot = current.VisualVisibilities.ToArray();
+            channel.SetVisualVisibilities(nextVisibilitySnapshot);
+            _visualVisibilitiesSnapshot = nextVisibilitySnapshot;
+            ++appliedCount;
+        }
         if (!MemoryMarshal.AsBytes(_pointHitRegionsSnapshot.AsSpan()).SequenceEqual(
                 MemoryMarshal.AsBytes(current.PointHitRegions.Span)))
         {
@@ -647,6 +660,7 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
             (batch.DrawingGroupBounds?.Count ?? 0) +
             (batch.VisualCacheBounds?.Count ?? 0) +
             (batch.PointHitRegions.IsEmpty ? 0 : 1) +
+            (batch.VisualVisibilities.IsEmpty ? 0 : 1) +
             (batch.Viewport3DScenes?.Count ?? 0)));
 
     private static Packet ReadPacket(ReadOnlySpan<byte> bytes, int offset)

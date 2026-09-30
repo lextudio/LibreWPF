@@ -109,12 +109,20 @@ namespace System.Windows
         /// </param>
         internal void InvokeHandlers(object source, RoutedEventArgs args)
         {
-            InvokeHandlersImpl(source, args, false);
+            InvokeObservedHandlers(source, args, false);
         }
 
         internal void ReInvokeHandlers(object source, RoutedEventArgs args)
         {
-            InvokeHandlersImpl(source, args, true);
+            InvokeObservedHandlers(source, args, true);
+        }
+
+        private void InvokeObservedHandlers(object source, RoutedEventArgs args, bool reRaised)
+        {
+            var observer = args as IPortableRoutedEventObserver;
+            observer?.EnterRoute(this);
+            try { InvokeHandlersImpl(source, args, reRaised); }
+            finally { observer?.LeaveRoute(this); }
         }
 
         private void InvokeHandlersImpl(object source, RoutedEventArgs args, bool reRaised)
@@ -525,4 +533,3 @@ namespace System.Windows
         #endregion Data
     }
 }
-

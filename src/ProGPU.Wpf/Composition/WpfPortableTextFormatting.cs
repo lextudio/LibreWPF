@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using ProGPU.Backend.Native;
 using ProGPU.Wpf.Interop;
@@ -6,10 +7,11 @@ using ProGPU.Text;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
-internal sealed class WpfPortableTextFormatting : IPortableFloatingTextFormatting
+internal sealed class WpfPortableTextFormatting : IPortableFloatingTextFormatting, IPortableTextDigitContext
 {
     private sealed record FloatingRequest(NativeTextFloatingOptions Options, NativeTextParagraphFloat[] Items);
     private static readonly WpfPortableTextFormatting Default = new();
+    private readonly ConcurrentDictionary<string, uint> _languageTags = new(StringComparer.OrdinalIgnoreCase);
     private sealed class FontState(PortableTextFont source)
     {
         internal TtfFont RenderFont { get; } = new(source.Data.ToArray(), checked((int)source.FaceIndex));
@@ -18,6 +20,20 @@ internal sealed class WpfPortableTextFormatting : IPortableFloatingTextFormattin
     }
     private readonly ConditionalWeakTable<PortableTextFont, FontState> _fonts = new();
     internal static void EnsureRegistered() => PortableWpfServiceRegistry.EnsureTextFormatting(Default);
+
+    public uint ResolveLanguage(string ietfLanguageTag)
+    {
+        ArgumentNullException.ThrowIfNull(ietfLanguageTag);
+        return _languageTags.GetOrAdd(ietfLanguageTag,
+            static language => NativeTextShapingInterop.ResolveLanguageTag(language.AsSpan()));
+    }
+
+    public bool ResolveDigitContext(ReadOnlySpan<char> text, bool initialArabicContext, Span<byte> substitutionContext)
+        => NativeTextShapingInterop.ResolveDigitContext(text, initialArabicContext, substitutionContext);
+
+    public bool ResolveDigitContext(ReadOnlySpan<char> text, bool initialArabicContext,
+        Span<byte> substitutionContext, Span<byte> graphemeStarts)
+        => NativeTextShapingInterop.ResolveDigitContext(text, initialArabicContext, substitutionContext, graphemeStarts);
 
     public IPortableTextParagraph Format(in PortableTextParagraphRequest request)
         => FormatCore(in request, null, null);
@@ -159,7 +175,9 @@ internal sealed class WpfPortableTextFormatting : IPortableFloatingTextFormattin
                 fonts.Add(_fonts.GetValue(style.Font, static f => new(f)).RenderFont);
             }
             styles[i] = new(style.Start, style.Length, index, style.FontSize / style.Font.UnitsPerEm,
-                (uint)feature, (uint)style.Features.Length, style.Language);
+                (uint)feature, (uint)style.Features.Length, style.Language,
+                style.DigitZero, style.ContextualDigits, style.PreserveSourceDigitBidi,
+                style.Percent, style.GroupSeparator, style.DecimalSeparator);
             foreach (var value in style.Features.Span) features[feature++] = new(value.Tag, value.Value);
         }
         return CreateParagraph(request, CreateNative(context, request, options, features, styles, original, collapse, inline, metrics, objects, exclusionOptions, exclusions, originY, floating, continuationStart), fonts.ToArray(), metrics, objects);

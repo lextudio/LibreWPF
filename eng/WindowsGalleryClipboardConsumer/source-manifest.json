@@ -1,0 +1,90 @@
+{
+  "repository": "microsoft/WPF-Samples",
+  "commit": "811d01e95c8c929e68539d698d0a0609e94fd185",
+  "files": [
+    {
+      "path": "Views/System/ClipboardPage.xaml",
+      "upstream": "Sample Applications/WPFGallery/Views/System/ClipboardPage.xaml",
+      "gitBlob": "df186d56547c4d95802b2c3f659a777baca2f676",
+      "bytes": 10676,
+      "sha256": "4fc5afe3114461d2b19e60121a33e074847968ddf629bbfdd9e30418952f8918"
+    },
+    {
+      "path": "Views/System/ClipboardPage.xaml.cs",
+      "upstream": "Sample Applications/WPFGallery/Views/System/ClipboardPage.xaml.cs",
+      "gitBlob": "4526b6faa138470767de307d88b5f2493fa1adda",
+      "bytes": 3590,
+      "sha256": "82f2a1dc50b00f373f61e79cfe5189704db2aeef29d84857c34d50c331100500"
+    },
+    {
+      "path": "ViewModels/System/ClipboardPageViewModel.cs",
+      "upstream": "Sample Applications/WPFGallery/ViewModels/System/ClipboardPageViewModel.cs",
+      "gitBlob": "f81fafba8913fc60a8c70b43f6d0b1ae92274cf7",
+      "bytes": 673,
+      "sha256": "d54b7b3ca830eb6b656dc706cf832fb151fb605da87289ee950bc65a312290b0"
+    },
+    {
+      "path": "Controls/ControlExample.xaml",
+      "upstream": "Sample Applications/WPFGallery/Controls/ControlExample.xaml",
+      "gitBlob": "16101bc0551bd985a0f3e885126007a9ffbf9a98",
+      "bytes": 9660,
+      "sha256": "5f4fe3c9e4b7bb4e8803c9de946e75036ce19fa80b56e927d8c46d7007a5304f"
+    },
+    {
+      "path": "Controls/ControlExample.xaml.cs",
+      "upstream": "Sample Applications/WPFGallery/Controls/ControlExample.xaml.cs",
+      "gitBlob": "857714d45f6e598b297f875c531ac7a7996a7490",
+      "bytes": 5390,
+      "sha256": "1a1339debebcd92a323883311ee554033f8316e1f4da8304acda678c9bf87f0f"
+    },
+    {
+      "path": "Controls/PageHeader.xaml",
+      "upstream": "Sample Applications/WPFGallery/Controls/PageHeader.xaml",
+      "gitBlob": "62d27e332b6d64060cf9a4533340e1a6eb7020e5",
+      "bytes": 2683,
+      "sha256": "44dcc0936e99682d18db0bd6280a86de0cb65255ac2b2592a2765c2b5e09827f"
+    },
+    {
+      "path": "Controls/PageHeader.xaml.cs",
+      "upstream": "Sample Applications/WPFGallery/Controls/PageHeader.xaml.cs",
+      "gitBlob": "3de62e68e7fc70420456ea9f2530477376c5712c",
+      "bytes": 1201,
+      "sha256": "995757014189e65c4db35a760db134a9cb736c9f1f17d66d520db8b3ad91c92d"
+    },
+    {
+      "path": "Helpers/NullToVisibilityConverter.cs",
+      "upstream": "Sample Applications/WPFGallery/Helpers/NullToVisibilityConverter.cs",
+      "gitBlob": "ece84a7b65ddeebc0ca790857b3151602c5bfe9c",
+      "bytes": 798,
+      "sha256": "250341021137bec2782a1e153e0c84775edad5f432551df40d230291c8bc7d39"
+    },
+    {
+      "path": "Helpers/EmptyToVisibilityConverter.cs",
+      "upstream": "Sample Applications/WPFGallery/Helpers/EmptyToVisibilityConverter.cs",
+      "gitBlob": "65cff3f28feacedae9cfb64290358f1934eace9b",
+      "bytes": 684,
+      "sha256": "6a1feaa225e40b33b91d2aef3ca542fa61ec22e174b3cf5a0110c7c2d8ca5556"
+    },
+    {
+      "path": "Assets/ControlImages/Clipboard.png",
+      "upstream": "Sample Applications/WPFGallery/Assets/ControlImages/Clipboard.png",
+      "gitBlob": "0e24c270c7ac5a9369253f23fcf1cd23f74b10c8",
+      "bytes": 6269,
+      "sha256": "f1c9a6e709e0f7fcaf048f06074dbd7d2addcdc7576e82efe618632f433ee799"
+    },
+    {
+      "path": "Usings.cs",
+      "upstream": "Sample Applications/WPFGallery/Usings.cs",
+      "gitBlob": "078e799c12087e2a4fb86510c54260624fa453a8",
+      "bytes": 754,
+      "sha256": "1916a529ef9c72da8706588fe5d2718c4bca0d3da9797af86b9d058c3c15010f"
+    },
+    {
+      "path": "LICENSE",
+      "upstream": "LICENSE",
+      "gitBlob": "b8b569d7746d98d07183806fb4af673fca6dfb57",
+      "bytes": 1077,
+      "sha256": "cf248820bf1178370bb4f1670a59f8748d46bc96d0f64080cd631511c6046409"
+    }
+  ]
+}

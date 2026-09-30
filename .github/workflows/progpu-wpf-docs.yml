@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - progpu-rendering-port
-      - main
     paths:
       - README.md
       - docs/**

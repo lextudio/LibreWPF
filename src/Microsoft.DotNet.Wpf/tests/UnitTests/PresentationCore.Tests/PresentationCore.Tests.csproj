@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <Compile Include="..\Shared\PortableMediaTestStartup.cs" Link="PortableMediaTestStartup.cs" />
+    <Compile Include="$(WpfSourceDir)..\..\..\samples\ProGPU.Wpf.ShowcaseApp\ShowcaseClipboardImage.cs"
+             Link="ShowcaseClipboardImage.cs" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -27,6 +29,11 @@
     <ProjectReference Include="$(WpfSourceDir)WindowsBase\WindowsBase.csproj" />
     <ProjectReference Include="$(WpfSourceDir)System.Xaml\System.Xaml.csproj" />
     <ProjectReference Include="$(WpfSourceDir)System.Windows.Primitives\System.Windows.Primitives.csproj" />
+    <!-- Portable input creates its keyboard provider without a desktop shared
+         framework. Keep its actual source dependencies in the test closure;
+         this test graph intentionally disables transitive project references. -->
+    <ProjectReference Include="$(WpfSourceDir)UIAutomation\UIAutomationTypes\UIAutomationTypes.csproj" />
+    <ProjectReference Include="$(WpfSourceDir)UIAutomation\UIAutomationProvider\UIAutomationProvider.csproj" />
     <ProjectReference Include="$(WpfSourceDir)Extensions\PresentationFramework-SystemDrawing\PresentationFramework-SystemDrawing.csproj" />
     <ProjectReference Include="$(WpfSourceDir)..\..\..\external\ProGPU\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj" />
   </ItemGroup>
@@ -35,12 +42,19 @@
     <MicrosoftPrivateWinFormsReference Include="System.Private.Windows.Core" />
   </ItemGroup>
 
+
   <ItemGroup>
     <None Include="$(WpfSourceDir)PresentationCore\Fonts\LibreWPF.FluentSymbols\LibreWPF.FluentSymbols.ttf"
           Link="LibreWPF\Fonts\LibreWPF.FluentSymbols.ttf"
           CopyToOutputDirectory="PreserveNewest" />
     <None Include="$(WpfSourceDir)..\..\..\external\ProGPU\src\ProGPU.Fonts.Inter\Fonts\Inter-Medium.ttf"
           Link="LibreWPF\Fonts\Inter-Medium.ttf"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(WpfSourceDir)PresentationCore\Fonts\trado.ttf"
+          Link="LibreWPF\Fonts\trado.ttf"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(WpfSourceDir)..\..\..\external\ProGPU\src\ProGPU.Fonts.Noto\Fonts\NotoSansSymbols2-Regular.ttf"
+          Link="LibreWPF\Fonts\NotoSansSymbols2-Regular.ttf"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

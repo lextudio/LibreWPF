@@ -16,8 +16,9 @@ namespace System.Windows.Controls
 {
     /// <summary>
     /// </summary>
-    public sealed class ScrollContentPresenter : ContentPresenter, IScrollInfo
+    public sealed class ScrollContentPresenter : ContentPresenter, IScrollInfo, IPortableScrollInfo
     {
+        PortableScrollAxes IPortableScrollInfo.ScrollAxes => PortableScrollAxes.Pixels;
         //-------------------------------------------------------------------
         //
         //  Constructors
@@ -930,7 +931,6 @@ namespace System.Windows.Controls
         #endregion Private Structures Classes
     }
 }
-
 
 
 

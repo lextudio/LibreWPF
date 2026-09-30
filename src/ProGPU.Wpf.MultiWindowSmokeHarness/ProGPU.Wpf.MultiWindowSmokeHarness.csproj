@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="../../external/ProGPU/src/ProGPU.Fonts.Inter/Fonts/Inter-Regular.ttf"
+             Link="Fonts/Inter-Regular.ttf" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../external/ProGPU/src/ProGPU.Fonts.Inter/Fonts/LICENSE.txt"
+             Link="Fonts/LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!-- ProGPU.Wpf references these but does not carry them: it is packaged against the
          source-built WPF assemblies, which a consumer supplies. -->
     <ProjectReference Include="..\..\external\ProGPU\src\WindowsBase\WindowsBase.csproj" PrivateAssets="all" />

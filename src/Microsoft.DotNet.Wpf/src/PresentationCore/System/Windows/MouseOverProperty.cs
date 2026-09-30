@@ -43,10 +43,12 @@ namespace System.Windows
 
             if (shouldFireNotification)
             {
-                MouseEventArgs mouseEventArgs = new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount, Mouse.PrimaryDevice.StylusDevice)
-                {
-                    RoutedEvent = oldValue ? Mouse.MouseLeaveEvent : Mouse.MouseEnterEvent
-                };
+                MouseDevice mouse = Mouse.PrimaryDevice;
+                if (!mouse.IsNativeMouseOverNotificationCurrent) return;
+                PortableMouseInputReport nativeReport = mouse.NativeMouseOverReport;
+                MouseEventArgs mouseEventArgs = PortableMouseEvents.Move(mouse,
+                    nativeReport?.Timestamp ?? Environment.TickCount, mouse.StylusDevice, nativeReport,
+                    oldValue ? Mouse.MouseLeaveEvent : Mouse.MouseEnterEvent);
 
                 if (uie != null)
                 {
@@ -64,4 +66,3 @@ namespace System.Windows
         }
     }
 }
-

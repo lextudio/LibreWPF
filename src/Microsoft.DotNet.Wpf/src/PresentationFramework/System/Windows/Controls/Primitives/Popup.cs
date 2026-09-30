@@ -1669,6 +1669,7 @@ namespace System.Windows.Controls.Primitives
         /// <returns>true if the window was destroyed, otherwise false</returns>
         private bool DestroyWindowImpl()
         {
+            DetachPortableOwnerDeactivation();
             if (_secHelper.CanDestroyWindow())
             {
                 CancelPortableSettledPosition();
@@ -1716,13 +1717,23 @@ namespace System.Windows.Controls.Primitives
                 SetHitTestable(HitTestable || !IsTransparent);
                 EstablishPopupCapture();
 
-                _secHelper.ShowWindow();
+                AttachPortableOwnerDeactivation();
+                try
+                {
+                    _secHelper.ShowWindow();
+                }
+                catch
+                {
+                    DetachPortableOwnerDeactivation();
+                    throw;
+                }
             }
         }
 
         // Close the window
         private void HideWindow()
         {
+            DetachPortableOwnerDeactivation();
             CancelPortableSettledPosition();
             bool animating = SetupAnimations(false);
 
@@ -1909,6 +1920,53 @@ namespace System.Windows.Controls.Primitives
             FirePopupCouldClose();
 
             return null;
+        }
+
+        private void AttachPortableOwnerDeactivation()
+        {
+            DetachPortableOwnerDeactivation();
+            if (_secHelper.IsPortable &&
+                _secHelper.PortableInputOwnerSource?.RootVisual is Window owner)
+            {
+                // A portable source has no WM_ACTIVATEAPP hook. Its retained
+                // owning Window supplies the actual activation transition;
+                // keyboard focus or mouse movement between popup sources does not.
+                _portablePopupOwnerWindow = owner;
+                owner.Deactivated += OnPortableOwnerDeactivated;
+            }
+        }
+
+        private void DetachPortableOwnerDeactivation()
+        {
+            _portableOwnerDeactivation?.Abort();
+            _portableOwnerDeactivation = null;
+            if (_portablePopupOwnerWindow != null)
+            {
+                _portablePopupOwnerWindow.Deactivated -= OnPortableOwnerDeactivated;
+                _portablePopupOwnerWindow = null;
+            }
+        }
+
+        private void OnPortableOwnerDeactivated(object sender, EventArgs e)
+        {
+            if (!IsOpen || !ReferenceEquals(sender, _portablePopupOwnerWindow) ||
+                !ReferenceEquals(_secHelper.PortableInputOwnerSource?.RootVisual, sender) ||
+                _portableOwnerDeactivation != null)
+            {
+                return;
+            }
+
+            // Match the native hook's deferred dismissal. Hide/destroy cancels
+            // this operation so an old activation transition cannot close a
+            // subsequently reopened popup, even when its source is reused.
+            _portableOwnerDeactivation = Dispatcher.BeginInvoke(DispatcherPriority.Normal,
+                new DispatcherOperationCallback(_ =>
+                {
+                    _portableOwnerDeactivation = null;
+                    if (IsOpen && _secHelper.IsWindowAlive())
+                        HandleDeactivateApp(null);
+                    return null;
+                }), null);
         }
 
         // Updates the transform applied to the decorator in PopupRoot
@@ -3112,6 +3170,8 @@ namespace System.Windows.Controls.Primitives
         private DispatcherOperation _asyncCreate;
         private DispatcherTimer _asyncDestroy;
         private DispatcherTimer _portableSettledPosition;
+        private Window _portablePopupOwnerWindow;
+        private DispatcherOperation _portableOwnerDeactivation;
         private long _portablePlacementTrackingDeadline;
         private bool _isPortablePopupRootLayoutUpdateAttached;
         private bool _isUpdatingPortablePopupRootLayout;
@@ -4019,12 +4079,17 @@ namespace System.Windows.Controls.Primitives
                     return false;
                 }
 
-                // Portable popups are composited into one native owner surface.  Resolve through
-                // any PopupRoot ancestors even though the Win32 child-popup flag is not active, so
-                // nested menus use the main tree's presentation source and client bounds.
+                // Resolve through PopupRoot ancestors even when the Win32 child-popup flag
+                // is not active, so nested menus retain the main tree's source ownership.
                 Visual mainTreeVisual = FindMainTreeVisual(placementTarget) ?? placementTarget;
 
-                PresentationSource ownerPresentationSource = GetPresentationSource(mainTreeVisual);
+                // An unattached popup has screen-relative placement but still needs a live
+                // owner. Reuse the source-owned active-window policy (same dispatcher,
+                // visible, modal-allowed and unambiguous), without substituting a placement
+                // target. A supplied target remains authoritative even if it has no source.
+                PresentationSource ownerPresentationSource = placementTarget == null
+                    ? AccessKeyManager.GetActivePresentationSource()
+                    : GetPresentationSource(mainTreeVisual);
                 if (ownerPresentationSource == null || ownerPresentationSource.IsDisposed ||
                     !PointUtil.IsPortablePresentationSource(ownerPresentationSource))
                 {

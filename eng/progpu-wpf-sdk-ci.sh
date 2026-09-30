@@ -58,6 +58,7 @@ else
 fi
 
 if [[ "${build_packages_only}" == "0" ]]; then
+  "${dotnet}" msbuild "${repo_root}/eng/sdk-runtime-copy/Run.proj" -nologo -v:minimal
   command -v python3 >/dev/null 2>&1 || {
     echo "python3 is required to verify the generated MIL protocol contract." >&2
     exit 1
@@ -87,8 +88,8 @@ if [[ -z "${ProGpuWpfRuntimeFrameworkVersion:-}" ]]; then
 fi
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.45}"
-progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.62}"
+dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-0.1.0-preview.65}"
+progpu_package_version="${PROGPU_WPF_PROGPU_PACKAGE_VERSION:-0.1.0-preview.65}"
 prepackaged_progpu_dir="${PROGPU_WPF_PREPACKAGED_PROGPU_DIR:-}"
 canonical_librewinforms_package_dir="${PROGPU_WPF_CANONICAL_WINFORMS_PACKAGE_DIR:-${repo_root}/artifacts/packages/CanonicalWinForms}"
 progpu_package_snapshot_dir="${repo_root}/artifacts/progpu-wpf-sdk-smoke/exact-progpu-packages"
@@ -146,7 +147,9 @@ resolve_single_package_version() {
   local -a candidates=()
 
   shopt -s nullglob
-  candidates=("${package_dir}/${package_id}."*.nupkg)
+  # A NuGet version starts with a digit. Without this boundary, ProGPU.Backend
+  # also matches ProGPU.Backend.Dawn and ProGPU.Backend.Native packages.
+  candidates=("${package_dir}/${package_id}."[0-9]*.nupkg)
   shopt -u nullglob
   if [[ "${#candidates[@]}" != "1" ]]; then
     echo "Expected one ${package_id} package in ${package_dir}, found ${#candidates[@]}." >&2

@@ -3346,6 +3346,17 @@ namespace System.Windows.Baml2006
 }
 namespace System.Windows.Controls
 {
+    [System.FlagsAttribute]
+    public enum PortableScrollAxes
+    {
+        Pixels = 0,
+        HorizontalItems = 1,
+        VerticalItems = 2,
+    }
+    public interface IPortableScrollInfo : System.Windows.Controls.Primitives.IScrollInfo
+    {
+        System.Windows.Controls.PortableScrollAxes ScrollAxes { get; }
+    }
     [System.Windows.Markup.ContentPropertyAttribute("Text")]
     public partial class AccessText : System.Windows.FrameworkElement, System.Windows.Markup.IAddChild
     {
@@ -6595,8 +6606,9 @@ namespace System.Windows.Controls
         protected override void InvokeEventHandler(System.Delegate genericHandler, object genericTarget) { }
     }
     public delegate void ScrollChangedEventHandler(object sender, System.Windows.Controls.ScrollChangedEventArgs e);
-    public sealed partial class ScrollContentPresenter : System.Windows.Controls.ContentPresenter, System.Windows.Controls.Primitives.IScrollInfo
+    public sealed partial class ScrollContentPresenter : System.Windows.Controls.ContentPresenter, System.Windows.Controls.Primitives.IScrollInfo, System.Windows.Controls.IPortableScrollInfo
     {
+        System.Windows.Controls.PortableScrollAxes System.Windows.Controls.IPortableScrollInfo.ScrollAxes { get { throw null; } }
         public static readonly System.Windows.DependencyProperty CanContentScrollProperty;
         public ScrollContentPresenter() { }
         public System.Windows.Documents.AdornerLayer AdornerLayer { get { throw null; } }
@@ -6908,8 +6920,9 @@ namespace System.Windows.Controls
         Prereform = 1,
         Postreform = 2,
     }
-    public partial class StackPanel : System.Windows.Controls.Panel, System.Windows.Controls.Primitives.IScrollInfo
+    public partial class StackPanel : System.Windows.Controls.Panel, System.Windows.Controls.Primitives.IScrollInfo, System.Windows.Controls.IPortableScrollInfo
     {
+        System.Windows.Controls.PortableScrollAxes System.Windows.Controls.IPortableScrollInfo.ScrollAxes { get { throw null; } }
         public static readonly System.Windows.DependencyProperty OrientationProperty;
         public StackPanel() { }
         [System.ComponentModel.DefaultValueAttribute(false)]
@@ -7763,8 +7776,9 @@ namespace System.Windows.Controls
         public bool ShouldItemsChangeAffectLayout(bool areItemChangesLocal, System.Windows.Controls.Primitives.ItemsChangedEventArgs args) { throw null; }
         protected virtual bool ShouldItemsChangeAffectLayoutCore(bool areItemChangesLocal, System.Windows.Controls.Primitives.ItemsChangedEventArgs args) { throw null; }
     }
-    public partial class VirtualizingStackPanel : System.Windows.Controls.VirtualizingPanel, System.Windows.Controls.Primitives.IScrollInfo
+    public partial class VirtualizingStackPanel : System.Windows.Controls.VirtualizingPanel, System.Windows.Controls.Primitives.IScrollInfo, System.Windows.Controls.IPortableScrollInfo
     {
+        System.Windows.Controls.PortableScrollAxes System.Windows.Controls.IPortableScrollInfo.ScrollAxes { get { throw null; } }
         public static readonly System.Windows.RoutedEvent CleanUpVirtualizedItemEvent;
         public static new readonly System.Windows.DependencyProperty IsVirtualizingProperty;
         public static readonly System.Windows.DependencyProperty OrientationProperty;
@@ -11273,6 +11287,23 @@ namespace System.Windows.Documents.Serialization
 }
 namespace System.Windows.Input
 {
+    public sealed class PortableScrollEventArgs : System.Windows.RoutedEventArgs
+    {
+        internal PortableScrollEventArgs() { }
+        public ProGPU.Wpf.Interop.PortablePointerInput NativeInput { get { throw null; } }
+        public System.Windows.Vector RemainingScroll { get { throw null; } }
+        public int Timestamp { get { throw null; } }
+        public System.Windows.Input.ModifierKeys Modifiers { get { throw null; } }
+    }
+    public static class PortableScroll
+    {
+        public static readonly System.Windows.RoutedEvent PreviewScrollEvent;
+        public static readonly System.Windows.RoutedEvent ScrollEvent;
+        public static void AddPreviewScrollHandler(System.Windows.UIElement element, System.Windows.RoutedEventHandler handler) { }
+        public static void RemovePreviewScrollHandler(System.Windows.UIElement element, System.Windows.RoutedEventHandler handler) { }
+        public static void AddScrollHandler(System.Windows.UIElement element, System.Windows.RoutedEventHandler handler) { }
+        public static void RemoveScrollHandler(System.Windows.UIElement element, System.Windows.RoutedEventHandler handler) { }
+    }
     public sealed partial class CommandConverter : System.ComponentModel.TypeConverter
     {
         public CommandConverter() { }
@@ -11359,6 +11390,7 @@ namespace System.Windows.Interop
         public static readonly System.Windows.RoutedEvent DpiChangedEvent;
         protected HwndHost() { }
         public System.IntPtr Handle { get { throw null; } }
+        protected virtual bool UsesPortableVisualHosting { get { throw null; } }
         System.Windows.Interop.IKeyboardInputSite System.Windows.Interop.IKeyboardInputSink.KeyboardInputSite { get { throw null; } set { } }
         public event System.Windows.DpiChangedEventHandler DpiChanged { add { } remove { } }
         public event System.Windows.Interop.HwndSourceHook MessageHook { add { } remove { } }

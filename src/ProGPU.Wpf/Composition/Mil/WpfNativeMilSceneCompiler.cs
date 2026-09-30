@@ -90,6 +90,7 @@ public sealed record WpfNativeMilBatch(
     public NativeGpuHitTestOwnerMap<object> VisualOwners { get; init; } =
         NativeGpuHitTestOwnerMap<object>.Empty;
     public ReadOnlyMemory<NativeMilPointHitRectangle> PointHitRegions { get; init; }
+    public ReadOnlyMemory<NativeMilVisualVisibility> VisualVisibilities { get; init; }
 }
 
 public sealed record WpfNativeMilCompilation(
@@ -152,7 +153,8 @@ public sealed class WpfNativeMilSceneCompiler
             context.D3DImageSources.ToArray())
         {
             VisualOwners = context.SnapshotVisualOwners(),
-            PointHitRegions = context.PointHitRegions.ToArray()
+            PointHitRegions = context.PointHitRegions.ToArray(),
+            VisualVisibilities = context.VisualVisibilities.ToArray()
         };
     }
 
@@ -283,6 +285,11 @@ public sealed class WpfNativeMilSceneCompiler
                 viewport3D.Handle, viewport3D.Scene);
             ++appliedCount;
         }
+        if (!batch.VisualVisibilities.IsEmpty)
+        {
+            channel.SetVisualVisibilities(batch.VisualVisibilities.Span);
+            ++appliedCount;
+        }
         if (!batch.PointHitRegions.IsEmpty)
         {
             channel.SetPointHitRectangles(batch.PointHitRegions.Span);
@@ -360,6 +367,7 @@ public sealed class WpfNativeMilSceneCompiler
         internal List<WpfNativeMilVisualCacheBounds> VisualCacheBounds
             { get; } = [];
         internal List<NativeMilPointHitRectangle> PointHitRegions { get; } = [];
+        internal List<NativeMilVisualVisibility> VisualVisibilities { get; } = [];
 
         internal List<WpfNativeMilViewport3DScene> Viewport3DScenes
             { get; } = [];
@@ -519,6 +527,10 @@ public sealed class WpfNativeMilSceneCompiler
             {
                 throw MissingContract(nameof(IPortableVisualStateSource));
             }
+            // Validate local visibility separately from opacity. Keep source
+            // records available to explicit BitmapCacheBrush root capture; the
+            // native traversal owns ordinary subtree exclusion.
+            _ = WpfVisualVisibility.IsVisible(state);
             ValidateEffectState(state);
 
             bool isViewport3D = visual is IPortableViewport3DSceneSource;
@@ -529,6 +541,14 @@ public sealed class WpfNativeMilSceneCompiler
 
             uint visualHandle = NextHandle();
             _visualHandles.Add(visual, visualHandle);
+            if (state.HasVisibility)
+            {
+                VisualVisibilities.Add(new NativeMilVisualVisibility
+                {
+                    Handle = visualHandle,
+                    Visibility = (uint)state.Visibility
+                });
+            }
             // The GPU ABI carries a signed ID; preserve the MIL handle's bits.
             _visualOwners.Add(new(unchecked((int)visualHandle), visual));
             if (visual is IPortablePointHitRegionSource pointSource)

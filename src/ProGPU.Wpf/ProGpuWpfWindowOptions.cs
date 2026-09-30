@@ -1,4 +1,5 @@
 using ProGPU.Scene;
+using ProGPU.Backend;
 
 namespace System.Windows.Media.ProGPU;
 
@@ -34,6 +35,14 @@ public sealed class ProGpuWpfWindowOptions
         ProGpuWpfRendererMode.ManagedPortable;
 
     /// <summary>
+    /// Selects the native WebGPU backend before creating a render device. Null
+    /// inherits a shared device's configuration, or the ProGPU startup environment
+    /// for a new device. Explicit choices must match an existing shared device;
+    /// they never select another renderer or silently fall back to another backend.
+    /// </summary>
+    public WgpuNativeBackendOptions? NativeBackendOptions { get; set; }
+
+    /// <summary>
     /// Requires native MIL to emit a complete GPU input index and uses that
     /// index for host point/region callbacks. Startup-only, explicit admission
     /// while application coverage is being completed; unsupported content fails
@@ -55,6 +64,12 @@ public sealed class ProGpuWpfWindowOptions
     internal bool IsPopupSurface { get; set; }
 
     public ProGpuWpfWindowBorder WindowBorder { get; set; } = ProGpuWpfWindowBorder.Resizable;
+
+    /// <summary>Requested minimize capability; native admission is platform-specific.</summary>
+    public bool CanMinimize { get; set; } = true;
+
+    /// <summary>Requested maximize capability; native admission is platform-specific.</summary>
+    public bool CanMaximize { get; set; } = true;
 
     public ProGpuWpfWindowState WindowState { get; set; } = ProGpuWpfWindowState.Normal;
 }

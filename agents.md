@@ -1,5 +1,176 @@
 # Agent Guidance
 
+## Repository and branch ownership
+
+LibreWPF work branches and pull requests target `progpu-rendering-port`, the
+default branch of `wieslawsoltes/LibreWPF`, not `main` or `dotnet/wpf`.
+Start new work from `origin/progpu-rendering-port` and explicitly select the fork
+and PR base in GitHub commands. Existing work transferred from `main` retains its
+original commits; do not rewrite or delete that history. Release preparation uses
+the qualified default-branch commit. LibreWinForms work likewise targets
+`librewinforms-progpu-port`; ProGPU continues to use `main`. Preserve exact pinned
+submodule commits rather than replacing them with an unqualified branch tip.
+
+Retained source rectangle replay must resolve the original IPortableTileBrushSource
+before generic brush adaptation. Reuse shared tile fill, exact source rectangle
+coverage and destination clips in both decoder sinks; replay a separate pen after
+fill scopes close. Unavailable brush/pen descriptors remain unsupported, while an
+admitted empty drawing is distinct from failure. Object-context replay alone does
+not cover canonical RenderData. Keep native MIL separate and require actual package
+application qualification. See docs/retained-tile-brush-backgrounds.md.
+
+Source-host native retirement retains the exact window and renderer cleanup owner
+until provider-aware disposal completes on the creating thread. A false result or
+exception is not native release. Publish deferred ownership before source callbacks,
+keep failed queue entries while draining other hosts, and preserve the original
+callback failure. Unwind render/native/modal leases before destroying GPU resources
+and the native view; reentrant cleanup must not repeat an active attempt. This does
+not admit the Cocoa factory or choose legacy MouseWheel compatibility.
+
+An ordinary accepted close during rendering owns the exact retiring target until
+the outer frame boundary unwinds drawing registrations and acquired texture views.
+Mutable show/close flags cannot revive that frame. Failed cleanup, including
+scheduler reset after target disposal, keeps its retry owner and blocks target
+reuse/replacement. Cancel and hide/show alone do not accept renderer retirement.
+
+Export local source Visible/Hidden/Collapsed independently of opacity and effective
+presentation attachment. Preserve retained owner identity and invalidate visibility
+even when alpha stays zero. Native MIL keeps complete shared source records with
+an owned sorted visibility snapshot; explicit BitmapCacheBrush root capture omits
+outer root state while descendants retain ordinary visibility. Do not relax existing
+visible-mask restrictions, discard empty own-point descendants, or hide detached visible brush roots.
+See docs/source-visual-visibility.md; application qualification remains separate.
+
+Deferred native scroll overflow retains the actual original EventRoute's default
+handler occurrences, not a recreated ancestor walk or event replay. Observe every
+application Handled assignment, including true-to-true, separately from default
+claims. Same-args nested raises cannot own the original continuation. Buffer until
+successful route sealing; abandon only the failing route's pending ownership.
+Keep each packet's frozen admission inverse, ingress source frame, logical scale
+and fractional provenance. Later frames cannot reinterpret older fractions or
+rounding debt. Preserve the 64-live-packet reservation bound and explicit failure
+before acceptance. Ancestor continuation joins each original candidate's queue
+tail when overflow is known; never reserve ancestor slots or claim global order.
+Factory admission, legacy wheel policy and native application qualification remain
+separate. See docs/native-scroll-routing.md and docs/native-scroll-source-consumer.md.
+
+Native scroll dispatch identity guards session and command publication after
+application-owned capability, metric and transform reads. Keep the guard out of
+accepted commands: later input must not cancel already accepted gesture work.
+Independent source routes may accept an uncached session, but cannot overwrite
+a newer reentrant viewer cache or lose its fractional state. Stale input must
+not replay through host fallback. Legacy MouseWheel policy remains separate.
+
+Empty source dispatcher flushes may bypass a frame only on the managed pump,
+with no eligible queued work or due timer and current owner/processing/lifetime
+state checked under the dispatcher lock. Keep Windows native message pumping
+and due-timer promotion in their original frame/context; preserve invalid and
+immediate timeout behavior. Removing synthetic markers is not Windows CPU or
+native idle qualification. See docs/portable-dispatcher-empty-flush.md.
+Timer-promotion hooks can finish shutdown and release dispatcher storage; recheck
+completed shutdown under the original lock before the next timer-list access.
+Keep original callback failures and the timer-update finally path intact.
+
+Native compute dispatch tracing belongs only to the separate failure replay.
+Reject its enabled opt-in in original idle acceptance, preserve the caller's
+environment and report requested tracing separately from emitted records.
+Encoding/submission logs never qualify completion or the original failed run.
+
+Linux glyph shader qualification must execute the actual compute atlas on the
+selected window device and read coverage for every requested glyph, including
+after the device owner closes. Empty presented windows do not compile lazy glyph
+pipelines. Keep explicit probe policy scoped to its atlas, preserve host defaults,
+font provenance, real submission/readback deadlines and independent GL/Vulkan
+gates; this probe is not source-text or transparent-pixel application parity.
+
+Native event-pump/render diagnostics must skip state reads and interpolation
+when disabled, not just skip their final write. Retain enabled message semantics
+and original scheduling/deadlines; skipped formatting is not native GPU idle
+or application performance qualification.
+
+Resize callbacks retain source geometry and invalidate the scene; only the
+guarded render boundary configures the swap chain before acquiring a texture.
+The render boundary opts into native queue deferral and retains its presentation
+retry when completion is pending. Do not acquire an old-size surface, clear the
+retry to appear idle, or relax the one-shot idle boundary/deadlines. Original
+one-shot ProGPU presenters keep their synchronous configuration contract.
+Native size setters defer presentation until their complete nested assignment
+unwinds, including synchronous scheduler wakeups. Win32 inline resize rendering
+requires the controller's actual interactive move/size state, not any WM_SIZE;
+preserve other platforms' live-resize callbacks and pending presentation retries.
+Missing native crash stacks must not turn this ordering correction into a claim
+that a prior fail-fast or all platform resize behavior is qualified.
+
+Passive Showcase endpoints must run once from the captured native window's Update
+callback, not a dispatcher callback that can execute inside an unfinished render.
+Read owner-thread render activity without consuming requests or polling GPU memory;
+reject active/current presentation work and recovery instead of waiting for quiet.
+Passive resize geometry reads wake only the native loop. Delayed callbacks remain
+live and count normally in the unchanged exact-zero interval. Source controls do
+not qualify native idle or attribute a previous access violation.
+Resize preparation also requires a newer actual presented frame with the exact
+current logical/physical size and DPI. Assigned source/window geometry is not a
+presentation acknowledgement. Keep this inside the original resize attempt
+budget; it must never wait for pending work to disappear, restart settling or
+weaken the separate one-shot idle boundary and exact-zero observation.
+Initial CI crash evidence uses only an exact-byte, unique-name Showcase apphost and its
+newly owned per-image WER key. Never mutate caller/global crash policy or upload
+unbounded/full-memory dumps. Keep phase journal writes outside measured intervals,
+preserve actual child failure status through diagnostic cleanup, and treat a
+missing stack as unqualified rather than inventing an ARM64 crash cause.
+An explicit failure-only debugger replay must persist the original failed receipt
+first and never replace its result. Launch only a fresh owned apphost, verify native
+architecture, retain OS exception handling and capture a bounded normal dump from
+the real stopped thread. Correlate PID/thread/code/address before publication;
+debugger controls and instrumented replays never qualify the original idle gate.
+An optional live-stack snapshot belongs only to that failed-run replay and the
+same owned child. Keep its exception-free normal dump, raw directory and receipt
+separate from crash evidence; require intrinsic architecture, PID and complete
+thread contexts before publication. Never inject a breakpoint, infer an atomic
+frame, extend the original deadlines or enable it in the acceptance run.
+An ordinary child failure may also receive one diagnostic native-loop replay only
+after unchanged payload identity and the original nonzero exit are established.
+Retain bounded stdout/stderr tails with explicit discarded-byte counts, drain both
+pipes through owned-child cleanup, and never enable tracing in the original run.
+Normal dump writers may include the documented AVX register-state flag on x64;
+admit only that exact extension with intrinsic system-stream architecture proof.
+Keep actual flags, bounded dumps, full-memory rejection and original failure status.
+Passive interval timers must reach the original monotonic deadline despite early
+timer wakeups. Remainder waits are time-only and bounded: never resample frame
+counters, restart an interval, wait for quiet or relax the measured minimum.
+Resize checkpoints are per-host and scoped only around the synchronous action,
+never a measured idle interval. Read cached state without native queries or
+pumping; defer diagnostic failures so they cannot escape unmanaged callbacks or
+replace product failures. Rendering activity alone is not surface acquisition.
+
+Portable visual-only HwndHost is an explicit derived-class opt-in under an actual
+portable presentation source, including Windows. Keep derived visual/logical
+ownership and zero Handle; never invoke native build/destroy callbacks or adopt
+the parent source as a child. Default portable child-source and native HWND paths
+remain distinct; reject parent-handle aliases before detaching any source root.
+Source ownership tests do not qualify AvalonDock auto-hide or WindowsFormsHost.
+
+Retained layout clips compare typed geometry values, not freshly allocated source
+objects. Keep primitive capture inline, and own path/figure/segment snapshots;
+mutable source DTO or array identity is never proof of equality. Reuse a retained
+copy only after complete live value comparison, with matching double/hash
+semantics and bounded recursive capture. Unknown/unavailable/oversized metadata
+retains reference identity, not empty geometry or new drawing admission. Preserve
+HasLayoutClip, empty/zero-size distinctions, transforms and dirty-source batching.
+See docs/native-layout-clip-invalidation.md; actual idle application qualification
+remains separate from tracker tests.
+
+Portable source number substitution resolves existing DigitState policy before
+physical-font selection. Contextual source ranges use ProGPU's typed batched
+digit-context service over original UTF-16, including preceding source context
+for independent nonzero starts. Reuse source TypefaceMap digit-culture linking
+for active digit ranges and pass the same resolved forced/disabled policy into
+native shaping. Never choose an ASCII face then substitute a missing digit, change
+source characters/offsets, or duplicate native context classification in WPF.
+Culture-specific percent/group/decimal symbols remain explicitly rejected where
+the native symbol contract is missing; digit-only admission is not full number
+formatting parity. Preserve wrapped context ownership and package/Windows gates.
+
 Portable TextLine terminal caret boxes apply only to source ranges intersecting
 the actual newline. Hidden-only formatting ranges keep native caret navigation,
 not invented selection rectangles. Preserve newline X/height from the retained
@@ -546,6 +717,22 @@ frozen before any composition lock, channel or media-system ownership. Preserve
 that choice across shutdown/device recovery and reject late backend switches.
 Extend this typed policy to remaining MIL resource consumers; do not equate a
 portable transport selection with completed Windows package support.
+Portable input modifiers belong to synchronous event delivery, including nested
+pointer/key/text callbacks. Scope the aggregate without rewriting physical key or
+toggle state; never resurrect a key released during a nested callback. Keep native
+Windows modifier queries unchanged and do not invent left/right identity from
+aggregate flags. See docs/portable-input-modifiers.md.
+Portable pointer presses retain both original and capture-routed source identity.
+Root detachment/disposal clears only still-owned presses, without synthetic up or
+click events or canceling another provider's capture. Ordinary source switches
+preserve presses; real cross-source ups remain authoritative. Never use a global
+button reset for source-local teardown. See docs/portable-pointer-source-ownership.md.
+Native pointer hosts select one typed event stream, retain native metadata through
+coordinate copies, and scale point deltas but never wheel lines. Keep shortcut
+normalization separate from native modifiers. Missing source capability must not
+fall through to legacy events; hide cancellation retains its exact popup source.
+Do not select owned factories until actual source consumption/lifetime is complete.
+See docs/native-pointer-host-transport.md.
 InputManager must freeze this same choice before creating keyboard/mouse devices.
 Portable raw reports require host-owned device state on Windows too; do not use
 Win32 asynchronous state for those reports or promote their keys through WPF TSF
@@ -803,7 +990,7 @@ Portable gradient brush DTO transforms are supported native state. Direct `Adapt
 
 Use the existing `IPortableGeometryPathSource`, `IPortableGuidelineSetSource`, `IPortableTransformMatrixSource`, `IPortableBrushSource`, `IPortableTileBrushSource`, `IPortablePenSource`, `IPortableEffectSource`, `IPortableBitmapEffectInputSource`, `IPortablePixelShaderSource`, `IPortableShaderEffectSource`, `IPortableDrawingContentSource`, `IPortableGeometryDrawingStateSource`, `IPortableImageDrawingStateSource`, `IPortableGlyphRunDrawingStateSource`, `IPortableGlyphRunSource`, `IPortableDrawingGroupStateSource`, `IPortableRenderDataSource`, `IPortableInvalidationSource`, `IPortableVisualChildrenSource`, `IPortableVisualStateSource`, `IPortableVisualBoundsSource`, `IPortableVisualLayoutStateSource`, `IPortableBitmapSourcePixelsSource`, and backend-owned `IProGpuTextureSource` seams as the pattern for future cleanup: expose narrow typed contracts from source-built WPF internals, keep DTOs package-neutral unless they intentionally carry ProGPU backend resources, and update tests to assert that hot-path readers do not use `System.Reflection`, `BindingFlags`, property probing, or duck-typed fake shapes. Visual and drawing replay plus retained invalidation should snapshot source-built offset, transform, clip, scroll clip, opacity, opacity-mask, content/descendant bounds, render size, clip-to-bounds, layout-clip state, geometry-drawing geometry/brush/pen, image-drawing source/rect, glyph-run drawing brush/run, glyph-run font/metrics/positions, drawing-group bounds/children/effects/render options, media-resource invalidation subscriptions, built-in and legacy bitmap-effect parameters/input state, shader-effect pixel bytecode/register/sampler kind/image-source state, shader-effect brush-sampler source bounds, and tile/image/drawing/visual brush state through those typed DTOs before any transitional fallback. Brush/resource cleanup must keep solid, gradient, tile brush, geometry-drawing, image-drawing, glyph-run drawing, glyph-run resource adaptation, drawing-group, and shader-effect sampler state on typed DTO/native ProGPU paths first, then remove the remaining transitional reflection fallbacks.
 
-Normal WPF managed code reuse remains the goal. Modify upstream WPF managed code only where necessary to expose portable seams, replace Windows-only calls, or route native rendering/platform work into ProGPU and Silk.NET. Retained dependency registration should remain typed, streamed, scratch-backed, and hash-backed; do not reintroduce per-registration dependency lists, reflection probes, fresh visited-set allocation, or per-source visual-list scans on the normal branch registration path. Retained branch source-to-visual maps should store the common one-visual mapping in compact value-type storage and promote to a list only when a source genuinely owns multiple visuals; do not allocate `List<ProGpuVisual>` for normal one-visual Xceed/DataGrid cell branches. Retained branch source/source-owner/dependency maps should store the common one-owner visual mapping in compact value-type reference-set storage and promote to hash-backed storage only when a visual is genuinely shared; do not allocate per-visual `HashSet<object>` owners or wrapper owner-set objects for normal Xceed/DataGrid cell branches. Retained branch unregister cleanup should direct-remove one-visual source mappings instead of scanning a source visual list; reserve list removal for multi-visual mappings. Retained branch replay target filtering should use map-owned target-visual scratch plus parent-chain checks, not nested candidate scans, so Xceed/DataGrid scroll invalidations stay proportional to dirty branch count and visual depth. WPF hosts should prepare dirty retained-branch replay targets once per frame with the active frame image-source adapter and pass that stable target list into replay; do not re-walk dirty sources or rebuild shader-sampler image-source adapters during the replay call. Single dirty-branch replay should reuse map-owned single-target storage and index through `IReadOnlyList<WpfRetainedVisualBranchReplayTarget>` consumers instead of allocating a one-element target array or enumerator per scroll invalidation. Retained branch invalidation should skip source-owner enumeration for one-owner branches and reserve shared-owner/conflict scans for multi-owner branches. Retained version polling should capture portable visual state and visual-child topology in one scratch-backed traversal when the tracker is not already dirty; do not restore separate full graph walks for visual-state and child-topology change detection. Diagnostic tracked-dependency enumeration should follow the same scratch-backed traversal rule and only allocate the durable result list it returns. Tile-brush replay should stream value-type indexed tile ranges into native clip/transform/draw commands instead of materializing per-fill tile arrays/lists or using a custom tile enumerator/`foreach`, and visual-brush tile replay should reuse one `WpfVisualTreeRenderer` plus image-source adapter per fill instead of allocating them for every tile. MIL render-data decode should keep push/pop tracking on stack-local or pooled scratch storage rather than allocating a `Stack<bool>` per replay. ProGPU composition command sinks should keep push, transform, guideline, hit-test-owner, bitmap-scaling, edge-mode, and text-mode scopes on inline or pooled storage instead of allocating eager `Stack<T>` objects per retained visual scope; direct Y1/Y2 guideline pushes should store Y coordinates inline rather than allocating one/two-element arrays. Retained composition command sinks should use that same inline/pool-backed storage for delegate/effect/cache and visual-scope stacks instead of allocating eager `Stack<T>` objects per retained replay sink. Retained visual bounds accumulation should use inline/pool-backed scope storage for push, transform, and clip state, and must keep managed clip pops scope-balanced even when bounds cannot be reduced to a retained rectangle. ProGPU GPU hit-test index construction should pass spans over collected primitive/path-segment lists into the durable index builder instead of allocating temporary arrays first, and BVH split scratch should allocate retained/child primitive lists lazily instead of creating a retained list plus four child lists for every split candidate. Quadtree child-slot state should stay fixed-size in locals rather than allocating a per-node tuple array, the root primitive range should stay implicit instead of materializing a root index list, and ProGPU.Vector cleanup buffers such as PathAtlas temporary bind-group release lists, active-path repack storage, and atlas clear uploads should use vector-owned pooled buffers. ProGPU static-DXF compilation should rent temporary draw-call lists from the compositor pool and only materialize durable arrays for `DxfStaticBuffer` ownership. Dynamic GPU line/scatter series fallback uploads should flow through `ReadOnlySpan<float>` into `GpuSeriesBuffer`, with pooled scratch only for 2D scatter expansion. Scene-extension compile paths should use empty spans for missing local command data instead of allocating empty lists. WPF shader-effect, image-effect, ShaderToy, CAD/3D, grid, line, and hatch pipeline creation should pass span-backed vertex layouts into `RenderPipelineCache` and use stack-backed vertex descriptors instead of per-pipeline managed layout arrays or unmanaged `HGlobal` attribute buffers. DirectX, SciChart, diagnostics, and compute/texture readback paths should prefer ProGPU backend span/caller-buffer read APIs; array-returning read APIs are compatibility wrappers and should not be the default product path. DirectX texture shadow synchronization should read backend subresources directly into shadow spans, including individual array slices via readback origin layers, rather than allocating temporary full-mip pixel arrays. `WgpuContext` pending-resource cleanup should use context-owned dedupe scratch and pooled pointer snapshots, because it is the shared WebGPU lifetime drain for WPF, WinUI, Avalonia, DirectX, SciChart, texture readback, and compositor caches.
+Normal WPF managed code reuse remains the goal. Modify upstream WPF managed code only where necessary to expose portable seams, replace Windows-only calls, or route native rendering/platform work into ProGPU and Silk.NET. Retained dependency registration should remain typed, streamed, scratch-backed, and hash-backed; do not reintroduce per-registration dependency lists, reflection probes, fresh visited-set allocation, or per-source visual-list scans on the normal branch registration path. Retained branch source-to-visual maps should store the common one-visual mapping in compact value-type storage and promote to a list only when a source genuinely owns multiple visuals; do not allocate `List<ProGpuVisual>` for normal one-visual Xceed/DataGrid cell branches. Retained branch source/source-owner/dependency maps should store the common one-owner visual mapping in compact value-type reference-set storage and promote to hash-backed storage only when a visual is genuinely shared; do not allocate per-visual `HashSet<object>` owners or wrapper owner-set objects for normal Xceed/DataGrid cell branches. Retained branch unregister cleanup should direct-remove one-visual source mappings instead of scanning a source visual list; reserve list removal for multi-visual mappings. Retained branch replay target filtering should use map-owned target-visual scratch plus parent-chain checks, not nested candidate scans, so Xceed/DataGrid scroll invalidations stay proportional to dirty branch count and visual depth. WPF hosts should prepare dirty retained-branch replay targets once per frame with the active frame image-source adapter and pass that stable target list into replay; do not re-walk dirty sources or rebuild shader-sampler image-source adapters during the replay call. Single dirty-branch replay should reuse map-owned single-target storage and index through `IReadOnlyList<WpfRetainedVisualBranchReplayTarget>` consumers instead of allocating a one-element target array or enumerator per scroll invalidation. Retained branch invalidation should skip source-owner enumeration for one-owner branches and reserve shared-owner/conflict scans for multi-owner branches. Retained version polling should capture portable visual state and visual-child topology in one scratch-backed traversal before replay, even when another source has already marked the tracker dirty; do not restore separate full graph walks for visual-state and child-topology change detection. Diagnostic tracked-dependency enumeration should follow the same scratch-backed traversal rule and only allocate the durable result list it returns. Tile-brush replay should stream value-type indexed tile ranges into native clip/transform/draw commands instead of materializing per-fill tile arrays/lists or using a custom tile enumerator/`foreach`, and visual-brush tile replay should reuse one `WpfVisualTreeRenderer` plus image-source adapter per fill instead of allocating them for every tile. MIL render-data decode should keep push/pop tracking on stack-local or pooled scratch storage rather than allocating a `Stack<bool>` per replay. ProGPU composition command sinks should keep push, transform, guideline, hit-test-owner, bitmap-scaling, edge-mode, and text-mode scopes on inline or pooled storage instead of allocating eager `Stack<T>` objects per retained visual scope; direct Y1/Y2 guideline pushes should store Y coordinates inline rather than allocating one/two-element arrays. Retained composition command sinks should use that same inline/pool-backed storage for delegate/effect/cache and visual-scope stacks instead of allocating eager `Stack<T>` objects per retained replay sink. Retained visual bounds accumulation should use inline/pool-backed scope storage for push, transform, and clip state, and must keep managed clip pops scope-balanced even when bounds cannot be reduced to a retained rectangle. ProGPU GPU hit-test index construction should pass spans over collected primitive/path-segment lists into the durable index builder instead of allocating temporary arrays first, and BVH split scratch should allocate retained/child primitive lists lazily instead of creating a retained list plus four child lists for every split candidate. Quadtree child-slot state should stay fixed-size in locals rather than allocating a per-node tuple array, the root primitive range should stay implicit instead of materializing a root index list, and ProGPU.Vector cleanup buffers such as PathAtlas temporary bind-group release lists, active-path repack storage, and atlas clear uploads should use vector-owned pooled buffers. ProGPU static-DXF compilation should rent temporary draw-call lists from the compositor pool and only materialize durable arrays for `DxfStaticBuffer` ownership. Dynamic GPU line/scatter series fallback uploads should flow through `ReadOnlySpan<float>` into `GpuSeriesBuffer`, with pooled scratch only for 2D scatter expansion. Scene-extension compile paths should use empty spans for missing local command data instead of allocating empty lists. WPF shader-effect, image-effect, ShaderToy, CAD/3D, grid, line, and hatch pipeline creation should pass span-backed vertex layouts into `RenderPipelineCache` and use stack-backed vertex descriptors instead of per-pipeline managed layout arrays or unmanaged `HGlobal` attribute buffers. DirectX, SciChart, diagnostics, and compute/texture readback paths should prefer ProGPU backend span/caller-buffer read APIs; array-returning read APIs are compatibility wrappers and should not be the default product path. DirectX texture shadow synchronization should read backend subresources directly into shadow spans, including individual array slices via readback origin layers, rather than allocating temporary full-mip pixel arrays. `WgpuContext` pending-resource cleanup should use context-owned dedupe scratch and pooled pointer snapshots, because it is the shared WebGPU lifetime drain for WPF, WinUI, Avalonia, DirectX, SciChart, texture readback, and compositor caches.
 
 Retained invalidation events should request a subscription refresh and coalesce the actual graph rebuild until the dirty pass is consumed. Do not clear and resubscribe the full WPF graph immediately for every Xceed/DataGrid property, collection, or portable invalidation event.
 

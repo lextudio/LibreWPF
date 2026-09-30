@@ -1577,6 +1577,8 @@ internal readonly struct WpfReplayPoint
 
 internal readonly struct WpfRetainedVisualState
 {
+    private readonly bool _isHidden;
+
     public WpfRetainedVisualState(
         Vector2 offset,
         Matrix4x4 transform,
@@ -1588,9 +1590,11 @@ internal readonly struct WpfRetainedVisualState
         WpfReplayRect? contentBounds = null,
         MediaBrush? opacityMask = null,
         WpfReplayRect? opacityMaskBounds = null,
-        WpfReplayRect? outerClipBounds = null)
+        WpfReplayRect? outerClipBounds = null,
+        bool isVisible = true)
     {
         Offset = offset;
+        _isHidden = !isVisible;
         Transform = transform;
         Opacity = opacity;
         ClipBounds = clipBounds;
@@ -1604,6 +1608,8 @@ internal readonly struct WpfRetainedVisualState
     }
 
     public Vector2 Offset { get; }
+
+    public bool IsVisible => !_isHidden;
 
     public Vector2? Size { get; }
 

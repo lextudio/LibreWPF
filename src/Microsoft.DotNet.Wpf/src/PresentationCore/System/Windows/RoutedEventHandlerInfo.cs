@@ -63,6 +63,9 @@ namespace System.Windows
         // invocation preferences
         internal void InvokeHandler(object target, RoutedEventArgs routedEventArgs)
         {
+            // Observe the original occurrence even when provisional source
+            // handling suppresses invocation. Keep all invocation rules below.
+            (routedEventArgs as IPortableRoutedEventObserver)?.ObserveHandler(target, _handler);
             if ((!routedEventArgs.Handled) || (_handledEventsToo))
             {
                 if (_handler is RoutedEventHandler)
@@ -146,4 +149,3 @@ namespace System.Windows
         #endregion Data
     }
 }
-

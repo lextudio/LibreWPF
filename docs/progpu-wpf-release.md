@@ -33,7 +33,7 @@ projects on the ProGPU/Silk.NET platform.
 ## Local Preview Build
 
 ```bash
-PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.45 \
+PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.65 \
 PROGPU_WPF_PROGPU_PACKAGE_VERSION="0.1.0-source.$(git -C external/ProGPU rev-parse --short=8 HEAD)" \
   ./eng/progpu-wpf-sdk-ci.sh
 ```
@@ -45,8 +45,17 @@ builds assign the checked-out ProGPU submodule a commit-qualified `0.1.0-source.
 pack the complete ProGPU dependency closure from that exact source. This prevents a newer LibreWPF
 assembly from loading an ABI-incompatible older ProGPU binary. The release workflow instead downloads
 immutable ProGPU release packages for the matching `v<version>` tag and requires the tag commit to
-equal the checked-out ProGPU submodule commit before packaging. Every downloaded package is audited
-against that tag commit recorded in its nuspec.
+equal the checked-out ProGPU submodule commit before packaging. The release job also stages the
+native runtimes from that exact `ProGPU.Backend.Native` package for source-host smoke tests; a
+NuGet package in the feed alone does not populate the source-host runtime directory. Every
+downloaded package is audited against that tag commit recorded in its nuspec.
+For aligned tag releases, `progpu_version` defaults to the LibreWPF tag version;
+an explicit override is reserved for a deliberate recovery publication. This
+prevents an older workflow input default from silently mixing package versions.
+
+Canonical WinForms packages built for a public LibreWPF release carry that same ProGPU
+release version; their temporary source-built ProGPU dependencies are replaced by the
+byte-exact published ProGPU packages before mixed WPF/WinForms package smoke.
 
 ### Package production before qualification
 
@@ -139,8 +148,8 @@ mixed WPF/WinForms application. It does not rebuild or reference the retired
 
 - `LibreWPF Build` runs the canonical WinForms source gate on Linux and the SDK package/no-source-change smoke on macOS with submodules checked out.
 - `LibreWPF Docs` verifies that this document and README stay aligned with the preview package list.
-- `LibreWPF Release` promotes the package bundle from a terminal-success `LibreWPF Build` run for the exact tagged commit, re-verifies its source/package provenance, runs the clean Windows AnyCPU package smoke, publishes to NuGet.org, and creates tag-driven GitHub Releases with generated release notes. It fails closed when the exact commit has no live qualified artifact.
-- Manual `LibreWPF Release` dispatch remains the recovery path that rebuilds the full SDK gate for an explicitly selected immutable ref.
+- `LibreWPF Release` rebuilds the immutable tagged source against the matching ProGPU GitHub release packages, verifies the complete release bundle and exact source/package provenance, runs the clean Windows AnyCPU package smoke, publishes to NuGet.org, and creates a GitHub Release with generated release notes. The `LibreWPF Build` artifact retains commit-qualified `source.<sha>` ProGPU packages for CI consumers and must not be promoted as a public release.
+- Manual `LibreWPF Release` dispatch uses the same full SDK gate for recovery publication from an explicitly selected immutable ref.
 
 ## NuGet Publishing
 
@@ -156,7 +165,7 @@ Publishing is gated by repository secret `NUGET_API_KEY`.
 Existing WPF applications should be able to switch only the project SDK:
 
 ```xml
-<Project Sdk="LibreWPF.Sdk/0.1.0-preview.45">
+<Project Sdk="LibreWPF.Sdk/0.1.0-preview.65">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>

@@ -1,5 +1,21 @@
 # LibreWPF native MIL core delivery
 
+## Source digit substitution — 2026-09-22
+
+The active source-text integration connects WPF number policies to ProGPU's
+native digit substitution and shared context scan. Physical font mapping must
+see the resolved digit culture before shaping. The adapter retains original
+text, clusters, source indices, and continuation ownership; source percent and
+separator substitutions remain explicit until their native contract exists.
+See [implementation and qualification limits](native-mil-digit-substitution.md).
+The source Release build and all 53 focused source tests pass on macOS ARM64
+and Windows ARM64 with explicit portable-media selection. An actual native
+provider differential exposed incorrect substituted-digit bidi metadata;
+the shared ProGPU correction now passes that strict comparison. The expanded
+eight-case Windows application/package comparison remains required on the
+immutable merged dependency graph. See the
+[qualification record](../reports/native-mil-source-digits-2026-09-22.md).
+
 ## Scope decision — 2026-09-08
 
 The user requested a focus on core major features and finishing. The immediate
@@ -14,6 +30,24 @@ findings go into the appropriate core blocker or deferred expansion list; they
 do not automatically expand the release checklist.
 
 ## Active completion queue
+
+**Source language-system admission — 2026-09-22:** the next native-text slice
+removes LibreWPF's blanket rejection of mixed-culture source runs. Each actual
+`TextRunProperties.CultureInfo` is normalized through WPF's existing
+`CultureMapper`, resolved by the selected typed provider, and retained in the
+corresponding `PortableTextStyle.Language`. ProGPU owns the BCP-47 to OpenType
+language-system mapping in its existing C++ text implementation and exposes a
+bounded borrowed-input C ABI plus allocation-conscious managed wrapper; WPF does
+not copy that table or create another shaper. The native C++ export regression,
+native showcase regression, ProGPU native backend/interoperability builds,
+LibreWPF provider graph regression, and source `PresentationCore.Tests` build
+pass locally. The focused source test then ran in the signed-in Windows 11 ARM64
+Parallels guest against that exact source-managed test assembly: 1 passed,
+0 failed and 0 skipped. Open and qualify the ProGPU dependency PR first, then
+the LibreWPF consumer PR and exact Windows package/text gate. This admits
+OpenType language selection only: number
+substitution, dictionary breaking and culture-sensitive font fallback remain
+separate contracts.
 
 **Windows ARM64 Toolkit monitor/runtime follow-up — 2026-09-15:** all #141
 post-merge CI jobs passed, including native-MIL package Showcase on Windows
@@ -2375,12 +2409,16 @@ application; that application assertion remains authored-only. No tests, source
 verifiers, graphical/VM/GPU runs, benchmarks or CI qualification ran. ProGPU
 contains the latest fetched main; unrelated worktree changes were preserved.
 
-The startup trace also found `SimpleTextLine.CreatePortableFallback` can construct
-an empty paragraph for unsupported text. Do not enable a Windows portable-text
-route by replacing OS checks indiscriminately: native LineServices is a separate
-dependency from MIL rendering, and the empty portable result is not text parity.
-Track required complex-text/document cases against the existing Showcase editor gate;
-this batch neither changes text services nor claims those cases complete.
+The startup trace also found `SimpleTextLine.CreatePortableFallback` could construct
+an empty paragraph for unsupported text. That false-success path is now removed.
+Portable formatting first selects the registered typed ProGPU paragraph provider;
+provider-less source remains available only when `SimpleTextLine` genuinely retains
+the complete source. Complex line and intrinsic-width requests without a provider
+fail explicitly with the same source-preservation error instead of manufacturing
+an end-of-paragraph line. Native LineServices remains a separate Windows-MIL
+dependency. This closes silent source loss, not the remaining complex-text and
+document semantics tracked against the Showcase editor gate. See
+[native text provider admission](native-mil-text-provider-admission.md).
 
 Decoder-backed SDK image connection: the existing package SDK gate loads
 `Assets/ExternalImage.png` through XAML Image/ImageBrush and BitmapImage pack URI
@@ -3152,3 +3190,38 @@ core path. The native MIL path is a separate consumer of ProGPU's shared rendere
 Completing this core milestone must be reported as core delivery, not as verified
 completion of the entire original goal. Broader scope needs its own remaining
 implementation and qualification evidence.
+
+## Native scene presentation host checkpoint — 2026-09-22
+
+Merged ProGPU PR #177 introduced bounded physical viewport execution and
+independent X/Y device axes for flat retained 2D semantic scenes. Corrective
+PR #178 is merged at `c0679a14`; it keeps the package CPU-stage fixture on a
+dedicated flat retained scene while preserving explicit rejection of mapped
+materialized layers. Its exact head passed all 45 hosted checks, including the
+native NuGet package, Windows DX12 consumers, every platform and specialized
+package consumer, ordered GPU queries, and the DirectX/Win2D/MIL/Direct2D
+differentials.
+
+LibreWPF constructs one typed `NativeScenePresentation` from the resolved framebuffer
+geometry and passes it unchanged through both the ordinary fastest render path
+and the opt-in CPU-stage capture path. The previous full-surface/uniform-axis
+host rejection is removed; invalid, empty or out-of-bounds mappings still fail
+before scene update or GPU submission, and managed drawing callbacks remain
+incompatible with native MIL mode.
+
+Mapped 3D and materialized-layer scenes remain explicitly unsupported by the
+ProGPU renderer before GPU allocation. This host connection does not qualify
+those families or claim full Direct2D/Win2D parity. LibreWPF pins the exact
+`c0679a14` ProGPU merge; Windows D3D12/package application gates remain required
+before this checkpoint can ship.
+
+LibreWinForms PR #41 is merged at `2b7fc64c`; its canonical source, package,
+AppKit and visible macOS/Ubuntu/Windows package-consumer lanes all passed against
+the same ProGPU merge. LibreWPF pins both immutable dependency commits so the
+canonical mixed WPF/WinForms graph cannot resolve a different presentation ABI.
+
+The LibreWPF Release graph builds against the merged dependency. Six focused host tests
+cover preserving viewport origin/extent and unequal device axes plus rejection
+of invalid mappings. With the exact locally built ProGPU native libraries in the
+testhost search path, the complete `ProGPU.Wpf.Tests` assembly passes 1,832/1,832.
+These are contract/component tests, not Windows package/runtime qualification.

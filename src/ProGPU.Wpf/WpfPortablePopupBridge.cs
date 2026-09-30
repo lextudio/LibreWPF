@@ -232,22 +232,16 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         double popupOwnerY)
     {
         ArgumentNullException.ThrowIfNull(input);
-        if (!coordinatesAreOwnerRelative || !IsPointerInput(input.Kind))
+        if (input.NativePointer != null || !coordinatesAreOwnerRelative || !IsPointerInput(input.Kind))
         {
             return input;
         }
 
-        return new WpfInputEventArgs(
-            input.Kind,
-            input.Key,
-            input.ScanCode,
-            input.Character,
+        return input.WithPointerCoordinates(
             input.X + popupOwnerX,
             input.Y + popupOwnerY,
             input.DeltaX,
-            input.DeltaY,
-            input.Button,
-            input.Modifiers);
+            input.DeltaY);
     }
 
     internal static Func<double, double, IPortablePresentationSourceHost> PortablePresentationSourceFactory { get; set; } =
@@ -596,7 +590,9 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(input);
 
-        if (!IsVisible || !IsHitTestable)
+        // Owner-window cancellation belongs to that source, not whichever
+        // overlay happens to be topmost. Native popups use their direct route.
+        if (input.Kind == WpfInputEventKind.MouseCancel || !IsVisible || !IsHitTestable)
         {
             return false;
         }
@@ -606,33 +602,22 @@ internal sealed class WpfPortablePopupBridge : IDisposable
             return false;
         }
 
-        if (!PortableWpfServiceRegistry.TryGetWindowActivationService(
-                PortableWpfServiceKey.PresentationFramework,
-                out var activationService))
-        {
-            return false;
-        }
-
-        var portableInput = CreatePortableWindowInputEvent(input);
-        if (!activationService.TryProcessPresentationSourceInputEvent(Source, portableInput))
-        {
-            return false;
-        }
-
-        input.Handled = portableInput.Handled;
-        return true;
+        return TryRouteInputToPresentationSource(input, input.X - LogicalX, input.Y - LogicalY);
     }
 
     private bool TryProcessNativeInput(WpfInputEventArgs input)
     {
-        if (_isDisposed || !IsVisible || !IsHitTestable)
+        if (_isDisposed || (input.Kind != WpfInputEventKind.MouseCancel && (!IsVisible || !IsHitTestable)))
         {
             return false;
         }
 
         double localX = input.X;
         double localY = input.Y;
-        if (IsPointerInput(input.Kind) &&
+        // The typed provider owns a native client-local view. Do not apply the
+        // old Cocoa GLFW owner-coordinate heuristic or drop captured drags/up,
+        // leave and cancellation merely because they lie outside the popup.
+        if (input.NativePointer == null && IsPointerInput(input.Kind) &&
             !TryNormalizeNativePointerCoordinates(
                 OperatingSystem.IsMacOS(),
                 input.X,
@@ -948,26 +933,18 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         }
     }
 
-    private PortableWindowInputEvent CreatePortableWindowInputEvent(WpfInputEventArgs input)
-    {
-        return new PortableWindowInputEvent(
-            (int)input.Kind,
-            input.Key,
-            input.ScanCode,
-            input.Character,
-            input.X - LogicalX,
-            input.Y - LogicalY,
-            input.DeltaX,
-            input.DeltaY,
-            (int)input.Button,
-            (int)input.Modifiers);
-    }
-
     private bool TryRouteInputToPresentationSource(WpfInputEventArgs input, double localX, double localY)
     {
-        if (!PortableWpfServiceRegistry.TryGetWindowActivationService(
-                PortableWpfServiceKey.PresentationFramework,
-                out var activationService))
+        bool available = PortableWpfServiceRegistry.TryGetWindowActivationService(
+            PortableWpfServiceKey.PresentationFramework, out var activationService);
+        if (WpfNativePointerInput.RequiresNativeDispatch(input))
+        {
+            var mapped = input.WithPointerCoordinates(localX, localY, input.DeltaX, input.DeltaY);
+            WpfNativePointerInput.Forward(activationService, Source, mapped, presentationSource: true);
+            input.Handled = mapped.Handled;
+            return true;
+        }
+        if (!available)
         {
             return false;
         }
@@ -1061,7 +1038,7 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         return kind is WpfInputEventKind.MouseMove or
             WpfInputEventKind.MouseDown or
             WpfInputEventKind.MouseUp or
-            WpfInputEventKind.MouseWheel;
+            WpfInputEventKind.MouseWheel or WpfInputEventKind.MouseLeave or WpfInputEventKind.MouseCancel;
     }
 
     private static int ToScreenDeviceCoordinate(int ownerCoordinate, double logicalOffset, double scale)

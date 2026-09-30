@@ -40,6 +40,7 @@ public partial class MainWindow : Window
         new("Refresh status", nameof(RefreshStatusCommand), typeof(MainWindow));
 
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_SHOWCASE_LIVE_VALIDATE";
+    private const string LiveValidationTimeoutSecondsEnvironmentVariable = "PROGPU_WPF_SHOWCASE_LIVE_VALIDATE_TIMEOUT_SECONDS";
     private const string LivePerformanceValidationEnvironmentVariable = "PROGPU_WPF_SHOWCASE_PERFORMANCE_VALIDATE";
     private const string LiveValidationStatusPathEnvironmentVariable = "PROGPU_WPF_SHOWCASE_LIVE_VALIDATE_STATUS_PATH";
     private const string LiveNativeDragStatusPathEnvironmentVariable = "PROGPU_WPF_SHOWCASE_NATIVE_DRAG_STATUS_PATH";
@@ -295,6 +296,9 @@ public partial class MainWindow : Window
         var viewModel = new MainViewModel();
         DataContext = viewModel;
         InitializeComponent();
+        WindowsClipboardImagePanel.Visibility = OperatingSystem.IsWindows() ? Visibility.Visible : Visibility.Collapsed;
+        CopyClipboardImageButton.IsEnabled = OperatingSystem.IsWindows();
+        PasteClipboardImageButton.IsEnabled = OperatingSystem.IsWindows();
         InitializeFrameworkThemeState();
 
         string? initialTab = Environment.GetEnvironmentVariable(InitialTabEnvironmentVariable);
@@ -477,6 +481,11 @@ public partial class MainWindow : Window
     private void StartLiveValidationIfRequired()
     {
         if (_liveValidationStarted)
+        {
+            return;
+        }
+
+        if (StartIdleLayoutClipValidationIfRequested())
         {
             return;
         }
@@ -764,6 +773,21 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void OnCopyClipboardImageClick(object sender, RoutedEventArgs e)
+    {
+        Clipboard.SetImage(ShowcaseClipboardImage.CreateSource());
+        DataObjectStatusText.Text = "Clipboard: image copied";
+        e.Handled = true;
+    }
+
+    private void OnPasteClipboardImageClick(object sender, RoutedEventArgs e)
+    {
+        ClipboardImagePreview.Source = Clipboard.GetImage();
+        DataObjectStatusText.Text = ClipboardImagePreview.Source is null
+            ? "Clipboard: no bitmap" : "Clipboard: image pasted";
+        e.Handled = true;
+    }
+
     private void OnSelectorSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         SelectorSelectionChangedCount++;
@@ -1009,7 +1033,9 @@ public partial class MainWindow : Window
     private async Task ValidateRequiredLiveShowcaseAsync()
     {
         int presentedSampleCount = 0;
-        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        TimeSpan presentationTimeout = GetLivePresentationTimeout();
+        long presentationStarted = Stopwatch.GetTimestamp();
+        while (Stopwatch.GetElapsedTime(presentationStarted) < presentationTimeout)
         {
             await Task.Delay(LiveValidationRetryDelay);
             if (!ProGpuWpfDiagnostics.TryGetWindowHost(this, out var liveHost) || liveHost == null)
@@ -1082,6 +1108,19 @@ public partial class MainWindow : Window
         Environment.Exit(1);
     }
 
+    private static TimeSpan GetLivePresentationTimeout()
+    {
+        string? configured = Environment.GetEnvironmentVariable(
+            LiveValidationTimeoutSecondsEnvironmentVariable);
+        if (configured != null && int.TryParse(configured, NumberStyles.None,
+                CultureInfo.InvariantCulture, out int seconds) && seconds is > 0 and <= 600)
+        {
+            return TimeSpan.FromSeconds(seconds);
+        }
+
+        return TimeSpan.FromTicks(LiveValidationRetryDelay.Ticks * LiveValidationMaxAttempts);
+    }
+
     private static string ValidateLiveWindowingCapabilitiesCore(ProGpuWpfWindowHost liveHost)
     {
         if (!ProGpuWpfDiagnostics.TryGetWindowingCapabilities(liveHost, out var capabilities))
@@ -1143,35 +1182,69 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(statusDirectory);
         }
 
-        File.WriteAllText(statusPath, "ready");
-        Console.WriteLine("ProGPU WPF Showcase external native drag ready.");
-        Console.Out.Flush();
-
-        bool completed = false;
-        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        var receipt = new NativeDragInputReceipt();
+        MouseButtonEventHandler sourceButton = (_, e) =>
         {
-            await Task.Delay(LiveValidationRetryDelay);
-            if (File.Exists(statusPath) &&
-                string.Equals(File.ReadAllText(statusPath).Trim(), "completed", StringComparison.Ordinal))
+            if (e.ChangedButton == MouseButton.Left)
             {
-                completed = true;
-                break;
+                receipt.ObserveLeftButton(e.ButtonState == MouseButtonState.Pressed);
             }
-        }
-
-        if (!completed)
+        };
+        await InvokeWithLiveHostWakeAsync(liveHost, () =>
         {
-            throw new InvalidOperationException("Expected the external native drag driver to report completion.");
-        }
+            AddHandler(Mouse.PreviewMouseDownEvent, sourceButton, handledEventsToo: true);
+            AddHandler(Mouse.PreviewMouseUpEvent, sourceButton, handledEventsToo: true);
+        }, DispatcherPriority.Send);
 
-        int dispatcherCheckpoint = 0;
-        await InvokeWithLiveHostWakeAsync(
-            liveHost,
-            () => dispatcherCheckpoint++,
-            DispatcherPriority.Background);
-        AssertEqual(1, dispatcherCheckpoint, "Showcase live dispatcher checkpoint after external native drag");
-        Console.WriteLine("ProGPU WPF Showcase external native drag dispatcher checkpoint passed.");
-        return "external 36-step native drag returned to dispatcher processing";
+        try
+        {
+            File.WriteAllText(statusPath, "ready");
+            Console.WriteLine("ProGPU WPF Showcase external native drag ready.");
+            Console.Out.Flush();
+
+            bool driverCompleted = false;
+            bool completed = false;
+            for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+            {
+                await Task.Delay(LiveValidationRetryDelay);
+                driverCompleted |= File.Exists(statusPath) &&
+                    string.Equals(File.ReadAllText(statusPath).Trim(), "completed", StringComparison.Ordinal);
+                if (receipt.IsComplete(driverCompleted))
+                {
+                    completed = true;
+                    break;
+                }
+            }
+
+            if (!completed)
+            {
+                throw new InvalidOperationException(
+                    "Expected external native drag submission and source left-button press/release delivery; " +
+                    $"driverCompleted={driverCompleted}, sourceReleased={receipt.HasSourceRelease}.");
+            }
+
+            // A background dispatcher callback alone can run before GLFW polls the
+            // driver's final mouse-up. Opening a menu then correctly dismisses it
+            // when that outstanding outside release reaches MenuBase.OnClickThrough.
+            // Keep the checkpoint, but only after the actual source release.
+            int dispatcherCheckpoint = 0;
+            await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () => dispatcherCheckpoint++,
+                DispatcherPriority.Background);
+            AssertEqual(1, dispatcherCheckpoint, "Showcase live dispatcher checkpoint after external native drag");
+            Console.WriteLine("ProGPU WPF Showcase external native drag source press/release received.");
+            Console.WriteLine("ProGPU WPF Showcase external native drag dispatcher checkpoint passed.");
+            return "external 36-step native drag returned to dispatcher processing";
+        }
+        finally
+        {
+            await InvokeWithLiveHostWakeAsync(liveHost, () =>
+            {
+                RemoveHandler(Mouse.PreviewMouseDownEvent, sourceButton);
+                RemoveHandler(Mouse.PreviewMouseUpEvent, sourceButton);
+            }, DispatcherPriority.Send);
+        }
     }
 
     private static bool IsLiveExternalNativeDragRequested()
@@ -1187,6 +1260,7 @@ public partial class MainWindow : Window
             () => CaptureLiveLayoutSize(liveHost),
             DispatcherPriority.Send);
 
+        long resizeFrameBefore = liveHost.PresentedFrameCount;
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => SetLiveNativeWindowSize(liveHost, 900, 640),
@@ -1198,8 +1272,10 @@ public partial class MainWindow : Window
             description: "resized",
             layoutReady: layout =>
                 layout.ContentWidth >= initialLayout.ContentWidth + 80.0 &&
-                layout.ContentHeight >= initialLayout.ContentHeight + 40.0);
+                layout.ContentHeight >= initialLayout.ContentHeight + 40.0,
+            previousPresentedFrameCount: resizeFrameBefore);
 
+        resizeFrameBefore = liveHost.PresentedFrameCount;
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => SetLiveNativeWindowSize(liveHost, 760, 560),
@@ -1211,7 +1287,8 @@ public partial class MainWindow : Window
             description: "restored",
             layoutReady: layout =>
                 layout.ContentWidth <= resizedLayout.ContentWidth - 80.0 &&
-                layout.ContentHeight <= resizedLayout.ContentHeight - 40.0);
+                layout.ContentHeight <= resizedLayout.ContentHeight - 40.0,
+            previousPresentedFrameCount: resizeFrameBefore);
 
         return
             $"native resize relaid out WPF content to {resizedLayout.GeometryStatus} " +
@@ -1223,7 +1300,9 @@ public partial class MainWindow : Window
         uint requestedWidth,
         uint requestedHeight,
         string description,
-        Func<LiveLayoutSize, bool> layoutReady)
+        Func<LiveLayoutSize, bool> layoutReady,
+        long previousPresentedFrameCount,
+        bool requestRenderWhileObserving = true)
     {
         string lastState = "not checked";
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
@@ -1231,24 +1310,39 @@ public partial class MainWindow : Window
             await Task.Delay(LiveValidationRetryDelay);
             try
             {
-                var layout = await InvokeWithLiveHostWakeAsync(
-                    liveHost,
-                    () =>
-                    {
-                        var current = CaptureLiveLayoutSize(liveHost);
-                        bool geometryReady = NativeResizeGeometryIsReady(
-                            current.Geometry,
-                            requestedWidth,
-                            requestedHeight);
-                        bool layoutSizeReady = layoutReady(current);
-                        lastState =
-                            $"{description}: {current.GeometryStatus}, " +
-                            $"window actual {current.WindowWidth:0.###}x{current.WindowHeight:0.###}, " +
-                            $"content actual {current.ContentWidth:0.###}x{current.ContentHeight:0.###}, " +
-                            $"layoutReady={layoutSizeReady}";
-                        return geometryReady && layoutSizeReady ? current : default;
-                    },
-                    DispatcherPriority.Send);
+                LiveLayoutSize ReadLayout()
+                {
+                    var current = CaptureLiveLayoutSize(liveHost);
+                    bool geometryReady = NativeResizeGeometryIsReady(
+                        current.Geometry,
+                        requestedWidth,
+                        requestedHeight);
+                    bool layoutSizeReady = layoutReady(current);
+                    var presented = ReadLivePresentedFrameState(liveHost);
+                    long presentedFrameCount = liveHost.PresentedFrameCount;
+                    bool presentationReady = NativeResizePresentation.IsReady(
+                        previousPresentedFrameCount, presentedFrameCount, presented.HasPresentedFrame,
+                        new(current.Geometry.LogicalWidth, current.Geometry.LogicalHeight,
+                            current.Geometry.PixelWidth, current.Geometry.PixelHeight, current.Geometry.DpiScale),
+                        new(presented.LogicalWidth, presented.LogicalHeight,
+                            presented.PixelWidth, presented.PixelHeight, presented.DpiScale));
+                    lastState =
+                        $"{description}: {current.GeometryStatus}, " +
+                        $"window actual {current.WindowWidth:0.###}x{current.WindowHeight:0.###}, " +
+                        $"content actual {current.ContentWidth:0.###}x{current.ContentHeight:0.###}, " +
+                        $"layoutReady={layoutSizeReady}, presentationReady={presentationReady}, " +
+                        $"frames {previousPresentedFrameCount}->{presentedFrameCount}, " +
+                        FormatLivePresentedFrameState(presented);
+                    // Source geometry can commit before a deferred surface
+                    // resize presents. Acknowledge that particular new frame,
+                    // never pending-work quiescence or a merely assigned size.
+                    return geometryReady && layoutSizeReady && presentationReady ? current : default;
+                }
+                // Ordinary live validation retains its original explicit wake.
+                // A passive observer must not queue a frame on every size read.
+                var layout = requestRenderWhileObserving
+                    ? await InvokeWithLiveHostWakeAsync(liveHost, ReadLayout, DispatcherPriority.Send)
+                    : await InvokeWithLiveNativeLoopWakeAsync(liveHost, ReadLayout, DispatcherPriority.Send);
 
                 if (layout.IsValid)
                 {
@@ -1894,12 +1988,16 @@ public partial class MainWindow : Window
             var menuSnapshot = await ValidateLiveMenuPopupSurfaceAsync(liveHost);
             var comboSnapshot = await ValidateLiveComboBoxPopupSurfaceAsync(liveHost);
             var directPopupSnapshot = await ValidateLiveDirectPopupSurfaceAsync(liveHost);
+            var ownerlessPopupSnapshot = await ValidateLiveOwnerlessPopupSurfaceAsync(liveHost);
             return
                 "Menu, ComboBox dropdown, and direct Popup opened through ProGPU popup surfaces " +
                 $"(retained children {menuSnapshot.Composition.PopupLayerChildCount}/" +
                 $"{comboSnapshot.Composition.PopupLayerChildCount}/{directPopupSnapshot.Composition.PopupLayerChildCount}; " +
                 $"native windows {menuSnapshot.Portable.NativeWindowCount}/" +
-                $"{comboSnapshot.Portable.NativeWindowCount}/{directPopupSnapshot.Portable.NativeWindowCount})";
+                $"{comboSnapshot.Portable.NativeWindowCount}/{directPopupSnapshot.Portable.NativeWindowCount}); " +
+                $"unattached Popup opened, closed, and reopened (retained children " +
+                $"{ownerlessPopupSnapshot.Composition.PopupLayerChildCount}, native windows " +
+                $"{ownerlessPopupSnapshot.Portable.NativeWindowCount})";
         }
         finally
         {
@@ -1915,55 +2013,81 @@ public partial class MainWindow : Window
         for (int i = 0; i < s_frameworkThemes.Length; i++)
         {
             FrameworkThemeDefinition theme = s_frameworkThemes[i];
-            await InvokeWithLiveHostWakeAsync(
-                liveHost,
-                () =>
-                {
-                    var themeItem = Require<MenuItem>(
-                        FindName($"{theme.Name}ThemeMenuItem"),
-                        $"Showcase live {theme.Name} theme MenuItem");
-                    themeItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, themeItem));
-                    UpdateLayout();
-                    AssertEqual(theme.Name, ActiveFrameworkThemeName, $"Showcase live active {theme.Name} framework theme");
-                    AssertEqual(true, themeItem.IsChecked, $"Showcase live checked {theme.Name} framework theme item");
-                    AssertEqual(
-                        theme.Source,
-                        _activeFrameworkThemeDictionary?.Source?.OriginalString,
-                        $"Showcase live {theme.Name} framework theme source");
-
-                    var menu = Require<Menu>(FindName("MainMenu"), $"Showcase live {theme.Name} main Menu");
-                    var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), $"Showcase live {theme.Name} File MenuItem");
-                    var comboBox = Require<ComboBox>(FindName("SelectedValueComboBox"), $"Showcase live {theme.Name} ComboBox");
-                    menu.ApplyTemplate();
-                    fileMenuItem.ApplyTemplate();
-                    comboBox.ApplyTemplate();
-                    AssertEqual(true, menu.Template != null, $"Showcase live {theme.Name} Menu template available");
-                    AssertEqual(true, fileMenuItem.Template != null, $"Showcase live {theme.Name} MenuItem template available");
-                    AssertEqual(true, comboBox.Template != null, $"Showcase live {theme.Name} ComboBox template available");
-                    fileMenuItem.IsSubmenuOpen = true;
-                    WakeLiveRenderHost(liveHost);
-                },
-                DispatcherPriority.Send);
-
-            LivePopupSurfaceSnapshot snapshot = await WaitForLivePopupLayerChildCountAsync(
-                liveHost,
-                expectedPopupChildren: 1,
-                exact: false,
-                $"{theme.Name} File menu popup layer");
-            bool usesNativeWindow = snapshot.Portable.NativeWindowCount >= 1;
-            bool hasPopupLayerContent = snapshot.Composition.PopupLayerChildCount >= 1;
-            AssertEqual(
-                true,
-                usesNativeWindow || hasPopupLayerContent,
-                $"Showcase live {theme.Name} menu popup presentation");
-            if (OperatingSystem.IsMacOS())
+            ThemeMenuDiagnostics? diagnostics = null;
+            try
             {
-                AssertEqual(true, usesNativeWindow, $"Showcase live {theme.Name} macOS native menu popup count");
-            }
+                await InvokeWithLiveHostWakeAsync(
+                    liveHost,
+                    () =>
+                    {
+                        diagnostics = new ThemeMenuDiagnostics(this,
+                            Require<MenuItem>(FindName("FileMenuItem"), "Showcase live theme diagnostic File MenuItem"));
+                        diagnostics.Record($"theme-request:{theme.Name}");
+                        var themeItem = Require<MenuItem>(
+                            FindName($"{theme.Name}ThemeMenuItem"),
+                            $"Showcase live {theme.Name} theme MenuItem");
+                        themeItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, themeItem));
+                        UpdateLayout();
+                        diagnostics.Record("theme-layout-returned");
+                        AssertEqual(theme.Name, ActiveFrameworkThemeName, $"Showcase live active {theme.Name} framework theme");
+                        AssertEqual(true, themeItem.IsChecked, $"Showcase live checked {theme.Name} framework theme item");
+                        AssertEqual(
+                            theme.Source,
+                            _activeFrameworkThemeDictionary?.Source?.OriginalString,
+                            $"Showcase live {theme.Name} framework theme source");
 
-            allMenusUsedNativeWindows &= usesNativeWindow;
-            validatedThemes.Add(theme.Name);
-            await CloseLivePopupSurfacesAsync(liveHost);
+                        var menu = Require<Menu>(FindName("MainMenu"), $"Showcase live {theme.Name} main Menu");
+                        var fileMenuItem = Require<MenuItem>(FindName("FileMenuItem"), $"Showcase live {theme.Name} File MenuItem");
+                        var comboBox = Require<ComboBox>(FindName("SelectedValueComboBox"), $"Showcase live {theme.Name} ComboBox");
+                        menu.ApplyTemplate();
+                        fileMenuItem.ApplyTemplate();
+                        comboBox.ApplyTemplate();
+                        AssertEqual(true, menu.Template != null, $"Showcase live {theme.Name} Menu template available");
+                        AssertEqual(true, fileMenuItem.Template != null, $"Showcase live {theme.Name} MenuItem template available");
+                        AssertEqual(true, comboBox.Template != null, $"Showcase live {theme.Name} ComboBox template available");
+                        diagnostics.Record("templates-applied");
+                        fileMenuItem.IsSubmenuOpen = true;
+                        diagnostics.Record("submenu-setter-returned");
+                        WakeLiveRenderHost(liveHost);
+                    },
+                    DispatcherPriority.Send);
+
+                LivePopupSurfaceSnapshot snapshot = await WaitForLivePopupLayerChildCountAsync(
+                    liveHost,
+                    expectedPopupChildren: 1,
+                    exact: false,
+                    $"{theme.Name} File menu popup layer");
+                bool usesNativeWindow = snapshot.Portable.NativeWindowCount >= 1;
+                bool hasPopupLayerContent = snapshot.Composition.PopupLayerChildCount >= 1;
+                AssertEqual(
+                    true,
+                    usesNativeWindow || hasPopupLayerContent,
+                    $"Showcase live {theme.Name} menu popup presentation");
+                if (OperatingSystem.IsMacOS())
+                {
+                    AssertEqual(true, usesNativeWindow, $"Showcase live {theme.Name} macOS native menu popup count");
+                }
+
+                allMenusUsedNativeWindows &= usesNativeWindow;
+                validatedThemes.Add(theme.Name);
+                await CloseLivePopupSurfacesAsync(liveHost, diagnostics);
+            }
+            catch
+            {
+                // Failure-only reporting, on the same source dispatcher. This
+                // neither repeats an attempt nor requests another render.
+                try
+                {
+                    await InvokeWithLiveNativeLoopWakeAsync(liveHost, () =>
+                    {
+                        try { diagnostics?.WriteFailure(); }
+                        finally { diagnostics?.Dispose(); }
+                        return true;
+                    }, DispatcherPriority.Send);
+                }
+                catch { /* Diagnostics must not replace the original validation failure. */ }
+                throw;
+            }
         }
 
         await InvokeWithLiveHostWakeAsync(
@@ -2352,7 +2476,90 @@ public partial class MainWindow : Window
         return snapshot;
     }
 
-    private async Task CloseLivePopupSurfacesAsync(ProGpuWpfWindowHost liveHost)
+    private async Task<LivePopupSurfaceSnapshot> ValidateLiveOwnerlessPopupSurfaceAsync(
+        ProGpuWpfWindowHost liveHost)
+    {
+        // Request real host activation; retained focus or a test-assigned IsActive
+        // value must not select the owner of an unattached source Popup.
+        await InvokeWithLiveHostWakeAsync(liveHost, () => { Activate(); }, DispatcherPriority.Send);
+        bool active = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            active = await InvokeWithLiveNativeLoopWakeAsync(liveHost, () => IsActive, DispatcherPriority.Send);
+            if (active) break;
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+        AssertEqual(true, active, "Showcase live unattached Popup active owner");
+
+        Popup? popup = null;
+        LivePopupSurfaceSnapshot snapshot = default;
+        try
+        {
+            for (int cycle = 0; cycle < 2; cycle++)
+            {
+                await InvokeWithLiveHostWakeAsync(
+                    liveHost,
+                    () =>
+                    {
+                        Point screen = PointToScreen(new Point(100, 100));
+                        popup ??= new Popup
+                        {
+                            Placement = PlacementMode.AbsolutePoint,
+                            AllowsTransparency = true,
+                            StaysOpen = true,
+                            Child = new Border
+                            {
+                                Width = 180,
+                                Height = 48,
+                                Background = Brushes.LightGoldenrodYellow,
+                                Child = new TextBlock { Text = "Unattached popup", Margin = new Thickness(8) }
+                            }
+                        };
+                        AssertEqual(true, popup.PlacementTarget is null && popup.Parent is null,
+                            "Showcase live unattached Popup preserves no placement target or parent");
+                        // PlacementRectangle is already in desktop coordinates.
+                        // Offsets are client vectors and would apply desktop scale again.
+                        popup.PlacementRectangle = new Rect(screen, new Size());
+                        popup.IsOpen = true;
+                        UpdateLayout();
+                        WakeLiveRenderHost(liveHost);
+                    },
+                    DispatcherPriority.Send);
+                snapshot = await WaitForLivePopupLayerChildCountAsync(
+                    liveHost, expectedPopupChildren: 1, exact: true, "unattached Popup surface");
+                AssertEqual(1, snapshot.Portable.OpenCount, "Showcase live unattached Popup owned source count");
+                await InvokeWithLiveHostWakeAsync(
+                    liveHost,
+                    () =>
+                    {
+                        popup!.IsOpen = false;
+                        UpdateLayout();
+                        WakeLiveRenderHost(liveHost);
+                    },
+                    DispatcherPriority.Send);
+                await WaitForLivePopupLayerChildCountAsync(
+                    liveHost, expectedPopupChildren: 0, exact: true, "closed unattached Popup surface",
+                    requireNoOwnedPopups: true);
+            }
+            return snapshot;
+        }
+        finally
+        {
+            await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    if (popup != null) popup.IsOpen = false;
+                    UpdateLayout();
+                    WakeLiveRenderHost(liveHost);
+                },
+                DispatcherPriority.Send);
+        }
+    }
+
+    private async Task CloseLivePopupSurfacesAsync(
+        ProGpuWpfWindowHost liveHost,
+        ThemeMenuDiagnostics? diagnostics = null)
     {
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -2375,6 +2582,9 @@ public partial class MainWindow : Window
 
                 UpdateLayout();
                 WakeLiveRenderHost(liveHost);
+                // Reuse the existing successful close callback; no additional
+                // source dispatch, layout pass or native wake on success.
+                diagnostics?.Dispose();
             },
             DispatcherPriority.Send);
     }
@@ -2383,7 +2593,8 @@ public partial class MainWindow : Window
         ProGpuWpfWindowHost liveHost,
         int expectedPopupChildren,
         bool exact,
-        string description)
+        string description,
+        bool requireNoOwnedPopups = false)
     {
         string lastState = "not checked";
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
@@ -2415,7 +2626,7 @@ public partial class MainWindow : Window
                         hasPortableSnapshot,
                         portable,
                         expectedPopupChildren,
-                        exact);
+                        exact) && (!requireNoOwnedPopups || (hasPortableSnapshot && portable.OpenCount == 0));
                     return new LivePopupSurfaceSnapshot(
                         isReady,
                         hasPortableSnapshot,
@@ -3004,13 +3215,20 @@ public partial class MainWindow : Window
                 liveHost,
                 () =>
                 {
-                    return TryRaiseLiveThumbDrag(
+                    Thumb thumb = Require<Thumb>(inputDragThumb, "Showcase live input drag Thumb attempt");
+                    bool inputRaised = TryRaiseLiveThumbDrag(
                         liveHost,
-                        Require<Thumb>(inputDragThumb, "Showcase live input drag Thumb attempt"),
+                        thumb,
                         "InputDragThumb",
                         horizontalDelta: 18.0,
                         verticalDelta: 12.0,
                         out lastTargetState);
+                    if (!inputRaised && attempt == LiveValidationMaxAttempts - 1)
+                    {
+                        lastTargetState += DescribeLiveThumbHitFailure(thumb);
+                    }
+
+                    return inputRaised;
                 },
                 DispatcherPriority.Send);
             if (sentDragInput)
@@ -8467,6 +8685,8 @@ internal static class ShowcaseSelfTest
         AssertEqual(initialWindowCount, CountApplicationWindows(application), "Application Windows count after secondary show");
         AssertEqual(true, ApplicationContainsWindow(application, dialog), "Application Windows contains secondary window");
 
+        ValidateSecondaryWindowResizeIntent(dialog);
+
         dialog.Close();
         DrainDispatcher(window);
 
@@ -8568,6 +8788,51 @@ internal static class ShowcaseSelfTest
         }
 
         return false;
+    }
+
+    private static void ValidateSecondaryWindowResizeIntent(Window dialog)
+    {
+        // The same Showcase also validates native Windows MIL, which has no
+        // ProGPU host. Keep its existing secondary-window checks unchanged.
+        if (PortableWpfRuntime.ConfiguredMediaBackend != PortableWpfMediaBackend.Portable)
+        {
+            return;
+        }
+
+        AssertEqual(true, PortableWpfRuntime.IsMediaBackendFrozen, "secondary window portable media selection frozen");
+        if (!ProGpuWpfDiagnostics.TryGetWindowHost(dialog, out var host) || host is null)
+        {
+            throw new InvalidOperationException("The visible secondary window must retain its portable native host.");
+        }
+
+        // Inspect requested source/controller intent, not native button visibility.
+        AssertIntent(ProGpuWpfWindowBorder.Fixed, false, false);
+        try
+        {
+            dialog.ResizeMode = ResizeMode.CanMinimize;
+            AssertIntent(ProGpuWpfWindowBorder.Fixed, true, false);
+            dialog.ResizeMode = ResizeMode.CanResize;
+            AssertIntent(ProGpuWpfWindowBorder.Resizable, true, true);
+            dialog.ResizeMode = ResizeMode.CanResizeWithGrip;
+            AssertIntent(ProGpuWpfWindowBorder.Resizable, true, true);
+            dialog.WindowStyle = WindowStyle.None;
+            AssertIntent(ProGpuWpfWindowBorder.HiddenResizable, true, true);
+            dialog.ResizeMode = ResizeMode.NoResize;
+            AssertIntent(ProGpuWpfWindowBorder.Hidden, false, false);
+        }
+        finally
+        {
+            dialog.ResizeMode = ResizeMode.NoResize;
+            dialog.WindowStyle = WindowStyle.SingleBorderWindow;
+        }
+        AssertIntent(ProGpuWpfWindowBorder.Fixed, false, false);
+
+        void AssertIntent(ProGpuWpfWindowBorder border, bool canMinimize, bool canMaximize)
+        {
+            AssertEqual(border, host.WindowBorder, "secondary window source border intent");
+            AssertEqual(canMinimize, host.CanMinimize, "secondary window source minimize intent");
+            AssertEqual(canMaximize, host.CanMaximize, "secondary window source maximize intent");
+        }
     }
 
     private static void ValidateEditor(
@@ -8727,6 +8992,7 @@ internal static class ShowcaseSelfTest
         AssertEqual("showcase data object", window.LastDataObjectText, "DataObject unicode text");
         AssertEqual("custom:showcase data object", window.LastDataObjectCustomText, "DataObject custom text");
         AssertEqual("showcase data object | custom:showcase data object", dataObjectStatusText.Text, "DataObject status text");
+        ValidateEmptyDataObjects();
 
         clipboardRoundTripButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, clipboardRoundTripButton));
         DrainDispatcher(window);
@@ -8736,6 +9002,45 @@ internal static class ShowcaseSelfTest
         AssertEqual(true, window.LastClipboardIsCurrent, "Clipboard current data object");
         AssertEqual("Clipboard: showcase data object clipboard", dataObjectStatusText.Text, "Clipboard status text");
         Clipboard.Clear();
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                window.CopyClipboardImageButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, window.CopyClipboardImageButton));
+                window.PasteClipboardImageButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, window.PasteClipboardImageButton));
+                var pasted = Require<System.Windows.Media.Imaging.BitmapSource>(window.ClipboardImagePreview.Source, "pasted clipboard image");
+                ShowcaseClipboardImage.Verify(pasted);
+                AssertEqual("Clipboard: image pasted", dataObjectStatusText.Text, "Clipboard image status");
+                ShowcaseClipboardImage.Verify(ShowcaseClipboardImage.ExerciseLifetime(indexed: false));
+                ShowcaseClipboardImage.Verify(ShowcaseClipboardImage.ExerciseLifetime(indexed: true));
+                ShowcaseClipboardImage.Verify(pasted);
+                DrainDispatcher(window);
+            }
+            finally
+            {
+                Clipboard.Clear();
+            }
+        }
+    }
+
+    private static void ValidateEmptyDataObjects()
+    {
+        DataObject empty = new();
+        object payload = new();
+        DataObject populated = new("ShowcaseExistingData", payload, autoConvert: false);
+        DataObject wrapped = new(populated);
+        foreach (DataObject data in new[] { empty, populated, wrapped })
+        {
+            AssertEqual<object?>(null, data.GetData("ShowcaseMissingData", autoConvert: false), "DataObject absent exact format");
+            AssertEqual<object?>(null, data.GetData("ShowcaseMissingData", autoConvert: true), "DataObject absent convertible format");
+            AssertEqual<object?>(null, data.GetData(typeof(int)), "DataObject absent type");
+        }
+
+        AssertEqual(true, ReferenceEquals(payload, wrapped.GetData("ShowcaseExistingData", autoConvert: false)), "DataObject retained payload identity");
+        AssertEqual<object?>(null, empty.GetImage(), "DataObject empty image");
+        AssertEqual<object?>(null, empty.GetAudioStream(), "DataObject empty audio");
+        AssertEqual(0, empty.GetFileDropList().Count, "DataObject empty file drop list");
+        AssertEqual(string.Empty, empty.GetText(), "DataObject empty text");
     }
 
     private static void ValidateDocument(

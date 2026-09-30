@@ -592,6 +592,7 @@
     <Compile Include="System\Windows\Input\RawKeyboardInputReport.cs" />
     <Compile Include="System\Windows\Input\RawMouseActions.cs" />
     <Compile Include="System\Windows\Input\RawMouseInputReport.cs" />
+    <Compile Include="System\Windows\Input\PortableMouseInputReport.cs" />
     <Compile Include="System\Windows\Input\RawTextInputReport.cs" />
     <Compile Include="System\Windows\Input\RawUIStateActions.cs" />
     <Compile Include="System\Windows\Input\RawUIStateInputReport.cs" />

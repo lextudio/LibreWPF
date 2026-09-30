@@ -2195,6 +2195,32 @@ namespace System.Windows.Threading
             }
         }
 
+        // A portable host may ask to flush through a priority on every native
+        // update, even when there is no source work. Avoid manufacturing a
+        // marker/frame/timeout for that case only. Windows frames also pump
+        // native messages, so an empty managed queue is insufficient there.
+        internal bool CanCompletePortableFlushWithoutFrame(DispatcherPriority markerPriority)
+        {
+            if (_useWin32MessagePump || !CheckAccess() ||
+                markerPriority <= DispatcherPriority.Inactive || markerPriority > DispatcherPriority.Send ||
+                _disableProcessingCount != 0 || _hasShutdownStarted || _hasShutdownFinished || _exitAllFrames)
+            {
+                return false;
+            }
+
+            lock (_instanceLock)
+            {
+                // A due timer must enter the original frame: promotion can run
+                // hooks, whose synchronization context/order must not change.
+                // Host-side promotion may also have reentered before this call;
+                // inspect all admission state and queue eligibility together.
+                return _disableProcessingCount == 0 &&
+                    !_hasShutdownStarted && !_hasShutdownFinished && !_exitAllFrames &&
+                    !(_dueTimeFound && _dueTimeInTicks - Environment.TickCount <= 0) &&
+                    _queue.MaxPriority < markerPriority;
+            }
+        }
+
         private bool GetMessage(ref MSG msg, IntPtr hwnd, int minMessage, int maxMessage)
         {
             // If Any TextServices for Cicero is not installed GetMessagePump() returns null.
@@ -2620,6 +2646,15 @@ namespace System.Windows.Threading
                         lock(_instanceLock)
                         {
                             timer = null;
+
+                            // Promotion runs hooks outside this lock. A hook
+                            // may complete shutdown and release _timers/_queue;
+                            // the list captured before that callback is no
+                            // longer dispatcher-owned work to promote.
+                            if (_hasShutdownFinished)
+                            {
+                                return;
+                            }
 
                             // If the timers collection changed while we are in the middle of
                             // looking for timers, start over.

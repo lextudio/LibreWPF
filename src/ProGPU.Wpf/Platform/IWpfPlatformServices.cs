@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ProGPU.Backend;
+using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Media.ProGPU.Platform;
 
@@ -490,7 +491,9 @@ public enum WpfInputEventKind
     MouseMove,
     MouseDown,
     MouseUp,
-    MouseWheel
+    MouseWheel,
+    MouseLeave,
+    MouseCancel
 }
 
 public enum WpfMouseButton
@@ -516,6 +519,27 @@ public enum WpfInputModifiers
 
 public sealed class WpfInputEventArgs : EventArgs
 {
+    internal WpfInputEventArgs(PortablePointerInput input, WpfInputModifiers modifiers)
+        : this(input.Kind switch
+        {
+            PortablePointerEventKind.Move or PortablePointerEventKind.Drag or PortablePointerEventKind.Enter => WpfInputEventKind.MouseMove,
+            PortablePointerEventKind.Down => WpfInputEventKind.MouseDown,
+            PortablePointerEventKind.Up => WpfInputEventKind.MouseUp,
+            PortablePointerEventKind.Scroll => WpfInputEventKind.MouseWheel,
+            PortablePointerEventKind.Leave => WpfInputEventKind.MouseLeave,
+            PortablePointerEventKind.Cancel => WpfInputEventKind.MouseCancel,
+            _ => throw new ArgumentOutOfRangeException(nameof(input))
+        }, x: input.X, y: input.Y, deltaX: input.ScrollX, deltaY: input.ScrollY,
+            button: input.Button switch
+            {
+                -1 => WpfMouseButton.None, 0 => WpfMouseButton.Left, 1 => WpfMouseButton.Right,
+                2 => WpfMouseButton.Middle, 3 => WpfMouseButton.XButton1, 4 => WpfMouseButton.XButton2,
+                _ => WpfMouseButton.Other
+            }, modifiers: modifiers)
+    {
+        NativePointer = input;
+    }
+
     public WpfInputEventArgs(
         WpfInputEventKind kind,
         string? key = null,
@@ -559,6 +583,17 @@ public sealed class WpfInputEventArgs : EventArgs
     public WpfMouseButton Button { get; }
 
     public WpfInputModifiers Modifiers { get; }
+
+    public PortablePointerInput? NativePointer { get; }
+
+    internal WpfInputEventArgs WithPointerCoordinates(double x, double y, double deltaX, double deltaY)
+    {
+        var result = NativePointer is { } native
+            ? new WpfInputEventArgs(native.WithCoordinates(x, y, deltaX, deltaY), Modifiers)
+            : new WpfInputEventArgs(Kind, Key, ScanCode, Character, x, y, deltaX, deltaY, Button, Modifiers);
+        result.Handled = Handled;
+        return result;
+    }
 
     public bool Handled { get; set; }
 }

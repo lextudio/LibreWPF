@@ -19,8 +19,9 @@ using System.Windows.Media.TextFormatting;
 namespace System.Windows.Controls
 {
     // Content presenter for the TextBox.
-    internal class TextBoxView : FrameworkElement, ITextView, IScrollInfo, IServiceProvider
+    internal class TextBoxView : FrameworkElement, ITextView, IScrollInfo, IServiceProvider, IPortableScrollInfo
     {
+        PortableScrollAxes IPortableScrollInfo.ScrollAxes => PortableScrollAxes.Pixels;
         //------------------------------------------------------
         //
         //  Constructors

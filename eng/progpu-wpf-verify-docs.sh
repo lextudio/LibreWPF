@@ -43,13 +43,15 @@ require_text ".github/workflows/progpu-wpf-release.yml" "NUGET_API_KEY"
 require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-v*"
 require_text ".github/workflows/progpu-wpf-release.yml" "refs/tags/librewpf-v"
 require_text ".github/workflows/progpu-wpf-release.yml" "librewpf-packages-"
-require_text ".github/workflows/progpu-wpf-release.yml" "default: 0.1.0-preview.45"
-require_text ".github/workflows/progpu-wpf-release.yml" "default: 0.1.0-preview.62"
-require_text ".github/workflows/progpu-wpf-release.yml" 'name: librewpf-packages-${{ needs.promote-qualified-preview.outputs.version || needs.preview.outputs.version }}'
+require_text ".github/workflows/progpu-wpf-release.yml" "default: 0.1.0-preview.65"
+require_text ".github/workflows/librewpf-windows-public-package-smoke.yml" "default: 0.1.0-preview.65"
+require_text ".github/workflows/librewpf-windows-artifact-smoke.yml" "default: 0.1.0-preview.65"
+require_text ".github/workflows/progpu-wpf-release.yml" 'progpu_version="${version}"'
+require_text ".github/workflows/progpu-wpf-release.yml" 'name: librewpf-packages-${{ needs.preview.outputs.version }}'
 require_text ".github/workflows/progpu-wpf-release.yml" "Create GitHub Release"
 require_text ".github/workflows/progpu-wpf-release.yml" "gh release create"
 require_text ".github/workflows/progpu-wpf-release.yml" "--generate-notes"
-require_text "README.md" "Tag releases promote and re-verify the exact package artifact"
+require_text "README.md" "Tag releases rebuild the immutable tagged source"
 require_text "README.md" "Canonical WinForms integration is validated separately from the normal NuGet"
 require_text "docs/progpu-wpf-release.md" "clean-cache WPF reference/cycle ordering"
 require_text "reports/canonical-winforms-source-integration.md" "Portable stays frozen"
@@ -77,9 +79,16 @@ require_text "samples/ProGPU.Wpf.TextLayoutParityApp/MainWindow.xaml.cs" 'TEXT_R
 require_text "reports/native-mil-text-runtime-admission-2026-09-15.md" 'not native-MIL visual qualification'
 require_text "eng/progpu-wpf-canonical-sdk-smoke.sh" 'LibreWinForms.Compatibility.System.Windows.Forms/'
 require_text "eng/progpu-wpf-canonical-sdk-smoke.sh" 'DOTNET_ROLL_FORWARD_TO_PRERELEASE'
-require_text "docs/progpu-wpf-release.md" 'terminal-success `LibreWPF Build` run for the exact tagged commit'
+require_text "eng/progpu-wpf-canonical-sdk-smoke.sh" 'eng/tests/test_wpf_sdk_transitive_forms.py'
+require_text ".github/workflows/progpu-wpf-sdk.yml" 'python3 eng/tests/test_wpf_sdk_transitive_forms.py'
+require_text "reports/sdk-transitive-forms-dependencies.md" 'ProjectReference and PackageReference'
+require_text "docs/progpu-wpf-release.md" 'commit-qualified `source.<sha>` ProGPU packages'
 require_text ".github/workflows/progpu-wpf-release.yml" "Stage exact ProGPU release packages"
+require_text ".github/workflows/progpu-wpf-release.yml" "Stage native runtimes from exact ProGPU release package"
+require_text ".github/workflows/progpu-wpf-release.yml" "submodules: recursive"
 require_text ".github/workflows/progpu-wpf-release.yml" "Build canonical LibreWinForms package closure"
+require_text ".github/workflows/progpu-wpf-release.yml" 'PROGPU_WPF_CANONICAL_PROGPU_PACKAGE_VERSION: ${{ env.PROGPU_WPF_PROGPU_PACKAGE_VERSION }}'
+require_text ".github/workflows/progpu-wpf-release.yml" "PROGPU_WPF_RUN_DRAWING_QUALITY_GATES: 0"
 require_text ".github/workflows/progpu-wpf-release.yml" "./eng/progpu-wpf-canonical-winforms-integration.sh"
 require_text ".github/workflows/progpu-wpf-release.yml" 'PROGPU_WPF_EXPECTED_PROGPU_PACKAGE_COMMIT=${tag_commit}'
 require_text ".github/workflows/progpu-wpf-release.yml" '[[ "${tag_commit}" != "${submodule_commit}" ]]'

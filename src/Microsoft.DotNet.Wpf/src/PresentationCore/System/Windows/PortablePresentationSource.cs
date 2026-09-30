@@ -23,6 +23,8 @@ namespace System.Windows
         private readonly PortableMouseInputProvider _mouseInputProvider;
         private readonly HwndSource _portableHwndSource;
         private readonly IntPtr _handle;
+        private ulong _pointerInputGeneration;
+        internal ulong PointerInputGeneration => _pointerInputGeneration;
         private const int HitTestOwnerBufferCapacity = 64;
         private Visual _rootVisual;
         private Size _clientSize;
@@ -367,6 +369,8 @@ namespace System.Windows
             try
             {
                 VerifyAccess();
+                unchecked { ++_pointerInputGeneration; }
+                ReleasePressedButtons();
                 SetRootVisual(null);
                 RemoveSource();
                 _portableHwndSource.Dispose();
@@ -414,7 +418,11 @@ namespace System.Windows
                 return;
             }
 
+            unchecked { ++_pointerInputGeneration; }
+
             Visual oldRootVisual = _rootVisual;
+            if (oldRootVisual != null)
+                ReleasePressedButtons();
             if (oldRootVisual is UIElement oldRootUIElement)
             {
                 oldRootUIElement.LayoutUpdated -= OnLayoutUpdated;
@@ -459,6 +467,24 @@ namespace System.Windows
             }
             QueueContentRendered();
             RequestRender();
+        }
+
+        private void ReleasePressedButtons()
+        {
+            if (InputManager.UnsecureCurrent.PrimaryMouseDevice is PortableMouseDevice mouse)
+                mouse.ReleaseSourceButtons(this);
+        }
+
+        internal void CancelNativePointerInput(int timestamp, PortablePointerInput input)
+        {
+            VerifyAccess();
+            ObjectDisposedException.ThrowIf(_isDisposed, this);
+            ArgumentNullException.ThrowIfNull(input);
+            if (input.Kind != PortablePointerEventKind.Cancel)
+                throw new ArgumentException("Source cancellation requires a native cancel packet.", nameof(input));
+            unchecked { ++_pointerInputGeneration; }
+            ReleasePressedButtons();
+            _mouseInputProvider.CancelNativePointerInput(timestamp, input);
         }
 
         private void OnLayoutUpdated(object sender, EventArgs e)
@@ -648,6 +674,16 @@ namespace System.Windows
             if (hitTestResult is not DependencyObject candidate)
             {
                 return false;
+            }
+
+            if (_rootVisual is UIElement root)
+            {
+                // The host has already selected the presented visual owner. Promote
+                // that same owner through IContentHost so text can target its Run or
+                // Hyperlink, without another owner query or a drawing hit-test walk.
+                HitTestResult rawHitResult = null;
+                root.PromoteInputHit(rootPoint, candidate, out enabledHit, out originalHit, ref rawHitResult);
+                return originalHit != null;
             }
 
             originalHit = candidate as IInputElement;
@@ -1376,6 +1412,14 @@ namespace System.Windows
             void IMouseInputProvider.ReleaseMouseCapture()
             {
                 ReleaseMouseCapture(reportInput: true);
+            }
+
+            internal void CancelNativePointerInput(int timestamp, PortablePointerInput input)
+            {
+                // Retire provider state before callbacks can recapture it. Core
+                // independently checks exact provider ownership, not this flag.
+                _haveCapture = false;
+                InputManager.UnsecureCurrent.PrimaryMouseDevice.CancelPortableSourceCapture(_source, timestamp, input);
             }
 
             int IMouseInputProvider.GetIntermediatePoints(IInputElement relativeTo, Point[] points)

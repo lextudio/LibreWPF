@@ -6,20 +6,38 @@ This initial package skeleton layers on the existing WindowsDesktop SDK so WPF m
 
 Package mode is the intended delivery path. It references the ported managed WPF bundle through `ProGpuWpfManagedPackageId`/`ProGpuWpfManagedPackageVersion`, references the ProGPU runtime packages, injects portable activation on non-Windows hosts and for explicit native MIL selection on Windows, and copies resolved managed and native runtime assets to the application output. Local-artifact mode remains available for source-tree validation by setting `ProGpuWpfManagedReferenceRoot` and `ProGpuReferenceRoot`.
 
-For mutable development package versions such as `0.1.0-preview.45`, the SDK clears known WPF and ProGPU runtime assemblies from the app output before recopying package assets. This prevents an incremental app rebuild from launching stale bridge/compositor DLLs after a local package refresh while preserving normal incremental copy behavior for stable package versions. Set `ProGpuWpfClearMutablePackageOutputs=false` to disable this development safeguard.
+For mutable development package versions such as `0.1.0-preview.65`, the SDK clears known WPF and ProGPU runtime assemblies from the app output before recopying package assets. This prevents an incremental app rebuild from launching stale bridge/compositor DLLs after a local package refresh while preserving normal incremental copy behavior for stable package versions. Set `ProGpuWpfClearMutablePackageOutputs=false` to disable this development safeguard.
 
 The SDK owns the package dependency closure. `LibreWPF.Transport` supplies the real managed WPF assembly identities and runtime payload, while `LibreWPF.ProGPU` is the adapter/runtime bridge package and does not publish dependencies on the ProGPU shim `PresentationCore` package.
 
-Mixed WPF/WinForms projects currently use the transitional `LibreWinForms.WindowsFormsIntegration` bridge. Until that bridge is rebuilt against canonical source-first WinForms, `LibreWPF.Sdk` pairs it with `LibreWinForms.Compatibility.System.Windows.Forms`; it does not claim the canonical `LibreWinForms.System.Windows.Forms` package. `ProGpuWpfLibreWinFormsRuntimePackageId` remains configurable for coordinated package testing, but changing it requires a bridge built against the same runtime ABI.
+Projects with `UseWindowsForms=true`, including mixed WPF/WinForms projects and projects with `UseWPF=false`, use the published source-built `LibreWinForms.System.Windows.Forms`, `LibreWinForms.ProGPU`, and `LibreWinForms.WindowsFormsIntegration` packages by default. Their versions follow the LibreWPF SDK version unless explicitly overridden for coordinated package testing. No additional selection property is required. The legacy `ProGpuWpfUseCanonicalLibreWinForms=false` option requires a matching compatibility runtime and bridge from a private feed; that compatibility runtime is not published on NuGet.org.
+
+In that portable package mode, Forms-only project and NuGet dependencies may keep
+their original SDK and `UseWPF=false` / `UseWindowsForms=true` settings. The app
+replaces their transitive `Microsoft.WindowsDesktop.App.WindowsForms` requirement
+with its selected portable Forms package closure. Disabling portable Forms,
+opting out of portable framework references, or selecting local-artifact mode
+does not remove that Windows Forms requirement. Restore the app after upgrading
+the SDK; rebuilding with an old assets file and `--no-restore` is not sufficient.
 
 Existing WPF application projects should keep their normal WPF project shape and switch only the project SDK, whether the original project used `Microsoft.NET.Sdk.WindowsDesktop` or the newer `Microsoft.NET.Sdk` plus `UseWPF=true`. The SDK treats `UseWPF=true` as the app's markup intent, keeps the normal `net*-windows` target-framework shape, and internally redirects framework references to the portable WPF transport and ProGPU/Silk.NET package graph.
+
+`UseWPF` and `UseWindowsForms` retain the project's values during item evaluation
+and target execution, so application and package conditions can depend on them.
+In portable mode, both `net10.0` and `net10.0-windows` use the real WPF markup
+compiler without importing implicit WindowsDesktop framework references or a
+second set of XAML items. `ProGpuWpfUseWpfMarkup=false` remains the explicit
+markup opt-out. Setting `ProGpuWpfUsePortableFrameworkReferences=false` retains
+the native WindowsDesktop SDK imports and Windows-targeting validation; it is
+not a portable runtime configuration. Public desktop flags do not qualify
+trimming or NativeAOT, and their existing SDK restrictions remain in force.
 
 Windows, macOS, and Linux are supported runtime targets. A Windows RID restores the same platform-independent `LibreWPF.Transport` payload as the other hosts; no `runtime.win-*` LibreWPF companion package is required or published.
 
 The SDK also supplies the WPF markup compiler defaults and portable runtime-framework default needed by the current build lane, so applications do not need ProGPU-specific item includes, PresentationBuildTasks compatibility properties, or runtime-version pins.
 
 ```xml
-<Project Sdk="LibreWPF.Sdk/0.1.0-preview.45">
+<Project Sdk="LibreWPF.Sdk/0.1.0-preview.65">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -93,7 +111,7 @@ For a fast validation pass that exercises the external no-source-change SDK smok
 ./eng/progpu-wpf-showcase-quickcheck.sh
 ```
 
-The quickcheck expects the local `0.1.0-preview.45` LibreWPF package feed and its ProGPU `0.1.0-preview.62` runtime dependencies to be current. Use the full SDK CI gate when package contents need to be rebuilt from source:
+The quickcheck expects the local `0.1.0-preview.65` LibreWPF package feed and its ProGPU `0.1.0-preview.65` runtime dependencies to be current. Use the full SDK CI gate when package contents need to be rebuilt from source:
 
 ```bash
 ./eng/progpu-wpf-sdk-ci.sh

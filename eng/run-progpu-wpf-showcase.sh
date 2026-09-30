@@ -12,7 +12,7 @@ export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1
 
 sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-sdk_package="${package_output}/LibreWPF.Sdk.0.1.0-preview.45.nupkg"
+sdk_package="${package_output}/LibreWPF.Sdk.0.1.0-preview.65.nupkg"
 showcase_project="${repo_root}/samples/ProGPU.Wpf.ShowcaseApp/ProGPU.Wpf.ShowcaseApp.csproj"
 showcase_output="${repo_root}/artifacts/bin/ProGPU.Wpf.ShowcaseApp/Debug/${sdk_sample_target_framework}"
 
@@ -181,6 +181,16 @@ if [[ "${PROGPU_WPF_SHOWCASE_LIVE_VALIDATE:-0}" == "1" ]]; then
     echo "Expected Showcase apphost viewport to use full physical target, but got ${viewport_width}x${viewport_height}@${viewport_x},${viewport_y} for pixels ${pixel_width}x${pixel_height}." >&2
     cat "${live_log}" >&2
     exit 1
+  fi
+
+  # Forward the actual apphost receipt before discarding its private log. The
+  # outer XWayland gate sees this launcher's stdout, not live_log.
+  if [[ -n "${PROGPU_WPF_SHOWCASE_NATIVE_DRAG_STATUS_PATH:-}" ]]; then
+    if ! grep -Fx "ProGPU WPF Showcase external native drag source press/release received." "${live_log}"; then
+      echo "Expected the Showcase apphost source press/release receipt." >&2
+      cat "${live_log}" >&2
+      exit 1
+    fi
   fi
 
   trap - EXIT

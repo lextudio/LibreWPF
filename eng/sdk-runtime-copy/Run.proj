@@ -1,0 +1,20 @@
+<Project DefaultTargets="Verify">
+  <PropertyGroup>
+    <FixtureRoot>$(MSBuildThisFileDirectory)../../artifacts/sdk-runtime-copy/$([System.Guid]::NewGuid())/</FixtureRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Case Include="singular-compat"><Mode>Singular</Mode><Canonical>false</Canonical><Copy>true</Copy></Case>
+    <Case Include="plural-compat"><Mode>Plural</Mode><Canonical>false</Canonical><Copy>true</Copy></Case>
+    <Case Include="multiple-compat"><Mode>Multiple</Mode><Canonical>false</Canonical><Copy>true</Copy></Case>
+    <Case Include="singular-canonical"><Mode>Singular</Mode><Canonical>true</Canonical><Copy>true</Copy></Case>
+    <Case Include="plural-canonical"><Mode>Plural</Mode><Canonical>true</Canonical><Copy>true</Copy></Case>
+    <Case Include="multiple-canonical"><Mode>Multiple</Mode><Canonical>true</Canonical><Copy>true</Copy></Case>
+    <Case Include="disabled-compat"><Mode>Multiple</Mode><Canonical>false</Canonical><Copy>false</Copy></Case>
+    <Case Include="disabled-canonical"><Mode>Multiple</Mode><Canonical>true</Canonical><Copy>false</Copy></Case>
+  </ItemGroup>
+  <Target Name="Verify">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)Consumer.proj" Targets="Build"
+             Properties="FixtureMode=%(Case.Mode);FixtureCanonical=%(Case.Canonical);FixtureCopy=%(Case.Copy);FixtureRoot=$(FixtureRoot)%(Case.Identity)/" />
+    <Message Importance="High" Text="SDK runtime copy: all 8 target-graph cases passed (single, plural, multiple, and opt-out; compatibility and canonical payloads)." />
+  </Target>
+</Project>

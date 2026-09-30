@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - progpu-rendering-port
-      - main
   push:
     branches:
       - progpu-rendering-port
@@ -18,6 +17,51 @@ env:
   PROGPU_WPF_QUALIFIED_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
+  retained-invalidation:
+    name: Retained layout-clip invalidation contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout aligned source graph
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          submodules: true
+
+      - name: Setup repository SDK and .NET 10 test runtime
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          dotnet-version: 10.0.x
+
+      - name: Install headless WebGPU dependencies
+        run: bash ./external/ProGPU/eng/progpu-install-linux-packages.sh libvulkan1 mesa-vulkan-drivers
+
+      - name: Build and validate retained invalidation contracts
+        run: bash ./eng/progpu-wpf-layout-clip.sh
+
+      - name: Validate passive Showcase launcher controls
+        run: |
+          python3 ./eng/test-progpu-wpf-showcase-idle.py -v
+          python3 ./eng/test-showcase-idle-crash.py -v
+          python3 ./eng/test-showcase-idle-events.py -v
+          python3 ./eng/test-showcase-native-debugger.py
+
+      - name: Validate Showcase launcher input receipts
+        run: python3 ./eng/tests/test_showcase_launcher_receipt.py -v
+
+      - name: Validate original Gallery clipboard acceptance controls
+        run: python3 ./eng/WindowsGalleryClipboardConsumer/test_contract.py -v
+
+      - name: Upload retained invalidation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retained-invalidation-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/layout-clip-ci/**
+          if-no-files-found: warn
+
   canonical-winforms-integration:
     name: Canonical System.Windows.Forms source integration
     runs-on: ubuntu-24.04
@@ -35,6 +79,12 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Verify transitive desktop framework ownership
+        run: python3 eng/tests/test_wpf_sdk_transitive_forms.py
+
+      - name: Validate SDK public desktop property contracts
+        run: python3 eng/tests/test_wpf_sdk_desktop_properties.py --dotnet dotnet -v
+
       - name: Build canonical WinForms and WindowsFormsIntegration
         env:
           # ProGPU PR CI owns the API/allocation suite for this exact source pin.
@@ -47,6 +97,54 @@ jobs:
           name: canonical-librewinforms-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/packages/CanonicalWinForms/*.nupkg
           if-no-files-found: error
+
+  portable-source-contracts:
+    name: Portable MessageBox, layout-clip and popup source contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    # These contracts build their own original source test project; they do not
+    # consume the canonical WinForms package closure. Keep the checks in order
+    # so input, layout clips and popups reuse that exact MessageBox test build.
+    # A failure still fails this Build; no successful-producer gate is relaxed.
+    steps:
+      - name: Checkout aligned source graph
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Validate public MessageBox source modality
+        run: bash ./eng/progpu-wpf-messagebox-modal.sh
+
+      - name: Validate source event-time input modifiers
+        run: bash ./eng/progpu-wpf-input-modifiers-source.sh
+
+      - name: Validate source pointer press ownership
+        run: bash ./eng/progpu-wpf-pointer-ownership-source.sh
+
+      - name: Validate native pointer source reports
+        run: bash ./eng/progpu-wpf-native-pointer-source.sh
+
+      - name: Validate managed dispatcher empty-flush admission
+        run: bash ./eng/progpu-wpf-dispatcher-flush-source.sh
+
+      - name: Verify source wheel event state
+        run: bash ./eng/progpu-wpf-wheel-input-source.sh
+
+      - name: Validate actual source layout clip producers
+        run: bash ./eng/progpu-wpf-layout-clip-source.sh
+
+      - name: Validate portable visual-only host ownership
+        run: bash ./eng/progpu-wpf-visual-host-source.sh
+
+      - name: Validate portable popup source dismissal
+        run: bash ./eng/progpu-wpf-popup-dismissal-source.sh
 
   windows-managed-runtime:
     name: Windows managed runtime payload
@@ -148,8 +246,49 @@ jobs:
           echo "PROGPU_NATIVE_BUILD_DIR=${native_dir}" >> "${GITHUB_ENV}"
           echo "PROGPU_NATIVE_RUNTIME_DIR=${runtime_dir}" >> "${GITHUB_ENV}"
 
+      - name: Validate Toolkit failure evidence controls
+        run: python3 eng/tests/test_toolkit_failure_diagnostics.py
+
+      - name: Validate Showcase failure archive controls
+        run: python3 eng/tests/test_showcase_failure_archive.py
+
       - name: Run LibreWPF SDK gate
+        id: sdk-gate
+        env:
+          PROGPU_WPF_TOOLKIT_FAILURE_SCREENSHOT: 1
         run: ./eng/progpu-wpf-sdk-ci.sh
+
+      - name: Preserve failed Showcase app closure
+        if: ${{ failure() && steps.sdk-gate.outcome == 'failure' }}
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/showcase-failure
+          python3 eng/progpu-wpf-preserve-showcase.py \
+            --repository "${GITHUB_WORKSPACE}" \
+            --source-commit "${PROGPU_WPF_QUALIFIED_COMMIT}" \
+            --run-id "${GITHUB_RUN_ID}" --run-attempt "${GITHUB_RUN_ATTEMPT}" \
+            --app-directory "${GITHUB_WORKSPACE}/artifacts/bin/ProGPU.Wpf.ShowcaseApp/Debug/net10.0-windows" \
+            --native-build-directory "${PROGPU_NATIVE_BUILD_DIR}" \
+            --native-runtime-directory "${PROGPU_NATIVE_RUNTIME_DIR}" \
+            --evidence-parent "${GITHUB_WORKSPACE}/artifacts/showcase-failure"
+
+      - name: Upload failed Showcase diagnostic closure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-failure-diagnostics-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/showcase-failure/**
+          if-no-files-found: warn
+
+      - name: Upload Toolkit live probe diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolkit-live-diagnostics-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/toolkit-live/**
+          if-no-files-found: warn
 
       - name: Upload CI package bundle
         uses: actions/upload-artifact@v4
@@ -227,9 +366,40 @@ jobs:
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Release
           ./eng/progpu-wpf-windows-anycpu-smoke.ps1 -Configuration Debug
 
+  windows-native-debugger:
+    name: Windows native crash capture controls (${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            architecture: x64
+          - os: windows-11-arm
+            architecture: arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+      - name: Setup diagnostic control Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and exercise owned native crash capture
+        shell: pwsh
+        run: ./eng/build-showcase-native-debugger.ps1 -Architecture ${{ matrix.architecture }} -OutputDirectory "${{ runner.temp }}/showcase-native-debugger"
+      - name: Upload exact-head diagnostic helper
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-native-debugger-${{ matrix.architecture }}-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: ${{ runner.temp }}/showcase-native-debugger/ShowcaseNativeDebugger.exe
+          if-no-files-found: error
+
   windows-native-mil-showcase:
     name: Windows x64 native MIL package Showcase
-    needs: sdk-smoke
+    needs: [sdk-smoke, windows-native-debugger]
     runs-on: windows-2025
     timeout-minutes: 40
 
@@ -244,19 +414,42 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Setup passive idle runner Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate native idle launcher isolation
+        shell: pwsh
+        run: ./eng/test-progpu-wpf-windows-native-idle.ps1
+
       - name: Download exact CI package bundle
         uses: actions/download-artifact@v4
         with:
           name: librewpf-ci-packages-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/packages/Release/NonShipping
 
+      - name: Download exact-head native diagnostic helper
+        uses: actions/download-artifact@v4
+        with:
+          name: showcase-native-debugger-x64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: ${{ runner.temp }}/showcase-native-debugger
+
       - name: Run package-only x64 native MIL Showcase
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -ValidatePassiveIdle -CaptureIdleCrashDump -IdleNativeDebugger (Join-Path $env:RUNNER_TEMP "showcase-native-debugger/ShowcaseNativeDebugger.exe")
+
+      - name: Upload x64 passive native idle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-native-idle-win-x64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/showcase-native-idle/win-x64/**
+          if-no-files-found: warn
 
   windows-arm64-native-mil-showcase:
     name: Windows ARM64 native MIL package Showcase
-    needs: sdk-smoke
+    needs: [sdk-smoke, windows-native-debugger]
     runs-on: windows-11-arm
     timeout-minutes: 40
 
@@ -271,15 +464,38 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Setup passive idle runner Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate native idle launcher isolation
+        shell: pwsh
+        run: ./eng/test-progpu-wpf-windows-native-idle.ps1
+
       - name: Download exact CI package bundle
         uses: actions/download-artifact@v4
         with:
           name: librewpf-ci-packages-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
           path: artifacts/packages/Release/NonShipping
 
+      - name: Download exact-head native diagnostic helper
+        uses: actions/download-artifact@v4
+        with:
+          name: showcase-native-debugger-arm64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: ${{ runner.temp }}/showcase-native-debugger
+
       - name: Run package-only ARM64 native MIL Showcase
         shell: pwsh
-        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64
+        run: ./eng/progpu-wpf-windows-native-mil-showcase.ps1 -TargetArchitecture arm64 -ValidatePassiveIdle -CaptureIdleCrashDump -IdleNativeDebugger (Join-Path $env:RUNNER_TEMP "showcase-native-debugger/ShowcaseNativeDebugger.exe")
+
+      - name: Upload ARM64 passive native idle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-native-idle-win-arm64-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
+          path: artifacts/showcase-native-idle/win-arm64/**
+          if-no-files-found: warn
 
   linux-xwayland-smoke:
     name: Linux Wayland-session XWayland input and popup smoke
@@ -360,4 +576,16 @@ jobs:
             xvfb
 
       - name: Run headless multi-window smoke
+        run: ./eng/progpu-wpf-linux-multi-window-smoke.sh
+
+      - name: Require OpenGL multi-window presentation
+        if: ${{ !cancelled() }}
+        env:
+          PROGPU_WPF_MULTI_WINDOW_SMOKE_BACKEND: gl
+        run: ./eng/progpu-wpf-linux-multi-window-smoke.sh
+
+      - name: Require Vulkan multi-window presentation
+        if: ${{ !cancelled() }}
+        env:
+          PROGPU_WPF_MULTI_WINDOW_SMOKE_BACKEND: vulkan
         run: ./eng/progpu-wpf-linux-multi-window-smoke.sh

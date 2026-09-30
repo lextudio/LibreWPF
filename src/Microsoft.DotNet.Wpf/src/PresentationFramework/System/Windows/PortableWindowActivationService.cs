@@ -359,6 +359,90 @@ namespace System.Windows
             input.Handled = ProcessInput(source, source.RootVisual as UIElement, input);
         }
 
+        // Internal source path until native scrolling is
+        // complete. The registrar must not advertise the native capability yet.
+        internal static bool TryProcessNativePointerInput(PresentationSource source, PortablePointerInput input,
+            PortableInputModifiers modifiers, out bool handled)
+        {
+            handled = false;
+            if (source is not PortablePresentationSource portableSource || input == null ||
+                (modifiers & ~(PortableInputModifiers.Shift | PortableInputModifiers.Control |
+                    PortableInputModifiers.Alt | PortableInputModifiers.Super)) != 0 ||
+                !double.IsFinite(input.Timestamp * 1000d) || input.Button > 4)
+                return false;
+            source.VerifyAccess();
+            if (source.IsDisposed ||
+                InputManager.UnsecureCurrent.PrimaryMouseDevice is not PortableMouseDevice)
+                return false;
+
+            if (input.Kind is PortablePointerEventKind.Cancel or PortablePointerEventKind.Leave)
+            {
+                // Hidden/modal-blocked sources still need ownership cleanup.
+                // No hit-test, activation, capture redirection or synthetic up.
+                using PortableKeyboardDevice.EventModifierScope scope =
+                    InputManager.UnsecureCurrent.PrimaryKeyboardDevice is PortableKeyboardDevice keyboard
+                        ? keyboard.PushEventModifiers(ToEventModifierKeys(modifiers)) : default;
+                if (input.Kind == PortablePointerEventKind.Cancel)
+                    portableSource.CancelNativePointerInput(NativePointerTimestamp(input.Timestamp), input);
+                else
+                    InputManager.UnsecureCurrent.PrimaryMouseDevice.LeavePortableSource(
+                        portableSource, NativePointerTimestamp(input.Timestamp), input);
+                handled = true;
+                return true;
+            }
+            if (source.RootVisual is not UIElement root)
+                return false;
+
+            if (input.Kind == PortablePointerEventKind.Scroll)
+            {
+                using PortableKeyboardDevice.EventModifierScope scope =
+                    InputManager.UnsecureCurrent.PrimaryKeyboardDevice is PortableKeyboardDevice keyboard
+                        ? keyboard.PushEventModifiers(ToEventModifierKeys(modifiers)) : default;
+                return PortableScroll.TryProcess(portableSource, input, out handled);
+            }
+
+            PortableInputEventKind kind;
+            switch (input.Kind)
+            {
+                case PortablePointerEventKind.Move:
+                case PortablePointerEventKind.Drag:
+                case PortablePointerEventKind.Enter:
+                    kind = PortableInputEventKind.MouseMove;
+                    break;
+                case PortablePointerEventKind.Down:
+                    kind = PortableInputEventKind.MouseDown;
+                    break;
+                case PortablePointerEventKind.Up:
+                    kind = PortableInputEventKind.MouseUp;
+                    break;
+                default:
+                    return false;
+            }
+
+            PortableMouseButton button = input.Button switch
+            {
+                0 => PortableMouseButton.Left, 1 => PortableMouseButton.Right,
+                2 => PortableMouseButton.Middle, 3 => PortableMouseButton.XButton1,
+                4 => PortableMouseButton.XButton2, _ => PortableMouseButton.None
+            };
+            handled = ProcessInput(source, root, new PortableInputEventArgs(kind,
+                x: input.X, y: input.Y, button: button, modifiers: modifiers, nativePointer: input));
+            return true;
+        }
+
+        internal static PortablePointerInput GetNativePointerInput(MouseEventArgs input) =>
+            PortableMouseEvents.GetNativePointer(input);
+
+        internal static int NativePointerTimestamp(double seconds)
+        {
+            double milliseconds = Math.Truncate(seconds * 1000d);
+            if (!double.IsFinite(milliseconds) || seconds < 0)
+                throw new ArgumentOutOfRangeException(nameof(seconds));
+            // WPF timestamps use the wrapping signed 32-bit millisecond domain.
+            // Retain the full original native double beside the routed event.
+            return unchecked((int)(uint)(milliseconds % 4294967296d));
+        }
+
         internal static int ProcessDragDrop(
             Window window,
             string[] files,
@@ -419,13 +503,21 @@ namespace System.Windows
                 return true;
 
             InputManager inputManager = InputManager.UnsecureCurrent;
+            // Keep each event's modifier snapshot through source callbacks. A
+            // nested keyboard/text event gets its own snapshot; unwinding only
+            // restores the outer aggregate, never the physical key-state cache.
+            using PortableKeyboardDevice.EventModifierScope modifiers =
+                inputManager.PrimaryKeyboardDevice is PortableKeyboardDevice keyboard
+                    ? keyboard.PushEventModifiers(ToEventModifierKeys(input.Modifiers))
+                    : default;
             if (IsMouseInputKind(input.Kind) && Mouse.Captured != null &&
                 !IsModalInputElementAllowed(Mouse.Captured))
                 return true;
             if (!IsMouseInputKind(input.Kind) && Keyboard.FocusedElement != null &&
                 !IsModalInputElementAllowed(Keyboard.FocusedElement))
                 return true;
-            int timestamp = Environment.TickCount;
+            int timestamp = input.NativePointer is { } nativePointer
+                ? NativePointerTimestamp(nativePointer.Timestamp) : Environment.TickCount;
             PresentationSource mouseInputSource = source;
             UIElement mouseRootHitTestElement = rootHitTestElement;
             Point mouseRootPoint = new Point(input.X, input.Y);
@@ -455,7 +547,7 @@ namespace System.Windows
                 case PortableInputEventKind.TextInput:
                     return ProcessTextInput(inputManager, source, input, timestamp);
                 case PortableInputEventKind.MouseMove:
-                    return ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
+                    return ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
                 case PortableInputEventKind.MouseDown:
                     if (input.Button == PortableMouseButton.Left &&
                         rootHitTestElement is Window window &&
@@ -465,14 +557,15 @@ namespace System.Windows
                     }
 
                     return TryGetMouseButtonAction(input.Button, isDown: true, out RawMouseActions mouseDownAction)
-                        && ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
+                        && ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
                 case PortableInputEventKind.MouseUp:
                     return TryGetMouseButtonAction(input.Button, isDown: false, out RawMouseActions mouseUpAction)
-                        && ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | mouseUpAction);
+                        && ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp,
+                            mouseActivation | mouseUpAction | (input.NativePointer != null ? RawMouseActions.AbsoluteMove : RawMouseActions.None));
                 case PortableInputEventKind.MouseWheel:
                     int wheel = ToMouseWheelDelta(input.DeltaY);
                     return wheel != 0
-                        && ProcessMouseInput(inputManager, mouseInputSource, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
+                        && ProcessMouseInput(inputManager, mouseInputSource, source, mouseRootHitTestElement, mouseRootPoint, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
                 default:
                     return false;
             }
@@ -734,6 +827,7 @@ namespace System.Windows
         private static bool ProcessMouseInput(
             InputManager inputManager,
             PresentationSource source,
+            PresentationSource originSource,
             UIElement rootHitTestElement,
             Point rootPoint,
             PortableInputEventArgs input,
@@ -741,21 +835,28 @@ namespace System.Windows
             RawMouseActions actions,
             int wheel = 0)
         {
+            Point? nativeClientPoint = input.NativePointer == null ? null : PointUtil.RootToClient(rootPoint, source);
+            if (nativeClientPoint is Point nativePoint && (!double.IsFinite(nativePoint.X) || !double.IsFinite(nativePoint.Y)))
+                throw new ArgumentOutOfRangeException(nameof(rootPoint));
             if (inputManager.PrimaryMouseDevice is PortableMouseDevice mouseDevice &&
                 TryGetMouseButton(input.Button, out MouseButton mouseButton))
             {
                 if ((actions & GetMouseButtonPressAction(mouseButton)) != 0)
                 {
-                    mouseDevice.SetButtonState(mouseButton, MouseButtonState.Pressed);
+                    mouseDevice.SetButtonState(mouseButton, MouseButtonState.Pressed, originSource, source);
                 }
                 else if ((actions & GetMouseButtonReleaseAction(mouseButton)) != 0)
                 {
-                    mouseDevice.SetButtonState(mouseButton, MouseButtonState.Released);
+                    mouseDevice.SetButtonState(mouseButton, MouseButtonState.Released, originSource, source);
                 }
             }
 
-            Point clientPoint = ToMouseClientPoint(source, rootHitTestElement, rootPoint);
-            RawMouseInputReport report = new RawMouseInputReport(
+            Point clientPoint = nativeClientPoint ?? ToMouseClientPoint(source, rootHitTestElement, rootPoint);
+            RawMouseInputReport report = input.NativePointer != null
+                ? new PortableMouseInputReport(InputMode.Foreground, timestamp, source, actions,
+                    ToInputCoordinate(clientPoint.X), ToInputCoordinate(clientPoint.Y), wheel, IntPtr.Zero,
+                    clientPoint, input.NativePointer, originSource as PortablePresentationSource)
+                : new RawMouseInputReport(
                 InputMode.Foreground,
                 timestamp,
                 source,
@@ -860,6 +961,17 @@ namespace System.Windows
             SetModifierKeyState(keyboardDevice, Key.RightAlt, modifiers, PortableInputModifiers.Alt);
             SetModifierKeyState(keyboardDevice, Key.LWin, modifiers, PortableInputModifiers.Super);
             SetModifierKeyState(keyboardDevice, Key.RWin, modifiers, PortableInputModifiers.Super);
+        }
+
+        private static ModifierKeys ToEventModifierKeys(PortableInputModifiers modifiers)
+        {
+            ModifierKeys result = ModifierKeys.None;
+            if ((modifiers & PortableInputModifiers.Alt) != 0) result |= ModifierKeys.Alt;
+            if ((modifiers & PortableInputModifiers.Control) != 0) result |= ModifierKeys.Control;
+            if ((modifiers & PortableInputModifiers.Shift) != 0) result |= ModifierKeys.Shift;
+            // Keyboard.Modifiers excludes the Windows/Super key on the native
+            // source path too. Host Command-to-Control normalization is separate.
+            return result;
         }
 
         private static void SetModifierKeyState(
@@ -1104,6 +1216,24 @@ namespace System.Windows
                 return false;
             }
 
+            // Invalid timeout/priority and disabled-processing calls retain the
+            // original marker path and its exception behavior. Keep that path
+            // in a separate method so its captured callbacks are not allocated
+            // before this allocation-free empty-queue check.
+            // A zero/sub-millisecond timeout promotes its Send-priority timer
+            // immediately; do not turn that original timeout into success.
+            bool canShortcutTimeout = timeout == Timeout.InfiniteTimeSpan ||
+                (timeout.TotalMilliseconds >= 1 && timeout.TotalMilliseconds <= Int32.MaxValue);
+            if (canShortcutTimeout && typedWindow.Dispatcher.CanCompletePortableFlushWithoutFrame(markerPriority))
+            {
+                return true;
+            }
+
+            return FlushDispatcherOperationsWithFrame(typedWindow, markerPriority, timeout);
+        }
+
+        private static bool FlushDispatcherOperationsWithFrame(Window typedWindow, DispatcherPriority markerPriority, TimeSpan timeout)
+        {
             bool markerReached = false;
             DispatcherFrame frame = new DispatcherFrame();
             DispatcherOperation markerOperation = typedWindow.Dispatcher.BeginInvoke(
@@ -1168,7 +1298,7 @@ namespace System.Windows
             }
         }
 
-        private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
+        private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar, IPortableWindowInputDispatcher
         {
             public PortableWpfServiceKey ServiceKey
             {
@@ -1298,6 +1428,22 @@ namespace System.Windows
 
                 typedWindow.Dispatcher.BeginInvoke(DispatcherPriority.Input, callback);
                 return true;
+            }
+
+            public bool TryPostInput(object window, Action callback)
+            {
+                if (window is not Window typedWindow || callback == null ||
+                    typedWindow.IsDisposed || typedWindow.Dispatcher == null ||
+                    typedWindow.Dispatcher.HasShutdownStarted || typedWindow.Dispatcher.HasShutdownFinished)
+                {
+                    return false;
+                }
+
+                // Always enqueue, including owner-thread calls. Render/layout
+                // precedes the next packet, while Input precedes Background
+                // barriers within the same nested source dispatcher frame.
+                DispatcherOperation operation = typedWindow.Dispatcher.BeginInvoke(DispatcherPriority.Input, callback);
+                return operation.Status != DispatcherOperationStatus.Aborted;
             }
 
             public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)

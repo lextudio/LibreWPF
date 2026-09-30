@@ -15,7 +15,7 @@ using MediaTransform = System.Windows.Media.Transform;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
-public sealed class WpfMilRenderDataDecoderTests
+public sealed partial class WpfMilRenderDataDecoderTests
 {
     [Theory]
     [InlineData(false)]
@@ -709,8 +709,18 @@ public sealed class WpfMilRenderDataDecoderTests
         }
     }
 
-    private class TestSink : IWpfCompositionCommandSink
+    private class TestSink : IWpfCompositionCommandSink, IWpfSourceRectangleHitTestScopeCommandSink
     {
+        public List<WpfReplayRect> SourceRectangles { get; } = new();
+
+        public List<string> Operations { get; } = new();
+
+        public void PushSourceRectangleHitTestScope(WpfReplayRect rectangle)
+        {
+            SourceRectangles.Add(rectangle);
+            Operations.Add("SourceRectangle");
+        }
+
         public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle)> DrawRectangles { get; } = new();
 
         public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> DrawGeometries { get; } = new();
@@ -747,6 +757,7 @@ public sealed class WpfMilRenderDataDecoderTests
         public void DrawRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle)
         {
             DrawRectangles.Add((brush, pen, rectangle));
+            Operations.Add("Rectangle");
         }
 
         public void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY)
@@ -767,6 +778,7 @@ public sealed class WpfMilRenderDataDecoderTests
         public void DrawImage(MediaImageSource imageSource, Rect rectangle)
         {
             Images.Add(imageSource);
+            Operations.Add("Image");
         }
 
         public void DrawText(FormattedText formattedText, Point origin)
@@ -818,6 +830,7 @@ public sealed class WpfMilRenderDataDecoderTests
         public void Pop()
         {
             PopCount++;
+            Operations.Add("Pop");
         }
 
         public void Close()
@@ -899,6 +912,7 @@ public sealed class WpfMilRenderDataDecoderTests
         public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)
         {
             NativeRectangles.Add((brush, pen, rectangle));
+            Operations.Add("Rectangle");
         }
 
         public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)

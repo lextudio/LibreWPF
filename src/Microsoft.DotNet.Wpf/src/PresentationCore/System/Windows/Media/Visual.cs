@@ -2602,6 +2602,15 @@ namespace System.Windows.Media
 
             state = new PortableVisualState
             {
+                // Effective IsVisible also depends on presentation-source attachment.
+                // Detached visible roots must remain usable by VisualBrush/cache capture.
+                HasVisibility = true,
+                Visibility = this is UIElement element ? element.Visibility switch
+                {
+                    Visibility.Hidden => PortableVisualVisibility.Hidden,
+                    Visibility.Collapsed => PortableVisualVisibility.Collapsed,
+                    _ => PortableVisualVisibility.Visible
+                } : PortableVisualVisibility.Visible,
                 HasOffset = true,
                 Offset = new PortablePoint(offset.X, offset.Y),
                 HasTransform = transform != null,

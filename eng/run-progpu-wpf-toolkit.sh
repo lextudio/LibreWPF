@@ -16,7 +16,7 @@ export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1
 
 sdk_sample_target_framework="${PROGPU_WPF_SDK_SAMPLE_TARGET_FRAMEWORK:-net10.0-windows}"
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
-sdk_package="${package_output}/LibreWPF.Sdk.0.1.0-preview.45.nupkg"
+sdk_package="${package_output}/LibreWPF.Sdk.0.1.0-preview.65.nupkg"
 toolkit_project="${repo_root}/samples/ProGPU.Wpf.ToolkitApp/ProGPU.Wpf.ToolkitApp.csproj"
 toolkit_output="${repo_root}/artifacts/bin/ProGPU.Wpf.ToolkitApp/Debug/${sdk_sample_target_framework}"
 
@@ -77,10 +77,24 @@ fi
 
 if [[ "${PROGPU_WPF_TOOLKIT_LIVE_VALIDATE:-0}" == "1" ]]; then
   export PROGPU_WPF_TOOLKIT_LIVE_VALIDATE
-  live_log="$(mktemp "${TMPDIR:-/tmp}/progpu-wpf-toolkit-live.XXXXXX")"
-  live_status="$(mktemp "${TMPDIR:-/tmp}/progpu-wpf-toolkit-live-status.XXXXXX")"
+  live_artifacts="${repo_root}/artifacts/toolkit-live"
+  mkdir -p "${live_artifacts}"
+  live_directory="$(mktemp -d "${live_artifacts}/probe.XXXXXXXX")"
+  live_log="$(mktemp "${live_directory}/app-log.XXXXXX")"
+  live_status="$(mktemp "${live_directory}/app-status.XXXXXX")"
+  echo "Retaining Toolkit live probe evidence: ${live_directory}"
   apphost_pid=""
   cleanup_live_probe() {
+    local probe_exit="${1:-0}"
+    if (( probe_exit != 0 )); then
+      # Capture the failed live state before terminating our apphost. This is
+      # diagnostic-only; it cannot change the original validation exit status.
+      python3 "${repo_root}/eng/progpu-wpf-toolkit-failure.py" \
+        --directory "${live_directory}" --exit-code "${probe_exit}" \
+        --process-id "${apphost_pid:-0}" || \
+        echo "Could not finish Toolkit failure diagnostics; original log/status retained at ${live_directory}." >&2
+    fi
+
     if [[ -n "${apphost_pid}" ]] && kill -0 "${apphost_pid}" 2>/dev/null; then
       kill "${apphost_pid}" 2>/dev/null || true
       sleep 0.5
@@ -89,9 +103,9 @@ if [[ "${PROGPU_WPF_TOOLKIT_LIVE_VALIDATE:-0}" == "1" ]]; then
       fi
       wait "${apphost_pid}" 2>/dev/null || true
     fi
-    rm -f "${live_log}" "${live_status}"
+    return "${probe_exit}"
   }
-  trap cleanup_live_probe EXIT
+  trap 'cleanup_live_probe "$?"' EXIT
 
   echo "Launching ProGPU WPF Toolkit apphost live geometry probe..."
   (

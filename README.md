@@ -15,6 +15,9 @@ The maintained cross-platform priorities, compatibility policy, and ecosystem
 status are tracked in the [LibreWPF cross-platform roadmap](roadmap.md). The
 historical upstream Microsoft WPF roadmap remains below that LibreWPF section.
 
+The [portable hyperlink input contract](docs/portable-hyperlink-pointer-routing.md)
+records selected-owner content routing and its remaining application gates.
+
 ### Linux windowing behavior
 
 LibreWPF selects X11 when it runs in a Wayland desktop session that also exposes
@@ -78,7 +81,7 @@ Before:
 After:
 
 ```xml
-<Project Sdk="LibreWPF.Sdk/0.1.0-preview.45">
+<Project Sdk="LibreWPF.Sdk/0.1.0-preview.65">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -92,7 +95,7 @@ Older projects that still use `Microsoft.NET.Sdk.WindowsDesktop` should make the
 4. Keep existing app dependencies in place. For example, a Toolkit app only changes the SDK line:
 
 ```xml
-<Project Sdk="LibreWPF.Sdk/0.1.0-preview.45">
+<Project Sdk="LibreWPF.Sdk/0.1.0-preview.65">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -117,10 +120,11 @@ dotnet run
 ## NuGet Packages
 
 The preview package set is defined in `eng/progpu-preview-package-list.sh` and validated by the release workflow.
-Tag releases promote and re-verify the exact package artifact produced by the full `LibreWPF Build`
-gate for the tagged commit, then repeat the clean Windows AnyCPU package smoke before publication.
-This avoids compiling the same WPF graph twice without removing any qualification step; manual
-release dispatch remains the full-rebuild recovery path.
+Tag releases rebuild the immutable tagged source against the matching ProGPU GitHub release
+packages, verify the complete release bundle and provenance, then run the clean Windows AnyCPU
+package smoke before publication. The `LibreWPF Build` artifact is qualified for CI consumers,
+but its commit-qualified `source.<sha>` ProGPU dependencies are not public release packages.
+Manual release dispatch uses the same build and validation path for recovery publication.
 
 ### LibreWPF Packages
 
@@ -159,7 +163,7 @@ release dispatch remains the full-rebuild recovery path.
 ## Build And Release
 
 ```bash
-PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.45 PROGPU_WPF_PROGPU_PACKAGE_VERSION=0.1.0-preview.62 ./eng/progpu-wpf-sdk-ci.sh
+PROGPU_WPF_DEV_PACKAGE_VERSION=0.1.0-preview.65 PROGPU_WPF_PROGPU_PACKAGE_VERSION=0.1.0-preview.65 ./eng/progpu-wpf-sdk-ci.sh
 ```
 
 The SDK CI script stages ProGPU runtime packages, builds managed WPF transport assemblies, `LibreWPF.ProGPU`, and `LibreWPF.Sdk`, then audits the packages, writes the preview manifest, creates and verifies the release bundle, and runs package-mode SDK smoke tests. Public releases consume the hash-identical packages from the matching ProGPU GitHub release instead of repacking or republishing them.
@@ -176,7 +180,7 @@ agree, builds the upstream-derived `System.Windows.Forms` identity against
 ProGPU `System.Drawing.Common`, serializes the WPF reference/cycle foundation,
 and compiles both the real `WindowsFormsIntegration` reference and implementation
 assemblies. It treats unresolved or duplicate assembly closures as errors. The
-ordinary SDK/package path remains on released ProGPU `0.1.0-preview.62` packages.
+ordinary SDK/package path remains on released ProGPU `0.1.0-preview.65` packages.
 
 For a faster source-development loop, use the same qualified managed, theme,
 and harness project sets through the validation graph:

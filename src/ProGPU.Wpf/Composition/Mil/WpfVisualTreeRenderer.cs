@@ -191,6 +191,15 @@ public sealed class WpfVisualTreeRenderer
             return;
         }
 
+        if (!cacheBrushRoot && !IsSourceVisualVisible(visual))
+        {
+            // Keep ownership/dependency registration for a later visible transition,
+            // but do not replay hidden content or admit its masks/effects for input.
+            RegisterRetainedVisualOwner(visual, sink);
+            RegisterRetainedVisualStateDependencies(visual, sink);
+            return;
+        }
+
         var hitTestOwnerPushed = retainedOwnerScopeMode != RetainedOwnerScopeMode.None &&
             TryPushHitTestOwner(visual, sink);
         try
@@ -271,6 +280,9 @@ public sealed class WpfVisualTreeRenderer
         RegisterRetainedVisualStateDependencies(visual, sink);
         retainedVisualStateSink.ApplyVisualState(visualState);
 
+        if (!visualState.IsVisible)
+            return true;
+
         var contentTransformPopCount = 0;
         try
         {
@@ -331,6 +343,12 @@ public sealed class WpfVisualTreeRenderer
         {
             RegisterRetainedVisualStateDependencies(visual, sink);
             retainedVisualStateSink.ApplyVisualState(visualState);
+
+            if (!visualState.IsVisible)
+            {
+                replayed = true;
+                return true;
+            }
 
             var contentTransformPopCount = 0;
             try
@@ -484,6 +502,12 @@ public sealed class WpfVisualTreeRenderer
         out WpfRetainedVisualState state)
     {
         state = default;
+        if (!IsSourceVisualVisible(visual))
+        {
+            state = new WpfRetainedVisualState(Vector2.Zero, Matrix4x4.Identity, 1f, null, isVisible: false);
+            return true;
+        }
+
         var offset = Vector2.Zero;
         var transform = Matrix4x4.Identity;
         var opacity = 1f;
@@ -1538,6 +1562,11 @@ public sealed class WpfVisualTreeRenderer
 
         transform = null;
         return false;
+    }
+
+    private static bool IsSourceVisualVisible(object visual)
+    {
+        return !TryGetPortableVisualState(visual, out var state) || WpfVisualVisibility.IsVisible(state);
     }
 
     private static bool TryReadOpacity(object visual, out double opacity)

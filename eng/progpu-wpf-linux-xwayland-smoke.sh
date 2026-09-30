@@ -112,6 +112,7 @@ xvfb-run -a --server-args="-screen 0 1280x1024x24" bash -c '
 
 grep -F "ProGPU WPF Showcase live input validation succeeded:" "${smoke_log}"
 grep -F "external 36-step native drag returned to dispatcher processing" "${smoke_log}"
+grep -F "ProGPU WPF Showcase external native drag source press/release received." "${smoke_log}"
 grep -F "windowing backend X11, wayland session True, global position True, interactive move True, native popups True, owner-composited popups False" "${smoke_log}"
 grep -F "Menu, ComboBox dropdown, and direct Popup opened through ProGPU popup surfaces" "${smoke_log}"
 grep -F "native windows 1/1/1" "${smoke_log}"

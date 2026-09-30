@@ -10,11 +10,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <LibreWpfSdkSwitchPackageVersion>0.1.0-preview.45</LibreWpfSdkSwitchPackageVersion>
+    <LibreWpfSdkSwitchPackageVersion>0.1.0-preview.65</LibreWpfSdkSwitchPackageVersion>
     <ProGpuWpfSdkSwitchPackageVersion Condition="'$(PROGPU_WPF_PROGPU_PACKAGE_VERSION)' != ''">$(PROGPU_WPF_PROGPU_PACKAGE_VERSION)</ProGpuWpfSdkSwitchPackageVersion>
-    <ProGpuWpfSdkSwitchPackageVersion Condition="'$(ProGpuWpfSdkSwitchPackageVersion)' == ''">0.1.0-preview.62</ProGpuWpfSdkSwitchPackageVersion>
-    <!-- LibreWinForms preview.45 is released after its matching LibreWPF bridge. -->
-    <ProGpuWpfLibreWinFormsPackageVersion Condition="'$(ProGpuWpfLibreWinFormsPackageVersion)' == ''">0.1.0-preview.42</ProGpuWpfLibreWinFormsPackageVersion>
+    <ProGpuWpfSdkSwitchPackageVersion Condition="'$(ProGpuWpfSdkSwitchPackageVersion)' == ''">0.1.0-preview.65</ProGpuWpfSdkSwitchPackageVersion>
+    <ProGpuWpfLibreWinFormsPackageVersion Condition="'$(ProGpuWpfLibreWinFormsPackageVersion)' == ''">$(LibreWpfSdkSwitchPackageVersion)</ProGpuWpfLibreWinFormsPackageVersion>
     <RestorePackagesPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke'))</RestorePackagesPath>
     <RestoreForce>true</RestoreForce>
     <RestoreForceEvaluate>true</RestoreForceEvaluate>

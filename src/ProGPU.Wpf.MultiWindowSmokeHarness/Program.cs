@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Windows.Media.ProGPU;
+using ProGPU.Backend;
+using Silk.NET.WebGPU;
 
 // Multi-window native smoke for the ProGPU WPF window host, covering LibreWPF issue #102:
 // opening a second top-level window on a headless X server aborted the process inside wgpu's
@@ -21,7 +23,7 @@ internal static class Program
     private const int WindowCount = 3;
     private const int RequiredFrames = 3;
 
-    private static int Main()
+    private static int Main(string[] args)
     {
         int timeoutSeconds = ReadTimeoutSeconds();
         Console.WriteLine(
@@ -31,11 +33,17 @@ internal static class Program
         var hosts = new List<ProGpuWpfWindowHost>(WindowCount);
         try
         {
+            WgpuNativeBackendOptions? requestedBackend = args.Length switch
+            {
+                0 => null,
+                2 when args[0] == "--backend" => WgpuNativeBackendOptions.Parse(args[1]),
+                _ => throw new ArgumentException("Usage: multi-window smoke [--backend automatic|vulkan|gl|metal|dx12]")
+            };
             for (int index = 0; index < WindowCount; index++)
             {
                 // Show and pump each window before creating the next one: a live, presenting
                 // window and then another top-level surface is the reported sequence.
-                ShowWindow(hosts, $"smoke {index + 1}", transparent: index > 0, timeoutSeconds);
+                ShowWindow(hosts, $"smoke {index + 1}", transparent: index > 0, timeoutSeconds, requestedBackend);
             }
 
             AssertExactlyOneRenderDeviceOwner(hosts);
@@ -47,7 +55,7 @@ internal static class Program
             firstHost.Close();
             firstHost.Dispose();
             ProGpuWpfWindowHost reopenedHost =
-                ShowWindow(hosts, "smoke reopened", transparent: true, timeoutSeconds);
+                ShowWindow(hosts, "smoke reopened", transparent: true, timeoutSeconds, requestedBackend);
             if (!IsRenderDeviceSharingDisabled() && !reopenedHost.UsesSharedRenderDevice)
             {
                 throw new InvalidOperationException(
@@ -85,7 +93,8 @@ internal static class Program
         List<ProGpuWpfWindowHost> hosts,
         string title,
         bool transparent,
-        int timeoutSeconds)
+        int timeoutSeconds,
+        WgpuNativeBackendOptions? requestedBackend)
     {
         var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
         {
@@ -95,11 +104,16 @@ internal static class Program
             Left = 40 + (hosts.Count * 48),
             Top = 40 + (hosts.Count * 48),
             IsEventDriven = false,
+            NativeBackendOptions = requestedBackend,
             TransparentFramebuffer = transparent
         });
         hosts.Add(host);
         host.Show();
+        RequireWebGpuContextOwnership(host);
         PumpUntilPresented(hosts, timeoutSeconds);
+        RequireRequestedBackend(host, requestedBackend ?? WgpuNativeBackendOptions.FromEnvironment());
+        GlyphComputeReadback.Validate(host.CompositionTarget!.Context);
+        RequireWebGpuContextOwnership(host);
 
         Console.WriteLine(
             $"'{title}' presented {host.PresentedFrameCount} frame(s): " +
@@ -145,6 +159,7 @@ internal static class Program
                 // its first surface configuration.
                 ProGpuWpfDiagnostics.TryRequestRender(hosts[index]);
                 hosts[index].DoEvents();
+                RequireWebGpuContextOwnership(hosts[index]);
                 presented &= hosts[index].PresentedFrameCount >= RequiredFrames;
             }
 
@@ -161,14 +176,41 @@ internal static class Program
             $"{timeoutSeconds} seconds.");
     }
 
+    private static void RequireWebGpuContextOwnership(ProGpuWpfWindowHost host)
+    {
+        var window = host.SilkWindow ?? throw new InvalidOperationException("Missing actual native window.");
+        if (!window.IsContextControlDisabled || window.ShouldSwapAutomatically ||
+            window.GLContext?.IsCurrent == true)
+        {
+            throw new InvalidOperationException(
+                "WebGPU presentation must not bind or swap the unused client graphics context.");
+        }
+    }
+
     private static string DescribeAdapter(ProGpuWpfWindowHost host)
     {
-        // The selected backend is neither configurable nor predictable, so report it: a run that
-        // behaves differently from another usually picked a different one.
+        // Report the actual device, never infer it from an adapter name or OS.
         var context = host.CompositionTarget?.Context;
         return context == null
             ? "unavailable"
             : $"{context.AdapterName} ({context.AdapterBackendType})";
+    }
+
+    private static void RequireRequestedBackend(ProGpuWpfWindowHost host, WgpuNativeBackendOptions requested)
+    {
+        var actual = host.CompositionTarget?.Context.AdapterBackendType
+            ?? throw new InvalidOperationException("The presented window has no device context.");
+        bool matches = requested.Preference switch
+        {
+            WgpuNativeBackend.Automatic => true,
+            WgpuNativeBackend.Vulkan => actual == BackendType.Vulkan,
+            WgpuNativeBackend.OpenGL => actual is BackendType.OpenGL or BackendType.OpenGles,
+            WgpuNativeBackend.Metal => actual == BackendType.Metal,
+            WgpuNativeBackend.D3D12 => actual == BackendType.D3D12,
+            _ => false
+        };
+        if (!matches)
+            throw new InvalidOperationException($"Requested {requested.Preference}, but the presented device uses {actual}.");
     }
 
     private static bool IsRenderDeviceSharingDisabled()

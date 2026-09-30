@@ -31,27 +31,43 @@ is off on Windows, which presents through D3D12). Sharing is best-effort: if the
 device down first, the next window retires it and creates one itself, and any window still using
 the device can hand it on.
 
-## Still broken: rendering through the GLES/EGL backend
+## GLES/EGL follow-up: repeated client-context binding
 
-The fixes above make multi-window work where wgpu **selects Vulkan**. Where it selects GLES/EGL to
-render through, a second window still aborts, because that backend rebinds its EGL context around
-every device operation with no coordination between windows. It reproduces whether the windows
-share a device or not, so the LibreWPF host cannot arrange around it - it needs a fix in wgpu or in
-ProGPU's use of it. **On Linux, render through Vulkan.** With lavapipe installed, AvalonDock's
-57-test DevFlow suite goes from 57 failures with the process aborted to 56 passing.
+[Issue #187](https://github.com/wieslawsoltes/LibreWPF/issues/187) reports a remaining
+GLES/EGL abort in `wgpuDeviceCreateBuffer`, including with shared devices. The
+previous explanation that the host could not influence it was premature.
+Source tracing found a concrete missing host setting: Silk.NET's pinned
+[`DoRender` contract](https://github.com/dotnet/Silk.NET/blob/v2.23.0/src/Windowing/Silk.NET.Windowing.Common/Internals/ViewImplementationBase.cs)
+can bind the client context before each render callback independently of automatic
+buffer swapping. Clearing it once at Load is therefore insufficient.
+
+The WebGPU host now sets `IsContextControlDisabled = true` before creating every
+Silk window, in both managed and native MIL modes. It retains
+`ShouldSwapAutomatically = false`, the transparent X11 alpha-capable visual, and
+the initial Load-time detach (Silk initialization binds before Load independently
+of its render-loop setting). No per-frame GL/EGL call, driver filtering, backend
+default change, foreign renderer patch or exception suppression is introduced.
+
+This repairs the source-backed rebinding path; it does not yet prove the reported
+native abort resolved. The actual forced-GL multi-window/docking application pass,
+including close/reopen and transparent pixels, remains required. A Vulkan pass
+cannot qualify EGL, and native non-unwinding panics still cannot be caught by a
+managed exception handler.
 
 ## Selecting a backend
 
-LibreWPF has no knob for this, and neither does the environment: wgpu-native reads its backend mask
-from the `WGPUInstanceExtras` chained onto the instance descriptor and does **not** consult
-`WGPU_BACKEND`. That mask is built in ProGPU's `WgpuContext`, outside this repository.
-
-Adapter selection is not neutral either - with both llvmpipe and lavapipe installed,
-`PowerPreference.HighPerformance` prefers the OpenGL adapter, because lavapipe reports itself as a
-CPU adapter. Hiding one driver is the only way to steer it from outside today: force GL/EGL with
-`VK_DRIVER_FILES=/nonexistent/none.json`, or force Vulkan by installing only a Vulkan ICD. Because
-the choice is neither configurable nor predictable, report the selected backend when diagnosing a
-run - `ProGpuWpfDiagnostics.TryGetWindowHost(window, out var host)` then
+The updated source dependency includes merged ProGPU
+[#205](https://github.com/wieslawsoltes/ProGPU/pull/205), providing native instance
+selection through `PROGPU_WGPU_BACKEND` and the `WGPU_BACKEND` alias. Typed
+`ProGpuWpfWindowOptions.NativeBackendOptions` also carries an explicit choice
+through source activation and owned/shared device creation. See
+[window backend configuration](native-backend-window-options.md) for inheritance
+and the independent forced-GL/Vulkan gates. Exact-package qualification and a
+new release are still required; preview.65 does not acquire these changes merely
+because source was updated. Hiding EGL drivers is not a safe
+selection mechanism: the issue reports an earlier instance-creation panic too.
+Report the actual selected backend for every run with
+`ProGpuWpfDiagnostics.TryGetWindowHost(window, out var host)`, then
 `host.CompositionTarget.Context.AdapterName` and `.AdapterBackendType`.
 
 ## Test coverage
@@ -61,3 +77,25 @@ presents frames on all of them, closes the render device owner and opens another
 one device serves them all. `eng/progpu-wpf-linux-multi-window-smoke.sh` runs it under `Xvfb` with
 Mesa software rendering, and the `Linux headless multi-window render device smoke` job in
 `.github/workflows/progpu-wpf-sdk.yml` runs that in CI.
+The harness also checks the actual window context-control/swap flags and verifies
+that the unused client context is not current after Show or any event/render turn.
+Source integration regressions guard the setup, initial detach and live
+assertion wiring. These guards are not native EGL or pixel qualification.
+
+The smoke also rasterizes `Ag09` from the dependency-pinned Inter Regular font
+on each window's actual device, including after closing the original owner. Its
+private atlas explicitly captures native compute and restores the host preference
+before rasterization; this does not change compositor or backend defaults. The
+probe requires real compute passes/submissions and reads back R8 atlas coverage
+inside **each** glyph's region, with an untouched guard texel. An empty frame,
+coverage from another glyph, or a raster/CPU fallback cannot qualify this probe.
+The font and its original license travel with the harness. This adds the missing
+runtime exercise for LibreWPF #186: lazy atlas initialization means the earlier
+empty-window pass did not compile `Compute_GlyphRasterizer`. Local coverage-reader
+controls are not a Mesa pass; the explicit GL CI run must execute this new probe.
+
+The unchanged source initially failed two of these guards and passed the existing
+initial-detach control. All three pass after this change; shell syntax and diff
+checks pass. Local logs are in `artifacts/client-context/`. Full host compilation,
+the native multi-window run and exact-package platform validation remain CI/final
+qualification requirements; no local VM or GPU run was used for these results.

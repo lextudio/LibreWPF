@@ -42,9 +42,12 @@ public sealed partial class ProGpuWpfWindowHostTests
     public void CancelOrHideShowDuringRenderDoesNotRetireTarget(bool cancelClose)
     {
         using var fixture = new RenderCloseFixture();
+        bool callbackReached = false;
         fixture.Host.Closing += (_, args) => args.Cancel = true;
         fixture.Dispatcher.Post(() =>
         {
+            callbackReached = true;
+            Assert.Equal(true, ReadRetirementField(fixture.Host, "_isRendering"));
             if (cancelClose) fixture.Host.Close();
             else fixture.Host.Hide();
             fixture.Host.Show();
@@ -52,6 +55,8 @@ public sealed partial class ProGpuWpfWindowHostTests
             Assert.True(fixture.CanContinue());
         });
         fixture.Render();
+        Assert.True(callbackReached);
+        Assert.Equal(cancelClose ? 1 : 0, fixture.Probe.Closes);
         Assert.Same(fixture.Target, fixture.Host.CompositionTarget);
         Assert.Equal(0, fixture.Probe.Disposals);
         Assert.False(fixture.Probe.Closing);

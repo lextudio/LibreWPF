@@ -86,7 +86,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private ulong _nativeMilPopupVersion;
     private ulong _nativeMilCompiledPopupVersion;
     private readonly WpfPortablePopupService? _portablePopupService;
-    private readonly IDisposable? _portablePopupServiceRegistration;
+    private IDisposable? _portablePopupServiceRegistration;
     private object? _wpfRootVisual;
     private double _portablePresentationSourceDpiScaleX = double.NaN;
     private double _portablePresentationSourceDpiScaleY = double.NaN;

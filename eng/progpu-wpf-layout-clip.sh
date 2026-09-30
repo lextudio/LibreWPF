@@ -17,7 +17,7 @@ minimum = {
     "ProGPU.Wpf.Tests.ProGpuWpfWindowHostTests": 268,
     "ProGPU.Wpf.Tests.Platform.SilkNetWpfInputServiceTests": 44,
     "ProGPU.Wpf.Tests.Platform.WpfNativePointerInputTests": 15,
-    "ProGPU.Wpf.Tests.WpfPortableWindowActivationTests": 121,
+    "ProGPU.Wpf.Tests.WpfPortableWindowActivationTests": 124,
     "ProGPU.Wpf.Tests.PassiveIdleIntervalTests": 8,
     "ProGPU.Wpf.Tests.ShowcasePassiveIdleSourceContractTests": 7,
     "ProGPU.Wpf.Tests.NativeResizePresentationTests": 21,

@@ -8,8 +8,11 @@ measured two moves against its old position and `Slider` accumulated both deltas
 This establishes a reachable ordering defect, not the cause of the reopened
 Gallery report; the original application still requires desktop qualification.
 
-The same activation now owns a lazy, lock-protected FIFO during its flush or
-deferred replay. Each packet retains its native metadata and immutable input
+The same activation now owns a lazy, lock-protected FIFO for pointer input during
+its flush or deferred replay. Keyboard down/text/up retain their original
+synchronous owner-thread dispatch during a flush when no pending or active
+deferred work owns delivery. Otherwise they append behind that older work.
+Each queued packet retains its native metadata and immutable input
 fields; a separate `Handled` result claims native ingress without publishing
 the later source result back into an already returned callback. No lock covers
 application callbacks. Direct nested input outside both a flush and deferred
@@ -40,9 +43,10 @@ deadline remain. Two additional cases (1× and 2× source DPI) deliver two moves
 from an actual Render-priority callback and require values 25 then 30, arranged
 Track state and real capture release. A thirteenth case injects Move/Down/Up
 from Send inside ApplicationIdle and requires the original down and release to
-precede a Background/Send assertion. Twelve bridge ownership cases cover FIFO,
+precede a Background/Send assertion. Fifteen bridge ownership cases cover FIFO,
 replay reentry, cancellation, retirement, exceptions, off-thread enqueueing and
-rejected asynchronous admission.
+rejected asynchronous admission, plus synchronous keyboard delivery and intact
+keyboard payload/order behind either a queued or currently executing pointer.
 These are authored regression controls, not executed evidence or native pixels.
 This implementation phase permits compilation only; no application, tests,
 clipboard, image capture or VM execution qualifies this change.
@@ -57,6 +61,17 @@ the external probe's actions, waits and assertions are unchanged. This is not
 evidence that an OS click was lost, or that the original Gallery issue is closed.
 The dependency order is ProGPU PR229 (typed optional capability), Forms PR134
 (aligned engine pin), then WPF PR219 (source implementation and consumer).
+
+Build `36642624705` at `00abfaddb` passed the external SDK smoke gate, which
+requires all 13 Slider child success markers and the unchanged external live
+mouse probe. The whole Build still failed: Toolkit WindowControl expected
+`Pane` but observed empty text. Its Send callback injects keyboard packets and
+then uses another Send callback to assert their result. Deferring keyboard input
+solely because a flush was active let that second Send overtake delivery, even
+though no older deferred pointer work remained. The keyboard exception above
+restores the existing delivery semantics without changing Toolkit actions,
+assertions, barriers, deadlines or dispatcher priorities. That failed Build is
+not a qualified package producer; final native/application gates remain open.
 
 One isolated compile-only attempt used SDK `11.0.100-preview.5.26302.115`
 through `/usr/local/share/dotnet/dotnet`, current bridge source and read-only
@@ -82,3 +97,11 @@ The source registrar's full PresentationFramework compilation remains a CI gate,
 and these mixed warm-reference outputs are not package qualification. Log:
 `/Volumes/1TB-macOS/librewpf-slider-compile.M0mPBFyz/input-dispatch-compilation.log`,
 SHA-256 `b6bce9ba6f718e776109a8c392ce268be736568335ab116c3701e5da9b2ec082`.
+
+The keyboard follow-up used one warm compile-only invocation with those existing
+test-support source files included. Bridge, activation-test sources (including
+the three new rows) and unchanged Slider program compiled successfully, with
+zero errors and the same existing `CS0067` warning. No tests or applications ran;
+this remains source-composition evidence, not full-graph or package qualification.
+Log: `/Volumes/1TB-macOS/librewpf-slider-compile.M0mPBFyz/keyboard-dispatch-compilation.log`,
+SHA-256 `31233757d43858edc05914b42b194ed8c2f03a44b0a3bcd7bb52d8cff73315a1`.

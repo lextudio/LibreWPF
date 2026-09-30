@@ -24,7 +24,11 @@ public sealed partial class WpfPortableWindowActivation
     {
         lock (_deferredHostInputGate)
         {
-            if (!_isFlushingWpfDispatcher && !_isDrainingDeferredHostInput &&
+            // Layout-dependent pointer packets must wait for the active flush.
+            // Keyboard delivery needs no such boundary: retain the original
+            // synchronous source path unless older deferred work owns the FIFO.
+            bool keyboard = input.Kind is WpfInputEventKind.KeyDown or WpfInputEventKind.KeyUp or WpfInputEventKind.TextInput;
+            if ((!_isFlushingWpfDispatcher || keyboard) && !_isDrainingDeferredHostInput &&
                 _deferredHostInput is not { Count: > 0 })
             {
                 return false;

@@ -24,6 +24,10 @@ if [[ ! -f "${assembly}" ]]; then
 fi
 
 export LIBREWPF_TEST_MEDIA_BACKEND=Portable
-exec "${dotnet_command}" "${assembly}" \
+"${dotnet_command}" "${assembly}" \
   --filter-class System.Windows.PortableLayoutClipSourceTests \
   --minimum-expected-tests 16 --fail-skips on --timeout 60s --no-progress
+
+exec "${dotnet_command}" "${assembly}" \
+  --filter-class System.Windows.PortableVisualVisibilitySourceTests \
+  --minimum-expected-tests 4 --fail-skips on --timeout 60s --no-progress

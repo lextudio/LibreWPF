@@ -321,6 +321,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         ThrowIfClosed();
 
         var visual = Current.Visual;
+        visual.IsVisible = state.IsVisible;
         visual.Offset = state.Offset;
         if (state.Size.HasValue)
         {

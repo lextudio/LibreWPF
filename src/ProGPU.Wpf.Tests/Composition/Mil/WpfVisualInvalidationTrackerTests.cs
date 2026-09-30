@@ -39,6 +39,33 @@ namespace ProGPU.Wpf.Tests.Composition.Mil;
 public sealed class WpfVisualInvalidationTrackerTests
 {
     [Fact]
+    public void LocalVisibilityChangesInvalidateEvenWhenOpacityRemainsZero()
+    {
+        var state = new PortableVisualState { HasVisibility = true, HasOpacity = true, Opacity = 0 };
+        var root = new FakePortableStateVisual(state);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        Assert.True(tracker.ConsumeDirty());
+        foreach (var visibility in new[] { PortableVisualVisibility.Hidden, PortableVisualVisibility.Collapsed, PortableVisualVisibility.Visible })
+        {
+            state.Visibility = visibility;
+            Assert.True(tracker.DetectVersionChanges());
+            Assert.Contains(root, tracker.DirtySources);
+            Assert.True(tracker.ConsumeDirty());
+            Assert.False(tracker.DetectVersionChanges());
+        }
+        state.HasVisibility = false;
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.ConsumeDirty());
+        state.HasVisibility = true;
+        state.Visibility = (PortableVisualVisibility)99;
+        Assert.Throws<NotSupportedException>(() => tracker.DetectVersionChanges());
+        Assert.False(tracker.IsDirty);
+        state.Visibility = PortableVisualVisibility.Visible;
+        Assert.True(tracker.DetectVersionChanges());
+    }
+
+    [Fact]
     public void AttachMarksRootDirtyAndConsumeClearsDirtyState()
     {
         var root = new FakeVisual();

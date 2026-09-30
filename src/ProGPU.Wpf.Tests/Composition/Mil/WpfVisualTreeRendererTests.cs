@@ -76,7 +76,7 @@ using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
-public sealed class WpfVisualTreeRendererTests
+public sealed partial class WpfVisualTreeRendererTests
 {
     private static PortableVisualState CreatePortableScrollableAreaClipState(
         double x,

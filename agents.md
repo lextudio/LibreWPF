@@ -22,6 +22,14 @@ Mutable show/close flags cannot revive that frame. Failed cleanup, including
 scheduler reset after target disposal, keeps its retry owner and blocks target
 reuse/replacement. Cancel and hide/show alone do not accept renderer retirement.
 
+Export local source Visible/Hidden/Collapsed independently of opacity and effective
+presentation attachment. Preserve retained owner identity and invalidate visibility
+even when alpha stays zero. Native MIL keeps complete shared source records with
+an owned sorted visibility snapshot; explicit BitmapCacheBrush root capture omits
+outer root state while descendants retain ordinary visibility. Do not relax existing
+visible-mask restrictions, discard empty own-point descendants, or hide detached visible brush roots.
+See docs/source-visual-visibility.md; application qualification remains separate.
+
 Deferred native scroll overflow retains the actual original EventRoute's default
 handler occurrences, not a recreated ancestor walk or event replay. Observe every
 application Handled assignment, including true-to-true, separately from default

@@ -572,6 +572,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         var hasPortableVisualState = TryGetPortableVisualState(source, out var visualState);
         var hasPortableLayoutState = TryGetPortableVisualLayoutState(source, out var layoutState);
 
+        if (hasPortableVisualState && visualState.HasVisibility)
+        {
+            _ = WpfVisualVisibility.IsVisible(visualState);
+            builder.SetVisibility(visualState.Visibility);
+        }
+
         if (hasPortableVisualState && visualState.HasOffset)
         {
             builder.SetOffset(visualState.Offset.X, visualState.Offset.Y);
@@ -1468,9 +1474,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             double[]? snappingGuidelinesY,
             bool hasRenderSize,
             double renderWidth,
-            double renderHeight)
+            double renderHeight,
+            global::ProGPU.Wpf.Interop.PortableVisualVisibility? visibility)
         {
             HasOffset = hasOffset;
+            Visibility = visibility;
             OffsetX = offsetX;
             OffsetY = offsetY;
             HasClipProperty = hasClipProperty;
@@ -1554,6 +1562,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         private bool HasOpacity { get; }
 
+        private global::ProGPU.Wpf.Interop.PortableVisualVisibility? Visibility { get; }
+
         private double Opacity { get; }
 
         private bool HasOpacityMaskProperty { get; }
@@ -1629,6 +1639,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 ScrollClipY.Equals(other.ScrollClipY) &&
                 ScrollClipWidth.Equals(other.ScrollClipWidth) &&
                 ScrollClipHeight.Equals(other.ScrollClipHeight) &&
+                Visibility == other.Visibility &&
                 HasOpacity == other.HasOpacity &&
                 Opacity.Equals(other.Opacity) &&
                 HasOpacityMaskProperty == other.HasOpacityMaskProperty &&
@@ -1686,6 +1697,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             hash.Add(ScrollClipWidth);
             hash.Add(ScrollClipHeight);
             hash.Add(HasOpacity);
+            hash.Add(Visibility);
             hash.Add(Opacity);
             hash.Add(HasOpacityMaskProperty);
             hash.Add(GetReferenceHashCode(OpacityMaskReference));
@@ -1757,6 +1769,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private struct VisualStateSnapshotBuilder
     {
+        private global::ProGPU.Wpf.Interop.PortableVisualVisibility? _visibility;
         private bool _hasOffset;
         private double _offsetX;
         private double _offsetY;
@@ -1805,6 +1818,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private double _renderHeight;
 
         public bool HasState { get; private set; }
+
+        public void SetVisibility(global::ProGPU.Wpf.Interop.PortableVisualVisibility visibility)
+        {
+            HasState = true;
+            _visibility = visibility;
+        }
 
         public void SetOffset(double x, double y)
         {
@@ -2000,7 +2019,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 _snappingGuidelinesY,
                 _hasRenderSize,
                 _renderWidth,
-                _renderHeight);
+                _renderHeight,
+                _visibility);
         }
     }
 

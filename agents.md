@@ -1,5 +1,22 @@
 # Agent Guidance
 
+Native scroll dispatch identity guards session and command publication after
+application-owned capability, metric and transform reads. Keep the guard out of
+accepted commands: later input must not cancel already accepted gesture work.
+Independent source routes may accept an uncached session, but cannot overwrite
+a newer reentrant viewer cache or lose its fractional state. Stale input must
+not replay through host fallback. Legacy MouseWheel policy remains separate.
+
+Empty source dispatcher flushes may bypass a frame only on the managed pump,
+with no eligible queued work or due timer and current owner/processing/lifetime
+state checked under the dispatcher lock. Keep Windows native message pumping
+and due-timer promotion in their original frame/context; preserve invalid and
+immediate timeout behavior. Removing synthetic markers is not Windows CPU or
+native idle qualification. See docs/portable-dispatcher-empty-flush.md.
+Timer-promotion hooks can finish shutdown and release dispatcher storage; recheck
+completed shutdown under the original lock before the next timer-list access.
+Keep original callback failures and the timer-update finally path intact.
+
 Native compute dispatch tracing belongs only to the separate failure replay.
 Reject its enabled opt-in in original idle acceptance, preserve the caller's
 environment and report requested tracing separately from emitted records.

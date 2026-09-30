@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using ProGPU.Wpf.Interop;
 using MS.Internal;
@@ -127,14 +128,19 @@ namespace System.Windows.Controls
             Vector remaining, PortablePresentationSource origin, out Vector nextRemaining, out bool queueFull)
             => TryQueueCore(input, lifetime, remaining, origin, true, out nextRemaining, out queueFull);
 
+        internal bool TryQueueRemaining(PortableScrollEventArgs dispatch, out Vector nextRemaining, out bool queueFull)
+            => TryQueueCore(dispatch.NativeInput, dispatch.Lifetime, dispatch.RemainingScroll,
+                dispatch.PresentationSource, true, out nextRemaining, out queueFull, dispatch);
+
         private bool TryQueueCore(PortablePointerInput input, PortableScrollLifetime lifetime,
-            Vector remaining, PortablePresentationSource origin, bool partial, out Vector nextRemaining, out bool queueFull)
+            Vector remaining, PortablePresentationSource origin, bool partial, out Vector nextRemaining, out bool queueFull,
+            PortableScrollEventArgs dispatch = null)
         {
             nextRemaining = remaining;
             queueFull = false;
             _owner.VerifyAccess();
             if (input == null || input.Kind != PortablePointerEventKind.Scroll || origin == null || origin.IsDisposed ||
-                lifetime?.IsCancelled == true || !IsCurrent) return false;
+                lifetime?.IsCancelled == true || !IsCurrent || dispatch != null && !dispatch.IsCurrent) return false;
             ulong originGeneration = origin.PointerInputGeneration;
             if (!double.IsFinite(remaining.X) || !double.IsFinite(remaining.Y)) return false;
             if (!ValidMetrics(_info.HorizontalOffset, _info.ExtentWidth, _info.ViewportWidth) ||
@@ -183,6 +189,11 @@ namespace System.Windows.Controls
                 !double.IsFinite(remainder.X) || !double.IsFinite(remainder.Y) ||
                 lifetime?.IsCancelled == true || origin.IsDisposed || origin.PointerInputGeneration != originGeneration ||
                 !IsCurrent) return false;
+            // Provider metrics, capabilities and visual transforms can deliver
+            // newer native input without replacing this source or session. This
+            // guard owns admission only; accepted commands retain their gesture
+            // lifetime and must not be cancelled by an ordinary later packet.
+            if (dispatch != null && !dispatch.IsCurrent) return false;
             if (delta == default)
             {
                 if (remaining != default) return false;

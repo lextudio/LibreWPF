@@ -1216,6 +1216,24 @@ namespace System.Windows
                 return false;
             }
 
+            // Invalid timeout/priority and disabled-processing calls retain the
+            // original marker path and its exception behavior. Keep that path
+            // in a separate method so its captured callbacks are not allocated
+            // before this allocation-free empty-queue check.
+            // A zero/sub-millisecond timeout promotes its Send-priority timer
+            // immediately; do not turn that original timeout into success.
+            bool canShortcutTimeout = timeout == Timeout.InfiniteTimeSpan ||
+                (timeout.TotalMilliseconds >= 1 && timeout.TotalMilliseconds <= Int32.MaxValue);
+            if (canShortcutTimeout && typedWindow.Dispatcher.CanCompletePortableFlushWithoutFrame(markerPriority))
+            {
+                return true;
+            }
+
+            return FlushDispatcherOperationsWithFrame(typedWindow, markerPriority, timeout);
+        }
+
+        private static bool FlushDispatcherOperationsWithFrame(Window typedWindow, DispatcherPriority markerPriority, TimeSpan timeout)
+        {
             bool markerReached = false;
             DispatcherFrame frame = new DispatcherFrame();
             DispatcherOperation markerOperation = typedWindow.Dispatcher.BeginInvoke(
@@ -1280,7 +1298,7 @@ namespace System.Windows
             }
         }
 
-        private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
+        private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar, IPortableWindowInputDispatcher
         {
             public PortableWpfServiceKey ServiceKey
             {
@@ -1410,6 +1428,22 @@ namespace System.Windows
 
                 typedWindow.Dispatcher.BeginInvoke(DispatcherPriority.Input, callback);
                 return true;
+            }
+
+            public bool TryPostInput(object window, Action callback)
+            {
+                if (window is not Window typedWindow || callback == null ||
+                    typedWindow.IsDisposed || typedWindow.Dispatcher == null ||
+                    typedWindow.Dispatcher.HasShutdownStarted || typedWindow.Dispatcher.HasShutdownFinished)
+                {
+                    return false;
+                }
+
+                // Always enqueue, including owner-thread calls. Render/layout
+                // precedes the next packet, while Input precedes Background
+                // barriers within the same nested source dispatcher frame.
+                DispatcherOperation operation = typedWindow.Dispatcher.BeginInvoke(DispatcherPriority.Input, callback);
+                return operation.Status != DispatcherOperationStatus.Aborted;
             }
 
             public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)

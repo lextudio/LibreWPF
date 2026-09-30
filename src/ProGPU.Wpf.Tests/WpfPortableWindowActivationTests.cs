@@ -3089,8 +3089,24 @@ public sealed partial class WpfPortableWindowActivationTests
         }
     }
 
-    private class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar
+    private class TestWindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar, IPortableWindowInputDispatcher
     {
+        private readonly System.Collections.Concurrent.ConcurrentQueue<Action> _postedInput = new();
+
+        public bool AcceptPostedInput { get; set; } = true;
+
+        public bool TryPostInput(object window, Action callback)
+        {
+            if (!AcceptPostedInput) return false;
+            _postedInput.Enqueue(callback);
+            return true;
+        }
+
+        public void RunPostedInput()
+        {
+            while (_postedInput.TryDequeue(out Action? callback)) callback();
+        }
+
         public int RegisterCount { get; private set; }
 
         public PortableWindowActivationCallbacks? Callbacks { get; private set; }
@@ -3136,6 +3152,8 @@ public sealed partial class WpfPortableWindowActivationTests
         public PortableWindowInputEvent? LastInput { get; private set; }
 
         public Action<PortableWindowInputEvent>? ProcessInputCallback { get; set; }
+
+        public Action<string>? FlushCallback { get; set; }
 
         public object? LastFlushWindow { get; private set; }
 
@@ -3279,6 +3297,7 @@ public sealed partial class WpfPortableWindowActivationTests
             FlushedPriorities.Add(markerPriorityName);
             InputDispatchLog.Add($"Flush:{markerPriorityName}");
             FlushTimeouts.Add(timeout);
+            FlushCallback?.Invoke(markerPriorityName);
             if (ThrowOnDispatcherFlush)
             {
                 throw new InvalidOperationException("Cannot perform this operation while dispatcher processing is suspended.");

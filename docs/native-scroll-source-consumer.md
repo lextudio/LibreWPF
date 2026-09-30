@@ -83,7 +83,7 @@ publication with layout reentry. Compilation is not test execution evidence.
 Eight additional cases cover deferred physical/logical overflow, final-line layout,
 following command order, fractional reversal, changed extents, provider-owned
 partial line movement, invalid-metric atomicity, cancellation and completed-command
-idempotence. The hosted source gate now requires all 36 consumer/routing cases with
+idempotence. The hosted source gate now requires all 41 consumer/routing cases with
 the original no-skips policy and 60-second deadline.
 
 The routed path adds explicit AppKit phase validation, normal/momentum ownership

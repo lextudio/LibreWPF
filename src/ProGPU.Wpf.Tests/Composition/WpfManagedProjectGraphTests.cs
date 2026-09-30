@@ -107,6 +107,7 @@ public sealed class WpfManagedProjectGraphTests
             "run: bash ./eng/progpu-wpf-input-modifiers-source.sh",
             "run: bash ./eng/progpu-wpf-pointer-ownership-source.sh",
             "run: bash ./eng/progpu-wpf-native-pointer-source.sh",
+            "run: bash ./eng/progpu-wpf-dispatcher-flush-source.sh",
             "run: bash ./eng/progpu-wpf-wheel-input-source.sh",
             "run: bash ./eng/progpu-wpf-layout-clip-source.sh",
             "run: bash ./eng/progpu-wpf-visual-host-source.sh",
@@ -133,7 +134,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("--minimum-expected-tests 4 --fail-skips on --timeout 60s", nativeInvocations[2], StringComparison.Ordinal);
         Assert.Contains("--filter-class System.Windows.PortableScrollSourceTests", nativePointerRunner, StringComparison.Ordinal);
         Assert.Contains("--filter-method '*NativeScroll*'", nativePointerRunner, StringComparison.Ordinal);
-        Assert.Contains("--minimum-expected-tests 36 --fail-skips on --timeout 60s", nativeInvocations[3], StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 41 --fail-skips on --timeout 60s", nativeInvocations[3], StringComparison.Ordinal);
+        string dispatcherRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-dispatcher-flush-source.sh"));
+        string[] dispatcherInvocations = dispatcherRunner.Split("\n\"${dotnet_command}\" ", StringSplitOptions.None);
+        Assert.Equal(4, dispatcherInvocations.Length); // One build and two independent source test processes.
+        Assert.Contains("--filter-class System.Windows.Threading.Tests.PortableDispatcherFlushTests", dispatcherInvocations[2], StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 20 --fail-skips on --timeout 60s", dispatcherInvocations[2], StringComparison.Ordinal);
+        Assert.Contains("|| base_status=$?", dispatcherInvocations[2], StringComparison.Ordinal);
+        Assert.Contains("--filter-class System.Windows.PortableDispatcherFlushTests", dispatcherInvocations[3], StringComparison.Ordinal);
+        Assert.Contains("--minimum-expected-tests 11 --fail-skips on --timeout 60s", dispatcherInvocations[3], StringComparison.Ordinal);
+        Assert.Contains("|| framework_status=$?", dispatcherInvocations[3], StringComparison.Ordinal);
+        AssertGuardBefore(dispatcherRunner, "\"${dotnet_command}\" \"${framework_assembly}\"",
+            "if [[ \"${base_status}\" -ne 0 ]]; then exit \"${base_status}\"; fi");
+        Assert.Contains("exit \"${framework_status}\"", dispatcherRunner, StringComparison.Ordinal);
         string wheelRunner = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-wheel-input-source.sh"));
         Assert.Contains("--filter-method '*WheelEventState*'", wheelRunner, StringComparison.Ordinal);
         Assert.Contains("--minimum-expected-tests 3 --fail-skips on --timeout 60s", wheelRunner, StringComparison.Ordinal);
@@ -173,13 +186,17 @@ public sealed class WpfManagedProjectGraphTests
         string harness = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf.SdkExternalSmokeHarness", "Program.cs"));
         string fixture = File.ReadAllText(FindRepoPath("eng", "SliderDragContract", "Program.cs"));
         Assert.Contains("PrepareSliderDragContract(repoRoot, workRoot)", harness, StringComparison.Ordinal);
-        Assert.Contains("scenario < 10", harness, StringComparison.Ordinal);
+        Assert.Contains("scenario < 13", harness, StringComparison.Ordinal);
         Assert.Contains("RunBoundedProcess(dotnetPath, sliderOutputRoot, TimeSpan.FromSeconds(30)", harness, StringComparison.Ordinal);
         Assert.Contains("File.ReadAllText(Path.Combine(repoRoot, \"eng\", \"SliderDragContract\", \"Program.cs\"))", harness, StringComparison.Ordinal);
         Assert.Contains("var slider = new Slider", fixture, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfDiagnostics.TryRaiseInput", fixture, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(Mouse.Captured, thumb)", fixture, StringComparison.Ordinal);
         Assert.Contains("!track.IsArrangeValid", fixture, StringComparison.Ordinal);
+        Assert.Contains("DispatcherPriority.Render, new Action", fixture, StringComparison.Ordinal);
+        Assert.Contains("second reentrant move (not cumulative 35)", fixture, StringComparison.Ordinal);
+        Assert.Contains("DispatcherPriority.ApplicationIdle, new Action", fixture, StringComparison.Ordinal);
+        Assert.Contains("accepted down before Background/Send barrier", fixture, StringComparison.Ordinal);
         Assert.Contains("host.SilkWindow is not null", fixture, StringComparison.Ordinal);
         Assert.DoesNotContain("RaiseEvent(", fixture, StringComparison.Ordinal);
         Assert.DoesNotContain("DragDeltaEventArgs", fixture, StringComparison.Ordinal);

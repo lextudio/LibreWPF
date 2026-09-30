@@ -170,7 +170,7 @@ internal static class Program
             RunProcess(dotnetPath, repoRoot, "build", appProjectPath, "-v:minimal");
             RunProcess(dotnetPath, repoRoot, "build", sliderProjectPath, "-v:minimal");
             string sliderOutputRoot = Path.Combine(workRoot, "SliderDragContract", "bin", "Debug", "net10.0");
-            for (int scenario = 0; scenario < 10; ++scenario)
+            for (int scenario = 0; scenario < 13; ++scenario)
             {
                 string sliderOutput = RunBoundedProcess(dotnetPath, sliderOutputRoot, TimeSpan.FromSeconds(30),
                     Path.Combine(sliderOutputRoot, "SliderDragContract.dll"), scenario.ToString(CultureInfo.InvariantCulture));

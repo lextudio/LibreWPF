@@ -2341,12 +2341,25 @@ namespace System.Windows.Controls
             return true;
         }
 
-        internal bool TryGetPortableScrollSession(PortableScrollLifetime lifetime, out PortableScrollSession session)
+        internal bool TryGetPortableScrollSession(PortableScrollLifetime lifetime, out PortableScrollSession session,
+            PortableScrollEventArgs dispatch = null)
         {
-            session = _portableScrollSession;
-            if (session != null && ReferenceEquals(session.Lifetime, lifetime) && session.IsCurrent) return true;
-            if (!PortableScrollSession.TryCreate(this, lifetime, out session)) return false;
-            _portableScrollSession = session;
+            session = null;
+            PortableScrollSession retained = _portableScrollSession;
+            if (retained != null && ReferenceEquals(retained.Lifetime, lifetime) && retained.IsCurrent)
+            {
+                if (dispatch != null && !dispatch.IsCurrent) return false;
+                session = retained;
+                return true;
+            }
+            if (dispatch != null && !dispatch.IsCurrent) return false;
+            if (!PortableScrollSession.TryCreate(this, lifetime, out var candidate) ||
+                dispatch != null && !dispatch.IsCurrent) return false;
+            // Another origin can also reenter this routed viewer while this
+            // dispatch remains valid. Accept its candidate without replacing
+            // the newer origin's retained fractional state.
+            if (ReferenceEquals(_portableScrollSession, retained)) _portableScrollSession = candidate;
+            session = candidate;
             return true;
         }
 

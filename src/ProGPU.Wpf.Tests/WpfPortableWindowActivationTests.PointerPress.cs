@@ -80,12 +80,16 @@ public sealed partial class WpfPortableWindowActivationTests
         else
             release();
 
+        // An owner-thread callback queued during a flush now belongs to a real
+        // Input operation. Advance that modeled dispatcher turn explicitly.
+        service.RunPostedInput();
         Assert.Equal(boundary == "cancel" ? 1 : 0, service.CancelCount);
         service.InputDispatchLog.Clear();
         RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseMove, x: 30));
         Assert.Contains("Flush:Render", service.InputDispatchLog);
 
         RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseUp, button: WpfMouseButton.Left));
+        service.RunPostedInput();
         service.InputDispatchLog.Clear();
         RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseMove, x: 40));
         Assert.DoesNotContain("Flush:Render", service.InputDispatchLog);
@@ -131,6 +135,7 @@ public sealed partial class WpfPortableWindowActivationTests
         };
 
         RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseUp, button: WpfMouseButton.Left));
+        service.RunPostedInput();
         service.InputDispatchLog.Clear();
         RaiseHostInputEvent(host, new WpfInputEventArgs(WpfInputEventKind.MouseMove, x: 30));
         Assert.Contains("Flush:Render", service.InputDispatchLog);

@@ -197,6 +197,40 @@ public sealed partial class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void ClosingCallbackDisposalKeepsRendererUntilDeferredHostRetires()
+    {
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        using var host = new ProGpuWpfWindowHost();
+        var (window, probe) = CreateRetirementWindow();
+        SetPrivateField(host, "_window", window);
+        SetPrivateField(host, "_nativeWindowThreadId", Environment.CurrentManagedThreadId);
+        SetPrivateField(host, "_target", target);
+        int closing = 0, nativeDisposals = 0;
+        probe.DisposeAction = () =>
+        {
+            Assert.Null(ReadRetirementField(host, "_target"));
+            nativeDisposals++;
+        };
+        host.Closing += (_, _) =>
+        {
+            closing++;
+            host.Dispose();
+            Assert.Same(target, ReadRetirementField(host, "_target"));
+            Assert.Equal(0, nativeDisposals);
+        };
+        typeof(ProGpuWpfWindowHost).GetMethod("OnClosing",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.CreateDelegate<Action>(host)();
+        Assert.Equal(1, closing);
+        Assert.Same(target, ReadRetirementField(host, "_target"));
+        Assert.Same(window, ReadRetirementField(host, "_window"));
+        Assert.Equal(0, nativeDisposals);
+        DrainRetirements();
+        Assert.Null(ReadRetirementField(host, "_target"));
+        Assert.Null(ReadRetirementField(host, "_window"));
+        Assert.Equal(1, nativeDisposals);
+    }
+
+    [Fact]
     public void PreEventRenderRetirementStopsBeforeAnyFurtherProviderRead()
     {
         using var target = ProGpuWpfCompositionTarget.CreateHeadless();

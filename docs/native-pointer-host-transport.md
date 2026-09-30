@@ -175,14 +175,17 @@ destruction. Failed renderer cleanup retains its target for retry. Event detach,
 source cleanup and provider disposal are guarded against nested retirement, and
 pre-event render retirement cannot continue reading the retired provider.
 
-Seventeen authored source-lifetime cases cover deferred and failing providers,
+Eighteen authored source-lifetime cases cover deferred and failing providers,
 resource-before-native ordering, creating-thread rejection, windowless source and
 resource cleanup reentry/retry, native callback deferral, unsubscription reentry,
-queue peer continuation, preservation of the original exception and the pre-event
-render tail. The host-class minimum increases from 268 to 285. These use typed
+queue peer continuation, preservation of the original exception, the pre-event
+render tail and source disposal from the actual Closing callback. The host-class
+minimum increases from 268 to 286. These use typed
 provider identities/headless source fixtures, not actual NSPanel or GPU execution.
 No local compilation, tests or native execution were performed for this change;
 the complete exact-head CI and native application gates remain required.
+An ordinary accepted close without host disposal retains its prior target-cleanup
+policy; this change does not qualify that separate active-render reentry path.
 
 The actual source registrar does not advertise native-pointer capability yet.
 The host now has an owned Cocoa factory connection gated by a bound portable

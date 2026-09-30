@@ -3833,7 +3833,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             }
 
             _isHostVisible = false;
-            DisposeTarget();
+            // A source Closing handler may have published deferred host
+            // retirement. Its renderer still belongs to that queued owner until
+            // this native callback unwinds.
+            if (!_isDisposed) DisposeTarget();
             TraceNativeLoop("closing event accepted: " + CreateNativeLoopTraceState());
         }
         finally

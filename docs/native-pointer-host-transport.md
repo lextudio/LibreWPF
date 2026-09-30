@@ -165,6 +165,25 @@ native factory admission or desktop popup parity.
 
 ### Remaining native factory admission
 
+Host disposal now retains the exact native provider while
+`NativeWindowLifetime.TryDispose` returns false or throws. The existing global
+post-dispatch drain keeps pending entries instead of clearing them before calls;
+it attempts only windows created on the current thread, completes other eligible
+hosts after a failure, and rethrows the first failure. Source leases retire before
+renderer resources; active render/native/modal callbacks defer renderer and native
+destruction. Failed renderer cleanup retains its target for retry. Event detach,
+source cleanup and provider disposal are guarded against nested retirement, and
+pre-event render retirement cannot continue reading the retired provider.
+
+Seventeen authored source-lifetime cases cover deferred and failing providers,
+resource-before-native ordering, creating-thread rejection, windowless source and
+resource cleanup reentry/retry, native callback deferral, unsubscription reentry,
+queue peer continuation, preservation of the original exception and the pre-event
+render tail. The host-class minimum increases from 268 to 285. These use typed
+provider identities/headless source fixtures, not actual NSPanel or GPU execution.
+No local compilation, tests or native execution were performed for this change;
+the complete exact-head CI and native application gates remain required.
+
 The actual source registrar does not advertise native-pointer capability yet.
 The host now has an owned Cocoa factory connection gated by a bound portable
 source, that explicit registrar capability, and the shared owner's actual Cocoa

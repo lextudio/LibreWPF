@@ -8,9 +8,11 @@ ProGPU. Transparent-source hit capture then descended into its retained masked
 child and correctly rejected unsupported visible-mask input.
 
 The paired engine dependency is
-`b774c74bf297e1974a5ee3152652d8406879479d` (local visibility DTO plus native MIL
-sideband). Both repository changes require review and dependency-ordered CI;
-the new pin is not a claim that this engine head is already qualified.
+`0d33ef68aaf9c9c58685f449e6ab386f5156fce5` (local visibility DTO plus native MIL
+sideband). Its complete [Build 36697924609](https://github.com/wieslawsoltes/ProGPU/actions/runs/36697924609)
+passed all 49 jobs before ProGPU PR #231 merged. This pins the exact tested
+producer head, not its untested merge commit. The WPF consumer and application
+behavior still require their own qualification.
 
 The source `Visual` exporter now preserves local `UIElement.Visibility` as an
 optional typed Visible/Hidden/Collapsed descriptor. It never exports effective

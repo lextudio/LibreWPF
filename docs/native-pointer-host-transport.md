@@ -138,6 +138,33 @@ queued-input regression cases join the activation fast gate (minimum 109).
 This preserves the per-drag layout boundary without changing source capture or
 raising synthetic input. Real gallery slider and popup qualification is separate.
 
+### Canonical Forms package consumption
+
+LibreWPF now pins qualified LibreWinForms
+`05b199f5f60af462d5a89f6909432273126a4ecf`, including
+[native click delivery](https://github.com/wieslawsoltes/LibreWinForms/pull/136)
+and [TextBox pointer default ordering](https://github.com/wieslawsoltes/LibreWinForms/pull/137).
+The canonical package builder and mixed-desktop SDK consumer derive their Forms
+version from this gitlink; no parallel WPF-local editor implementation or manual
+package-version override is introduced. Both repositories keep the same ProGPU
+`bb66c0f83622a68fd41a8f81f2a78134139a4f59` identity.
+
+The exact Forms producer
+[Build 36673923226](https://github.com/wieslawsoltes/LibreWinForms/actions/runs/36673923226)
+passed all nine jobs, including 885 canonical cases, 16 focused pointer-order
+cases (zero failures/skips), and installed-package checks on Windows, macOS and
+Linux. LibreWPF's unchanged canonical integration, package-mode SDK and platform
+CI gates must independently qualify the updated consumer graph. No local builds,
+tests or native windows were run for this dependency update.
+
+Native counts retain source-local click pairing and canonical notification order.
+Plain TextBox defaults precede virtual/public mouse handlers; handler selection
+and capture changes survive, while stale layout/input continuations stop. These
+are source fixes, not double-click word-selection, legacy-wheel compatibility,
+native factory admission or desktop popup parity.
+
+### Remaining native factory admission
+
 The actual source registrar does not advertise native-pointer capability yet.
 The host now has an owned Cocoa factory connection gated by a bound portable
 source, that explicit registrar capability, and the shared owner's actual Cocoa
@@ -159,8 +186,8 @@ units through real source metrics and the command queue. Its internal
 retains momentum targets, generations and fractional state. Independent nested
 axes now route through source-frame remainders, and existing cross-source routes
 use explicit desktop/root transforms. Custom providers can declare their point
-units publicly; ordinary IScrollInfo still supports native line commands. Deferred
-boundary chaining, legacy-only handlers, actual popup-route qualification and source
+units publicly; ordinary IScrollInfo still supports native line commands. Legacy-only
+handlers, actual popup-route qualification and source
 admission remain unfinished.
 The owned Cocoa factory is therefore still not selected. Complete
 source consumption, callback/queued-dispatch lifetime, Forms integration and real

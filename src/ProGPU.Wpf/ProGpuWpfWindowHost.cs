@@ -120,6 +120,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _isDisposingHostServices;
     private bool _isDisposingHostResources;
     private bool _isAttemptingNativeWindowRetirement;
+    private ProGpuWpfCompositionTarget? _acceptedCloseTarget;
+    private bool _isRetiringAcceptedCloseTarget;
     [ThreadStatic]
     private static bool s_isDrainingNativeWindowDisposals;
     private bool _hasPresentedFrame;
@@ -1871,11 +1873,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool MustDeferNativeWindowRetirement(IWindow window) =>
         _isNativeLoopRunning || _isRendering || _isProcessingDispatcherWorkWakeup ||
         _isInNativeWindowCloseCallback || _isDisposingHostServices || _isDisposingHostResources ||
+        _isRetiringAcceptedCloseTarget ||
         Volatile.Read(ref s_activeNativeEventDispatchDepth) > 0 ||
         IsNativeWindowRetainedByModalSession(window);
 
     private void DisposeDeferredNativeWindowIfNeeded()
     {
+        DisposeAcceptedCloseTargetIfNeeded();
         if (!_disposeNativeWindowWhenLoopExits || _isNativeLoopRunning)
         {
             return;
@@ -2117,7 +2121,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private bool EnsureCompositionTargetLoaded()
     {
-        if (_isDisposed || _hasNativeWindowCloseStarted)
+        if (_isDisposed || _hasNativeWindowCloseStarted || _acceptedCloseTarget != null)
         {
             return false;
         }
@@ -2510,11 +2514,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
+        ProGpuWpfCompositionTarget frameTarget = _target!;
+        IWindow? frameWindow = _window;
+        Exception? renderFailure = null;
         _isRendering = true;
         try
         {
             TraceNativeLoop(s_traceNativeLoop, $"render callback entering: {CreateNativeLoopTraceState()}");
-            if (_isDisposed)
+            if (!CanContinueRenderFrame(frameTarget, frameWindow))
             {
                 return;
             }
@@ -2533,6 +2540,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
             var geometry = ResolveCurrentRenderSurfaceGeometry();
             SynchronizePortablePresentationSourceGeometry(geometry);
+            if (!CanContinueRenderFrame(frameTarget, frameWindow)) return;
             bool skipNativeMilColdStartDispatcher =
                 RendererMode == ProGpuWpfRendererMode.NativeMilWgpu &&
                 !HasPresentedFrame;
@@ -2550,13 +2558,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             }
             TraceNativeLoop(s_traceNativeLoop, $"render dispatcher drained: {CreateNativeLoopTraceState()}");
 
-            if (_target == null || _window == null || _target.Context.Surface == null)
+            if (!CanContinueRenderFrame(frameTarget, frameWindow) || _target!.Context.Surface == null)
             {
                 return;
             }
 
             geometry = ResolveCurrentRenderSurfaceGeometry();
             SynchronizePortablePresentationSourceGeometry(geometry);
+            if (!CanContinueRenderFrame(frameTarget, frameWindow)) return;
             var pixelWidth = geometry.PixelWidth;
             var pixelHeight = geometry.PixelHeight;
             var logicalWidth = geometry.LogicalWidth;
@@ -2569,6 +2578,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var viewportWidth = ResolveGeometryViewportDimension(geometry.ViewportWidth, pixelWidth);
             var viewportHeight = ResolveGeometryViewportDimension(geometry.ViewportHeight, pixelHeight);
             _target.DetectWpfSourceChanges();
+            if (!CanContinueRenderFrame(frameTarget, frameWindow)) return;
             var frameState = CaptureFrameState(
                 _target,
                 logicalWidth,
@@ -2644,6 +2654,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     wpfRootVisual,
                     activeWpfImageSourceAdapter,
                     out dirtyBranchReplayTargets);
+            if (!CanContinueRenderFrame(frameTarget, frameWindow)) return;
             var clearRetainedWpfVisualRoot = wpfRootVisual == null ||
                 (shouldReplayWpfRootVisual && !canReplayDirtyWpfBranches);
             var drawingFrame = _target.BeginDrawingFrame(
@@ -2657,6 +2668,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
             using (IDisposable? renderDataSinkProviderRegistration = RegisterRenderDataSinkProvider(drawingFrame, activeWpfImageSourceAdapter))
             {
+                if (!CanContinueRenderFrame(frameTarget, frameWindow)) return;
                 var args = new ProGpuWpfFrameEventArgs(
                     drawingContext: null,
                     pixelWidth,
@@ -2709,6 +2721,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     _forceFullWpfReplay = false;
                 }
 
+                if (!CanContinueRenderFrame(frameTarget, frameWindow)) return;
+
                 if (WpfDraw != null)
                 {
                     using var sourceDrawingContext = drawingFrame.OpenCompositionDrawingContext(activeWpfImageSourceAdapter);
@@ -2719,6 +2733,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     LastSourceDrawingResult = default;
                 }
 
+                if (!CanContinueRenderFrame(frameTarget, frameWindow)) return;
+
                 if (_portablePopupBridges.Count > 0)
                 {
                     LastVisualReplayResult = AddWpfVisualReplayResults(
@@ -2728,6 +2744,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                             drawingFrame,
                             activeWpfImageSourceAdapter));
                 }
+
+                if (!CanContinueRenderFrame(frameTarget, frameWindow)) return;
 
                 if (Draw != null)
                 {
@@ -2740,6 +2758,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                         dpiScale,
                         drawingFrame);
                     Draw.Invoke(drawingContext, drawArgs);
+                    if (!CanContinueRenderFrame(frameTarget, frameWindow)) return;
                     Render?.Invoke(this, drawArgs);
                 }
                 else
@@ -2748,6 +2767,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 }
             }
 
+            if (!CanContinueRenderFrame(frameTarget, frameWindow)) return;
             if (Present(
                     logicalWidth,
                     logicalHeight,
@@ -2780,12 +2800,28 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _target.Context.ReportDeviceLost(DeviceLostReason.Unknown, error.Message);
             RequestPresentationRetryAndWakeNativeLoop();
         }
+        catch (Exception error)
+        {
+            renderFailure = error;
+            throw;
+        }
         finally
         {
             _isRendering = false;
+            try { DisposeAcceptedCloseTargetIfNeeded(); }
+            catch (Exception) when (renderFailure != null)
+            {
+                // Preserve the frame failure; the exact failed target stays
+                // owned by the creating-thread retry queue.
+            }
             TraceNativeLoop(s_traceNativeLoop, $"render callback leaving: {CreateNativeLoopTraceState()}");
         }
     }
+
+    private bool CanContinueRenderFrame(ProGpuWpfCompositionTarget target, IWindow? window) =>
+        !_isDisposed && !_hasNativeWindowCloseStarted &&
+        ReferenceEquals(_target, target) && ReferenceEquals(_window, window) &&
+        !ReferenceEquals(_acceptedCloseTarget, target);
 
     private bool Present(
         uint logicalWidth,
@@ -2886,6 +2922,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             throw new InvalidOperationException(
                 "The native MIL renderer was selected but its typed compositor session is unavailable.");
         }
+        ProGpuWpfCompositionTarget frameTarget = _target;
+        IWindow? frameWindow = _window;
         object rootVisual = _wpfRootVisual ?? throw new InvalidOperationException(
             "The native MIL renderer requires a typed WPF root visual.");
         ValidateNativeMilManagedCallbacks();
@@ -2900,6 +2938,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             dpiScaleY);
 
         _target.WpfInvalidationTracker.AttachIfChanged(rootVisual);
+        if (!CanContinueRenderFrame(frameTarget, frameWindow)) return false;
         bool update = !_nativeMilSession.IsInitialized ||
             !ReferenceEquals(_nativeMilCompiledRootVisual, rootVisual) ||
             _nativeMilCompiledPixelWidth != pixelWidth ||
@@ -2918,6 +2957,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             {
                 ulong popupVersion = _nativeMilPopupVersion;
                 CaptureNativeMilPopupOverlays(_nativeMilPopupScratch);
+                if (!CanContinueRenderFrame(frameTarget, frameWindow)) return false;
                 LastNativeMilSessionUpdate = _nativeMilSession.Update(
                     rootVisual, pixelWidth, pixelHeight,
                     new NativeMilColor(clear.X, clear.Y, clear.Z, clear.W),
@@ -2930,6 +2970,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 // keep closed popup visual roots alive in frame scratch storage.
                 _nativeMilPopupScratch.Clear();
             }
+            if (!CanContinueRenderFrame(frameTarget, frameWindow)) return false;
             _nativeMilCompiledRootVisual = rootVisual;
             _nativeMilCompiledPixelWidth = pixelWidth;
             _nativeMilCompiledPixelHeight = pixelHeight;
@@ -2957,6 +2998,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         TraceNativeLoop("native MIL compile leaving: " + CreateNativeLoopTraceState());
         long installStarted = Stopwatch.GetTimestamp();
         BindNativeMilExternalImages(frame);
+        if (!CanContinueRenderFrame(frameTarget, frameWindow)) return false;
         // Do not expose owners for a previous scene if install/presentation fails.
         NativeMilHitTestOwners = default;
         LastNativeMilSceneUpdateMetrics = _nativeMilCompositor.UpdateScene(
@@ -3836,7 +3878,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             // A source Closing handler may have published deferred host
             // retirement. Its renderer still belongs to that queued owner until
             // this native callback unwinds.
-            if (!_isDisposed) DisposeTarget();
+            if (!_isDisposed) AcceptCloseTargetRetirement();
             TraceNativeLoop("closing event accepted: " + CreateNativeLoopTraceState());
         }
         finally
@@ -3848,6 +3890,42 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private void OnCompositionTargetRenderInvalidated(object? sender, EventArgs e)
     {
         RequestRenderWakeOnlyAndWakeNativeLoop();
+    }
+
+    private void AcceptCloseTargetRetirement()
+    {
+        ProGpuWpfCompositionTarget? target = _target;
+        if (target == null) return;
+        if (_acceptedCloseTarget != null && !ReferenceEquals(_acceptedCloseTarget, target))
+            throw new InvalidOperationException("A previous closed frame still owns its target.");
+
+        // The accepted target, not mutable show/close flags, owns retirement.
+        // A nested Show or canceled later Close cannot revive this old frame.
+        _acceptedCloseTarget = target;
+        QueueDeferredNativeWindowDisposal(this);
+        DisposeAcceptedCloseTargetIfNeeded();
+    }
+
+    private void DisposeAcceptedCloseTargetIfNeeded()
+    {
+        if (_acceptedCloseTarget == null || _isRendering || _isRetiringAcceptedCloseTarget || _isDisposed)
+            return;
+        if (_window != null && _nativeWindowThreadId != Environment.CurrentManagedThreadId)
+            throw new InvalidOperationException("Renderer retirement belongs to the window's creating thread.");
+        if (!ReferenceEquals(_acceptedCloseTarget, _target))
+            throw new InvalidOperationException("The accepted-close target cannot retire a replacement target.");
+
+        _isRetiringAcceptedCloseTarget = true;
+        try
+        {
+            DisposeTarget();
+            if (!_disposeNativeWindowWhenLoopExits)
+            {
+                lock (s_deferredNativeWindowDisposalGate)
+                    s_deferredNativeWindowDisposals.Remove(this);
+            }
+        }
+        finally { _isRetiringAcceptedCloseTarget = false; }
     }
 
     internal bool ShouldRenderFrame(ProGpuWpfFrameState frameState)
@@ -4875,8 +4953,6 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         target.RenderInvalidated -= OnCompositionTargetRenderInvalidated;
         ProGpuWpfRenderDeviceSharing.RetireDeviceOwnerContext(target.Context);
         target.Dispose();
-        _target = null;
-        _usesSharedRenderDevice = false;
         WpfRenderScheduler.Reset();
         Volatile.Write(ref _pendingRenderRequestIsWakeOnly, 0);
         LastPresentedFrameState = default;
@@ -4885,6 +4961,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         SkippedFrameCount = 0;
         RetainedWpfReplaySkipCount = 0;
         RetainedWpfBranchReplayCount = 0;
+        _target = null;
+        _usesSharedRenderDevice = false;
+        if (ReferenceEquals(_acceptedCloseTarget, target)) _acceptedCloseTarget = null;
     }
 
     private void ReplaceRenderScheduler(IWpfRenderScheduler scheduler, bool ownsScheduler)

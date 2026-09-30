@@ -184,8 +184,33 @@ minimum increases from 268 to 286. These use typed
 provider identities/headless source fixtures, not actual NSPanel or GPU execution.
 No local compilation, tests or native execution were performed for this change;
 the complete exact-head CI and native application gates remain required.
-An ordinary accepted close without host disposal retains its prior target-cleanup
-policy; this change does not qualify that separate active-render reentry path.
+
+Ordinary accepted close during an active render now captures the exact target,
+stops subsequent source drawing/presentation work at callback boundaries, and
+retires that target from `OnRender`'s outer `finally`. Drawing contexts/provider
+registrations and the managed/native presenters' texture-view/texture release
+scopes therefore unwind before target cleanup. Cancel and hide/show alone retain
+the target; nested show or a later canceled close cannot revive an already
+accepted old frame. Non-rendering accepted close still cleans up synchronously,
+and ordinary close does not acquire ownership of native-window destruction.
+
+Failed cleanup remains in the existing creating-thread queue. Even if target
+disposal succeeded before scheduler reset failed, new load/render admission is
+blocked until that exact cleanup completes. A replacement target is never disposed
+on behalf of the old frame. An original frame exception takes precedence over a
+simultaneous cleanup exception; no arbitrary exception-data callbacks are invoked.
+Nine further authored cases exercise the actual headless `OnRender` dispatcher /
+`Close` / `OnClosing` path, scope unwind ordering, cancel/hide-show, accepted-target
+identity, reset failure/reentry, host-disposal transfer and replacement rejection.
+Source guards retain managed/native texture release scopes. The host-class minimum
+is now 295 (286 + 9). No local compilation or execution was performed; these are
+not acquired native GPU frame, popup/UI or installed-package qualification.
+
+The preexisting outer `RunPortableNativeLoop` close-associated
+`ObjectDisposedException`/`InvalidOperationException` catch policy is unchanged.
+That policy can suppress such a callback exception once close has started; this
+source observation is separate from the new frame/cleanup exception preservation
+and is not evidence of an observed application failure.
 
 The actual source registrar does not advertise native-pointer capability yet.
 The host now has an owned Cocoa factory connection gated by a bound portable

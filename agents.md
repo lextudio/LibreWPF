@@ -16,6 +16,12 @@ callback failure. Unwind render/native/modal leases before destroying GPU resour
 and the native view; reentrant cleanup must not repeat an active attempt. This does
 not admit the Cocoa factory or choose legacy MouseWheel compatibility.
 
+An ordinary accepted close during rendering owns the exact retiring target until
+the outer frame boundary unwinds drawing registrations and acquired texture views.
+Mutable show/close flags cannot revive that frame. Failed cleanup, including
+scheduler reset after target disposal, keeps its retry owner and blocks target
+reuse/replacement. Cancel and hide/show alone do not accept renderer retirement.
+
 Deferred native scroll overflow retains the actual original EventRoute's default
 handler occurrences, not a recreated ancestor walk or event replay. Observe every
 application Handled assignment, including true-to-true, separately from default

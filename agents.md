@@ -1,5 +1,13 @@
 # Agent Guidance
 
+Retained source rectangle replay must resolve the original IPortableTileBrushSource
+before generic brush adaptation. Reuse shared tile fill, exact source rectangle
+coverage and destination clips in both decoder sinks; replay a separate pen after
+fill scopes close. Unavailable brush/pen descriptors remain unsupported, while an
+admitted empty drawing is distinct from failure. Object-context replay alone does
+not cover canonical RenderData. Keep native MIL separate and require actual package
+application qualification. See docs/retained-tile-brush-backgrounds.md.
+
 Deferred native scroll overflow retains the actual original EventRoute's default
 handler occurrences, not a recreated ancestor walk or event replay. Observe every
 application Handled assignment, including true-to-true, separately from default

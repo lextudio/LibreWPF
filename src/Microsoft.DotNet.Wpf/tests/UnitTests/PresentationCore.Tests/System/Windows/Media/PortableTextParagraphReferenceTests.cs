@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 using MS.Internal.TextFormatting;
 using ProGPU.Wpf.Interop;
-using Xunit;
 
 namespace System.Windows.Media;
 
@@ -110,13 +109,16 @@ public class PortableTextParagraphReferenceTests
 
     private sealed class Lifetime
     {
-        internal int Uses = 1, Attempts, Retirements, Failures;
-        internal Action? DuringRetirement;
+        internal int Uses { get; set; } = 1;
+        internal int Attempts { get; set; }
+        internal int Retirements { get; set; }
+        internal int Failures { get; set; }
+        internal Action? DuringRetirement { get; set; }
     }
 
     private sealed class HintedParagraph : Paragraph, IPortableHintedTextParagraph
     {
-        internal readonly Lifetime State;
+        internal Lifetime State { get; }
         private bool _ended, _retired;
         internal HintedParagraph() : this(new Lifetime()) { }
         private HintedParagraph(Lifetime state) => State = state;

@@ -143,6 +143,46 @@ Display selection and hinted public caret/outline gates remain closed.
 
 ## Exact nominal offsets and retained line frames
 
+The concrete owned hinted paragraph now implements the existing source paragraph
+and inline paragraph contracts when its original resource has nominal metrics and
+measured writer frames. Its source line top and ascent come from values captured
+at the native writer's original publication, not a height prefix or subtraction
+of baseline metadata. The source `PortableTextLine` consumes this same paragraph:
+run acquisition retains original positioned indices, gets canonical offsets in
+one native batch and publishes the existing typed owning GlyphRun binding.
+Its ordinary Ideal path is unchanged; hinted runs never request a `TtfFont` alias
+or use the source face's per-glyph advance dictionary for positioning.
+
+Hit tests, caret distance and selections call the existing native interaction
+operations on the retained boxes/carets. Logical movement uses only original
+caret stops, without invented start/end stops. Selection Y conversion belongs to
+the backend's original writer frame. Lines and continuation clones retain separate
+uses of the same generation; disposing the original line or producer cannot end a
+sibling's use. Failed retirement remains owned for retry. Ordinary paragraph
+snapshots do not gain an extra reference/finalizer allocation.
+
+This connects source consumers, not ordinary Display selection: source device
+metrics and interpreter policy still require independent Windows comparisons.
+Empty rows without native carets, hinted width-changing reflow/collapse, variable
+instances and public hinted GlyphRun caret/outline operations remain unsupported.
+Explicit preparation and source nominal-offset publication keep their existing
+Ideal-only guard; there is no silent Display-to-Ideal conversion.
+
+The current bounded internal checks passed 63 actual-adapter/neutral tests and
+40 companion backend/neutral tests, zero skipped, plus five source paragraph
+reference lifetime tests. The adapter compile retains its existing shim/event
+warnings. Native producer and transport controls are authored and strict C++20
+syntax checked only; no native/font/GPU or application execution is claimed.
+The actual source `PresentationCore.csproj` and reference assembly Release build
+also passed with zero warnings/errors (29.05 seconds), compiling the real changed
+`PortableTextLine`, `TextLineBreak` and paragraph-reference helper. Dependencies
+were remapped from the unchanged old gitlink to the isolated companion contract
+tree through `/private/tmp/hinted-lines-checks.uW7nmhiI/HintedSourceDependencies.targets`.
+This is source compilation, not qualification of the pinned package or a full
+WPF/native build. The focused harnesses are `Backend.Tests.csproj` and
+`Adapter.Tests.csproj` beside that remap; both ran Release with `-m:1` and
+`-p:BuildInParallel=false` from the internal scratch directory.
+
 The source initializer now calls the complete font/advance/offset overload. It
 copies IDs, advances and offsets, validates through the original native producer,
 then publishes read-only source lists only after every check and ink read succeeds.

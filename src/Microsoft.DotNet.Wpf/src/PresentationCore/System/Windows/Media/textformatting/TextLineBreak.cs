@@ -79,7 +79,17 @@ namespace System.Windows.Media.TextFormatting
                 }
             }
 
-            return new TextLineBreak(_currentScope, pbreakrec) { PortableContinuation = PortableContinuation };
+            var clone = new TextLineBreak(_currentScope, pbreakrec);
+            try
+            {
+                clone.PortableContinuation = PortableContinuation?.Clone();
+                return clone;
+            }
+            catch
+            {
+                try { clone.Dispose(); } catch { }
+                throw;
+            }
         }
 
 
@@ -90,6 +100,13 @@ namespace System.Windows.Media.TextFormatting
         /// </summary>
         private void DisposeInternal(bool finalizing)
         {
+            // A failed native retirement retains this exact continuation for a
+            // subsequent Dispose. Clones own separate source references.
+            if (finalizing)
+            {
+                try { PortableContinuation?.Dispose(); } catch { }
+            }
+            else PortableContinuation?.Dispose();
             PortableContinuation = null;
             if (_breakRecord != IntPtr.Zero)
             {

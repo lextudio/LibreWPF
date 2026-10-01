@@ -10,7 +10,7 @@ namespace System.Windows.Media.ProGPU.Composition;
 /// An explicit source reference to one original native hinted generation. The
 /// source formatter/DrawGlyphRun paths do not select this capability yet.
 /// </summary>
-internal sealed class WpfHintedTextParagraph : IPortableHintedTextParagraph
+internal sealed partial class WpfHintedTextParagraph : IPortableHintedTextParagraph, IPortableInlineTextParagraph
 {
     private readonly object _gate = new();
     private readonly Generation _generation;
@@ -102,10 +102,12 @@ internal sealed class WpfHintedTextParagraph : IPortableHintedTextParagraph
         internal readonly PortableHintedTextLine[] Lines;
         internal readonly PortableHintedTextClusterBox[] Boxes;
         internal readonly PortableHintedTextCaret[] Carets;
+        internal readonly SourceParagraphData? Source;
 
         internal Generation(NativeHintedGlyphResource resource, string sourceText)
         {
             using var read = resource.AcquireReadLease();
+            if (read.HasLineFrames && read.HasNominalMetrics) Source = new SourceParagraphData(read);
             DpiScale = read.DpiScale;
             SourceText = sourceText;
             Glyphs = new PortableHintedTextGlyph[read.Glyphs.Length];
@@ -198,6 +200,22 @@ internal sealed class WpfHintedTextParagraph : IPortableHintedTextParagraph
         }
         public IPortableHintedGlyphRunBinding BindGlyphRun(float sourceEmSize, Vector2 logicalOrigin)
             => BindGlyphRunCore(sourceEmSize, logicalOrigin, null, default, default, false);
+
+        public void CopySourceOffsets(float sourceEmSize, Span<PortablePoint> sourceOffsets)
+        {
+            lock (_gate)
+            {
+                ObjectDisposedException.ThrowIf(IsDisposed, this);
+                if (sourceOffsets.Length < _indices.Length) throw new ArgumentException("Offset capacity does not cover this selection.", nameof(sourceOffsets));
+                using var read = _generation.Resource.AcquireReadLease();
+                WpfHintedGlyphRunBinding.Validate(read, _indices, sourceEmSize, Vector2.Zero);
+                var indices = new uint[_indices.Length];
+                for (int i = 0; i < indices.Length; i++) indices[i] = checked((uint)_indices[i]);
+                var offsets = new NativeHintedSourceGlyphOffset[_indices.Length];
+                read.CopySourceOffsets(indices, sourceEmSize, offsets);
+                for (int i = 0; i < offsets.Length; i++) sourceOffsets[i] = new(offsets[i].X, offsets[i].Y);
+            }
+        }
 
         public IPortableHintedGlyphRunBinding BindGlyphRun(PortableTextFont sourceFont, float sourceEmSize,
             Vector2 logicalOrigin, ReadOnlySpan<double> sourceAdvances)

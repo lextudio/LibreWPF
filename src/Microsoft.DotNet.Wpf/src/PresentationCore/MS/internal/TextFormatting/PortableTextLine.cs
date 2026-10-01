@@ -58,7 +58,23 @@ internal interface IPortableFloatingTextSource
 /// <summary>Source-owned WPF line semantics over the typed ProGPU paragraph service.</summary>
 internal sealed class PortableTextLine : TextLine
 {
-    internal sealed record Continuation(PortableTextLine Owner, int LineIndex, int NextSourceIndex);
+    internal sealed class Continuation : IDisposable
+    {
+        private readonly PortableTextParagraphReference _reference;
+        private readonly IPortableTextParagraph _paragraph;
+        internal PortableTextLine Owner { get; }
+        internal int LineIndex { get; }
+        internal int NextSourceIndex { get; }
+        internal IPortableTextParagraph Paragraph => _reference?.Paragraph ?? _paragraph;
+        internal Continuation(PortableTextLine owner, int lineIndex, int nextSourceIndex)
+            : this(owner, lineIndex, nextSourceIndex, owner._paragraph, owner._paragraphReference?.Retain()) { }
+        private Continuation(PortableTextLine owner, int lineIndex, int nextSourceIndex,
+            IPortableTextParagraph paragraph, PortableTextParagraphReference reference)
+        { Owner = owner; LineIndex = lineIndex; NextSourceIndex = nextSourceIndex; _paragraph = paragraph; _reference = reference; }
+        internal Continuation Clone() => new(Owner, LineIndex, NextSourceIndex, Paragraph, _reference?.Retain());
+        public void Dispose() => _reference?.Dispose();
+    }
+    private readonly PortableTextParagraphReference _paragraphReference;
     private readonly IPortableTextParagraph _paragraph;
     private readonly string _text;
     private readonly PortableTextSourceMap _sourceMap;
@@ -153,17 +169,24 @@ internal sealed class PortableTextLine : TextLine
                 $"width={width:R}, retainedWidth={next.Owner._paragraphWidth:R}, line={next.LineIndex})");
         if (next.Owner._paragraphWidth != width)
         {
-            if (next.Owner._paragraph is not IPortableReflowTextParagraph reflow)
+            if (next.Paragraph is not IPortableReflowTextParagraph reflow)
                 throw Unsupported("the captured text paragraph does not expose native continuation reflow");
-            int inputStart = next.Owner._paragraph.Lines.Span[next.LineIndex].InputStart;
+            int inputStart = next.Paragraph.Lines.Span[next.LineIndex].InputStart;
             float maximumWidth = settings.Pap.Wrap && width > 0
                 ? (float)Math.Max(float.Epsilon, width - next.Owner._indent) : 0;
             var paragraph = reflow.Reflow(inputStart, maximumWidth);
-            if (paragraph == null || paragraph.Lines.IsEmpty || paragraph.Lines.Span[0].InputStart != inputStart)
-                throw new InvalidOperationException("The native continuation lost its original input boundary.");
-            return new PortableTextLine(next.Owner, 0, paragraph, width);
+            try
+            {
+                if (paragraph == null || paragraph.Lines.IsEmpty || paragraph.Lines.Span[0].InputStart != inputStart)
+                    throw new InvalidOperationException("The native continuation lost its original input boundary.");
+                var line = new PortableTextLine(next.Owner, 0, paragraph, width);
+                try { (paragraph as IPortableHintedTextParagraph)?.Dispose(); }
+                catch { try { line.Dispose(); } catch { } throw; }
+                return line;
+            }
+            catch { try { (paragraph as IPortableHintedTextParagraph)?.Dispose(); } catch { } throw; }
         }
-        return new PortableTextLine(next.Owner, next.LineIndex);
+        return new PortableTextLine(next.Owner, next.LineIndex, next.Paragraph);
     }
 
     // The formatter captures one provider for the request. Concurrent override
@@ -384,39 +407,66 @@ internal sealed class PortableTextLine : TextLine
             else paragraph = ((IPortableInlineTextFormatting)service).FormatInline(in request, metrics, items);
         }
         else paragraph = service.Format(in request);
-        if (paragraph == null) throw new InvalidOperationException("The text provider returned no paragraph.");
-        if (paragraph.Lines.Length == 0) throw new InvalidOperationException("The text provider returned no line.");
-        if ((exclusions != null || floating != null) && (paragraph is not IPortableExcludedTextParagraph excluded ||
-            excluded.Fragments.Length != paragraph.Lines.Length))
-            throw new InvalidOperationException("The excluded text provider did not retain one frame per source fragment.");
-        if (measureIntrinsicWidths)
+        PortableTextLine createdLine = null;
+        Exception publicationFailure = null;
+        try
         {
-            var widths = paragraph.IntrinsicWidths ?? throw Unsupported("the text provider does not publish intrinsic paragraph widths");
-            if (!float.IsFinite(widths.Minimum) || !float.IsFinite(widths.Maximum) ||
-                widths.Minimum < 0 || widths.Maximum < widths.Minimum)
-                throw new InvalidOperationException("The text provider returned invalid intrinsic paragraph widths.");
-            measurement = new(sourceLength, newlines, endsParagraph, scope, widths, indent);
-            return null; // Measurement never constructs source GlyphRuns or a drawing TextLine.
-        }
-        PortableTextFloatPlacement[] sourceFloats = [];
-        if (floating != null)
-        {
-            if (paragraph is not IPortableFloatingTextParagraph floated || floated.Floats.Length != floatEvents.Length)
-                throw new InvalidOperationException("The floating text provider lost source children.");
-            sourceFloats = new PortableTextFloatPlacement[floatEvents.Length];
-            for (int i = 0; i < sourceFloats.Length; i++)
+            if (paragraph == null) throw new InvalidOperationException("The text provider returned no paragraph.");
+            if (paragraph.Lines.Length == 0) throw new InvalidOperationException("The text provider returned no line.");
+            if ((exclusions != null || floating != null) && (paragraph is not IPortableExcludedTextParagraph excluded ||
+                excluded.Fragments.Length != paragraph.Lines.Length))
+                throw new InvalidOperationException("The excluded text provider did not retain one frame per source fragment.");
+            if (measureIntrinsicWidths)
             {
-                var placement = floated.Floats.Span[i];
-                if (placement.Position != floatEvents[i].Position)
-                    throw new InvalidOperationException("The floating text provider changed source event order.");
-                // Equal shaping boundaries may name distinct hidden children. Never reverse-map that ambiguity.
-                sourceFloats[i] = placement with { Position = checked(first + floating.Children.Span[i].SourceStart) };
+                var widths = paragraph.IntrinsicWidths ?? throw Unsupported("the text provider does not publish intrinsic paragraph widths");
+                if (!float.IsFinite(widths.Minimum) || !float.IsFinite(widths.Maximum) ||
+                    widths.Minimum < 0 || widths.Maximum < widths.Minimum)
+                    throw new InvalidOperationException("The text provider returned invalid intrinsic paragraph widths.");
+                measurement = new(sourceLength, newlines, endsParagraph, scope, widths, indent);
+                return null; // Measurement never constructs source GlyphRuns or a drawing TextLine.
+            }
+            PortableTextFloatPlacement[] sourceFloats = [];
+            if (floating != null)
+            {
+                if (paragraph is not IPortableFloatingTextParagraph floated || floated.Floats.Length != floatEvents.Length)
+                    throw new InvalidOperationException("The floating text provider lost source children.");
+                sourceFloats = new PortableTextFloatPlacement[floatEvents.Length];
+                for (int i = 0; i < sourceFloats.Length; i++)
+                {
+                    var placement = floated.Floats.Span[i];
+                    if (placement.Position != floatEvents[i].Position)
+                        throw new InvalidOperationException("The floating text provider changed source event order.");
+                    // Equal shaping boundaries may name distinct hidden children. Never reverse-map that ambiguity.
+                    sourceFloats[i] = placement with { Position = checked(first + floating.Children.Span[i].SourceStart) };
+                }
+            }
+            createdLine = new PortableTextLine(paragraph, text, properties, face, first, 0, newlines, endsParagraph,
+                width, indent, baseline, height, pap.RightToLeft, runs, pixelsPerDip, pap.Align, styles.ToArray(), pap.LineHeight > 0,
+                sourceMap, scope,
+                settings.Formatter, service, objects: objects?.ToArray()) { SourceFloats = sourceFloats };
+            return createdLine;
+        }
+        catch (Exception error) { publicationFailure = error; throw; }
+        finally
+        {
+            if (paragraph is IPortableHintedTextParagraph producer)
+            {
+                try { producer.Dispose(); }
+                catch (Exception cleanup)
+                {
+                    if (publicationFailure != null)
+                    {
+                        try { publicationFailure.Data["HintedParagraphProducerCleanupFailure"] = cleanup; } catch { }
+                    }
+                    else
+                    {
+                        try { createdLine?.Dispose(); }
+                        catch (Exception lineCleanup) { try { cleanup.Data["HintedLinePublicationCleanupFailure"] = lineCleanup; } catch { } }
+                        throw;
+                    }
+                }
             }
         }
-        return new PortableTextLine(paragraph, text, properties, face, first, 0, newlines, endsParagraph,
-            width, indent, baseline, height, pap.RightToLeft, runs, pixelsPerDip, pap.Align, styles.ToArray(), pap.LineHeight > 0,
-            sourceMap, scope,
-            settings.Formatter, service, objects: objects?.ToArray()) { SourceFloats = sourceFloats };
     }
 
     internal static MinMaxParagraphWidth MeasureIntrinsicWidths(FormatSettings settings, int first,
@@ -728,68 +778,79 @@ internal sealed class PortableTextLine : TextLine
         PortableTextLine uncollapsed = null, double? baselineOverride = null, SourceObject[] objects = null)
         : base(pixelsPerDip)
     {
-        _paragraph = paragraph; _text = text; _properties = properties; _face = face;
-        _sourceMap = sourceMap; _endScope = endScope;
-        _paragraphStart = paragraphStart; _lineIndex = lineIndex; _newlines = newlines;
-        _endsParagraph = endsParagraph;
-        _paragraphWidth = width; _indent = indent; _baseline = baseline; _height = height;
-        _rightToLeft = rtl; _runs = runs; _alignment = alignment;
-        _styles = styles; _fixedHeight = fixedHeight;
-        _objects = objects ?? [];
-        if (_objects.Length != 0)
+        _paragraphReference = paragraph is IPortableHintedTextParagraph ? PortableTextParagraphReference.Acquire(paragraph) : null;
+        try
         {
-            _lineObjects = new();
-            _objectBounds = new();
-            _drawingOrder = new();
+            _paragraph = _paragraphReference?.Paragraph ?? paragraph; paragraph = _paragraph;
+            _text = text; _properties = properties; _face = face;
+            _sourceMap = sourceMap; _endScope = endScope;
+            _paragraphStart = paragraphStart; _lineIndex = lineIndex; _newlines = newlines;
+            _endsParagraph = endsParagraph;
+            _paragraphWidth = width; _indent = indent; _baseline = baseline; _height = height;
+            _rightToLeft = rtl; _runs = runs; _alignment = alignment;
+            _styles = styles; _fixedHeight = fixedHeight;
+            _objects = objects ?? [];
+            if (_objects.Length != 0)
+            {
+                _lineObjects = new();
+                _objectBounds = new();
+                _drawingOrder = new();
+            }
+            _formatter = formatter; _service = service; _uncollapsed = uncollapsed;
+            double ascent = 0, descent = 0;
+            foreach (var style in styles)
+            {
+                if (style.Start >= Info.InputEnd || style.End <= Info.InputStart) continue;
+                ascent = Math.Max(ascent, style.Baseline);
+                descent = Math.Max(descent, style.Height - style.Baseline);
+            }
+            if (!fixedHeight && ascent + descent > 0)
+            {
+                _baseline = ascent;
+                _height = ascent + descent;
+            }
+            if (paragraph is IPortableInlineTextParagraph measured)
+            {
+                _baseline = measured.GetBaselineOffset(lineIndex);
+                _height = Info.Height;
+            }
+            // Collapse keeps original line metrics; a taller sign contributes ink
+            // overhang, not a new advance that would move following source lines.
+            if (baselineOverride is { } forcedBaseline) _baseline = forcedBaseline;
+            int visibleEnd = paragraph.CollapsedRange is { } collapsed ? collapsed.Start : Info.InputEnd;
+            while (visibleEnd > Info.InputStart && char.IsWhiteSpace(text[visibleEnd - 1])) visibleEnd--;
+            _trailing = paragraph.CollapsedRange != null ? 0 :
+                End - _paragraphStart - Math.Max(First - _paragraphStart, _sourceMap.ToSource(visibleEnd, false));
+            double trailingWidth = 0;
+            if (paragraph.CollapsedRange == null)
+                foreach (var glyph in paragraph.Glyphs.Span.Slice(Info.GlyphStart, Info.GlyphCount))
+                    if (glyph.Cluster >= visibleEnd) trailingWidth += glyph.Advance;
+            _width = Math.Max(0, Info.Width - trailingWidth);
+            Rect ink = CreateGlyphRuns();
+            CacheUnderlines(visibleEnd, ref ink);
+            if (symbol != null && paragraph.CollapsedRange is { } range)
+            {
+                var placement = paragraph.Glyphs.Span[range.SymbolGlyphIndex];
+                _symbol = new PortableTextLine(symbol._paragraph, symbol._text, symbol._properties, symbol._face,
+                    0, 0, 0, symbol._endsParagraph, 0, Start + placement.X, symbol._baseline, symbol._height, symbol._rightToLeft,
+                    symbol._runs, PixelsPerDip, TextAlignment.Left, symbol._styles, symbol._fixedHeight,
+                    symbol._sourceMap, null, symbol._formatter, symbol._service, baselineOverride: Baseline);
+                ink.Union(_symbol._ink);
+                int sourceStart = _paragraphStart + _sourceMap.ToSource(range.Start, true);
+                int sourceEnd = _paragraphStart + _sourceMap.ToSource(range.End, true);
+                _collapsedGlyphRuns = new(_glyphRuns.Count + _symbol._glyphRuns.Count);
+                _collapsedGlyphRuns.AddRange(_glyphRuns);
+                for (int i = 0; i < _symbol._glyphRuns.Count; ++i)
+                    _collapsedGlyphRuns.Add(new(sourceStart, sourceEnd - sourceStart, _symbol._glyphRuns[i].GlyphRun));
+            }
+            _ink = ink;
         }
-        _formatter = formatter; _service = service; _uncollapsed = uncollapsed;
-        double ascent = 0, descent = 0;
-        foreach (var style in styles)
+        catch
         {
-            if (style.Start >= Info.InputEnd || style.End <= Info.InputStart) continue;
-            ascent = Math.Max(ascent, style.Baseline);
-            descent = Math.Max(descent, style.Height - style.Baseline);
+            try { _symbol?.Dispose(); } catch { }
+            _paragraphReference?.DisposePreservingFailure();
+            throw;
         }
-        if (!fixedHeight && ascent + descent > 0)
-        {
-            _baseline = ascent;
-            _height = ascent + descent;
-        }
-        if (paragraph is IPortableInlineTextParagraph measured)
-        {
-            _baseline = measured.GetBaselineOffset(lineIndex);
-            _height = Info.Height;
-        }
-        // Collapse keeps original line metrics; a taller sign contributes ink
-        // overhang, not a new advance that would move following source lines.
-        if (baselineOverride is { } forcedBaseline) _baseline = forcedBaseline;
-        int visibleEnd = paragraph.CollapsedRange is { } collapsed ? collapsed.Start : Info.InputEnd;
-        while (visibleEnd > Info.InputStart && char.IsWhiteSpace(text[visibleEnd - 1])) visibleEnd--;
-        _trailing = paragraph.CollapsedRange != null ? 0 :
-            End - _paragraphStart - Math.Max(First - _paragraphStart, _sourceMap.ToSource(visibleEnd, false));
-        double trailingWidth = 0;
-        if (paragraph.CollapsedRange == null)
-            foreach (var glyph in paragraph.Glyphs.Span.Slice(Info.GlyphStart, Info.GlyphCount))
-                if (glyph.Cluster >= visibleEnd) trailingWidth += glyph.Advance;
-        _width = Math.Max(0, Info.Width - trailingWidth);
-        Rect ink = CreateGlyphRuns();
-        CacheUnderlines(visibleEnd, ref ink);
-        if (symbol != null && paragraph.CollapsedRange is { } range)
-        {
-            var placement = paragraph.Glyphs.Span[range.SymbolGlyphIndex];
-            _symbol = new PortableTextLine(symbol._paragraph, symbol._text, symbol._properties, symbol._face,
-                0, 0, 0, symbol._endsParagraph, 0, Start + placement.X, symbol._baseline, symbol._height, symbol._rightToLeft,
-                symbol._runs, PixelsPerDip, TextAlignment.Left, symbol._styles, symbol._fixedHeight,
-                symbol._sourceMap, null, symbol._formatter, symbol._service, baselineOverride: Baseline);
-            ink.Union(_symbol._ink);
-            int sourceStart = _paragraphStart + _sourceMap.ToSource(range.Start, true);
-            int sourceEnd = _paragraphStart + _sourceMap.ToSource(range.End, true);
-            _collapsedGlyphRuns = new(_glyphRuns.Count + _symbol._glyphRuns.Count);
-            _collapsedGlyphRuns.AddRange(_glyphRuns);
-            for (int i = 0; i < _symbol._glyphRuns.Count; ++i)
-                _collapsedGlyphRuns.Add(new(sourceStart, sourceEnd - sourceStart, _symbol._glyphRuns[i].GlyphRun));
-        }
-        _ink = ink;
     }
 
     private static void ValidateUnderlines(TextDecorationCollection decorations)
@@ -856,7 +917,9 @@ internal sealed class PortableTextLine : TextLine
     {
         Rect ink = Rect.Empty;
         var glyphs = _paragraph.Glyphs.Span;
-        double nativeBaseline = Info.Y + (_paragraph is IPortableInlineTextParagraph ? Baseline : 0);
+        var hintedParagraph = _paragraph as IPortableHintedTextParagraph;
+        double nativeBaseline = hintedParagraph != null ? hintedParagraph.Lines.Span[_lineIndex].BaselineY :
+            Info.Y + (_paragraph is IPortableInlineTextParagraph ? Baseline : 0);
         int end = Info.GlyphStart + Info.GlyphCount;
         for (int first = Info.GlyphStart; first < end;)
         {
@@ -927,6 +990,15 @@ internal sealed class PortableTextLine : TextLine
             foreach (int index in indices) { cpStart = Math.Min(cpStart, glyphs[index].Cluster); cpEnd = Math.Max(cpEnd, glyphs[index].ClusterEnd); }
             var ids = new ushort[indices.Length]; var advances = new double[indices.Length];
             var offsets = new Point[indices.Length]; var positions = new Vector2[indices.Length];
+            using var hintedRun = hintedParagraph?.AcquireGlyphRun(indices);
+            if (hintedRun != null)
+            {
+                if (hintedRun is not IPortableHintedGlyphRunBindingFactory factory || (float)style.EmSize != style.EmSize)
+                    throw Unsupported("the original hinted source offset capability or exact source em size");
+                var originalOffsets = new PortablePoint[indices.Length];
+                factory.CopySourceOffsets((float)style.EmSize, originalOffsets);
+                for (int i = 0; i < offsets.Length; i++) offsets[i] = new(originalOffsets[i].X, originalOffsets[i].Y);
+            }
             var clusters = new ushort[cpEnd - cpStart]; var carets = new bool[clusters.Length + 1];
             double advance = 0;
             for (int i = 0; i < indices.Length; i++)
@@ -935,11 +1007,14 @@ internal sealed class PortableTextLine : TextLine
                 if (g.Cluster < style.Start || g.ClusterEnd > style.End)
                     throw new InvalidOperationException("A native cluster crosses its source style domain.");
                 ids[i] = checked((ushort)g.GlyphId); advances[i] = g.Advance;
-                positions[i] = new(g.X, (float)(g.Y - nativeBaseline));
-                double offset = (level & 1) == 0 ? g.X - advance :
-                    -advance - face.AdvanceWidths[ids[i]] * style.EmSize - g.X;
-                offsets[i] = new(offset, -(g.Y - nativeBaseline));
-                advance += g.Advance;
+                if (hintedRun == null)
+                {
+                    positions[i] = new(g.X, (float)(g.Y - nativeBaseline));
+                    double offset = (level & 1) == 0 ? g.X - advance :
+                        -advance - face.AdvanceWidths[ids[i]] * style.EmSize - g.X;
+                    offsets[i] = new(offset, -(g.Y - nativeBaseline));
+                    advance += g.Advance;
+                }
                 if (i == 0 || g.Cluster != glyphs[indices[i - 1]].Cluster)
                 {
                     clusters.AsSpan(g.Cluster - cpStart, g.ClusterEnd - g.Cluster).Fill(checked((ushort)i));
@@ -949,7 +1024,8 @@ internal sealed class PortableTextLine : TextLine
             var run = new GlyphRun(face, level, false, style.EmSize, (float)PixelsPerDip,
                 ids, new Point(NativeOrigin, Baseline), advances, offsets, _text.AsSpan(cpStart, cpEnd - cpStart).ToArray(),
                 null, clusters, carets, XmlLanguage.GetLanguage(properties.CultureInfo.IetfLanguageTag));
-            run.InitializePortableGlyphPositions(positions, _paragraph.GetNativeFont(fontIndex));
+            if (hintedRun != null) run.InitializePortableHintedGlyphRun(hintedRun);
+            else run.InitializePortableGlyphPositions(positions, _paragraph.GetNativeFont(fontIndex));
             int sourceStart = _sourceMap.ToSource(cpStart, true), sourceEnd = _sourceMap.ToSource(cpEnd, false);
             if (sourceEnd - sourceStart != cpEnd - cpStart)
                 throw new InvalidOperationException("A glyph run crosses hidden source content.");
@@ -983,7 +1059,13 @@ internal sealed class PortableTextLine : TextLine
         return lo;
     }
 
-    public override void Dispose() => _disposed = true;
+    public override void Dispose()
+    {
+        _disposed = true;
+        try { _paragraphReference?.Dispose(); }
+        catch { try { _symbol?.Dispose(); } catch { } throw; }
+        _symbol?.Dispose();
+    }
     private void CheckAlive() => ObjectDisposedException.ThrowIf(_disposed, this);
     private static PlatformNotSupportedException Unsupported(string detail) => new("Native WPF text integration does not yet preserve " + detail + ".");
     public override void Draw(DrawingContext drawingContext, Point origin, InvertAxes inversion)

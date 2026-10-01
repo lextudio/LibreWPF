@@ -1,5 +1,15 @@
 # Agent Guidance
 
+Source hinted lines and cloned breaks own independent leases of one original
+formatted generation. Use the native writer's retained line frames and canonical
+batched offsets for source GlyphRuns; never ask a hinted paragraph for a design
+font alias or rebuild placement from per-glyph nominal queries. Interaction uses
+the same original boxes/carets, without synthetic empty-row or endpoint stops.
+Retire initial producer ownership after the line retains its use, preserve setup
+errors and retain failed cleanup for retry. Keep Display policy, hinted reflow/
+collapse and public GlyphRun caret/outline gates until separately implemented and
+qualified. See docs/source-hinted-text-ownership.md.
+
 ## Repository and branch ownership
 
 LibreWPF work branches and pull requests target `progpu-rendering-port`, the

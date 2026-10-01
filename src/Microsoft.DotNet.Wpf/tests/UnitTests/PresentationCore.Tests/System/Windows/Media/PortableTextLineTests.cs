@@ -278,6 +278,146 @@ public class PortableTextLineTests
     }
 
     [PortableMediaFact]
+    public void FailedReflowProducerBlocksAllPublicationUntilExactRetirementSucceeds()
+    {
+        var validation = new InvalidOperationException("original source validation");
+        var cleanup = new InvalidOperationException("original producer retirement");
+        var producer = new RetirementParagraph { ValidationFailure = validation, CleanupFailure = cleanup, FailuresRemaining = 2 };
+        int returns = 0;
+        using var fixture = new ContinuationFixture(() => ++returns == 1 ? producer : new Provider { Continued = true });
+        Assert.Same(validation, Assert.Throws<InvalidOperationException>(() => fixture.Format()));
+        Assert.Same(cleanup, validation.Data["HintedContinuationCleanupFailure"]);
+        Assert.Equal(1, producer.DisposeAttempts);
+        Assert.Equal(1, producer.EndedUses);
+        int reads = fixture.Provider.LineReads;
+
+        // Even the same-width route must retire the failed producer before
+        // reading another line; it cannot bypass cleanup by avoiding Reflow.
+        Assert.Same(cleanup, Assert.Throws<InvalidOperationException>(() => fixture.Format(8.0 / 3)));
+        Assert.Equal(reads, fixture.Provider.LineReads);
+        Assert.Equal(1, fixture.Provider.Reflows);
+        Assert.Equal(2, producer.DisposeAttempts);
+        using var line = fixture.Format();
+        Assert.Equal(3, producer.DisposeAttempts);
+        Assert.Equal(1, producer.EndedUses);
+        Assert.Equal(1, producer.Retirements);
+        Assert.Equal(2, fixture.Provider.Reflows);
+        Assert.Equal(2, Assert.Single(line.GetIndexedGlyphRuns()).TextSourceCharacterIndex);
+    }
+
+    [PortableMediaFact]
+    public void FailedReflowConstructionPreservesOriginalErrorAndBreakDisposalRetriesExactProducer()
+    {
+        var construction = new InvalidOperationException("original retain failure");
+        var cleanup = new InvalidOperationException("original retirement failure");
+        var producer = new RetirementParagraph { RetainFailure = construction, CleanupFailure = cleanup, FailuresRemaining = 2 };
+        using var fixture = new ContinuationFixture(() => producer);
+        var continuation = fixture.Break.PortableContinuation;
+        Assert.Same(construction, Assert.Throws<InvalidOperationException>(() => fixture.Format()));
+        Assert.Same(cleanup, construction.Data["HintedContinuationCleanupFailure"]);
+        Assert.Same(cleanup, Assert.Throws<InvalidOperationException>(() => fixture.Break.Dispose()));
+        Assert.Same(continuation, fixture.Break.PortableContinuation);
+        Assert.Equal(2, producer.DisposeAttempts);
+        fixture.Break.Dispose();
+        Assert.Null(fixture.Break.PortableContinuation);
+        fixture.Break.Dispose();
+        Assert.Equal(3, producer.DisposeAttempts);
+        Assert.Equal(1, producer.EndedUses);
+        Assert.Equal(1, producer.Retirements);
+    }
+
+    [PortableMediaFact]
+    public void ReentrantPublicBreakCloseFinishesDeferredOriginalReferenceRetirement()
+    {
+        var original = new RetirementParagraph();
+        using var fixture = new ContinuationFixture(() => original);
+        using var line = fixture.Format();
+        using var continuation = line.GetTextLineBreak();
+        var retained = Assert.Single(Assert.Single(original.Retained).Retained);
+        // The original retained paragraph, not a new source snapshot, owns Reflow.
+        var returned = new RetirementParagraph();
+        retained.ReflowResult = () => { continuation.Dispose(); return returned; };
+        Assert.Throws<ObjectDisposedException>(() => fixture.Format(continuation, 6));
+        Assert.True(retained.IsDisposed);
+        Assert.Equal(1, retained.Retirements);
+        Assert.Equal(1, returned.Retirements);
+        Assert.Equal(1, retained.Reflows);
+        Assert.Throws<ObjectDisposedException>(() => continuation.Clone());
+        // No second Dispose was needed to retire either use.
+        Assert.Equal(1, returned.DisposeAttempts);
+    }
+
+    [PortableMediaFact]
+    public void ReentrantBreakCloseDuringFailedCleanupRetainsOwnerAndOriginalValidationError()
+    {
+        var validation = new InvalidOperationException("original validation");
+        var cleanup = new InvalidOperationException("failed deferred close");
+        var producer = new RetirementParagraph { ValidationFailure = validation, CleanupFailure = cleanup, FailuresRemaining = 2 };
+        using var fixture = new ContinuationFixture(() => producer);
+        var continuation = fixture.Break.PortableContinuation;
+        producer.OnDispose = () =>
+        {
+            fixture.Break.Dispose();
+            Assert.Same(continuation, fixture.Break.PortableContinuation);
+            Assert.Throws<ObjectDisposedException>(() => fixture.Break.Clone());
+        };
+        Assert.Same(validation, Assert.Throws<InvalidOperationException>(() => fixture.Format()));
+        Assert.Same(cleanup, validation.Data["HintedContinuationCleanupFailure"]);
+        Assert.Same(continuation, fixture.Break.PortableContinuation);
+        Assert.Equal(2, producer.DisposeAttempts); // Rollback, then deferred close.
+        Assert.Equal(1, fixture.Provider.Reflows);
+        fixture.Break.Dispose();
+        Assert.Null(fixture.Break.PortableContinuation);
+        Assert.Equal(3, producer.DisposeAttempts);
+        Assert.Equal(1, producer.EndedUses);
+    }
+
+    [PortableMediaFact]
+    public void ReentrantCloseDuringCloneRetainCannotPublishAndRetiresIndependentUse()
+    {
+        var original = new RetirementParagraph();
+        using var fixture = new ContinuationFixture(() => original);
+        using var line = fixture.Format();
+        using var continuation = line.GetTextLineBreak();
+        var retained = Assert.Single(Assert.Single(original.Retained).Retained);
+        retained.OnRetain = () => continuation.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => continuation.Clone());
+        Assert.Equal(1, retained.Retirements);
+        Assert.Equal(1, Assert.Single(retained.Retained).Retirements);
+    }
+
+    [PortableMediaFact]
+    public void FailedReflowPublicationRetainsBothLineAndProducerUntilIndependentRetriesSucceed()
+    {
+        var producerFailure = new InvalidOperationException("original producer close");
+        var lineFailure = new InvalidOperationException("independent line close");
+        var producer = new RetirementParagraph { CleanupFailure = producerFailure, FailuresRemaining = 3 };
+        var independent = new RetirementParagraph { CleanupFailure = lineFailure, FailuresRemaining = 2 };
+        producer.RetainResult = () => independent;
+        int returns = 0;
+        using var fixture = new ContinuationFixture(() => ++returns == 1 ? producer : new Provider { Continued = true });
+        Assert.Same(producerFailure, Assert.Throws<InvalidOperationException>(() => fixture.Format()));
+        Assert.Equal(1, independent.DisposeAttempts);
+        Assert.Equal(2, producer.DisposeAttempts); // Publish, then rollback.
+        Assert.Equal(1, independent.EndedUses);
+        Assert.Equal(1, producer.EndedUses);
+        int reads = fixture.Provider.LineReads;
+        Assert.Same(lineFailure, Assert.Throws<InvalidOperationException>(() => fixture.Format()));
+        Assert.Equal(reads, fixture.Provider.LineReads);
+        Assert.Equal(1, fixture.Provider.Reflows);
+        Assert.Equal(2, independent.DisposeAttempts);
+        Assert.Equal(3, producer.DisposeAttempts); // Drain attempts both owners.
+        using var line = fixture.Format();
+        Assert.Equal(3, independent.DisposeAttempts);
+        Assert.Equal(4, producer.DisposeAttempts);
+        Assert.Equal(1, independent.Retirements);
+        Assert.Equal(1, producer.Retirements);
+        Assert.Equal(1, independent.EndedUses);
+        Assert.Equal(1, producer.EndedUses);
+        Assert.Equal(2, fixture.Provider.Reflows);
+    }
+
+    [PortableMediaFact]
     public void ContinuationRequiresOriginalFormattingModeAndDeviceBeforeRetainedReadsOrReflow()
     {
         foreach (double width in new[] { 8.0 / 3, 4 })
@@ -1425,6 +1565,89 @@ public class PortableTextLineTests
         public IPortableTextParagraph Format(in PortableTextParagraphRequest request) => provider.Format(request);
     }
 
+    private sealed class ContinuationFixture : IDisposable
+    {
+        private readonly Source _source = new() { Properties = new Properties(new FontFamily(
+            Path.Combine(AppContext.BaseDirectory, "LibreWPF", "Fonts", "Inter-Medium.ttf") + "#Inter")) };
+        private readonly ParagraphProperties _properties;
+        private readonly IDisposable _registration;
+        private readonly TextFormatterImp _formatter = new();
+        internal Provider Provider { get; }
+        internal TextLine First { get; }
+        internal TextLineBreak Break { get; }
+        internal ContinuationFixture(Func<IPortableTextParagraph> reflowResult)
+        {
+            _properties = new ParagraphProperties(_source.Properties, false, false);
+            Provider = new Provider { ReflowResult = reflowResult };
+            _registration = PortableWpfServiceRegistry.RegisterTextFormatting(Provider);
+            First = _formatter.FormatLine(_source, 0, 8.0 / 3, _properties, null, new TextRunCache());
+            Break = First.GetTextLineBreak();
+        }
+        internal TextLine Format(double width = 4) =>
+            _formatter.FormatLine(_source, 2, width, _properties, Break, new TextRunCache());
+        internal TextLine Format(TextLineBreak continuation, double width) =>
+            _formatter.FormatLine(_source, 2, width, _properties, continuation, new TextRunCache());
+        public void Dispose() { Break.Dispose(); First.Dispose(); _formatter.Dispose(); _registration.Dispose(); }
+    }
+
+    // Explicit owning-reference fault fixture: Dispose ends one use once, marks
+    // closed before callbacks, and retries retirement without ending it again.
+    // No font/native resource or fake native font identity is supplied.
+    private sealed class RetirementParagraph : IPortableReflowTextParagraph, IPortableHintedTextParagraph
+    {
+        private readonly Provider _snapshot = new();
+        internal Exception? ValidationFailure { get; init; }
+        internal Exception? RetainFailure { get; init; }
+        internal Exception CleanupFailure { get; init; } = new InvalidOperationException("cleanup");
+        internal int FailuresRemaining { get; set; }
+        internal int DisposeAttempts { get; private set; }
+        internal int EndedUses { get; private set; }
+        internal int Retirements { get; private set; }
+        internal int Reflows { get; private set; }
+        internal Action? OnDispose { get; set; }
+        internal Action? OnRetain { get; set; }
+        internal Func<RetirementParagraph>? RetainResult { get; set; }
+        internal Func<IPortableTextParagraph>? ReflowResult { get; set; }
+        internal List<RetirementParagraph> Retained { get; } = new();
+        public bool IsDisposed { get; private set; }
+        public float DpiScale => 1;
+        public ReadOnlyMemory<char> SourceText => "abc".AsMemory();
+        public ReadOnlyMemory<PortableTextGlyph> Glyphs => _snapshot.Glyphs;
+        public ReadOnlyMemory<PortableTextLineInfo> Lines => ValidationFailure is { } failure ? throw failure :
+            new PortableTextLineInfo[] { new(0, 0, 2, 2, 0, 0, 20), new(0, 0, 2, 3, 0, 20, 20) };
+        ReadOnlyMemory<PortableHintedTextGlyph> IPortableHintedTextParagraph.Glyphs => default;
+        ReadOnlyMemory<PortableHintedTextLine> IPortableHintedTextParagraph.Lines =>
+            new PortableHintedTextLine[] { new(0, 0, 2, 2, 0, 0, 20, 0, false), new(0, 0, 2, 3, 0, 20, 20, 0, false) };
+        public ReadOnlyMemory<PortableHintedTextClusterBox> Boxes => default;
+        public ReadOnlyMemory<PortableHintedTextCaret> Carets => default;
+        public IPortableHintedTextParagraph Retain()
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            if (RetainFailure != null) throw RetainFailure;
+            var retained = RetainResult?.Invoke() ?? new RetirementParagraph();
+            Retained.Add(retained);
+            OnRetain?.Invoke();
+            return retained;
+        }
+        public void Dispose()
+        {
+            if (Retirements != 0) return;
+            if (!IsDisposed) { IsDisposed = true; EndedUses++; }
+            DisposeAttempts++;
+            OnDispose?.Invoke();
+            if (FailuresRemaining > 0) { FailuresRemaining--; throw CleanupFailure; }
+            Retirements++;
+        }
+        public IPortableTextParagraph Reflow(int inputStart, float maximumWidth)
+        { Assert.Equal(2, inputStart); Assert.Equal(6, maximumWidth); Reflows++; return ReflowResult!(); }
+        public IPortableHintedTextGlyphRun AcquireGlyphRun(ReadOnlySpan<int> indices) => throw new NotSupportedException();
+        public object GetNativeFont(uint index) => throw new NotSupportedException();
+        public PortableTextHit HitTest(int line, float distance) => _snapshot.HitTest(line, distance);
+        public float GetCaretDistance(int line, PortableTextHit hit) => _snapshot.GetCaretDistance(line, hit);
+        public int GetNextLogicalCaret(int line, int position, bool previous) => _snapshot.GetNextLogicalCaret(line, position, previous);
+        public int GetSelection(int line, int start, int end, Span<PortableRect> rectangles) => _snapshot.GetSelection(line, start, end, rectangles);
+    }
+
     private sealed class Provider : IPortableTextFormatting, IPortableReflowTextParagraph, IPortableTextDigitContext
     {
         internal float? TerminalCaretDistance { get; init; }
@@ -1460,13 +1683,14 @@ public class PortableTextLineTests
         }
 
         internal bool Continued { get; init; }
+        internal Func<IPortableTextParagraph>? ReflowResult { get; init; }
         internal int Reflows { get; private set; }
         public IPortableTextParagraph Reflow(int inputStart, float maximumWidth)
         {
             Assert.Equal(2, inputStart);
             Assert.Equal(4, maximumWidth);
             Reflows++;
-            return new Provider { Continued = true };
+            return ReflowResult?.Invoke() ?? new Provider { Continued = true };
         }
         public PortableTextIntrinsicWidths? IntrinsicWidths { get; init; }
         internal bool MeasureIntrinsicWidths { get; private set; }

@@ -283,3 +283,35 @@ collapsed views retaining their original device identity. The harness is
 These are CPU/source checks, not native hinted reflow, GPU or application execution.
 The ProGPU gitlink, package qualification, Display metrics/interpreter selection,
 hinted collapse and public hinted GlyphRun caret/outline gates remain unchanged.
+
+## Failed continuation producer retirement
+
+A successful provider Reflow transfers an initial hinted producer reference to
+the source caller before source validation or line construction can finish. The
+line break now captures that exact producer before reading its metadata. If
+validation, construction or publication fails, it keeps both the producer and any
+constructed line whose independent cleanup failed. Another continuation or clone
+drains those owners before paragraph reads, reflow or publication; a failed drain
+does not create another generation. Original source exceptions remain primary.
+
+Public break disposal closes admission before callbacks and retains the exact
+continuation when retirement is incomplete. Reentrant disposal during reflow,
+publication or clone acquisition is completed on the active operation's unwind;
+no line or clone can be published after close. Failed explicit disposal can be
+retried without ending a provider use twice, matching the existing
+`WpfHintedTextLifetime.Lease` contract. The continuation's single-attempt finalizer
+is suppressed for ordinary snapshots and armed only when an initial hinted
+producer is captured. It provides the same bounded disposal fallback as the
+existing hinted leases, not an unbounded finalizer retry or native completion
+claim. Ordinary snapshot ownership and valid Ideal continuations stay unchanged.
+
+The actual `PresentationCore.csproj` Release build passed with zero warnings and
+errors in 10.10 seconds using the same external managed dependency remap. The
+signed actual-source fixture harness above passed all 11 selected tests, zero
+skipped (314 ms): six new fault/reentrancy cases plus the five preceding
+continuation/device/collapse controls. The new cases cover exact validation and
+constructor exception identity, failed same-width admission, repeated public
+break disposal, deferred reentrant close, rejected clone publication, and both
+post-construction owners failing cleanup independently. They use typed CPU fault
+fixtures, not native font/rendering execution. Display policy, collapse/caret
+qualification, the ProGPU gitlink and whole-package/application gates are unchanged.

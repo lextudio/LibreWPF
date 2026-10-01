@@ -62,6 +62,10 @@ internal sealed class PortableTextLine : TextLine
     {
         private readonly PortableTextParagraphReference _reference;
         private readonly IPortableTextParagraph _paragraph;
+        private IPortableHintedTextParagraph _pendingProducer;
+        private PortableTextLine _pendingLine;
+        private PortableTextParagraphReference _pendingClone;
+        private bool _active, _closed, _disposing;
         internal PortableTextLine Owner { get; }
         internal int LineIndex { get; }
         internal int NextSourceIndex { get; }
@@ -70,9 +74,129 @@ internal sealed class PortableTextLine : TextLine
             : this(owner, lineIndex, nextSourceIndex, owner._paragraph, owner._paragraphReference?.Retain()) { }
         private Continuation(PortableTextLine owner, int lineIndex, int nextSourceIndex,
             IPortableTextParagraph paragraph, PortableTextParagraphReference reference)
-        { Owner = owner; LineIndex = lineIndex; NextSourceIndex = nextSourceIndex; _paragraph = paragraph; _reference = reference; }
-        internal Continuation Clone() => new(Owner, LineIndex, NextSourceIndex, Paragraph, _reference?.Retain());
-        public void Dispose() => _reference?.Dispose();
+        {
+            Owner = owner; LineIndex = lineIndex; NextSourceIndex = nextSourceIndex; _paragraph = paragraph; _reference = reference;
+            // Existing paragraph references own their own finalization. Only a
+            // returned initial hinted producer needs this additional fallback.
+            GC.SuppressFinalize(this);
+        }
+        internal Continuation Clone()
+        {
+            BeginUse();
+            Exception publicationFailure = null;
+            try
+            {
+                var paragraph = Paragraph;
+                _pendingClone = _reference?.Retain();
+                CheckOpen();
+                var clone = new Continuation(Owner, LineIndex, NextSourceIndex, paragraph, _pendingClone);
+                _pendingClone = null;
+                return clone;
+            }
+            catch (Exception failure)
+            {
+                publicationFailure = failure;
+                RetireFailedPublication(failure);
+                throw;
+            }
+            finally { EndUse(publicationFailure); }
+        }
+
+        internal void BeginUse()
+        {
+            CheckOpen();
+            if (_active || _disposing) throw new InvalidOperationException("A line break cannot recursively publish a continuation.");
+            _active = true;
+            try { DrainPending(); CheckOpen(); }
+            catch (Exception failure) { EndUse(failure); throw; }
+        }
+        internal void EndUse(Exception failure)
+        {
+            _active = false;
+            if (!_closed) return;
+            // A single reentrant public Dispose closes the break immediately;
+            // finish its deferred retirement after the active operation ends.
+            try { TryDispose(); }
+            catch (Exception cleanup)
+            {
+                if (failure == null) throw;
+                AttachCleanup(failure, cleanup);
+            }
+        }
+        internal void CheckOpen() => ObjectDisposedException.ThrowIf(_closed, this);
+        internal void CaptureProducer(IPortableTextParagraph paragraph)
+        {
+            // Capture BEFORE querying the returned source object. Its initial
+            // hinted use belongs to this break until retirement succeeds.
+            _pendingProducer = paragraph as IPortableHintedTextParagraph;
+            if (_pendingProducer != null) GC.ReRegisterForFinalize(this);
+            CheckOpen();
+        }
+        internal PortableTextLine Publish(PortableTextLine line)
+        {
+            _pendingLine = line;
+            CheckOpen();
+            _pendingProducer?.Dispose();
+            _pendingProducer = null;
+            CheckOpen();
+            _pendingLine = null;
+            GC.SuppressFinalize(this);
+            return line;
+        }
+        internal void RetireFailedPublication(Exception failure)
+        {
+            try { DrainPending(); }
+            catch (Exception cleanup) { AttachCleanup(failure, cleanup); }
+        }
+        private void DrainPending()
+        {
+            Exception failure = null;
+            try { _pendingLine?.Dispose(); _pendingLine = null; }
+            catch (Exception error) { failure = error; }
+            try { _pendingProducer?.Dispose(); _pendingProducer = null; }
+            catch (Exception error)
+            {
+                if (failure == null) failure = error;
+                else AttachCleanup(failure, error);
+            }
+            try { _pendingClone?.Dispose(); _pendingClone = null; }
+            catch (Exception error)
+            {
+                if (failure == null) failure = error;
+                else AttachCleanup(failure, error);
+            }
+            if (failure == null) GC.SuppressFinalize(this);
+            if (failure != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+        private static void AttachCleanup(Exception failure, Exception cleanup)
+        {
+            try { failure.Data["HintedContinuationCleanupFailure"] = cleanup; } catch { }
+        }
+        public void Dispose() => TryDispose();
+        ~Continuation() { try { TryDispose(); } catch { } }
+        internal bool TryDispose()
+        {
+            _closed = true;
+            // Reentrant close cannot clear the enclosing TextLineBreak while
+            // its active publication/retirement still owns a returned producer.
+            if (_active || _disposing) return false;
+            _disposing = true;
+            try
+            {
+                Exception failure = null;
+                try { DrainPending(); } catch (Exception error) { failure = error; }
+                try { _reference?.Dispose(); }
+                catch (Exception error)
+                {
+                    if (failure == null) failure = error;
+                    else AttachCleanup(failure, error);
+                }
+                if (failure != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+                GC.SuppressFinalize(this);
+                return true;
+            }
+            finally { _disposing = false; }
+        }
     }
     private readonly PortableTextParagraphReference _paragraphReference;
     private readonly IPortableTextParagraph _paragraph;
@@ -179,26 +303,32 @@ internal sealed class PortableTextLine : TextLine
             throw Unsupported($"changed continuation width or source index " +
                 $"(source={first}, expectedSource={next.NextSourceIndex}, " +
                 $"width={width:R}, retainedWidth={next.Owner._paragraphWidth:R}, line={next.LineIndex})");
-        if (next.Owner._paragraphWidth != width)
+        next.BeginUse();
+        Exception publicationFailure = null;
+        try
         {
-            if (next.Paragraph is not IPortableReflowTextParagraph reflow)
-                throw Unsupported("the captured text paragraph does not expose native continuation reflow");
-            int inputStart = next.Paragraph.Lines.Span[next.LineIndex].InputStart;
-            float maximumWidth = settings.Pap.Wrap && width > 0
-                ? (float)Math.Max(float.Epsilon, width - next.Owner._indent) : 0;
-            var paragraph = reflow.Reflow(inputStart, maximumWidth);
-            try
+            if (next.Owner._paragraphWidth != width)
             {
+                if (next.Paragraph is not IPortableReflowTextParagraph reflow)
+                    throw Unsupported("the captured text paragraph does not expose native continuation reflow");
+                int inputStart = next.Paragraph.Lines.Span[next.LineIndex].InputStart;
+                float maximumWidth = settings.Pap.Wrap && width > 0
+                    ? (float)Math.Max(float.Epsilon, width - next.Owner._indent) : 0;
+                var paragraph = reflow.Reflow(inputStart, maximumWidth);
+                next.CaptureProducer(paragraph);
                 if (paragraph == null || paragraph.Lines.IsEmpty || paragraph.Lines.Span[0].InputStart != inputStart)
                     throw new InvalidOperationException("The native continuation lost its original input boundary.");
-                var line = new PortableTextLine(next.Owner, 0, paragraph, width);
-                try { (paragraph as IPortableHintedTextParagraph)?.Dispose(); }
-                catch { try { line.Dispose(); } catch { } throw; }
-                return line;
+                return next.Publish(new PortableTextLine(next.Owner, 0, paragraph, width));
             }
-            catch { try { (paragraph as IPortableHintedTextParagraph)?.Dispose(); } catch { } throw; }
+            return next.Publish(new PortableTextLine(next.Owner, next.LineIndex, next.Paragraph));
         }
-        return new PortableTextLine(next.Owner, next.LineIndex, next.Paragraph);
+        catch (Exception failure)
+        {
+            publicationFailure = failure;
+            next.RetireFailedPublication(failure);
+            throw;
+        }
+        finally { next.EndUse(publicationFailure); }
     }
 
     // The formatter captures one provider for the request. Concurrent override

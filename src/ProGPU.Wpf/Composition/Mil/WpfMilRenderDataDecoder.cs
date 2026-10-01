@@ -187,13 +187,20 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawRoundedRectangle:
                 case WpfMilCommandId.DrawRoundedRectangleAnimate:
-                    sink.DrawRoundedRectangle(
-                        ResolveOptionalBrush(resources, ReadUInt32(payload, 48)),
-                        ResolveOptionalPen(resources, ReadUInt32(payload, 52)),
-                        ReadRect(payload, 0),
-                        ReadDouble(payload, 32),
-                        ReadDouble(payload, 40));
-                    appliedCount++;
+                    if (TryReplayRawTileBrushCurvedPrimitive(commandId, payload, sink, resources, imageSourceAdapter, out var roundedStatus))
+                    {
+                        CountDrawingReplayStatus(roundedStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
+                    }
+                    else
+                    {
+                        sink.DrawRoundedRectangle(
+                            ResolveOptionalBrush(resources, ReadUInt32(payload, 48)),
+                            ResolveOptionalPen(resources, ReadUInt32(payload, 52)),
+                            ReadRect(payload, 0),
+                            ReadDouble(payload, 32),
+                            ReadDouble(payload, 40));
+                        appliedCount++;
+                    }
                     if (commandId == WpfMilCommandId.DrawRoundedRectangleAnimate)
                     {
                         unsupportedCount += CountUnsupportedAnimationHandles(payload, 56, 60, 64);
@@ -203,13 +210,20 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawEllipse:
                 case WpfMilCommandId.DrawEllipseAnimate:
-                    sink.DrawEllipse(
-                        ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
-                        ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
-                        ReadPoint(payload, 0),
-                        ReadDouble(payload, 16),
-                        ReadDouble(payload, 24));
-                    appliedCount++;
+                    if (TryReplayRawTileBrushCurvedPrimitive(commandId, payload, sink, resources, imageSourceAdapter, out var ellipseStatus))
+                    {
+                        CountDrawingReplayStatus(ellipseStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
+                    }
+                    else
+                    {
+                        sink.DrawEllipse(
+                            ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
+                            ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
+                            ReadPoint(payload, 0),
+                            ReadDouble(payload, 16),
+                            ReadDouble(payload, 24));
+                        appliedCount++;
+                    }
                     if (commandId == WpfMilCommandId.DrawEllipseAnimate)
                     {
                         unsupportedCount += CountUnsupportedAnimationHandles(payload, 40, 44, 48);
@@ -218,6 +232,11 @@ public sealed class WpfMilRenderDataDecoder
                     break;
 
                 case WpfMilCommandId.DrawGeometry:
+                    if (TryReplayRawTileBrushGeometry(payload, sink, resources, imageSourceAdapter, out var rawGeometryStatus))
+                    {
+                        CountDrawingReplayStatus(rawGeometryStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
+                        break;
+                    }
                     var brush = ResolveOptionalBrush(resources, ReadUInt32(payload, 0));
                     var pen = ResolveOptionalPen(resources, ReadUInt32(payload, 4));
                     var geometryToken = ReadUInt32(payload, 8);
@@ -600,13 +619,20 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawRoundedRectangle:
                 case WpfMilCommandId.DrawRoundedRectangleAnimate:
-                    nativeSink.DrawNativeRoundedRectangle(
-                        ResolveOptionalBrush(resources, ReadUInt32(payload, 48)),
-                        ResolveOptionalPen(resources, ReadUInt32(payload, 52)),
-                        ReadReplayRect(payload, 0),
-                        ReadDouble(payload, 32),
-                        ReadDouble(payload, 40));
-                    appliedCount++;
+                    if (TryReplayRawTileBrushCurvedPrimitive(commandId, payload, sink, resources, imageSourceAdapter, out var roundedStatus))
+                    {
+                        CountDrawingReplayStatus(roundedStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
+                    }
+                    else
+                    {
+                        nativeSink.DrawNativeRoundedRectangle(
+                            ResolveOptionalBrush(resources, ReadUInt32(payload, 48)),
+                            ResolveOptionalPen(resources, ReadUInt32(payload, 52)),
+                            ReadReplayRect(payload, 0),
+                            ReadDouble(payload, 32),
+                            ReadDouble(payload, 40));
+                        appliedCount++;
+                    }
                     if (commandId == WpfMilCommandId.DrawRoundedRectangleAnimate)
                     {
                         unsupportedCount += CountUnsupportedAnimationHandles(payload, 56, 60, 64);
@@ -616,46 +642,18 @@ public sealed class WpfMilRenderDataDecoder
 
                 case WpfMilCommandId.DrawEllipse:
                 case WpfMilCommandId.DrawEllipseAnimate:
-                    var nativeEllipseBrush = ResolveOptionalBrush(resources, ReadUInt32(payload, 32));
-                    var nativeEllipsePen = ResolveOptionalPen(resources, ReadUInt32(payload, 36));
-                    var nativeEllipseCenter = ReadReplayPoint(payload, 0);
-                    var nativeEllipseRadiusX = ReadDouble(payload, 16);
-                    var nativeEllipseRadiusY = ReadDouble(payload, 24);
-                    if (nativeEllipseBrush != null
-                        && WpfDrawingReplay.IsTileBrush(nativeEllipseBrush)
-                        && WpfDrawingReplay.TryReplayTileBrushEllipseFill(
-                            nativeEllipseBrush,
-                            new Point(nativeEllipseCenter.X, nativeEllipseCenter.Y),
-                            nativeEllipseRadiusX,
-                            nativeEllipseRadiusY,
-                            sink,
-                            GetImageSourceAdapter(resources, imageSourceAdapter),
-                            out var nativeEllipseReplayStatus))
+                    if (TryReplayRawTileBrushCurvedPrimitive(commandId, payload, sink, resources, imageSourceAdapter, out var ellipseStatus))
                     {
-                        if (nativeEllipsePen != null)
-                        {
-                            nativeSink.DrawNativeEllipse(
-                                null,
-                                nativeEllipsePen,
-                                nativeEllipseCenter,
-                                nativeEllipseRadiusX,
-                                nativeEllipseRadiusY);
-                        }
-
-                        CountDrawingReplayStatus(
-                            nativeEllipseReplayStatus,
-                            ref appliedCount,
-                            ref skippedCount,
-                            ref unsupportedCount);
+                        CountDrawingReplayStatus(ellipseStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
                     }
                     else
                     {
                         nativeSink.DrawNativeEllipse(
-                            nativeEllipseBrush,
-                            nativeEllipsePen,
-                            nativeEllipseCenter,
-                            nativeEllipseRadiusX,
-                            nativeEllipseRadiusY);
+                            ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
+                            ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
+                            ReadReplayPoint(payload, 0),
+                            ReadDouble(payload, 16),
+                            ReadDouble(payload, 24));
                         appliedCount++;
                     }
 
@@ -667,6 +665,11 @@ public sealed class WpfMilRenderDataDecoder
                     break;
 
                 case WpfMilCommandId.DrawGeometry:
+                    if (TryReplayRawTileBrushGeometry(payload, sink, resources, imageSourceAdapter, out var rawGeometryStatus))
+                    {
+                        CountDrawingReplayStatus(rawGeometryStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
+                        break;
+                    }
                     var nativeBrush = ResolveOptionalBrush(resources, ReadUInt32(payload, 0));
                     var nativePen = ResolveOptionalPen(resources, ReadUInt32(payload, 4));
                     var nativeGeometryToken = ReadUInt32(payload, 8);
@@ -1149,6 +1152,57 @@ public sealed class WpfMilRenderDataDecoder
         return true;
     }
 
+    private static bool TryReplayRawTileBrushGeometry(
+        ReadOnlySpan<byte> payload, IWpfCompositionCommandSink sink,
+        IWpfMilResourceResolver resources, IWpfImageSourceAdapter? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Unsupported;
+        if (!TryResolveRawResource(resources, ReadUInt32(payload, 0), out var brush)
+            || !WpfDrawingReplay.IsTileBrush(brush))
+            return false;
+        if (!TryResolveTileBrushGeometry(resources, ReadUInt32(payload, 8), out var geometry))
+            return true;
+
+        var adapter = GetImageSourceAdapter(resources, imageSourceAdapter);
+        PortableGeometryPath? path = null;
+        bool replayed;
+        if (geometry is PortableGeometryPathSource source)
+        {
+            // One original source publication owns both the fill clip and pen.
+            // Do not re-read a live publisher after source image/drawing calls.
+            if (!source.TryGetPortableGeometryPath(out path) || path == null)
+                return true;
+            replayed = WpfDrawingReplay.TryReplayTileBrushPathFill(brush, path, sink, adapter, out status);
+        }
+        else
+            replayed = WpfDrawingReplay.TryReplayTileBrushFill(brush, geometry, sink, adapter, out status);
+        if (!replayed)
+            status = WpfDrawingReplayStatus.Unsupported;
+
+        uint penToken = ReadUInt32(payload, 4);
+        var pen = ResolveOptionalPen(resources, penToken);
+        bool penApplied = false;
+        if (pen != null)
+        {
+            if (sink is IWpfNativeGeometryCommandSink nativeSink)
+            {
+                penApplied = path != null
+                    ? nativeSink.DrawNativeGeometry(null, pen, path)
+                    : geometry is MediaGeometry nativeGeometry && nativeSink.DrawNativeGeometry(null, pen, nativeGeometry);
+            }
+            else if (geometry is MediaGeometry typedGeometry)
+            {
+                sink.DrawGeometry(null, pen, typedGeometry);
+                penApplied = true;
+            }
+        }
+        // A declined native stroke is unavailable, not a successful pen merely
+        // because its descriptor resolved. Never flatten or substitute it.
+        status = CombineTileFillAndPenStatus(status, penToken, penApplied ? pen : null);
+        return true;
+    }
+
     private static bool TryReplayRawTileBrushRectangle(
         ReadOnlySpan<byte> payload,
         IWpfCompositionCommandSink sink,
@@ -1182,13 +1236,66 @@ public sealed class WpfMilRenderDataDecoder
                 nativeSink.DrawNativeRectangle(null, pen, ReadReplayRect(payload, 0));
             else
                 sink.DrawRectangle(null, pen, rectangle);
-
-            // An admitted empty drawing is not a failed fill. Its independent
-            // stroke still applies, unlike an unavailable source descriptor.
-            if (status == WpfDrawingReplayStatus.Skipped)
-                status = WpfDrawingReplayStatus.Applied;
         }
 
+        status = CombineTileFillAndPenStatus(status, penToken, pen);
+        // Recognized but unavailable/unsupported source brushes must not fall
+        // through to a null fill that is incorrectly counted as applied.
+        return true;
+    }
+
+    private static bool TryReplayRawTileBrushCurvedPrimitive(
+        WpfMilCommandId command, ReadOnlySpan<byte> payload,
+        IWpfCompositionCommandSink sink, IWpfMilResourceResolver resources,
+        IWpfImageSourceAdapter? imageSourceAdapter, out WpfDrawingReplayStatus status)
+    {
+        bool ellipse = command is WpfMilCommandId.DrawEllipse or WpfMilCommandId.DrawEllipseAnimate;
+        int brushOffset = ellipse ? 32 : 48;
+        status = WpfDrawingReplayStatus.Unsupported;
+        if (!TryResolveRawResource(resources, ReadUInt32(payload, brushOffset), out var brush)
+            || !WpfDrawingReplay.IsTileBrush(brush))
+            return false;
+
+        // Preserve the raw source before AdaptBrush can erase its drawing or
+        // image. The existing tile replay retains the exact curved clip, not
+        // its bounding rectangle, and closes every fill scope before the pen.
+        var adapter = GetImageSourceAdapter(resources, imageSourceAdapter);
+        bool replayed = ellipse
+            ? WpfDrawingReplay.TryReplayTileBrushEllipseFill(brush, ReadPoint(payload, 0),
+                ReadDouble(payload, 16), ReadDouble(payload, 24), sink, adapter, out status)
+            : WpfDrawingReplay.TryReplayTileBrushFill(brush,
+                new MediaRectangleGeometry(ReadRect(payload, 0), ReadDouble(payload, 32), ReadDouble(payload, 40)),
+                sink, adapter, out status);
+        if (!replayed)
+            status = WpfDrawingReplayStatus.Unsupported;
+
+        uint penToken = ReadUInt32(payload, brushOffset + 4);
+        var pen = ResolveOptionalPen(resources, penToken);
+        if (pen != null)
+        {
+            if (sink is IWpfNativePrimitiveCommandSink nativeSink)
+            {
+                if (ellipse)
+                    nativeSink.DrawNativeEllipse(null, pen, ReadReplayPoint(payload, 0), ReadDouble(payload, 16), ReadDouble(payload, 24));
+                else
+                    nativeSink.DrawNativeRoundedRectangle(null, pen, ReadReplayRect(payload, 0), ReadDouble(payload, 32), ReadDouble(payload, 40));
+            }
+            else if (ellipse)
+                sink.DrawEllipse(null, pen, ReadPoint(payload, 0), ReadDouble(payload, 16), ReadDouble(payload, 24));
+            else
+                sink.DrawRoundedRectangle(null, pen, ReadRect(payload, 0), ReadDouble(payload, 32), ReadDouble(payload, 40));
+        }
+        status = CombineTileFillAndPenStatus(status, penToken, pen);
+        return true;
+    }
+
+    private static WpfDrawingReplayStatus CombineTileFillAndPenStatus(
+        WpfDrawingReplayStatus status, uint penToken, MediaPen? pen)
+    {
+        // An admitted empty drawing is not a failed fill. Its independent
+        // stroke still applies, unlike an unavailable source descriptor.
+        if (pen != null && status == WpfDrawingReplayStatus.Skipped)
+            status = WpfDrawingReplayStatus.Applied;
         if (penToken != 0 && pen == null)
         {
             status = status is WpfDrawingReplayStatus.Applied or WpfDrawingReplayStatus.PartiallyApplied
@@ -1199,9 +1306,7 @@ public sealed class WpfMilRenderDataDecoder
             status = WpfDrawingReplayStatus.PartiallyApplied;
         }
 
-        // Recognized but unavailable/unsupported source brushes must not fall
-        // through to a null fill that is incorrectly counted as applied.
-        return true;
+        return status;
     }
 
     private static bool TryReplayRawCacheBrushRecord(WpfMilCommandId command, ReadOnlySpan<byte> payload,

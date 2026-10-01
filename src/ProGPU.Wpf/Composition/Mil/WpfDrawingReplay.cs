@@ -2678,6 +2678,15 @@ internal static class WpfDrawingReplay
                 && cachedSink.DrawBitmapCacheBrushGlyphRun(cacheSource, glyphRunValue, imageSourceAdapter)
                     ? WpfDrawingReplayStatus.Applied : WpfDrawingReplayStatus.Unsupported;
         var foregroundBrush = WpfResourceResolver.AdaptBrush(foregroundBrushValue);
+        if (WpfResourceResolver.TryAcquireHintedGlyphRun(glyphRunValue, out var hinted))
+        {
+            using (hinted)
+            {
+                if (sink is not IWpfNativePrimitiveCommandSink hintedSink) return WpfDrawingReplayStatus.Unsupported;
+                hintedSink.DrawNativeGlyphRun(foregroundBrush, hinted!);
+                return WpfDrawingReplayStatus.Applied;
+            }
+        }
         if (sink is IWpfNativePrimitiveCommandSink nativeSink
             && WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out var nativeGlyphRun))
         {
@@ -3569,6 +3578,15 @@ internal static class WpfDrawingReplay
                 return false;
             }
 
+            if (WpfResourceResolver.TryAcquireHintedGlyphRun(glyphRunValue, out var hinted))
+            {
+                using (hinted)
+                {
+                    var ink = hinted!.InkBounds;
+                    bounds = ink.IsEmpty ? Rect.Empty : new Rect(ink.X, ink.Y, ink.Width, ink.Height);
+                    return true;
+                }
+            }
             if (WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRunValue, out var nativeGlyphRun))
             {
                 return TryGetGlyphRunBounds(nativeGlyphRun, out bounds);

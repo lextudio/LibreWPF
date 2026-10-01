@@ -181,8 +181,14 @@ separate from ordinary paragraphs and source Display selection. Carry exact
 positioned occurrence indices and native measured interaction without font aliases
 or source-local positioning. Retire temporary producers before publishing source
 references; siblings retain the live resource and final teardown retries cannot
-end a use twice. Both replay paths, source GlyphRun/bounds, continuation and actual
-Display admission remain unfinished. See docs/source-hinted-text-ownership.md.
+end a use twice. Explicit GlyphRun publication retains typed original selections
+and shared projected ink, never design-font aliases. Recorded draws use lease-aware
+hinted commands with original hit owners; native MIL imports original generations
+atomically with canonical deltas and retains batch/channel retirement retries.
+Additional guideline/cache-brush/transform admission, source caret mapping,
+continuation and actual Display selection remain unfinished. Keep hinted public
+caret/outline paths rejected until their original source contract connects.
+See docs/source-hinted-text-ownership.md.
 
 PortableTextLine width-changing continuations use the captured paragraph's explicit
 native reflow capability over the complete original shaping context. Keep original

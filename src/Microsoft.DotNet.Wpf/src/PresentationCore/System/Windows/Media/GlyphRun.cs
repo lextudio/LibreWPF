@@ -35,7 +35,7 @@ namespace System.Windows.Media
     /// <remarks>
     ///  Consider adding [XmlLangProperty("Language")] 
     /// </remarks>
-    public class GlyphRun : DUCE.IResource, ISupportInitialize, IPortableGlyphRunSource, IPortableNativeGlyphRunSource
+    public class GlyphRun : DUCE.IResource, ISupportInitialize, IPortableGlyphRunSource, IPortableNativeGlyphRunSource, IPortableHintedGlyphRunSource
     {
         //------------------------------------------------------
         //
@@ -478,6 +478,7 @@ namespace System.Windows.Media
         public double GetDistanceFromCaretCharacterHit(CharacterHit characterHit)
         {
             CheckInitialized(); // This can only be called on fully initialized GlyphRun
+            CheckPortableHintedCaretAdmission();
 
             IList<bool> caretStops = CaretStops != null && CaretStops.Count != 0 ? CaretStops : new DefaultCaretStopList(CodepointCount);
             if (characterHit.FirstCharacterIndex < 0 || characterHit.FirstCharacterIndex > CodepointCount)
@@ -567,6 +568,7 @@ namespace System.Windows.Media
         public CharacterHit GetCaretCharacterHitFromDistance(double distance, out bool isInside)
         {
             CheckInitialized(); // This can only be called on fully initialized GlyphRun
+            CheckPortableHintedCaretAdmission();
 
             // Navigate the caret stop array and find a pair of caret stops that contains the distance.
 
@@ -704,6 +706,7 @@ namespace System.Windows.Media
         public CharacterHit GetNextCaretCharacterHit(CharacterHit characterHit)
         {
             CheckInitialized(); // This can only be called on fully initialized GlyphRun
+            CheckPortableHintedCaretAdmission();
 
             IList<bool> caretStops = CaretStops != null && CaretStops.Count != 0 ? CaretStops : new DefaultCaretStopList(CodepointCount);
             if (characterHit.FirstCharacterIndex < 0 || characterHit.FirstCharacterIndex > CodepointCount)
@@ -751,6 +754,7 @@ namespace System.Windows.Media
         public CharacterHit GetPreviousCaretCharacterHit(CharacterHit characterHit)
         {
             CheckInitialized(); // This can only be called on fully initialized GlyphRun
+            CheckPortableHintedCaretAdmission();
 
             IList<bool> caretStops = CaretStops != null && CaretStops.Count != 0 ? CaretStops : new DefaultCaretStopList(CodepointCount);
             if (characterHit.FirstCharacterIndex < 0 || characterHit.FirstCharacterIndex > CodepointCount)
@@ -1226,6 +1230,12 @@ namespace System.Windows.Media
         {
             CheckInitialized(); // This can only be called on fully initialized GlyphRun
 
+            if (_portableHintedGlyphRun != null)
+            {
+                PortableRect hinted = _portableHintedGlyphRun.BaselineRelativeInkBounds;
+                return hinted.IsEmpty ? Rect.Empty : new Rect(hinted.X, hinted.Y, hinted.Width, hinted.Height);
+            }
+
             if ((_flags & GlyphRunFlags.CacheInkBounds) != 0)
             {
                 if (_inkBoundingBox != null)
@@ -1548,6 +1558,8 @@ namespace System.Windows.Media
         public Geometry BuildGeometry()
         {
             CheckInitialized(); // This can only be called on fully initialized GlyphRun
+            if (_portableHintedGlyphRun != null)
+                throw new NotSupportedException("Original hinted GlyphRun geometry is consumed through the retained portable replay contract.");
 
             GeometryGroup accumulatedGeometry = null;
             double accAdvance = 0;
@@ -2461,6 +2473,7 @@ namespace System.Windows.Media
 
         bool IPortableGlyphRunSource.TryGetPortableGlyphRun(out PortableGlyphRun glyphRun)
         {
+            if (_portableHintedGlyphRun != null) { glyphRun = new PortableGlyphRun(); return false; }
             if (IsInitialized && _portableGlyphRunCache != null)
             {
                 glyphRun = _portableGlyphRunCache;
@@ -2505,6 +2518,7 @@ namespace System.Windows.Media
 
         bool IPortableNativeGlyphRunSource.TryGetPortableNativeGlyphRun(out PortableNativeGlyphRun glyphRun)
         {
+            if (_portableHintedGlyphRun != null) { glyphRun = new PortableNativeGlyphRun(); return false; }
             if (IsInitialized && _portableNativeGlyphRunCache != null)
             {
                 glyphRun = _portableNativeGlyphRunCache;
@@ -2569,6 +2583,7 @@ namespace System.Windows.Media
         // remain those of the mapped physical face.
         internal Rect ComputePortableInkBoundingBox()
         {
+            if (_portableHintedGlyphRun != null) return ComputeInkBoundingBox();
             Rect bounds = ComputeInkBoundingBox();
             if (bounds.IsEmpty) return bounds;
             StyleSimulations simulations = _glyphTypeface?.StyleSimulations ?? StyleSimulations.None;
@@ -2634,12 +2649,58 @@ namespace System.Windows.Media
 
         private Vector2[] _portablePositionedGlyphs;
         private object _portablePositionedFont;
+        private IPortableHintedGlyphRunBinding _portableHintedGlyphRun;
+
+        bool IPortableHintedGlyphRunSource.TryAcquirePortableHintedGlyphRun(out IPortableHintedGlyphRunBinding binding)
+        {
+            binding = _portableHintedGlyphRun?.Retain();
+            return binding != null;
+        }
+
+        // Explicit publication only: ordinary formatting still rejects Display.
+        // The provider validates the original face/size/occurrences and supplies
+        // authoritative bounds. No local font alias, positioning or ink estimate.
+        internal void InitializePortableHintedGlyphRun(IPortableHintedTextGlyphRun source)
+        {
+            if (!IsInitialized || _portableHintedGlyphRun != null || _portablePositionedGlyphs != null ||
+                _portableNativeGlyphRunCache != null || _portableGlyphRunCache != null || _portableInkBoundsCache != null ||
+                _inkBoundingBox != null || IsSideways ||
+                (_glyphTypeface?.StyleSimulations ?? StyleSimulations.None) != StyleSimulations.None ||
+                source is not IPortableHintedGlyphRunBindingFactory factory || (float)_renderingEmSize != _renderingEmSize)
+                throw new InvalidOperationException("Original hinted ownership must be published once before source ink or replay is observed.");
+            IPortableHintedGlyphRunBinding binding = factory.BindGlyphRun((float)_renderingEmSize,
+                new Vector2((float)_baselineOrigin.X, (float)_baselineOrigin.Y));
+            try
+            {
+                if (binding.GlyphIndices.Length != _glyphIndices.Count || binding.BidiLevel != _bidiLevel || binding.DpiScale != _pixelsPerDip ||
+                    binding.Origin.X != _baselineOrigin.X || binding.Origin.Y != _baselineOrigin.Y)
+                    throw new ArgumentException("The source GlyphRun does not match the original hinted occurrence selection.", nameof(source));
+                for (int i = 0; i < _glyphIndices.Count; i++)
+                    if (binding.GlyphIndices.Span[i] != _glyphIndices[i])
+                        throw new ArgumentException("The source glyph ID differs from its original hinted occurrence.", nameof(source));
+                PortableRect ink = binding.InkBounds;
+                _portableInkBoundsCache = ink;
+                _portableHintedGlyphRun = binding;
+            }
+            catch (Exception failure)
+            {
+                try { binding.Dispose(); }
+                catch (Exception cleanup) { try { failure.Data["HintedSourceBindingCleanupFailure"] = cleanup; } catch { } }
+                throw;
+            }
+        }
+
+        private void CheckPortableHintedCaretAdmission()
+        {
+            if (_portableHintedGlyphRun != null)
+                throw new NotSupportedException("Hinted source caret interaction requires the original paragraph's retained source-map binding.");
+        }
 
         // Source text formatting transfers these immutable native Y-down positions
         // before publishing the GlyphRun. WPF metrics retain real bidi/offset state.
         internal void InitializePortableGlyphPositions(Vector2[] positions, object nativeFont = null)
         {
-            if (!IsInitialized || _portablePositionedGlyphs != null || _portableNativeGlyphRunCache != null || _portableGlyphRunCache != null ||
+            if (!IsInitialized || _portableHintedGlyphRun != null || _portablePositionedGlyphs != null || _portableNativeGlyphRunCache != null || _portableGlyphRunCache != null ||
                 positions == null || positions.Length != _glyphIndices.Count)
                 throw new InvalidOperationException("Portable glyph positions must be initialized once before replay.");
             _portablePositionedGlyphs = positions;

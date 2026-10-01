@@ -20,6 +20,7 @@
     <PackageReference Include="ProGPU.Backend.Native" Version="$(ProGpuRuntimePackageVersion)" />
     <PackageReference Include="ProGPU.DirectX" Version="$(ProGpuRuntimePackageVersion)" />
     <PackageReference Include="ProGPU.Scene" Version="$(ProGpuRuntimePackageVersion)" />
+    <PackageReference Include="ProGPU.Scene.Native" Version="$(ProGpuRuntimePackageVersion)" />
     <PackageReference Include="LibreWPF.Interop" Version="$(ProGpuRuntimePackageVersion)" />
     <PackageReference Include="Silk.NET.GLFW" Version="2.23.0" />
     <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
@@ -38,6 +39,7 @@
     <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Backend.Native\ProGPU.Backend.Native.csproj" />
     <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.DirectX\ProGPU.DirectX.csproj" />
     <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Scene\ProGPU.Scene.csproj" />
+    <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Scene.Native\ProGPU.Scene.Native.csproj" />
     <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Text\ProGPU.Text.csproj" />
     <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Vector\ProGPU.Vector.csproj" />
     <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj" />
@@ -66,6 +68,7 @@
           Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Backend.Native'
           Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.DirectX'
           Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Scene'
+          Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Scene.Native'
           Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Text'
           Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Vector'
           Or '%(_ProjectReferencesWithVersions.Filename)' == 'ProGPU.Wpf.Interop'">

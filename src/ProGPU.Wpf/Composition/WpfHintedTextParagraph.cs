@@ -1,5 +1,8 @@
 using ProGPU.Backend.Native;
 using ProGPU.Wpf.Interop;
+using ProGPU.Scene.Native;
+using ProGPU.Text;
+using System.Numerics;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
@@ -87,8 +90,10 @@ internal sealed class WpfHintedTextParagraph : IPortableHintedTextParagraph
 
     public void Dispose() { lock (_gate) _use.Dispose(); }
 
-    private sealed class Generation
+    private sealed class Generation : IDisposable
     {
+        private readonly object _geometryGate = new();
+        private HintedGlyphGeometry? _geometry;
         internal readonly NativeHintedGlyphResource Resource;
         internal readonly WpfHintedTextLifetime Lifetime;
         internal readonly string SourceText;
@@ -138,12 +143,32 @@ internal sealed class WpfHintedTextParagraph : IPortableHintedTextParagraph
             }
             // Native resource publication is last; its paragraph/font/geometry
             // owner remains live until the final source reference retires.
-            Lifetime = new(resource);
+            Lifetime = new(this);
             Resource = resource;
+        }
+
+        internal HintedGlyphGeometry SelectGeometry(ReadOnlySpan<int> indices)
+        {
+            lock (_geometryGate)
+            {
+                _geometry ??= NativeHintedGlyphGeometryFactory.Create(Resource);
+                return _geometry.SelectOccurrences(indices);
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_geometryGate)
+            {
+                // Retry the exact owners after a failed teardown; no new source
+                // use is admitted once Lifetime begins final retirement.
+                _geometry?.Dispose();
+                Resource.Dispose();
+            }
         }
     }
 
-    private sealed class GlyphRun : IPortableHintedTextGlyphRun
+    private sealed class GlyphRun : IPortableHintedTextGlyphRun, IPortableHintedGlyphRunBindingFactory
     {
         private readonly object _gate = new();
         private readonly Generation _generation;
@@ -170,6 +195,31 @@ internal sealed class WpfHintedTextParagraph : IPortableHintedTextParagraph
         public IPortableHintedTextParagraph AcquireParagraph()
         {
             lock (_gate) return WpfHintedTextParagraph.Create(_generation, _use.Retain());
+        }
+        public IPortableHintedGlyphRunBinding BindGlyphRun(float sourceEmSize, Vector2 logicalOrigin)
+        {
+            lock (_gate)
+            {
+                ObjectDisposedException.ThrowIf(IsDisposed, this);
+                using var read = _generation.Resource.AcquireReadLease();
+                WpfHintedGlyphRunBinding.Validate(read, _indices, sourceEmSize, logicalOrigin);
+                var owner = Create(_generation, _use.Retain(), _indices);
+                HintedGlyphGeometry? geometry = null;
+                try
+                {
+                    geometry = _generation.SelectGeometry(_indices);
+                    return WpfHintedGlyphRunBinding.Adopt(owner, _generation.Resource,
+                        geometry, sourceEmSize, logicalOrigin, read, _indices);
+                }
+                catch (Exception failure)
+                {
+                    try { geometry?.Dispose(); }
+                    catch (Exception cleanup) { failure.Data["HintedGeometryCleanupFailure"] = cleanup; }
+                    try { owner.Dispose(); }
+                    catch (Exception cleanup) { failure.Data["HintedRunCleanupFailure"] = cleanup; }
+                    throw;
+                }
+            }
         }
         public void Dispose() { lock (_gate) _use.Dispose(); }
     }

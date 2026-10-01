@@ -77,6 +77,32 @@ unsupported counts independently of successful base-value replay.
 Authored controls cover both sinks, Image/Drawing sources, untiled and absolute/
 relative tiled viewports, exact curves, pen ordering, empty/unavailable content,
 missing pens, source-owned image adaptation and animated records. This change
-does not alter native MIL, arbitrary `DrawGeometry` tile fills, renderer defaults,
+does not alter native MIL, renderer defaults,
 or original application/package qualification. Focused execution follows the
 implementation commit; no desktop or GPU validation is claimed.
+
+## Nonuniform-corner retained backgrounds
+
+The complex `Border.OnRender` branch records its cached `StreamGeometry` with
+`DrawGeometry`, including nonuniform corners. Both decoder sinks now examine the
+raw tile source before generic adaptation for this record too. A portable geometry
+publisher is read once, then the same exact path owns the fill clip and pen;
+brush replay cannot trigger a second source publication. Source curves, holes,
+fill rules and geometry-local transforms stay on that path.
+
+The path-specific tile replay uses the existing mapping and drawing/image replay,
+with a required exact native geometry clip. A proven rectangle may retain the
+existing exact rectangle path, but failed curved-clip admission cannot become a
+media fallback, flattened geometry or bounds-only clip. A failed native pen draw
+is likewise reported as unavailable even if its pen descriptor resolved. Existing
+non-tile and legacy media-brush records retain their original route.
+
+Twenty-six additional authored cases cover both decoder sinks, original image and
+drawing identities, tiled/untiled placement, nonuniform arcs, a transformed curved
+hole, single publication, declined clips/strokes, missing pens and unavailable
+source geometry/content. Empty drawing content remains distinct from failure,
+and independent pen/following-record order is retained. These checks join the 52
+curved-primitive cases; neither set has been executed locally. The previous
+mixed-cache diagnostic harness is not a coherent validation graph and is not
+expanded or relaxed for this work. Diff checks are the bounded local validation;
+coherent CI and the original macOS application/package reproduction remain open.

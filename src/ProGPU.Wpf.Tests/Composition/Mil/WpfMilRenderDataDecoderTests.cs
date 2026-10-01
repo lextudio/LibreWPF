@@ -855,6 +855,10 @@ public sealed partial class WpfMilRenderDataDecoderTests
         TestSink,
         IWpfNativeGeometryCommandSink
     {
+        public bool AcceptGeometryPen { get; set; } = true;
+
+        public bool AcceptGeometryClip { get; set; } = true;
+
         public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
 
         public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> NativeMediaDrawGeometries { get; } = new();
@@ -865,7 +869,9 @@ public sealed partial class WpfMilRenderDataDecoderTests
 
         public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
         {
+            if (pen != null && !AcceptGeometryPen) return false;
             NativeDrawGeometries.Add((brush, pen, geometry));
+            Operations.Add(pen == null ? "GeometryFill" : "GeometryPen");
             return true;
         }
 
@@ -877,6 +883,7 @@ public sealed partial class WpfMilRenderDataDecoderTests
 
         public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
         {
+            if (!AcceptGeometryClip) return false;
             NativeGeometryClips.Add(clipGeometry);
             return true;
         }
@@ -895,6 +902,10 @@ public sealed partial class WpfMilRenderDataDecoderTests
         IWpfNativeGeometryCommandSink,
         IWpfNativeClipCommandSink
     {
+        public bool AcceptGeometryPen { get; set; } = true;
+
+        public bool AcceptGeometryClip { get; set; } = true;
+
         public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
 
         public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> NativeMediaDrawGeometries { get; } = new();
@@ -959,7 +970,9 @@ public sealed partial class WpfMilRenderDataDecoderTests
 
         public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
         {
+            if (pen != null && !AcceptGeometryPen) return false;
             NativeDrawGeometries.Add((brush, pen, geometry));
+            Operations.Add(pen == null ? "GeometryFill" : "GeometryPen");
             return true;
         }
 
@@ -971,6 +984,7 @@ public sealed partial class WpfMilRenderDataDecoderTests
 
         public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
         {
+            if (!AcceptGeometryClip) return false;
             NativeGeometryClips.Add(clipGeometry);
             return true;
         }

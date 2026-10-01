@@ -232,6 +232,11 @@ public sealed class WpfMilRenderDataDecoder
                     break;
 
                 case WpfMilCommandId.DrawGeometry:
+                    if (TryReplayRawTileBrushGeometry(payload, sink, resources, imageSourceAdapter, out var rawGeometryStatus))
+                    {
+                        CountDrawingReplayStatus(rawGeometryStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
+                        break;
+                    }
                     var brush = ResolveOptionalBrush(resources, ReadUInt32(payload, 0));
                     var pen = ResolveOptionalPen(resources, ReadUInt32(payload, 4));
                     var geometryToken = ReadUInt32(payload, 8);
@@ -660,6 +665,11 @@ public sealed class WpfMilRenderDataDecoder
                     break;
 
                 case WpfMilCommandId.DrawGeometry:
+                    if (TryReplayRawTileBrushGeometry(payload, sink, resources, imageSourceAdapter, out var rawGeometryStatus))
+                    {
+                        CountDrawingReplayStatus(rawGeometryStatus, ref appliedCount, ref skippedCount, ref unsupportedCount);
+                        break;
+                    }
                     var nativeBrush = ResolveOptionalBrush(resources, ReadUInt32(payload, 0));
                     var nativePen = ResolveOptionalPen(resources, ReadUInt32(payload, 4));
                     var nativeGeometryToken = ReadUInt32(payload, 8);
@@ -1139,6 +1149,57 @@ public sealed class WpfMilRenderDataDecoder
             DrawMediaGeometry(sink, null, pen, mediaGeometry);
         }
 
+        return true;
+    }
+
+    private static bool TryReplayRawTileBrushGeometry(
+        ReadOnlySpan<byte> payload, IWpfCompositionCommandSink sink,
+        IWpfMilResourceResolver resources, IWpfImageSourceAdapter? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Unsupported;
+        if (!TryResolveRawResource(resources, ReadUInt32(payload, 0), out var brush)
+            || !WpfDrawingReplay.IsTileBrush(brush))
+            return false;
+        if (!TryResolveTileBrushGeometry(resources, ReadUInt32(payload, 8), out var geometry))
+            return true;
+
+        var adapter = GetImageSourceAdapter(resources, imageSourceAdapter);
+        PortableGeometryPath? path = null;
+        bool replayed;
+        if (geometry is PortableGeometryPathSource source)
+        {
+            // One original source publication owns both the fill clip and pen.
+            // Do not re-read a live publisher after source image/drawing calls.
+            if (!source.TryGetPortableGeometryPath(out path) || path == null)
+                return true;
+            replayed = WpfDrawingReplay.TryReplayTileBrushPathFill(brush, path, sink, adapter, out status);
+        }
+        else
+            replayed = WpfDrawingReplay.TryReplayTileBrushFill(brush, geometry, sink, adapter, out status);
+        if (!replayed)
+            status = WpfDrawingReplayStatus.Unsupported;
+
+        uint penToken = ReadUInt32(payload, 4);
+        var pen = ResolveOptionalPen(resources, penToken);
+        bool penApplied = false;
+        if (pen != null)
+        {
+            if (sink is IWpfNativeGeometryCommandSink nativeSink)
+            {
+                penApplied = path != null
+                    ? nativeSink.DrawNativeGeometry(null, pen, path)
+                    : geometry is MediaGeometry media && nativeSink.DrawNativeGeometry(null, pen, media);
+            }
+            else if (geometry is MediaGeometry media)
+            {
+                sink.DrawGeometry(null, pen, media);
+                penApplied = true;
+            }
+        }
+        // A declined native stroke is unavailable, not a successful pen merely
+        // because its descriptor resolved. Never flatten or substitute it.
+        status = CombineTileFillAndPenStatus(status, penToken, penApplied ? pen : null);
         return true;
     }
 

@@ -140,6 +140,13 @@ clean-cache WPF reference/cycle ordering, and compiles the real
 conflicts promoted to errors. ProGPU API, correctness, and allocation gates are
 owned by the matching ProGPU source PR and can also be enabled locally through
 the script's default `PROGPU_WPF_RUN_DRAWING_QUALITY_GATES=1` behavior.
+The drawing adapter's native backend dependency requires the complete native
+runtime package, including Dawn. The canonical CI job stages its native payload
+from the successful whole ProGPU Build for the exact source gitlink before
+packing; it does not build native binaries or bypass runtime validation. Local
+canonical packaging likewise requires that exact native payload to be staged.
+The ProGPU `drawing-runtime` package group must include both native backend
+packages; staging alone cannot repair an incomplete upstream group manifest.
 The main SDK smoke downloads that canonical package closure and uses it for the
 mixed WPF/WinForms application. It does not rebuild or reference the retired
 `src/LibreWinForms.Portable` projects.

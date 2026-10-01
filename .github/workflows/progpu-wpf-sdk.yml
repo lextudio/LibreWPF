@@ -85,6 +85,20 @@ jobs:
       - name: Validate SDK public desktop property contracts
         run: python3 eng/tests/test_wpf_sdk_desktop_properties.py --dotnet dotnet -v
 
+      - name: Validate canonical native staging contract
+        run: python3 eng/tests/test_canonical_native_staging.py -v
+
+      - name: Stage exact native drawing package dependency
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          submodule_commit="$(git -C external/ProGPU rev-parse HEAD)"
+          ./eng/progpu-stage-ci-native-runtimes.sh \
+            "${submodule_commit}" \
+            "${GITHUB_WORKSPACE}/external/ProGPU/artifacts/progpu-native/package"
+
       - name: Build canonical WinForms and WindowsFormsIntegration
         env:
           # ProGPU PR CI owns the API/allocation suite for this exact source pin.

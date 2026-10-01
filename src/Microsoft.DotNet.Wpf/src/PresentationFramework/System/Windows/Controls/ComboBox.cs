@@ -48,6 +48,7 @@ namespace System.Windows.Controls
             EventManager.RegisterClassHandler(typeof(ComboBox), Mouse.MouseMoveEvent, new MouseEventHandler(OnMouseMove));
             EventManager.RegisterClassHandler(typeof(ComboBox), Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(OnPreviewMouseButtonDown));
             EventManager.RegisterClassHandler(typeof(ComboBox), Mouse.MouseWheelEvent, new MouseWheelEventHandler(OnMouseWheel), true); // call us even if textbox in the style gets the click.
+            EventManager.RegisterClassHandler(typeof(ComboBox), PortableScroll.ScrollEvent, new RoutedEventHandler(OnPortableScroll), true);
             EventManager.RegisterClassHandler(typeof(ComboBox), UIElement.GotFocusEvent, new RoutedEventHandler(OnGotFocus)); // call us even if textbox in the style get focus
 
             // Listen for ContextMenu openings/closings
@@ -1166,6 +1167,32 @@ namespace System.Windows.Controls
                     e.Handled = true;
                 }
             }
+        }
+
+        private static void OnPortableScroll(object sender, RoutedEventArgs e)
+        {
+            if (e is not PortableScrollEventArgs input || !input.IsOriginalBubble ||
+                !input.IsCurrent || input.IsCancellation)
+                return;
+
+            ComboBox comboBox = (ComboBox)sender;
+            if (PresentationSource.CriticalFromVisual(comboBox) is not PortablePresentationSource source)
+                return;
+
+            ulong generation = source.PointerInputGeneration;
+            if (!comboBox.IsDropDownOpen || !comboBox.IsEnabled || !comboBox.IsVisible ||
+                !PortableWindowActivationService.IsModalInputAllowed(source.RootVisual as UIElement) ||
+                source.IsDisposed || source.PointerInputGeneration != generation ||
+                !ReferenceEquals(PresentationSource.CriticalFromVisual(comboBox), source) || !input.IsCurrent)
+                return;
+
+            // Match the open-dropdown wheel containment policy, after the
+            // child's source handlers. Claim even an already-handled packet so
+            // its deferred boundary overflow cannot reach a later ancestor.
+            // Do not erase its remainder: a later application handler may clear
+            // Handled under the ordinary routed-event rules. Closed selection
+            // needs its own native-unit contract; never synthesize wheel deltas.
+            input.Handled = true;
         }
 
         private static void OnContextMenuOpen(object sender, ContextMenuEventArgs e)

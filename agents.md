@@ -1,5 +1,13 @@
 # Agent Guidance
 
+Open ComboBox dropdowns contain typed native scroll after child source handlers,
+including deferred boundary overflow. Claim the original routed packet without
+rewriting its remainder or synthesizing wheel deltas; later application handling
+keeps its normal order. Require current origin/control source generations and
+exclude cancellation and same-args nested raises. Closed selection and arbitrary
+legacy MouseWheel compatibility remain separate native-unit contracts.
+See docs/native-scroll-routing.md.
+
 The source window registrar exposes lossless native pointer/scroll delivery to
 the existing fixed-owner Cocoa popup factory. Require the actual live portable
 source, retain packet generations, and keep unclaimed scroll unhandled; never

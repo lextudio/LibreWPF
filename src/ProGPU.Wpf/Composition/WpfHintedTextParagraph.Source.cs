@@ -18,6 +18,42 @@ internal sealed partial class WpfHintedTextParagraph
     object? IPortableTextParagraph.NativeFont => throw new NotSupportedException("Hinted source glyphs have original typed owners, not a design font.");
     object? IPortableTextParagraph.GetNativeFont(uint fontIndex) => throw new NotSupportedException("Acquire the original hinted occurrence selection.");
 
+    public IPortableTextParagraph Reflow(int inputStart, float maximumWidth)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            if (_reflowing)
+                throw new InvalidOperationException("A hinted paragraph cannot recursively publish a continuation.");
+            _ = Source; // Require the same nominal metrics and native line frames.
+            _reflowing = true;
+            NativeHintedGlyphResource? resource = null;
+            try
+            {
+                _failedReflow.Dispose(); // Do not accumulate failed native owners.
+                ObjectDisposedException.ThrowIf(IsDisposed, this);
+                // The original producer owns boundary validation, full shaping
+                // context and suffix placement. Source never shapes a substring,
+                // rounds a cluster boundary or reconstructs glyph positions.
+                resource = _generation.Resource.Reflow(inputStart, maximumWidth);
+                ObjectDisposedException.ThrowIf(IsDisposed, this);
+                var paragraph = Adopt(resource, _generation.SourceText);
+                resource = null; // The new independently owned generation adopted it.
+                return paragraph;
+            }
+            catch (Exception failure)
+            {
+                if (resource is not null)
+                {
+                    _failedReflow.Capture(resource);
+                    _failedReflow.DisposePreservingFailure(failure);
+                }
+                throw;
+            }
+            finally { _reflowing = false; }
+        }
+    }
+
     public float GetBaselineOffset(int lineIndex)
     {
         lock (_gate)

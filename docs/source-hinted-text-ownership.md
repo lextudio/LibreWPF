@@ -14,7 +14,7 @@ sibling; the last handle retains failed teardown for retry, including reentrancy
 No `TtfFont` or generic `NativeFont` object represents the hinted generation.
 
 This is an explicit adapter capability only. `PortableTextLine` still rejects
-Display and does not call the optional formatter. Continuations, collapse,
+Display and does not call the optional formatter. Continuation qualification, collapse,
 intrinsic widths, tabs, objects, whole-word wrapping, empty-row carets and
 transformed rendering require their remaining native/source contracts. Request
 features must be scoped to individual explicit styles; unsupported inputs reject
@@ -163,10 +163,37 @@ snapshots do not gain an extra reference/finalizer allocation.
 
 This connects source consumers, not ordinary Display selection: source device
 metrics and interpreter policy still require independent Windows comparisons.
-Empty rows without native carets, hinted width-changing reflow/collapse, variable
+Empty rows without native carets, hinted collapse, variable
 instances and public hinted GlyphRun caret/outline operations remain unsupported.
 Explicit preparation and source nominal-offset publication keep their existing
 Ideal-only guard; there is no silent Display-to-Ideal conversion.
+
+## Retained hinted width-changing continuations
+
+`WpfHintedTextParagraph` implements `IPortableReflowTextParagraph`, connecting
+the existing `PortableTextLine.CreateContinuation` path to the original native
+resource's retained reflow. The call forwards the exact original input position
+and requested width; the new paragraph keeps the complete original source text.
+Native code validates a shaped cluster boundary, places the retained logical
+suffix and provides new writer frames/interaction while preserving original
+logical glyph, run and font identities. No source substring is shaped and no
+source position, advance or line top is reconstructed in the adapter.
+
+The continuation independently owns its native resource. The source gate rejects
+recursive reflow and checks closure after pending retirement and native return.
+Failed publication preserves its original exception and keeps an unsuccessfully
+disposed resource for explicit retry before another reflow or during Dispose.
+The cleanup slot is inline, so successful reflow adds no cleanup-object allocation.
+Closing the source handle still attempts both original and failed-continuation
+retirement without publishing a replacement generation.
+
+The acceptance action is changed-width next-line formatting in ShowcaseApp,
+through the original source `PortableTextLine` continuation path. The focused
+checks compile the actual adapter against the companion backend and exercise
+five retirement controls plus three source connection guards. They do not run
+native reflow or the application, and do not qualify package integration, Display
+selection, collapse, empty-row carets or variable font instances. The unchanged
+submodule pin still awaits a successful complete producer Build.
 
 The current bounded internal checks passed 63 actual-adapter/neutral tests and
 40 companion backend/neutral tests, zero skipped, plus five source paragraph
@@ -201,7 +228,7 @@ translation drives source ink bounds. `SourceFrame` identifies the original line
 and source baseline, which is no longer mistaken for a paragraph draw offset.
 No source-local layout arithmetic, design-font alias, per-glyph crossing or reshaping
 is added. Original source character/cluster/caret mapping, Display metric rounding,
-full source frame coverage, continuation/collapse and UI qualification remain open.
+full source frame coverage, continuation qualification, collapse and UI qualification remain open.
 
 The actual changed source and reference PresentationCore compiled on 2026-10-01
 with zero warnings/errors in 17.23 seconds. All 56 focused adapter/neutral controls

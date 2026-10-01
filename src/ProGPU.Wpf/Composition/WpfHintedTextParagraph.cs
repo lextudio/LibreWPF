@@ -10,11 +10,13 @@ namespace System.Windows.Media.ProGPU.Composition;
 /// An explicit source reference to one original native hinted generation. The
 /// source formatter/DrawGlyphRun paths do not select this capability yet.
 /// </summary>
-internal sealed partial class WpfHintedTextParagraph : IPortableHintedTextParagraph, IPortableInlineTextParagraph
+internal sealed partial class WpfHintedTextParagraph : IPortableHintedTextParagraph, IPortableInlineTextParagraph, IPortableReflowTextParagraph
 {
     private readonly object _gate = new();
     private readonly Generation _generation;
     private readonly WpfHintedTextLifetime.Lease _use;
+    private WpfHintedTextRetirement _failedReflow;
+    private bool _reflowing;
 
     private WpfHintedTextParagraph(Generation generation, WpfHintedTextLifetime.Lease use)
     { _generation = generation; _use = use; }
@@ -88,7 +90,21 @@ internal sealed partial class WpfHintedTextParagraph : IPortableHintedTextParagr
         }
     }
 
-    public void Dispose() { lock (_gate) _use.Dispose(); }
+    public void Dispose()
+    {
+        lock (_gate)
+        {
+            // Close this source handle before any retirement can reenter it.
+            // Both exact owners remain available after an independent failure.
+            try { _use.Dispose(); }
+            catch (Exception failure)
+            {
+                _failedReflow.DisposePreservingFailure(failure);
+                throw;
+            }
+            _failedReflow.Dispose();
+        }
+    }
 
     private sealed class Generation : IDisposable
     {

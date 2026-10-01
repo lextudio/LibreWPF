@@ -6,9 +6,13 @@ batched offsets for source GlyphRuns; never ask a hinted paragraph for a design
 font alias or rebuild placement from per-glyph nominal queries. Interaction uses
 the same original boxes/carets, without synthetic empty-row or endpoint stops.
 Retire initial producer ownership after the line retains its use, preserve setup
-errors and retain failed cleanup for retry. Keep Display policy, hinted reflow/
-collapse and public GlyphRun caret/outline gates until separately implemented and
-qualified. See docs/source-hinted-text-ownership.md.
+errors and retain failed cleanup for retry. Width-changing hinted continuations
+call the original resource's native reflow with the complete source text, exact
+input boundary and requested width. Reject recursive admission and publication
+after close; retire a failed continuation before creating another. Keep Display
+policy, collapse and public GlyphRun caret/outline gates until separately
+implemented and qualified. Native/source/package continuation execution remains
+separate from adapter compilation. See docs/source-hinted-text-ownership.md.
 
 ## Repository and branch ownership
 
@@ -209,7 +213,7 @@ use returned typed frames, never source-side baseline repair. Retain the explici
 Ideal-offset-only gate until Display metric/rounding semantics connect, and reject
 cross-line or unrepresentable mappings without changing original positions.
 Additional guideline/cache-brush/transform admission, source caret mapping,
-continuation and actual Display selection remain unfinished. Keep hinted public
+continuation qualification and actual Display selection remain unfinished. Keep hinted public
 caret/outline paths rejected until their original source contract connects.
 See docs/source-hinted-text-ownership.md.
 

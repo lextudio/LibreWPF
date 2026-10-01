@@ -278,6 +278,69 @@ public class PortableTextLineTests
     }
 
     [PortableMediaFact]
+    public void ContinuationRequiresOriginalFormattingModeAndDeviceBeforeRetainedReadsOrReflow()
+    {
+        foreach (double width in new[] { 8.0 / 3, 4 })
+        {
+            var source = new Source { PixelsPerDip = 1, Properties = new Properties(new FontFamily(
+                Path.Combine(AppContext.BaseDirectory, "LibreWPF", "Fonts", "Inter-Medium.ttf") + "#Inter")) };
+            var properties = new ParagraphProperties(source.Properties, false, false);
+            var provider = new Provider();
+            using var registration = PortableWpfServiceRegistry.RegisterTextFormatting(provider);
+            using var formatter = new TextFormatterImp();
+            using var first = formatter.FormatLine(source, 0, 8.0 / 3, properties, null, new TextRunCache());
+            using var original = first.GetTextLineBreak();
+            using var continuation = original.Clone();
+            // Public line metadata cannot relabel the captured generation.
+            first.PixelsPerDip = 2;
+            original.Dispose(); first.Dispose(); registration.Dispose();
+            int retainedReads = provider.LineReads;
+
+            using var display = new TextFormatterImp(TextFormattingMode.Display);
+            Assert.Contains("continuation formatting/device identity", Assert.Throws<PlatformNotSupportedException>(() =>
+                display.FormatLine(source, 2, width, properties, continuation, new TextRunCache())).Message);
+            using var ideal = new TextFormatterImp();
+            source.PixelsPerDip = 2;
+            Assert.Contains("retainedDpi=1", Assert.Throws<PlatformNotSupportedException>(() =>
+                ideal.FormatLine(source, 2, width, properties, continuation, new TextRunCache())).Message);
+            source.PixelsPerDip = 1;
+            var sideways = new FormatSettings(ideal, source, new TextRunCacheImp(),
+                new ParaProp(ideal, properties, false), continuation, true, TextFormattingMode.Ideal, true);
+            Assert.Contains("sideways=True", Assert.Throws<PlatformNotSupportedException>(() =>
+                PortableTextLine.CreateContinuation(sideways, 2, TextFormatterImp.RealToIdealFloor(width), 1)).Message);
+            Assert.Equal(1, provider.Calls);
+            Assert.Equal(0, provider.Reflows);
+            Assert.Equal(retainedReads, provider.LineReads);
+
+            // Another Ideal formatter may consume the valid cloned break after
+            // rejection; width-only reflow remains owned by the captured source.
+            using var second = ideal.FormatLine(source, 2, width, properties, continuation, new TextRunCache());
+            Assert.Equal(1, second.PixelsPerDip);
+            Assert.Equal(width == 4 ? 1 : 0, provider.Reflows);
+            Assert.Equal(1, provider.Calls);
+            Assert.Equal(2, second.Length);
+            Assert.Equal(2, Assert.Single(second.GetIndexedGlyphRuns()).TextSourceCharacterIndex);
+        }
+    }
+
+    [PortableMediaFact]
+    public void CollapsedViewsKeepOriginalGenerationDpiAfterPublicLineMetadataChanges()
+    {
+        var properties = new Properties(new FontFamily(Path.Combine(AppContext.BaseDirectory,
+            "LibreWPF", "Fonts", "Inter-Medium.ttf") + "#Inter"));
+        var source = new Source { Text = "abc", Properties = properties, PixelsPerDip = 1 };
+        using var registration = PortableWpfServiceRegistry.RegisterTextFormatting(new CollapseProvider());
+        using var formatter = new TextFormatterImp();
+        using var original = formatter.FormatLine(source, 0, 7,
+            new ParagraphProperties(properties, false, false, TextWrapping.NoWrap), null, new TextRunCache());
+        original.PixelsPerDip = 2;
+        using var collapsed = original.Collapse(new TextTrailingCharacterEllipsis(7, properties));
+        Assert.True(collapsed.HasCollapsed);
+        Assert.Equal(1, collapsed.PixelsPerDip);
+        Assert.All(collapsed.GetIndexedGlyphRuns(), run => Assert.Equal(1, run.GlyphRun.PixelsPerDip));
+    }
+
+    [PortableMediaFact]
     public void PortableFormattingRejectsMissingMeasurementAndOptimalLineServicesOperations()
     {
         var source = new Source();
@@ -1422,6 +1485,7 @@ public class PortableTextLineTests
         public object SecondNativeFont { get; } = new();
         public object GetNativeFont(uint fontIndex) => fontIndex == 0 ? NativeFont : SecondNativeFont;
         internal int Calls { get; private set; }
+        internal int LineReads { get; private set; }
         internal string? Text { get; private set; }
         public uint ResolveLanguage(string ietfLanguageTag)
         {
@@ -1449,7 +1513,8 @@ public class PortableTextLineTests
         { new(0, 0, 1, 0, 0, 4, 0), new(0, 1, 2, 4, 0, 6, 0, 1), new(0, 2, 3, 10, 0, 6, 0, 1) } : Mixed ? new PortableTextGlyph[]
         { new(0, 0, 1, 0, 0, 4, 0), new(0, 1, 2, 0, 20, 6, 0, 1), new(0, 2, 3, 6, 20, 6, 0, 1) } : new PortableTextGlyph[]
         { new(0, 0, 2, 0, 0, 8, 1), new(0, 2, 3, 0, 20, 6, 1) };
-        public ReadOnlyMemory<PortableTextLineInfo> Lines => BoundaryWidth is { } boundaryWidth ? new PortableTextLineInfo[]
+        public ReadOnlyMemory<PortableTextLineInfo> Lines { get { LineReads++; return ReadLines(); } }
+        private ReadOnlyMemory<PortableTextLineInfo> ReadLines() => BoundaryWidth is { } boundaryWidth ? new PortableTextLineInfo[]
         { new(0, 1, 0, 1, boundaryWidth, 0, 20) } : Continued ? new PortableTextLineInfo[] { new(0, 1, 2, 3, 6, 0, 20) } : Empty ? new PortableTextLineInfo[] { new(0, 0, 0, 0, 0, 0, 20) } : Tabs ? new PortableTextLineInfo[]
         { new(0, 3, 0, 3, 38, 0, 20) } : MixedOneLine ? new PortableTextLineInfo[]
         { new(0, 3, 0, 3, 16, 0, 20) } : Mixed ? new PortableTextLineInfo[]

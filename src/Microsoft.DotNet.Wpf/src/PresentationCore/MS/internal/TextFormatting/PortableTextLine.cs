@@ -97,6 +97,9 @@ internal sealed class PortableTextLine : TextLine
     private readonly int _paragraphStart, _lineIndex, _newlines;
     private readonly bool _endsParagraph;
     private readonly double _paragraphWidth, _indent, _baseline, _height;
+    // TextLine.PixelsPerDip is publicly mutable; it cannot relabel the device
+    // identity of this already formatted paragraph and its retained glyphs.
+    private readonly double _generationPixelsPerDip;
     private readonly bool _rightToLeft;
     private readonly List<IndexedGlyphRun> _glyphRuns = new();
     private readonly List<TextRunProperties> _glyphProperties = new();
@@ -162,6 +165,15 @@ internal sealed class PortableTextLine : TextLine
     internal static TextLine CreateContinuation(FormatSettings settings, int first, int idealWidth, double pixelsPerDip)
     {
         if (settings.PreviousLineBreak?.PortableContinuation is not Continuation next) return null;
+        // Continuations precede ordinary provider/admission lookup. Validate
+        // the original generation before reading it or invoking native reflow;
+        // a changed formatter/device requires a freshly formatted paragraph.
+        if (settings.IsSideways || settings.TextFormattingMode != next.Owner._formatter.TextFormattingMode ||
+            pixelsPerDip != next.Owner._generationPixelsPerDip)
+            throw Unsupported($"changed continuation formatting/device identity " +
+                $"(mode={settings.TextFormattingMode}, retainedMode={next.Owner._formatter.TextFormattingMode}, " +
+                $"sideways={settings.IsSideways}, dpi={pixelsPerDip:R}, retainedDpi={next.Owner._generationPixelsPerDip:R}); " +
+                "format a fresh paragraph instead of reusing this line break");
         double width = settings.Formatter.IdealToReal(idealWidth, pixelsPerDip);
         if (next.NextSourceIndex != first)
             throw Unsupported($"changed continuation width or source index " +
@@ -515,7 +527,7 @@ internal sealed class PortableTextLine : TextLine
     private PortableTextLine(PortableTextLine owner, int index, IPortableTextParagraph paragraph = null, double? width = null) : this(paragraph ?? owner._paragraph, owner._text,
         owner._properties, owner._face, owner._paragraphStart, index, owner._newlines, owner._endsParagraph,
         width ?? owner._paragraphWidth, owner._indent, owner._baseline, owner._height, owner._rightToLeft,
-        owner._runs, owner.PixelsPerDip, owner._alignment, owner._styles, owner._fixedHeight, owner._sourceMap, owner._endScope,
+        owner._runs, owner._generationPixelsPerDip, owner._alignment, owner._styles, owner._fixedHeight, owner._sourceMap, owner._endScope,
         owner._formatter, owner._service, objects: owner._objects) { SourceFloats = owner.SourceFloats; }
 
     private static void ResolveSourceStyles(FormatSettings settings, int first, double pixelsPerDip,
@@ -787,6 +799,7 @@ internal sealed class PortableTextLine : TextLine
             _paragraphStart = paragraphStart; _lineIndex = lineIndex; _newlines = newlines;
             _endsParagraph = endsParagraph;
             _paragraphWidth = width; _indent = indent; _baseline = baseline; _height = height;
+            _generationPixelsPerDip = pixelsPerDip;
             _rightToLeft = rtl; _runs = runs; _alignment = alignment;
             _styles = styles; _fixedHeight = fixedHeight;
             _objects = objects ?? [];
@@ -833,7 +846,7 @@ internal sealed class PortableTextLine : TextLine
                 var placement = paragraph.Glyphs.Span[range.SymbolGlyphIndex];
                 _symbol = new PortableTextLine(symbol._paragraph, symbol._text, symbol._properties, symbol._face,
                     0, 0, 0, symbol._endsParagraph, 0, Start + placement.X, symbol._baseline, symbol._height, symbol._rightToLeft,
-                    symbol._runs, PixelsPerDip, TextAlignment.Left, symbol._styles, symbol._fixedHeight,
+                    symbol._runs, _generationPixelsPerDip, TextAlignment.Left, symbol._styles, symbol._fixedHeight,
                     symbol._sourceMap, null, symbol._formatter, symbol._service, baselineOverride: Baseline);
                 ink.Union(_symbol._ink);
                 int sourceStart = _paragraphStart + _sourceMap.ToSource(range.Start, true);
@@ -1021,7 +1034,7 @@ internal sealed class PortableTextLine : TextLine
                     carets[g.Cluster - cpStart] = true; carets[g.ClusterEnd - cpStart] = true;
                 }
             }
-            var run = new GlyphRun(face, level, false, style.EmSize, (float)PixelsPerDip,
+            var run = new GlyphRun(face, level, false, style.EmSize, (float)_generationPixelsPerDip,
                 ids, new Point(NativeOrigin, Baseline), advances, offsets, _text.AsSpan(cpStart, cpEnd - cpStart).ToArray(),
                 null, clusters, carets, XmlLanguage.GetLanguage(properties.CultureInfo.IetfLanguageTag));
             if (hintedRun != null) run.InitializePortableHintedGlyphRun(hintedRun);
@@ -1126,12 +1139,12 @@ internal sealed class PortableTextLine : TextLine
         if (Width + _indent <= collapsing.Width) return this;
         if (collapsing.Symbol is not TextCharacters characters || characters.Properties == null || characters.Length <= 0)
             throw Unsupported("non-text collapsing symbols");
-        var source = new CollapsingSymbolSource(characters, PixelsPerDip);
+        var source = new CollapsingSymbolSource(characters, _generationPixelsPerDip);
         source.Initialize();
         var paragraphProperties = new CollapsingSymbolProperties(characters.Properties, _rightToLeft);
         var settings = new FormatSettings(_formatter, source, new TextRunCacheImp(),
             new ParaProp(_formatter, paragraphProperties, false), null, true, TextFormattingMode.Ideal, false);
-        using var symbol = (PortableTextLine)Create(settings, 0, 0, PixelsPerDip, _service);
+        using var symbol = (PortableTextLine)Create(settings, 0, 0, _generationPixelsPerDip, _service);
         if (symbol._paragraph.Lines.Length != 1 || symbol._text.Length != characters.Length)
             throw Unsupported("multiline collapsing symbols");
         var request = new PortableTextCollapseRequest(_lineIndex, (float)Math.Max(0, collapsing.Width - _indent),
@@ -1147,7 +1160,7 @@ internal sealed class PortableTextLine : TextLine
             (uint)range.SymbolGlyphIndex >= collapsed.Glyphs.Length || !collapsed.Glyphs.Span[range.SymbolGlyphIndex].IsCollapseSymbol)
             throw new InvalidOperationException("The provider returned invalid collapsed source ranges.");
         return new PortableTextLine(collapsed, _text, _properties, _face, _paragraphStart, _lineIndex, _newlines, _endsParagraph,
-            _paragraphWidth, _indent, _baseline, _height, _rightToLeft, _runs, PixelsPerDip, _alignment,
+            _paragraphWidth, _indent, _baseline, _height, _rightToLeft, _runs, _generationPixelsPerDip, _alignment,
             _styles, _fixedHeight, _sourceMap, _endScope, _formatter, _service, symbol, this);
     }
 

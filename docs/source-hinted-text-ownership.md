@@ -252,3 +252,34 @@ focused device-free adapter/contract/admission/lifetime tests passed, zero skipp
 including 14 new identity cases and the new older-factory rejection control. No
 font parser/native call, GPU, application, whole WPF matrix or old-pin build was
 executed or qualified by these checks.
+
+## Continuation formatting and device identity
+
+The acceptance action is ShowcaseApp/AvalonDock text relayout after a formatting
+mode or DPI change. `PortableTextLine.CreateContinuation` runs before the ordinary
+formatter admission gate, so a retained Ideal break must not become an implicit
+Display path or reuse device-owned glyphs at another DPI.
+
+The continuation now checks requested mode, sideways state and exact original DPI
+before width conversion, retained paragraph reads or native reflow. Formatter mode
+is constructor-only; DPI is captured in a readonly generation field because both
+`TextSource.PixelsPerDip` and the public `TextLine.PixelsPerDip` property are mutable.
+Continuation and ordinary collapsed-view copies preserve that original field,
+including symbol formatting and GlyphRun publication. No metrics are rescaled,
+rounded or repaired. A mismatch rejects with an instruction to format a fresh
+paragraph; fresh Display formatting still rejects at its existing policy gate.
+Another Ideal formatter at the original DPI can consume a valid cloned break,
+including width-only reflow, after the original line and registration are disposed.
+
+The actual source `PresentationCore.csproj` Release build passed with zero warnings
+or errors (8.62 seconds), using the existing external dependency-path remap,
+`--no-restore`, and `BuildProjectReferences=false`. A small signed harness linked
+the real `PortableTextLineTests.cs` against that newly built production assembly;
+all five selected source tests passed, zero skipped (452 ms). The controls include
+changed mode/DPI/sideways at both retained and changed widths, no provider reads or
+reflow on rejection, public line-DPI mutation, valid cloned-break reuse, and ordinary
+collapsed views retaining their original device identity. The harness is
+`/private/tmp/librewpf-continuation-identity.k060SZ6C/Continuation.Tests.csproj`.
+These are CPU/source checks, not native hinted reflow, GPU or application execution.
+The ProGPU gitlink, package qualification, Display metrics/interpreter selection,
+hinted collapse and public hinted GlyphRun caret/outline gates remain unchanged.

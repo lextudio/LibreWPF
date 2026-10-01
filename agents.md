@@ -185,6 +185,13 @@ end a use twice. Explicit GlyphRun publication retains typed original selections
 and shared projected ink, never design-font aliases. Recorded draws use lease-aware
 hinted commands with original hit owners; native MIL imports original generations
 atomically with canonical deltas and retains batch/channel retirement retries.
+Explicit source binding compares original font bytes/face/UPM and exact retained
+per-occurrence advances before publication, then owns read-only source ID/advance
+snapshots. Never infer source offset or caret agreement from these identities;
+RTL nominal design advance is distinct from hinted device and GPOS advances.
+Reject selected variation-coordinate instances that source GlyphTypeface cannot
+identify, even when coordinates are explicitly default; byte equality is not
+complete font-instance identity.
 Additional guideline/cache-brush/transform admission, source caret mapping,
 continuation and actual Display selection remain unfinished. Keep hinted public
 caret/outline paths rejected until their original source contract connects.

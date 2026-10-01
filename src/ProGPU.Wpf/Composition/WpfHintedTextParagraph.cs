@@ -197,12 +197,30 @@ internal sealed class WpfHintedTextParagraph : IPortableHintedTextParagraph
             lock (_gate) return WpfHintedTextParagraph.Create(_generation, _use.Retain());
         }
         public IPortableHintedGlyphRunBinding BindGlyphRun(float sourceEmSize, Vector2 logicalOrigin)
+            => BindGlyphRunCore(sourceEmSize, logicalOrigin, null, default);
+
+        public IPortableHintedGlyphRunBinding BindGlyphRun(PortableTextFont sourceFont, float sourceEmSize,
+            Vector2 logicalOrigin, ReadOnlySpan<double> sourceAdvances)
+        {
+            ArgumentNullException.ThrowIfNull(sourceFont);
+            return BindGlyphRunCore(sourceEmSize, logicalOrigin, sourceFont, sourceAdvances);
+        }
+
+        private WpfHintedGlyphRunBinding BindGlyphRunCore(float sourceEmSize, Vector2 logicalOrigin,
+            PortableTextFont? sourceFont, ReadOnlySpan<double> sourceAdvances)
         {
             lock (_gate)
             {
                 ObjectDisposedException.ThrowIf(IsDisposed, this);
                 using var read = _generation.Resource.AcquireReadLease();
                 WpfHintedGlyphRunBinding.Validate(read, _indices, sourceEmSize, logicalOrigin);
+                if (sourceFont is not null)
+                {
+                    WpfHintedGlyphSourceIdentity.ValidateDefaultInstances(read.PositionedOwners, read.Runs, read.DeviceStyles, read.NormalizedCoordinates, _indices);
+                    var originalFont = read.FontSources[checked((int)read.Glyphs[_indices[0]].FontIndex)];
+                    WpfHintedGlyphSourceIdentity.ValidateFont(sourceFont, originalFont, read.FontBytes);
+                    WpfHintedGlyphSourceIdentity.ValidateAdvances(sourceAdvances, read.Glyphs, _indices);
+                }
                 var owner = Create(_generation, _use.Retain(), _indices);
                 HintedGlyphGeometry? geometry = null;
                 try

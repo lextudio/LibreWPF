@@ -12,6 +12,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using System.Windows.Media.Composition;
 using System.Windows.Media.TextFormatting;
 using System.Windows.Markup;
@@ -31,6 +32,18 @@ namespace System.Windows.Media
     /// </summary>
     public class GlyphTypeface : ITypefaceMetrics, ISupportInitialize
     {
+        private static readonly ConditionalWeakTable<GlyphTypeface, ProGPU.Wpf.Interop.PortableTextFont> s_portableTextFonts = new();
+
+        // The formatter and explicit hinted source binding compare the same
+        // original immutable face snapshot, never family names or render-font aliases.
+        internal ProGPU.Wpf.Interop.PortableTextFont GetPortableTextFont() => s_portableTextFonts.GetValue(this, static source =>
+        {
+            using Stream stream = source.GetFontStream();
+            using var bytes = new MemoryStream();
+            stream.CopyTo(bytes);
+            return new ProGPU.Wpf.Interop.PortableTextFont(bytes.ToArray(), checked((uint)source.FaceIndex), source.DesignEmHeight);
+        });
+
         //------------------------------------------------------
         //
         //  Constructors

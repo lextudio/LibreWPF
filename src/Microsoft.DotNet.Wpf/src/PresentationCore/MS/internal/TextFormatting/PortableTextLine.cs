@@ -1,9 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-using System.IO;
 using System.Buffers;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
@@ -60,7 +58,6 @@ internal interface IPortableFloatingTextSource
 /// <summary>Source-owned WPF line semantics over the typed ProGPU paragraph service.</summary>
 internal sealed class PortableTextLine : TextLine
 {
-    private static readonly ConditionalWeakTable<GlyphTypeface, PortableTextFont> Fonts = new();
     internal sealed record Continuation(PortableTextLine Owner, int LineIndex, int NextSourceIndex);
     private readonly IPortableTextParagraph _paragraph;
     private readonly string _text;
@@ -463,13 +460,7 @@ internal sealed class PortableTextLine : TextLine
         // include the simulated stroke/shear without changing native advances.
     }
 
-    private static PortableTextFont GetFont(GlyphTypeface face) => Fonts.GetValue(face, static source =>
-    {
-        using Stream stream = source.GetFontStream();
-        using var bytes = new MemoryStream();
-        stream.CopyTo(bytes);
-        return new PortableTextFont(bytes.ToArray(), checked((uint)source.FaceIndex), source.DesignEmHeight);
-    });
+    private static PortableTextFont GetFont(GlyphTypeface face) => face.GetPortableTextFont();
 
     private PortableTextLine(PortableTextLine owner, int index, IPortableTextParagraph paragraph = null, double? width = null) : this(paragraph ?? owner._paragraph, owner._text,
         owner._properties, owner._face, owner._paragraphStart, index, owner._newlines, owner._endsParagraph,

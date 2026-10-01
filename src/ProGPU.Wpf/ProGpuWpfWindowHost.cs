@@ -4437,7 +4437,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _attachedInputService = input;
             TraceNativeLoop($"input attached: host={GetHashCode():x}, handle={window.Handle}");
         }
-        catch (PlatformNotSupportedException)
+        catch (PlatformNotSupportedException) when (!_options.IsPopupSurface)
         {
             input.InputReceived -= OnPlatformInputReceived;
             _inputSubscription = null;

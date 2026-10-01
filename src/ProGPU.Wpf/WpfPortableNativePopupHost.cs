@@ -408,8 +408,11 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
 
     private void OnPopupInputReceived(object? sender, WpfInputEventArgs e)
     {
-        if (!_isDisposed && _inputHandler?.Invoke(e) == true)
+        if (!_isDisposed && _inputHandler?.Invoke(e) == true && e.NativePointer == null)
         {
+            // Legacy host delivery retains its existing ownership convention.
+            // Native source delivery publishes Handled independently: accepting
+            // a packet must not claim unconsumed point/line scrolling.
             e.Handled = true;
         }
     }

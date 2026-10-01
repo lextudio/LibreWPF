@@ -265,6 +265,13 @@ own window queue after the owner UpdateTick instead of invoking another
 cleanup preserves the primary error; failed native/render cleanup remains owned
 by the source host's creating-thread retirement queue.
 
+Popup input-context attachment failures now propagate instead of being swallowed
+by the ordinary host's optional-input compatibility path. The popup adapter also
+keeps native `Handled` independent of accepted delivery; its legacy callback
+convention cannot turn an unclaimed native scroll into successful consumption.
+Three adapter cases retain unhandled/handled native results and unchanged legacy
+behavior, raising the host minimum from 301 to 304.
+
 Four new actual-registrar source cases cover unchanged point/line packets with
 unhandled results, foreign/detached/retired targets, callback root replacement and
 native cancellation metadata/capture retirement. Existing routed-scroll cases and

@@ -1189,11 +1189,11 @@ public sealed class WpfMilRenderDataDecoder
             {
                 penApplied = path != null
                     ? nativeSink.DrawNativeGeometry(null, pen, path)
-                    : geometry is MediaGeometry media && nativeSink.DrawNativeGeometry(null, pen, media);
+                    : geometry is MediaGeometry nativeGeometry && nativeSink.DrawNativeGeometry(null, pen, nativeGeometry);
             }
-            else if (geometry is MediaGeometry media)
+            else if (geometry is MediaGeometry typedGeometry)
             {
-                sink.DrawGeometry(null, pen, media);
+                sink.DrawGeometry(null, pen, typedGeometry);
                 penApplied = true;
             }
         }

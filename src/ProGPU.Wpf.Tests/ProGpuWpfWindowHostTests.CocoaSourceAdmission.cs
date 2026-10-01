@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Windows.Media.ProGPU;
+using System.Windows.Media.ProGPU.Platform;
 using ProGPU.Wpf.Interop;
 using Silk.NET.Windowing;
 using Xunit;

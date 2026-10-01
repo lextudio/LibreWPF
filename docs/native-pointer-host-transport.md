@@ -286,5 +286,12 @@ unclaimed point/line events remain unhandled and are never converted to fabricat
 legacy wheel notches. Ordinary Silk `MouseWheel` remains unchanged. Legacy-only
 custom handlers still require explicit compatibility work. Automatic native modal
 sessions, real AppKit input/capture/rendering, both source application paths and
-full package/desktop qualification remain separate gates. Dependency pins are not
-changed by this source connection; pending options/support CI is not qualification.
+full package/desktop qualification remain separate gates.
+
+The later integration pins exact Forms popup source
+`4f173ac601d96fbac2a82fc1e1f9b8726c885c0c` and ProGPU owned-option source
+`f22b5b3f3416e16421ab6b2952b2eef1864d781e`; that Forms commit pins the same
+ProGPU commit. This is a coherent pending source graph, not qualified package
+provenance. The Forms post-commit helper run passed 132 cases with no skips;
+WPF source/host compilation and tests and complete producer/consumer Builds
+remain separate evidence. No pending native runtime is built, staged or admitted.

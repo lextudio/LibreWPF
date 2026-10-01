@@ -18,6 +18,10 @@ fill scopes close. Unavailable brush/pen descriptors remain unsupported, while a
 admitted empty drawing is distinct from failure. Object-context replay alone does
 not cover canonical RenderData. Keep native MIL separate and require actual package
 application qualification. See docs/retained-tile-brush-backgrounds.md.
+The same raw-source rule applies to retained rounded rectangles and ellipses.
+Keep their actual curved clips and independent native pen commands; never promote
+their bounds into rectangular source-hit geometry. Preserve unavailable source/
+pen failures and base-value animation accounting in both decoder sinks.
 
 Source-host native retirement retains the exact window and renderer cleanup owner
 until provider-aware disposal completes on the creating thread. A false result or

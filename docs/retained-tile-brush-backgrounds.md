@@ -57,3 +57,26 @@ this change. These are authored structural/replay regressions, not measured
 rendering results. The original nine-panel reproduction on macOS, installed
 package/renderer identity and complete required platform CI remain pending;
 issue #220 must not be considered closed from source inspection alone.
+
+## Curved retained backgrounds
+
+The square-background correction did not cover `DrawRoundedRectangle` or
+`DrawEllipse`. The uniform-corner `Border.OnRender` background emits the former.
+Both decoder branches still adapted those brushes before tile replay, losing
+canonical `IPortableTileBrushSource`; the native ellipse check happened only
+after that lossy adaptation. A null fill was incorrectly counted as applied.
+
+Both sinks now recognize raw tile sources for these records too. Shared tile
+replay retains the original rounded-rectangle or ellipse geometry as the clip,
+not its bounds, and does not add square source-hit metadata to curved fills.
+Independent strokes follow closed fill scopes through the original primitive
+sink. A shared status combiner preserves the rectangle behavior for unavailable
+sources/pens and admitted empty drawings. Nonzero animation handles retain their
+unsupported counts independently of successful base-value replay.
+
+Authored controls cover both sinks, Image/Drawing sources, untiled and absolute/
+relative tiled viewports, exact curves, pen ordering, empty/unavailable content,
+missing pens, source-owned image adaptation and animated records. This change
+does not alter native MIL, arbitrary `DrawGeometry` tile fills, renderer defaults,
+or original application/package qualification. Focused execution follows the
+implementation commit; no desktop or GPU validation is claimed.

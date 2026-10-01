@@ -17,6 +17,7 @@ public sealed class WpfManagedProjectGraphTests
         string decoder = File.ReadAllText(FindRepoPath("src", "ProGPU.Wpf", "Composition", "Mil", "WpfMilRenderDataDecoder.cs"));
         Assert.Contains("dc.DrawRectangle(background", panel, StringComparison.Ordinal);
         Assert.Contains("dc.DrawRectangle(background", border, StringComparison.Ordinal);
+        Assert.Contains("dc.DrawRoundedRectangle(background, null", border, StringComparison.Ordinal);
         Assert.Contains("dependentResources[i] = ExportPortableDependentResource(_dependentResources[i]);", renderData, StringComparison.Ordinal);
         Assert.Equal(2, decoder.Split("if (TryReplayRawTileBrushRectangle(payload, sink, resources, imageSourceAdapter, out var rectangleStatus))",
             StringSplitOptions.None).Length - 1);
@@ -28,6 +29,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RetainedRectangleReplaysRawTileBrushBeforeGenericAdaptation", tests, StringComparison.Ordinal);
         Assert.Contains("RetainedRectangleUnavailableTileBrushIsNotReportedAsNullFillSuccess", tests, StringComparison.Ordinal);
         Assert.Contains("RetainedEmptyTileRectangleDoesNotReadBrushAndPreservesFollowingDraw", tests, StringComparison.Ordinal);
+        Assert.Equal(4, decoder.Split("if (TryReplayRawTileBrushCurvedPrimitive(commandId, payload, sink, resources, imageSourceAdapter, out var",
+            StringSplitOptions.None).Length - 1);
     }
 
     [Fact]

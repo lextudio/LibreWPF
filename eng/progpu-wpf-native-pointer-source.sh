@@ -22,7 +22,7 @@ export LIBREWPF_TEST_MEDIA_BACKEND=Portable
 "${dotnet_command}" "${framework_assembly}" \
   --filter-class System.Windows.PortableWindowActivationServiceTests \
   --filter-method '*NativePointerReports*' \
-  --minimum-expected-tests 28 --fail-skips on --timeout 60s --no-progress
+  --minimum-expected-tests 32 --fail-skips on --timeout 60s --no-progress
 "${dotnet_command}" "${core_assembly}" \
   --filter-class System.Windows.Input.PortableInputOwnershipTests \
   --filter-method '*NativePointerReport*' \
@@ -30,4 +30,4 @@ export LIBREWPF_TEST_MEDIA_BACKEND=Portable
 "${dotnet_command}" "${framework_assembly}" \
   --filter-class System.Windows.PortableScrollSourceTests \
   --filter-method '*NativeScroll*' \
-  --minimum-expected-tests 65 --fail-skips on --timeout 60s --no-progress
+  --minimum-expected-tests 74 --fail-skips on --timeout 60s --no-progress

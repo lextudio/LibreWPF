@@ -143,21 +143,20 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
             WpfResourceResolver = ownerHost.WpfResourceResolver,
             WpfImageSourceAdapter = ownerHost.WpfImageSourceAdapter
         };
-        _popupHost.UseExternalNativeLoopPump();
-        try { _popupHost.InheritModalInputOwner(ownerHost); }
-        catch { _popupHost.Dispose(); throw; }
-
-        if (!_popupHost.TryBindPortablePresentationSource(source))
+        try
         {
-            _popupHost.Dispose();
-            throw new PlatformNotSupportedException("The popup presentation source cannot be bound to a native ProGPU host.");
-        }
+            _popupHost.UseExternalNativeLoopPump();
+            _popupHost.InheritModalInputOwner(ownerHost);
+            if (!_popupHost.TryBindPortablePresentationSource(source))
+                throw new PlatformNotSupportedException("The popup presentation source cannot be bound to a native ProGPU host.");
 
-        // Seed the not-yet-created surface once. After initialization its own
-        // native framebuffer/content callbacks are authoritative for source DPI.
-        _popupHost.UpdatePortablePresentationSourceDpiScale(dpiScaleX, dpiScaleY);
-        _popupHost.InputReceived += OnPopupInputReceived;
-        _ownerHost.UpdateTick += OnOwnerUpdateTick;
+            // Seed the not-yet-created surface once. After initialization its own
+            // native framebuffer/content callbacks are authoritative for source DPI.
+            _popupHost.UpdatePortablePresentationSourceDpiScale(dpiScaleX, dpiScaleY);
+            _popupHost.InputReceived += OnPopupInputReceived;
+            _ownerHost.UpdateTick += OnOwnerUpdateTick;
+        }
+        catch { DisposePreservingFailure(); throw; }
     }
 
     public static IWpfPortableNativePopupHost? TryCreate(
@@ -282,7 +281,7 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         catch
         {
             _isVisible = false;
-            Dispose();
+            DisposePreservingFailure();
             throw;
         }
     }
@@ -343,8 +342,19 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         {
             // Never retain or show a partially initialized/unowned replacement
             // after explicit native popup selection, on any platform.
-            Dispose();
+            DisposePreservingFailure();
             throw;
+        }
+    }
+
+    private void DisposePreservingFailure()
+    {
+        try { Dispose(); }
+        catch
+        {
+            // The inner source host retains its exact failed renderer/native
+            // cleanup owner in the creating-thread retirement queue. Do not
+            // replace the setup/input exception or touch arbitrary Exception.Data.
         }
     }
 
@@ -361,6 +371,7 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         }
 
         _isPumping = true;
+        Exception? inputFailure = null;
         try
         {
             _popupHost.DoEvents();
@@ -368,13 +379,22 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         catch (ObjectDisposedException) when (_isDisposed)
         {
         }
+        catch (Exception failure)
+        {
+            inputFailure = failure;
+            throw;
+        }
         finally
         {
             _isPumping = false;
             if (_disposeWhenPumpCompletes)
             {
                 _disposeWhenPumpCompletes = false;
-                _popupHost.Dispose();
+                try { _popupHost.Dispose(); }
+                catch (Exception) when (inputFailure != null)
+                {
+                    // Failed cleanup stays queued by the inner source host.
+                }
             }
         }
     }
@@ -388,8 +408,11 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
 
     private void OnPopupInputReceived(object? sender, WpfInputEventArgs e)
     {
-        if (!_isDisposed && _inputHandler?.Invoke(e) == true)
+        if (!_isDisposed && _inputHandler?.Invoke(e) == true && e.NativePointer == null)
         {
+            // Legacy host delivery retains its existing ownership convention.
+            // Native source delivery publishes Handled independently: accepting
+            // a packet must not claim unconsumed point/line scrolling.
             e.Handled = true;
         }
     }

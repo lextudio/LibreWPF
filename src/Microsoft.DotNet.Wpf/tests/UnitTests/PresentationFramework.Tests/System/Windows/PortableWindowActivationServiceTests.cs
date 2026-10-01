@@ -13,7 +13,7 @@ using ProGPU.Wpf.Interop;
 namespace System.Windows;
 
 [Collection("Sequential")]
-public class PortableWindowActivationServiceTests
+public partial class PortableWindowActivationServiceTests
 {
     [Fact]
     public void NativePointerReportsPreserveLegacyConstructorIdentity()
@@ -2683,8 +2683,16 @@ public class PortableWindowActivationServiceTests
 
     private static void DeliverNativePointer(IPortablePresentationSourceHost host, PortablePointerInput input,
         PortableInputModifiers modifiers = PortableInputModifiers.None) =>
-        PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)host, input,
-            modifiers, out _).Should().BeTrue();
+        GetNativePointerRegistrar().TryProcessPresentationSourceNativePointerInputEvent(host, input,
+            (int)modifiers, out _).Should().BeTrue();
+
+    private static IPortableNativePointerInputService GetNativePointerRegistrar()
+    {
+        PortableWindowActivationService.RegisterPortableInteropService();
+        Assert.True(PortableWpfServiceRegistry.TryGetWindowActivationService(
+            PortableWpfServiceKey.PresentationFramework, out var registrar));
+        return Assert.IsAssignableFrom<IPortableNativePointerInputService>(registrar);
+    }
 
     private static void RunInUiApartment(Action action)
     {

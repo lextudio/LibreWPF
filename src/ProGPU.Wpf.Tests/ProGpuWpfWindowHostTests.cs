@@ -692,7 +692,7 @@ public sealed partial class ProGpuWpfWindowHostTests
             "public void DoEvents()",
             StringComparison.Ordinal);
         int nativeEventPoll = source.IndexOf(
-            "window.DoEvents();",
+            "PumpWindowEvents(window, _options.IsPopupSurface && _usesExternalNativeLoopPump,",
             doEventsMethodStart,
             StringComparison.Ordinal);
         int ownerDispatcherDrain = source.IndexOf(
@@ -709,7 +709,8 @@ public sealed partial class ProGpuWpfWindowHostTests
         Assert.Contains("DoEvents();", source, StringComparison.Ordinal);
         Assert.Contains("if (!EnsureCompositionTargetLoaded() || !ShouldKeepPortableNativeRunLoopAlive())", source, StringComparison.Ordinal);
         Assert.Contains("window.IsEventDriven = false;", source, StringComparison.Ordinal);
-        Assert.Contains("window.DoEvents();\n                TraceNativeLoop(s_traceNativeLoop, $\"native event poll leaving:", source, StringComparison.Ordinal);
+        Assert.Contains("NativeWindowModalSession.TryPumpEvents);\n                TraceNativeLoop(s_traceNativeLoop, $\"native event poll leaving:", source, StringComparison.Ordinal);
+        Assert.Contains("if (externallyPumpedPopup || !pumpModalEvents()) window.DoEvents();", source, StringComparison.Ordinal);
         Assert.Contains("if (useNonBlockingNativePoll)\n                {\n                    window.IsEventDriven = restoreEventDriven;", source, StringComparison.Ordinal);
         Assert.Contains("Interlocked.Increment(ref s_activeNativeEventDispatchDepth);", source, StringComparison.Ordinal);
         Assert.Contains("if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)", source, StringComparison.Ordinal);

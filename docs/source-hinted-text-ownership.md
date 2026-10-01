@@ -344,3 +344,23 @@ the qualified binding harness and isolated package cache are in
 `/private/tmp/librewpf-bidi-binding.U3poe9g4/`. These checks do not qualify Display
 metrics, wrapping, hinted caret/outline behavior, WPF package integration or an
 application. Those gates remain unchanged.
+
+### Aligned source integration checkpoint
+
+Build `36926579575` at WPF `88a1aa418a1e946cba1313a6b52e48260062750d`
+failed before the affected source-contract tests ran: the new paragraph-lifetime
+fixture had six internal-field naming violations and one redundant Xunit import.
+The fixture now uses state properties and the existing global import; its five
+original lifetime tests pass with code-style analyzers and the repository rules
+enabled in `/private/tmp/librewpf-reference-analyzers.UkCL4OAJ/`. Neither assertions
+nor production lifetime behavior changed.
+
+The same Build's canonical Forms job correctly rejected a mismatched nested
+ProGPU pin. WPF now pins exact LibreWinForms source
+`6ea74029ba54b96c20422f2e64ae99d053a1f8b0`, whose ProGPU gitlink is the same
+`60347a5f1026b8f95582535e6b7cfc8431a04499` retained by WPF. The canonical graph
+guard is unchanged. This is a stacked source integration checkpoint: the Forms
+source CI and the next whole WPF Build remain pending, not qualified by their
+bounded source tests. Native runtime evidence remains limited to the existing
+qualified ProGPU603 Build `36915664259`; no pending Forms artifact or new native
+build is used by these tests.

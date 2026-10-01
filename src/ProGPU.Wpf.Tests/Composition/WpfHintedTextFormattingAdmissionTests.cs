@@ -41,6 +41,7 @@ public sealed class WpfHintedTextFormattingAdmissionTests
 
         var provider = new WpfPortableTextFormatting();
         Assert.Throws<ArgumentException>(() => provider.FormatHinted(request, metrics, devices, Options));
+        Assert.Throws<ArgumentException>(() => provider.FormatHintedWithNominalMetrics(request, metrics, devices, Options));
     }
 
     [Theory]
@@ -68,6 +69,15 @@ public sealed class WpfHintedTextFormattingAdmissionTests
 
         var provider = new WpfPortableTextFormatting();
         Assert.Throws<NotSupportedException>(() => provider.FormatHinted(request, Metrics, Devices, Options));
+        Assert.Throws<NotSupportedException>(() => provider.FormatHintedWithNominalMetrics(request, Metrics, Devices, Options));
+    }
+
+    [Fact]
+    public void NominalSourcePreparationRejectsVariableInstanceBeforeNativeFontConstruction()
+    {
+        var request = CreateRequest();
+        PortableTextHintingStyle[] devices = [Devices[0] with { VariationCount = 1 }];
+        Assert.Throws<NotSupportedException>(() => new WpfPortableTextFormatting().FormatHintedWithNominalMetrics(request, Metrics, devices, Options));
     }
 
     [Theory]

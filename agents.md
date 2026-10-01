@@ -192,6 +192,12 @@ RTL nominal design advance is distinct from hinted device and GPOS advances.
 Reject selected variation-coordinate instances that source GlyphTypeface cannot
 identify, even when coordinates are explicitly default; byte equality is not
 complete font-instance identity.
+Full source publication snapshots offsets and asks the original producer to
+validate the existing nominal offset convention against one retained writer line.
+Source baseline is distinct from paragraph draw origin and relative-ink origin;
+use returned typed frames, never source-side baseline repair. Retain the explicit
+Ideal-offset-only gate until Display metric/rounding semantics connect, and reject
+cross-line or unrepresentable mappings without changing original positions.
 Additional guideline/cache-brush/transform admission, source caret mapping,
 continuation and actual Display selection remain unfinished. Keep hinted public
 caret/outline paths rejected until their original source contract connects.

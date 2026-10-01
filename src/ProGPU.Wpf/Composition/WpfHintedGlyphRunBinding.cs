@@ -41,9 +41,9 @@ internal sealed class WpfHintedGlyphRunBinding : IPortableHintedGlyphRunBinding
     // Caller owns geometry and source run until successful return.
     internal static WpfHintedGlyphRunBinding Adopt(IPortableHintedTextGlyphRun owner,
         NativeHintedGlyphResource resource, HintedGlyphGeometry geometry, float em, Vector2 origin,
-        NativeHintedGlyphResourceReadLease read, ReadOnlySpan<int> indices)
+        NativeHintedGlyphResourceReadLease read, ReadOnlySpan<int> indices, NativeHintedSourceGlyphFrame? frame = null)
     {
-        var state = new State(owner, resource, geometry, em, origin, read, indices);
+        var state = new State(owner, resource, geometry, em, origin, read, indices, frame);
         return new(state, state.Lifetime.Acquire());
     }
 
@@ -53,6 +53,8 @@ internal sealed class WpfHintedGlyphRunBinding : IPortableHintedGlyphRunBinding
     public float DpiScale => Read(_state.Geometry.DpiScale);
     public sbyte BidiLevel => Read(_state.Level);
     public Vector2 Origin => Read(_state.Origin);
+    public PortableHintedGlyphSourceFrame SourceFrame => Read(_state.SourceFrame)
+        ?? throw new NotSupportedException("This binding has no validated original source line frame.");
     public ReadOnlyMemory<ushort> GlyphIndices => Read<ReadOnlyMemory<ushort>>(_state.Ids);
     public ReadOnlyMemory<Vector2> GlyphPositions => Read<ReadOnlyMemory<Vector2>>(_state.Positions);
     public PortableRect InkBounds => Read(_state.Ink);
@@ -79,6 +81,7 @@ internal sealed class WpfHintedGlyphRunBinding : IPortableHintedGlyphRunBinding
         internal readonly sbyte Level;
         internal readonly uint FontIndex;
         internal readonly Vector2 Origin;
+        internal readonly PortableHintedGlyphSourceFrame? SourceFrame;
         internal readonly ushort[] Ids;
         internal readonly Vector2[] Positions;
         internal readonly uint[] Indices;
@@ -86,10 +89,12 @@ internal sealed class WpfHintedGlyphRunBinding : IPortableHintedGlyphRunBinding
 
         internal State(IPortableHintedTextGlyphRun owner, NativeHintedGlyphResource resource,
             HintedGlyphGeometry geometry, float em, Vector2 origin,
-            NativeHintedGlyphResourceReadLease read, ReadOnlySpan<int> indices)
+            NativeHintedGlyphResourceReadLease read, ReadOnlySpan<int> indices, NativeHintedSourceGlyphFrame? frame)
         {
-            if (!SceneDrawingContext.TryGetHintedGlyphInkBounds(geometry, origin, out var ink, out bool hasInk) ||
-                !SceneDrawingContext.TryGetHintedGlyphInkBounds(geometry, Vector2.Zero, out var relative, out bool hasRelativeInk))
+            Vector2 drawOrigin = frame?.ParagraphOrigin ?? origin;
+            Vector2 relativeOrigin = frame?.BaselineRelativeOrigin ?? Vector2.Zero;
+            if (!SceneDrawingContext.TryGetHintedGlyphInkBounds(geometry, drawOrigin, out var ink, out bool hasInk) ||
+                !SceneDrawingContext.TryGetHintedGlyphInkBounds(geometry, relativeOrigin, out var relative, out bool hasRelativeInk))
                 throw new ArgumentException("Original hinted ink is not representable in the source frame.");
             Ids = new ushort[indices.Length];
             Positions = new Vector2[indices.Length];
@@ -101,7 +106,9 @@ internal sealed class WpfHintedGlyphRunBinding : IPortableHintedGlyphRunBinding
                 Positions[i] = new(glyph.X, glyph.Y);
                 Indices[i] = checked((uint)indices[i]);
             }
-            Em = em; Origin = origin;
+            Em = em; Origin = drawOrigin;
+            if (frame is { } sourceFrame)
+                SourceFrame = new(checked((int)sourceFrame.LineIndex), sourceFrame.ParagraphBaselineY, sourceFrame.SourceBaselineOrigin);
             FontIndex = read.Glyphs[indices[0]].FontIndex;
             Level = read.BidiLevels[indices[0]];
             Ink = hasInk ? new(ink.X, ink.Y, ink.Width, ink.Height) : PortableRect.Empty;

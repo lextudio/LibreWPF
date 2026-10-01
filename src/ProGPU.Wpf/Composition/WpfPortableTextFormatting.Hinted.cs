@@ -11,6 +11,17 @@ internal sealed partial class WpfPortableTextFormatting
         ReadOnlySpan<PortableTextHintingStyle> deviceStyles,
         in PortableHintedTextOptions options, ReadOnlySpan<int> variationCoordinates16_16 = default,
         ReadOnlySpan<short> normalizedCoordinates = default)
+        => FormatHintedCore(in request, metrics, deviceStyles, in options, variationCoordinates16_16, normalizedCoordinates, false);
+
+    public IPortableHintedTextParagraph FormatHintedWithNominalMetrics(in PortableTextParagraphRequest request,
+        ReadOnlySpan<PortableTextStyleMetrics> metrics, ReadOnlySpan<PortableTextHintingStyle> deviceStyles,
+        in PortableHintedTextOptions options)
+        => FormatHintedCore(in request, metrics, deviceStyles, in options, default, default, true);
+
+    private static IPortableHintedTextParagraph FormatHintedCore(in PortableTextParagraphRequest request,
+        ReadOnlySpan<PortableTextStyleMetrics> metrics, ReadOnlySpan<PortableTextHintingStyle> deviceStyles,
+        in PortableHintedTextOptions options, ReadOnlySpan<int> variationCoordinates16_16,
+        ReadOnlySpan<short> normalizedCoordinates, bool nominalMetrics)
     {
         // Complete temporary producer retirement before publishing a source
         // reference. A teardown fault cannot strand an internally returned view.
@@ -20,7 +31,7 @@ internal sealed partial class WpfPortableTextFormatting
         try
         {
             PrepareHintedResource(in captured, metrics, deviceStyles, in options,
-                variationCoordinates16_16, normalizedCoordinates, out resource);
+                variationCoordinates16_16, normalizedCoordinates, nominalMetrics, out resource);
             return WpfHintedTextParagraph.Adopt(resource!, text);
         }
         catch (Exception error)
@@ -39,10 +50,14 @@ internal sealed partial class WpfPortableTextFormatting
         ReadOnlySpan<PortableTextStyleMetrics> metrics,
         ReadOnlySpan<PortableTextHintingStyle> deviceStyles,
         in PortableHintedTextOptions options, ReadOnlySpan<int> variationCoordinates16_16,
-        ReadOnlySpan<short> normalizedCoordinates, out NativeHintedGlyphResource? resource)
+        ReadOnlySpan<short> normalizedCoordinates, bool nominalMetrics, out NativeHintedGlyphResource? resource)
     {
         resource = null;
         ValidateHintedRequest(in request, metrics.Length, deviceStyles.Length, in options);
+        if (nominalMetrics)
+            foreach (var style in deviceStyles)
+                if (style.VariationCount != 0)
+                    throw new NotSupportedException("Source nominal design metrics require an original default font instance.");
         var projection = options.Projection switch
         {
             PortableHintedTextProjection.Automatic => NativeHintedProjectionPolicy.Automatic,
@@ -66,7 +81,9 @@ internal sealed partial class WpfPortableTextFormatting
         {
             paragraph = LayoutHintedSource(context, in request, metrics, deviceStyles, in options,
                 variationCoordinates16_16, normalizedCoordinates);
-            resource = paragraph.PrepareGlyphResource(options.DpiScale, projection, coverage);
+            resource = nominalMetrics
+                ? paragraph.PrepareGlyphResourceWithNominalMetrics(options.DpiScale, projection, coverage)
+                : paragraph.PrepareGlyphResource(options.DpiScale, projection, coverage);
         }
         catch (Exception error) { failure = error; }
         try { paragraph?.Dispose(); }

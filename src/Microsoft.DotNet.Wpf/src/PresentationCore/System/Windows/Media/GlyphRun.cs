@@ -2666,20 +2666,30 @@ namespace System.Windows.Media
                 _portableNativeGlyphRunCache != null || _portableGlyphRunCache != null || _portableInkBoundsCache != null ||
                 _inkBoundingBox != null || IsSideways || !string.IsNullOrEmpty(_deviceFontName) ||
                 (_glyphTypeface?.StyleSimulations ?? StyleSimulations.None) != StyleSimulations.None ||
-                source is not IPortableHintedGlyphRunBindingFactory factory || (float)_renderingEmSize != _renderingEmSize)
+                source is not IPortableHintedGlyphRunBindingFactory factory || (float)_renderingEmSize != _renderingEmSize ||
+                _textFormattingMode != TextFormattingMode.Ideal ||
+                (float)_baselineOrigin.X != _baselineOrigin.X || (float)_baselineOrigin.Y != _baselineOrigin.Y)
                 throw new InvalidOperationException("Original hinted ownership must be published once before source ink or replay is observed.");
             // Snapshot caller-owned lists before validation. Once publication
             // succeeds, public source getters cannot mutate validated IDs or advances.
             ushort[] ids = CopyUShorts(_glyphIndices);
             double[] advances = CopyDoubles(_advanceWidths);
+            Point[] offsets = new Point[ids.Length];
+            PortablePoint[] portableOffsets = new PortablePoint[ids.Length];
+            for (int i = 0; i < offsets.Length; i++)
+            {
+                offsets[i] = _glyphOffsets == null || _glyphOffsets.Count == 0 ? default : _glyphOffsets[i];
+                portableOffsets[i] = ToPortablePoint(offsets[i]);
+            }
             IList<ushort> ownedIds = Array.AsReadOnly(ids);
             IList<double> ownedAdvances = Array.AsReadOnly(advances);
+            IList<Point> ownedOffsets = Array.AsReadOnly(offsets);
             IPortableHintedGlyphRunBinding binding = factory.BindGlyphRun(_glyphTypeface.GetPortableTextFont(),
-                (float)_renderingEmSize, new Vector2((float)_baselineOrigin.X, (float)_baselineOrigin.Y), advances);
+                (float)_renderingEmSize, new Vector2((float)_baselineOrigin.X, (float)_baselineOrigin.Y), advances, portableOffsets);
             try
             {
                 if (binding.GlyphIndices.Length != ids.Length || binding.BidiLevel != _bidiLevel || binding.DpiScale != _pixelsPerDip ||
-                    binding.Origin.X != _baselineOrigin.X || binding.Origin.Y != _baselineOrigin.Y)
+                    binding.SourceFrame.BaselineOrigin.X != _baselineOrigin.X || binding.SourceFrame.BaselineOrigin.Y != _baselineOrigin.Y)
                     throw new ArgumentException("The source GlyphRun does not match the original hinted occurrence selection.", nameof(source));
                 for (int i = 0; i < ids.Length; i++)
                     if (binding.GlyphIndices.Span[i] != ids[i])
@@ -2687,6 +2697,7 @@ namespace System.Windows.Media
                 PortableRect ink = binding.InkBounds;
                 _glyphIndices = ownedIds;
                 _advanceWidths = ownedAdvances;
+                _glyphOffsets = ownedOffsets;
                 _portableInkBoundsCache = ink;
                 _portableHintedGlyphRun = binding;
             }

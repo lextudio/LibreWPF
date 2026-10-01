@@ -197,17 +197,25 @@ internal sealed class WpfHintedTextParagraph : IPortableHintedTextParagraph
             lock (_gate) return WpfHintedTextParagraph.Create(_generation, _use.Retain());
         }
         public IPortableHintedGlyphRunBinding BindGlyphRun(float sourceEmSize, Vector2 logicalOrigin)
-            => BindGlyphRunCore(sourceEmSize, logicalOrigin, null, default);
+            => BindGlyphRunCore(sourceEmSize, logicalOrigin, null, default, default, false);
 
         public IPortableHintedGlyphRunBinding BindGlyphRun(PortableTextFont sourceFont, float sourceEmSize,
             Vector2 logicalOrigin, ReadOnlySpan<double> sourceAdvances)
         {
             ArgumentNullException.ThrowIfNull(sourceFont);
-            return BindGlyphRunCore(sourceEmSize, logicalOrigin, sourceFont, sourceAdvances);
+            return BindGlyphRunCore(sourceEmSize, logicalOrigin, sourceFont, sourceAdvances, default, false);
+        }
+
+        public IPortableHintedGlyphRunBinding BindGlyphRun(PortableTextFont sourceFont, float sourceEmSize,
+            Vector2 sourceBaselineOrigin, ReadOnlySpan<double> sourceAdvances, ReadOnlySpan<PortablePoint> sourceOffsets)
+        {
+            ArgumentNullException.ThrowIfNull(sourceFont);
+            return BindGlyphRunCore(sourceEmSize, sourceBaselineOrigin, sourceFont, sourceAdvances, sourceOffsets, true);
         }
 
         private WpfHintedGlyphRunBinding BindGlyphRunCore(float sourceEmSize, Vector2 logicalOrigin,
-            PortableTextFont? sourceFont, ReadOnlySpan<double> sourceAdvances)
+            PortableTextFont? sourceFont, ReadOnlySpan<double> sourceAdvances, ReadOnlySpan<PortablePoint> sourceOffsets,
+            bool validateSourceFrame)
         {
             lock (_gate)
             {
@@ -221,13 +229,27 @@ internal sealed class WpfHintedTextParagraph : IPortableHintedTextParagraph
                     WpfHintedGlyphSourceIdentity.ValidateFont(sourceFont, originalFont, read.FontBytes);
                     WpfHintedGlyphSourceIdentity.ValidateAdvances(sourceAdvances, read.Glyphs, _indices);
                 }
+                NativeHintedSourceGlyphFrame? frame = null;
+                if (validateSourceFrame)
+                {
+                    if (sourceOffsets.Length != _indices.Length)
+                        throw new ArgumentException("Source offsets must cover every original selected occurrence.", nameof(sourceOffsets));
+                    var indices = new uint[_indices.Length];
+                    var offsets = new NativeHintedSourceGlyphOffset[_indices.Length];
+                    for (int i = 0; i < indices.Length; i++)
+                    {
+                        indices[i] = checked((uint)_indices[i]);
+                        offsets[i] = new() { X = sourceOffsets[i].X, Y = sourceOffsets[i].Y };
+                    }
+                    frame = read.ValidateSourceFrame(indices, sourceEmSize, logicalOrigin, sourceAdvances, offsets);
+                }
                 var owner = Create(_generation, _use.Retain(), _indices);
                 HintedGlyphGeometry? geometry = null;
                 try
                 {
                     geometry = _generation.SelectGeometry(_indices);
                     return WpfHintedGlyphRunBinding.Adopt(owner, _generation.Resource,
-                        geometry, sourceEmSize, logicalOrigin, read, _indices);
+                        geometry, sourceEmSize, logicalOrigin, read, _indices, frame);
                 }
                 catch (Exception failure)
                 {

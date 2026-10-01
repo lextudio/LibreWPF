@@ -65,9 +65,9 @@ design-font adaptation; `ComputeInkBoundingBox` reads original hinted ink, while
 the unconnected public outline-building path rejects rather than rebuilding design
 outlines. Its four public caret methods explicitly reject hinted bindings until
 original paragraph source-map interaction connects. The initializer now validates
-original font and advance identity as described below. Source offsets and the
-original source frame remain required before source formatter selection, alongside
-carets/continuations.
+original font, advances and nominal source offsets as described below. The original
+single-line frame now separates baseline from drawing translation. Display-specific
+metrics/rounding, caret maps and continuations remain required for source selection.
 This does not make `PortableTextLine` create hinted GlyphRuns automatically.
 
 Actual render-data/object/drawing ingress passes the typed owner to recorded replay.
@@ -131,16 +131,47 @@ lists only after all binding checks and ink reads succeed. Later caller-list edi
 cannot change those validated source identities. Comparing font bytes is O(font
 bytes); selected-advance validation and the owned source snapshots are O(occurrences).
 
-This does not validate source offsets, characters, cluster/caret maps or baseline
-frames. The existing RTL source offset formula consumes nominal design advance
+The existing RTL source offset formula consumes nominal design advance
 from `GlyphTypeface.AdvanceWidths`, whose dictionary explicitly uses Ideal metrics
 divided by units-per-em. That value is neither hinted `HorizontalAdvance266` nor
-positioned/GPOS `AdvanceX`; the retained flat native resource does not expose that
-original nominal design metric. A future producer contract must retain exact
-nominal metrics and their original face/instance identity, with unavailable metrics
-rejected, and connect the original line/source frame. The separate source outline
-path's mode-dependent nominal query/rounding is not qualified by the Ideal formula.
+positioned/GPOS `AdvanceX`. Explicit `FormatHintedWithNominalMetrics` now selects
+the companion original hmtx preparation, which rejects unavailable metrics and
+coordinate-bearing instances. The ordinary hinted preparation remains unchanged.
+The separate source outline path's mode-dependent nominal query/rounding is not
+qualified by the Ideal formula.
 Display selection and hinted public caret/outline gates remain closed.
+
+## Exact nominal offsets and retained line frames
+
+The source initializer now calls the complete font/advance/offset overload. It
+copies IDs, advances and offsets, validates through the original native producer,
+then publishes read-only source lists only after every check and ink read succeeds.
+Null/empty source offsets retain their ordinary zero-offset meaning. Unsupported
+providers reject through the additive default method rather than silently ignoring
+the new requirements. Source baseline and em must be exactly representable floats;
+the initializer explicitly rejects Display-mode injection while only the source's
+existing Ideal nominal-offset convention is supported.
+
+One producer call validates the original occurrence selection against its actual
+retained line baseline and original nominal hmtx advances. Cross-line, vertical,
+changed offsets and unrepresentable translations reject atomically. The original
+paragraph glyph positions never change. The returned paragraph translation drives
+both existing recorded and native MIL replay; a separately returned baseline-relative
+translation drives source ink bounds. `SourceFrame` identifies the original line
+and source baseline, which is no longer mistaken for a paragraph draw offset.
+No source-local layout arithmetic, design-font alias, per-glyph crossing or reshaping
+is added. Original source character/cluster/caret mapping, Display metric rounding,
+full source frame coverage, continuation/collapse and UI qualification remain open.
+
+The actual changed source and reference PresentationCore compiled on 2026-10-01
+with zero warnings/errors in 17.23 seconds. All 56 focused adapter/neutral controls
+passed, zero skipped; the real adapter compiled with its existing shim/event
+warnings. The companion managed resource/lease/frame suite passed all 26 cases,
+zero skipped. Native producer/frame/alias controls are authored and strict-syntax
+checked, not executed. The source compile remapped the unqualified old submodule
+dependency only through the disposable external
+`hinted-frame-checks.Ju7HFN5X/HintedSourceDependencies.targets`; no pin changed and
+no successful complete WPF/package/native/UI qualification is claimed.
 
 On 2026-10-01, the bounded actual source `PresentationCore.csproj` Release build
 and its reference assembly passed with zero warnings/errors (24.15 seconds), using

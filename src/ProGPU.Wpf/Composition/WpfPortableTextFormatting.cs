@@ -7,7 +7,7 @@ using ProGPU.Text;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
-internal sealed class WpfPortableTextFormatting : IPortableFloatingTextFormatting, IPortableTextDigitContext
+internal sealed partial class WpfPortableTextFormatting : IPortableFloatingTextFormatting, IPortableTextDigitContext, IPortableHintedTextFormatting
 {
     private sealed record FloatingRequest(NativeTextFloatingOptions Options, NativeTextParagraphFloat[] Items);
     private static readonly WpfPortableTextFormatting Default = new();

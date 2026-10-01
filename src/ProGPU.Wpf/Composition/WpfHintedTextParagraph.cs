@@ -1,0 +1,176 @@
+using ProGPU.Backend.Native;
+using ProGPU.Wpf.Interop;
+
+namespace System.Windows.Media.ProGPU.Composition;
+
+/// <summary>
+/// An explicit source reference to one original native hinted generation. The
+/// source formatter/DrawGlyphRun paths do not select this capability yet.
+/// </summary>
+internal sealed class WpfHintedTextParagraph : IPortableHintedTextParagraph
+{
+    private readonly object _gate = new();
+    private readonly Generation _generation;
+    private readonly WpfHintedTextLifetime.Lease _use;
+
+    private WpfHintedTextParagraph(Generation generation, WpfHintedTextLifetime.Lease use)
+    { _generation = generation; _use = use; }
+
+    // Caller owns resource on failure; successful publication transfers it.
+    internal static WpfHintedTextParagraph Adopt(NativeHintedGlyphResource resource, string sourceText)
+    {
+        ArgumentNullException.ThrowIfNull(resource);
+        ArgumentNullException.ThrowIfNull(sourceText);
+        var generation = new Generation(resource, sourceText);
+        return Create(generation, generation.Lifetime.Acquire());
+    }
+
+    private static WpfHintedTextParagraph Create(Generation generation, WpfHintedTextLifetime.Lease use)
+    {
+        try { return new(generation, use); }
+        catch (Exception error) { ReleaseFailedUse(use, error); throw; }
+    }
+
+    private static void ReleaseFailedUse(WpfHintedTextLifetime.Lease use, Exception error)
+    {
+        try { use.Dispose(); }
+        catch (Exception cleanup)
+        {
+            try { error.Data["HintedSourceUseCleanupFailure"] = cleanup; }
+            catch { /* Preserve the original publication failure. */ }
+        }
+    }
+
+    public bool IsDisposed => _use.IsDisposed;
+    public float DpiScale => Read(_generation.DpiScale);
+    public ReadOnlyMemory<char> SourceText => Read(_generation.SourceText.AsMemory());
+    public ReadOnlyMemory<PortableHintedTextGlyph> Glyphs => Read<ReadOnlyMemory<PortableHintedTextGlyph>>(_generation.Glyphs);
+    public ReadOnlyMemory<PortableHintedTextLine> Lines => Read<ReadOnlyMemory<PortableHintedTextLine>>(_generation.Lines);
+    public ReadOnlyMemory<PortableHintedTextClusterBox> Boxes => Read<ReadOnlyMemory<PortableHintedTextClusterBox>>(_generation.Boxes);
+    public ReadOnlyMemory<PortableHintedTextCaret> Carets => Read<ReadOnlyMemory<PortableHintedTextCaret>>(_generation.Carets);
+
+    private T Read<T>(T value)
+    {
+        lock (_gate) { ObjectDisposedException.ThrowIf(IsDisposed, this); return value; }
+    }
+
+    public IPortableHintedTextParagraph Retain()
+    {
+        lock (_gate) return Create(_generation, _use.Retain());
+    }
+
+    public IPortableHintedTextGlyphRun AcquireGlyphRun(ReadOnlySpan<int> positionedIndices)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            // Own the complete index list before validating; later caller
+            // mutation cannot change a checked occurrence or its draw order.
+            int[] indices = positionedIndices.ToArray();
+            foreach (int index in indices)
+                if ((uint)index >= (uint)_generation.Glyphs.Length)
+                    throw new ArgumentOutOfRangeException(nameof(positionedIndices));
+            return GlyphRun.Create(_generation, _use.Retain(), indices);
+        }
+    }
+
+    // Original native metadata/geometry is borrowed under an independent
+    // producer read lease. No public Font/object annotation crosses the seam.
+    internal NativeHintedGlyphResourceReadLease AcquireNativeReadLease()
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            return _generation.Resource.AcquireReadLease();
+        }
+    }
+
+    public void Dispose() { lock (_gate) _use.Dispose(); }
+
+    private sealed class Generation
+    {
+        internal readonly NativeHintedGlyphResource Resource;
+        internal readonly WpfHintedTextLifetime Lifetime;
+        internal readonly string SourceText;
+        internal readonly float DpiScale;
+        internal readonly PortableHintedTextGlyph[] Glyphs;
+        internal readonly PortableHintedTextLine[] Lines;
+        internal readonly PortableHintedTextClusterBox[] Boxes;
+        internal readonly PortableHintedTextCaret[] Carets;
+
+        internal Generation(NativeHintedGlyphResource resource, string sourceText)
+        {
+            using var read = resource.AcquireReadLease();
+            DpiScale = read.DpiScale;
+            SourceText = sourceText;
+            Glyphs = new PortableHintedTextGlyph[read.Glyphs.Length];
+            for (int i = 0; i < Glyphs.Length; i++)
+            {
+                var glyph = read.Glyphs[i];
+                var owner = read.PositionedOwners[i];
+                var run = read.Runs[checked((int)owner.RunIndex)];
+                Glyphs[i] = new(i, glyph.GlyphIndex, glyph.GlyphId, glyph.FontIndex, run.StyleIndex,
+                    owner.RunIndex, owner.RunGlyphIndex, owner.DescriptorIndex,
+                    glyph.Cluster, read.ClusterEnds[i], read.BidiLevels[i],
+                    glyph.X, glyph.Y, glyph.AdvanceX, glyph.AdvanceY);
+            }
+            Lines = new PortableHintedTextLine[read.Lines.Length];
+            for (int i = 0; i < Lines.Length; i++)
+            {
+                var line = read.Lines[i];
+                Lines[i] = new(checked((int)line.GlyphStart), checked((int)line.GlyphCount),
+                    line.InputStart, line.InputEnd, line.Width, line.BaselineY, line.Height,
+                    read.LineOrigins[i], line.Clipped != 0);
+            }
+            Boxes = new PortableHintedTextClusterBox[read.Boxes.Length];
+            for (int i = 0; i < Boxes.Length; i++)
+            {
+                var box = read.Boxes[i];
+                Boxes[i] = new(box.InputStart, box.InputEnd, checked((int)box.LineIndex),
+                    box.X, box.Y, box.Width, box.Height, box.BidiLevel);
+            }
+            Carets = new PortableHintedTextCaret[read.Carets.Length];
+            for (int i = 0; i < Carets.Length; i++)
+            {
+                var caret = read.Carets[i];
+                Carets[i] = new(caret.InputPosition, caret.Trailing != 0, checked((int)caret.LineIndex),
+                    caret.X, caret.Y, caret.Height, caret.BidiLevel);
+            }
+            // Native resource publication is last; its paragraph/font/geometry
+            // owner remains live until the final source reference retires.
+            Lifetime = new(resource);
+            Resource = resource;
+        }
+    }
+
+    private sealed class GlyphRun : IPortableHintedTextGlyphRun
+    {
+        private readonly object _gate = new();
+        private readonly Generation _generation;
+        private readonly WpfHintedTextLifetime.Lease _use;
+        private readonly int[] _indices;
+        private GlyphRun(Generation generation, WpfHintedTextLifetime.Lease use, int[] indices)
+        { _generation = generation; _use = use; _indices = indices; }
+
+        internal static GlyphRun Create(Generation generation, WpfHintedTextLifetime.Lease use, int[] indices)
+        {
+            try { return new(generation, use, indices); }
+            catch (Exception error) { ReleaseFailedUse(use, error); throw; }
+        }
+
+        public bool IsDisposed => _use.IsDisposed;
+        public ReadOnlyMemory<int> PositionedGlyphIndices
+        {
+            get { lock (_gate) { ObjectDisposedException.ThrowIf(IsDisposed, this); return _indices; } }
+        }
+        public IPortableHintedTextGlyphRun Retain()
+        {
+            lock (_gate) return Create(_generation, _use.Retain(), _indices);
+        }
+        public IPortableHintedTextParagraph AcquireParagraph()
+        {
+            lock (_gate) return WpfHintedTextParagraph.Create(_generation, _use.Retain());
+        }
+        public void Dispose() { lock (_gate) _use.Dispose(); }
+    }
+}

@@ -176,6 +176,14 @@ the actual newline. Hidden-only formatting ranges keep native caret navigation,
 not invented selection rectangles. Preserve newline X/height from the retained
 source line and keep hidden source/glyph mapping unchanged.
 
+The optional hinted formatting capability owns one original native generation,
+separate from ordinary paragraphs and source Display selection. Carry exact
+positioned occurrence indices and native measured interaction without font aliases
+or source-local positioning. Retire temporary producers before publishing source
+references; siblings retain the live resource and final teardown retries cannot
+end a use twice. Both replay paths, source GlyphRun/bounds, continuation and actual
+Display admission remain unfinished. See docs/source-hinted-text-ownership.md.
+
 PortableTextLine width-changing continuations use the captured paragraph's explicit
 native reflow capability over the complete original shaping context. Keep original
 source maps, styled physical faces, terminators, hidden positions and cloned-break

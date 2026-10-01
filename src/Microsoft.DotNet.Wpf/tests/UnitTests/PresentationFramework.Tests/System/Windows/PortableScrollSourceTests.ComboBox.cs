@@ -318,6 +318,11 @@ public sealed partial class PortableScrollSourceTests
                 Width = 200, Height = 100,
                 Template = new ControlTemplate(typeof(ComboBox)) { VisualTree = new FrameworkElementFactory(typeof(Border)) }
             };
+            int loaded = 0;
+            // Loaded broadcast deliberately prunes branches without a source
+            // observer. Subscribe before attaching so the real loaded-state
+            // cache is established before opening this test control.
+            comboBox.Loaded += (_, _) => ++loaded;
             comboBox.Items.Add("first"); comboBox.Items.Add("selected"); comboBox.Items.Add("last");
             comboBox.SelectedIndex = 1;
             Owner.Root.Children.Add(comboBox);
@@ -325,6 +330,7 @@ public sealed partial class PortableScrollSourceTests
             // Exercise the real source load/open path, without native popup
             // creation or private IsDropDownOpen/IsLoaded field substitutions.
             BroadcastEventHelper.BroadcastLoadedSynchronously(Ancestor.Viewer, false);
+            Assert.Equal(1, loaded);
             Assert.True(comboBox.IsLoaded);
             comboBox.IsDropDownOpen = true;
             Assert.True(comboBox.IsDropDownOpen);

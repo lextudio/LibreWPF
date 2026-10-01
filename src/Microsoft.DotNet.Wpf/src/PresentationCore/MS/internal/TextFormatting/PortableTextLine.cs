@@ -1164,7 +1164,9 @@ internal sealed class PortableTextLine : TextLine
                     carets[g.Cluster - cpStart] = true; carets[g.ClusterEnd - cpStart] = true;
                 }
             }
-            var run = new GlyphRun(face, level, false, style.EmSize, (float)_generationPixelsPerDip,
+            // Match TextShapeableCharacters.ComputeShapedGlyphRun: public runs
+            // carry direction, while grouping and selection retain the full level.
+            var run = new GlyphRun(face, level & 1, false, style.EmSize, (float)_generationPixelsPerDip,
                 ids, new Point(NativeOrigin, Baseline), advances, offsets, _text.AsSpan(cpStart, cpEnd - cpStart).ToArray(),
                 null, clusters, carets, XmlLanguage.GetLanguage(properties.CultureInfo.IetfLanguageTag));
             if (hintedRun != null) run.InitializePortableHintedGlyphRun(hintedRun);

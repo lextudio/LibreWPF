@@ -14,6 +14,103 @@ namespace System.Windows.Media;
 public class PortableTextLineTests
 {
     [PortableMediaFact]
+    public void PublicGlyphRunsProjectDirectionWithoutMergingDifferentEmbeddingLevels()
+    {
+        var provider = new BidiProjectionProvider();
+        using var registration = PortableWpfServiceRegistry.RegisterTextFormatting(provider);
+        using var formatter = new TextFormatterImp();
+        var source = new Source
+        {
+            Text = "abcd",
+            Properties = new Properties(new FontFamily(Path.Combine(AppContext.BaseDirectory,
+                "LibreWPF", "Fonts", "Inter-Medium.ttf") + "#Inter"))
+        };
+        using TextLine line = formatter.FormatLine(source, 0, 100,
+            new ParagraphProperties(source.Properties, false, false, TextWrapping.NoWrap), null, new TextRunCache());
+
+        var runs = line.GetIndexedGlyphRuns().ToArray();
+        Assert.Equal(new[] { 0, 0, 1, 1 }, runs.Select(run => run.GlyphRun.BidiLevel));
+        Assert.Equal(new[] { 0, 1, 2, 3 }, runs.Select(run => run.TextSourceCharacterIndex));
+        Assert.All(runs, run => Assert.Equal(1, run.TextSourceLength));
+        Assert.Equal(new sbyte[] { 0, 2, 1, 3 }, provider.Glyphs.Span.ToArray().Select(glyph => glyph.BidiLevel));
+        Assert.Equal(new[] { FlowDirection.LeftToRight, FlowDirection.LeftToRight,
+            FlowDirection.RightToLeft, FlowDirection.RightToLeft }, line.GetTextBounds(0, 4).Select(bounds => bounds.FlowDirection));
+    }
+
+    private sealed class BidiProjectionProvider : IPortableTextFormatting, IPortableTextParagraph
+    {
+        public IPortableTextParagraph Format(in PortableTextParagraphRequest request) => this;
+        public ReadOnlyMemory<PortableTextGlyph> Glyphs { get; } = new PortableTextGlyph[]
+        {
+            new(0, 0, 1, 0, 0, 4, 0), new(0, 1, 2, 4, 0, 4, 2),
+            new(0, 2, 3, 8, 0, 4, 1), new(0, 3, 4, 12, 0, 4, 3)
+        };
+        public ReadOnlyMemory<PortableTextLineInfo> Lines { get; } = new PortableTextLineInfo[] { new(0, 4, 0, 4, 16, 0, 20) };
+        public PortableTextHit HitTest(int lineIndex, float distance) => new(0, false);
+        public float GetCaretDistance(int lineIndex, PortableTextHit hit) => hit.Position * 4;
+        public int GetNextLogicalCaret(int lineIndex, int position, bool previous) => Math.Clamp(position + (previous ? -1 : 1), 0, 4);
+        public int GetSelection(int lineIndex, int start, int end, Span<PortableRect> rectangles)
+        { rectangles[0] = new(start * 4, 0, (end - start) * 4, 20); return 1; }
+    }
+
+    [PortableMediaFact]
+    public void HintedSourcePublicationRequiresExactProjectedDirectionAndKeepsCaretAndOutlineGates()
+    {
+        var face = new GlyphTypeface(new Uri(Path.Combine(AppContext.BaseDirectory,
+            "LibreWPF", "Fonts", "Inter-Medium.ttf")));
+        ushort glyph = face.CharacterToGlyphMap['a'];
+        foreach (sbyte direction in new sbyte[] { 0, 1 })
+        {
+            foreach (int sourceLevel in new[] { 0, 1, 2, 3 })
+            {
+                using var source = new ProjectedHintedBinding(direction, glyph);
+                var run = new GlyphRun(face, sourceLevel, false, 16, 1, new[] { glyph },
+                    new Point(), new[] { 4.0 }, new[] { new Point() }, new[] { 'a' },
+                    null!, null!, null!, XmlLanguage.GetLanguage("en-US"));
+                if (sourceLevel != direction)
+                {
+                    Assert.Throws<ArgumentException>(() => run.InitializePortableHintedGlyphRun(source));
+                    Assert.True(source.IsDisposed);
+                    Assert.False(((IPortableHintedGlyphRunSource)run).TryAcquirePortableHintedGlyphRun(out _));
+                    Assert.Equal(sourceLevel, run.BidiLevel);
+                    continue;
+                }
+                run.InitializePortableHintedGlyphRun(source);
+                Assert.Equal(direction, run.BidiLevel);
+                Assert.Throws<NotSupportedException>(() => run.GetDistanceFromCaretCharacterHit(new(0, 0)));
+                Assert.Throws<NotSupportedException>(() => run.GetCaretCharacterHitFromDistance(0, out _));
+                Assert.Throws<NotSupportedException>(() => run.GetNextCaretCharacterHit(new(0, 0)));
+                Assert.Throws<NotSupportedException>(() => run.GetPreviousCaretCharacterHit(new(1, 0)));
+                Assert.Throws<NotSupportedException>(() => run.BuildGeometry());
+            }
+        }
+    }
+
+    private sealed class ProjectedHintedBinding(sbyte direction, ushort glyph) :
+        IPortableHintedTextGlyphRun, IPortableHintedGlyphRunBindingFactory, IPortableHintedGlyphRunBinding
+    {
+        public bool IsDisposed { get; private set; }
+        public float FontRenderingEmSize => 16;
+        public float DpiScale => 1;
+        public sbyte BidiLevel => direction;
+        public System.Numerics.Vector2 Origin => default;
+        public PortableHintedGlyphSourceFrame SourceFrame => new(0, 0, default);
+        public ReadOnlyMemory<ushort> GlyphIndices { get; } = new[] { glyph };
+        public ReadOnlyMemory<System.Numerics.Vector2> GlyphPositions { get; } = new[] { new System.Numerics.Vector2() };
+        public ReadOnlyMemory<int> PositionedGlyphIndices { get; } = new[] { 0 };
+        public PortableRect InkBounds => PortableRect.Empty;
+        public PortableRect BaselineRelativeInkBounds => PortableRect.Empty;
+        public IPortableHintedGlyphRunBinding BindGlyphRun(float em, System.Numerics.Vector2 origin) => throw new NotSupportedException();
+        public IPortableHintedGlyphRunBinding BindGlyphRun(PortableTextFont font, float em, System.Numerics.Vector2 origin,
+            ReadOnlySpan<double> advances, ReadOnlySpan<PortablePoint> offsets) => this;
+        IPortableHintedTextGlyphRun IPortableHintedTextGlyphRun.Retain() => throw new NotSupportedException();
+        IPortableHintedGlyphRunBinding IPortableHintedGlyphRunBinding.Retain() => throw new NotSupportedException();
+        public IPortableHintedTextParagraph AcquireParagraph() => throw new NotSupportedException();
+        public IPortableHintedTextGlyphRun AcquireGlyphRun() => throw new NotSupportedException();
+        public void Dispose() => IsDisposed = true;
+    }
+
+    [PortableMediaFact]
     public void CollapseRetainsSourceRangesAndIndependentStyledSymbolAfterProviderRemoval()
     {
         var properties = new Properties(new FontFamily(Path.Combine(AppContext.BaseDirectory,

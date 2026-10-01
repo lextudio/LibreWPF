@@ -20,17 +20,13 @@ transformed rendering require their remaining native/source contracts. Request
 features must be scoped to individual explicit styles; unsupported inputs reject
 instead of silently falling through to ordinary formatting.
 
-This draft depends on the companion ProGPU typed-contract/native-overload change.
-The checked-in `external/ProGPU` pin and package versions remain unchanged and do
-not yet provide those APIs. Do not claim this draft builds against the old pin.
-Source-only compile review can link these adapter sources into an isolated test
-project referencing the companion ProGPU source projects. Actual source-core
-compilation can temporarily remap the existing `external/ProGPU` project references
-and linked compile items to that companion checkout using an external MSBuild
-`CustomAfterMicrosoftCommonTargets` import, without editing the gitlink or source
-project. Neither approach is runtime/package qualification. Only
-the complete successful producer Build for the eventual exact integrated commit
-can qualify staging and a subsequent submodule/package update.
+The checked-in `external/ProGPU` pin is now
+`60347a5f1026b8f95582535e6b7cfc8431a04499`, whose complete producer Build
+`36915664259` passed all 59 jobs and whose full CI passed all 74 checks. It provides
+the companion typed contracts and native overloads required below. The historical
+source-only checks in this document used external dependency remapping before that
+qualification. Package versions and WPF application/Display admission remain
+separate; a qualified dependency is not whole WPF runtime/package qualification.
 
 The companion ProGPU `docs/source-hinted-text-ownership.md` records architecture,
 primary-source design references, complexity and remaining qualification. Current
@@ -315,3 +311,36 @@ break disposal, deferred reentrant close, rejected clone publication, and both
 post-construction owners failing cleanup independently. They use typed CPU fault
 fixtures, not native font/rendering execution. Display policy, collapse/caret
 qualification, the ProGPU gitlink and whole-package/application gates are unchanged.
+
+## Source GlyphRun bidi direction
+
+The original `TextShapeableCharacters.ComputeShapedGlyphRun` publishes
+`rightToLeft ? 1 : 0`, although Line Services retains complete embedding levels.
+`PortableTextLine` now makes that same projection only when constructing its public
+`GlyphRun`. Adjacent native levels zero/two and one/three remain separate source
+runs; grouping, source ranges, selection and paragraph snapshots retain their
+original complete levels. `WpfHintedGlyphRunBinding.BidiLevel` also exposes zero or
+one while retaining the original level in its owned state. Its selection validator
+still rejects mixed complete levels even when parity agrees, and source publication
+still requires exact equality with the projected binding. Caller-created public
+runs at levels two/three are not silently accepted through a parity-only check.
+
+The actual source `PresentationCore.csproj` Release rebuild passed with zero
+warnings/errors (15.20 seconds), using the existing read-only external dependency
+remap and `BuildProjectReferences=false`. The signed source harness passed both new
+tests, zero skipped: actual formatter grouping/public direction and direct source
+publication rejection, including all four caret methods and outline admission.
+A separate managed harness linked the production hinted adapter sources against
+the qualified `0.1.0-preview.3435.ci` feed from exact ProGPU `60347a5f`. All 42
+binding, identity, snapshot and admission tests passed, zero skipped. The new
+binding test used the existing qualified native runtime for CPU TrueType shaping
+and scalar outline projection, checking original levels zero/two/one/three,
+projected binding direction, retained raw selection indices and same-parity
+mixed-level rejection. Its antialiased-vector coverage preserves the font's
+original outline contract; no GPU or native build was run.
+
+The source harness remains `/private/tmp/librewpf-continuation-identity.k060SZ6C/`;
+the qualified binding harness and isolated package cache are in
+`/private/tmp/librewpf-bidi-binding.U3poe9g4/`. These checks do not qualify Display
+metrics, wrapping, hinted caret/outline behavior, WPF package integration or an
+application. Those gates remain unchanged.

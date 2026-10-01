@@ -51,7 +51,9 @@ internal sealed class WpfHintedGlyphRunBinding : IPortableHintedGlyphRunBinding
     public bool IsDisposed => _use.IsDisposed;
     public float FontRenderingEmSize => Read(_state.Em);
     public float DpiScale => Read(_state.Geometry.DpiScale);
-    public sbyte BidiLevel => Read(_state.Level);
+    // WPF shaped GlyphRuns publish direction; the retained state and selection
+    // validation keep the complete native embedding level.
+    public sbyte BidiLevel => (sbyte)(Read(_state.Level) & 1);
     public Vector2 Origin => Read(_state.Origin);
     public PortableHintedGlyphSourceFrame SourceFrame => Read(_state.SourceFrame)
         ?? throw new NotSupportedException("This binding has no validated original source line frame.");

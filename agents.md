@@ -1,5 +1,12 @@
 # Agent Guidance
 
+Source-shaped GlyphRun bidi levels publish direction (zero or one), matching
+TextShapeableCharacters. Preserve the full native embedding level for run grouping,
+selection, original paragraph snapshots and hinted occurrence validation. Equal
+parity never admits mixed-level hinted selections; source publication compares the
+projected binding exactly. This does not admit Display metrics or public hinted
+caret/outline behavior. See docs/source-hinted-text-ownership.md.
+
 Source hinted lines and cloned breaks own independent leases of one original
 formatted generation. Use the native writer's retained line frames and canonical
 batched offsets for source GlyphRuns; never ask a hinted paragraph for a design

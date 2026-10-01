@@ -1,5 +1,15 @@
 # Agent Guidance
 
+The source window registrar exposes lossless native pointer/scroll delivery to
+the existing fixed-owner Cocoa popup factory. Require the actual live portable
+source, retain packet generations, and keep unclaimed scroll unhandled; never
+invent MouseWheel units or a replacement target. Owner UpdateTick drains only the
+popup queue, not another global modal poll. Failed setup preserves its original
+error while the source host retains native/render retirement. Keep the known
+owner and shared device; this does not enable automatic modality or qualify
+legacy-only scroll handlers, native capture, package or desktop behavior.
+See docs/native-pointer-host-transport.md.
+
 ## Repository and branch ownership
 
 LibreWPF work branches and pull requests target `progpu-rendering-port`, the

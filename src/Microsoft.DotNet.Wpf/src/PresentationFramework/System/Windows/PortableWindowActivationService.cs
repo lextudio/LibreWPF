@@ -359,8 +359,8 @@ namespace System.Windows
             input.Handled = ProcessInput(source, source.RootVisual as UIElement, input);
         }
 
-        // Internal source path until native scrolling is
-        // complete. The registrar must not advertise the native capability yet.
+        // Native input retains its packet through source reports and the typed
+        // point/line scroll route. It never falls back to legacy wheel units.
         internal static bool TryProcessNativePointerInput(PresentationSource source, PortablePointerInput input,
             PortableInputModifiers modifiers, out bool handled)
         {
@@ -1298,7 +1298,8 @@ namespace System.Windows
             }
         }
 
-        private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar, IPortableWindowInputDispatcher
+        private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar,
+            IPortableWindowInputDispatcher, IPortableNativePointerInputService
         {
             public PortableWpfServiceKey ServiceKey
             {
@@ -1470,6 +1471,33 @@ namespace System.Windows
                 PortableWindowActivationService.ProcessInput(typedSource, mappedInput);
                 input.Handled = mappedInput.Handled;
                 return true;
+            }
+
+            public bool TryProcessNativePointerInputEvent(object window, PortablePointerInput input,
+                int shortcutModifiers, out bool handled)
+            {
+                handled = false;
+                if (window is not Window typedWindow || input == null)
+                    return false;
+                typedWindow.VerifyAccess();
+                if (typedWindow.IsDisposed)
+                    return false;
+                PresentationSource source = PresentationSource.CriticalFromVisual(typedWindow);
+                // A Window may have been detached or replaced in an existing
+                // source. Do not route its old host's packet into another root.
+                if (source == null || !ReferenceEquals(source.RootVisual, typedWindow))
+                    return false;
+                return TryProcessNativePointerInput(source, input,
+                    (PortableInputModifiers)shortcutModifiers, out handled);
+            }
+
+            public bool TryProcessPresentationSourceNativePointerInputEvent(object presentationSource,
+                PortablePointerInput input, int shortcutModifiers, out bool handled)
+            {
+                handled = false;
+                return presentationSource is PortablePresentationSource source &&
+                    TryProcessNativePointerInput(source, input,
+                        (PortableInputModifiers)shortcutModifiers, out handled);
             }
 
             private static PortableInputEventArgs CreatePortableInputEvent(PortableWindowInputEvent input)

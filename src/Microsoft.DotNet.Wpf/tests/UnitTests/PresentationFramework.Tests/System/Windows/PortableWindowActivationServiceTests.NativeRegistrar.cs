@@ -55,15 +55,31 @@ public partial class PortableWindowActivationServiceTests
             var window = new Window();
             Assert.False(registrar.TryProcessNativePointerInputEvent(window, packet, 0, out handled));
             using var host = PortablePresentationSourceHost.Create();
-            host.RootVisual = window;
-            host.SetClientSize(200, 100);
-            Assert.True(registrar.TryProcessNativePointerInputEvent(window, packet, 0, out _));
-            host.RootVisual = new HitTestElement();
-            Assert.False(registrar.TryProcessNativePointerInputEvent(window, packet, 0, out handled));
-            Assert.False(handled);
-            host.Dispose();
-            Assert.False(registrar.TryProcessPresentationSourceNativePointerInputEvent(host, packet, 0, out handled));
-            Assert.False(handled);
+            PortableWindowActivationService.Register(activate: value => value,
+                getHandle: _ => host.Handle);
+            try
+            {
+                // The Window must enter the real portable lifecycle before a
+                // presentation source asks it for portable frame metrics.
+                window.Show();
+                host.RootVisual = window;
+                host.SetClientSize(200, 100);
+                Assert.True(registrar.TryProcessNativePointerInputEvent(window, packet, 0, out _));
+                host.RootVisual = new HitTestElement();
+                Assert.False(registrar.TryProcessNativePointerInputEvent(window, packet, 0, out handled));
+                Assert.False(handled);
+                window.Close();
+                Assert.False(registrar.TryProcessNativePointerInputEvent(window, packet, 0, out handled));
+                Assert.False(handled);
+                host.Dispose();
+                Assert.False(registrar.TryProcessPresentationSourceNativePointerInputEvent(host, packet, 0, out handled));
+                Assert.False(handled);
+            }
+            finally
+            {
+                if (!window.IsDisposed) window.Close();
+                PortableWindowActivationService.Clear();
+            }
         });
     }
 

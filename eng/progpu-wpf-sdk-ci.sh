@@ -19,6 +19,7 @@ case "${1:-}" in
 esac
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "${repo_root}/eng/progpu-preview-package-list.sh"
 dotnet="${repo_root}/.dotnet/dotnet"
 if [[ ! -x "${dotnet}" ]]; then
   dotnet="dotnet"
@@ -189,27 +190,7 @@ snapshot_staged_progpu_packages() {
   rm -rf "${progpu_package_snapshot_dir}"
   mkdir -p "${progpu_package_snapshot_dir}"
 
-  for package_id in \
-    ProGPU.Backend \
-    ProGPU.Backend.Dawn \
-    ProGPU.Backend.Native \
-    ProGPU.Text.Shaping \
-    ProGPU.DirectX \
-    ProGPU.Transpiler \
-    ProGPU.Compute \
-    ProGPU.Vector \
-    ProGPU.Text \
-    ProGPU.Scene \
-    ProGPU.Layout \
-    ProGPU.Virtualization \
-    ProGPU.WinRT \
-    ProGPU.Media \
-    ProGPU.Media.Scene \
-    ProGPU.WinUI \
-    ProGPU.Avalonia \
-    ProGPU.SkiaSharp \
-    ProGPU.System.Drawing.Common \
-    LibreWPF.Interop
+  for package_id in "${progpu_preview_runtime_package_ids[@]}"
   do
     source_package="${package_output}/${package_id}.${progpu_package_version}.nupkg"
     snapshot_package="${progpu_package_snapshot_dir}/${package_id}.${progpu_package_version}.nupkg"
@@ -325,6 +306,7 @@ stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj" "ProGPU.Vector"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj" "ProGPU.Text"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj" "ProGPU.Scene"
+stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Scene.Native/ProGPU.Scene.Native.csproj" "ProGPU.Scene.Native"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Layout/ProGPU.Layout.csproj" "ProGPU.Layout"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.Virtualization/ProGPU.Virtualization.csproj" "ProGPU.Virtualization"
 stage_or_pack_progpu_project "external/ProGPU/src/ProGPU.WinRT/ProGPU.WinRT.csproj" "ProGPU.WinRT"

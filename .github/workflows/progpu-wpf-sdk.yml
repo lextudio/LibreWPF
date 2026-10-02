@@ -266,6 +266,9 @@ jobs:
       - name: Validate Showcase failure archive controls
         run: python3 eng/tests/test_showcase_failure_archive.py
 
+      - name: Validate preview package dependency closure controls
+        run: python3 eng/tests/test_preview_package_closure.py -v
+
       - name: Run LibreWPF SDK gate
         id: sdk-gate
         env:

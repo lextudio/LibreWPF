@@ -165,6 +165,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             ? _windowController?.Handle ?? NativeWindowHandle.Empty : NativeWindowHandle.Empty;
     private object? _modalInputOwner;
     private IDisposable? _modalInputRegistration;
+    private OwnedPopupInputGate? _ownedPopupInputGate;
+    private bool _isRegisteringOwnedPopupInputGate;
     private NativeWindowModalHint? _nativeDialogHint;
     private bool _nativeInputAllowed = true;
     private PortableWindowRegion? _windowRegion;
@@ -912,9 +914,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _modalInputOwner = owner;
         try
         {
-            // Cocoa currently changes buttons only; Linux lacks full suppression.
-            // Never present those operations as native modal-input qualification.
-            if (OperatingSystem.IsWindows() || NativeInputAllowedSetterOverride != null)
+            if (_ownedPopupInputGate != null)
+                RegisterOwnedPopupInputGate();
+            // Ordinary Cocoa changes buttons only; Linux lacks full suppression.
+            // An owned popup is admitted separately by its actual factory result.
+            else if (OperatingSystem.IsWindows() || NativeInputAllowedSetterOverride != null)
                 _modalInputRegistration = PortableModalInputScope.RegisterWindow(owner, SetNativeInputAllowed);
         }
         catch { _modalInputOwner = null; throw; }
@@ -929,6 +933,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void SetNativeInputAllowed(bool allowed)
     {
+        if (_ownedPopupInputGate is { } gate)
+        {
+            ApplyOwnedPopupInputGate(gate, allowed);
+            return;
+        }
         _nativeInputAllowed = allowed;
         if (_isDisposed || _hasNativeWindowCloseStarted) return;
         if (NativeInputAllowedSetterOverride is { } setter)
@@ -940,6 +949,93 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         // before the window is shown, including newly created inactive owners.
         if (_window?.IsInitialized == true && _windowController?.SetInputAllowed(allowed) != true)
             throw new PlatformNotSupportedException("Native input admission was rejected.");
+    }
+
+    // Only the successful owned-provider factory calls this seam. A Cocoa handle,
+    // popup option or input-context shape does not establish native input blocking.
+    internal void BindOwnedPopupInputGate(IWindow window, Func<bool, bool> apply)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(window);
+        ArgumentNullException.ThrowIfNull(apply);
+        if (!_options.IsPopupSurface || !ReferenceEquals(window, _window) ||
+            _hasNativeWindowCloseStarted || _nativeWindowThreadId != Environment.CurrentManagedThreadId ||
+            _ownedPopupInputGate != null)
+            throw new InvalidOperationException("Owned popup input requires its original live factory window.");
+        _ownedPopupInputGate = new(window, apply);
+        RegisterOwnedPopupInputGate();
+    }
+
+    private void RegisterOwnedPopupInputGate()
+    {
+        if (_modalInputRegistration != null || _modalInputOwner is not { } owner ||
+            _ownedPopupInputGate is not { } gate || _isRegisteringOwnedPopupInputGate)
+            return;
+        _isRegisteringOwnedPopupInputGate = true;
+        IDisposable? candidate = null;
+        Exception? failure = null;
+        try
+        {
+            candidate = PortableModalInputScope.RegisterWindow(owner,
+                allowed => ApplyOwnedPopupInputGate(gate, allowed));
+            // Initial publication can synchronously cancel input and dispose the
+            // host. Never publish a registration after source teardown completed.
+            ValidateOwnedPopupInputGate(gate);
+            if (!ReferenceEquals(owner, _modalInputOwner))
+                throw new InvalidOperationException("The owned popup source input owner changed during registration.");
+            _modalInputRegistration = candidate;
+            candidate = null;
+        }
+        catch (Exception error) { failure = error; throw; }
+        finally
+        {
+            try
+            {
+                try { candidate?.Dispose(); }
+                catch (Exception) when (failure != null)
+                {
+                    // RegisterWindow disposal unlinks before calling the gate.
+                    // A stale-provider cleanup must not replace admission failure.
+                }
+            }
+            finally { _isRegisteringOwnedPopupInputGate = false; }
+        }
+    }
+
+    private void ApplyOwnedPopupInputGate(OwnedPopupInputGate gate, bool allowed)
+    {
+        // Registration release must not re-enable a retiring native view. Its
+        // provider/input cancellation and existing retirement drain still own it.
+        if (_isDisposed || _hasNativeWindowCloseStarted) return;
+        ValidateOwnedPopupInputGate(gate);
+        _nativeInputAllowed = allowed;
+        bool initialized = gate.Window.IsInitialized;
+        ValidateOwnedPopupInputGate(gate);
+        if (initialized && !gate.Apply(allowed))
+            throw new PlatformNotSupportedException("Owned popup native input admission was rejected.");
+        ValidateOwnedPopupInputGate(gate);
+    }
+
+    private void ValidateOwnedPopupInputGate(OwnedPopupInputGate gate)
+    {
+        if (_isDisposed || _hasNativeWindowCloseStarted ||
+            _nativeWindowThreadId != Environment.CurrentManagedThreadId ||
+            !ReferenceEquals(gate, _ownedPopupInputGate) || !ReferenceEquals(gate.Window, _window))
+            throw new InvalidOperationException("The owned popup input generation is no longer live.");
+        bool closing = gate.Window.IsClosing;
+        if (closing || _isDisposed || _hasNativeWindowCloseStarted ||
+            !ReferenceEquals(gate.Window, _window))
+            throw new InvalidOperationException("The owned popup input window retired during admission.");
+    }
+
+    private sealed record OwnedPopupInputGate(IWindow Window, Func<bool, bool> Apply);
+
+    private void ValidateOwnedPopupShow()
+    {
+        if (_ownedPopupInputGate is not { } gate) return;
+        ValidateOwnedPopupInputGate(gate);
+        if (!_isHostVisible)
+            throw new InvalidOperationException("The owned popup was hidden during native input admission.");
     }
 
     internal bool TrySetNativeOwner(ProGpuWpfWindowHost? owner)
@@ -1115,6 +1211,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         // Cocoa owner attachment itself orders the popup in. Publish modal
         // input admission before entering that checked native Show boundary.
         if (_modalInputRegistration != null) SetNativeInputAllowed(_nativeInputAllowed);
+        ValidateOwnedPopupShow();
         if (showWithOwner != null)
         {
             if (!showWithOwner(() => ShowNativeWindow(showActivated: false)))
@@ -1133,6 +1230,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         // Recheck admission on every show, including retries after failed load
         // or native callbacks. Cached desired state alone is not native success.
         if (_modalInputRegistration != null) SetNativeInputAllowed(_nativeInputAllowed);
+        ValidateOwnedPopupShow();
         if ((showActivated && _nativeInputAllowed) ||
             !PlatformServices.WindowDecorations.TryShowWithoutActivation(_window!))
         {
@@ -1932,6 +2030,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             }
 
             _window = null;
+            _ownedPopupInputGate = null;
             _nativeWindowRetirement = null;
             _disposeNativeWindowWhenLoopExits = false;
             lock (s_deferredNativeWindowDisposalGate)
@@ -2083,6 +2182,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _window.Resize += OnResize;
         _window.FramebufferResize += OnFramebufferResize;
         _window.Closing += OnClosing;
+        if (createdOwnedCocoa)
+            BindOwnedPopupInputGate(_window, _windowController.SetInputAllowed);
     }
 
     private void OnLoad()

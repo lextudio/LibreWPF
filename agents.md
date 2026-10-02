@@ -1,5 +1,14 @@
 # Agent Guidance
 
+Owned Cocoa popup modal input is bound only from the successful owned factory's
+exact IWindow/controller pair. Apply source scope state before visibility and
+retain provider identity through callbacks and native retirement completion.
+Unregistering a retiring popup must not re-enable its view; cancellation belongs
+to the existing typed provider, without synthetic input or another global poll.
+This pointer gate does not natively block the ordinary GLFW owner or enable
+automatic AppKit modality. Keep those gates and complete source/UI qualification
+separate. See docs/owned-popup-source-modal-input.md.
+
 Source-shaped GlyphRun bidi levels publish direction (zero or one), matching
 TextShapeableCharacters. Preserve the full native embedding level for run grouping,
 selection, original paragraph snapshots and hinted occurrence validation. Equal

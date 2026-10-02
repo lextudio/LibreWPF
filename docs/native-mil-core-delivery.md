@@ -1,5 +1,15 @@
 # LibreWPF native MIL core delivery
 
+## Owned popup modal input connection
+
+The actual owned Cocoa popup factory now connects its exact window/controller
+to the existing source modal scope, including creation during an active dialog
+and reentrant teardown. Ordinary Cocoa owners are still not natively blocked,
+and automatic AppKit sessions remain disabled. This closes a bounded missing
+source route, not About-dialog modality or desktop qualification. See
+[owned popup source input](owned-popup-source-modal-input.md) for ownership,
+authored regressions and pending hosted execution.
+
 ## Source digit substitution — 2026-09-22
 
 The active source-text integration connects WPF number policies to ProGPU's

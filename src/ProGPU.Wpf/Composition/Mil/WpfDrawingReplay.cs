@@ -138,7 +138,8 @@ internal static class WpfDrawingReplay
         bool IsRoundedRectangle = false,
         double CornerRadiusX = 0,
         double CornerRadiusY = 0,
-        global::ProGPU.Vector.PathGeometry? NativeGeometry = null);
+        global::ProGPU.Vector.PathGeometry? NativeGeometry = null,
+        bool RequireNativeGeometryClip = false);
 
     public static bool TryReplay(
         object? drawing,
@@ -1002,6 +1003,22 @@ internal static class WpfDrawingReplay
         return true;
     }
 
+    internal static bool TryReplayTileBrushPathFill(
+        object brush, PortableGeometryPath path, IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter, out WpfDrawingReplayStatus status)
+    {
+        status = WpfDrawingReplayStatus.Unsupported;
+        if (brush is not PortableTileBrushSource source
+            || !source.TryGetPortableTileBrush(out var portableBrush)
+            || !WpfPortableGeometryBoundsReader.TryGetGeometryBounds(path, out var bounds)
+            || !IsUsableRect(ToRect(bounds), out var fillBounds))
+            return false;
+
+        var fill = new TileBrushFillGeometry(path, fillBounds, null, path, false,
+            RequireNativeGeometryClip: true);
+        return TryReplayPortableTileBrushFill(portableBrush, fill, sink, imageSourceAdapter, out status);
+    }
+
     internal static bool TryReplayTileBrushFill(
         object brush,
         MediaGeometry geometry,
@@ -1156,6 +1173,14 @@ internal static class WpfDrawingReplay
             return false;
         }
 
+        return TryReplayPortableTileBrushFill(portableBrush, fillGeometry, sink, imageSourceAdapter, out status);
+    }
+
+    private static bool TryReplayPortableTileBrushFill(
+        PortableTileBrush portableBrush, TileBrushFillGeometry fillGeometry,
+        IWpfCompositionCommandSink sink, Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
         WpfReplayRect sourceRectangle = ToReplayRect(fillGeometry.Bounds);
         bool hasSourceRectangle = fillGeometry.IsRectangle ||
             (fillGeometry.PortableGeometry != null && TryGetRectangleClipBounds(fillGeometry.PortableGeometry, out sourceRectangle)) ||
@@ -2062,6 +2087,8 @@ internal static class WpfDrawingReplay
             {
                 return true;
             }
+            if (geometry.RequireNativeGeometryClip)
+                return false;
         }
 
         if (geometry.MediaGeometry != null

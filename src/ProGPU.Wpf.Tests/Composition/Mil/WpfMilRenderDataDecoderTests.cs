@@ -715,6 +715,10 @@ public sealed partial class WpfMilRenderDataDecoderTests
 
         public List<string> Operations { get; } = new();
 
+        public List<CurvedPrimitiveDraw> CurvedDraws { get; } = new();
+
+        public List<MediaGeometry> CurvedClips { get; } = new();
+
         public void PushSourceRectangleHitTestScope(WpfReplayRect rectangle)
         {
             SourceRectangles.Add(rectangle);
@@ -763,11 +767,15 @@ public sealed partial class WpfMilRenderDataDecoderTests
         public void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY)
         {
             RoundedRectangleCount++;
+            CurvedDraws.Add(new(false, brush, pen, rectangle, default, radiusX, radiusY));
+            Operations.Add("RoundedRectangle");
         }
 
         public void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY)
         {
             EllipseCount++;
+            CurvedDraws.Add(new(true, brush, pen, default, center, radiusX, radiusY));
+            Operations.Add("Ellipse");
         }
 
         public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
@@ -792,6 +800,7 @@ public sealed partial class WpfMilRenderDataDecoderTests
         public void PushClip(MediaGeometry clipGeometry)
         {
             ClipCount++;
+            CurvedClips.Add(clipGeometry);
         }
 
         public void PushOpacity(double opacity)
@@ -846,6 +855,10 @@ public sealed partial class WpfMilRenderDataDecoderTests
         TestSink,
         IWpfNativeGeometryCommandSink
     {
+        public bool AcceptGeometryPen { get; set; } = true;
+
+        public bool AcceptGeometryClip { get; set; } = true;
+
         public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
 
         public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> NativeMediaDrawGeometries { get; } = new();
@@ -856,7 +869,9 @@ public sealed partial class WpfMilRenderDataDecoderTests
 
         public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
         {
+            if (pen != null && !AcceptGeometryPen) return false;
             NativeDrawGeometries.Add((brush, pen, geometry));
+            Operations.Add(pen == null ? "GeometryFill" : "GeometryPen");
             return true;
         }
 
@@ -868,6 +883,7 @@ public sealed partial class WpfMilRenderDataDecoderTests
 
         public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
         {
+            if (!AcceptGeometryClip) return false;
             NativeGeometryClips.Add(clipGeometry);
             return true;
         }
@@ -886,6 +902,10 @@ public sealed partial class WpfMilRenderDataDecoderTests
         IWpfNativeGeometryCommandSink,
         IWpfNativeClipCommandSink
     {
+        public bool AcceptGeometryPen { get; set; } = true;
+
+        public bool AcceptGeometryClip { get; set; } = true;
+
         public List<(MediaBrush? Brush, MediaPen? Pen, PortableGeometryPath Geometry)> NativeDrawGeometries { get; } = new();
 
         public List<(MediaBrush? Brush, MediaPen? Pen, MediaGeometry Geometry)> NativeMediaDrawGeometries { get; } = new();
@@ -917,10 +937,14 @@ public sealed partial class WpfMilRenderDataDecoderTests
 
         public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)
         {
+            CurvedDraws.Add(new(false, brush, pen, new Rect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height), default, radiusX, radiusY));
+            Operations.Add("RoundedRectangle");
         }
 
         public void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY)
         {
+            CurvedDraws.Add(new(true, brush, pen, default, new Point(center.X, center.Y), radiusX, radiusY));
+            Operations.Add("Ellipse");
         }
 
         public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)
@@ -946,7 +970,9 @@ public sealed partial class WpfMilRenderDataDecoderTests
 
         public bool DrawNativeGeometry(MediaBrush? brush, MediaPen? pen, PortableGeometryPath geometry)
         {
+            if (pen != null && !AcceptGeometryPen) return false;
             NativeDrawGeometries.Add((brush, pen, geometry));
+            Operations.Add(pen == null ? "GeometryFill" : "GeometryPen");
             return true;
         }
 
@@ -958,6 +984,7 @@ public sealed partial class WpfMilRenderDataDecoderTests
 
         public bool PushNativeGeometryClip(PortableGeometryPath clipGeometry)
         {
+            if (!AcceptGeometryClip) return false;
             NativeGeometryClips.Add(clipGeometry);
             return true;
         }

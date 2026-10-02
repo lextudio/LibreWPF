@@ -53,6 +53,13 @@ Execution and compilation of those tests are pending the actual hosted source
 graph. No current exact-head local host/test cache was available, so no stale
 assembly graph, native runtime download, native/GPU/VM build or execution was used.
 
+Postcommit offline checks at implementation `ade30aa8b970fe40331ee10dbed74acb536dc6ce`
+passed: `git diff HEAD^ --check`, `bash -n eng/progpu-wpf-layout-clip.sh`, Python
+syntax of its embedded TRX verifier, and source inventory/wiring guards. The
+inventory is seven Facts plus ten InlineData rows, all selected by the existing
+host-class filter with minimum 321. These checks do not compile or execute the
+17 cases and do not qualify native input or application behavior.
+
 The original #230 collapse defect is separate: typed local visibility already
 excludes Hidden/Collapsed before mask input admission in the current dependency.
 Visible-mask input remains explicitly unsupported by source hit-only traversal;

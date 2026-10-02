@@ -14,6 +14,103 @@ namespace System.Windows.Media;
 public class PortableTextLineTests
 {
     [PortableMediaFact]
+    public void PublicGlyphRunsProjectDirectionWithoutMergingDifferentEmbeddingLevels()
+    {
+        var provider = new BidiProjectionProvider();
+        using var registration = PortableWpfServiceRegistry.RegisterTextFormatting(provider);
+        using var formatter = new TextFormatterImp();
+        var source = new Source
+        {
+            Text = "abcd",
+            Properties = new Properties(new FontFamily(Path.Combine(AppContext.BaseDirectory,
+                "LibreWPF", "Fonts", "Inter-Medium.ttf") + "#Inter"))
+        };
+        using TextLine line = formatter.FormatLine(source, 0, 100,
+            new ParagraphProperties(source.Properties, false, false, TextWrapping.NoWrap), null, new TextRunCache());
+
+        var runs = line.GetIndexedGlyphRuns().ToArray();
+        Assert.Equal(new[] { 0, 0, 1, 1 }, runs.Select(run => run.GlyphRun.BidiLevel));
+        Assert.Equal(new[] { 0, 1, 2, 3 }, runs.Select(run => run.TextSourceCharacterIndex));
+        Assert.All(runs, run => Assert.Equal(1, run.TextSourceLength));
+        Assert.Equal(new sbyte[] { 0, 2, 1, 3 }, provider.Glyphs.Span.ToArray().Select(glyph => glyph.BidiLevel));
+        Assert.Equal(new[] { FlowDirection.LeftToRight, FlowDirection.LeftToRight,
+            FlowDirection.RightToLeft, FlowDirection.RightToLeft }, line.GetTextBounds(0, 4).Select(bounds => bounds.FlowDirection));
+    }
+
+    private sealed class BidiProjectionProvider : IPortableTextFormatting, IPortableTextParagraph
+    {
+        public IPortableTextParagraph Format(in PortableTextParagraphRequest request) => this;
+        public ReadOnlyMemory<PortableTextGlyph> Glyphs { get; } = new PortableTextGlyph[]
+        {
+            new(0, 0, 1, 0, 0, 4, 0), new(0, 1, 2, 4, 0, 4, 2),
+            new(0, 2, 3, 8, 0, 4, 1), new(0, 3, 4, 12, 0, 4, 3)
+        };
+        public ReadOnlyMemory<PortableTextLineInfo> Lines { get; } = new PortableTextLineInfo[] { new(0, 4, 0, 4, 16, 0, 20) };
+        public PortableTextHit HitTest(int lineIndex, float distance) => new(0, false);
+        public float GetCaretDistance(int lineIndex, PortableTextHit hit) => hit.Position * 4;
+        public int GetNextLogicalCaret(int lineIndex, int position, bool previous) => Math.Clamp(position + (previous ? -1 : 1), 0, 4);
+        public int GetSelection(int lineIndex, int start, int end, Span<PortableRect> rectangles)
+        { rectangles[0] = new(start * 4, 0, (end - start) * 4, 20); return 1; }
+    }
+
+    [PortableMediaFact]
+    public void HintedSourcePublicationRequiresExactProjectedDirectionAndKeepsCaretAndOutlineGates()
+    {
+        var face = new GlyphTypeface(new Uri(Path.Combine(AppContext.BaseDirectory,
+            "LibreWPF", "Fonts", "Inter-Medium.ttf")));
+        ushort glyph = face.CharacterToGlyphMap['a'];
+        foreach (sbyte direction in new sbyte[] { 0, 1 })
+        {
+            foreach (int sourceLevel in new[] { 0, 1, 2, 3 })
+            {
+                using var source = new ProjectedHintedBinding(direction, glyph);
+                var run = new GlyphRun(face, sourceLevel, false, 16, 1, new[] { glyph },
+                    new Point(), new[] { 4.0 }, new[] { new Point() }, new[] { 'a' },
+                    null!, null!, null!, XmlLanguage.GetLanguage("en-US"));
+                if (sourceLevel != direction)
+                {
+                    Assert.Throws<ArgumentException>(() => run.InitializePortableHintedGlyphRun(source));
+                    Assert.True(source.IsDisposed);
+                    Assert.False(((IPortableHintedGlyphRunSource)run).TryAcquirePortableHintedGlyphRun(out _));
+                    Assert.Equal(sourceLevel, run.BidiLevel);
+                    continue;
+                }
+                run.InitializePortableHintedGlyphRun(source);
+                Assert.Equal(direction, run.BidiLevel);
+                Assert.Throws<NotSupportedException>(() => run.GetDistanceFromCaretCharacterHit(new(0, 0)));
+                Assert.Throws<NotSupportedException>(() => run.GetCaretCharacterHitFromDistance(0, out _));
+                Assert.Throws<NotSupportedException>(() => run.GetNextCaretCharacterHit(new(0, 0)));
+                Assert.Throws<NotSupportedException>(() => run.GetPreviousCaretCharacterHit(new(1, 0)));
+                Assert.Throws<NotSupportedException>(() => run.BuildGeometry());
+            }
+        }
+    }
+
+    private sealed class ProjectedHintedBinding(sbyte direction, ushort glyph) :
+        IPortableHintedTextGlyphRun, IPortableHintedGlyphRunBindingFactory, IPortableHintedGlyphRunBinding
+    {
+        public bool IsDisposed { get; private set; }
+        public float FontRenderingEmSize => 16;
+        public float DpiScale => 1;
+        public sbyte BidiLevel => direction;
+        public System.Numerics.Vector2 Origin => default;
+        public PortableHintedGlyphSourceFrame SourceFrame => new(0, 0, default);
+        public ReadOnlyMemory<ushort> GlyphIndices { get; } = new[] { glyph };
+        public ReadOnlyMemory<System.Numerics.Vector2> GlyphPositions { get; } = new[] { new System.Numerics.Vector2() };
+        public ReadOnlyMemory<int> PositionedGlyphIndices { get; } = new[] { 0 };
+        public PortableRect InkBounds => PortableRect.Empty;
+        public PortableRect BaselineRelativeInkBounds => PortableRect.Empty;
+        public IPortableHintedGlyphRunBinding BindGlyphRun(float em, System.Numerics.Vector2 origin) => throw new NotSupportedException();
+        public IPortableHintedGlyphRunBinding BindGlyphRun(PortableTextFont font, float em, System.Numerics.Vector2 origin,
+            ReadOnlySpan<double> advances, ReadOnlySpan<PortablePoint> offsets) => this;
+        IPortableHintedTextGlyphRun IPortableHintedTextGlyphRun.Retain() => throw new NotSupportedException();
+        IPortableHintedGlyphRunBinding IPortableHintedGlyphRunBinding.Retain() => throw new NotSupportedException();
+        public IPortableHintedTextParagraph AcquireParagraph() => throw new NotSupportedException();
+        public IPortableHintedTextGlyphRun AcquireGlyphRun() => throw new NotSupportedException();
+        public void Dispose() => IsDisposed = true;
+    }
+
+    [PortableMediaFact]
     public void CollapseRetainsSourceRangesAndIndependentStyledSymbolAfterProviderRemoval()
     {
         var properties = new Properties(new FontFamily(Path.Combine(AppContext.BaseDirectory,
@@ -275,6 +372,209 @@ public class PortableTextLineTests
         Assert.Throws<PlatformNotSupportedException>(() =>
             formatter.FormatLine(source, 1, 4, properties, continuation, new TextRunCache()));
         Assert.Equal(1, provider.Reflows);
+    }
+
+    [PortableMediaFact]
+    public void FailedReflowProducerBlocksAllPublicationUntilExactRetirementSucceeds()
+    {
+        var validation = new InvalidOperationException("original source validation");
+        var cleanup = new InvalidOperationException("original producer retirement");
+        var producer = new RetirementParagraph { ValidationFailure = validation, CleanupFailure = cleanup, FailuresRemaining = 2 };
+        int returns = 0;
+        using var fixture = new ContinuationFixture(() => ++returns == 1 ? producer : new Provider { Continued = true });
+        Assert.Same(validation, Assert.Throws<InvalidOperationException>(() => fixture.Format()));
+        Assert.Same(cleanup, validation.Data["HintedContinuationCleanupFailure"]);
+        Assert.Equal(1, producer.DisposeAttempts);
+        Assert.Equal(1, producer.EndedUses);
+        int reads = fixture.Provider.LineReads;
+
+        // Even the same-width route must retire the failed producer before
+        // reading another line; it cannot bypass cleanup by avoiding Reflow.
+        Assert.Same(cleanup, Assert.Throws<InvalidOperationException>(() => fixture.Format(8.0 / 3)));
+        Assert.Equal(reads, fixture.Provider.LineReads);
+        Assert.Equal(1, fixture.Provider.Reflows);
+        Assert.Equal(2, producer.DisposeAttempts);
+        using var line = fixture.Format();
+        Assert.Equal(3, producer.DisposeAttempts);
+        Assert.Equal(1, producer.EndedUses);
+        Assert.Equal(1, producer.Retirements);
+        Assert.Equal(2, fixture.Provider.Reflows);
+        Assert.Equal(2, Assert.Single(line.GetIndexedGlyphRuns()).TextSourceCharacterIndex);
+    }
+
+    [PortableMediaFact]
+    public void FailedReflowConstructionPreservesOriginalErrorAndBreakDisposalRetriesExactProducer()
+    {
+        var construction = new InvalidOperationException("original retain failure");
+        var cleanup = new InvalidOperationException("original retirement failure");
+        var producer = new RetirementParagraph { RetainFailure = construction, CleanupFailure = cleanup, FailuresRemaining = 2 };
+        using var fixture = new ContinuationFixture(() => producer);
+        var continuation = fixture.Break.PortableContinuation;
+        Assert.Same(construction, Assert.Throws<InvalidOperationException>(() => fixture.Format()));
+        Assert.Same(cleanup, construction.Data["HintedContinuationCleanupFailure"]);
+        Assert.Same(cleanup, Assert.Throws<InvalidOperationException>(() => fixture.Break.Dispose()));
+        Assert.Same(continuation, fixture.Break.PortableContinuation);
+        Assert.Equal(2, producer.DisposeAttempts);
+        fixture.Break.Dispose();
+        Assert.Null(fixture.Break.PortableContinuation);
+        fixture.Break.Dispose();
+        Assert.Equal(3, producer.DisposeAttempts);
+        Assert.Equal(1, producer.EndedUses);
+        Assert.Equal(1, producer.Retirements);
+    }
+
+    [PortableMediaFact]
+    public void ReentrantPublicBreakCloseFinishesDeferredOriginalReferenceRetirement()
+    {
+        var original = new RetirementParagraph();
+        using var fixture = new ContinuationFixture(() => original);
+        using var line = fixture.Format();
+        using var continuation = line.GetTextLineBreak();
+        var retained = Assert.Single(Assert.Single(original.Retained).Retained);
+        // The original retained paragraph, not a new source snapshot, owns Reflow.
+        var returned = new RetirementParagraph();
+        retained.ReflowResult = () => { continuation.Dispose(); return returned; };
+        Assert.Throws<ObjectDisposedException>(() => fixture.Format(continuation, 6));
+        Assert.True(retained.IsDisposed);
+        Assert.Equal(1, retained.Retirements);
+        Assert.Equal(1, returned.Retirements);
+        Assert.Equal(1, retained.Reflows);
+        Assert.Throws<ObjectDisposedException>(() => continuation.Clone());
+        // No second Dispose was needed to retire either use.
+        Assert.Equal(1, returned.DisposeAttempts);
+    }
+
+    [PortableMediaFact]
+    public void ReentrantBreakCloseDuringFailedCleanupRetainsOwnerAndOriginalValidationError()
+    {
+        var validation = new InvalidOperationException("original validation");
+        var cleanup = new InvalidOperationException("failed deferred close");
+        var producer = new RetirementParagraph { ValidationFailure = validation, CleanupFailure = cleanup, FailuresRemaining = 2 };
+        using var fixture = new ContinuationFixture(() => producer);
+        var continuation = fixture.Break.PortableContinuation;
+        producer.OnDispose = () =>
+        {
+            fixture.Break.Dispose();
+            Assert.Same(continuation, fixture.Break.PortableContinuation);
+            Assert.Throws<ObjectDisposedException>(() => fixture.Break.Clone());
+        };
+        Assert.Same(validation, Assert.Throws<InvalidOperationException>(() => fixture.Format()));
+        Assert.Same(cleanup, validation.Data["HintedContinuationCleanupFailure"]);
+        Assert.Same(continuation, fixture.Break.PortableContinuation);
+        Assert.Equal(2, producer.DisposeAttempts); // Rollback, then deferred close.
+        Assert.Equal(1, fixture.Provider.Reflows);
+        fixture.Break.Dispose();
+        Assert.Null(fixture.Break.PortableContinuation);
+        Assert.Equal(3, producer.DisposeAttempts);
+        Assert.Equal(1, producer.EndedUses);
+    }
+
+    [PortableMediaFact]
+    public void ReentrantCloseDuringCloneRetainCannotPublishAndRetiresIndependentUse()
+    {
+        var original = new RetirementParagraph();
+        using var fixture = new ContinuationFixture(() => original);
+        using var line = fixture.Format();
+        using var continuation = line.GetTextLineBreak();
+        var retained = Assert.Single(Assert.Single(original.Retained).Retained);
+        retained.OnRetain = () => continuation.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => continuation.Clone());
+        Assert.Equal(1, retained.Retirements);
+        Assert.Equal(1, Assert.Single(retained.Retained).Retirements);
+    }
+
+    [PortableMediaFact]
+    public void FailedReflowPublicationRetainsBothLineAndProducerUntilIndependentRetriesSucceed()
+    {
+        var producerFailure = new InvalidOperationException("original producer close");
+        var lineFailure = new InvalidOperationException("independent line close");
+        var producer = new RetirementParagraph { CleanupFailure = producerFailure, FailuresRemaining = 3 };
+        var independent = new RetirementParagraph { CleanupFailure = lineFailure, FailuresRemaining = 2 };
+        producer.RetainResult = () => independent;
+        int returns = 0;
+        using var fixture = new ContinuationFixture(() => ++returns == 1 ? producer : new Provider { Continued = true });
+        Assert.Same(producerFailure, Assert.Throws<InvalidOperationException>(() => fixture.Format()));
+        Assert.Equal(1, independent.DisposeAttempts);
+        Assert.Equal(2, producer.DisposeAttempts); // Publish, then rollback.
+        Assert.Equal(1, independent.EndedUses);
+        Assert.Equal(1, producer.EndedUses);
+        int reads = fixture.Provider.LineReads;
+        Assert.Same(lineFailure, Assert.Throws<InvalidOperationException>(() => fixture.Format()));
+        Assert.Equal(reads, fixture.Provider.LineReads);
+        Assert.Equal(1, fixture.Provider.Reflows);
+        Assert.Equal(2, independent.DisposeAttempts);
+        Assert.Equal(3, producer.DisposeAttempts); // Drain attempts both owners.
+        using var line = fixture.Format();
+        Assert.Equal(3, independent.DisposeAttempts);
+        Assert.Equal(4, producer.DisposeAttempts);
+        Assert.Equal(1, independent.Retirements);
+        Assert.Equal(1, producer.Retirements);
+        Assert.Equal(1, independent.EndedUses);
+        Assert.Equal(1, producer.EndedUses);
+        Assert.Equal(2, fixture.Provider.Reflows);
+    }
+
+    [PortableMediaFact]
+    public void ContinuationRequiresOriginalFormattingModeAndDeviceBeforeRetainedReadsOrReflow()
+    {
+        foreach (double width in new[] { 8.0 / 3, 4 })
+        {
+            var source = new Source { PixelsPerDip = 1, Properties = new Properties(new FontFamily(
+                Path.Combine(AppContext.BaseDirectory, "LibreWPF", "Fonts", "Inter-Medium.ttf") + "#Inter")) };
+            var properties = new ParagraphProperties(source.Properties, false, false);
+            var provider = new Provider();
+            using var registration = PortableWpfServiceRegistry.RegisterTextFormatting(provider);
+            using var formatter = new TextFormatterImp();
+            using var first = formatter.FormatLine(source, 0, 8.0 / 3, properties, null, new TextRunCache());
+            using var original = first.GetTextLineBreak();
+            using var continuation = original.Clone();
+            // Public line metadata cannot relabel the captured generation.
+            first.PixelsPerDip = 2;
+            original.Dispose(); first.Dispose(); registration.Dispose();
+            int retainedReads = provider.LineReads;
+
+            using var display = new TextFormatterImp(TextFormattingMode.Display);
+            Assert.Contains("continuation formatting/device identity", Assert.Throws<PlatformNotSupportedException>(() =>
+                display.FormatLine(source, 2, width, properties, continuation, new TextRunCache())).Message);
+            using var ideal = new TextFormatterImp();
+            source.PixelsPerDip = 2;
+            Assert.Contains("retainedDpi=1", Assert.Throws<PlatformNotSupportedException>(() =>
+                ideal.FormatLine(source, 2, width, properties, continuation, new TextRunCache())).Message);
+            source.PixelsPerDip = 1;
+            var sideways = new FormatSettings(ideal, source, new TextRunCacheImp(),
+                new ParaProp(ideal, properties, false), continuation, true, TextFormattingMode.Ideal, true);
+            Assert.Contains("sideways=True", Assert.Throws<PlatformNotSupportedException>(() =>
+                PortableTextLine.CreateContinuation(sideways, 2, TextFormatterImp.RealToIdealFloor(width), 1)).Message);
+            Assert.Equal(1, provider.Calls);
+            Assert.Equal(0, provider.Reflows);
+            Assert.Equal(retainedReads, provider.LineReads);
+
+            // Another Ideal formatter may consume the valid cloned break after
+            // rejection; width-only reflow remains owned by the captured source.
+            using var second = ideal.FormatLine(source, 2, width, properties, continuation, new TextRunCache());
+            Assert.Equal(1, second.PixelsPerDip);
+            Assert.Equal(width == 4 ? 1 : 0, provider.Reflows);
+            Assert.Equal(1, provider.Calls);
+            Assert.Equal(2, second.Length);
+            Assert.Equal(2, Assert.Single(second.GetIndexedGlyphRuns()).TextSourceCharacterIndex);
+        }
+    }
+
+    [PortableMediaFact]
+    public void CollapsedViewsKeepOriginalGenerationDpiAfterPublicLineMetadataChanges()
+    {
+        var properties = new Properties(new FontFamily(Path.Combine(AppContext.BaseDirectory,
+            "LibreWPF", "Fonts", "Inter-Medium.ttf") + "#Inter"));
+        var source = new Source { Text = "abc", Properties = properties, PixelsPerDip = 1 };
+        using var registration = PortableWpfServiceRegistry.RegisterTextFormatting(new CollapseProvider());
+        using var formatter = new TextFormatterImp();
+        using var original = formatter.FormatLine(source, 0, 7,
+            new ParagraphProperties(properties, false, false, TextWrapping.NoWrap), null, new TextRunCache());
+        original.PixelsPerDip = 2;
+        using var collapsed = original.Collapse(new TextTrailingCharacterEllipsis(7, properties));
+        Assert.True(collapsed.HasCollapsed);
+        Assert.Equal(1, collapsed.PixelsPerDip);
+        Assert.All(collapsed.GetIndexedGlyphRuns(), run => Assert.Equal(1, run.GlyphRun.PixelsPerDip));
     }
 
     [PortableMediaFact]
@@ -1362,6 +1662,89 @@ public class PortableTextLineTests
         public IPortableTextParagraph Format(in PortableTextParagraphRequest request) => provider.Format(request);
     }
 
+    private sealed class ContinuationFixture : IDisposable
+    {
+        private readonly Source _source = new() { Properties = new Properties(new FontFamily(
+            Path.Combine(AppContext.BaseDirectory, "LibreWPF", "Fonts", "Inter-Medium.ttf") + "#Inter")) };
+        private readonly ParagraphProperties _properties;
+        private readonly IDisposable _registration;
+        private readonly TextFormatterImp _formatter = new();
+        internal Provider Provider { get; }
+        internal TextLine First { get; }
+        internal TextLineBreak Break { get; }
+        internal ContinuationFixture(Func<IPortableTextParagraph> reflowResult)
+        {
+            _properties = new ParagraphProperties(_source.Properties, false, false);
+            Provider = new Provider { ReflowResult = reflowResult };
+            _registration = PortableWpfServiceRegistry.RegisterTextFormatting(Provider);
+            First = _formatter.FormatLine(_source, 0, 8.0 / 3, _properties, null, new TextRunCache());
+            Break = First.GetTextLineBreak();
+        }
+        internal TextLine Format(double width = 4) =>
+            _formatter.FormatLine(_source, 2, width, _properties, Break, new TextRunCache());
+        internal TextLine Format(TextLineBreak continuation, double width) =>
+            _formatter.FormatLine(_source, 2, width, _properties, continuation, new TextRunCache());
+        public void Dispose() { Break.Dispose(); First.Dispose(); _formatter.Dispose(); _registration.Dispose(); }
+    }
+
+    // Explicit owning-reference fault fixture: Dispose ends one use once, marks
+    // closed before callbacks, and retries retirement without ending it again.
+    // No font/native resource or fake native font identity is supplied.
+    private sealed class RetirementParagraph : IPortableReflowTextParagraph, IPortableHintedTextParagraph
+    {
+        private readonly Provider _snapshot = new();
+        internal Exception? ValidationFailure { get; init; }
+        internal Exception? RetainFailure { get; init; }
+        internal Exception CleanupFailure { get; init; } = new InvalidOperationException("cleanup");
+        internal int FailuresRemaining { get; set; }
+        internal int DisposeAttempts { get; private set; }
+        internal int EndedUses { get; private set; }
+        internal int Retirements { get; private set; }
+        internal int Reflows { get; private set; }
+        internal Action? OnDispose { get; set; }
+        internal Action? OnRetain { get; set; }
+        internal Func<RetirementParagraph>? RetainResult { get; set; }
+        internal Func<IPortableTextParagraph>? ReflowResult { get; set; }
+        internal List<RetirementParagraph> Retained { get; } = new();
+        public bool IsDisposed { get; private set; }
+        public float DpiScale => 1;
+        public ReadOnlyMemory<char> SourceText => "abc".AsMemory();
+        public ReadOnlyMemory<PortableTextGlyph> Glyphs => _snapshot.Glyphs;
+        public ReadOnlyMemory<PortableTextLineInfo> Lines => ValidationFailure is { } failure ? throw failure :
+            new PortableTextLineInfo[] { new(0, 0, 2, 2, 0, 0, 20), new(0, 0, 2, 3, 0, 20, 20) };
+        ReadOnlyMemory<PortableHintedTextGlyph> IPortableHintedTextParagraph.Glyphs => default;
+        ReadOnlyMemory<PortableHintedTextLine> IPortableHintedTextParagraph.Lines =>
+            new PortableHintedTextLine[] { new(0, 0, 2, 2, 0, 0, 20, 0, false), new(0, 0, 2, 3, 0, 20, 20, 0, false) };
+        public ReadOnlyMemory<PortableHintedTextClusterBox> Boxes => default;
+        public ReadOnlyMemory<PortableHintedTextCaret> Carets => default;
+        public IPortableHintedTextParagraph Retain()
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            if (RetainFailure != null) throw RetainFailure;
+            var retained = RetainResult?.Invoke() ?? new RetirementParagraph();
+            Retained.Add(retained);
+            OnRetain?.Invoke();
+            return retained;
+        }
+        public void Dispose()
+        {
+            if (Retirements != 0) return;
+            if (!IsDisposed) { IsDisposed = true; EndedUses++; }
+            DisposeAttempts++;
+            OnDispose?.Invoke();
+            if (FailuresRemaining > 0) { FailuresRemaining--; throw CleanupFailure; }
+            Retirements++;
+        }
+        public IPortableTextParagraph Reflow(int inputStart, float maximumWidth)
+        { Assert.Equal(2, inputStart); Assert.Equal(6, maximumWidth); Reflows++; return ReflowResult!(); }
+        public IPortableHintedTextGlyphRun AcquireGlyphRun(ReadOnlySpan<int> indices) => throw new NotSupportedException();
+        public object GetNativeFont(uint index) => throw new NotSupportedException();
+        public PortableTextHit HitTest(int line, float distance) => _snapshot.HitTest(line, distance);
+        public float GetCaretDistance(int line, PortableTextHit hit) => _snapshot.GetCaretDistance(line, hit);
+        public int GetNextLogicalCaret(int line, int position, bool previous) => _snapshot.GetNextLogicalCaret(line, position, previous);
+        public int GetSelection(int line, int start, int end, Span<PortableRect> rectangles) => _snapshot.GetSelection(line, start, end, rectangles);
+    }
+
     private sealed class Provider : IPortableTextFormatting, IPortableReflowTextParagraph, IPortableTextDigitContext
     {
         internal float? TerminalCaretDistance { get; init; }
@@ -1397,13 +1780,14 @@ public class PortableTextLineTests
         }
 
         internal bool Continued { get; init; }
+        internal Func<IPortableTextParagraph>? ReflowResult { get; init; }
         internal int Reflows { get; private set; }
         public IPortableTextParagraph Reflow(int inputStart, float maximumWidth)
         {
             Assert.Equal(2, inputStart);
             Assert.Equal(4, maximumWidth);
             Reflows++;
-            return new Provider { Continued = true };
+            return ReflowResult?.Invoke() ?? new Provider { Continued = true };
         }
         public PortableTextIntrinsicWidths? IntrinsicWidths { get; init; }
         internal bool MeasureIntrinsicWidths { get; private set; }
@@ -1422,6 +1806,7 @@ public class PortableTextLineTests
         public object SecondNativeFont { get; } = new();
         public object GetNativeFont(uint fontIndex) => fontIndex == 0 ? NativeFont : SecondNativeFont;
         internal int Calls { get; private set; }
+        internal int LineReads { get; private set; }
         internal string? Text { get; private set; }
         public uint ResolveLanguage(string ietfLanguageTag)
         {
@@ -1449,7 +1834,8 @@ public class PortableTextLineTests
         { new(0, 0, 1, 0, 0, 4, 0), new(0, 1, 2, 4, 0, 6, 0, 1), new(0, 2, 3, 10, 0, 6, 0, 1) } : Mixed ? new PortableTextGlyph[]
         { new(0, 0, 1, 0, 0, 4, 0), new(0, 1, 2, 0, 20, 6, 0, 1), new(0, 2, 3, 6, 20, 6, 0, 1) } : new PortableTextGlyph[]
         { new(0, 0, 2, 0, 0, 8, 1), new(0, 2, 3, 0, 20, 6, 1) };
-        public ReadOnlyMemory<PortableTextLineInfo> Lines => BoundaryWidth is { } boundaryWidth ? new PortableTextLineInfo[]
+        public ReadOnlyMemory<PortableTextLineInfo> Lines { get { LineReads++; return ReadLines(); } }
+        private ReadOnlyMemory<PortableTextLineInfo> ReadLines() => BoundaryWidth is { } boundaryWidth ? new PortableTextLineInfo[]
         { new(0, 1, 0, 1, boundaryWidth, 0, 20) } : Continued ? new PortableTextLineInfo[] { new(0, 1, 2, 3, 6, 0, 20) } : Empty ? new PortableTextLineInfo[] { new(0, 0, 0, 0, 0, 0, 20) } : Tabs ? new PortableTextLineInfo[]
         { new(0, 3, 0, 3, 38, 0, 20) } : MixedOneLine ? new PortableTextLineInfo[]
         { new(0, 3, 0, 3, 16, 0, 20) } : Mixed ? new PortableTextLineInfo[]

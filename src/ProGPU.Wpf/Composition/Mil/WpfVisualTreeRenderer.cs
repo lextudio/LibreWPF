@@ -2335,6 +2335,15 @@ public sealed class WpfVisualTreeRenderer
 
         public void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRun)
         {
+            if (WpfResourceResolver.TryAcquireHintedGlyphRun(glyphRun, out var hinted))
+            {
+                using (hinted)
+                {
+                    var ink = hinted!.InkBounds;
+                    if (!ink.IsEmpty) AddBounds(new WpfReplayRect(ink.X, ink.Y, ink.Width, ink.Height));
+                }
+                return;
+            }
             if (WpfResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out var nativeGlyphRun)
                 && TryGetGlyphRunBounds(nativeGlyphRun, out var bounds))
             {

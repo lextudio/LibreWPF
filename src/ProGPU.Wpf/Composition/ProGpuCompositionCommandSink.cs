@@ -1498,6 +1498,24 @@ public sealed class ProGpuCompositionCommandSink :
     void IWpfNativePrimitiveCommandSink.DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRunResource)
     {
         ThrowIfClosed();
+        if (WpfResourceResolver.TryAcquireHintedGlyphRun(glyphRunResource, out var hinted))
+        {
+            using (hinted)
+            {
+                if (foregroundBrush == null) return;
+                if (foregroundBrush is global::ProGPU.Wpf.Interop.IPortableBitmapCacheBrushSource)
+                    throw new NotSupportedException("Hinted source BitmapCacheBrush painting is not admitted.");
+                if (_guidelineStack.Count != 0)
+                    throw new NotSupportedException("Hinted source glyphs require their original device phase without additional guidelines.");
+                var ink = hinted!.InkBounds;
+                var bounds = ink.IsEmpty ? default : new WpfReplayRect(ink.X, ink.Y, ink.Width, ink.Height);
+                var paint = ToNativeGlyphRunBrush(foregroundBrush, bounds);
+                if (paint == null) return;
+                NativeContext.DrawHintedGlyphs(hinted.Geometry, hinted.Origin, ToNativeRect(bounds), paint,
+                    transform: _transformStack.Peek(), textRenderingMode: _textRenderingModeStack.Peek(), hitTestId: _activeHitTestId);
+            }
+            return;
+        }
         if (foregroundBrush is global::ProGPU.Wpf.Interop.IPortableBitmapCacheBrushSource source)
         {
             if (!((IWpfBitmapCacheBrushCommandSink)this).DrawBitmapCacheBrushGlyphRun(source, glyphRunResource, null))

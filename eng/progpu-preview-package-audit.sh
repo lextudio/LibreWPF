@@ -164,11 +164,14 @@ if [[ "${unexpected_package_found}" -ne 0 ]]; then
   exit 1
 fi
 
+package_files=()
 for package_id in "${all_packages[@]}"; do
   require_package "${package_id}"
+  package_files+=("$(package_path "${package_id}")")
   require_entry "${package_id}" "README.md"
   require_nuspec_contains "${package_id}" "<readme>README.md</readme>"
 done
+python3 "${repo_root}/eng/progpu-preview-package-closure.py" "${package_files[@]}"
 
 for package_id in "${runtime_packages[@]}"; do
   require_entry "${package_id}" "lib/net10.0/$(package_assembly_name "${package_id}").dll"
@@ -190,6 +193,7 @@ require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Backend\" versio
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Backend.Native\" version=\"${progpu_package_version}\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.DirectX\" version=\"${progpu_package_version}\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Scene\" version=\"${progpu_package_version}\""
+require_nuspec_contains LibreWPF.ProGPU "dependency id=\"ProGPU.Scene.Native\" version=\"${progpu_package_version}\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"LibreWPF.Interop\" version=\"${progpu_package_version}\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.Input\" version=\"2.23.0\""
 require_nuspec_contains LibreWPF.ProGPU "dependency id=\"Silk.NET.WebGPU\" version=\"2.23.0\""

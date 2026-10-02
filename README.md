@@ -150,6 +150,7 @@ Manual release dispatch uses the same build and validation path for recovery pub
 | `ProGPU.Vector` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Vector.svg)](https://www.nuget.org/packages/ProGPU.Vector) | Vector paths, geometry, brushes, pens, and rasterization data models. |
 | `ProGPU.Text` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Text.svg)](https://www.nuget.org/packages/ProGPU.Text) | Text layout, glyph metrics, and GPU-ready text rendering helpers. |
 | `ProGPU.Scene` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Scene.svg)](https://www.nuget.org/packages/ProGPU.Scene) | Scene graph, compositor commands, retained visuals, effects, and presentation primitives. |
+| `ProGPU.Scene.Native` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Scene.Native.svg)](https://www.nuget.org/packages/ProGPU.Scene.Native) | Typed retained scene compiler targeting the native C++ scene ABI. |
 | `ProGPU.Layout` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Layout.svg)](https://www.nuget.org/packages/ProGPU.Layout) | Measure/arrange layout substrate shared by ProGPU UI adapters. |
 | `ProGPU.Virtualization` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.Virtualization.svg)](https://www.nuget.org/packages/ProGPU.Virtualization) | Virtualization helpers for large retained visual and item surfaces. |
 | `ProGPU.WinRT` | [![NuGet](https://img.shields.io/nuget/vpre/ProGPU.WinRT.svg)](https://www.nuget.org/packages/ProGPU.WinRT) | Typed WinRT-compatible value and geometry contracts shared by ProGPU surfaces. |

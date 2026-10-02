@@ -11,6 +11,7 @@ progpu_preview_runtime_package_ids=(
   ProGPU.Vector
   ProGPU.Text
   ProGPU.Scene
+  ProGPU.Scene.Native
   ProGPU.Layout
   ProGPU.Virtualization
   ProGPU.WinRT

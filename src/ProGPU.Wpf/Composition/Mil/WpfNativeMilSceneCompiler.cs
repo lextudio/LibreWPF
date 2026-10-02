@@ -83,8 +83,21 @@ public sealed record WpfNativeMilBatch(
     IReadOnlyList<WpfNativeMilMediaPlayerSource>? MediaPlayerSources = null,
     IReadOnlyList<WpfNativeMilBitmapExternalImageSource>?
         BitmapExternalImageSources = null,
-    IReadOnlyList<WpfNativeMilD3DImageSource>? D3DImageSources = null)
+    IReadOnlyList<WpfNativeMilD3DImageSource>? D3DImageSources = null) : IDisposable
 {
+    internal WpfNativeHintedGlyphResources? HintedGlyphResources { get; init; }
+    private WpfNativeMilBatch(WpfNativeMilBatch original)
+    {
+        Bytes = original.Bytes; TargetHandle = original.TargetHandle;
+        BitmapSources = original.BitmapSources; GlyphRunFonts = original.GlyphRunFonts;
+        DrawingImageBounds = original.DrawingImageBounds; VisualCacheBounds = original.VisualCacheBounds;
+        DrawingGroupBounds = original.DrawingGroupBounds; Viewport3DScenes = original.Viewport3DScenes;
+        MediaPlayerSources = original.MediaPlayerSources; BitmapExternalImageSources = original.BitmapExternalImageSources;
+        D3DImageSources = original.D3DImageSources; VisualOwners = original.VisualOwners;
+        PointHitRegions = original.PointHitRegions; VisualVisibilities = original.VisualVisibilities;
+        HintedGlyphResources = original.HintedGlyphResources?.Retain();
+    }
+    public void Dispose() => HintedGlyphResources?.Dispose();
     // Host identities are deliberately absent from the canonical MIL byte stream.
     // Handles may be reused by a subsequent batch with identical drawing bytes.
     public NativeGpuHitTestOwnerMap<object> VisualOwners { get; init; } =
@@ -130,32 +143,47 @@ public sealed class WpfNativeMilSceneCompiler
     {
         ArgumentNullException.ThrowIfNull(rootVisual);
         var context = new BuildContext();
-        uint rootHandle = context.AddVisual(rootVisual);
-        if (!overlays.IsEmpty || windowRegion is { IsEmpty: false })
-            rootHandle = context.AddHostRoot(rootHandle, overlays, windowRegion);
-        uint targetHandle = context.NextHandle();
-        context.Batch.CreateResource(
-            targetHandle, NativeMilResourceType.GenericRenderTarget);
-        context.Batch.CreateGenericTarget(targetHandle, pixelWidth, pixelHeight);
-        context.Batch.SetTargetClearColor(targetHandle, clearColor);
-        context.Batch.SetTargetRoot(targetHandle, rootHandle);
-        return new WpfNativeMilBatch(
-            context.Batch.ToArray(),
-            targetHandle,
-            context.BitmapSources.ToArray(),
-            context.GlyphRunFonts.ToArray(),
-            context.DrawingImageBounds.ToArray(),
-            context.VisualCacheBounds.ToArray(),
-            context.DrawingGroupBounds.ToArray(),
-            context.Viewport3DScenes.ToArray(),
-            context.MediaPlayerSources.ToArray(),
-            context.BitmapExternalImageSources.ToArray(),
-            context.D3DImageSources.ToArray())
+        WpfNativeMilBatch? result = null;
+        try
         {
-            VisualOwners = context.SnapshotVisualOwners(),
-            PointHitRegions = context.PointHitRegions.ToArray(),
-            VisualVisibilities = context.VisualVisibilities.ToArray()
-        };
+            uint rootHandle = context.AddVisual(rootVisual);
+            if (!overlays.IsEmpty || windowRegion is { IsEmpty: false })
+                rootHandle = context.AddHostRoot(rootHandle, overlays, windowRegion);
+            uint targetHandle = context.NextHandle();
+            context.Batch.CreateResource(
+                targetHandle, NativeMilResourceType.GenericRenderTarget);
+            context.Batch.CreateGenericTarget(targetHandle, pixelWidth, pixelHeight);
+            context.Batch.SetTargetClearColor(targetHandle, clearColor);
+            context.Batch.SetTargetRoot(targetHandle, rootHandle);
+            result = new WpfNativeMilBatch(
+                context.Batch.ToArray(),
+                targetHandle,
+                context.BitmapSources.ToArray(),
+                context.GlyphRunFonts.ToArray(),
+                context.DrawingImageBounds.ToArray(),
+                context.VisualCacheBounds.ToArray(),
+                context.DrawingGroupBounds.ToArray(),
+                context.Viewport3DScenes.ToArray(),
+                context.MediaPlayerSources.ToArray(),
+                context.BitmapExternalImageSources.ToArray(),
+                context.D3DImageSources.ToArray())
+            {
+                VisualOwners = context.SnapshotVisualOwners(),
+                PointHitRegions = context.PointHitRegions.ToArray(),
+                VisualVisibilities = context.VisualVisibilities.ToArray(),
+                HintedGlyphResources = context.HintedGlyphRuns.Count == 0 ? null : WpfNativeHintedGlyphResources.Create(context.HintedGlyphRuns)
+            };
+            context.Dispose();
+            return result;
+        }
+        catch (Exception failure)
+        {
+            try { context.Dispose(); }
+            catch (Exception cleanup) { try { failure.Data["HintedMilBuilderCleanupFailure"] = cleanup; } catch { } }
+            try { result?.Dispose(); }
+            catch (Exception cleanup) { try { failure.Data["HintedMilResultCleanupFailure"] = cleanup; } catch { } }
+            throw;
+        }
     }
 
     public WpfNativeMilCompilation Compile(
@@ -167,7 +195,7 @@ public sealed class WpfNativeMilSceneCompiler
         NativeMilBackend backend = NativeMilBackend.WgpuNative,
         NativeMilColor clearColor = default)
     {
-        WpfNativeMilBatch batch = BuildBatch(
+        using WpfNativeMilBatch batch = BuildBatch(
             rootVisual, pixelWidth, pixelHeight, clearColor);
         using var channel = new NativeMilChannel(backend);
         NativeMilBatchMetrics batchMetrics = ApplyBatch(channel, batch);
@@ -183,7 +211,8 @@ public sealed class WpfNativeMilSceneCompiler
         ArgumentNullException.ThrowIfNull(channel);
         ArgumentNullException.ThrowIfNull(batch);
 
-        NativeMilBatchMetrics batchMetrics = channel.Apply(batch.Bytes);
+        NativeMilBatchMetrics batchMetrics = batch.HintedGlyphResources is { } hinted
+            ? hinted.Apply(channel, batch.Bytes) : channel.Apply(batch.Bytes);
         ApplySidebands(channel, batch);
         return batchMetrics;
     }
@@ -298,8 +327,17 @@ public sealed class WpfNativeMilSceneCompiler
         return appliedCount;
     }
 
-    private sealed class BuildContext
+    private sealed class BuildContext : IDisposable
     {
+        internal List<(uint Handle, WpfHintedGlyphRunBinding Owner)> HintedGlyphRuns { get; } = [];
+        public void Dispose()
+        {
+            Exception? failure = null;
+            foreach (var source in HintedGlyphRuns)
+                try { source.Owner.Dispose(); }
+                catch (Exception error) { failure ??= error; }
+            if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+        }
         private readonly Dictionary<object, uint> _visualHandles =
             new(ReferenceEqualityComparer.Instance);
         private readonly List<KeyValuePair<int, object>> _visualOwners = new();
@@ -2093,6 +2131,27 @@ public sealed class WpfNativeMilSceneCompiler
             if (_glyphRunHandles.TryGetValue(resource, out uint existing))
             {
                 return existing;
+            }
+            if (WpfResourceResolver.TryAcquireHintedGlyphRun(resource, out var hinted))
+            {
+                try
+                {
+                    uint hintedHandle = NextHandle();
+                    var ink = hinted!.InkBounds;
+                    var hintedBounds = ink.IsEmpty ? default : new NativeMilRect(ink.X, ink.Y, ink.Width, ink.Height);
+                    Batch.SetGlyphRun(hintedHandle,
+                        new NativeMilGlyphRun(new NativeMilPoint(hinted.Origin.X, hinted.Origin.Y), hinted.FontRenderingEmSize, hintedBounds),
+                        hinted.GlyphIndices.Span, ReadOnlySpan<float>.Empty, hinted.GlyphPositions.Span);
+                    _glyphRunHandles.Add(resource, hintedHandle);
+                    HintedGlyphRuns.Add((hintedHandle, hinted));
+                    return hintedHandle;
+                }
+                catch (Exception failure)
+                {
+                    try { hinted?.Dispose(); }
+                    catch (Exception cleanup) { try { failure.Data["HintedMilBindingCleanupFailure"] = cleanup; } catch { } }
+                    throw;
+                }
             }
             if (!WpfResourceResolver.TryAdaptNativeGlyphRun(
                     resource, out WpfNativeGlyphRun glyphRun))

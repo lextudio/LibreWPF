@@ -1,5 +1,39 @@
 # Native scroll routing
 
+## Open ComboBox containment
+
+ShowcaseApp's open ComboBox dropdown must not scroll an outer viewer when its
+child reaches a boundary. ComboBox now observes the original typed native bubble
+at its normal class-handler position, including already-handled delivery, and
+applies its existing open-dropdown containment policy after child handlers. Both
+point and line packets retain their original vector, units and metadata. The
+control only assigns `Handled`; it does not manufacture a MouseWheel event or
+zero the remainder. A later application handler can still clear handling under
+the original routed-event rules.
+
+That explicit claim also makes later ScrollViewer default-handler occurrences
+ineligible for deferred child overflow through the existing captured route.
+Already accepted child commands keep their source ownership; layout before route
+sealing cannot bypass containment or replay application handlers. Current original
+source and ComboBox source generations, live attachment and modal admission are
+required. A same-args nested raise cannot own the original bubble. Cancellation
+continues retiring accepted work without a new ComboBox motion claim.
+
+Nine authored actual-source tests join the existing registrar-driven scroll gate,
+raising its minimum from 65 to 74 with the same 60-second/no-skips policy. They
+cover point/line axes, focused/unfocused open controls, partial and deferred child
+consumption, reentrant layout, application release, source reopening, cancellation
+and nested raises. The fixtures use real source ComboBox and ScrollViewer controls
+with the existing cross-source route fixture, not a native window or Showcase UI
+run. These tests have not yet been compiled or executed; coherent hosted CI and
+package/desktop qualification remain required.
+
+Closed ComboBox selection thresholds and arbitrary legacy-only MouseWheel handlers
+are deliberately not admitted. The native transport has point/line quantities,
+not Windows wheel-detent units; no point-to-line or 120-unit ratio is invented.
+
+## Native routed transport
+
 Acceptance target: point/line scrolling inside ShowcaseApp dialogs and dropdowns.
 The internal native source entrypoint now dispatches scroll packets through the
 real source hit test and routed event tree to the existing ScrollViewer consumer.

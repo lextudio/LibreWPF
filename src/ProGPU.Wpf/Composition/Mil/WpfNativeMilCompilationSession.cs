@@ -51,6 +51,8 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
     private readonly NativeMilBackend _backend;
     private NativeMilChannel? _channel;
     private WpfNativeMilBatch? _lastBatch;
+    private readonly List<WpfNativeMilBatch> _retiredBatches = [];
+    private readonly List<NativeMilChannel> _retiredChannels = [];
     private NativeMilViewport3DSnapshot[] _viewportSnapshots = [];
     private NativeMilPointHitRectangle[] _pointHitRegionsSnapshot = [];
     private NativeMilVisualVisibility[] _visualVisibilitiesSnapshot = [];
@@ -89,7 +91,7 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
         PortableWindowRegion? windowRegion = null)
     {
         ThrowIfDisposed();
-        WpfNativeMilBatch batch = _compiler.BuildBatch(
+        using WpfNativeMilBatch batch = _compiler.BuildBatch(
             rootVisual, pixelWidth, pixelHeight, clearColor, overlays, windowRegion);
         return Update(batch);
     }
@@ -140,7 +142,20 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(batch);
+        DrainRetiredBatches();
+        WpfNativeMilBatch retained = batch with { };
+        try { return UpdateOwned(retained); }
+        catch (Exception failure)
+        {
+            if (!ReferenceEquals(retained, _lastBatch))
+                try { RetireBatch(retained); }
+                catch (Exception cleanup) { try { failure.Data["HintedMilBatchCleanupFailure"] = cleanup; } catch { } }
+            throw;
+        }
+    }
 
+    private WpfNativeMilSessionUpdate UpdateOwned(WpfNativeMilBatch batch)
+    {
         if (_channel is null || _lastBatch is null || _requiresRebuild)
         {
             return ReplaceChannel(batch);
@@ -148,21 +163,30 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
 
         NativeMilBatchDelta delta = CreateDelta(_lastBatch, batch);
         if (delta.RequiresRebuild ||
-            !HasStableSidebandTopology(_lastBatch, batch))
+            !HasStableSidebandTopology(_lastBatch, batch) ||
+            !HasStableHintedTopology(_lastBatch, batch))
         {
             return ReplaceChannel(batch);
         }
 
+        _retiredBatches.EnsureCapacity(checked(_retiredBatches.Count + 1));
         NativeMilBatchMetrics metrics = default;
         try
         {
-            if (delta.Bytes.Length != 0)
+            if (batch.HintedGlyphResources is { } hinted)
+            {
+                metrics = hinted.Apply(_channel, delta.Bytes);
+            }
+            else if (delta.Bytes.Length != 0)
             {
                 metrics = _channel.Apply(delta.Bytes);
             }
             uint appliedSidebandCount = ApplyChangedSidebands(
                 _channel, _lastBatch, batch);
+            appliedSidebandCount = checked(appliedSidebandCount + (uint)(batch.HintedGlyphResources?.BindingCount ?? 0));
+            WpfNativeMilBatch previous = _lastBatch;
             _lastBatch = batch;
+            RetireBatch(previous);
             return new WpfNativeMilSessionUpdate(
                 batch.TargetHandle,
                 false,
@@ -253,21 +277,50 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _disposeState, 1) != 0)
-        {
-            return;
-        }
+        Interlocked.Exchange(ref _disposeState, 1);
         _channel?.Dispose();
         _channel = null;
+        if (_lastBatch is { } last) _retiredBatches.Add(last);
         _lastBatch = null;
+        DrainRetiredBatches();
         _viewportSnapshots = [];
         _pointHitRegionsSnapshot = [];
         _visualVisibilitiesSnapshot = [];
     }
 
+    private static bool HasStableHintedTopology(WpfNativeMilBatch previous, WpfNativeMilBatch current) =>
+        previous.HintedGlyphResources is { } oldHinted
+            ? current.HintedGlyphResources is { } next && oldHinted.HasSameProducerTopology(next)
+            : current.HintedGlyphResources is null;
+
+    private void RetireBatch(WpfNativeMilBatch batch)
+    {
+        _retiredBatches.Add(batch);
+        DrainRetiredBatches();
+    }
+
+    private void DrainRetiredBatches()
+    {
+        Exception? failure = null;
+        for (int i = _retiredChannels.Count - 1; i >= 0; i--)
+        {
+            try { _retiredChannels[i].Dispose(); _retiredChannels.RemoveAt(i); }
+            catch (Exception error) { failure ??= error; }
+        }
+        for (int i = _retiredBatches.Count - 1; i >= 0; i--)
+        {
+            try { _retiredBatches[i].Dispose(); _retiredBatches.RemoveAt(i); }
+            catch (Exception error) { failure ??= error; }
+        }
+        if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
     private WpfNativeMilSessionUpdate ReplaceChannel(
         WpfNativeMilBatch batch)
     {
+        // Reserve retirement slots before acquiring a replacement native owner.
+        _retiredChannels.EnsureCapacity(checked(_retiredChannels.Count + 1));
+        _retiredBatches.EnsureCapacity(checked(_retiredBatches.Count + 1));
         var replacement = new NativeMilChannel(_backend);
         NativeMilBatchMetrics metrics;
         NativeMilViewport3DSnapshot[] viewportSnapshots;
@@ -281,20 +334,29 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
             pointSnapshot = batch.PointHitRegions.ToArray();
             visibilitySnapshot = batch.VisualVisibilities.ToArray();
         }
-        catch
+        catch (Exception failure)
         {
-            replacement.Dispose();
+            // Failed replacement teardown retains the exact native channel for retry.
+            try { replacement.Dispose(); }
+            catch (Exception cleanup)
+            {
+                _retiredChannels.Add(replacement);
+                try { failure.Data["HintedMilChannelCleanupFailure"] = cleanup; } catch { }
+            }
             throw;
         }
 
         NativeMilChannel? previous = _channel;
+        WpfNativeMilBatch? previousBatch = _lastBatch;
+        if (previous is not null) _retiredChannels.Add(previous);
+        if (previousBatch is not null) _retiredBatches.Add(previousBatch);
         _channel = replacement;
         _lastBatch = batch;
         _viewportSnapshots = viewportSnapshots;
         _pointHitRegionsSnapshot = pointSnapshot;
         _visualVisibilitiesSnapshot = visibilitySnapshot;
         _requiresRebuild = false;
-        previous?.Dispose();
+        DrainRetiredBatches();
         return new WpfNativeMilSessionUpdate(
             batch.TargetHandle,
             true,
@@ -656,6 +718,7 @@ public sealed class WpfNativeMilCompilationSession : IDisposable
             (batch.MediaPlayerSources?.Count ?? 0) +
             (batch.D3DImageSources?.Count ?? 0) +
             (batch.GlyphRunFonts?.Count ?? 0) +
+            (batch.HintedGlyphResources?.BindingCount ?? 0) +
             (batch.DrawingImageBounds?.Count ?? 0) +
             (batch.DrawingGroupBounds?.Count ?? 0) +
             (batch.VisualCacheBounds?.Count ?? 0) +

@@ -1633,7 +1633,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             {
                 TraceNativeLoop(s_traceNativeLoop,
                     $"native event poll entering: nonBlocking={useNonBlockingNativePoll}, {CreateNativeLoopTraceState()}");
-                if (!NativeWindowModalSession.TryPumpEvents()) window.DoEvents();
+                PumpWindowEvents(window, _options.IsPopupSurface && _usesExternalNativeLoopPump,
+                    NativeWindowModalSession.TryPumpEvents);
                 TraceNativeLoop(s_traceNativeLoop, $"native event poll leaving: {CreateNativeLoopTraceState()}");
             }
             finally
@@ -1689,6 +1690,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         ProcessDispatcherQueueCore();
+    }
+
+    internal static void PumpWindowEvents(IWindow window, bool externallyPumpedPopup, Func<bool> pumpModalEvents)
+    {
+        // The owner has already polled AppKit before its popup UpdateTick.
+        // Owned popup DoEvents drains only its own geometry/input queue. Never
+        // start a second global modal poll from that source callback.
+        if (externallyPumpedPopup || !pumpModalEvents()) window.DoEvents();
     }
 
     public void Close()
@@ -4428,7 +4437,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _attachedInputService = input;
             TraceNativeLoop($"input attached: host={GetHashCode():x}, handle={window.Handle}");
         }
-        catch (PlatformNotSupportedException)
+        catch (PlatformNotSupportedException) when (!_options.IsPopupSurface)
         {
             input.InputReceived -= OnPlatformInputReceived;
             _inputSubscription = null;

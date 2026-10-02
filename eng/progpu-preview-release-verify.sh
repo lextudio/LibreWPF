@@ -253,4 +253,10 @@ if (expectedIds.size !== 0) {
 }
 NODE
 
+package_files=()
+for package_id in "${package_ids[@]}"; do
+  package_files+=("${extract_dir}/$(progpu_preview_package_file_name "${package_id}")")
+done
+python3 "${repo_root}/eng/progpu-preview-package-closure.py" "${package_files[@]}"
+
 echo "LibreWPF preview release bundle verification succeeded for ${bundle_output}."

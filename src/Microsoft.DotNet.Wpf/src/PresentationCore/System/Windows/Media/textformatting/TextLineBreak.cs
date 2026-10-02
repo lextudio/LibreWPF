@@ -57,8 +57,7 @@ namespace System.Windows.Media.TextFormatting
         /// </summary>
         public void Dispose()
         {
-            DisposeInternal(false);
-            GC.SuppressFinalize(this);
+            if (DisposeInternal(false)) GC.SuppressFinalize(this);
         }
 
 
@@ -79,7 +78,17 @@ namespace System.Windows.Media.TextFormatting
                 }
             }
 
-            return new TextLineBreak(_currentScope, pbreakrec) { PortableContinuation = PortableContinuation };
+            var clone = new TextLineBreak(_currentScope, pbreakrec);
+            try
+            {
+                clone.PortableContinuation = PortableContinuation?.Clone();
+                return clone;
+            }
+            catch
+            {
+                try { clone.Dispose(); } catch { }
+                throw;
+            }
         }
 
 
@@ -88,8 +97,15 @@ namespace System.Windows.Media.TextFormatting
         /// managed object. The parameter flag indicates whether the call is 
         /// from finalizer thread or the main UI thread.
         /// </summary>
-        private void DisposeInternal(bool finalizing)
+        private bool DisposeInternal(bool finalizing)
         {
+            // A failed native retirement retains this exact continuation for a
+            // subsequent Dispose. Clones own separate source references.
+            if (finalizing)
+            {
+                try { if (PortableContinuation?.TryDispose() == false) return false; } catch { return false; }
+            }
+            else if (PortableContinuation?.TryDispose() == false) return false;
             PortableContinuation = null;
             if (_breakRecord != IntPtr.Zero)
             {
@@ -98,6 +114,7 @@ namespace System.Windows.Media.TextFormatting
                 _breakRecord = IntPtr.Zero;
                 GC.KeepAlive(this);
             }
+            return true;
         }
 
 

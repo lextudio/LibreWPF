@@ -240,3 +240,58 @@ The owned Cocoa factory is therefore still not selected. Complete
 source consumption, callback/queued-dispatch lifetime, Forms integration and real
 native popup interaction/visual tests remain required. No automatic modality,
 package/UI parity or native capture qualification is claimed by this host bridge.
+
+## Actual source registrar connection
+
+The later source integration now implements `IPortableNativePointerInputService`
+on the real PresentationFramework registrar. Both entrypoints use the existing
+native report/scroll implementation. Window delivery requires that exact live
+Window to remain the presentation source root; source delivery accepts only an
+actual portable source and retains its thread, lifetime and generation checks.
+Callback root replacement cannot deliver the remaining old down to the new root.
+Cancel/Leave retain their source-cleanup path rather than ordinary input filtering.
+
+This makes the existing source-capability check reach the owned Cocoa factory.
+WPF already knows its actual owner and shares that owner's render device before
+hidden initialization. It therefore keeps `CreateOwnedCocoaWindow`, including its
+fixed managed parent and owner-loop wake callback; it does not migrate to the
+ownerless Forms creation lifecycle. Existing hidden NoAPI/context-control options,
+typed native input/cursor provider, checked owner preparation/show and renderer-
+before-window retirement remain authoritative for both WPF renderer modes.
+
+The owner alone polls global modal events. An externally pumped popup drains its
+own window queue after the owner UpdateTick instead of invoking another
+`NativeWindowModalSession.TryPumpEvents`. Initialization, show and input failure
+cleanup preserves the primary error; failed native/render cleanup remains owned
+by the source host's creating-thread retirement queue.
+
+Popup input-context attachment failures now propagate instead of being swallowed
+by the ordinary host's optional-input compatibility path. The popup adapter also
+keeps native `Handled` independent of accepted delivery; its legacy callback
+convention cannot turn an unclaimed native scroll into successful consumption.
+Three adapter cases retain unhandled/handled native results and unchanged legacy
+behavior, raising the host minimum from 301 to 304.
+
+Four new actual-registrar source cases cover unchanged point/line packets with
+unhandled results, foreign/detached/retired targets, callback root replacement and
+native cancellation metadata/capture retirement. Existing routed-scroll cases and
+the shared native-pointer helper now traverse the actual registrar. Six host cases
+cover modal-poll ownership and real popup-adapter initialization failure with
+retirement retry. The source/host gate minima increase to 32/301 without changing
+deadlines or skip rejection. These cases are authored, not yet execution evidence.
+
+Native scroll deliberately stays on `PortableScroll` and measured source
+`IScrollInfo` contracts. Delivery acceptance does not mean motion was consumed:
+unclaimed point/line events remain unhandled and are never converted to fabricated
+legacy wheel notches. Ordinary Silk `MouseWheel` remains unchanged. Legacy-only
+custom handlers still require explicit compatibility work. Automatic native modal
+sessions, real AppKit input/capture/rendering, both source application paths and
+full package/desktop qualification remain separate gates.
+
+The later integration pins exact Forms popup source
+`4f173ac601d96fbac2a82fc1e1f9b8726c885c0c` and ProGPU owned-option source
+`f22b5b3f3416e16421ab6b2952b2eef1864d781e`; that Forms commit pins the same
+ProGPU commit. This is a coherent pending source graph, not qualified package
+provenance. The Forms post-commit helper run passed 132 cases with no skips;
+WPF source/host compilation and tests and complete producer/consumer Builds
+remain separate evidence. No pending native runtime is built, staged or admitted.

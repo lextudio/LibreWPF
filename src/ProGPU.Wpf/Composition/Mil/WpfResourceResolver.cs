@@ -29,6 +29,8 @@ using PortableGlyphRun = ProGPU.Wpf.Interop.PortableGlyphRun;
 using PortableGlyphRunSource = ProGPU.Wpf.Interop.IPortableGlyphRunSource;
 using PortableNativeGlyphRun = ProGPU.Wpf.Interop.PortableNativeGlyphRun;
 using PortableNativeGlyphRunSource = ProGPU.Wpf.Interop.IPortableNativeGlyphRunSource;
+using IPortableHintedGlyphRunSource = ProGPU.Wpf.Interop.IPortableHintedGlyphRunSource;
+using IPortableHintedGlyphRunBinding = ProGPU.Wpf.Interop.IPortableHintedGlyphRunBinding;
 using PortablePathSegment = ProGPU.Wpf.Interop.PortablePathSegment;
 using PortablePathSegmentKind = ProGPU.Wpf.Interop.PortablePathSegmentKind;
 using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
@@ -2006,9 +2008,35 @@ public sealed class WpfResourceResolver :
             && NearlyEqual(matrix.M44, 1);
     }
 
+    internal static bool TryAcquireHintedGlyphRun(object? resource, out WpfHintedGlyphRunBinding? binding)
+    {
+        binding = null;
+        IPortableHintedGlyphRunBinding? acquired = resource is WpfHintedGlyphRunBinding direct ? direct.Retain() : null;
+        if (acquired is null && resource is IPortableHintedGlyphRunSource source)
+        {
+            bool found = source.TryAcquirePortableHintedGlyphRun(out acquired);
+            if (!found && acquired is null) return false;
+            if (found && acquired is null) throw new InvalidOperationException("A hinted source reported success without an owned binding.");
+            if (!found)
+            {
+                var invalid = new InvalidOperationException("A hinted source returned an owner with failed acquisition.");
+                try { acquired!.Dispose(); }
+                catch (Exception cleanup) { try { invalid.Data["HintedBindingCleanupFailure"] = cleanup; } catch { } }
+                throw invalid;
+            }
+        }
+        if (acquired is null) return false;
+        if (acquired is WpfHintedGlyphRunBinding native) { binding = native; return true; }
+        var failure = new NotSupportedException("Hinted source replay requires the original provider-owned native generation.");
+        try { acquired.Dispose(); }
+        catch (Exception cleanup) { try { failure.Data["HintedBindingCleanupFailure"] = cleanup; } catch { } }
+        throw failure;
+    }
+
     internal static bool TryAdaptNativeGlyphRun(object? resource, out WpfNativeGlyphRun glyphRun)
     {
         glyphRun = default;
+        if (TryAcquireHintedGlyphRun(resource, out var hinted)) { hinted!.Dispose(); return false; }
         if (resource == null)
         {
             return false;
@@ -2047,6 +2075,7 @@ public sealed class WpfResourceResolver :
 
     public static MediaGlyphRun? AdaptGlyphRun(object? resource)
     {
+        if (TryAcquireHintedGlyphRun(resource, out var hinted)) { hinted!.Dispose(); return null; }
         if (resource == null)
         {
             return null;

@@ -1134,9 +1134,15 @@ public sealed partial class PortableScrollSourceTests
         new(PortablePointerEventKind.Scroll, PortablePointerScrollProtocol.AppKit, x, 75, 3.125, -1, 0,
             PortablePointerModifiers.Super, 0, delta, unit, phase, momentum);
 
-    private static bool Route(ScrollFixture fixture, PortablePointerInput input, out bool handled) =>
-        PortableWindowActivationService.TryProcessNativePointerInput((PresentationSource)fixture.Host,
-            input, PortableInputModifiers.Control, out handled);
+    private static bool Route(ScrollFixture fixture, PortablePointerInput input, out bool handled)
+    {
+        PortableWindowActivationService.RegisterPortableInteropService();
+        Assert.True(PortableWpfServiceRegistry.TryGetWindowActivationService(
+            PortableWpfServiceKey.PresentationFramework, out var registrar));
+        return Assert.IsAssignableFrom<IPortableNativePointerInputService>(registrar)
+            .TryProcessPresentationSourceNativePointerInputEvent(fixture.Host,
+                input, (int)PortableInputModifiers.Control, out handled);
+    }
 
     private static PortablePointerInput Packet(double x, double y, PortablePointerScrollUnit unit) =>
         new(PortablePointerEventKind.Scroll, 10, 10, 1, -1, 0, 0, x, y, unit);

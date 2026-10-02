@@ -1,5 +1,44 @@
 # Agent Guidance
 
+Source-shaped GlyphRun bidi levels publish direction (zero or one), matching
+TextShapeableCharacters. Preserve the full native embedding level for run grouping,
+selection, original paragraph snapshots and hinted occurrence validation. Equal
+parity never admits mixed-level hinted selections; source publication compares the
+projected binding exactly. This does not admit Display metrics or public hinted
+caret/outline behavior. See docs/source-hinted-text-ownership.md.
+
+Source hinted lines and cloned breaks own independent leases of one original
+formatted generation. Use the native writer's retained line frames and canonical
+batched offsets for source GlyphRuns; never ask a hinted paragraph for a design
+font alias or rebuild placement from per-glyph nominal queries. Interaction uses
+the same original boxes/carets, without synthetic empty-row or endpoint stops.
+Retire initial producer ownership after the line retains its use, preserve setup
+errors and retain failed cleanup for retry. Width-changing hinted continuations
+call the original resource's native reflow with the complete source text, exact
+input boundary and requested width. Reject recursive admission and publication
+after close; retire a failed continuation before creating another. Keep Display
+policy, collapse and public GlyphRun caret/outline gates until separately
+implemented and qualified. Native/source/package continuation execution remains
+separate from adapter compilation. See docs/source-hinted-text-ownership.md.
+
+Open ComboBox dropdowns contain typed native scroll after child source handlers,
+including deferred boundary overflow. Claim the original routed packet without
+rewriting its remainder or synthesizing wheel deltas; later application handling
+keeps its normal order. Require current origin/control source generations and
+exclude cancellation and same-args nested raises. Closed selection and arbitrary
+legacy MouseWheel compatibility remain separate native-unit contracts.
+See docs/native-scroll-routing.md.
+
+The source window registrar exposes lossless native pointer/scroll delivery to
+the existing fixed-owner Cocoa popup factory. Require the actual live portable
+source, retain packet generations, and keep unclaimed scroll unhandled; never
+invent MouseWheel units or a replacement target. Owner UpdateTick drains only the
+popup queue, not another global modal poll. Failed setup preserves its original
+error while the source host retains native/render retirement. Keep the known
+owner and shared device; this does not enable automatic modality or qualify
+legacy-only scroll handlers, native capture, package or desktop behavior.
+See docs/native-pointer-host-transport.md.
+
 ## Repository and branch ownership
 
 LibreWPF work branches and pull requests target `progpu-rendering-port`, the
@@ -183,6 +222,33 @@ Portable TextLine terminal caret boxes apply only to source ranges intersecting
 the actual newline. Hidden-only formatting ranges keep native caret navigation,
 not invented selection rectangles. Preserve newline X/height from the retained
 source line and keep hidden source/glyph mapping unchanged.
+
+The optional hinted formatting capability owns one original native generation,
+separate from ordinary paragraphs and source Display selection. Carry exact
+positioned occurrence indices and native measured interaction without font aliases
+or source-local positioning. Retire temporary producers before publishing source
+references; siblings retain the live resource and final teardown retries cannot
+end a use twice. Explicit GlyphRun publication retains typed original selections
+and shared projected ink, never design-font aliases. Recorded draws use lease-aware
+hinted commands with original hit owners; native MIL imports original generations
+atomically with canonical deltas and retains batch/channel retirement retries.
+Explicit source binding compares original font bytes/face/UPM and exact retained
+per-occurrence advances before publication, then owns read-only source ID/advance
+snapshots. Never infer source offset or caret agreement from these identities;
+RTL nominal design advance is distinct from hinted device and GPOS advances.
+Reject selected variation-coordinate instances that source GlyphTypeface cannot
+identify, even when coordinates are explicitly default; byte equality is not
+complete font-instance identity.
+Full source publication snapshots offsets and asks the original producer to
+validate the existing nominal offset convention against one retained writer line.
+Source baseline is distinct from paragraph draw origin and relative-ink origin;
+use returned typed frames, never source-side baseline repair. Retain the explicit
+Ideal-offset-only gate until Display metric/rounding semantics connect, and reject
+cross-line or unrepresentable mappings without changing original positions.
+Additional guideline/cache-brush/transform admission, source caret mapping,
+continuation qualification and actual Display selection remain unfinished. Keep hinted public
+caret/outline paths rejected until their original source contract connects.
+See docs/source-hinted-text-ownership.md.
 
 PortableTextLine width-changing continuations use the captured paragraph's explicit
 native reflow capability over the complete original shaping context. Keep original

@@ -1,13 +1,103 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Runtime.CompilerServices;
 using System.Windows.Documents;
+using System.Windows.Media;
 using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Controls;
 
 public sealed class TextBlockTests
 {
+    private const string CjkText = "文件"; // U+6587 U+4EF6
+
+    // A Windows-MIL test process must not switch its frozen resource domain, and a
+    // non-portable host has no ProGPU paragraph to fall back to for Display mode.
+    private sealed class PortableMediaFactAttribute : FactAttribute
+    {
+        public PortableMediaFactAttribute([CallerFilePath] string? sourceFilePath = null,
+            [CallerLineNumber] int sourceLineNumber = 0) : base(sourceFilePath, sourceLineNumber)
+        {
+            if (PortableWpfRuntime.ConfiguredMediaBackend != PortableWpfMediaBackend.Portable)
+                Skip = "Requires a process initialized with portable media before WPF construction.";
+        }
+    }
+
+    // Characterization fixture for a known defect, not desired behavior.
+    //
+    // PortableTextLine declines every TextFormattingMode other than Ideal, so Display
+    // falls through to SimpleTextLine. That path measures Latin correctly but reports a
+    // zero width for CJK, so a CJK run lays out at zero extent and a
+    // Display-mode host such as a menu item collapses. This pins the current behavior so
+    // it cannot change silently; the Display == 0 expectations are expected to flip when
+    // the Display path is fixed.
+    [PortableMediaFact]
+    public void TextFormattingModeDisplay_MeasuresCjkAsZeroWidthInAFaceThatHasTheGlyphs()
+    {
+        // The face is verified to contain both CJK glyphs, so a zero width below is the
+        // measurement path failing rather than the font lacking coverage.
+        FontFamily family = FindCjkCapableFamily();
+
+        Size latinIdeal = Measure(family, "abc", TextFormattingMode.Ideal);
+        Size latinDisplay = Measure(family, "abc", TextFormattingMode.Display);
+        Size cjkDisplay = Measure(family, CjkText, TextFormattingMode.Display);
+
+        // Controls: Latin measures correctly in both modes from this same face, so Display
+        // is a working mode here and the failure below is specific to CJK.
+        Assert.True(latinIdeal.Width > 0, $"Ideal Latin width was {latinIdeal.Width}.");
+        Assert.True(latinDisplay.Width > 0, $"Display Latin width was {latinDisplay.Width}.");
+
+        // The defect: the CJK run collapses to zero width in Display, so a Display-mode
+        // host lays the text out at no extent at all.
+        Assert.Equal(0, cjkDisplay.Width);
+    }
+
+    private static Size Measure(FontFamily family, string text, TextFormattingMode mode)
+    {
+        TextBlock textBlock = new() { Text = text, FontSize = 24, FontFamily = family };
+        TextOptions.SetTextFormattingMode(textBlock, mode);
+        textBlock.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        textBlock.Arrange(new Rect(textBlock.DesiredSize));
+        return textBlock.DesiredSize;
+    }
+
+    // A physical face that really contains the CJK glyphs, so the fixture never measures
+    // fallback or .notdef behavior instead of Display-mode measurement.
+    private static FontFamily FindCjkCapableFamily()
+    {
+        foreach (FontFamily family in Fonts.SystemFontFamilies)
+        {
+            // Dot-prefixed names are private to the font collection and are not usable as
+            // an explicit FontFamily source, so they cannot stand in for a real face here.
+            if (family.Source.StartsWith('.') || family.Source.Contains(','))
+            {
+                continue;
+            }
+
+            try
+            {
+                foreach (Typeface typeface in family.GetTypefaces())
+                {
+                    if (typeface.TryGetGlyphTypeface(out GlyphTypeface face) &&
+                        HasGlyph(face, CjkText[0]) && HasGlyph(face, CjkText[1]))
+                    {
+                        return new FontFamily(family.Source);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Unusable family; keep probing the remaining installed families.
+            }
+        }
+
+        Assert.Skip("No installed font contains the CJK glyphs used by this fixture.");
+        return null!;
+    }
+
+    private static bool HasGlyph(GlyphTypeface face, char character) =>
+        face.CharacterToGlyphMap.TryGetValue(character, out ushort glyph) && glyph != 0;
     [Fact]
     public void PortableRtlFinalInsertionUsesPhysicalParagraphEdge()
     {

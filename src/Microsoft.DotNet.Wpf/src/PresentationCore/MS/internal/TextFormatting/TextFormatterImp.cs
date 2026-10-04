@@ -344,15 +344,13 @@ namespace MS.Internal.TextFormatting
 
             if (!IsNativeLineServicesAvailable)
             {
-                // Only Ideal is served by the portable paragraph contract; Display (and any future
-                // mode) keeps the source SimpleTextLine path below, mirroring FormatLineInternal's
-                // own PortableTextLine.Create decline for non-Ideal modes.
-                if (settings.TextFormattingMode == TextFormattingMode.Ideal) {
-                    if (PortableWpfServiceRegistry.TryGetTextFormatting(out var service))
-                        return PortableTextLine.MeasureIntrinsicWidths(settings, firstCharIndex, textSource.PixelsPerDip, service);
-                    if (OperatingSystem.IsWindows())
-                        throw new PlatformNotSupportedException("Portable Windows text requires a registered text formatting provider for intrinsic measurement.");
-                }
+                // Every mode is served by the portable paragraph contract; PortableTextLine
+                // applies ideal metrics for non-Ideal requests rather than declining them, so
+                // intrinsic measurement does not need to route Display to SimpleTextLine either.
+                if (PortableWpfServiceRegistry.TryGetTextFormatting(out var service))
+                    return PortableTextLine.MeasureIntrinsicWidths(settings, firstCharIndex, textSource.PixelsPerDip, service);
+                if (OperatingSystem.IsWindows())
+                    throw new PlatformNotSupportedException("Portable Windows text requires a registered text formatting provider for intrinsic measurement.");
 
                 TextLine simpleLine = SimpleTextLine.Create(
                     settings,

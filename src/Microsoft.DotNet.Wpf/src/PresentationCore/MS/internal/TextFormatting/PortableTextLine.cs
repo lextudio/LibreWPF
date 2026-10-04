@@ -140,13 +140,15 @@ internal sealed class PortableTextLine : TextLine
 
     internal static TextLine Create(FormatSettings settings, int first, int idealWidth, double pixelsPerDip)
     {
-        // TextFormattingMode.Display is not implemented by the portable paragraph contract, but it
-        // is not a fatal condition either: the source SimpleTextLine path has always supported it
-        // (see its own TextFormattingMode.Display branches). Decline here - return null - so
-        // TextFormatterImp.FormatLineInternal falls through to SimpleTextLine, which is exactly
-        // what happened before the portable provider was wired up. Only Ideal keeps the native
-        // portable paragraph.
-        if (settings.TextFormattingMode != TextFormattingMode.Ideal) return null;
+        // Display hinting is not implemented by the native portable paragraph, but declining is not
+        // a safe alternative: a declined line falls through to SimpleTextLine, which cannot shape a
+        // complex script without a provider and now fails the measure outright instead of
+        // manufacturing an empty paragraph. A themed control that asks for Display (AvalonDock's
+        // Arc/VS/VS2013 themes set it on menus, tab headers and title bars) and holds CJK text
+        // therefore took the whole window down during Show. Serve every mode with ideal metrics
+        // instead, as issue #184 proposed: Display is only a hinting and snapping preference, so
+        // the line stays correct and merely skips display-level rounding. The metric calls below
+        // pass Ideal for the same reason.
         TextLine continuation = CreateContinuation(settings, first, idealWidth, pixelsPerDip);
         if (continuation != null) return continuation;
         if (!PortableWpfServiceRegistry.TryGetTextFormatting(out var service)) return null;
@@ -196,9 +198,8 @@ internal sealed class PortableTextLine : TextLine
         PortableTextExclusionRequest exclusions = (settings.TextSource as IPortableExcludedTextSource)?.GetExclusions(first);
         if (exclusions != null && (measureIntrinsicWidths || service is not IPortableExcludedTextFormatting || width <= 0))
             throw Unsupported("excluded source formatting requires a bounded width and explicit native provider; intrinsic formatting remains separate");
-        // TextFormattingMode is deliberately NOT checked here: Create() above declines any mode
-        // other than Ideal so this path is only reached for Ideal, and a caller that reaches it
-        // directly still gets a usable ideal-metric line instead of an exception.
+        // TextFormattingMode is deliberately NOT checked here: Create() serves every mode with
+        // ideal metrics rather than declining, so a non-Ideal request reaches this path too.
         if (settings.IsSideways || pap.TextMarkerProperties != null ||
             (pap.TextDecorations?.Count ?? 0) != 0 ||
             pap.Tabs?.Count > 0)
@@ -340,9 +341,9 @@ internal sealed class PortableTextLine : TextLine
         var floatEvents = floating == null ? null : sourceMap.MapFloatingRanges(floating.Children.Span);
         var font = styles.Count > 0 ? styles[0].Font : GetFont(face);
         double defaultHeight = properties.Typeface.LineSpacing(
-            properties.FontRenderingEmSize, 1, pixelsPerDip, settings.TextFormattingMode);
+            properties.FontRenderingEmSize, 1, pixelsPerDip, TextFormattingMode.Ideal);
         double height = pap.LineHeight > 0 ? settings.Formatter.IdealToReal(pap.LineHeight, pixelsPerDip) : defaultHeight;
-        double baseline = properties.Typeface.Baseline(properties.FontRenderingEmSize, 1, pixelsPerDip, settings.TextFormattingMode);
+        double baseline = properties.Typeface.Baseline(properties.FontRenderingEmSize, 1, pixelsPerDip, TextFormattingMode.Ideal);
         // Line Services preserves the default face's baseline ratio when a
         // client supplies an explicit line height. The run itself keeps its
         // source metrics inside that line box; scaling the run metrics would
@@ -566,8 +567,8 @@ internal sealed class PortableTextLine : TextLine
                         if (!double.IsFinite(emSize) || emSize <= 0) throw Unsupported("invalid composite-font scale");
                         styles.Add(new(mappedStart, checked(mappedStart + mapped.Length), p, request.Run,
                             face, GetFont(face), emSize,
-                            p.Typeface.Baseline(p.FontRenderingEmSize, 1, pixelsPerDip, settings.TextFormattingMode),
-                            p.Typeface.LineSpacing(p.FontRenderingEmSize, 1, pixelsPerDip, settings.TextFormattingMode),
+                            p.Typeface.Baseline(p.FontRenderingEmSize, 1, pixelsPerDip, TextFormattingMode.Ideal),
+                            p.Typeface.LineSpacing(p.FontRenderingEmSize, 1, pixelsPerDip, TextFormattingMode.Ideal),
                             request.Language, substitute ? request.DigitZero : 0, false,
                             mappedPercent, mappedGroup, mappedDecimal));
                         mappedStart += mapped.Length;

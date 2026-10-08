@@ -4507,6 +4507,9 @@ namespace System.Windows
         /// </summary>
         protected sealed override void ArrangeCore(Rect finalRect)
         {
+            // A new arrange may give a new layout clip; see TryGetPortableVisualLayoutState.
+            _portableLayoutClipValid = false;
+            _portableLayoutClip = null;
             // If using layout rounding, check whether rounding needs to compensate for high DPI
             bool useLayoutRounding = this.UseLayoutRounding;
             DpiScale dpi = GetDpi();
@@ -5033,10 +5036,24 @@ namespace System.Windows
                 return null;
         }
 
+        // The layout clip as of the last arrange. GetLayoutClip builds a new Geometry on every call,
+        // and the portable renderer reads this state on every frame and compares the clip by
+        // reference - so every element with a layout clip (ScrollContentPresenter, a ProgressBar's
+        // PART_Indicator, Image, ...) looked changed on every frame, and an idle window re-walked
+        // its whole visual tree ~60 times a second. Like UIElement.ensureClip, the clip only
+        // changes on arrange (ClipToBounds and everything else it depends on invalidate arrange).
+        private Geometry _portableLayoutClip;
+        private bool _portableLayoutClipValid;
+
         bool IPortableVisualLayoutStateSource.TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
         {
             Size renderSize = RenderSize;
-            Geometry layoutClip = GetLayoutClipInternal();
+            if (!_portableLayoutClipValid || !IsArrangeValid || !IsMeasureValid)
+            {
+                _portableLayoutClip = GetLayoutClipInternal();
+                _portableLayoutClipValid = IsMeasureValid && IsArrangeValid;
+            }
+            Geometry layoutClip = _portableLayoutClip;
             state = new PortableVisualLayoutState
             {
                 HasRenderSize = true,

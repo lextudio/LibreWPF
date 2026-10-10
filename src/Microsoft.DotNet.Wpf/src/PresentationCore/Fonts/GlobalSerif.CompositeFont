@@ -559,18 +559,18 @@
         <FontFamilyMap  
             Unicode          = "FE10-FE1F"
             Language         = "zh-Hans"
-            Target           = "Microsoft YaHei"
+            Target           = "Microsoft YaHei, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
             Scale            = "1.0"/>
         <!-- KO -->
         <FontFamilyMap  
             Unicode          = "FE10-FE1F"
             Language         = "ko"
-            Target           = "Malgun Gothic, Microsoft JhengHei"
+            Target           = "Malgun Gothic, Microsoft JhengHei, Apple SD Gothic Neo, AppleGothic, Hiragino Sans GB"
             Scale            = "1.0"/>
         <!-- Other (include CHT and JA) -->
         <FontFamilyMap  
             Unicode          = "FE10-FE1F"
-            Target           = "Microsoft JhengHei"
+            Target           = "Microsoft JhengHei, PingFang SC, Hiragino Sans GB, Apple SD Gothic Neo, Hiragino Sans, PingFang TC"
             Scale            = "1.0"/>
         
         <!--
@@ -634,8 +634,8 @@
         <!-- CHT -->
         <FontFamilyMap  
             Unicode          = "FF61-FF9F"
-            Language         = "zh-Hans"
-            Target           = "MingLiU, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
+            Language         = "zh-Hant"
+            Target           = "MingLiU, PingFang TC, Heiti TC, Songti TC"
             Scale            = "1.0"/>
         <!-- Other (include JA and KO) -->
         <FontFamilyMap  

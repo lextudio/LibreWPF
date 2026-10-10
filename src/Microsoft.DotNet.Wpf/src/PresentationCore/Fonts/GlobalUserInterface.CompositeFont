@@ -1038,30 +1038,30 @@
             <FontFamilyMap
                 Unicode     = "FE10-FE1F"
                 Language    = "zh-Hans"
-                Target      = "Microsoft YaHei UI, Microsoft YaHei"
+                Target      = "Microsoft YaHei UI, Microsoft YaHei, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
                 Scale       = "1.0" />
             <!-- CHT -->
             <FontFamilyMap
                 Unicode     = "FE10-FE1F"
                 Language    = "zh-Hant"
-                Target      = "Microsoft JhengHei UI, Microsoft JhengHei"
+                Target      = "Microsoft JhengHei UI, Microsoft JhengHei, PingFang TC, Heiti TC, Songti TC"
                 Scale       = "1.0" />
             <!-- KO -->
             <FontFamilyMap
                 Unicode     = "FE10-FE1F"
                 Language    = "ko"
-                Target      = "Malgun Gothic, Microsoft JhengHei UI, Microsoft JhengHei"
+                Target      = "Malgun Gothic, Microsoft JhengHei UI, Microsoft JhengHei, Apple SD Gothic Neo, AppleGothic, Hiragino Sans GB"
                 Scale       = "1.0" />
             <!-- JA -->
             <FontFamilyMap
                 Unicode     = "FE10-FE1F"
                 Language    = "ja"
-                Target      = "Microsoft JhengHei UI, Microsoft JhengHei"
+                Target      = "Microsoft JhengHei UI, Microsoft JhengHei, Hiragino Sans, Hiragino Kaku Gothic ProN, Hiragino Sans GB"
                 Scale       = "1.0" />
             <!-- Other -->
             <FontFamilyMap
                 Unicode     = "FE10-FE1F"
-                Target      = "Microsoft JhengHei UI, Microsoft JhengHei"
+                Target      = "Microsoft JhengHei UI, Microsoft JhengHei, PingFang SC, Hiragino Sans GB, Apple SD Gothic Neo, Hiragino Sans, PingFang TC"
                 Scale       = "1.0" />
 
             <!-- Combining Half Marks (FE20-FE2F): see above, by 0000-007F -->
@@ -2889,30 +2889,30 @@
       <FontFamilyMap
           Unicode     = "FE10-FE1F"
           Language    = "zh-Hans"
-          Target      = "Microsoft YaHei UI, Microsoft YaHei"
+          Target      = "Microsoft YaHei UI, Microsoft YaHei, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
           Scale       = "1.0" />
       <!-- CHT -->
       <FontFamilyMap
           Unicode     = "FE10-FE1F"
           Language    = "zh-Hant"
-          Target      = "Microsoft JhengHei UI, Microsoft JhengHei"
+          Target      = "Microsoft JhengHei UI, Microsoft JhengHei, PingFang TC, Heiti TC, Songti TC"
           Scale       = "1.0" />
       <!-- KO -->
       <FontFamilyMap
           Unicode     = "FE10-FE1F"
           Language    = "ko"
-          Target      = "Malgun Gothic, Microsoft JhengHei UI, Microsoft JhengHei"
+          Target      = "Malgun Gothic, Microsoft JhengHei UI, Microsoft JhengHei, Apple SD Gothic Neo, AppleGothic, Hiragino Sans GB"
           Scale       = "1.0" />
       <!-- JA -->
       <FontFamilyMap
           Unicode     = "FE10-FE1F"
           Language    = "ja"
-          Target      = "Microsoft JhengHei UI, Microsoft JhengHei"
+          Target      = "Microsoft JhengHei UI, Microsoft JhengHei, Hiragino Sans, Hiragino Kaku Gothic ProN, Hiragino Sans GB"
           Scale       = "1.0" />
       <!-- Other -->
       <FontFamilyMap
           Unicode     = "FE10-FE1F"
-          Target      = "Microsoft JhengHei UI, Microsoft JhengHei"
+          Target      = "Microsoft JhengHei UI, Microsoft JhengHei, PingFang SC, Hiragino Sans GB, Apple SD Gothic Neo, Hiragino Sans, PingFang TC"
           Scale       = "1.0" />
 
       <!-- Combining Half Marks (FE20-FE2F): see above, by 0000-007F -->
@@ -4561,30 +4561,30 @@
       <FontFamilyMap
           Unicode     = "FE10-FE1F"
           Language    = "zh-Hans"
-          Target      = "Microsoft YaHei UI, Microsoft YaHei"
+          Target      = "Microsoft YaHei UI, Microsoft YaHei, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
           Scale       = "1.0" />
       <!-- CHT -->
       <FontFamilyMap
           Unicode     = "FE10-FE1F"
           Language    = "zh-Hant"
-          Target      = "Microsoft JhengHei UI, Microsoft JhengHei"
+          Target      = "Microsoft JhengHei UI, Microsoft JhengHei, PingFang TC, Heiti TC, Songti TC"
           Scale       = "1.0" />
       <!-- KO -->
       <FontFamilyMap
           Unicode     = "FE10-FE1F"
           Language    = "ko"
-          Target      = "Malgun Gothic, Microsoft JhengHei UI, Microsoft JhengHei"
+          Target      = "Malgun Gothic, Microsoft JhengHei UI, Microsoft JhengHei, Apple SD Gothic Neo, AppleGothic, Hiragino Sans GB"
           Scale       = "1.0" />
       <!-- JA -->
       <FontFamilyMap
           Unicode     = "FE10-FE1F"
           Language    = "ja"
-          Target      = "Microsoft JhengHei UI, Microsoft JhengHei"
+          Target      = "Microsoft JhengHei UI, Microsoft JhengHei, Hiragino Sans, Hiragino Kaku Gothic ProN, Hiragino Sans GB"
           Scale       = "1.0" />
       <!-- Other -->
       <FontFamilyMap
           Unicode     = "FE10-FE1F"
-          Target      = "Microsoft JhengHei UI, Microsoft JhengHei"
+          Target      = "Microsoft JhengHei UI, Microsoft JhengHei, PingFang SC, Hiragino Sans GB, Apple SD Gothic Neo, Hiragino Sans, PingFang TC"
           Scale       = "1.0" />
 
       <!-- Combining Half Marks (FE20-FE2F): see above, by 0000-007F -->
@@ -6047,18 +6047,18 @@
       <FontFamilyMap
           Unicode          = "FE10-FE1F"
           Language         = "zh-Hans"
-          Target           = "Microsoft YaHei UI, Microsoft YaHei"
+          Target           = "Microsoft YaHei UI, Microsoft YaHei, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
           Scale            = "1.0"/>
       <!-- KO -->
       <FontFamilyMap
           Unicode          = "FE10-FE1F"
           Language         = "ko"
-          Target           = "Malgun Gothic, Microsoft JhengHei UI, Microsoft JhengHei"
+          Target           = "Malgun Gothic, Microsoft JhengHei UI, Microsoft JhengHei, Apple SD Gothic Neo, AppleGothic, Hiragino Sans GB"
           Scale            = "1.0"/>
       <!-- Other (include CHT and JA) -->
       <FontFamilyMap
           Unicode          = "FE10-FE1F"
-          Target           = "Microsoft JhengHei UI, Microsoft JhengHei"
+          Target           = "Microsoft JhengHei UI, Microsoft JhengHei, PingFang SC, Hiragino Sans GB, Apple SD Gothic Neo, Hiragino Sans, PingFang TC"
           Scale            = "1.0"/>
 
       <!-- Combining Half Marks (FE20-FE2F): see above, by 0000-007F -->

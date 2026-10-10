@@ -6049,6 +6049,12 @@
           Language         = "zh-Hans"
           Target           = "Microsoft YaHei UI, Microsoft YaHei, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
           Scale            = "1.0"/>
+      <!-- CHT -->
+      <FontFamilyMap
+          Unicode          = "FE10-FE1F"
+          Language         = "zh-Hant"
+          Target           = "Microsoft JhengHei UI, Microsoft JhengHei, PingFang TC, Heiti TC, Songti TC"
+          Scale            = "1.0"/>
       <!-- KO -->
       <FontFamilyMap
           Unicode          = "FE10-FE1F"
@@ -6159,6 +6165,12 @@
           Unicode          = "FFA0-FFDC"
           Language         = "zh-Hans"
           Target           = "Microsoft YaHei UI, Microsoft YaHei, Microsoft JhengHei UI, Microsoft JhengHei, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
+          Scale            = "1.0"/>
+      <!-- CHT -->
+      <FontFamilyMap
+          Unicode          = "FFA0-FFDC"
+          Language         = "zh-Hant"
+          Target           = "Microsoft JhengHei UI, Microsoft JhengHei, PingFang TC, Heiti TC, Songti TC"
           Scale            = "1.0"/>
       <!-- KO -->
       <FontFamilyMap
@@ -6400,6 +6412,12 @@
           Unicode          = "20000-2A6DF"
           Language         = "zh-Hans"
           Target           = "SimSun-ExtB, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
+          Scale            = "1.0"/>
+      <!-- CHT -->
+      <FontFamilyMap
+          Unicode          = "20000-2A6DF"
+          Language         = "zh-Hant"
+          Target           = "MingLiU-ExtB, PingFang TC, Heiti TC, Songti TC"
           Scale            = "1.0"/>
       <!-- Hong Kong -->
       <FontFamilyMap

@@ -74,6 +74,18 @@ public class CompositeFontCjkFallbackTests
             face.AdvanceWidths.TryGetValue(glyph, out double advance) && advance > 0,
             $"{familyName}/{language}: '{text}' (U+{(int)text[0]:X4}) has no positive advance width.");
 
+        // ...and the language selects the right script variant of the face: a zh-Hant run
+        // must land on a Traditional-priority face (PingFang TC/Heiti TC/Songti TC), not a
+        // Simplified one, and vice versa. Without this a shared range that lets Traditional
+        // fall through to a Simplified-first generic map would still pass.
+        string names = string.Join(" | ", face.FamilyNames.Values);
+        if (language == "zh-Hant")
+            Assert.True(names.Contains("TC", StringComparison.Ordinal),
+                $"{familyName}/zh-Hant: '{text}' resolved to the non-Traditional face '{names}'.");
+        else
+            Assert.True(names.Contains("SC", StringComparison.Ordinal) || names.Contains("GB", StringComparison.Ordinal),
+                $"{familyName}/zh-Hans: '{text}' resolved to the non-Simplified face '{names}'.");
+
         // A full control layout (TextBlock.DesiredSize.Width > 0) needs the real text-shaping
         // provider, which only a host process registers; the unit-test process has no such
         // provider, so the face+glyph assertions above are the meaningful in-process lock.

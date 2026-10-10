@@ -310,6 +310,12 @@
             Language         = "zh-Hans"
             Target      = "SimSun, MingLiu, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
             Scale            = "1.0"/>
+        <!-- CHT -->
+        <FontFamilyMap  
+            Unicode          = "2E80-2EFF"
+            Language         = "zh-Hant"
+            Target      = "MingLiU, SimSun, PingFang TC, Heiti TC, Songti TC"
+            Scale            = "1.0"/>
         <!-- Other (include CHT, JA and KO) -->    
         <FontFamilyMap  
             Unicode          = "2E80-2EFF"
@@ -372,6 +378,12 @@
             Language         = "zh-Hans"
             Target           = "SimSun, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
             Scale            = "1.0"/>
+        <!-- CHT -->
+        <FontFamilyMap  
+            Unicode          = "3100-312F, 31A0-31BF"
+            Language         = "zh-Hant"
+            Target           = "MingLiu, PingFang TC, Heiti TC, Songti TC"
+            Scale            = "1.0"/>
         <!-- Other (include CHT, JA and KO) -->
         <FontFamilyMap  
             Unicode          = "3100-312F, 31A0-31BF"
@@ -396,6 +408,12 @@
             Unicode          = "3220-324F"
             Language         = "zh-Hans"
             Target           = "SimSun, MS Mincho, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
+            Scale            = "1.0"/>
+        <!-- CHT -->
+        <FontFamilyMap  
+            Unicode          = "3220-324F"
+            Language         = "zh-Hant"
+            Target           = "MS Mincho, PingFang TC, Heiti TC, Songti TC"
             Scale            = "1.0"/>
         <!-- Other (include CHT, Hong Kong, JA and KO) -->
         <FontFamilyMap  
@@ -480,6 +498,12 @@
             Language         = "zh-Hans"
             Target      = "SimSun, MingLiu, SimSun-18030, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
             Scale            = "1.0"/>
+        <!-- CHT -->
+        <FontFamilyMap  
+            Unicode          = "3400-4DBF, 4E00-9FBB"
+            Language         = "zh-Hant"
+            Target      = "MingLiu, SimSun-18030, PingFang TC, Heiti TC, Songti TC"
+            Scale            = "1.0"/>
         <!-- Hong Kong -->
         <FontFamilyMap  
             Unicode          = "3400-4DBF, 4E00-9FBB"
@@ -527,6 +551,12 @@
             Language         = "zh-Hans"
             Target      = "SimSun, MingLiU, MS Mincho, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
             Scale            = "1.0"/>
+        <!-- CHT -->
+        <FontFamilyMap  
+            Unicode          = "F900-FAFF"
+            Language         = "zh-Hant"
+            Target      = "MingLiU, MS Mincho, PingFang TC, Heiti TC, Songti TC"
+            Scale            = "1.0"/>
         <!-- Hong Kong -->
         <FontFamilyMap  
             Unicode          = "F900-FAFF"
@@ -561,6 +591,12 @@
             Language         = "zh-Hans"
             Target           = "Microsoft YaHei, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
             Scale            = "1.0"/>
+        <!-- CHT -->
+        <FontFamilyMap  
+            Unicode          = "FE10-FE1F"
+            Language         = "zh-Hant"
+            Target           = "Microsoft JhengHei, PingFang TC, Heiti TC, Songti TC"
+            Scale            = "1.0"/>
         <!-- KO -->
         <FontFamilyMap  
             Unicode          = "FE10-FE1F"
@@ -581,6 +617,12 @@
             Unicode          = "FE30-FE6F"
             Language         = "zh-Hans"
             Target           = "SimSun, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
+            Scale            = "1.0"/>
+        <!-- CHT -->
+        <FontFamilyMap  
+            Unicode          = "FE30-FE6F"
+            Language         = "zh-Hant"
+            Target           = "MingLiu, PingFang TC, Heiti TC, Songti TC"
             Scale            = "1.0"/>
         <!-- Other (include CHT, JA and KO) -->
         <FontFamilyMap  
@@ -709,6 +751,12 @@
             Unicode          = "20000-2A6DF" 
             Language         = "zh-Hans"
             Target           = "SimSun-ExtB, PingFang SC, Hiragino Sans GB, Heiti SC, Songti SC"
+            Scale            = "1.0"/>
+        <!-- CHT -->
+        <FontFamilyMap  
+            Unicode          = "20000-2A6DF" 
+            Language         = "zh-Hant"
+            Target           = "MingLiU-ExtB, PingFang TC, Heiti TC, Songti TC"
             Scale            = "1.0"/>
         <!-- Hong Kong -->
         <FontFamilyMap  

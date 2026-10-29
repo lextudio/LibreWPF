@@ -53,31 +53,47 @@ namespace System.Windows.Forms.Integration
         protected override void OnRender(DrawingContext drawingContext)
         {
             base.OnRender(drawingContext);
-            if (Child == null || !TryGetNativeDrawingContext(drawingContext, out ProGPU.Scene.DrawingContext nativeContext, out Matrix4x4 outerTransform))
+            if (Child == null)
             {
                 return;
             }
 
-            // Nothing sizes the container in this path: ArrangeOverride gives the hosted control its pixel
-            // size and the container, which the HWND path sizes through the child window, stays 0x0. A
-            // zero-sized container paints nothing here and has no bounds for the WinForms hit test, so
-            // the container follows the hosted control, which sits at its origin.
-            SD.Size size = Child.Size;
+            // Everything up to the native paint below is about being a usable element, not about pixels,
+            // so it must not depend on the drawing context being a native one: the managed composition
+            // path hands OnRender a plain VisualDrawingContext, and returning there left the container
+            // unsized and the element without a hit region. A host that has a real child window (the HWND
+            // path) is left alone: that window owns its size and its input.
+            if (Handle == IntPtr.Zero)
+            {
+                // Nothing sizes the container in this path: ArrangeOverride gives the hosted control its
+                // pixel size and the container stays 0x0, which paints nothing and gives the WinForms hit
+                // test no bounds. The container follows the hosted control, which sits at its origin.
+                SD.Size childSize = Child.Size;
+                if (childSize.Width > 0 && childSize.Height > 0)
+                {
+                    if (_hostContainerInternal.Size != childSize)
+                    {
+                        _hostContainerInternal.Size = childSize;
+                    }
+
+                    // WPF records no drawing for content painted through the native context, so the input
+                    // hit test finds nothing at the element: an HwndHost normally gets its input from the
+                    // child HWND, and this host has none. A transparent rectangle gives it the hit region
+                    // its content occupies, which routes mouse events to OnMouseDown below.
+                    drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(RenderSize));
+                }
+            }
+
+            if (!TryGetNativeDrawingContext(drawingContext, out ProGPU.Scene.DrawingContext nativeContext, out Matrix4x4 outerTransform))
+            {
+                return;
+            }
+
+            SD.Size size = _hostContainerInternal.Size;
             if (size.Width <= 0 || size.Height <= 0)
             {
                 return;
             }
-
-            if (_hostContainerInternal.Size != size)
-            {
-                _hostContainerInternal.Size = size;
-            }
-
-            // The hosted content is drawn through the native context, so WPF records no drawing of its
-            // own here and the input hit test finds nothing: an HwndHost normally gets its input from the
-            // child HWND, and this host has none. A transparent rectangle gives the element the hit region
-            // the content it paints occupies, which is what routes mouse events to OnMouseDown below.
-            drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(RenderSize));
 
             // Draw in WinForms pixels, scaled down into WPF units.
             Matrix4x4 transform = Matrix4x4.CreateScale((float)(1d / VisualPixelsPerUnitX), (float)(1d / VisualPixelsPerUnitY), 1f) * outerTransform;

@@ -64,6 +64,12 @@ namespace System.Windows.Forms.Integration
                 return;
             }
 
+            // The hosted content is drawn through the native context, so WPF records no drawing of its
+            // own here and the input hit test finds nothing: an HwndHost normally gets its input from the
+            // child HWND, and this host has none. A transparent rectangle gives the element the hit region
+            // the content it paints occupies, which is what routes mouse events to OnMouseDown below.
+            drawingContext.DrawRectangle(Brushes.Transparent, null, new Rect(RenderSize));
+
             // Draw in WinForms pixels, scaled down into WPF units.
             Matrix4x4 transform = Matrix4x4.CreateScale((float)(1d / VisualPixelsPerUnitX), (float)(1d / VisualPixelsPerUnitY), 1f) * outerTransform;
             using SD.Graphics graphics = SD.Graphics.FromProGpuDrawingContext(nativeContext, transform);

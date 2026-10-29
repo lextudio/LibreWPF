@@ -58,10 +58,19 @@ namespace System.Windows.Forms.Integration
                 return;
             }
 
-            SD.Size size = _hostContainerInternal.Size;
+            // Nothing sizes the container in this path: ArrangeOverride gives the hosted control its pixel
+            // size and the container, which the HWND path sizes through the child window, stays 0x0. A
+            // zero-sized container paints nothing here and has no bounds for the WinForms hit test, so
+            // the container follows the hosted control, which sits at its origin.
+            SD.Size size = Child.Size;
             if (size.Width <= 0 || size.Height <= 0)
             {
                 return;
+            }
+
+            if (_hostContainerInternal.Size != size)
+            {
+                _hostContainerInternal.Size = size;
             }
 
             // The hosted content is drawn through the native context, so WPF records no drawing of its

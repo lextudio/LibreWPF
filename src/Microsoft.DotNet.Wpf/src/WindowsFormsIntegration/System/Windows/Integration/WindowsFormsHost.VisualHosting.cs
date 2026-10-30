@@ -234,17 +234,42 @@ namespace System.Windows.Forms.Integration
         {
             bool forward = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.None;
 
-            // The container's ActiveControl is the hosted root, not the control that has focus: focus
-            // deeper in the tree is tracked by the container that owns it, so walk down to the real one.
+            // The adapter's ActiveControl is the hosted root, not the control that has focus: every
+            // container on the way down tracks its own active control, so the chain ends at the control
+            // and at the container that owns it.
             Control current = _hostContainerInternal.ActiveControl;
-            while (current is ContainerControl nested && nested.ActiveControl is { } active)
+            Control container = _hostContainerInternal;
+            for (int depth = 0; depth < 64 && current is ContainerControl nested; depth++)
             {
+                Control active = nested.ActiveControl;
+                if (active is null || ReferenceEquals(active, nested))
+                {
+                    break;
+                }
+
+                container = nested;
                 current = active;
             }
 
-            // Starting from null (nothing active yet) selects the first or last tab stop; wrap stays off,
-            // so the end of the tree is reported as unhandled instead of cycling.
-            return _hostContainerInternal.SelectNextControl(current, forward, true, true, false);
+            // Tab moves inside the container that owns the focused control first. When that container has
+            // no tab stop left in this direction, the container itself is the position to continue from in
+            // its own parent - that is how a stop after a nested container is reached. The adapter does not
+            // wrap, so the end of the tree is reported unhandled and WPF moves focus out of the host.
+            while (true)
+            {
+                if (container.SelectNextControl(current, forward, true, false, false))
+                {
+                    return true;
+                }
+
+                if (ReferenceEquals(container, _hostContainerInternal))
+                {
+                    return false;
+                }
+
+                current = container;
+                container = container.Parent as ContainerControl ?? _hostContainerInternal;
+            }
         }
 
         protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)

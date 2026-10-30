@@ -662,6 +662,16 @@ namespace System.Windows.Interop
         ///</summary>
         internal static ModifierKeys GetSystemModifierKeys()
         {
+            // Portable input owns its key state, and the portable runtime has no Win32 keyboard state to
+            // ask for: user32's stub has no GetKeyState, so the call below throws on the first key that
+            // reaches an HwndHost (and on HwndSource's mnemonic path), before the host can forward
+            // anything. Read the device that carries the state instead of the native call.
+            InputManager inputManager = InputManager.Current;
+            if (inputManager is not null && inputManager.UsesPortableInput)
+            {
+                return Keyboard.PrimaryDevice?.Modifiers ?? ModifierKeys.None;
+            }
+
             ModifierKeys modifierKeys = ModifierKeys.None;
 
             short keyState = UnsafeNativeMethods.GetKeyState(NativeMethods.VK_SHIFT);

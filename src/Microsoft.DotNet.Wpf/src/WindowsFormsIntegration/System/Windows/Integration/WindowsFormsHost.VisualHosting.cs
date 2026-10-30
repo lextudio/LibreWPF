@@ -233,7 +233,18 @@ namespace System.Windows.Forms.Integration
         private bool TryTabWithinChild()
         {
             bool forward = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.None;
-            return _hostContainerInternal.SelectNextControl(_hostContainerInternal.ActiveControl, forward, true, true, false);
+
+            // The container's ActiveControl is the hosted root, not the control that has focus: focus
+            // deeper in the tree is tracked by the container that owns it, so walk down to the real one.
+            Control current = _hostContainerInternal.ActiveControl;
+            while (current is ContainerControl nested && nested.ActiveControl is { } active)
+            {
+                current = active;
+            }
+
+            // Starting from null (nothing active yet) selects the first or last tab stop; wrap stays off,
+            // so the end of the tree is reported as unhandled instead of cycling.
+            return _hostContainerInternal.SelectNextControl(current, forward, true, true, false);
         }
 
         protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)

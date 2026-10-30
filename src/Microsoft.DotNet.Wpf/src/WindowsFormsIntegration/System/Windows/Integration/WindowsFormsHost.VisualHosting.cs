@@ -35,6 +35,9 @@ namespace System.Windows.Forms.Integration
             _visualHostInitialized = true;
             _hostContainerInternal.CreateControl();
             _hostContainerInternal.Invalidated += (_, _) => Dispatcher.BeginInvoke(new Action(InvalidateVisual));
+            // The painted surface is one GPU texture and is recreated on the next render, so an unloaded
+            // host does not keep it alive (the pane can be closed and reopened).
+            Unloaded += (_, _) => ReleasePaintedSurface();
             Loaded += ApplyAllProperties;
             _propertyMap.ApplyAll();
         }
@@ -86,6 +89,13 @@ namespace System.Windows.Forms.Integration
 
             if (!TryGetNativeDrawingContext(drawingContext, out ProGPU.Scene.DrawingContext nativeContext, out Matrix4x4 outerTransform))
             {
+                // The managed composition renderer has no live drawing context during layout: OnRender
+                // records WPF render data and the ProGPU scene is built from it afterwards, so there is
+                // nothing to paint into here. Paint the tree into an offscreen ProGPU texture instead and
+                // draw that texture as an image - the hosted controls keep painting with WinForms
+                // Graphics, LibreWinForms records those calls as ProGPU commands, and the bitmap renders
+                // them into its own GPU texture without CPU pixels.
+                PaintHostedTreeAsImage(drawingContext);
                 return;
             }
 
@@ -99,6 +109,75 @@ namespace System.Windows.Forms.Integration
             Matrix4x4 transform = Matrix4x4.CreateScale((float)(1d / VisualPixelsPerUnitX), (float)(1d / VisualPixelsPerUnitY), 1f) * outerTransform;
             using SD.Graphics graphics = SD.Graphics.FromProGpuDrawingContext(nativeContext, transform);
             LibreControlHosting.Paint(_hostContainerInternal, graphics, new SD.Rectangle(SD.Point.Empty, size));
+        }
+
+        // The surface the hosted tree is painted into when there is no native drawing context. It keeps
+        // the last recorded painting and its GPU texture between frames; a new painting is recorded on each
+        // render pass, because OnRender only runs when the element (or the tree) is invalidated.
+        private SD.Bitmap _paintedSurface;
+        private ImageSource _paintedImage;
+        private ImageSourceProvider _paintedImageProvider;
+
+        private void PaintHostedTreeAsImage(DrawingContext drawingContext)
+        {
+            SD.Size size = _hostContainerInternal.Size;
+            if (size.Width <= 0 || size.Height <= 0)
+            {
+                return;
+            }
+
+            // The surface is one GPU texture, so its pixel size is fixed: a resize makes a new one.
+            if (_paintedImage == null || _paintedSurface.Width != size.Width || _paintedSurface.Height != size.Height)
+            {
+                ReleasePaintedSurface();
+                _paintedSurface = new SD.Bitmap(size.Width, size.Height);
+                _paintedImageProvider = new ImageSourceProvider(_paintedSurface);
+                _paintedImage = PortableNativeImageSourceFactory.Create(_paintedImageProvider);
+            }
+
+            // Graphics over the surface's recording context: WinForms paints with ordinary Graphics calls,
+            // LibreWinForms turns them into ProGPU scene commands, and the bitmap renders those into its
+            // texture when the scene asks for the image below.
+            using (SD.Graphics graphics = SD.Graphics.FromImage(_paintedSurface))
+            {
+                LibreControlHosting.Paint(_hostContainerInternal, graphics, new SD.Rectangle(SD.Point.Empty, size));
+            }
+
+            // One texture pixel per surface pixel; the rect is the host's size in WPF units, so the layout
+            // transform and the DPI scale are applied here, the same place the native path applies them.
+            drawingContext.DrawImage(_paintedImage, new Rect(RenderSize));
+        }
+
+        private void ReleasePaintedSurface()
+        {
+            _paintedImage = null;
+            _paintedImageProvider = null;
+            _paintedSurface?.Dispose();
+            _paintedSurface = null;
+        }
+
+        /// <summary>
+        ///     Hands the painted surface to the presentation layer as a backend-owned image: the bitmap is a
+        ///     texture-lease source, so the image is drawn from that texture and never from CPU pixels.
+        /// </summary>
+        private sealed class ImageSourceProvider : IPortableNativeImageSource
+        {
+            private readonly SD.Bitmap _surface;
+
+            internal ImageSourceProvider(SD.Bitmap surface)
+            {
+                _surface = surface;
+            }
+
+            public int PixelWidth => _surface.Width;
+
+            public int PixelHeight => _surface.Height;
+
+            public bool TryGetPortableNativeImage(out object nativeImage)
+            {
+                nativeImage = _surface;
+                return true;
+            }
         }
 
         private static bool TryGetNativeDrawingContext(

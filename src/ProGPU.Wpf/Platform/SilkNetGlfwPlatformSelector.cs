@@ -26,6 +26,10 @@ internal static class SilkNetGlfwPlatformSelector
             return false;
         }
 
+        // Before anything below can load GLFW: a RID-less build keeps it under runtimes/linux-<arch>/native,
+        // which Silk.NET does not probe on Ubuntu.
+        global::ProGPU.Backend.GlfwLibraryResolver.EnsureRegistered();
+
         LinuxGlfwPlatformPreference preference = ResolvePreference(
             Environment.GetEnvironmentVariable("XDG_SESSION_TYPE"),
             Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"),

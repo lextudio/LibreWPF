@@ -1706,6 +1706,15 @@ namespace System.Windows
             if (usePortableRunLoop)
             {
                 _portableRunEntered = true;
+                // Dispatcher.Run installs a DispatcherSynchronizationContext for its whole frame
+                // (Dispatcher.PushFrameImpl), so on Windows every input handler runs with it and
+                // an await resumes on this thread. The portable loop below never enters PushFrame:
+                // native mouse, keyboard and menu callbacks are raised straight from the native
+                // event pump, outside any DispatcherOperation, and would otherwise see no context
+                // at all - the continuation of an await started there ran on the thread pool and
+                // the next UI access threw "the calling thread cannot access this object".
+                SynchronizationContext oldSyncContext = SynchronizationContext.Current;
+                SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher));
                 try
                 {
                     FlushPortableDispatcherOperations(DispatcherPriority.Send);
@@ -1721,7 +1730,11 @@ namespace System.Windows
                     if (!_appIsShutdown) ShutdownImpl();
                     return _exitCode;
                 }
-                finally { _portableRunEntered = false; }
+                finally
+                {
+                    SynchronizationContext.SetSynchronizationContext(oldSyncContext);
+                    _portableRunEntered = false;
+                }
             }
 
             if (window != null)

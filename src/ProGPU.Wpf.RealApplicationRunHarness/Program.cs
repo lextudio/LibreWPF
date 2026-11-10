@@ -95,8 +95,15 @@ internal static partial class Program
                 application,
                 out activationServiceType);
 
+            SynchronizationContext? contextBeforeRun = SynchronizationContext.Current;
             object exitCode = Invoke(application, "Run");
             AssertEqual(0, exitCode, "Application.Run exit code");
+            AssertEqual(
+                true,
+                ReferenceEquals(contextBeforeRun, SynchronizationContext.Current),
+                "SynchronizationContext restored after Application.Run (before: "
+                    + (contextBeforeRun?.GetType().FullName ?? "<null>") + ", after: "
+                    + (SynchronizationContext.Current?.GetType().FullName ?? "<null>") + ")");
             recorder.ValidateAfterRun();
         }
         finally
@@ -6549,6 +6556,10 @@ internal static partial class Program
             AssertEqual(420.0, typedActivation.Width, "activated window width");
             AssertEqual(340.0, typedActivation.Height, "activated window height");
             AssertEqual(false, typedActivation.Topmost, "activated window topmost");
+            // First, before any harness flush: this callback stands for the native run loop,
+            // where real input arrives outside any DispatcherOperation.
+            ValidatePortableRunLoopSynchronizationContext(
+                () => FlushDispatcherOperations(typedActivation.Window, "Background"));
             Invoke(typedActivation.Window, "UpdateLayout");
             ValidatePostShowLoadedEvent(typedActivation.Window);
             ValidatePostShowCommandManagerRequery(
@@ -6674,6 +6685,42 @@ internal static partial class Program
             AssertEqual(120, GetProperty(activation.Window, "LastXamlMouseWheelDelta"), "portable mouse wheel persisted delta");
             AssertEqual("EventButton", GetProperty(activation.Window, "LastXamlMouseWheelSenderName"), "portable mouse wheel persisted sender name");
             AssertEqual("MouseWheel", GetProperty(activation.Window, "LastXamlMouseWheelRoutedEventName"), "portable mouse wheel persisted event name");
+        }
+
+        /// <summary>
+        /// Dispatcher.Run installs a DispatcherSynchronizationContext for its whole frame, so on
+        /// Windows every input handler can await and resume on the UI thread. The portable
+        /// Application.Run hands the thread to the native loop instead and must give that loop the
+        /// same ambient context; without it, the continuation of an await started from a native
+        /// mouse or key event runs on the thread pool and the next UI access throws.
+        /// </summary>
+        private static void ValidatePortableRunLoopSynchronizationContext(Action pumpDispatcher)
+        {
+            SynchronizationContext? context = SynchronizationContext.Current;
+            AssertEqual(
+                "System.Windows.Threading.DispatcherSynchronizationContext",
+                context?.GetType().FullName ?? "<null>",
+                "portable run loop SynchronizationContext.Current");
+
+            int uiThreadId = Environment.CurrentManagedThreadId;
+            int resumedThreadId = 0;
+            async Task ProbeAsync()
+            {
+                await Task.Run(static () => { }).ConfigureAwait(true);
+                resumedThreadId = Environment.CurrentManagedThreadId;
+            }
+
+            Task probe = ProbeAsync();
+            var deadline = System.Diagnostics.Stopwatch.StartNew();
+            while (!probe.IsCompleted && deadline.Elapsed < TimeSpan.FromSeconds(10))
+            {
+                pumpDispatcher();
+                Thread.Sleep(1);
+            }
+
+            AssertEqual(true, probe.IsCompleted, "portable run loop await continuation completed");
+            probe.GetAwaiter().GetResult();
+            AssertEqual(uiThreadId, resumedThreadId, "portable run loop await continuation thread");
         }
 
         private void AssertSameActivation(object activation)

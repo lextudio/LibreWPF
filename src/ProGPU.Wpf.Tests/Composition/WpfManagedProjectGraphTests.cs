@@ -3494,6 +3494,20 @@ public sealed class WpfManagedProjectGraphTests
             application.IndexOf("PortableApplicationRunLoop.Run(ref source)", StringComparison.Ordinal)
                 < application.IndexOf("RunDispatcher(null);", StringComparison.Ordinal),
             "Application.Run must use the portable native run loop before falling back to WPF Dispatcher.Run.");
+        // The behaviour itself (an await started in the native loop resumes on the UI thread) is
+        // exercised by ProGPU.Wpf.RealApplicationRunHarness; this pins the structure that provides it.
+        int installSyncContext = application.IndexOf(
+            "SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher));",
+            StringComparison.Ordinal);
+        int restoreSyncContext = application.IndexOf(
+            "SynchronizationContext.SetSynchronizationContext(oldSyncContext);",
+            StringComparison.Ordinal);
+        Assert.True(installSyncContext >= 0,
+            "Portable Application.Run must install a DispatcherSynchronizationContext, as Dispatcher.PushFrameImpl does on Windows.");
+        Assert.True(installSyncContext < portableTryRun,
+            "Portable Application.Run must install the DispatcherSynchronizationContext before native input can arrive.");
+        Assert.True(restoreSyncContext > applicationIdleFlush,
+            "Portable Application.Run must restore the previous SynchronizationContext only after the loop and its shutdown work.");
     }
 
     [Fact]

@@ -1038,6 +1038,15 @@ public sealed class WpfVisualTreeRenderer
             pointSink.PushPointHitRegion(bounds.IsEmpty ? default :
                 new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height), bounds.IsEmpty);
         }
+        else if (sink is IWpfPointHitRegionCommandSink hitTestCoreSink &&
+            WpfHitTestCoreRegion.TryGet(visual, out var hitTestCoreBounds))
+        {
+            // A HitTestCore override makes WPF hit the element where it draws nothing; the GPU
+            // cache only knows drawn primitives, so give it the bounds WPF itself would test.
+            pointSink = hitTestCoreSink;
+            pointSink.PushPointHitRegion(new WpfReplayRect(
+                hitTestCoreBounds.X, hitTestCoreBounds.Y, hitTestCoreBounds.Width, hitTestCoreBounds.Height));
+        }
         try { ReplayVisualDrawingContent(visual, sink, resources, imageSourceAdapter, stats); }
         finally { pointSink?.PopPointHitRegion(); }
     }

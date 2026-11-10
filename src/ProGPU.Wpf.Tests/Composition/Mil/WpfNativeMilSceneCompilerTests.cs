@@ -207,6 +207,69 @@ public sealed partial class WpfNativeMilSceneCompilerTests
         public bool TryGetPortablePointHitRegion(out PortableRect rectangle) { rectangle = PointRegion; return true; }
     }
 
+    // A HitTestCore override (OpenDevelop's icon bar: draws nothing on an empty line, accepts the
+    // whole margin) must be hittable where nothing is drawn, in both scene paths.
+    [Fact]
+    public void HitTestCoreRegionMakesAnUndrawnVisualHittableInBothScenePaths()
+    {
+        var source = new HitTestCoreVisual(null) { Region = new(0, 0, 18, 40) };
+
+        var batch = new WpfNativeMilSceneCompiler().BuildBatch(source, 160, 96);
+        var native = Assert.Single(batch.PointHitRegions.ToArray());
+        Assert.Equal(0U, native.IsEmpty);
+        Assert.Equal(18, native.Width);
+        Assert.Equal(40, native.Height);
+
+        var primitive = Assert.Single(ReplayHitTestPrimitives(source));
+        Assert.Equal(new Vector2(18, 40), primitive.BoundsMax);
+        Assert.True(primitive.Flags.HasFlag(global::ProGPU.Vector.GpuHitTestPrimitiveFlags.PointOnly));
+    }
+
+    [Fact]
+    public void HitTestCoreRegionIsOptionalAndNeverOverridesAnAuthoritativePointRegion()
+    {
+        // No override (TryGet... returns false), or an unusable region: no hit region, no error.
+        foreach (var region in new PortableRect?[] { null, PortableRect.Empty, new(0, 0, 0, 10), new(0, 0, double.NaN, 10) })
+        {
+            var source = new HitTestCoreVisual(null) { Region = region };
+            Assert.True(new WpfNativeMilSceneCompiler().BuildBatch(source, 160, 96).PointHitRegions.IsEmpty);
+            Assert.Empty(ReplayHitTestPrimitives(source));
+        }
+
+        // IPortablePointHitRegionSource is authoritative: its region wins over the HitTestCore one.
+        var both = new PointAndHitTestCoreVisual { PointRegion = new(0, 0, 80, 20), Region = new(0, 0, 18, 40) };
+        var only = Assert.Single(new WpfNativeMilSceneCompiler().BuildBatch(both, 160, 96).PointHitRegions.ToArray());
+        Assert.Equal(80, only.Width);
+        Assert.Equal(new Vector2(80, 20), Assert.Single(ReplayHitTestPrimitives(both)).BoundsMax);
+    }
+
+    private static IReadOnlyList<global::ProGPU.Vector.GpuHitTestPrimitive> ReplayHitTestPrimitives(object visual)
+    {
+        var recorder = new global::ProGPU.Scene.GpuPictureRecorder();
+        var drawing = recorder.BeginRecording(new(0, 0, 160, 96));
+        using var sink = new global::System.Windows.Media.ProGPU.Composition.ProGpuCompositionCommandSink(drawing);
+        new WpfVisualTreeRenderer().ReplaySubtree(visual, sink);
+        using var picture = recorder.EndRecording();
+        using var capture = new global::ProGPU.Scene.GpuRenderCommandHitTestCacheBuilder();
+        for (int i = 0; i < picture.CommandCount; ++i)
+            capture.AddCommand(picture.GetCommand(i), Matrix4x4.Identity);
+        return capture.BuildIndex().Primitives.ToArray();
+    }
+
+    private class HitTestCoreVisual(object? content) : FakeVisual(content), IPortableHitTestCoreSource
+    {
+        public PortableRect? Region { get; set; }
+        public bool TryGetPortableHitTestCoreRegion(out PortableRect rectangle)
+        { rectangle = Region ?? default; return Region.HasValue; }
+        public bool PortableHitTestCoreAccepts(object rootVisual, double rootX, double rootY) => true;
+    }
+
+    private sealed class PointAndHitTestCoreVisual() : HitTestCoreVisual(null), IPortablePointHitRegionSource
+    {
+        public PortableRect PointRegion { get; set; }
+        public bool TryGetPortablePointHitRegion(out PortableRect rectangle) { rectangle = PointRegion; return true; }
+    }
+
     [Fact]
     public void NativeOwnerSnapshotsDistinguishReplacedVisualsWithIdenticalMilBytes()
     {

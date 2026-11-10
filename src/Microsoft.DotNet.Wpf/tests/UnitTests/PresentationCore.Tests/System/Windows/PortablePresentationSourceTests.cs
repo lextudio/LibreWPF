@@ -126,6 +126,93 @@ public class PortablePresentationSourceTests
         if (failure != null) ExceptionDispatchInfo.Capture(failure).Throw();
     }
 
+    // A real UIElement whose type overrides HitTestCore publishes the bounds WPF itself tests
+    // (GetHitTestBounds) as its portable point region, so the GPU hit cache can reach it where it
+    // draws nothing - OpenDevelop's Icon Bar is exactly this element. Its own HitTestCore then decides.
+    [Fact]
+    public void HitTestCoreOverrideWithoutDrawingPublishesItsRenderBoundsAndAcceptsThere()
+    {
+        RunInUiApartment(() =>
+        {
+            var iconBar = new IconBarLikeElement();
+            iconBar.Measure(new Size(18, 40));
+            iconBar.Arrange(new Rect(0, 0, 18, 40));
+            var source = (IPortableHitTestCoreSource)iconBar;
+
+            Assert.True(source.TryGetPortableHitTestCoreRegion(out PortableRect region));
+            Assert.Equal((0d, 0d, 18d, 40d), (region.X, region.Y, region.Width, region.Height));
+            Assert.True(source.PortableHitTestCoreAccepts(iconBar, 9, 30));
+        });
+    }
+
+    [Fact]
+    public void HitTestCoreRegionCoversRenderSizeAndAConditionalOverrideStillDecides()
+    {
+        RunInUiApartment(() =>
+        {
+            var element = new MarginHitElement(); // draws and accepts only (30,30)-(70,70) of 100x100
+            element.Measure(new Size(100, 100));
+            element.Arrange(new Rect(0, 0, 100, 100));
+            var source = (IPortableHitTestCoreSource)element;
+
+            Assert.True(source.TryGetPortableHitTestCoreRegion(out PortableRect region));
+            Assert.Equal((0d, 0d, 100d, 100d), (region.X, region.Y, region.Width, region.Height));
+            Assert.False(source.PortableHitTestCoreAccepts(element, 10, 10));
+            Assert.True(source.PortableHitTestCoreAccepts(element, 35, 45));
+        });
+    }
+
+    [Fact]
+    public void HitTestCoreAcceptsMapsTheRootPointIntoTheElement()
+    {
+        RunInUiApartment(() =>
+        {
+            var element = new MarginHitElement();
+            element.Measure(new Size(100, 100));
+            element.Arrange(new Rect(0, 0, 100, 100));
+            var offset = new ContainerVisual { Transform = new TranslateTransform(5, 7) };
+            var root = new ContainerVisual();
+            root.Children.Add(offset);
+            offset.Children.Add(element);
+            var source = (IPortableHitTestCoreSource)element;
+
+            // Root (40,52) is the element's (35,45): inside its accepted square; root (15,17) is (10,10).
+            Assert.True(source.PortableHitTestCoreAccepts(root, 40, 52));
+            Assert.False(source.PortableHitTestCoreAccepts(root, 15, 17));
+            // A root the element is not under cannot be mapped: keep the GPU result.
+            Assert.True(source.PortableHitTestCoreAccepts(new ContainerVisual(), 15, 17));
+            Assert.True(source.PortableHitTestCoreAccepts(new object(), 15, 17));
+        });
+    }
+
+    [Fact]
+    public void ElementWithoutAHitTestCoreOverrideKeepsItsDrawnCoverageOnly()
+    {
+        RunInUiApartment(() =>
+        {
+            var element = new PlainElement();
+            element.Measure(new Size(50, 50));
+            element.Arrange(new Rect(0, 0, 50, 50));
+            var source = (IPortableHitTestCoreSource)element;
+
+            Assert.False(source.TryGetPortableHitTestCoreRegion(out _));
+            Assert.True(source.PortableHitTestCoreAccepts(element, 200, 200));
+        });
+    }
+
+    private sealed class IconBarLikeElement : UIElement
+    {
+        protected override Size MeasureCore(Size availableSize) => new Size(18, 40);
+        // Draws nothing, like an icon bar on lines without bookmarks.
+        protected override HitTestResult HitTestCore(PointHitTestParameters parameters)
+            => new PointHitTestResult(this, parameters.HitPoint);
+    }
+
+    private sealed class PlainElement : UIElement
+    {
+        protected override Size MeasureCore(Size availableSize) => new Size(50, 50);
+    }
+
     private sealed class MarginHitElement : UIElement
     {
         internal int DrawingQueries { get; private set; }

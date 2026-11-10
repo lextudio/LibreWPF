@@ -760,6 +760,14 @@ public sealed partial class WpfNativeMilSceneCompiler
                     Handle = visualHandle, X = pointRegion.X, Y = pointRegion.Y,
                     Width = pointRegion.Width, Height = pointRegion.Height });
             }
+            else if (WpfHitTestCoreRegion.TryGet(visual, out var hitTestCoreRegion))
+            {
+                // See WpfVisualTreeRenderer.ReplayVisualContent: a HitTestCore override is hit
+                // where nothing is drawn, so the native scene needs the bounds WPF would test.
+                PointHitRegions.Add(new NativeMilPointHitRectangle {
+                    Handle = visualHandle, X = hitTestCoreRegion.X, Y = hitTestCoreRegion.Y,
+                    Width = hitTestCoreRegion.Width, Height = hitTestCoreRegion.Height });
+            }
             Batch.CreateResource(
                 visualHandle,
                 isViewport3D

@@ -371,6 +371,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable, IPortable
         {
             if (_host.TryHitTestOwners(rootX, rootY, ownerBuffer, out int ownerCount))
             {
+                ownerCount = RemoveHitTestCoreRejections(ownerBuffer.AsSpan(0, ownerCount), _source.RootVisual, rootX, rootY);
                 ReadOnlySpan<object?> owners = ownerBuffer.AsSpan(0, ownerCount);
                 if (TrySelectPointerInputOwner(owners, out object? selectedOwner))
                 {
@@ -391,6 +392,40 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable, IPortable
         {
             ArrayPool<object?>.Shared.Return(ownerBuffer, clearArray: true);
         }
+    }
+
+    /// <summary>
+    /// An owner hit only through its HitTestCore region (see IPortableHitTestCoreSource) is the
+    /// outer bound WPF tests; WPF then lets that element's own HitTestCore decide. Ask it the same
+    /// question here, so a conditional override is not hit where WPF would pass the point through.
+    /// Keeps the descending Z order and compacts the span in place.
+    /// </summary>
+    internal static int RemoveHitTestCoreRejections(Span<object?> owners, object? rootVisual, double rootX, double rootY)
+    {
+        if (rootVisual == null)
+        {
+            return owners.Length;
+        }
+
+        int kept = 0;
+        for (int i = 0; i < owners.Length; i++)
+        {
+            object? owner = owners[i];
+            // An IPortablePointHitRegionSource region is authoritative and never filtered. For the
+            // rest, Accepts is cheap without an override (a cached per-type check returns true), so
+            // the region (GetHitTestBounds, a bounds walk) is not recomputed on every pointer move.
+            if (owner is IPortableHitTestCoreSource hitTestCoreSource &&
+                owner is not IPortablePointHitRegionSource &&
+                !hitTestCoreSource.PortableHitTestCoreAccepts(rootVisual, rootX, rootY))
+            {
+                continue;
+            }
+
+            owners[kept++] = owner;
+        }
+
+        owners.Slice(kept).Clear();
+        return kept;
     }
 
     internal static bool TrySelectPointerInputOwner(ReadOnlySpan<object?> owners, out object? selectedOwner)
@@ -616,6 +651,9 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable, IPortable
         }
 
         ownerCount = FilterTransparentPointerOverlays(owners[..ownerCount]);
+        // Same rule as the single-owner pointer path (TryHitTestOwner): an owner reached only
+        // through its HitTestCore region is reported only when its own HitTestCore accepts.
+        ownerCount = RemoveHitTestCoreRejections(owners[..ownerCount], _source.RootVisual, rootX, rootY);
         return true;
     }
 

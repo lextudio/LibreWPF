@@ -348,6 +348,116 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.Equal([toggleButton, textView], source.HitTestAllOverride!(10, 10));
     }
 
+    // An element hit only through its HitTestCore region (an editor's icon bar that draws nothing
+    // on an empty line and overrides HitTestCore to accept the whole margin) is the pointer target
+    // when its HitTestCore accepts the point, and lets the point through to what is behind it when
+    // its HitTestCore rejects it - WPF's own rule. Before the region existed, the click went to the
+    // Grid behind the icon bar, so OpenDevelop could not add a breakpoint on an empty line.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GpuHitTestPointOverrideAsksTheOwnersHitTestCore(bool hitTestCoreAccepts)
+    {
+        using var host = new ProGpuWpfWindowHost();
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var source = new FakePortablePresentationSource();
+        var window = new FakeVisualOwner(PortableVisualOwnerKind.Window);
+        var grid = new FakeVisualOwner(PortableVisualOwnerKind.Content, window);
+        var iconBar = new FakeHitTestCoreOwner(grid, hitTestCoreAccepts);
+        int gridId = target.GpuHitTestOwnerMap.GetOrCreateId(grid);
+        int iconBarId = target.GpuHitTestOwnerMap.GetOrCreateId(iconBar);
+        var index = GpuHitTestIndex.Build(
+            [
+                GpuHitTestPrimitive.RectangleFill(
+                    iconBarId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 2f),
+                GpuHitTestPrimitive.RectangleFill(
+                    gridId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 1f)
+            ]);
+        InstallCompositionTarget(host, target);
+        InstallGpuHitTestCache(target, index);
+        source.RootVisual = window;
+
+        Assert.True(WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge));
+        Assert.NotNull(bridge);
+
+        Assert.Same(hitTestCoreAccepts ? iconBar : grid, source.HitTestOverride!(10, 12));
+        Assert.Same(window, iconBar.LastRoot);
+        Assert.Equal((10d, 12d), iconBar.LastPoint);
+        // The all-owners query (InputHitTest / VisualTreeHelper) follows the same rule.
+        object?[] expectedAll = hitTestCoreAccepts ? new object?[] { iconBar, grid } : new object?[] { grid };
+        Assert.Equal(expectedAll, source.HitTestAllOverride!(10, 12));
+    }
+
+    [Fact]
+    public void HitTestCoreRejectionsKeepOrderAndIgnoreOwnersWithoutAnOverride()
+    {
+        var root = new object();
+        var plain = new FakeVisualOwner(PortableVisualOwnerKind.Content);
+        var accepting = new FakeHitTestCoreOwner(plain, accepts: true);
+        var rejecting = new FakeHitTestCoreOwner(plain, accepts: false);
+        var noOverride = new FakeHitTestCoreOwner(plain, accepts: false, hasRegion: false);
+        object?[] owners = [rejecting, accepting, noOverride, plain];
+
+        int count = WpfPortablePresentationSourceBridge.RemoveHitTestCoreRejections(owners, root, 1, 2);
+
+        // Only an owner that has a HitTestCore region AND rejects is dropped; the rest keep their
+        // descending Z order and the freed tail is cleared.
+        Assert.Equal(3, count);
+        Assert.Equal([accepting, noOverride, plain, null], owners);
+        Assert.Null(noOverride.LastRoot);
+        // Without a root nothing can be mapped, so the GPU result is kept as it is.
+        object?[] unrooted = [rejecting];
+        Assert.Equal(1, WpfPortablePresentationSourceBridge.RemoveHitTestCoreRejections(unrooted, null, 1, 2));
+    }
+
+    // An IPortablePointHitRegionSource region (TextBlock, ScrollViewer) is authoritative: the filter
+    // neither asks its HitTestCore nor drops it, even when that HitTestCore would reject the point.
+    [Fact]
+    public void GpuHitTestPointOverrideKeepsAnAuthoritativePointRegionOwner()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var source = new FakePortablePresentationSource();
+        var window = new FakeVisualOwner(PortableVisualOwnerKind.Window);
+        var grid = new FakeVisualOwner(PortableVisualOwnerKind.Content, window);
+        var textBlock = new FakePointRegionHitTestCoreOwner(grid);
+        int gridId = target.GpuHitTestOwnerMap.GetOrCreateId(grid);
+        int textBlockId = target.GpuHitTestOwnerMap.GetOrCreateId(textBlock);
+        var index = GpuHitTestIndex.Build(
+            [
+                GpuHitTestPrimitive.RectangleFill(
+                    textBlockId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 2f),
+                GpuHitTestPrimitive.RectangleFill(
+                    gridId,
+                    new System.Numerics.Vector2(0f, 0f),
+                    new System.Numerics.Vector2(20f, 20f),
+                    System.Numerics.Vector2.Zero,
+                    zIndex: 1f)
+            ]);
+        InstallCompositionTarget(host, target);
+        InstallGpuHitTestCache(target, index);
+        source.RootVisual = window;
+
+        Assert.True(WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge));
+        Assert.NotNull(bridge);
+
+        Assert.Same(textBlock, source.HitTestOverride!(10, 12));
+        Assert.Equal(new object?[] { textBlock, grid }, source.HitTestAllOverride!(10, 12));
+        Assert.Null(textBlock.LastRoot); // its HitTestCore was never consulted
+    }
+
     [Fact]
     public void GpuHitTestPointOverridePrefersDescendantOverEarlierAncestorHits()
     {
@@ -694,6 +804,47 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         public bool IsPortableInputEnabled { get; } = isInputEnabled;
 
         public PortableVisualOwnerKind PortableVisualOwnerKind { get; } = ownerKind;
+    }
+
+    private class FakeHitTestCoreOwner(object parent, bool accepts, bool hasRegion = true)
+        : IPortableVisualOwnerHost, IPortableHitTestCoreSource
+    {
+        public object PortableVisualParent { get; } = parent;
+
+        public bool IsPortableInputEnabled => true;
+
+        public PortableVisualOwnerKind PortableVisualOwnerKind => PortableVisualOwnerKind.Content;
+
+        public object? LastRoot { get; private set; }
+
+        public (double X, double Y) LastPoint { get; private set; }
+
+        public bool TryGetPortableHitTestCoreRegion(out PortableRect rectangle)
+        {
+            rectangle = hasRegion ? new PortableRect(0, 0, 20, 20) : default;
+            return hasRegion;
+        }
+
+        public bool PortableHitTestCoreAccepts(object rootVisual, double rootX, double rootY)
+        {
+            // Like UIElement: without a HitTestCore override there is nothing to ask.
+            if (!hasRegion)
+                return true;
+            LastRoot = rootVisual;
+            LastPoint = (rootX, rootY);
+            return accepts;
+        }
+    }
+
+    // TextBlock/ScrollViewer shape: an authoritative point region AND a HitTestCore override.
+    private sealed class FakePointRegionHitTestCoreOwner(object parent)
+        : FakeHitTestCoreOwner(parent, accepts: false), IPortablePointHitRegionSource
+    {
+        public bool TryGetPortablePointHitRegion(out PortableRect rectangle)
+        {
+            rectangle = new PortableRect(0, 0, 20, 20);
+            return true;
+        }
     }
 
     private sealed class FakeCursor

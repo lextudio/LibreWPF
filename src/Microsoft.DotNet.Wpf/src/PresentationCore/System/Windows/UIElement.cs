@@ -65,7 +65,7 @@ namespace System.Windows
     /// </remarks>
 
     [UidProperty("Uid")]
-    public partial class UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource, IPortableVisualLayoutStateSource
+    public partial class UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource, IPortableVisualLayoutStateSource, IPortableHitTestCoreSource
     {
         static UIElement()
         {
@@ -136,6 +136,76 @@ namespace System.Windows
         bool IPortableVisualOwnerHost.IsPortableHitTestVisible
         {
             get { return IsHitTestVisible; }
+        }
+
+        // Per type: does it override HitTestCore(PointHitTestParameters)? Only such a type can be
+        // hit where it draws nothing, so only it needs a hit region beyond its drawn content.
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, bool> s_overridesPointHitTestCore = new();
+
+        internal static bool OverridesPointHitTestCore(Type type)
+        {
+            return s_overridesPointHitTestCore.GetOrAdd(type, static t =>
+            {
+                System.Reflection.MethodInfo method = t.GetMethod(
+                    nameof(HitTestCore),
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic,
+                    binder: null,
+                    new[] { typeof(PointHitTestParameters) },
+                    modifiers: null);
+                return method != null
+                    && method.DeclaringType != typeof(UIElement)
+                    && method.DeclaringType != typeof(Visual);
+            });
+        }
+
+        bool IPortableHitTestCoreSource.TryGetPortableHitTestCoreRegion(out PortableRect rectangle)
+        {
+            rectangle = default;
+            if (!OverridesPointHitTestCore(GetType()))
+            {
+                return false;
+            }
+
+            // The same outer bound WPF's own point hit test uses before it calls HitTestCore.
+            Rect bounds = GetHitTestBounds();
+            if (bounds.IsEmpty
+                || !double.IsFinite(bounds.X) || !double.IsFinite(bounds.Y)
+                || !double.IsFinite(bounds.Width) || !double.IsFinite(bounds.Height)
+                || bounds.Width <= 0 || bounds.Height <= 0)
+            {
+                return false;
+            }
+
+            rectangle = new PortableRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            return true;
+        }
+
+        bool IPortableHitTestCoreSource.PortableHitTestCoreAccepts(object rootVisual, double rootX, double rootY)
+        {
+            if (rootVisual is not Visual root || !OverridesPointHitTestCore(GetType()))
+            {
+                return true;
+            }
+
+            Point local = new Point(rootX, rootY);
+            try
+            {
+                if (!ReferenceEquals(root, this))
+                {
+                    GeneralTransform transform = root.TransformToDescendant(this);
+                    if (transform == null || !transform.TryTransform(local, out local))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Not a descendant of this root (another window or a popup root): keep the GPU result.
+                return true;
+            }
+
+            return HitTestCore(new PointHitTestParameters(local)) != null;
         }
 
         PortableVisualOwnerKind IPortableVisualOwnerHost.PortableVisualOwnerKind

@@ -1443,9 +1443,11 @@ namespace System.Windows
         Wrap = 2,
     }
     [System.Windows.Markup.UidPropertyAttribute("Uid")]
-    public partial class UIElement : System.Windows.Media.Visual, System.Windows.IInputElement, System.Windows.IPortableVisualOwnerHost, System.Windows.Media.Animation.IAnimatable, ProGPU.Wpf.Interop.IPortableDrawingContentSource, ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource
+    public partial class UIElement : System.Windows.Media.Visual, System.Windows.IInputElement, System.Windows.IPortableVisualOwnerHost, System.Windows.Media.Animation.IAnimatable, ProGPU.Wpf.Interop.IPortableDrawingContentSource, ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource, ProGPU.Wpf.Interop.IPortableHitTestCoreSource
     {
         bool ProGPU.Wpf.Interop.IPortableDrawingContentSource.TryGetPortableDrawingContent(out object content) { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableHitTestCoreSource.TryGetPortableHitTestCoreRegion(out ProGPU.Wpf.Interop.PortableRect rectangle) { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableHitTestCoreSource.PortableHitTestCoreAccepts(object rootVisual, double rootX, double rootY) { throw null; }
         bool ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource.TryGetPortableVisualLayoutState(out ProGPU.Wpf.Interop.PortableVisualLayoutState state) { throw null; }
         bool System.Windows.IPortableVisualOwnerHost.IsPortableInputEnabled { get { throw null; } }
         object System.Windows.IPortableVisualOwnerHost.PortableVisualParent { get { throw null; } }

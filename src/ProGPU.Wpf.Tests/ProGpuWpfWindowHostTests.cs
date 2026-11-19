@@ -726,6 +726,19 @@ public sealed partial class ProGpuWpfWindowHostTests
         Assert.True(doEventsMethodStart >= 0);
         Assert.True(nativeEventPoll > doEventsMethodStart);
         Assert.True(ownerDispatcherDrain > nativeEventPoll);
+        // The dispatch depth covers the native event poll and the render, not the dispatcher queue or the update
+        // tick that follow the poll: those run arbitrary managed code, including a nested modal loop (a MessageBox
+        // opened from a click inside an options dialog). While one runs, no iteration of an inner loop could take
+        // the depth back to zero, so the native windows it closed stayed on screen until the outermost modal
+        // returned. The depth is therefore released right after the poll, before either of them.
+        int pollDepthRelease = source.IndexOf(
+            "if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)",
+            nativeEventPoll,
+            StringComparison.Ordinal);
+        int updateTick = source.IndexOf("window.DoUpdate();", nativeEventPoll, StringComparison.Ordinal);
+        Assert.True(pollDepthRelease > nativeEventPoll);
+        Assert.True(pollDepthRelease < ownerDispatcherDrain);
+        Assert.True(ownerDispatcherDrain < updateTick);
         Assert.Contains(
             "if (pumpRenderBeforeEvents)\n        {\n            // Externally pumped popup windows",
             source,
@@ -747,7 +760,10 @@ public sealed partial class ProGpuWpfWindowHostTests
             source,
             StringComparison.Ordinal);
         Assert.Contains("if (ShouldPumpNativeRender())", source, StringComparison.Ordinal);
-        Assert.Contains("NativeRenderPumpCount++;\n                window.DoRender();", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "NativeRenderPumpCount++;\n                Exception? renderFailure = null;\n                Interlocked.Increment(ref s_activeNativeEventDispatchDepth);\n                try\n                {\n                    window.DoRender();",
+            source,
+            StringComparison.Ordinal);
         Assert.Contains("SkippedNativeRenderPumpCount++;", source, StringComparison.Ordinal);
         Assert.Contains("Thread.Sleep(hadPendingRender || WpfRenderScheduler.HasPendingRenderRequest", source, StringComparison.Ordinal);
         Assert.Contains("private bool ShouldKeepPortableNativeRunLoopAlive()", source, StringComparison.Ordinal);

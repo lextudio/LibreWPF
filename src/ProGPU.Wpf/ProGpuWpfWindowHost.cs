@@ -1961,6 +1961,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             window.IsEventDriven = false;
         }
 
+        // The dispatch depth counts only the calls that can re-enter the platform event loop or the
+        // renderer: the native event poll and the render below. It must not span the dispatcher queue
+        // or the update tick. Those run arbitrary managed code, including a nested modal loop (a
+        // MessageBox opened from a click inside an options dialog, an options dialog opened from a menu
+        // command), and while one is running no iteration of any inner loop could take the depth back to
+        // zero: every native window retired in the meantime stayed on screen, closed in WPF but never
+        // destroyed, until the outermost modal returned.
         Exception? dispatchFailure = null;
         Interlocked.Increment(ref s_activeNativeEventDispatchDepth);
         try
@@ -1980,7 +1987,22 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     window.IsEventDriven = restoreEventDriven;
                 }
             }
+        }
+        catch (Exception error)
+        {
+            dispatchFailure = error;
+            throw;
+        }
+        finally
+        {
+            if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)
+            {
+                ProcessDeferredNativeWindowDisposalsPreservingFailure(dispatchFailure);
+            }
+        }
 
+        try
+        {
             if (!ShouldKeepPortableNativeRunLoopAlive())
             {
                 DisposeDeferredNativeWindowIfNeeded();
@@ -1999,7 +2021,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             if (ShouldPumpNativeRender())
             {
                 NativeRenderPumpCount++;
-                window.DoRender();
+                Exception? renderFailure = null;
+                Interlocked.Increment(ref s_activeNativeEventDispatchDepth);
+                try
+                {
+                    window.DoRender();
+                }
+                catch (Exception error)
+                {
+                    renderFailure = error;
+                    throw;
+                }
+                finally
+                {
+                    if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)
+                    {
+                        ProcessDeferredNativeWindowDisposalsPreservingFailure(renderFailure);
+                    }
+                }
             }
             else
             {
@@ -2008,15 +2047,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
         catch (Exception error)
         {
-            dispatchFailure = error;
+            // What the single counted region used to do on its way out: retire what the failed
+            // callback left queued, without replacing the callback's own exception.
+            ProcessDeferredNativeWindowDisposalsPreservingFailure(error);
             throw;
-        }
-        finally
-        {
-            if (Interlocked.Decrement(ref s_activeNativeEventDispatchDepth) == 0)
-            {
-                ProcessDeferredNativeWindowDisposalsPreservingFailure(dispatchFailure);
-            }
         }
 
         DisposeDeferredNativeWindowIfNeeded();

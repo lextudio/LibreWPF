@@ -3069,6 +3069,39 @@ public sealed partial class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativePopupSourceRenderRequestReachesItsNativeHost()
+    {
+        // The native popup window renders through its own host; a render requested by
+        // its PresentationSource (a MenuItem hover change) must reach that host, not
+        // only the owner, or the popup keeps presenting its stale retained scene.
+        var activation = new TestWindowActivationServiceRegistrar();
+        using var registration = PortableWpfServiceRegistry.RegisterWindowActivationService(activation);
+        var popup = new FakePortablePresentationSource();
+        using var factory = UsePortablePopupSourceFactory(() => popup);
+        var previousNativeHostFactory = WpfPortablePopupBridge.NativePopupHostFactory;
+        var nativeHost = new FakePortableNativePopupHost();
+        WpfPortablePopupBridge.NativePopupHostFactory = (_, _, _, _, _) => nativeHost;
+        try
+        {
+            using var host = new ProGpuWpfWindowHost();
+            var owner = new FakePortablePresentationSource { RootVisual = new object() };
+            Assert.True(host.TryBindPortablePresentationSource(owner));
+            Assert.True(host.TryCreatePortablePopup(new PortablePopupCreateRequest(null, owner, owner.Handle, 0, 0, false, false), out var source));
+            Assert.True(host.TrySetPortablePopupSize(source!, 100, 80));
+            Assert.True(host.TryShowPortablePopup(source!));
+            int before = nativeHost.RenderRequestCount;
+
+            popup.RootVisual = new object();
+
+            Assert.True(nativeHost.RenderRequestCount > before);
+        }
+        finally
+        {
+            WpfPortablePopupBridge.NativePopupHostFactory = previousNativeHostFactory;
+        }
+    }
+
+    [Fact]
     public void NativePointerOverlayRouteMapsOnlyItsCoordinates()
     {
         var activation = new NativePointerActivationService();
@@ -4517,6 +4550,10 @@ public sealed partial class ProGpuWpfWindowHostTests
         }
 
         public void RaiseInputForDiagnostics(WpfInputEventArgs input) => InputHandler?.Invoke(input);
+
+        public int RenderRequestCount { get; private set; }
+
+        public void RequestRender() => RenderRequestCount++;
 
         public void SetOwnerTransportScale(double dpiScaleX, double dpiScaleY)
         {

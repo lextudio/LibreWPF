@@ -1019,6 +1019,8 @@ internal sealed class WpfPortablePopupBridge : IDisposable
         unchecked { _inputAdmissionVersion++; }
         if (_nativeHost == null)
             _host.InvalidateNativeMilPopups();
+        else
+            _nativeHost.RequestRender();
         _host.RequestRenderAndWakeNativeLoop();
     }
 

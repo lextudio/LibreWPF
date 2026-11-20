@@ -43,6 +43,12 @@ internal interface IWpfPortableNativePopupHost : IDisposable
     void Show();
 
     void Hide();
+
+    // The popup window renders through its own host and scheduler; the owner's
+    // render request does not reach it.
+    void RequestRender()
+    {
+    }
 }
 
 internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
@@ -272,6 +278,17 @@ internal sealed class WpfPortableNativePopupHost : IWpfPortableNativePopupHost
         double.IsFinite(deviceScale) && deviceScale > 0.0
             ? deviceScale
             : 1.0;
+
+    public void RequestRender()
+    {
+        if (_isDisposed)
+            return;
+        // The popup's PresentationSource asks for a render without naming the
+        // changed visual, so dirty the popup root; otherwise its retained scene
+        // is presented again unchanged (a MenuItem never shows its hover state).
+        _popupHost.InvalidateWpfSourceForPortableRender(null);
+        _popupHost.RequestRenderAndWakeNativeLoop();
+    }
 
     public void SetSize(int width, int height)
     {

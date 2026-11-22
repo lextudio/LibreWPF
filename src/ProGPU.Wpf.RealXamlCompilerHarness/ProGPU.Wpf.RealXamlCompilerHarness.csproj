@@ -62,4 +62,11 @@
     <ProjectReference Include="..\Microsoft.DotNet.Wpf\src\PresentationFramework\PresentationFramework.csproj" />
     <ProjectReference Include="..\..\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj" />
   </ItemGroup>
+
+  <!-- Optional XAML Source Generator path (env: LIBREWPF_USE_XSG=1). -->
+  <ItemGroup Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true'">
+    <ProjectReference Include="..\LibreWPF.Xaml.SourceGenerator\LibreWPF.Xaml.SourceGenerator.csproj"
+                     OutputItemType="Analyzer"
+                     ReferenceOutputAssembly="false" />
+  </ItemGroup>
 </Project>

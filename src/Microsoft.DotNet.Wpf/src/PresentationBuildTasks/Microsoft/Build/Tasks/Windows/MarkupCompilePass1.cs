@@ -357,6 +357,31 @@ namespace Microsoft.Build.Tasks.Windows
             set { _defineConstants = value; }
         }
 
+        //
+        // Simpler XAML / implicit namespaces: when true (or when DefineConstants
+        // contains "AllowImplicitXmlnsDeclaration"), XAML files whose root element
+        // omits the standard xmlns declarations are rewritten at compile time.
+        //
+        public bool AllowImplicitXmlnsDeclaration
+        {
+            get { return _allowImplicitXmlnsDeclaration; }
+            set { _allowImplicitXmlnsDeclaration = value; }
+        }
+
+        internal bool ImplicitXmlnsEnabled
+        {
+            get
+            {
+                if (_allowImplicitXmlnsDeclaration)
+                {
+                    return true;
+                }
+
+                return !string.IsNullOrEmpty(_defineConstants) &&
+                       _defineConstants.Contains("AllowImplicitXmlnsDeclaration", StringComparison.Ordinal);
+            }
+        }
+
         ///<summary>
         /// ApplicationMarkup
         ///</summary>
@@ -1235,6 +1260,7 @@ namespace Microsoft.Build.Tasks.Windows
                     compilerWrapper.ContentFiles = CompilerAnalyzer.ContentFiles;
 
                     compilerWrapper.SupportCustomOutputPaths = SupportCustomOutputPaths;
+                    compilerWrapper.AllowImplicitXmlnsDeclaration = ImplicitXmlnsEnabled;
 
                     // Process Reference list here.
                     ArrayList referenceList = ProcessReferenceList();
@@ -1866,6 +1892,7 @@ namespace Microsoft.Build.Tasks.Windows
         private int                        _nErrors;
 
         private string                     _defineConstants = String.Empty;
+        private bool                       _allowImplicitXmlnsDeclaration = false;
         private ITaskItem[]                _sourceCodeFiles;
 
         private string                     _pageMarkupCache = String.Empty;

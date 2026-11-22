@@ -314,6 +314,39 @@ namespace Microsoft.Build.Tasks.Windows
         ///</summary>
         public bool SupportCustomOutputPaths { get; set; } = false;
 
+        //
+        // DefineConstants: kept for parity with MarkupCompilePass1 so that the
+        // implicit-namespaces opt-in can be detected from DefineConstants.
+        //
+        public string DefineConstants
+        {
+            get { return _defineConstants; }
+            set { _defineConstants = value; }
+        }
+
+        //
+        // Simpler XAML / implicit namespaces.
+        //
+        public bool AllowImplicitXmlnsDeclaration
+        {
+            get { return _allowImplicitXmlnsDeclaration; }
+            set { _allowImplicitXmlnsDeclaration = value; }
+        }
+
+        internal bool ImplicitXmlnsEnabled
+        {
+            get
+            {
+                if (_allowImplicitXmlnsDeclaration)
+                {
+                    return true;
+                }
+
+                return !string.IsNullOrEmpty(_defineConstants) &&
+                       _defineConstants.Contains("AllowImplicitXmlnsDeclaration", StringComparison.Ordinal);
+            }
+        }
+
         /// <summary>
         /// Known reference paths hold referenced assemblies which are never changed during the build procedure.
         /// such as references in GAC, in framework directory or framework SDK directory etc.
@@ -636,6 +669,7 @@ namespace Microsoft.Build.Tasks.Windows
                     compilerWrapper.TaskLogger = Log;
                     compilerWrapper.UnknownErrorID = UnknownErrorID;
                     compilerWrapper.XamlDebuggingInformation = XamlDebuggingInformation;
+                    compilerWrapper.AllowImplicitXmlnsDeclaration = ImplicitXmlnsEnabled;
 
                     compilerWrapper.SupportCustomOutputPaths = SupportCustomOutputPaths;
 
@@ -864,6 +898,8 @@ namespace Microsoft.Build.Tasks.Windows
         private string[]                   _knownReferencePaths;
         private string                     _rootNamespace = String.Empty;
         private bool                       _xamlDebuggingInformation = false;
+        private string                     _defineConstants = String.Empty;
+        private bool                       _allowImplicitXmlnsDeclaration = false;
 
         private bool                       _alwaysCompileMarkupFilesInSeparateDomain = true;
 

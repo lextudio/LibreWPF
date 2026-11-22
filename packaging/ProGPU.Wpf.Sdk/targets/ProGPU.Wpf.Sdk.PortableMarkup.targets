@@ -8,9 +8,28 @@
     <EnableDefaultApplicationDefinition Condition="'$(EnableDefaultApplicationDefinition)' == ''">true</EnableDefaultApplicationDefinition>
   </PropertyGroup>
 
+  <!-- When the XAML Source Generator path is active, skip the classic
+       BAML/MarkupCompilePass pipeline entirely. -->
+  <PropertyGroup>
+    <_LibreWpfXsgEnv Condition="'$(_LibreWpfXsgEnv)' == ''">$([System.Environment]::GetEnvironmentVariable('LIBREWPF_USE_XSG'))</_LibreWpfXsgEnv>
+    <_LibreWpfXsgEnv Condition="'$(_LibreWpfXsgEnv)' == ''">$([System.Environment]::GetEnvironmentVariable('LIBREWPF_USE_XAML_SOURCE_GENERATOR'))</_LibreWpfXsgEnv>
+    <UseLibreWpfXamlSourceGenerator Condition="'$(UseLibreWpfXamlSourceGenerator)' == '' And '$(_LibreWpfXsgEnv)' != ''">true</UseLibreWpfXamlSourceGenerator>
+    <UseLibreWpfXamlSourceGenerator Condition="'$(UseLibreWpfXamlSourceGenerator)' == ''">false</UseLibreWpfXamlSourceGenerator>
+  </PropertyGroup>
+
   <Import Sdk="Microsoft.NET.Sdk.WindowsDesktop"
           Project="../targets/Microsoft.WinFX.targets"
-          Condition="'$(ImportFrameworkWinFXTargets)' != 'true'" />
+          Condition="'$(ImportFrameworkWinFXTargets)' != 'true' And '$(UseLibreWpfXamlSourceGenerator)' != 'true'" />
+
+  <!-- XAML Source Generator path: feed XAML as AdditionalFiles. -->
+  <Target Name="_LibreWpfXsgAddAdditionalFiles"
+          Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true'"
+          BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <AdditionalFiles Include="@(ApplicationDefinition)" />
+      <AdditionalFiles Include="@(Page)" />
+    </ItemGroup>
+  </Target>
 
   <!-- This file is imported only for portable framework references. The public
        desktop flags describe source intent, not a Windows-only runtime. Keep

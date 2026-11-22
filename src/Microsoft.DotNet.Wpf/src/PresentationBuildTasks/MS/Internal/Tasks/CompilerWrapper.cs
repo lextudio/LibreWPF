@@ -209,6 +209,17 @@ namespace MS.Internal
             set { _mc.SupportCustomOutputPaths = value; }
         }
 
+        //
+        // When true, XAML files whose root element omits the standard xmlns
+        // declarations are rewritten at compile time to inject the default WPF
+        // presentation and xaml namespaces (Simpler XAML / implicit namespaces).
+        //
+        internal bool AllowImplicitXmlnsDeclaration
+        {
+            get { return _mc.AllowImplicitXmlnsDeclaration; }
+            set { _mc.AllowImplicitXmlnsDeclaration = value; }
+        }
+
         // <summary>
         // Start the compilation.
         // </summary>

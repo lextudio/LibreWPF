@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <UseLibreWpfXamlSourceGenerator Condition="'$(UseLibreWpfXamlSourceGenerator)' == ''">false</UseLibreWpfXamlSourceGenerator>
+  </PropertyGroup>
+  <!-- When XSG is active, AdditionalFiles are provided by the project (or by the
+       SDK when Page/ApplicationDefinition items exist). No further action needed. -->
+</Project>

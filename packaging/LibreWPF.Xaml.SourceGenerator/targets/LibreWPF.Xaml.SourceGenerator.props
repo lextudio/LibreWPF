@@ -1,0 +1,15 @@
+<Project>
+  <!-- Opt-in: enable the source-generator path (parallel to the BAML/MarkupCompilePass path).
+       Switch via (in priority order):
+         1. MSBuild property UseLibreWpfXamlSourceGenerator
+         2. Environment variable LIBREWPF_USE_XSG (or LIBREWPF_USE_XAML_SOURCE_GENERATOR)
+       Default: false (BAML path). -->
+  <PropertyGroup>
+    <_LibreWpfXsgEnv Condition="'$(_LibreWpfXsgEnv)' == ''">$([System.Environment]::GetEnvironmentVariable('LIBREWPF_USE_XSG'))</_LibreWpfXsgEnv>
+    <_LibreWpfXsgEnv Condition="'$(_LibreWpfXsgEnv)' == ''">$([System.Environment]::GetEnvironmentVariable('LIBREWPF_USE_XAML_SOURCE_GENERATOR'))</_LibreWpfXsgEnv>
+    <UseLibreWpfXamlSourceGenerator Condition="'$(UseLibreWpfXamlSourceGenerator)' == '' And '$(_LibreWpfXsgEnv)' != ''">true</UseLibreWpfXamlSourceGenerator>
+    <UseLibreWpfXamlSourceGenerator Condition="'$(UseLibreWpfXamlSourceGenerator)' == ''">false</UseLibreWpfXamlSourceGenerator>
+  </PropertyGroup>
+
+
+</Project>

@@ -654,6 +654,19 @@ namespace LibreWPF.Xaml.SourceGenerator
             if (nameAttr != null)
             {
                 sb.AppendLine($"{pad}this.{nameAttr.Value} = {varName};");
+                // As BAML does: x:Name is also the element's Name and an entry in the root's
+                // NameScope, so FindName, ElementName bindings and tooling lookups by name work.
+                // Unregister first: Hot Reload re-runs InitializeComponent on the live instance.
+                var nameLiteral = EscapeString(nameAttr.Value);
+                sb.AppendLine($"{pad}if ((object){varName} is global::System.Windows.FrameworkElement __fe_{varName}) __fe_{varName}.Name = \"{nameLiteral}\";");
+                sb.AppendLine($"{pad}else if ((object){varName} is global::System.Windows.FrameworkContentElement __fce_{varName}) __fce_{varName}.Name = \"{nameLiteral}\";");
+                sb.AppendLine($"{pad}if ((object)this is global::System.Windows.DependencyObject __scopeRoot_{varName})");
+                sb.AppendLine($"{pad}{{");
+                sb.AppendLine($"{pad}    var __scope_{varName} = global::System.Windows.NameScope.GetNameScope(__scopeRoot_{varName});");
+                sb.AppendLine($"{pad}    if (__scope_{varName} is null) global::System.Windows.NameScope.SetNameScope(__scopeRoot_{varName}, __scope_{varName} = new global::System.Windows.NameScope());");
+                sb.AppendLine($"{pad}    if (__scope_{varName}.FindName(\"{nameLiteral}\") is not null) __scope_{varName}.UnregisterName(\"{nameLiteral}\");");
+                sb.AppendLine($"{pad}    __scope_{varName}.RegisterName(\"{nameLiteral}\", {varName});");
+                sb.AppendLine($"{pad}}}");
             }
 
             // Content / children (exclude x:Code, handled separately)

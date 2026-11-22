@@ -243,6 +243,10 @@ namespace LibreWPF.Xaml.SourceGenerator
             {
                 sb.AppendLine(u);
             }
+            var globalClassName = string.IsNullOrEmpty(ns) ? $"global::{className}" : $"global::{ns}.{className}";
+            sb.AppendLine("#if DEBUG");
+            sb.AppendLine($"[assembly: global::System.Reflection.Metadata.MetadataUpdateHandler(typeof({globalClassName}.__XsgHotReload))]");
+            sb.AppendLine("#endif");
             if (!string.IsNullOrEmpty(ns))
             {
                 sb.AppendLine($"namespace {ns}");
@@ -256,15 +260,24 @@ namespace LibreWPF.Xaml.SourceGenerator
                 sb.AppendLine($"        private global::{kvp.Value}? {kvp.Key};");
             }
             sb.AppendLine();
+            AppendHotReloadHandler(sb, className);
+            sb.AppendLine();
             sb.AppendLine("        private void InitializeComponent()");
             sb.AppendLine("        {");
+            sb.AppendLine("#if DEBUG");
+            sb.AppendLine("            __XsgHotReload.Register(this);");
+            sb.AppendLine("#endif");
             sb.AppendLine("            // Begin generated object graph");
 
             var sourcePath = file.Path;
 
             // Generate root: the root element IS 'this' (Window/Page/UserControl).
             // Assign its properties directly and build children into this.
-            GenerateRootElement(sb, root, defaultNs, sourcePath, 12);
+            // Local names are emitted into the generated C# and therefore form part of the EnC
+            // baseline. They must be deterministic: a GUID here makes an unchanged XAML file
+            // look like a complete rewrite to Roslyn on every build.
+            var localId = 0;
+            GenerateRootElement(sb, root, defaultNs, sourcePath, 12, ref localId);
 
             sb.AppendLine("            // End generated object graph");
             sb.AppendLine("        }");
@@ -287,12 +300,80 @@ namespace LibreWPF.Xaml.SourceGenerator
         }
 
         /// <summary>
+        /// Debug-only Route D delivery: after the runtime applies a C# metadata delta that touched this
+        /// class, re-run its (idempotent) InitializeComponent on every live instance, on that
+        /// instance's own dispatcher. Instances are held weakly and registered by InitializeComponent
+        /// itself, so no tree walk is needed and off-tree instances are covered.
+        /// </summary>
+        private static void AppendHotReloadHandler(StringBuilder sb, string className)
+        {
+            sb.AppendLine("#if DEBUG");
+            sb.AppendLine("        internal static class __XsgHotReload");
+            sb.AppendLine("        {");
+            sb.AppendLine("            private static readonly object s_lock = new object();");
+            sb.AppendLine($"            private static readonly global::System.Collections.Generic.List<global::System.WeakReference<{className}>> s_instances = new global::System.Collections.Generic.List<global::System.WeakReference<{className}>>();");
+            sb.AppendLine();
+            sb.AppendLine($"            internal static void Register({className} instance)");
+            sb.AppendLine("            {");
+            sb.AppendLine("                lock (s_lock)");
+            sb.AppendLine("                {");
+            sb.AppendLine("                    for (var i = s_instances.Count - 1; i >= 0; i--)");
+            sb.AppendLine("                    {");
+            sb.AppendLine("                        if (!s_instances[i].TryGetTarget(out var live))");
+            sb.AppendLine("                        {");
+            sb.AppendLine("                            s_instances.RemoveAt(i);");
+            sb.AppendLine("                        }");
+            sb.AppendLine("                        else if (ReferenceEquals(live, instance))");
+            sb.AppendLine("                        {");
+            sb.AppendLine("                            return;");
+            sb.AppendLine("                        }");
+            sb.AppendLine("                    }");
+            sb.AppendLine($"                    s_instances.Add(new global::System.WeakReference<{className}>(instance));");
+            sb.AppendLine("                }");
+            sb.AppendLine("            }");
+            sb.AppendLine();
+            sb.AppendLine("            internal static void ClearCache(global::System.Type[]? updatedTypes)");
+            sb.AppendLine("            {");
+            sb.AppendLine("            }");
+            sb.AppendLine();
+            sb.AppendLine("            internal static void UpdateApplication(global::System.Type[]? updatedTypes)");
+            sb.AppendLine("            {");
+            sb.AppendLine($"                if (updatedTypes != null && global::System.Array.IndexOf(updatedTypes, typeof({className})) < 0)");
+            sb.AppendLine("                {");
+            sb.AppendLine("                    return;");
+            sb.AppendLine("                }");
+            sb.AppendLine($"                var targets = new global::System.Collections.Generic.List<{className}>();");
+            sb.AppendLine("                lock (s_lock)");
+            sb.AppendLine("                {");
+            sb.AppendLine("                    for (var i = s_instances.Count - 1; i >= 0; i--)");
+            sb.AppendLine("                    {");
+            sb.AppendLine("                        if (s_instances[i].TryGetTarget(out var live))");
+            sb.AppendLine("                        {");
+            sb.AppendLine("                            targets.Add(live);");
+            sb.AppendLine("                        }");
+            sb.AppendLine("                        else");
+            sb.AppendLine("                        {");
+            sb.AppendLine("                            s_instances.RemoveAt(i);");
+            sb.AppendLine("                        }");
+            sb.AppendLine("                    }");
+            sb.AppendLine("                }");
+            sb.AppendLine("                foreach (var target in targets)");
+            sb.AppendLine("                {");
+            sb.AppendLine("                    var instance = target;");
+            sb.AppendLine("                    instance.Dispatcher.BeginInvoke(global::System.Windows.Threading.DispatcherPriority.Normal, (global::System.Action)(() => instance.InitializeComponent()));");
+            sb.AppendLine("                }");
+            sb.AppendLine("            }");
+            sb.AppendLine("        }");
+            sb.AppendLine("#endif");
+        }
+
+        /// <summary>
         /// Generate code for an element. Returns the variable name holding the element.
         /// </summary>
-        private static string GenerateTemplate(StringBuilder sb, XElement el, string typeName, string defaultNs, string sourcePath, int indent)
+        private static string GenerateTemplate(StringBuilder sb, XElement el, string typeName, string defaultNs, string sourcePath, int indent, ref int localId)
         {
             var pad = new string(' ', indent);
-            var varName = $"__{el.Name.LocalName}_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
+            var varName = $"__{el.Name.LocalName}_{++localId}";
             sb.AppendLine($"{pad}var {varName} = new global::{typeName}();");
 
             // TargetType / DataType attribute
@@ -344,7 +425,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                 var childType = ResolveTypeName(rootChild, defaultNs);
                 if (childType is not null)
                 {
-                    var factoryVar = $"__fef_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
+                    var factoryVar = $"__fef_{++localId}";
                     sb.AppendLine($"{pad}var {factoryVar} = new global::System.Windows.FrameworkElementFactory(typeof(global::{childType}));");
                     // Set properties on factory
                     foreach (var a in rootChild.Attributes())
@@ -392,7 +473,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             return varName;
         }
 
-        private static string GenerateElement(StringBuilder sb, XElement el, string defaultNs, string sourcePath, int indent)
+        private static string GenerateElement(StringBuilder sb, XElement el, string defaultNs, string sourcePath, int indent, ref int localId)
         {
             var pad = new string(' ', indent);
             var lineInfo = el as IXmlLineInfo;
@@ -411,10 +492,10 @@ namespace LibreWPF.Xaml.SourceGenerator
             // DataTemplate / ControlTemplate: build a FrameworkElementFactory tree.
             if (typeName.Contains("Template"))
             {
-                return GenerateTemplate(sb, el, typeName, defaultNs, sourcePath, indent);
+                return GenerateTemplate(sb, el, typeName, defaultNs, sourcePath, indent, ref localId);
             }
 
-            var varName = $"__{el.Name.LocalName}_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
+            var varName = $"__{el.Name.LocalName}_{++localId}";
             sb.AppendLine($"{pad}var {varName} = new global::{typeName}();");
 
             // Properties from attributes (excluding xmlns, x:Class, x:Name)
@@ -592,7 +673,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                     {
                         foreach (var md in peChildren)
                         {
-                            var mdVar = GenerateElement(sb, md, defaultNs, sourcePath, indent);
+                            var mdVar = GenerateElement(sb, md, defaultNs, sourcePath, indent, ref localId);
                             sb.AppendLine($"{pad}{varName}.MergedDictionaries.Add({mdVar});");
                         }
                     }
@@ -601,23 +682,23 @@ namespace LibreWPF.Xaml.SourceGenerator
                         sb.AppendLine($"{pad}{varName}.{propName}.Clear();");
                         foreach (var c in peChildren)
                         {
-                            var cVar = GenerateElement(sb, c, defaultNs, sourcePath, indent);
+                            var cVar = GenerateElement(sb, c, defaultNs, sourcePath, indent, ref localId);
                             sb.AppendLine($"{pad}{varName}.{propName}.Add({cVar});");
                         }
                     }
                     else if (peChildren.Count == 1)
                     {
-                        var cVar = GenerateElement(sb, peChildren[0], defaultNs, sourcePath, indent);
+                        var cVar = GenerateElement(sb, peChildren[0], defaultNs, sourcePath, indent, ref localId);
                         sb.AppendLine($"{pad}{varName}.{propName} = {cVar};");
                     }
                     else if (peChildren.Count > 1)
                     {
                         // Implicit ResourceDictionary
-                        var rdVar = $"__rd_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
+                        var rdVar = $"__rd_{++localId}";
                         sb.AppendLine($"{pad}var {rdVar} = new global::System.Windows.ResourceDictionary();");
                         foreach (var c in peChildren)
                         {
-                            var cVar = GenerateElement(sb, c, defaultNs, sourcePath, indent);
+                            var cVar = GenerateElement(sb, c, defaultNs, sourcePath, indent, ref localId);
                             var keyAttr = c.Attributes().FirstOrDefault(a => a.Name.LocalName == "Key" && a.Name.NamespaceName.Contains("xaml"));
                             if (keyAttr is null)
                             {
@@ -655,7 +736,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     foreach (var child in childElements)
                     {
-                        var cVar = GenerateElement(sb, child, defaultNs, sourcePath, indent);
+                        var cVar = GenerateElement(sb, child, defaultNs, sourcePath, indent, ref localId);
                         var keyAttr = child.Attributes().FirstOrDefault(a => a.Name.LocalName == "Key" && a.Name.NamespaceName.Contains("xaml"));
                         if (keyAttr is null)
                         {
@@ -696,7 +777,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                             sb.AppendLine($"{pad}{varName}.Children.Clear();");
                             foreach (var child in childElements)
                             {
-                                var childVar = GenerateElement(sb, child, defaultNs, sourcePath, indent);
+                                var childVar = GenerateElement(sb, child, defaultNs, sourcePath, indent, ref localId);
                                 sb.AppendLine($"{pad}{varName}.Children.Add({childVar});");
                             }
                         }
@@ -704,7 +785,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                         {
                             if (childElements.Count == 1)
                             {
-                                var childVar = GenerateElement(sb, childElements[0], defaultNs, sourcePath, indent);
+                                var childVar = GenerateElement(sb, childElements[0], defaultNs, sourcePath, indent, ref localId);
                                 sb.AppendLine($"{pad}{varName}.Content = {childVar};");
                             }
                         }
@@ -713,7 +794,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                             sb.AppendLine($"{pad}{varName}.Items.Clear();");
                             foreach (var child in childElements)
                             {
-                                var childVar = GenerateElement(sb, child, defaultNs, sourcePath, indent);
+                                var childVar = GenerateElement(sb, child, defaultNs, sourcePath, indent, ref localId);
                                 sb.AppendLine($"{pad}{varName}.Items.Add({childVar});");
                             }
                         }
@@ -838,7 +919,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             return text;
         }
 
-        private static void GenerateRootElement(StringBuilder sb, XElement el, string defaultNs, string sourcePath, int indent)
+        private static void GenerateRootElement(StringBuilder sb, XElement el, string defaultNs, string sourcePath, int indent, ref int localId)
         {
             var pad = new string(' ', indent);
             var lineInfo = el as IXmlLineInfo;
@@ -902,17 +983,17 @@ namespace LibreWPF.Xaml.SourceGenerator
                     var peChildren = pe.Elements().ToList();
                     if (peChildren.Count == 1 && peChildren[0].Name.LocalName == "ResourceDictionary")
                     {
-                        var rdVar = GenerateElement(sb, peChildren[0], defaultNs, sourcePath, indent);
+                        var rdVar = GenerateElement(sb, peChildren[0], defaultNs, sourcePath, indent, ref localId);
                         sb.AppendLine($"{pad}this.{propName} = {rdVar};");
                     }
                     else if (peChildren.Count > 0)
                     {
                         // Implicit ResourceDictionary (e.g. Page.Resources containing loose resources).
-                        var rdVar = $"__rd_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
+                        var rdVar = $"__rd_{++localId}";
                         sb.AppendLine($"{pad}var {rdVar} = new global::System.Windows.ResourceDictionary();");
                         foreach (var c in peChildren)
                         {
-                            var cVar = GenerateElement(sb, c, defaultNs, sourcePath, indent);
+                            var cVar = GenerateElement(sb, c, defaultNs, sourcePath, indent, ref localId);
                             var keyAttr = c.Attributes().FirstOrDefault(a => a.Name.LocalName == "Key" && a.Name.NamespaceName.Contains("xaml"));
                             if (keyAttr is null)
                             {
@@ -952,7 +1033,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                     sb.AppendLine($"{pad}this.Children.Clear();");
                     foreach (var child in childElements)
                     {
-                        var childVar = GenerateElement(sb, child, defaultNs, sourcePath, indent);
+                        var childVar = GenerateElement(sb, child, defaultNs, sourcePath, indent, ref localId);
                         sb.AppendLine($"{pad}this.Children.Add({childVar});");
                     }
                 }
@@ -960,7 +1041,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     if (childElements.Count == 1)
                     {
-                        var childVar = GenerateElement(sb, childElements[0], defaultNs, sourcePath, indent);
+                        var childVar = GenerateElement(sb, childElements[0], defaultNs, sourcePath, indent, ref localId);
                         sb.AppendLine($"{pad}this.Content = {childVar};");
                     }
                 }
@@ -969,7 +1050,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                     sb.AppendLine($"{pad}this.Items.Clear();");
                     foreach (var child in childElements)
                     {
-                        var childVar = GenerateElement(sb, child, defaultNs, sourcePath, indent);
+                        var childVar = GenerateElement(sb, child, defaultNs, sourcePath, indent, ref localId);
                         sb.AppendLine($"{pad}this.Items.Add({childVar});");
                     }
                 }

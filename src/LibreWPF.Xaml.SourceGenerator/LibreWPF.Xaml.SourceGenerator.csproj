@@ -9,10 +9,18 @@
     <RootNamespace>LibreWPF.Xaml.SourceGenerator</RootNamespace>
     <AssemblyName>LibreWPF.Xaml.SourceGenerator</AssemblyName>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <!-- A source generator must live under analyzers/, never lib/: NuGet then loads it into
+         the compiler without making Roslyn implementation assemblies runtime dependencies. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
 </Project>

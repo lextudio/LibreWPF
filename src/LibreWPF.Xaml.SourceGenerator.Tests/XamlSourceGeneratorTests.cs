@@ -82,6 +82,59 @@ public class XamlSourceGeneratorTests
         Assert.Equal(Generate(Window), Generate(Window));
     }
 
+    // The same window written the two ways the generator has to serve. Same line layout, so even the #line directives agree.
+    // 2: a project that enabled XSG but keeps its old-style XAML (every namespace declared).
+    private const string OldStyleOneLine = """
+        <Window x:Class="Sample.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+          <Grid>
+            <TextBlock x:Name="Status" Text="{cs: &quot;ready&quot;}" />
+            <TextBlock x:Name="Other" Text="plain" />
+          </Grid>
+        </Window>
+        """;
+
+    // 3: new-style (Simpler XAML) XAML: no xmlns at all.
+    private const string NewStyle = """
+        <Window x:Class="Sample.MainWindow">
+          <Grid>
+            <TextBlock x:Name="Status" Text="{cs: &quot;ready&quot;}" />
+            <TextBlock x:Name="Other" Text="plain" />
+          </Grid>
+        </Window>
+        """;
+
+    [Fact]
+    public void SimplerXaml_GeneratesExactlyWhatTheSameDocumentWithExplicitNamespacesGenerates()
+    {
+        // Cases 2 and 3 of a project that enabled XSG must be the same program.
+        Assert.Equal(Generate(OldStyleOneLine), Generate(NewStyle));
+    }
+
+    [Fact]
+    public void SimplerXaml_KeepsTheXamlNamespaceFeatures()
+    {
+        var code = Generate(NewStyle);
+
+        Assert.Contains("this.Status = ", code);
+        Assert.Contains("this.Other = ", code);
+        Assert.Contains(".RegisterName(\"Status\", ", code);
+        Assert.Contains("global::System.Windows.Controls.TextBlock", code);
+    }
+
+    [Fact]
+    public void OldStyleXaml_WithExplicitNamespaces_IsNotRewritten()
+    {
+        // A document that declares its own namespaces is taken as written: a custom default namespace stays the root's.
+        var code = Generate("""
+            <Window x:Class="Sample.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+              <Grid />
+            </Window>
+            """);
+
+        Assert.Contains("global::System.Windows.Controls.Grid", code);
+        Assert.DoesNotContain("xmlns", code);
+    }
+
     private sealed class InMemoryText(string path, string text) : AdditionalText
     {
         public override string Path => path;

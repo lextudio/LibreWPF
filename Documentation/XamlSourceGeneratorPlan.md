@@ -65,6 +65,12 @@ Default: `false` (BAML path). The two paths are mutually exclusive per project.
 
 ## Parallel-path constraints
 
+- BAML and XSG are **mutually exclusive per project**: a project is compiled by one or the other. XSG-only features (Simpler XAML,
+  `{cs: ...}`) live in the generator; the BAML compiler (`PresentationBuildTasks`, `MarkupCompiler`) and the shared run-time
+  `System.Xaml` carry no XSG feature and behave exactly as upstream WPF. (An attempt to also teach `MarkupCompiler` and
+  `XamlXmlReader` about implicit namespaces was reverted: rebuilding the reader a caller hands to `XamlXmlReader` loses its
+  namespace context, which broke every `XamlReader.Parse(text, ParserContext)` template without `xmlns`, e.g. TomsToolbox's.
+  `XamlXmlReaderNamespaceContextTests` pins this.)
 - BAML path remains the default and is never removed
 - Source-gen path must produce identical runtime behavior for supported XAML subset
 - Designers that require BAML (legacy) must still work; source-gen path may have

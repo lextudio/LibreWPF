@@ -877,7 +877,10 @@ namespace LibreWPF.Xaml.SourceGenerator
         }
 
         // Simpler XAML: a root start tag with no xmlns declaration gets the default
-        // presentation and x: namespaces, matching the BAML compiler and XamlXmlReader.
+        // presentation and x: namespaces. This is a feature of the XSG path ONLY, applied to the XAML
+        // text at build time. The BAML compiler (PresentationBuildTasks) and the run-time
+        // System.Xaml.XamlXmlReader deliberately do not do it: a reader built over a caller's XmlReader
+        // must keep that reader's own namespace context (see XamlXmlReaderNamespaceContextTests).
         private static string InjectImplicitXmlns(string text)
         {
             var i = 0;

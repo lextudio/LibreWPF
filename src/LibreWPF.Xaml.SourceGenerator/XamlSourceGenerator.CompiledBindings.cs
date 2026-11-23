@@ -42,6 +42,9 @@ namespace LibreWPF.Xaml.SourceGenerator
             // Set once a compiled binding is emitted: the generated class then needs its __XsgCompiledProperty helper.
             public bool UsesCompiledProperty { get; set; }
 
+            // A loose ResourceDictionary: generated into a class that has no x:Name fields.
+            public bool LooseDictionary { get; set; }
+
             public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
         }
 
@@ -77,6 +80,14 @@ namespace LibreWPF.Xaml.SourceGenerator
         // theme or binding quietly lost a trigger, a setter or a binding property; now it is a located diagnostic (a warning for
         // JIT apps; the NativeAOT mode of the SDK is meant to make it an error: there the missing construct would be a missing
         // behaviour with no fallback).
+        private static readonly DiagnosticDescriptor s_excluded = new DiagnosticDescriptor(
+            "LWXSG0009",
+            "Resource excluded",
+            "{0}({1},{2}): the resource for '{3}' is left out because LibreWpfXsgExcludeTargetTypes names it",
+            "LibreWPF.Xaml",
+            DiagnosticSeverity.Info,
+            isEnabledByDefault: true);
+
         private static readonly DiagnosticDescriptor s_notGenerated = new DiagnosticDescriptor(
             "LWXSG0008",
             "Construct not generated",
@@ -235,6 +246,15 @@ namespace LibreWPF.Xaml.SourceGenerator
 
         private static string? BindingPropertyCode(string name, string value, XElement? owner)
         {
+            // {x:Static Type.Member} for what is an object, a converter or a relative source in code.
+            if (owner is not null && value.TrimStart().StartsWith("{x:Static", StringComparison.Ordinal)
+                && name is "Source" or "RelativeSource" or "Converter" or "ConverterParameter" or "FallbackValue" or "TargetNullValue")
+            {
+                var staticNs = owner.GetDefaultNamespace().NamespaceName;
+                var staticCode = StaticCode(value.Trim().Substring("{x:Static".Length).TrimEnd('}').Trim(), owner, staticNs.Length == 0 ? PresentationNamespace : staticNs);
+                return name == "Converter" ? $"Converter = (global::System.Windows.Data.IValueConverter){staticCode}" : $"{name} = {staticCode}";
+            }
+
             switch (name)
             {
                 case "Path":
@@ -347,7 +367,115 @@ namespace LibreWPF.Xaml.SourceGenerator
 
         private static readonly Regex s_identifier = new Regex(@"^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.CultureInvariant);
 
+        // (Owner.Property) or (prefix:Owner.Property)
+        private static readonly Regex s_attachedSegment = new Regex(@"^\(\s*([A-Za-z_][A-Za-z0-9_:]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*\)$", RegexOptions.CultureInvariant);
+
+        // A.B.(Owner.Prop).C split at the dots outside parentheses; null for an indexer.
+        private static List<string>? SplitPath(string path)
+        {
+            var result = new List<string>();
+            var depth = 0;
+            var start = 0;
+            for (var i = 0; i < path.Length; i++)
+            {
+                var c = path[i];
+                if (c == '[' || c == ']')
+                {
+                    return null;
+                }
+                if (c == '(') depth++;
+                else if (c == ')') depth--;
+                else if (c == '.' && depth == 0)
+                {
+                    result.Add(path.Substring(start, i - start));
+                    start = i + 1;
+                }
+            }
+            result.Add(path.Substring(start));
+            return result;
+        }
+
         private static readonly SymbolDisplayFormat s_typeFormat = SymbolDisplayFormat.FullyQualifiedFormat;
+
+        /// <summary>
+        /// The type a binding with an explicit RelativeSource or ElementName reads from, or null when it has neither. A null Type means the
+        /// binding has one of them but its type cannot be told (Description says why).
+        /// </summary>
+        private static (ITypeSymbol? Type, string Description)? KnownSourceType(Dictionary<string, string> parts, XElement owner)
+        {
+            var defaultNs = owner.GetDefaultNamespace().NamespaceName;
+            if (defaultNs.Length == 0)
+            {
+                defaultNs = PresentationNamespace;
+            }
+
+            if (parts.TryGetValue("ElementName", out var elementName))
+            {
+                var name = Unquote(elementName);
+                var named = owner.AncestorsAndSelf().Last().Descendants().FirstOrDefault(e =>
+                    !e.Name.LocalName.Contains(".") && (e.Attribute(XName.Get("Name", XamlNamespace)) ?? e.Attribute("Name"))?.Value == name);
+                var type = named is null ? null : TypeSymbol(ResolveTypeName(named, defaultNs));
+                return (type, type is null ? $"no element named '{name}' of a known type is declared in this XAML file" : "ElementName=" + name);
+            }
+
+            if (!parts.TryGetValue("RelativeSource", out var relative))
+            {
+                return null;
+            }
+
+            relative = relative.Trim();
+            string? mode = null;
+            string? ancestorType = null;
+            if (relative.StartsWith("{x:Static", StringComparison.Ordinal))
+            {
+                mode = relative.Substring("{x:Static".Length).TrimEnd('}').Trim().Split('.').Last();
+            }
+            else if (relative.StartsWith("{RelativeSource", StringComparison.Ordinal))
+            {
+                var arguments = ParseBinding("{Binding " + relative.Substring("{RelativeSource".Length).TrimEnd('}') + "}");
+                mode = arguments.TryGetValue("Mode", out var m) ? m : arguments.TryGetValue("Path", out var positional) ? positional : null;
+                ancestorType = arguments.TryGetValue("AncestorType", out var a) ? a : null;
+                mode ??= ancestorType is not null ? "FindAncestor" : null;
+            }
+
+            ITypeSymbol? resolved = null;
+            switch (mode)
+            {
+                case "Self":
+                    resolved = TypeSymbol(SelfTypeOf(owner, defaultNs));
+                    break;
+                case "TemplatedParent":
+                    resolved = TypeSymbol(TemplateTargetOf(owner, defaultNs));
+                    break;
+                case "FindAncestor" when ancestorType is not null:
+                    resolved = TypeSymbol(ResolveTypeNameInScope(StripXType(ancestorType), owner, defaultNs));
+                    break;
+            }
+            return (resolved, resolved is null ? $"the type of RelativeSource '{relative}' cannot be told at build time" : "RelativeSource " + mode);
+        }
+
+        /// <summary>
+        /// The element a RelativeSource Self refers to: the element that carries the binding, found by going up past the binding itself
+        /// (a MultiBinding child), property elements, Setters and triggers; for a style or template that is its TargetType.
+        /// </summary>
+        private static string? SelfTypeOf(XElement owner, string defaultNs)
+        {
+            for (var e = owner; e is not null; e = e.Parent)
+            {
+                var local = e.Name.LocalName;
+                if (local.EndsWith("Template", StringComparison.Ordinal) || local == "Style")
+                {
+                    var target = e.Attribute("TargetType");
+                    return target is null ? null : ResolveTypeNameInScope(StripXType(target.Value), e, defaultNs);
+                }
+                if (local.Contains(".") || local is "Binding" or "MultiBinding" or "PriorityBinding" or "Setter" or "Condition" || local.EndsWith("Trigger", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+                return ResolveTypeName(e, defaultNs);
+            }
+            return null;
+        }
 
         private static string? CompiledPathCode(string path, Dictionary<string, string> parts, XElement? owner, bool isDataContext, string markup)
         {
@@ -357,47 +485,95 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return null;
             }
 
-            var scope = FindDataTypeScope(owner, isDataContext);
-            if (scope is null)
+            // Not a path to read from the DataContext's data: nothing to reflect over, or no property to compile.
+            if (parts.ContainsKey("Source") || parts.ContainsKey("XPath") || path.Length == 0 || path == ".")
             {
                 return null;
             }
 
-            // Not about the DataContext, or nothing to reflect over: the stock binding is already the right thing.
-            if (parts.ContainsKey("ElementName") || parts.ContainsKey("RelativeSource") || parts.ContainsKey("Source") || parts.ContainsKey("XPath"))
+            ITypeSymbol? rootType;
+            string dataTypeText;
+            if (KnownSourceType(parts, owner) is { } explicitSource)
             {
-                return null;
+                // RelativeSource / ElementName: the source type is known from the template's TargetType, the AncestorType or the named element.
+                if (explicitSource.Type is null)
+                {
+                    Report(context, s_bindingNotCompiled, owner, markup, explicitSource.Description);
+                    return null;
+                }
+                rootType = explicitSource.Type;
+                dataTypeText = explicitSource.Description;
             }
-            if (path.Length == 0 || path == ".")
+            else
             {
-                return null;
+                var scope = FindDataTypeScope(owner, isDataContext);
+                if (scope is null)
+                {
+                    return null;
+                }
+
+                var (scopeElement, text) = scope.Value;
+                dataTypeText = text;
+                rootType = ResolveDataType(dataTypeText, scopeElement, context.Compilation);
+                if (rootType is null)
+                {
+                    Report(context, s_dataTypeNotFound, scopeElement, dataTypeText);
+                    return null;
+                }
             }
 
-            var (scopeElement, dataTypeText) = scope.Value;
-            var rootType = ResolveDataType(dataTypeText, scopeElement, context.Compilation);
-            if (rootType is null)
+            var segments = SplitPath(path);
+            if (segments is null || segments.Any(segment => !s_identifier.IsMatch(segment.Trim()) && !s_attachedSegment.IsMatch(segment.Trim())))
             {
-                Report(context, s_dataTypeNotFound, scopeElement, dataTypeText);
-                return null;
-            }
-
-            var segments = path.Split('.');
-            if (segments.Any(segment => !s_identifier.IsMatch(segment.Trim())))
-            {
-                Report(context, s_bindingNotCompiled, owner, markup, "only a dotted path of property names is compiled; indexers and attached properties are not");
+                Report(context, s_bindingNotCompiled, owner, markup, "only a dotted path of property names (and (Owner.Property) attached properties) is compiled; indexers are not");
                 return null;
             }
 
             var steps = new List<string>();
             ITypeSymbol current = rootType;
-            for (var i = 0; i < segments.Length; i++)
+            for (var i = 0; i < segments.Count; i++)
             {
                 var name = segments[i].Trim();
+
+                // (Owner.Property): an attached dependency property is the early-bound path parameter itself.
+                if (s_attachedSegment.Match(name) is { Success: true } attached)
+                {
+                    var attachedOwner = TypeSymbol(ResolveTypeNameInScope(attached.Groups[1].Value, owner, owner.GetDefaultNamespace().NamespaceName is { Length: > 0 } ns ? ns : PresentationNamespace));
+                    var attachedField = FindDependencyPropertyField(attachedOwner, attached.Groups[2].Value);
+                    var getter = attachedOwner?.GetMembers("Get" + attached.Groups[2].Value).OfType<IMethodSymbol>().FirstOrDefault(m => m.IsStatic && m.Parameters.Length == 1);
+                    // (MenuItem.IsSubmenuOpen) is also how an ordinary dependency property is named: its value type is the CLR property's.
+                    var attachedType = getter?.ReturnType ?? FindClrProperty(attachedOwner, attached.Groups[2].Value)?.Type;
+                    if (attachedField is null || attachedType is null)
+                    {
+                        Report(context, s_bindingNotCompiled, owner, markup, $"the attached property '{name}' is not a dependency property the compilation can see");
+                        return null;
+                    }
+                    steps.Add($"{attachedField.ContainingType.ToDisplayString(s_typeFormat)}.{attached.Groups[2].Value}Property");
+                    current = attachedType;
+                    continue;
+                }
+
                 var property = FindProperty(current, name, context);
                 if (property is null)
                 {
+                    // Behind an explicit source (RelativeSource, ElementName) a member of a base-typed value (TemplatedParent, Parent, ...) exists
+                    // only on the run-time type: that is reflection by nature, not a mistake. Behind x:DataType it is a mistake.
+                    if (i > 0 && KnownSourceType(parts, owner) is not null)
+                    {
+                        Report(context, s_bindingNotCompiled, owner, markup, $"'{name}' is a member of the run-time type of a '{current.ToDisplayString()}' value");
+                        return null;
+                    }
                     Report(context, s_bindingPropertyNotFound, owner, current.ToDisplayString(), name, path, dataTypeText);
                     return null;
+                }
+
+                // A dependency property goes in as the DependencyProperty itself (the early-bound path parameter WPF understands): the
+                // DP system raises the change notification, which a descriptor of our own could not.
+                if (FindDependencyPropertyField(current, name) is { } dependencyProperty)
+                {
+                    steps.Add($"{dependencyProperty.ContainingType.ToDisplayString(s_typeFormat)}.{name}Property");
+                    current = property.Type;
+                    continue;
                 }
 
                 if (!IsNameable(property.Type) || !IsNameable(current))
@@ -413,10 +589,10 @@ namespace LibreWPF.Xaml.SourceGenerator
                     && IsAccessible(setter, context);
                 var setterCode = writable ? $"static (o, v) => o.{name} = v" : "null";
                 steps.Add($"new __XsgCompiledProperty<{ownerType}, {valueType}>(\"{name}\", static o => o.{name}!, {setterCode})");
+                context.UsesCompiledProperty = true;
                 current = property.Type;
             }
 
-            context.UsesCompiledProperty = true;
             var pathText = string.Join(".", Enumerable.Range(0, steps.Count).Select(i => $"({i})"));
             return $"new global::System.Windows.PropertyPath(\"{pathText}\", {string.Join(", ", steps)})";
         }
@@ -656,17 +832,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                 defaultNs = PresentationNamespace;
             }
 
+            s_context!.LooseDictionary = true;
             var className = "__XsgResourceDictionary_" + Regex.Replace(resourcePath, "[^A-Za-z0-9_]", "_");
-            var nameTypes = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (var el in root.Descendants())
-            {
-                var na = el.Attribute(XName.Get("Name", XamlNamespace));
-                if (na is not null && !nameTypes.ContainsKey(na.Value))
-                {
-                    nameTypes[na.Value] = ResolveTypeName(el, defaultNs) ?? "System.Object";
-                }
-            }
-
             var body = new StringBuilder();
             var localId = 0;
             GenerateRootElement(body, root, defaultNs, sourcePath, 12, ref localId);
@@ -682,10 +849,6 @@ namespace LibreWPF.Xaml.SourceGenerator
             sb.AppendLine($"    internal sealed partial class {className} : global::System.Windows.ResourceDictionary");
             sb.AppendLine("    {");
             sb.AppendLine($"        internal const string ResourcePath = \"{EscapeString(resourcePath)}\";");
-            foreach (var kvp in nameTypes)
-            {
-                sb.AppendLine($"        private global::{kvp.Value}? {kvp.Key};");
-            }
             sb.AppendLine();
             sb.AppendLine($"        public {className}()");
             sb.AppendLine("        {");
@@ -699,9 +862,13 @@ namespace LibreWPF.Xaml.SourceGenerator
             sb.AppendLine($"            global::System.Windows.Markup.XamlSourceGeneratedResources.RegisterDictionary({registerAs}, ResourcePath, static () => new {className}());");
             sb.AppendLine("        }");
             sb.AppendLine();
-            sb.AppendLine("        // StaticResource inside the dictionary: what this dictionary already holds, else the application's resources.");
+            sb.AppendLine("        // The dictionaries of Style/template/element .Resources being built, innermost last (see EmitResourceChildren).");
+            sb.AppendLine("        private readonly global::System.Collections.Generic.List<global::System.Windows.ResourceDictionary> __scopes = new global::System.Collections.Generic.List<global::System.Windows.ResourceDictionary>();");
+            sb.AppendLine();
+            sb.AppendLine("        // StaticResource inside the dictionary: the .Resources being built, then what this dictionary already holds, else the application's resources.");
             sb.AppendLine("        private object FindResource(object key)");
             sb.AppendLine("        {");
+            sb.AppendLine("            for (var i = __scopes.Count - 1; i >= 0; i--) if (__scopes[i].Contains(key)) return __scopes[i][key];");
             sb.AppendLine("            if (this.Contains(key)) return this[key];");
             sb.AppendLine("            var app = global::System.Windows.Application.Current?.TryFindResource(key);");
             sb.AppendLine("            return app ?? throw new global::System.Windows.ResourceReferenceKeyNotFoundException(\"Cannot find resource named '\" + key + \"'.\", key);");
@@ -721,6 +888,42 @@ namespace LibreWPF.Xaml.SourceGenerator
         /// <summary>
         /// Children of a root ResourceDictionary (<c>this</c>): merged dictionaries and keyed (or implicitly type-keyed) resources.
         /// </summary>
+        // A top-level resource styling (TargetType / DataType) or keyed by ({x:Type}) a type named in LibreWpfXsgExcludeTargetTypes.
+        private static bool IsExcludedResource(XElement child, string defaultNs)
+        {
+            var list = s_context?.Features.ExcludedTargetTypes;
+            if (string.IsNullOrEmpty(list))
+            {
+                return false;
+            }
+
+            var excluded = new HashSet<string>(list!.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()), StringComparer.Ordinal);
+            var written = child.Attribute("TargetType")?.Value ?? child.Attribute("DataType")?.Value;
+            if (written is null && child.Attribute(XName.Get("Key", XamlNamespace))?.Value is { } key && key.TrimStart().StartsWith("{x:Type", StringComparison.Ordinal))
+            {
+                written = key;
+            }
+            if (written is null)
+            {
+                return false;
+            }
+
+            var simple = StripXType(written);
+            var colon = simple.LastIndexOf(':');
+            simple = colon >= 0 ? simple.Substring(colon + 1) : simple;
+            var full = ResolveTypeNameInScope(StripXType(written), child, defaultNs);
+            if (!excluded.Contains(simple) && !excluded.Contains(full))
+            {
+                return false;
+            }
+
+            if (s_context is not null)
+            {
+                Report(s_context, s_excluded, child, simple);
+            }
+            return true;
+        }
+
         private static void GenerateRootDictionaryContent(StringBuilder sb, XElement el, string defaultNs, string sourcePath, int indent, ref int localId)
         {
             var pad = new string(' ', indent);
@@ -741,36 +944,13 @@ namespace LibreWPF.Xaml.SourceGenerator
                     continue;
                 }
 
-                var cVar = GenerateElement(sb, child, defaultNs, sourcePath, indent, ref localId);
-                var key = child.Attribute(XName.Get("Key", XamlNamespace));
-                if (key is not null)
+                if (IsExcludedResource(child, defaultNs))
                 {
-                    // {x:Type ...} / {x:Static ...} keys are typed keys, not the text of the markup.
-                    sb.AppendLine($"{pad}this[{ResourceKeyCode(key.Value, child, defaultNs)}] = {cVar};");
                     continue;
                 }
 
-                var typeKey = child.Attribute("TargetType") ?? child.Attribute("DataType");
-                if (typeKey is not null)
-                {
-                    var t = typeKey.Value.Trim();
-                    if (t.StartsWith("{x:Type", StringComparison.Ordinal))
-                    {
-                        t = t.Substring("{x:Type".Length).Trim().TrimEnd('}').Trim();
-                    }
-                    var resolved = ResolveTypeNameInScope(t, child, defaultNs);
-                    // A Style is keyed by its TargetType; a DataTemplate (and HierarchicalDataTemplate) by a DataTemplateKey, not by the
-                    // bare type: WPF's implicit data template lookup asks for DataTemplateKey(type).
-                    var byDataType = typeKey.Name.LocalName == "DataType" && child.Attribute("TargetType") is null;
-                    sb.AppendLine(byDataType
-                        ? $"{pad}this[new global::System.Windows.DataTemplateKey(typeof(global::{resolved}))] = {cVar};"
-                        : $"{pad}this[typeof(global::{resolved})] = {cVar};");
-                }
-                else
-                {
-                    sb.AppendLine($"{pad}// resource without x:Key skipped: {child.Name.LocalName}");
-                    ReportNotGenerated(child, $"the resource <{child.Name.LocalName}> without x:Key or TargetType/DataType");
-                }
+                var cVar = GenerateElement(sb, child, defaultNs, sourcePath, indent, ref localId);
+                EmitKeyedResource(sb, "this", child, cVar, defaultNs, pad);
             }
         }
 

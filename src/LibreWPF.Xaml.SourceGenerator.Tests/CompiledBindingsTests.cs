@@ -389,9 +389,28 @@ public class CompiledBindingsTests
         Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
     }
 
+    [Fact]
+    public void XStaticBindingProperties_AreGenerated_AsTypedStaticMembers()
+    {
+        var (code, diagnostics) = Generate(WindowWith("{Binding Person.Name, Converter={x:Static vm:Conv.Instance}, ConverterParameter={x:Static vm:Conv.Parameter}}"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+        Assert.Contains("Converter = (global::System.Windows.Data.IValueConverter)global::Sample.Vm.Conv.Instance", code);
+        Assert.Contains("ConverterParameter = global::Sample.Vm.Conv.Parameter", code);
+    }
+
+    [Fact]
+    public void ARelativeSourceWithAKnownAncestorType_IsCompiledAgainstThatType()
+    {
+        var (code, diagnostics) = Generate(WindowWith("{Binding Name, RelativeSource={RelativeSource AncestorType={x:Type vm:Person}}}"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("new __XsgCompiledProperty<global::Sample.Vm.Person, string>(\"Name\"", code);
+        Assert.Contains("RelativeSource = new global::System.Windows.Data.RelativeSource(global::System.Windows.Data.RelativeSourceMode.FindAncestor, typeof(global::Sample.Vm.Person), 1)", code);
+    }
+
     [Theory]
     [InlineData("{Binding Person.Name, Source={x:Reference other}}", "Source")]
-    [InlineData("{Binding Person.Name, Converter={x:Static vm:Conv.Instance}}", "Converter")]
     [InlineData("{Binding Person.Name, Delay=soon}", "Delay")]
     [InlineData("{Binding Person.Name, NoSuchProperty=1}", "NoSuchProperty")]
     public void ABindingPropertyTheGeneratorCannotWrite_IsAWarning_NotQuietlyDropped(string binding, string property)

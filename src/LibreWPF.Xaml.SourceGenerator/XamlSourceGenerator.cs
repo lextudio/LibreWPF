@@ -142,9 +142,10 @@ namespace LibreWPF.Xaml.SourceGenerator
         // The XSG features that can be switched off per project (LibreWpfSimplerXaml, LibreWpfCSharpExpressions).
         private readonly struct XsgFeatures : IEquatable<XsgFeatures>
         {
-            public XsgFeatures(bool simplerXaml, bool csharpExpressions, bool compiledBindings, string? resourceAssemblyName = null)
+            public XsgFeatures(bool simplerXaml, bool csharpExpressions, bool compiledBindings, string? resourceAssemblyName = null, string? excludedTargetTypes = null)
             {
                 ResourceAssemblyName = resourceAssemblyName;
+                ExcludedTargetTypes = excludedTargetTypes ?? string.Empty;
                 SimplerXaml = simplerXaml;
                 CSharpExpressions = csharpExpressions;
                 CompiledBindings = compiledBindings;
@@ -156,6 +157,11 @@ namespace LibreWPF.Xaml.SourceGenerator
             // own (an XSG-compiled theme standing in for PresentationFramework.Aero2).
             public string? ResourceAssemblyName { get; }
 
+            // LibreWpfXsgExcludeTargetTypes: comma-separated (a ';' would start an .editorconfig comment) type names, simple or full. A loose dictionary's top-level resources whose
+            // TargetType / DataType / x:Key {x:Type} names one of them are left out: a theme for a platform without a control (the
+            // document viewers need System.Printing, which is Windows-only) does not style it.
+            public string ExcludedTargetTypes { get; }
+
             public bool SimplerXaml { get; }
 
             public bool CSharpExpressions { get; }
@@ -165,14 +171,16 @@ namespace LibreWPF.Xaml.SourceGenerator
             public static XsgFeatures From(AnalyzerConfigOptions options) =>
                 new XsgFeatures(IsOn(options, "LibreWpfSimplerXaml"), IsOn(options, "LibreWpfCSharpExpressions"),
                     IsOn(options, "LibreWpfCompiledBindings"),
-                    options.TryGetValue("build_property.LibreWpfXsgResourceAssemblyName", out var assemblyName) && !string.IsNullOrWhiteSpace(assemblyName) ? assemblyName.Trim() : null);
+                    options.TryGetValue("build_property.LibreWpfXsgResourceAssemblyName", out var assemblyName) && !string.IsNullOrWhiteSpace(assemblyName) ? assemblyName.Trim() : null,
+                    options.TryGetValue("build_property.LibreWpfXsgExcludeTargetTypes", out var excluded) ? excluded.Trim() : null);
 
             private static bool IsOn(AnalyzerConfigOptions options, string name) =>
                 !options.TryGetValue("build_property." + name, out var value)
                 || !string.Equals(value?.Trim(), "false", StringComparison.OrdinalIgnoreCase);
 
             public bool Equals(XsgFeatures other) => SimplerXaml == other.SimplerXaml && CSharpExpressions == other.CSharpExpressions
-                && CompiledBindings == other.CompiledBindings && ResourceAssemblyName == other.ResourceAssemblyName;
+                && CompiledBindings == other.CompiledBindings && ResourceAssemblyName == other.ResourceAssemblyName
+                && ExcludedTargetTypes == other.ExcludedTargetTypes;
 
             public override bool Equals(object? obj) => obj is XsgFeatures other && Equals(other);
 
@@ -487,6 +495,22 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return "null!";
             }
 
+            // <Binding Path="..." RelativeSource="{...}" /> (inside a MultiBinding): the same code as the {Binding ...} markup.
+            if (typeName == "System.Windows.Data.Binding")
+            {
+                var bindingVar = $"__Binding_{++localId}";
+                sb.AppendLine($"{pad}var {bindingVar} = {BindingCode(ElementAsBindingMarkup(el), el, false)};");
+                return bindingVar;
+            }
+
+            // <Thickness>1.5</Thickness>, <Color>#FF0000</Color>: a value written as element text, converted at build time.
+            if (TextOnlyLiteral(el, typeName, defaultNs) is { } literal)
+            {
+                var literalVar = $"__{el.Name.LocalName}_{++localId}";
+                sb.AppendLine($"{pad}var {literalVar} = {literal};");
+                return literalVar;
+            }
+
             // DataTemplate / ControlTemplate: build a FrameworkElementFactory tree.
             if (typeName.Contains("Template"))
             {
@@ -546,6 +570,32 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     var key = value.Substring(value.IndexOf(' ') + 1).Trim().TrimEnd('}').Trim();
                     sb.AppendLine($"{pad}{varName}.SetResourceReference(global::{typeName}.{attrLocal}Property, \"{key}\");");
+                    continue;
+                }
+
+                // {TemplateBinding P} on an element that is not a factory node (inside an initializer): a binding to the templated parent.
+                if (!attr.Name.LocalName.Contains(".") && value.TrimStart().StartsWith("{TemplateBinding", StringComparison.Ordinal))
+                {
+                    var targetProperty = ResolveDependencyProperty(typeName, attrLocal, el, defaultNs).Code;
+                    sb.AppendLine($"{pad}global::System.Windows.Data.BindingOperations.SetBinding({varName}, {targetProperty}, {TemplateBindingAsBinding(value, el, defaultNs)});");
+                    continue;
+                }
+
+                // {StaticResource K} where K is defined in a .Resources of an enclosing element: it exists on the instance only, so a
+                // dependency property takes it as a resource reference resolved through the tree.
+                if (!attr.Name.LocalName.Contains(".") && value.TrimStart().StartsWith("{StaticResource", StringComparison.Ordinal)
+                    && IsLocalResourceKey(value.Trim().Substring("{StaticResource".Length).TrimEnd('}').Trim(), el)
+                    && FindDependencyPropertyField(TypeSymbol(typeName), attrLocal) is { } localReference)
+                {
+                    var referenceKey = value.Trim().Substring("{StaticResource".Length).TrimEnd('}').Trim();
+                    sb.AppendLine($"{pad}{varName}.SetResourceReference({localReference.ContainingType.ToDisplayString(s_typeFormat)}.{attrLocal}Property, {ResourceKeyCode(referenceKey, el, defaultNs)});");
+                    continue;
+                }
+
+                // The property's CLR type is known from the compilation: convert the value to it at build time.
+                if (!attr.Name.LocalName.Contains(".") && TypedPropertyValue(value, typeName, attrLocal, el, defaultNs) is { } typedEarly)
+                {
+                    sb.AppendLine($"{pad}{varName}.{attrLocal} = {typedEarly};");
                     continue;
                 }
 
@@ -621,7 +671,11 @@ namespace LibreWPF.Xaml.SourceGenerator
                     }
                     else
                     {
-                        var attachedCode = ConvertAttributeValue(value, attrNs, propName, typeName);
+                        // The attached property's value type is the second parameter of its static Set method.
+                        var attachedSetter = TypeSymbol(ownerType)?.GetMembers("Set" + propName).OfType<IMethodSymbol>().FirstOrDefault(m => m.IsStatic && m.Parameters.Length == 2);
+                        var attachedCode = attachedSetter is not null
+                            ? ValueCode(value, attachedSetter.Parameters[1].Type, el, defaultNs, null)
+                            : ConvertAttributeValue(value, attrNs, propName, typeName);
                         if (attachedCode is not null)
                         {
                             sb.AppendLine($"{pad}global::{ownerType}.Set{propName}({varName}, {attachedCode});");
@@ -654,7 +708,8 @@ namespace LibreWPF.Xaml.SourceGenerator
             {
                 nameAttr = el.Attributes().FirstOrDefault(a => a.Name.LocalName == "Name");
             }
-            if (nameAttr != null)
+            // A loose ResourceDictionary has no fields: a plain Name (VisualState.Name, ...) is only the property assigned above.
+            if (nameAttr != null && s_context is not { LooseDictionary: true })
             {
                 sb.AppendLine($"{pad}this.{nameAttr.Value} = {varName};");
                 // As BAML does: x:Name is also the element's Name and an entry in the root's
@@ -685,6 +740,10 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     var propName = pe.Name.LocalName.Split('.').Last();
                     var peChildren = pe.Elements().ToList();
+                    if (TryEmitPropertyElement(sb, varName, typeName, pe, defaultNs, sourcePath, indent, ref localId))
+                    {
+                        continue;
+                    }
                     if (propName == "MergedDictionaries")
                     {
                         foreach (var md in peChildren)
@@ -715,33 +774,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                         foreach (var c in peChildren)
                         {
                             var cVar = GenerateElement(sb, c, defaultNs, sourcePath, indent, ref localId);
-                            var keyAttr = c.Attributes().FirstOrDefault(a => a.Name.LocalName == "Key" && a.Name.NamespaceName.Contains("xaml"));
-                            if (keyAttr is null)
-                            {
-                                keyAttr = c.Attributes().FirstOrDefault(a => a.Name.LocalName == "Key");
-                            }
-                            if (keyAttr != null)
-                            {
-                                sb.AppendLine($"{pad}{rdVar}[\"{keyAttr.Value}\"] = {cVar};");
-                            }
-                            else
-                            {
-                                var typeKey = c.Attributes().FirstOrDefault(a =>
-                                    a.Name.LocalName == "TargetType" || a.Name.LocalName == "DataType");
-                                if (typeKey != null)
-                                {
-                                    var t = typeKey.Value.Trim();
-                                    if (t.StartsWith("{x:Type ", StringComparison.Ordinal))
-                                    {
-                                        t = t.Substring("{x:Type".Length).Trim().TrimEnd('}');
-                                    }
-                                    sb.AppendLine($"{pad}{rdVar}[typeof(global::{t})] = {cVar};");
-                                }
-                                else
-                                {
-                                    sb.AppendLine($"{pad}// resource without x:Key skipped: {c.Name.LocalName}");
-                                }
-                            }
+                            EmitKeyedResource(sb, rdVar, c, cVar, defaultNs, pad);
                         }
                         sb.AppendLine($"{pad}{varName}.{propName} = {rdVar};");
                     }
@@ -753,40 +786,18 @@ namespace LibreWPF.Xaml.SourceGenerator
                     foreach (var child in childElements)
                     {
                         var cVar = GenerateElement(sb, child, defaultNs, sourcePath, indent, ref localId);
-                        var keyAttr = child.Attributes().FirstOrDefault(a => a.Name.LocalName == "Key" && a.Name.NamespaceName.Contains("xaml"));
-                        if (keyAttr is null)
-                        {
-                            keyAttr = child.Attributes().FirstOrDefault(a => a.Name.LocalName == "Key");
-                        }
-                        if (keyAttr != null)
-                        {
-                            sb.AppendLine($"{pad}{varName}[\"{keyAttr.Value}\"] = {cVar};");
-                        }
-                        else
-                        {
-                            var typeKey = child.Attributes().FirstOrDefault(a =>
-                                a.Name.LocalName == "TargetType" || a.Name.LocalName == "DataType");
-                            if (typeKey != null)
-                            {
-                                var t = typeKey.Value.Trim();
-                                if (t.StartsWith("{x:Type ", StringComparison.Ordinal))
-                                {
-                                    t = t.Substring("{x:Type".Length).Trim().TrimEnd('}');
-                                }
-                                sb.AppendLine($"{pad}{varName}[typeof(global::{t})] = {cVar};");
-                            }
-                            else
-                            {
-                                sb.AppendLine($"{pad}// resource without x:Key skipped: {child.Name.LocalName}");
-                            }
-                        }
+                        EmitKeyedResource(sb, varName, child, cVar, defaultNs, pad);
                     }
                 }
                 else
                 {
                     // Determine content property: Children for panels, Content for ContentControl, Items for ItemsControl
                     var contentProp = InferContentProperty(typeName);
-                    if (childElements.Count > 0)
+                    if (childElements.Count > 0 && TryEmitSymbolContent(sb, varName, typeName, childElements, defaultNs, sourcePath, indent, ref localId))
+                    {
+                        // generated from the type's [ContentProperty] / collection shape
+                    }
+                    else if (childElements.Count > 0)
                     {
                         if (contentProp == "Children")
                         {
@@ -1048,33 +1059,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                         foreach (var c in peChildren)
                         {
                             var cVar = GenerateElement(sb, c, defaultNs, sourcePath, indent, ref localId);
-                            var keyAttr = c.Attributes().FirstOrDefault(a => a.Name.LocalName == "Key" && a.Name.NamespaceName.Contains("xaml"));
-                            if (keyAttr is null)
-                            {
-                                keyAttr = c.Attributes().FirstOrDefault(a => a.Name.LocalName == "Key");
-                            }
-                            if (keyAttr != null)
-                            {
-                                sb.AppendLine($"{pad}{rdVar}[\"{keyAttr.Value}\"] = {cVar};");
-                            }
-                            else
-                            {
-                                var typeKey = c.Attributes().FirstOrDefault(a =>
-                                    a.Name.LocalName == "TargetType" || a.Name.LocalName == "DataType");
-                                if (typeKey != null)
-                                {
-                                    var t = typeKey.Value.Trim();
-                                    if (t.StartsWith("{x:Type ", StringComparison.Ordinal))
-                                    {
-                                        t = t.Substring("{x:Type".Length).Trim().TrimEnd('}');
-                                    }
-                                    sb.AppendLine($"{pad}{rdVar}[typeof(global::{t})] = {cVar};");
-                                }
-                                else
-                                {
-                                    sb.AppendLine($"{pad}{rdVar}.Add({cVar});");
-                                }
-                            }
+                            EmitKeyedResource(sb, rdVar, c, cVar, defaultNs, pad);
                         }
                         sb.AppendLine($"{pad}this.{propName} = {rdVar};");
                     }

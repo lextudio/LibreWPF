@@ -48,6 +48,8 @@
     <!-- Optional: the assembly name loose dictionaries register under, for an XSG theme that stands in for another assembly
          (LibreWpfXsgResourceAssemblyName=PresentationFramework.Aero2). Empty: the compiling assembly's own name. -->
     <CompilerVisibleProperty Include="LibreWpfXsgResourceAssemblyName" />
+    <!-- Optional: comma-separated types whose styles a generated theme leaves out (the document viewers where System.Printing is not available). -->
+    <CompilerVisibleProperty Include="LibreWpfXsgExcludeTargetTypes" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Link" />
   </ItemGroup>
 

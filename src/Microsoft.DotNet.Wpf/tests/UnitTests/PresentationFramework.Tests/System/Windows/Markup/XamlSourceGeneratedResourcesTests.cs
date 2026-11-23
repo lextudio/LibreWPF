@@ -189,6 +189,42 @@ public class XamlSourceGeneratedResourcesTests
     }
 
     [Fact]
+    public void ARelativeUriRegisteredByTwoAssemblies_IsNotGuessed()
+    {
+        // Two libraries registering "shared.xaml": the result must not depend on dictionary enumeration order, so neither is chosen.
+        string path = UniqueName().ToLowerInvariant() + "/shared.xaml";
+        XamlSourceGeneratedResources.RegisterComponent(UniqueName() + ".A", path, () => new object());
+        XamlSourceGeneratedResources.RegisterComponent(UniqueName() + ".B", path, () => new object());
+
+        XamlSourceGeneratedResources.TryCreateComponent(Pack("pack://application:,,,/" + path), out var component).Should().BeFalse();
+
+        component.Should().BeNull();
+    }
+
+    [Fact]
+    public void AnExplicitAssemblyThatRegisteredNothing_DoesNotFindAnotherAssembliesComponent()
+    {
+        string registered = UniqueName() + ".Registered";
+        XamlSourceGeneratedResources.RegisterComponent(registered, "main.xaml", () => new object());
+
+        // "Other" names an assembly: only that assembly's registrations count, not any assembly that has the same path.
+        XamlSourceGeneratedResources.TryCreateComponent(Pack("pack://application:,,,/" + UniqueName() + ".Other;component/main.xaml"), out var component).Should().BeFalse();
+
+        component.Should().BeNull();
+    }
+
+    [Fact]
+    public void AFactoryThatReturnsNull_IsReportedAsThat()
+    {
+        string assembly = UniqueName();
+        XamlSourceGeneratedResources.RegisterComponent(assembly, "broken.xaml", () => null);
+
+        Action create = () => XamlSourceGeneratedResources.TryCreateComponent(new Uri("/" + assembly + ";component/broken.xaml", UriKind.Relative), out _);
+
+        create.Should().Throw<InvalidOperationException>().WithMessage("*returned null*");
+    }
+
+    [Fact]
     public void LoadComponent_CreatesARegisteredComponent_WithoutAnyBamlResource()
     {
         string assembly = UniqueName();

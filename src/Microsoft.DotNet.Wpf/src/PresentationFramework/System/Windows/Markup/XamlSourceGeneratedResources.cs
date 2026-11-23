@@ -129,25 +129,40 @@ namespace System.Windows.Markup
                 }
                 else
                 {
-                    // Relative to the application: its entry assembly first, then whichever assembly registered that path.
+                    // Relative to the application: its entry assembly first, then the assembly that registered that path, if exactly one did
+                    // (two libraries registering the same relative path would otherwise make the result depend on enumeration order).
                     string entry = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name;
                     if (entry == null || !s_components.TryGetValue(Key(entry, path), out factory))
                     {
                         string suffix = "|" + path.ToLowerInvariant();
+                        int matches = 0;
                         foreach (KeyValuePair<string, Func<object>> candidate in s_components)
                         {
                             if (candidate.Key.EndsWith(suffix, StringComparison.Ordinal))
                             {
                                 factory = candidate.Value;
-                                break;
+                                matches++;
                             }
+                        }
+
+                        if (matches != 1)
+                        {
+                            factory = null;
                         }
                     }
                 }
             }
 
-            component = factory?.Invoke();
-            return component != null;
+            if (factory == null)
+            {
+                return false;
+            }
+
+            // A registered factory that makes nothing is a bug of the generated (or hand-written) code: say so, instead of letting the
+            // caller report a missing resource.
+            component = factory() ?? throw new InvalidOperationException(
+                $"The factory registered for the component '{resourceLocator}' returned null.");
+            return true;
         }
 
         private static string Key(string assemblyName, string resourcePath) =>

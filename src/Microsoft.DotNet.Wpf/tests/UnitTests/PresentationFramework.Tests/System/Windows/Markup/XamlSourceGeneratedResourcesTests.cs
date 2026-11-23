@@ -129,4 +129,82 @@ public class XamlSourceGeneratedResourcesTests
         nullPath.Should().Throw<ArgumentNullException>();
         nullFactory.Should().Throw<ArgumentNullException>();
     }
+
+    // ---- components: the root objects of XAML files, created by resource path (Application.StartupUri, LoadComponent) ------------------------
+
+    // The pack:// scheme is registered by System.IO.Packaging: in an application that has happened long before LoadComponent runs.
+    private static Uri Pack(string text)
+    {
+        _ = System.IO.Packaging.PackUriHelper.Create(new Uri("application:///", UriKind.Absolute));   // its static constructor registers the scheme
+        return new Uri(text, UriKind.RelativeOrAbsolute);
+    }
+
+    [Fact]
+    public void AComponentThatWasNeverRegistered_IsNotCreated()
+    {
+        XamlSourceGeneratedResources.TryCreateComponent(new Uri("/" + UniqueName() + "/never.xaml", UriKind.Relative), out var component).Should().BeFalse();
+        component.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("pack://application:,,,/{0};component/Views/Page.xaml")]
+    [InlineData("pack://application:,,,/{0};v1.2.3.4;component/views/page.xaml")]   // a version in the assembly part, and the path in any case
+    [InlineData("/{0};component/Views/Page.xaml")]                                  // as Application.LoadComponent passes it
+    public void ARegisteredComponent_IsCreatedByAssemblyAndPath(string uriTemplate)
+    {
+        string assembly = UniqueName();
+        object made = new object();
+        XamlSourceGeneratedResources.RegisterComponent(assembly, "views/page.xaml", () => made);
+
+        XamlSourceGeneratedResources.TryCreateComponent(Pack(string.Format(uriTemplate, assembly)), out var component).Should().BeTrue();
+
+        component.Should().BeSameAs(made);
+    }
+
+    [Fact]
+    public void ARegisteredComponent_IsANewInstanceEveryTime()
+    {
+        string assembly = UniqueName();
+        XamlSourceGeneratedResources.RegisterComponent(assembly, "w.xaml", () => new object());
+        var uri = new Uri("/" + assembly + ";component/w.xaml", UriKind.Relative);
+
+        XamlSourceGeneratedResources.TryCreateComponent(uri, out var first);
+        XamlSourceGeneratedResources.TryCreateComponent(uri, out var second);
+
+        first.Should().NotBeNull();
+        second.Should().NotBeSameAs(first);
+    }
+
+    [Fact]
+    public void ARelativeUri_FindsTheAssemblyThatRegisteredThatPath()
+    {
+        // Application.StartupUri="MainWindow.xaml" has no assembly in it: the entry assembly first, then whoever registered the path.
+        string path = UniqueName().ToLowerInvariant() + "/startup.xaml";
+        object made = new object();
+        XamlSourceGeneratedResources.RegisterComponent(UniqueName(), path, () => made);
+
+        XamlSourceGeneratedResources.TryCreateComponent(Pack("pack://application:,,,/" + path), out var component).Should().BeTrue();
+
+        component.Should().BeSameAs(made);
+    }
+
+    [Fact]
+    public void LoadComponent_CreatesARegisteredComponent_WithoutAnyBamlResource()
+    {
+        string assembly = UniqueName();
+        object made = new object();
+        XamlSourceGeneratedResources.RegisterComponent(assembly, "main.xaml", () => made);
+
+        // The same call that BAML applications use for StartupUri and navigation: with a registered component it needs no resource.
+        Application.LoadComponent(new Uri("/" + assembly + ";component/main.xaml", UriKind.Relative)).Should().BeSameAs(made);
+    }
+
+    [Fact]
+    public void LoadComponent_OfAnUnregisteredUri_StillTakesTheResourcePath()
+    {
+        // The registry says no, so the BAML path runs exactly as before: this assembly has no such resource.
+        Action load = () => Application.LoadComponent(new Uri("/" + UniqueName() + ";component/missing.xaml", UriKind.Relative));
+
+        load.Should().Throw<Exception>().And.Should().NotBeOfType<NullReferenceException>();
+    }
 }

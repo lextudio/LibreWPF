@@ -72,6 +72,84 @@ namespace System.Windows.Markup
             return TryCreateDictionary(assembly.GetName().Name, resourcePath, out dictionary);
         }
 
+        // ---- components (the root objects of XAML files: Window, Page, UserControl) -------------------------------------------------------
+
+        private static readonly Dictionary<string, Func<object>> s_components = new(StringComparer.OrdinalIgnoreCase);
+        private static volatile bool s_hasComponents;
+
+        /// <summary>
+        /// Registers the factory of the root object of a XAML file compiled by the XAML source generator, under its assembly name and
+        /// resource path (<c>mainwindow.xaml</c>). <see cref="Application.LoadComponent(Uri)"/> (and with it <c>Application.StartupUri</c>)
+        /// asks here before it looks for BAML, so a NativeAOT application can start a window from a URI without any BAML resource.
+        /// </summary>
+        public static void RegisterComponent(string assemblyName, string resourcePath, Func<object> factory)
+        {
+            ArgumentNullException.ThrowIfNull(assemblyName);
+            ArgumentNullException.ThrowIfNull(resourcePath);
+            ArgumentNullException.ThrowIfNull(factory);
+
+            lock (s_lock)
+            {
+                s_components[Key(assemblyName, resourcePath)] = factory;
+                s_hasComponents = true;
+            }
+        }
+
+        /// <summary>
+        /// Creates the component registered for a resource locator: a relative URI (<c>MainWindow.xaml</c>, resolved against the entry
+        /// assembly), <c>pack://application:,,,/MainWindow.xaml</c> or <c>pack://application:,,,/Other;component/Page.xaml</c>. False, at
+        /// once and without side effects, when no component was ever registered (every application that does not use the generator).
+        /// </summary>
+        public static bool TryCreateComponent(Uri resourceLocator, out object component)
+        {
+            component = null;
+            if (!s_hasComponents || resourceLocator == null)
+            {
+                return false;
+            }
+
+            string path = resourceLocator.IsAbsoluteUri ? resourceLocator.AbsolutePath : resourceLocator.OriginalString;
+            path = Uri.UnescapeDataString(path).Replace('\\', '/').TrimStart('/');
+            string assemblyName = null;
+            int marker = path.IndexOf(";component/", StringComparison.OrdinalIgnoreCase);
+            if (marker >= 0)
+            {
+                string assemblyPart = path.Substring(0, marker);
+                int version = assemblyPart.IndexOf(';');
+                assemblyName = version >= 0 ? assemblyPart.Substring(0, version) : assemblyPart;
+                path = path.Substring(marker + ";component/".Length);
+            }
+
+            Func<object> factory = null;
+            lock (s_lock)
+            {
+                if (assemblyName != null)
+                {
+                    s_components.TryGetValue(Key(assemblyName, path), out factory);
+                }
+                else
+                {
+                    // Relative to the application: its entry assembly first, then whichever assembly registered that path.
+                    string entry = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name;
+                    if (entry == null || !s_components.TryGetValue(Key(entry, path), out factory))
+                    {
+                        string suffix = "|" + path.ToLowerInvariant();
+                        foreach (KeyValuePair<string, Func<object>> candidate in s_components)
+                        {
+                            if (candidate.Key.EndsWith(suffix, StringComparison.Ordinal))
+                            {
+                                factory = candidate.Value;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            component = factory?.Invoke();
+            return component != null;
+        }
+
         private static string Key(string assemblyName, string resourcePath) =>
             assemblyName + "|" + resourcePath.Replace('\\', '/').TrimStart('/').ToLowerInvariant();
     }

@@ -468,6 +468,13 @@ namespace System.Windows
             //PackAppBaseUri, i.e. only relative Uri within the appbase are created here
             Uri packUri = BindUriHelper.GetResolvedUri(BaseUriHelper.PackAppBaseUri, resourceLocator);
 
+            // A XAML file compiled by the XAML source generator has no BAML resource: its root object is created by registered code.
+            // Nothing is registered (and this returns at once) in every application that does not use the generator.
+            if (System.Windows.Markup.XamlSourceGeneratedResources.TryCreateComponent(packUri, out object generatedComponent))
+            {
+                return generatedComponent;
+            }
+
             PackagePart part = GetResourceOrContentPart(packUri);
             ContentType contentType = new ContentType(part.ContentType);
             Stream stream = part.GetSeekableStream();

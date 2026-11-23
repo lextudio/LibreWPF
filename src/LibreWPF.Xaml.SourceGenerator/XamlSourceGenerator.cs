@@ -20,7 +20,7 @@ namespace LibreWPF.Xaml.SourceGenerator
     /// <c>UseLibreWpfXamlSourceGenerator</c> or env var <c>LIBREWPF_USE_XSG</c>.
     /// </summary>
     [Generator]
-    public sealed class XamlSourceGenerator : IIncrementalGenerator
+    public sealed partial class XamlSourceGenerator : IIncrementalGenerator
     {
         // Common WPF presentation-namespace type -> fully qualified CLR type.
         private static readonly HashSet<string> s_knownEvents = new(StringComparer.Ordinal)
@@ -104,11 +104,21 @@ namespace LibreWPF.Xaml.SourceGenerator
             var features = context.AnalyzerConfigOptionsProvider
                 .Select(static (provider, _) => XsgFeatures.From(provider.GlobalOptions));
 
-            context.RegisterSourceOutput(xamlFiles.Combine(features), static (spc, input) =>
+            // Each file with the resource path a loose ResourceDictionary is registered under (themes/generic.xaml, ...).
+            var files = xamlFiles.Combine(context.AnalyzerConfigOptionsProvider)
+                .Select(static (input, _) => (File: input.Left, ResourcePath: ResourcePathOf(input.Left, input.Right)));
+
+            // Compiled bindings resolve x:DataType and binding paths against the compilation.
+            context.RegisterSourceOutput(files.Combine(features).Combine(context.CompilationProvider), static (spc, input) =>
             {
                 try
                 {
-                    Generate(spc, input.Left, input.Right);
+                    s_context = new GenerationContext(input.Right, input.Left.Right, input.Left.Left.File.Path);
+                    Generate(spc, input.Left.Left.File, input.Left.Right, input.Left.Left.ResourcePath);
+                    foreach (var diagnostic in s_context.Diagnostics)
+                    {
+                        spc.ReportDiagnostic(diagnostic);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -122,17 +132,29 @@ namespace LibreWPF.Xaml.SourceGenerator
                             isEnabledByDefault: true),
                         Location.None));
                 }
+                finally
+                {
+                    s_context = null;
+                }
             });
         }
 
         // The XSG features that can be switched off per project (LibreWpfSimplerXaml, LibreWpfCSharpExpressions).
         private readonly struct XsgFeatures : IEquatable<XsgFeatures>
         {
-            public XsgFeatures(bool simplerXaml, bool csharpExpressions)
+            public XsgFeatures(bool simplerXaml, bool csharpExpressions, bool compiledBindings, string? resourceAssemblyName = null)
             {
+                ResourceAssemblyName = resourceAssemblyName;
                 SimplerXaml = simplerXaml;
                 CSharpExpressions = csharpExpressions;
+                CompiledBindings = compiledBindings;
             }
+
+            public bool CompiledBindings { get; }
+
+            // LibreWpfXsgResourceAssemblyName: the assembly name loose dictionaries register under, when it is not this assembly's
+            // own (an XSG-compiled theme standing in for PresentationFramework.Aero2).
+            public string? ResourceAssemblyName { get; }
 
             public bool SimplerXaml { get; }
 
@@ -141,17 +163,20 @@ namespace LibreWPF.Xaml.SourceGenerator
             // Absent means on: the generator only runs for a project that chose the XSG path, and a host that does not pass the
             // properties gets the behaviour the generator always had. Only an explicit false switches a feature off.
             public static XsgFeatures From(AnalyzerConfigOptions options) =>
-                new XsgFeatures(IsOn(options, "LibreWpfSimplerXaml"), IsOn(options, "LibreWpfCSharpExpressions"));
+                new XsgFeatures(IsOn(options, "LibreWpfSimplerXaml"), IsOn(options, "LibreWpfCSharpExpressions"),
+                    IsOn(options, "LibreWpfCompiledBindings"),
+                    options.TryGetValue("build_property.LibreWpfXsgResourceAssemblyName", out var assemblyName) && !string.IsNullOrWhiteSpace(assemblyName) ? assemblyName.Trim() : null);
 
             private static bool IsOn(AnalyzerConfigOptions options, string name) =>
                 !options.TryGetValue("build_property." + name, out var value)
                 || !string.Equals(value?.Trim(), "false", StringComparison.OrdinalIgnoreCase);
 
-            public bool Equals(XsgFeatures other) => SimplerXaml == other.SimplerXaml && CSharpExpressions == other.CSharpExpressions;
+            public bool Equals(XsgFeatures other) => SimplerXaml == other.SimplerXaml && CSharpExpressions == other.CSharpExpressions
+                && CompiledBindings == other.CompiledBindings && ResourceAssemblyName == other.ResourceAssemblyName;
 
             public override bool Equals(object? obj) => obj is XsgFeatures other && Equals(other);
 
-            public override int GetHashCode() => (SimplerXaml ? 1 : 0) | (CSharpExpressions ? 2 : 0);
+            public override int GetHashCode() => (SimplerXaml ? 1 : 0) | (CSharpExpressions ? 2 : 0) | (CompiledBindings ? 4 : 0);
         }
 
         // This project does not use analyzer release tracking (neither do LWXSG0001/0002 above).
@@ -173,7 +198,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             isEnabledByDefault: true);
 #pragma warning restore RS2008
 
-        private static void Generate(SourceProductionContext spc, AdditionalText file, XsgFeatures features)
+        private static void Generate(SourceProductionContext spc, AdditionalText file, XsgFeatures features, string resourcePath)
         {
             var text = file.GetText(spc.CancellationToken);
             if (text is null)
@@ -234,13 +259,20 @@ namespace LibreWPF.Xaml.SourceGenerator
             }
             if (classAttr is null)
             {
-                return; // no x:Class => no generated partial class
+                // No x:Class: a loose ResourceDictionary (themes/generic.xaml, ...) becomes a generated, registered dictionary
+                // (the XSG path never produces BAML, so this is how its themes load); anything else has no generated class.
+                if (root.Name.LocalName == "ResourceDictionary")
+                {
+                    GenerateLooseResourceDictionary(spc, root, resourcePath, file.Path, features.ResourceAssemblyName);
+                }
+                return;
             }
 
             var fullClassName = classAttr.Value;
             var lastDot = fullClassName.LastIndexOf('.');
             var ns = lastDot >= 0 ? fullClassName.Substring(0, lastDot) : string.Empty;
             var className = lastDot >= 0 ? fullClassName.Substring(lastDot + 1) : fullClassName;
+            s_context!.Within = s_context.Compilation.GetTypeByMetadataName(fullClassName);
 
             // x:Code: collect inline C# (MAUI-style) before generating the class.
             var xCodeUsings = new List<string>();
@@ -355,6 +387,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                 sb.AppendLine(xCodeMembers.ToString());
             }
 
+            AppendCompiledPropertyHelperIfUsed(sb);
+
             sb.AppendLine("    }");
 
             if (!string.IsNullOrEmpty(ns))
@@ -437,109 +471,6 @@ namespace LibreWPF.Xaml.SourceGenerator
         /// <summary>
         /// Generate code for an element. Returns the variable name holding the element.
         /// </summary>
-        private static string GenerateTemplate(StringBuilder sb, XElement el, string typeName, string defaultNs, string sourcePath, int indent, ref int localId)
-        {
-            var pad = new string(' ', indent);
-            var varName = $"__{el.Name.LocalName}_{++localId}";
-            sb.AppendLine($"{pad}var {varName} = new global::{typeName}();");
-
-            // TargetType / DataType attribute
-            foreach (var attr in el.Attributes())
-            {
-                var attrNs = attr.Name.NamespaceName;
-                var attrLocal = attr.Name.LocalName;
-                if (attrNs == "http://www.w3.org/2000/xmlns/" || attrLocal == "xmlns")
-                {
-                    continue;
-                }
-                if (attrNs.Contains("xaml") && (attrLocal == "Class" || attrLocal == "Name" || attrLocal == "Key"))
-                {
-                    continue;
-                }
-                if (attrLocal == "DataType" || attrLocal == "TargetType")
-                {
-                    var v = attr.Value.Trim();
-                    if (v.StartsWith("{x:Type ", StringComparison.Ordinal))
-                    {
-                        var t = v.Substring("{x:Type".Length).Trim().TrimEnd('}');
-                        var resolved = ResolveTypeNameFromName(t, defaultNs) ?? t;
-                        sb.AppendLine($"{pad}{varName}.{attrLocal} = typeof(global::{resolved});");
-                    }
-                    else if (v.StartsWith("{x:Type}", StringComparison.Ordinal))
-                    {
-                        // skip
-                    }
-                    else
-                    {
-                        var resolved = ResolveTypeNameFromName(v, defaultNs) ?? v;
-                        sb.AppendLine($"{pad}{varName}.{attrLocal} = typeof(global::{resolved});");
-                    }
-                    continue;
-                }
-                var propCode = ConvertAttributeValue(attr.Value, attrNs, attrLocal, typeName);
-                if (propCode is null)
-                {
-                    continue;
-                }
-                sb.AppendLine($"{pad}{varName}.{attrLocal} = {propCode};");
-            }
-
-            // VisualTree: first child element becomes the factory root.
-            var children = el.Elements().ToList();
-            if (children.Count > 0)
-            {
-                var rootChild = children[0];
-                var childType = ResolveTypeName(rootChild, defaultNs);
-                if (childType is not null)
-                {
-                    var factoryVar = $"__fef_{++localId}";
-                    sb.AppendLine($"{pad}var {factoryVar} = new global::System.Windows.FrameworkElementFactory(typeof(global::{childType}));");
-                    // Set properties on factory
-                    foreach (var a in rootChild.Attributes())
-                    {
-                        var aNs = a.Name.NamespaceName;
-                        var aLocal = a.Name.LocalName;
-                        if (aNs == "http://www.w3.org/2000/xmlns/" || aLocal == "xmlns")
-                        {
-                            continue;
-                        }
-                        if (aNs.Contains("xaml") && (aLocal == "Class" || aLocal == "Name" || aLocal == "Key"))
-                        {
-                            continue;
-                        }
-                        var v = a.Value;
-                        if (v.StartsWith("{Binding", StringComparison.Ordinal))
-                        {
-                            var pm = System.Text.RegularExpressions.Regex.Match(v, @"Path\s*=\s*([^,}]+)");
-                            var path = pm.Success ? pm.Groups[1].Value.Trim() : "";
-                            if (string.IsNullOrEmpty(path))
-                            {
-                                var pm2 = System.Text.RegularExpressions.Regex.Match(v, @"\{\s*Binding\s+([^,}]+)");
-                                path = pm2.Success ? pm2.Groups[1].Value.Trim() : "";
-                            }
-                            sb.AppendLine($"{pad}{factoryVar}.SetBinding(global::{childType}.{aLocal}Property, new global::System.Windows.Data.Binding(\"{path}\"));");
-                        }
-                        else if (v.StartsWith("{StaticResource ", StringComparison.Ordinal))
-                        {
-                            var key = v.Substring("{StaticResource".Length).Trim().TrimEnd('}').Trim();
-                            sb.AppendLine($"{pad}{factoryVar}.SetValue(global::{childType}.{aLocal}Property, global::System.Windows.FrameworkElement.FindResource(\"{key}\"));");
-                        }
-                        else
-                        {
-                            var pc = ConvertAttributeValue(v, aNs, aLocal, childType);
-                            if (pc is not null)
-                            {
-                                sb.AppendLine($"{pad}{factoryVar}.SetValue(global::{childType}.{aLocal}Property, {pc});");
-                            }
-                        }
-                    }
-                    sb.AppendLine($"{pad}{varName}.VisualTree = {factoryVar};");
-                }
-            }
-
-            return varName;
-        }
-
         private static string GenerateElement(StringBuilder sb, XElement el, string defaultNs, string sourcePath, int indent, ref int localId)
         {
             var pad = new string(' ', indent);
@@ -559,7 +490,12 @@ namespace LibreWPF.Xaml.SourceGenerator
             // DataTemplate / ControlTemplate: build a FrameworkElementFactory tree.
             if (typeName.Contains("Template"))
             {
-                return GenerateTemplate(sb, el, typeName, defaultNs, sourcePath, indent, ref localId);
+                return GenerateFactoryTemplate(sb, el, typeName, defaultNs, sourcePath, indent, ref localId);
+            }
+
+            if (typeName == "System.Windows.Style")
+            {
+                return GenerateStyle(sb, el, defaultNs, sourcePath, indent, ref localId);
             }
 
             var varName = $"__{el.Name.LocalName}_{++localId}";
@@ -572,7 +508,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                 var attrLocal = attr.Name.LocalName;
 
                 // Skip namespace declarations (xmlns, xmlns:x, ...).
-                if (attrNs == "http://www.w3.org/2000/xmlns/" || attrLocal == "xmlns")
+                if (attrNs == "http://www.w3.org/2000/xmlns/" || attrLocal == "xmlns" || IsCompiledBindingDirective(attr))
                 {
                     continue;
                 }
@@ -656,7 +592,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                     continue;
                 }
 
-                var propCode = ConvertAttributeValue(value, attrNs, attrLocal, typeName);
+                var propCode = ConvertAttributeValue(value, attrNs, attrLocal, typeName, el);
                 if (propCode is null)
                 {
                     continue;
@@ -680,7 +616,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                     }
                     else if (value.TrimStart().StartsWith("{Binding", StringComparison.Ordinal))
                     {
-                        var bindCode = ConvertAttributeValue(value, attrNs, propName, typeName);
+                        var bindCode = ConvertAttributeValue(value, attrNs, propName, typeName, el);
                         sb.AppendLine($"{pad}{varName}.SetBinding(global::{ownerType}.{propName}Property, {bindCode});");
                     }
                     else
@@ -912,6 +848,10 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     return full;
                 }
+                if (ResolvePresentationTypeSemantically(name.LocalName) is { } semantic)
+                {
+                    return semantic;
+                }
             }
 
             // clr-namespace:
@@ -940,7 +880,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             {
                 return full;
             }
-            return null;
+            return ResolvePresentationTypeSemantically(name);
         }
 
         // With C# expressions switched off a `{cs: ...}` value is an error, reported where it is written; nothing is generated for the file.
@@ -1043,7 +983,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             {
                 var attrNs = attr.Name.NamespaceName;
                 var attrLocal = attr.Name.LocalName;
-                if (attrNs == "http://www.w3.org/2000/xmlns/" || attrLocal == "xmlns")
+                if (attrNs == "http://www.w3.org/2000/xmlns/" || attrLocal == "xmlns" || IsCompiledBindingDirective(attr))
                 {
                     continue;
                 }
@@ -1060,7 +1000,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                     continue;
                 }
 
-                var propCode = ConvertAttributeValue(value, attrNs, attrLocal, typeName);
+                var propCode = ConvertAttributeValue(value, attrNs, attrLocal, typeName, el);
                 if (propCode is null)
                 {
                     continue;
@@ -1077,6 +1017,12 @@ namespace LibreWPF.Xaml.SourceGenerator
             }
 
             // Content / children into this
+            if (typeName is not null && typeName.Contains("ResourceDictionary"))
+            {
+                GenerateRootDictionaryContent(sb, el, defaultNs, sourcePath, indent, ref localId);
+                return;
+            }
+
             var contentElements = el.Elements().ToList();
             var contentProp = InferContentProperty(typeName ?? "");
             if (contentElements.Count > 0)
@@ -1196,7 +1142,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             return "Content";
         }
 
-        private static string? ConvertAttributeValue(string value, string attrNs, string attrLocal, string? elementTypeName = null)
+        private static string? ConvertAttributeValue(string value, string attrNs, string attrLocal, string? elementTypeName = null, XElement? owner = null)
         {
             value = value.Trim();
             if (value.StartsWith("{cs:", StringComparison.Ordinal))
@@ -1229,16 +1175,7 @@ namespace LibreWPF.Xaml.SourceGenerator
 
             if (value.StartsWith("{Binding", StringComparison.Ordinal))
             {
-                // basic: new Binding("path")
-                var pathMatch = Regex.Match(value, @"Path\s*=\s*([^,}]+)");
-                var path = pathMatch.Success ? pathMatch.Groups[1].Value.Trim() : "";
-                if (string.IsNullOrEmpty(path))
-                {
-                    // positional
-                    var posMatch = Regex.Match(value, @"\{\s*Binding\s+([^,}]+)");
-                    path = posMatch.Success ? posMatch.Groups[1].Value.Trim() : "";
-                }
-                return $"new global::System.Windows.Data.Binding(\"{path}\")";
+                return BindingCode(value, owner, attrLocal == "DataContext");
             }
 
             // StaticResource/DynamicResource are handled in the attribute loop.

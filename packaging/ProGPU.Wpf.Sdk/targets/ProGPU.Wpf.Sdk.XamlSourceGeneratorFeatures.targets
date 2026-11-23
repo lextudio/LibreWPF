@@ -15,6 +15,9 @@
       LibreWpfSimplerXaml              Simpler XAML: a root element without xmlns gets the default WPF presentation and `x`
                                        namespaces. Off: such a document is an error (LWXSG0003).
       LibreWpfCSharpExpressions        C# expressions: `{cs: <expression>}`. Off: a `{cs:}` value is an error (LWXSG0004).
+      LibreWpfCompiledBindings         Compiled bindings: under an x:DataType a `{Binding Path}` is compiled to typed accessors
+                                       (no reflection over the source; trim/NativeAOT safe) and a wrong path is a build error
+                                       (LWXSG0005/0006). Off: every binding is the reflective stock Binding, x:DataType is ignored.
 
     The values reach the generator as build_property.<name> (CompilerVisibleProperty). A new feature is added here with one
     property, one CompilerVisibleProperty and one row in _LibreWpfXsgFeatureChecks.
@@ -28,15 +31,24 @@
     <!-- What the project said itself, before the defaults below: used only to warn about a switch that cannot do anything. -->
     <_LibreWpfSimplerXamlExplicit>$(LibreWpfSimplerXaml)</_LibreWpfSimplerXamlExplicit>
     <_LibreWpfCSharpExpressionsExplicit>$(LibreWpfCSharpExpressions)</_LibreWpfCSharpExpressionsExplicit>
+    <_LibreWpfCompiledBindingsExplicit>$(LibreWpfCompiledBindings)</_LibreWpfCompiledBindingsExplicit>
 
     <LibreWpfSimplerXaml Condition="'$(LibreWpfSimplerXaml)' == ''">$(UseLibreWpfXamlSourceGenerator)</LibreWpfSimplerXaml>
     <LibreWpfCSharpExpressions Condition="'$(LibreWpfCSharpExpressions)' == ''">$(UseLibreWpfXamlSourceGenerator)</LibreWpfCSharpExpressions>
+    <LibreWpfCompiledBindings Condition="'$(LibreWpfCompiledBindings)' == ''">$(UseLibreWpfXamlSourceGenerator)</LibreWpfCompiledBindings>
   </PropertyGroup>
 
   <ItemGroup>
     <CompilerVisibleProperty Include="UseLibreWpfXamlSourceGenerator" />
     <CompilerVisibleProperty Include="LibreWpfSimplerXaml" />
     <CompilerVisibleProperty Include="LibreWpfCSharpExpressions" />
+    <CompilerVisibleProperty Include="LibreWpfCompiledBindings" />
+    <!-- XSG compiles every loose ResourceDictionary (themes included) to code; these give its resource path: project-relative, or the item's Link. -->
+    <CompilerVisibleProperty Include="MSBuildProjectDirectory" />
+    <!-- Optional: the assembly name loose dictionaries register under, for an XSG theme that stands in for another assembly
+         (LibreWpfXsgResourceAssemblyName=PresentationFramework.Aero2). Empty: the compiling assembly's own name. -->
+    <CompilerVisibleProperty Include="LibreWpfXsgResourceAssemblyName" />
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Link" />
   </ItemGroup>
 
   <!-- A feature set to true while the overall switch is off does nothing (the BAML compiler has none of these features): say so. -->
@@ -49,6 +61,9 @@
     <Warning Code="LWXSG5001"
              Condition="'$(_LibreWpfCSharpExpressionsExplicit)' == 'true'"
              Text="LibreWpfCSharpExpressions=true has no effect: C# expressions are a feature of the XAML source generator and UseLibreWpfXamlSourceGenerator is not enabled. The BAML compiler does not support them." />
+    <Warning Code="LWXSG5001"
+             Condition="'$(_LibreWpfCompiledBindingsExplicit)' == 'true'"
+             Text="LibreWpfCompiledBindings=true has no effect: compiled bindings are a feature of the XAML source generator and UseLibreWpfXamlSourceGenerator is not enabled. The BAML compiler does not support them." />
   </Target>
 
 </Project>

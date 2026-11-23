@@ -25,6 +25,7 @@ LIBREWPF_USE_XSG=1 dotnet build
 | `UseLibreWpfXamlSourceGenerator` | `false` | **Overall switch.** Off: the project is compiled by the BAML compiler, exactly as upstream WPF, and the feature switches below do nothing. On: XAML is compiled by the generator. (`LIBREWPF_USE_XSG=1` sets it without a project edit.) |
 | `LibreWpfSimplerXaml` | follows the overall switch | Simpler XAML: a root element without `xmlns` gets the default WPF presentation and `x` namespaces. Off: such a document is an error, `LWXSG0003`. |
 | `LibreWpfCSharpExpressions` | follows the overall switch | C# expressions, `{cs: <expression>}`. Off: a `{cs:}` value is an error, `LWXSG0004`, reported at its line. |
+| `LibreWpfCompiledBindings` | follows the overall switch | Compiled bindings: under an `x:DataType`, `{Binding Path}` is compiled to typed accessors (no reflection, trim/NativeAOT safe) and a wrong path is a build error. Off: every binding is the reflective stock `Binding` and `x:DataType` is ignored. See below. |
 
 `UseLibreWpfXamlSourceGenerator=true` alone turns every feature on; any feature can then be turned off on its own:
 
@@ -44,7 +45,60 @@ none keeps every feature on. A new XSG feature is one more property, one more `C
 |---|---|---|
 | `LWXSG0003` | error | the root declares no `xmlns` and `LibreWpfSimplerXaml` is off |
 | `LWXSG0004` | error | a `{cs:}` value is present and `LibreWpfCSharpExpressions` is off |
+| `LWXSG0005` | error | an `x:DataType` names no type the compilation can see |
+| `LWXSG0006` | error | a compiled binding path names a property its type does not have (or cannot be read from the generated code) |
+| `LWXSG0007` | warning | a binding inside an `x:DataType` scope could not be compiled (indexer, attached property, unnameable type): it stays reflective |
+| `LWXSG0008` | warning | a construct the generator does not handle yet is left out of the generated code: a trigger other than `Trigger` (`MultiTrigger`, `DataTrigger`, `EventTrigger`), an `EventSetter`, `Style.Resources` or template resources, a dictionary resource without a key, or a binding property it cannot write (`Source` other than `{StaticResource}`, `Converter` other than `{StaticResource}`, an unparsable `Delay`, an unknown property). It used to be skipped with only a comment in the generated file |
 | `LWXSG5001` | warning | a feature switch is `true` while `UseLibreWpfXamlSourceGenerator` is off |
+
+## Compiled bindings
+
+```xml
+<Window x:Class="Sample.MainWindow" xmlns:vm="clr-namespace:Sample.Vm" x:DataType="vm:MainVm">
+  <TextBox Text="{Binding Person.Name, Mode=TwoWay}" />
+</Window>
+```
+
+- **Scope.** `x:DataType` on any element types the DataContext its bindings and its descendants' bindings read. A `DataTemplate`
+  (any `*Template`) starts a new scope from its own `DataType` (or `x:DataType`); a template without one ends the scope. An element
+  that sets its own `DataContext` without an `x:DataType` ends the scope too; its `DataContext="{Binding ...}"` itself still reads the
+  parent's type. `x:CompileBindings="False"` turns compilation off for an element and its subtree.
+- **What compiles.** A dotted path of instance properties (`A.B.C`), with no `ElementName`, `RelativeSource`, `Source` or `XPath`
+  (those do not read the DataContext). Indexers and attached-property steps stay reflective with `LWXSG0007`.
+- **How.** Each step becomes a generated `PropertyDescriptor` with typed getter/setter delegates, passed to a stock `Binding` as an
+  early-bound `PropertyPath("(0).(1)", ...)` parameter. WPF's binding engine already accepts a descriptor there: it reads and writes
+  through it, listens to `INotifyPropertyChanged` by its name, and treats a get-only (or init-only) property as read-only, exactly as
+  for reflection. Mode, converters, validation, `StringFormat` and templates are unchanged, and no runtime change was needed.
+- `Binding` markup properties now generated: `Path`, `Mode`, `UpdateSourceTrigger`, `StringFormat`, `ElementName`, `RelativeSource`
+  (`Self`, `TemplatedParent`, `FindAncestor` with `AncestorType`/`AncestorLevel`), `Converter`/`ConverterParameter`/`FallbackValue`/
+  `TargetNullValue` (`{StaticResource}` or text), `Delay` and the `Validates*`/`Notify*`/`IsAsync` flags.
+
+## Themes and other loose ResourceDictionaries
+
+The XSG path produces no BAML, so a `ResourceDictionary` file without `x:Class` (`Themes/Generic.xaml`, `Themes/Aero2.NormalColor.xaml`,
+any loose dictionary) is always compiled to a `ResourceDictionary` subclass and registered, from a module initializer, with
+`System.Windows.Markup.XamlSourceGeneratedResources` under its resource path: project-relative (or the item's `Link`), lower-case,
+`/`-separated, e.g. `themes/generic.xaml`. WPF's theme lookup (`SystemResources`) asks that registry before it looks for BAML, so
+`ThemeInfo`/`DefaultStyleKey` styles of a control library built with XSG load with neither BAML nor System.Xaml. There is no switch:
+before this, such a file was passed to the generator and silently produced nothing.
+
+What a generated theme does not contain yet is reported, not skipped quietly (`LWXSG0008`, a warning with the file and line): `MultiTrigger`,
+`DataTrigger`, `MultiDataTrigger`, `EventTrigger`, `EventSetter`, `Style.Resources`, template resources, storyboards and `VisualStateManager`
+groups. The in-box themes use all of them, which is why a full `PresentationFramework.Aero2` built by the generator is not possible yet; see
+[NativeAotPlan.md](NativeAotPlan.md).
+
+Registration is by **assembly name**. `LibreWpfXsgResourceAssemblyName` makes a project register its dictionaries under another assembly's
+name, so an XSG-compiled theme can stand in for `PresentationFramework.Aero2` (`themes/aero2.normalcolor.xaml`): `SystemResources`
+asks the registry by name before it loads the theme assembly, which is what makes themes work under NativeAOT, where that load fails.
+
+## NativeAOT
+
+A prototype that publishes and runs with `PublishAot=true` on macOS is in openavalon's `samples/XsgNativeAot` (README there). It needs
+compiled bindings (no reflection over view models), an XSG theme registered as `PresentationFramework.Aero2` and rooted with
+`TrimmerRootAssembly` (NativeAOT runs module initializers only of assemblies in the image), and `_SuppressWpfTrimError=true`.
+
+Not yet: the in-box theme assemblies (`PresentationFramework.Aero2`, `.Fluent`, ...) are still built with the BAML compiler, and a
+`ResourceDictionary Source="..."` reference is still loaded through BAML/`Application.LoadComponent`.
 
 ## Which XAML works where
 
@@ -78,7 +132,10 @@ adds implicit namespaces, and the `XmlReader` a caller passes to `XamlXmlReader`
 - `ResourceDictionary` `MergedDictionaries`, `DataTemplate`/`ControlTemplate` inner
   graphs, and complex markup extensions are partially supported
 - Localization (`x:Uid`) not yet supported
-- NativeAOT/trimming implications not yet evaluated
+- Generation is not incremental across the compilation: the generator combines the whole `Compilation` with every XAML file (it needs the
+  compilation for type resolution and compiled bindings), so any edit of the C# code regenerates all XAML. Acceptable for builds, costly for
+  the IDE with many XAML files; resolving only the symbols a document names, and caching them, is future work.
+- NativeAOT/trimming: compiled bindings and generated dictionaries remove the reflection the generator itself introduces; the framework assemblies are not yet annotated or AOT-tested
 
 ## Generated code
 

@@ -2540,6 +2540,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _nativeSessionReleaseFailure?.Throw();
     }
 
+    private static readonly SilkPlatformRegistration s_silkPlatforms = new SilkPlatformRegistration();
+
+    /// <summary>
+    /// Registers Silk.NET's GLFW windowing and input platforms explicitly. Silk otherwise discovers them by loading
+    /// "Silk.NET.Windowing.Glfw"/"Silk.NET.Input.Glfw" by name and creating the platform by reflection, which NativeAOT cannot do
+    /// ("Couldn't find a suitable window platform"). Only an application that cannot do that reflection (NativeAOT:
+    /// <see cref="System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported"/> is false) registers explicitly; every other
+    /// application keeps Silk's own discovery and its choice of platform exactly as before (see <see cref="SilkPlatformRegistration"/>).
+    /// </summary>
+    private static void EnsureSilkPlatformsRegistered() =>
+        s_silkPlatforms.EnsureRegistered(
+            RuntimeFeature.IsDynamicCodeSupported,
+            static () =>
+            {
+                global::Silk.NET.Windowing.Glfw.GlfwWindowing.RegisterPlatform();
+                global::Silk.NET.Input.Glfw.GlfwInput.RegisterPlatform();
+            });
+
     private void EnsureWindow()
     {
         if (_window != null)
@@ -2585,6 +2603,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         var popupOwner = _options.SharedRenderDeviceOwner;
         bool createdOwnedCocoa = false;
         _nativeWindowThreadId = Environment.CurrentManagedThreadId;
+        EnsureSilkPlatformsRegistered();
         _window = WpfPopupWindowFactory.Create(_options.IsPopupSurface,
             PortablePresentationSource != null,
             popupOwner?.NativeWindowHandle ?? global::ProGPU.Backend.NativeWindowHandle.Empty,

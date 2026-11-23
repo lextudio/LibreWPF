@@ -23,6 +23,9 @@
     <PackageReference Include="ProGPU.Scene.Native" Version="$(ProGpuRuntimePackageVersion)" />
     <PackageReference Include="LibreWPF.Interop" Version="$(ProGpuRuntimePackageVersion)" />
     <PackageReference Include="Silk.NET.GLFW" Version="2.23.0" />
+    <!-- Referenced by name in ProGpuWpfWindowHost (explicit NativeAOT platform registration); they used to arrive only through ProGPU.Backend. -->
+    <PackageReference Include="Silk.NET.Input.Glfw" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.23.0" />
     <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
     <PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
     <PackageReference Include="Silk.NET.WebGPU" Version="2.23.0" />

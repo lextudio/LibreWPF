@@ -4,11 +4,9 @@
 #nullable disable
 
 using System.IO;
-using System.Text;
 using System.Xaml.MS.Impl;
 using System.Xaml.Schema;
 using System.Xml;
-using System.Xml.Linq;
 using MS.Internal.Xaml;
 using MS.Internal.Xaml.Context;
 using MS.Internal.Xaml.Parser;
@@ -161,12 +159,6 @@ namespace System.Xaml
 
         private void Initialize(XmlReader givenXmlReader, XamlSchemaContext schemaContext, XamlXmlReaderSettings settings)
         {
-            // Simpler XAML / implicit namespaces: when a XAML document's root element
-            // omits the standard xmlns declarations, inject them before parsing so
-            // loose XAML (XamlReader.Load, ResourceDictionary.Source, ...) supports
-            // the same shorthand as compiled XAML.
-            givenXmlReader = EnsureImplicitXmlns(givenXmlReader);
-
             XmlReader myXmlReader;
 
             _mergedSettings = (settings is null) ? new XamlXmlReaderSettings() : new XamlXmlReaderSettings(settings);
@@ -244,209 +236,6 @@ namespace System.Xaml
             _nodeStream = new NodeStreamSorter(_context, parser, _mergedSettings, xmlnsDictionary);
             _current = new XamlNode(XamlNode.InternalNodeType.StartOfStream);  // user must call Read() before using properties.
             _currentLineInfo = new LineInfo(0, 0);
-        }
-
-        //
-        // Simpler XAML / implicit namespaces (runtime).
-        //
-        // When the root element of the given XAML document omits the standard
-        // xmlns declarations, rewrite it so the default WPF presentation and
-        // xaml namespaces are injected before parsing. The original reader is
-        // consumed in the process.
-        //
-        private static XmlReader EnsureImplicitXmlns(XmlReader given)
-        {
-            if (given is null)
-            {
-                return null;
-            }
-
-            try
-            {
-                given.MoveToContent();
-            }
-            catch
-            {
-                return given;
-            }
-
-            // Check whether injection is needed WITHOUT consuming the reader.
-            try
-            {
-                given.MoveToContent();
-            }
-            catch
-            {
-                return given;
-            }
-
-            // Check if default namespace is already declared.
-            string defaultNs = string.Empty;
-            try
-            {
-                defaultNs = given.LookupNamespace(string.Empty) ?? string.Empty;
-            }
-            catch
-            {
-                defaultNs = string.Empty;
-            }
-
-            // Check if root element has xmlns attribute explicitly.
-            bool hasXmlns = false;
-            try
-            {
-                if (given.MoveToFirstAttribute())
-                {
-                    bool continueLoop = true;
-                    while (continueLoop)
-                    {
-                        if (given.Name == "xmlns" || given.Name.StartsWith("xmlns:", StringComparison.Ordinal))
-                        {
-                            hasXmlns = true;
-                            break;
-                        }
-
-                        continueLoop = given.MoveToNextAttribute();
-                    }
-
-                    given.MoveToElement();
-                }
-            }
-            catch
-            {
-                // ignore
-            }
-
-            string baseUri = given.BaseURI;
-
-            string rootXml;
-            try
-            {
-                if (string.IsNullOrEmpty(defaultNs) && !hasXmlns)
-                {
-                    // Need injection; reader already at root element after MoveToContent.
-                    rootXml = given.ReadOuterXml();
-                }
-                else
-                {
-                    // No injection needed; consume to recreate a fresh reader (preserves state consistency).
-                    rootXml = given.ReadOuterXml();
-                }
-            }
-            catch
-            {
-                return given;
-            }
-
-            if (string.IsNullOrEmpty(rootXml))
-            {
-                return given;
-            }
-
-            // Determine whether the root start tag already declares a default xmlns.
-            int tagEnd = FindTagEnd(rootXml, 0);
-            if (tagEnd < 0)
-            {
-                return CreateReader(rootXml, baseUri);
-            }
-
-            string startTag = rootXml.Substring(0, tagEnd + 1);
-            if (startTag.Contains("xmlns", StringComparison.Ordinal))
-            {
-                return CreateReader(rootXml, baseUri);
-            }
-
-            // Inject the default namespaces before the closing '>' of the start tag.
-            int insertPos = tagEnd;
-            if (insertPos > 0 && rootXml[insertPos - 1] == '/')
-            {
-                insertPos--;
-            }
-
-            const string injection = " xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"";
-#pragma warning disable CA1845
-            string rewritten = rootXml.Substring(0, insertPos) + injection + rootXml.Substring(insertPos);
-#pragma warning restore CA1845
-
-            // Preserve any trailing content after the root element? ReadOuterXml returns only the
-            // root element, so nothing else to append.
-            return CreateReader(rewritten, baseUri);
-        }
-
-        private static int FindTagEnd(string text, int start)
-        {
-            int i = start;
-            int len = text.Length;
-            // Skip leading whitespace
-            while (i < len && char.IsWhiteSpace(text[i])) i++;
-            if (i >= len || text[i] != '<') return -1;
-
-            // Skip comments / PI / doctype
-            if (i + 3 < len && text[i + 1] == '!' && text[i + 2] == '-' && text[i + 3] == '-')
-            {
-                int end = text.IndexOf("-->", i, StringComparison.Ordinal);
-                if (end < 0) return -1;
-                return FindTagEnd(text, end + 3);
-            }
-
-            if (i + 1 < len && text[i + 1] == '?')
-            {
-                int end = text.IndexOf("?>", i, StringComparison.Ordinal);
-                if (end < 0) return -1;
-                return FindTagEnd(text, end + 2);
-            }
-
-            if (i + 1 < len && text[i + 1] == '!')
-            {
-                int end = text.IndexOf('>', i);
-                if (end < 0) return -1;
-                return FindTagEnd(text, end + 1);
-            }
-
-            int j = i;
-            bool inDouble = false;
-            bool inSingle = false;
-            while (j < len)
-            {
-                char c = text[j];
-                if (inDouble)
-                {
-                    if (c == '"') inDouble = false;
-                }
-                else if (inSingle)
-                {
-                    if (c == '\'') inSingle = false;
-                }
-                else
-                {
-                    if (c == '"') inDouble = true;
-                    else if (c == '\'') inSingle = true;
-                    else if (c == '>') break;
-                }
-
-                j++;
-            }
-
-            if (j >= len) return -1;
-            return j;
-        }
-
-        private static XmlReader CreateReader(string xml, string baseUri)
-        {
-            XmlReaderSettings settings = new XmlReaderSettings
-            {
-                DtdProcessing = DtdProcessing.Prohibit,
-                CloseInput = false
-            };
-
-            if (string.IsNullOrEmpty(baseUri))
-            {
-                return XmlReader.Create(new StringReader(xml), settings);
-            }
-
-            XmlParserContext ctx = new XmlParserContext(
-                null, null, "", "", "", "", baseUri, null, XmlSpace.None);
-            return XmlReader.Create(new StringReader(xml), settings, ctx);
         }
 
         #region XamlReader Members

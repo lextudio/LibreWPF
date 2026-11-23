@@ -155,13 +155,6 @@ namespace MS.Internal
         /// </summary>
         internal bool SupportCustomOutputPaths { get; set; } = false;
 
-        //
-        // When true, XAML files whose root element omits the standard xmlns
-        // declarations are rewritten at compile time to inject the default WPF
-        // presentation and xaml namespaces (Simpler XAML / implicit namespaces).
-        //
-        internal bool AllowImplicitXmlnsDeclaration { get; set; } = false;
-
         // If the xaml has local references, then it could have internal element & properties
         // but there is no way to determine this until MCPass2. Yet, GeneratedInternalTypeHelper,
         // which is the class that allows access to legitimate internals, needs to be generated
@@ -525,21 +518,7 @@ namespace MS.Internal
                     DebugBamlStream = XamlDebuggingInformation
                 };
 
-                //
-                // Simpler XAML / implicit namespaces: when enabled, rewrite XAML files
-                // whose root element omits the standard xmlns declarations to inject
-                // the default WPF presentation and xaml namespaces before parsing.
-                //
-                Stream xamlStream = SourceFileInfo.Stream;
-                if (AllowImplicitXmlnsDeclaration && SourceFileInfo.IsXamlFile && xamlStream != null)
-                {
-                    Stream originalStream = xamlStream;
-                    xamlStream = InjectImplicitXmlnsNamespaces(originalStream);
-                    try { originalStream?.Dispose(); } catch { }
-                    SourceFileInfo.Stream = xamlStream;
-                }
-
-                xamlParser = new ParserExtension(this, _parserContext, bamlWriter, xamlStream, pass2)
+                xamlParser = new ParserExtension(this, _parserContext, bamlWriter, SourceFileInfo.Stream, pass2)
                 {
                     ParserHooks = ParserHooks
                 };
@@ -584,142 +563,6 @@ namespace MS.Internal
                 bamlStream?.Close();
                 bamlStream = null;
             }
-        }
-
-        //
-        // Simpler XAML / implicit namespaces support.
-        //
-        // Rewrites a XAML stream whose root element omits the standard xmlns
-        // declarations so that the default WPF presentation and xaml namespaces
-        // are injected before parsing. Returns the original stream unchanged when
-        // the root already declares namespaces (or when no root element is found).
-        //
-        private static Stream InjectImplicitXmlnsNamespaces(Stream input)
-        {
-            if (input == null)
-            {
-                return null;
-            }
-
-            // Read all bytes without closing the underlying stream, then work on an
-            // in-memory copy so the caller's stream lifetime is not affected.
-            byte[] originalBytes;
-            using (MemoryStream buffer = new MemoryStream())
-            {
-                input.CopyTo(buffer);
-                originalBytes = buffer.ToArray();
-            }
-
-            Encoding encoding = Encoding.UTF8;
-            string text = encoding.GetString(originalBytes);
-
-            string rewritten = InjectImplicitXmlnsNamespaces(text);
-            byte[] outBytes = ReferenceEquals(rewritten, text) ? originalBytes : encoding.GetBytes(rewritten);
-
-            MemoryStream ms = new MemoryStream(outBytes);
-            ms.Position = 0;
-            return ms;
-        }
-
-        private static string InjectImplicitXmlnsNamespaces(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                return text;
-            }
-
-            // Locate the first element start tag, skipping XML declarations,
-            // processing instructions, comments and DOCTYPE declarations.
-            int i = 0;
-            int len = text.Length;
-            while (i < len)
-            {
-                while (i < len && char.IsWhiteSpace(text[i])) i++;
-                if (i >= len || text[i] != '<')
-                {
-                    break;
-                }
-
-                if (i + 1 < len && text[i + 1] == '?')
-                {
-                    int end = text.IndexOf("?>", i, StringComparison.Ordinal);
-                    if (end < 0) break;
-                    i = end + 2;
-                    continue;
-                }
-
-                if (i + 3 < len && text[i + 1] == '!' && text[i + 2] == '-' && text[i + 3] == '-')
-                {
-                    int end = text.IndexOf("-->", i, StringComparison.Ordinal);
-                    if (end < 0) break;
-                    i = end + 3;
-                    continue;
-                }
-
-                if (i + 1 < len && text[i + 1] == '!')
-                {
-                    int end = text.IndexOf('>', i);
-                    if (end < 0) break;
-                    i = end + 1;
-                    continue;
-                }
-
-                break;
-            }
-
-            if (i >= len || text[i] != '<')
-            {
-                return text;
-            }
-
-            // Find the matching '>' of the start tag, honouring quoted attributes.
-            int j = i;
-            bool inDouble = false;
-            bool inSingle = false;
-            while (j < len)
-            {
-                char c = text[j];
-                if (inDouble)
-                {
-                    if (c == '"') inDouble = false;
-                }
-                else if (inSingle)
-                {
-                    if (c == '\'') inSingle = false;
-                }
-                else
-                {
-                    if (c == '"') inDouble = true;
-                    else if (c == '\'') inSingle = true;
-                    else if (c == '>') break;
-                }
-                j++;
-            }
-
-            if (j >= len)
-            {
-                return text;
-            }
-
-            string startTag = text.Substring(i, j - i + 1);
-
-            // If any xmlns declaration is already present, leave the file alone.
-            if (startTag.Contains("xmlns", StringComparison.Ordinal))
-            {
-                return text;
-            }
-
-            // Insert before a self-closing '/>'.
-            int insertPos = j;
-            if (insertPos > i && text[insertPos - 1] == '/')
-            {
-                insertPos--;
-            }
-
-            const string injection = " xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"";
-#pragma warning disable CA1845
-            return text.Substring(0, insertPos) + injection + text.Substring(insertPos);
-#pragma warning restore CA1845
         }
 
         private void GenerateSource()

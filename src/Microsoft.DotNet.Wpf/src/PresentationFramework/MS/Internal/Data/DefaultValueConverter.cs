@@ -175,6 +175,20 @@ namespace MS.Internal.Data
         internal static TypeConverter GetConverter(Type type)
         {
             TypeConverter typeConverter = null;
+
+            // NativeAOT only: the known-type table below creates its converters with Activator.CreateInstance, which fails for a converter
+            // whose constructor the compiler did not keep (BooleanConverter, for a DataTrigger's Value="True"). The framework's own table of
+            // intrinsic converters (bool, int, double, string, enums ...) creates them directly. Everywhere else this is not run.
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+            {
+                typeConverter = TypeDescriptor.GetConverter(type);
+                if (typeConverter != null && typeConverter.GetType() != typeof(TypeConverter))
+                {
+                    return typeConverter;
+                }
+                typeConverter = null;
+            }
+
             WpfKnownType knownType = XamlReader.BamlSharedSchemaContext.GetKnownXamlType(type) as WpfKnownType;
             if (knownType != null && knownType.TypeConverter != null)
             {

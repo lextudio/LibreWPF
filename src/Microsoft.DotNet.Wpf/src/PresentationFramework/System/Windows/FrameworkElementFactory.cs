@@ -456,12 +456,78 @@ namespace System.Windows
             // Not expecting InvalidCastException - Type.set should have
             //  verified that it is a FrameworkElement or FrameworkContentElement.
 
-            if (_knownTypeFactory != null)
+            // A creator set by SetCreator wins whatever the order of Type and SetCreator (the Type setter replaces _knownTypeFactory).
+            DependencyObject instance = _creator != null
+                ? _creator()
+                : _knownTypeFactory != null
+                    ? _knownTypeFactory.Invoke() as DependencyObject
+                    : (DependencyObject)Activator.CreateInstance(_type);
+
+            _initializer?.Invoke(instance);
+            return instance;
+        }
+
+        /// <summary>
+        ///     How to create the node: without reflection. The factory otherwise creates it with <see cref="Activator.CreateInstance(Type)"/>,
+        ///     which NativeAOT cannot do for a type whose constructor the compiler did not keep. Call after setting <see cref="Type"/>.
+        ///     Used by code the XAML source generator emits.
+        /// </summary>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public void SetCreator(Func<DependencyObject> creator)
+        {
+            if (_sealed)
             {
-                return _knownTypeFactory.Invoke() as DependencyObject;
+                throw new InvalidOperationException(SR.Format(SR.CannotChangeAfterSealed, "FrameworkElementFactory"));
             }
 
-            return (DependencyObject)Activator.CreateInstance(_type);
+            _creator = creator;
+        }
+
+        /// <summary>
+        ///     How the node this factory creates becomes a part of its parent's node, when the parent does not take it as a child
+        ///     through <see cref="IAddChild"/>: for example <c>(parent, child) =&gt; ((Track)parent).Thumb = (Thumb)child</c>.
+        ///     The node is otherwise an ordinary factory child: it is named, can be bound to the template and targeted by triggers.
+        ///     Used by code the XAML source generator emits.
+        /// </summary>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public void SetAttacher(Action<DependencyObject, DependencyObject> attacher)
+        {
+            if (_sealed)
+            {
+                throw new InvalidOperationException(SR.Format(SR.CannotChangeAfterSealed, "FrameworkElementFactory"));
+            }
+
+            _attacher = attacher;
+        }
+
+        private bool HasChildWithoutAttacher()
+        {
+            for (FrameworkElementFactory child = _firstChild; child != null; child = child._nextSibling)
+            {
+                // A text child is added with IAddChild.AddText: an attacher does not make it independent of IAddChild.
+                if (child._attacher == null || child._text != null)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        ///     Code to run on every instance this factory creates, right after it is created: for what
+        ///     <see cref="SetValue(DependencyProperty, object)"/> cannot express, such as filling a collection property
+        ///     (<c>Grid.ColumnDefinitions</c>) or setting an object-valued CLR property (<c>Track.Thumb</c>).
+        ///     Used by code the XAML source generator emits, so a template needs no BAML.
+        /// </summary>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public void SetInitializer(Action<DependencyObject> initializer)
+        {
+            if (_sealed)
+            {
+                throw new InvalidOperationException(SR.Format(SR.CannotChangeAfterSealed, "FrameworkElementFactory"));
+            }
+
+            _initializer = initializer;
         }
 
         /// <summary>
@@ -547,8 +613,8 @@ namespace System.Windows
             if (_firstChild != null)
             {
                 // This factory has children, it must implement IAddChild so that these
-                // children can be added to the logical tree
-                if (!typeof(IAddChild).IsAssignableFrom(_type))
+                // children can be added to the logical tree (unless every child brings its own way of attaching)
+                if (!typeof(IAddChild).IsAssignableFrom(_type) && HasChildWithoutAttacher())
                 {
                     throw new InvalidOperationException(SR.Format(SR.TypeMustImplementIAddChild, _type.Name));
                 }
@@ -875,6 +941,13 @@ namespace System.Windows
 
         private void AddNodeToParent( DependencyObject parent, FrameworkObject childFrameworkObject )
         {
+            // The child has its own way of becoming a part of the parent (a property such as Track.Thumb): used instead of IAddChild.
+            if (_attacher != null)
+            {
+                _attacher(parent, childFrameworkObject.DO);
+                return;
+            }
+
             Grid parentGrid;
             ColumnDefinition childNodeColumnDefinition;
             RowDefinition childNodeRowDefinition = null;
@@ -946,7 +1019,7 @@ namespace System.Windows
             if( childFactory != null )
             {
                 iAddChild = frameworkObject.DO as IAddChild;
-                if (iAddChild == null)
+                if (iAddChild == null && HasChildWithoutAttacher())
                 {
                     throw new InvalidOperationException(SR.Format(SR.TypeMustImplementIAddChild,
                                                          frameworkObject.DO.GetType().Name));
@@ -967,7 +1040,7 @@ namespace System.Windows
                 {
                     // Use frameworkObject's IAddChild to add this node.
                     FrameworkObject childFrameworkObject = childFactory.InstantiateUnoptimizedTree();
-                    AddNodeToParent(frameworkObject.DO, childFrameworkObject );
+                    childFactory.AddNodeToParent(frameworkObject.DO, childFrameworkObject);
                 }
 
                 childFactory = childFactory._nextSibling;
@@ -1267,6 +1340,9 @@ namespace System.Windows
         private Type _type;
         private string _text;
         private Func<object> _knownTypeFactory;
+        private Func<DependencyObject> _creator;
+        private Action<DependencyObject> _initializer;
+        private Action<DependencyObject, DependencyObject> _attacher;
         private string _childName;
         internal int _childIndex = -1; // Being used in Style.ProcessTemplateStyles
 

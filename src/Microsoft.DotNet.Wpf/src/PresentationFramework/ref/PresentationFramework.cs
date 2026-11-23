@@ -764,6 +764,12 @@ namespace System.Windows
         public void RemoveHandler(System.Windows.RoutedEvent routedEvent, System.Delegate handler) { }
         public void SetBinding(System.Windows.DependencyProperty dp, System.Windows.Data.BindingBase binding) { }
         public void SetResourceReference(System.Windows.DependencyProperty dp, object name) { }
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public void SetInitializer(System.Action<System.Windows.DependencyObject> initializer) { }
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public void SetCreator(System.Func<System.Windows.DependencyObject> creator) { }
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public void SetAttacher(System.Action<System.Windows.DependencyObject, System.Windows.DependencyObject> attacher) { }
         public void SetValue(System.Windows.DependencyProperty dp, object value) { }
     }
     public partial class FrameworkPropertyMetadata : System.Windows.UIPropertyMetadata

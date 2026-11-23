@@ -388,6 +388,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                     }
                     return TimeSpan.TryParse(value, inv, out var every) ? $"new {repeat}(global::System.TimeSpan.FromTicks({every.Ticks}))" : $"\"{EscapeString(value)}\"";
                 }
+                case "System.Uri":
+                    return $"new global::System.Uri(\"{EscapeString(value)}\", global::System.UriKind.RelativeOrAbsolute)";
                 case "System.Windows.PropertyPath":
                     return $"new global::System.Windows.PropertyPath(\"{EscapeString(value)}\")";
                 case "System.Windows.Media.Animation.KeyTime":

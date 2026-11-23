@@ -45,6 +45,12 @@ namespace LibreWPF.Xaml.SourceGenerator
             // A loose ResourceDictionary: generated into a class that has no x:Name fields.
             public bool LooseDictionary { get; set; }
 
+            // The resource path of the XAML file being generated (themes/generic.xaml, mainwindow.xaml): what a relative Source URI is resolved against.
+            public string ResourcePath { get; set; } = string.Empty;
+
+            // Set once a <ResourceDictionary Source="..."> is emitted: the generated class then needs its __XsgLoadDictionary helper.
+            public bool UsesDictionaryLoader { get; set; }
+
             public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
         }
 
@@ -737,6 +743,75 @@ namespace LibreWPF.Xaml.SourceGenerator
         /// and writes through the descriptor, listens to INotifyPropertyChanged by the descriptor's Name, and honours IsReadOnly for
         /// TwoWay, so no change to the binding engine is needed and nothing is looked up by reflection.
         /// </summary>
+        /// <summary>
+        /// Where a <c>Source</c> URI written in the XAML file at <paramref name="currentResourcePath"/> points: the assembly name (null: this
+        /// assembly) and the project-relative resource path, lower-case with '/' separators. Handles relative paths (resolved against the
+        /// file's directory), rooted ones (<c>/Styles/a.xaml</c>), <c>pack://application:,,,/a.xaml</c> and <c>pack://application:,,,/Other;component/a.xaml</c>.
+        /// </summary>
+        private static (string? Assembly, string Path) ResolveResourceUri(string source, string currentResourcePath)
+        {
+            var text = source.Trim().Replace('\\', '/');
+            string? assembly = null;
+            const string packPrefix = "pack://application:,,,";
+            if (text.StartsWith(packPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                text = text.Substring(packPrefix.Length);
+            }
+            var marker = text.IndexOf(";component/", StringComparison.OrdinalIgnoreCase);
+            if (marker >= 0)
+            {
+                var assemblyPart = text.Substring(0, marker).TrimStart('/');
+                var version = assemblyPart.IndexOf(';');
+                assembly = version >= 0 ? assemblyPart.Substring(0, version) : assemblyPart;
+                text = "/" + text.Substring(marker + ";component/".Length);
+            }
+
+            if (!text.StartsWith("/", StringComparison.Ordinal))
+            {
+                var slash = currentResourcePath.LastIndexOf('/');
+                text = (slash >= 0 ? currentResourcePath.Substring(0, slash + 1) : string.Empty) + text;
+            }
+
+            // normalise ./ and ../
+            var parts = new List<string>();
+            foreach (var part in text.Split('/'))
+            {
+                if (part.Length == 0 || part == ".") continue;
+                if (part == ".." ) { if (parts.Count > 0) parts.RemoveAt(parts.Count - 1); continue; }
+                parts.Add(part);
+            }
+            return (assembly, string.Join("/", parts).ToLowerInvariant());
+        }
+
+        /// <summary>
+        /// <c>&lt;ResourceDictionary Source="Styles/Brushes.xaml"/&gt;</c>: the dictionary file is compiled into this assembly (or the one named
+        /// by a pack URI) and registered under its resource path, so the reference is a registry lookup at build-known coordinates, not a run-time
+        /// load of a BAML or XAML resource.
+        /// </summary>
+        private static string DictionaryFromSource(string source)
+        {
+            var context = s_context!;
+            var (assembly, path) = ResolveResourceUri(source, context.ResourcePath);
+            context.UsesDictionaryLoader = true;
+            var assemblyName = assembly ?? context.Features.ResourceAssemblyName ?? context.Compilation.AssemblyName ?? string.Empty;
+            return $"__XsgLoadDictionary(\"{EscapeString(assemblyName)}\", \"{EscapeString(path)}\")";
+        }
+
+        private static void AppendDictionaryLoaderIfUsed(StringBuilder sb)
+        {
+            if (s_context is not { UsesDictionaryLoader: true })
+            {
+                return;
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("        private static global::System.Windows.ResourceDictionary __XsgLoadDictionary(string assembly, string path)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            if (global::System.Windows.Markup.XamlSourceGeneratedResources.TryCreateDictionary(assembly, path, out var dictionary)) return dictionary;");
+            sb.AppendLine("            throw new global::System.IO.FileNotFoundException(\"The resource dictionary '\" + path + \"' is not compiled into '\" + assembly + \"' by the XAML source generator.\", path);");
+            sb.AppendLine("        }");
+        }
+
         private static void AppendCompiledPropertyHelperIfUsed(StringBuilder sb)
         {
             if (s_context is not { UsesCompiledProperty: true })
@@ -879,6 +954,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             sb.Append(bodyText);
             sb.AppendLine("        }");
             AppendCompiledPropertyHelperIfUsed(sb);
+            AppendDictionaryLoaderIfUsed(sb);
             sb.AppendLine("    }");
             sb.AppendLine("}");
 

@@ -98,6 +98,13 @@ AOT 模式下它们应当是错误，由作者改成 `x:DataType` 或具体类�
 6. DataTrigger 的 `Value="True"`：`DefaultValueConverter.GetConverter` 经 BAML 已知类型表用 `Activator` 创建 `BooleanConverter`。仅在 NativeAOT 下
    （`RuntimeFeature.IsDynamicCodeSupported` 为 false）先用 `TypeDescriptor` 的内置转换器，JIT 路径不变。
 
+7. 真实应用要有的东西：`App.xaml`（`StartupUri`、`Source="..."` 合并字典）和带 `x:Class` 的 `UserControl`。BAML 下它们靠运行时 `LoadComponent`/pack URI 解析，
+   NativeAOT 下没有资源可读。解法同主题字典：每个有无参构造函数的 `x:Class` 根对象由模块初始化器按"程序集名 + 资源路径"注册
+   （`XamlSourceGeneratedResources.RegisterComponent`），`Application.LoadComponent(Uri)`（`StartupUri` 与公开的 `LoadComponent` 都经过它）先查这个注册表，
+   注册表为空（不用生成器的应用）时立刻返回、走原来的资源路径；`<ResourceDictionary Source>` 在编译期把路径解析成注册表查找（相对路径、`/` 开头、
+   `pack://application:,,,/`、`;component/` 都支持）；`Uri` 值按类型转换。示例现在有 `App.xaml`、`Styles/Brushes.xaml`、`Card.xaml`：自检 11 项通过，
+   JIT 与 AOT 可视树 134 个元素一致，窗口内容像素 0 差异。
+
 仍然开放：
 
 - ILC 还列出 `ProGPU.Wpf` 里 13 个"必定抛异常"的方法：调用了 PresentationCore 里不存在的成员（`GlyphRun` 的构造函数和 `FontSize`/`GlyphIndices`、

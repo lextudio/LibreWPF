@@ -175,6 +175,13 @@ public class CompiledBindingsTests
     // ---- run time -------------------------------------------------------------------------------------------------------------
 
     private const string WpfStandIns = """
+        namespace System.Windows.Markup
+        {
+            public static class XamlSourceGeneratedResources
+            {
+                public static void RegisterComponent(string assemblyName, string resourcePath, System.Func<object> factory) { }
+            }
+        }
         namespace System.Windows
         {
             public class DependencyProperty { public static readonly object UnsetValue = new object(); }

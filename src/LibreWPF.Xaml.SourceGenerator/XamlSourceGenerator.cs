@@ -214,6 +214,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return;
             }
 
+            s_context!.ResourcePath = resourcePath;
+
             var source = text.ToString();
             var withNamespaces = InjectImplicitXmlns(source);
             if (!string.Equals(withNamespaces, source, StringComparison.Ordinal) && !features.SimplerXaml)
@@ -396,8 +398,26 @@ namespace LibreWPF.Xaml.SourceGenerator
             }
 
             AppendCompiledPropertyHelperIfUsed(sb);
+            AppendDictionaryLoaderIfUsed(sb);
 
             sb.AppendLine("    }");
+
+            // The root object of this file is registered under its resource path, so Application.StartupUri / LoadComponent(Uri) create it
+            // without a BAML resource. Only when the code-behind class exists with a parameterless constructor, and not for the Application.
+            if (s_context!.Within is { IsAbstract: false } component
+                && ResolveTypeName(root, defaultNs) != "System.Windows.Application"
+                && component.InstanceConstructors.Any(c => c.Parameters.Length == 0 && c.DeclaredAccessibility is Accessibility.Public or Accessibility.Internal))
+            {
+                var registrar = "__XsgComponent_" + fullClassName.Replace('.', '_');
+                sb.AppendLine("    #pragma warning disable CA2255 // module initializer in a library: it only registers a factory");
+                sb.AppendLine($"    internal static class {registrar}");
+                sb.AppendLine("    {");
+                sb.AppendLine("        [global::System.Runtime.CompilerServices.ModuleInitializer]");
+                sb.AppendLine("        internal static void Register() =>");
+                sb.AppendLine($"            global::System.Windows.Markup.XamlSourceGeneratedResources.RegisterComponent(\"{EscapeString(s_context.Compilation.AssemblyName ?? string.Empty)}\", \"{EscapeString(resourcePath)}\", static () => new {globalClassName}());");
+                sb.AppendLine("    }");
+                sb.AppendLine("    #pragma warning restore CA2255");
+            }
 
             if (!string.IsNullOrEmpty(ns))
             {
@@ -493,6 +513,14 @@ namespace LibreWPF.Xaml.SourceGenerator
             {
                 sb.AppendLine($"{pad}// Unknown type: {el.Name.LocalName}");
                 return "null!";
+            }
+
+            // <ResourceDictionary Source="Styles/Brushes.xaml"/>: a dictionary file compiled into an assembly, found by its resource path.
+            if (typeName == "System.Windows.ResourceDictionary" && el.Attribute("Source") is { } dictionarySource && !el.Elements().Any())
+            {
+                var dictionaryVar = $"__ResourceDictionary_{++localId}";
+                sb.AppendLine($"{pad}var {dictionaryVar} = {DictionaryFromSource(dictionarySource.Value)};");
+                return dictionaryVar;
             }
 
             // <Binding Path="..." RelativeSource="{...}" /> (inside a MultiBinding): the same code as the {Binding ...} markup.
@@ -1008,6 +1036,13 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     var key = value.Substring(value.IndexOf(' ') + 1).Trim().TrimEnd('}').Trim();
                     sb.AppendLine($"{pad}this.SetResourceReference(global::{typeName ?? "System.Windows.FrameworkElement"}.{attrLocal}Property, \"{key}\");");
+                    continue;
+                }
+
+                // The property's CLR type is known from the compilation: convert the value to it at build time (StartupUri, Title, ...).
+                if (!attr.Name.LocalName.Contains(".") && TypedPropertyValue(value, typeName ?? "System.Windows.FrameworkElement", attrLocal, el, defaultNs) is { } typedRoot)
+                {
+                    sb.AppendLine($"{pad}this.{attrLocal} = {typedRoot};");
                     continue;
                 }
 

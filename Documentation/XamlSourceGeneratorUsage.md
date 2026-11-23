@@ -104,8 +104,23 @@ A prototype that publishes and runs with `PublishAot=true` on macOS is in openav
 compiled bindings (no reflection over view models), an XSG theme registered as `PresentationFramework.Aero2` and rooted with
 `TrimmerRootAssembly` (NativeAOT runs module initializers only of assemblies in the image), and `_SuppressWpfTrimError=true`.
 
-Not yet: the in-box theme assemblies (`PresentationFramework.Aero2`, `.Fluent`, ...) are still built with the BAML compiler, and a
-`ResourceDictionary Source="..."` reference is still loaded through BAML/`Application.LoadComponent`.
+### Application, `StartupUri` and `Source`
+
+With no BAML, nothing can be loaded from a resource at run time, so what BAML resolves at run time is resolved at build time:
+
+- **`<ResourceDictionary Source="Styles/Brushes.xaml"/>`** (also inside `MergedDictionaries`): the dictionary file is a project item compiled by the
+  generator and registered under its resource path, so the reference becomes a lookup of that path in the generated registry
+  (`XamlSourceGeneratedResources.TryCreateDictionary`). The path is resolved at build time: relative to the referencing file's folder,
+  rooted (`/Styles/a.xaml`), `pack://application:,,,/a.xaml`, or `pack://application:,,,/Other;component/a.xaml` (another assembly, a version in
+  the assembly part is ignored). A dictionary that is not compiled in fails when it is created with a `FileNotFoundException` that names it.
+- **The root object of every `x:Class` XAML file** with a (public or internal) parameterless constructor in its code-behind is registered under its
+  assembly name and resource path by a module initializer (`XamlSourceGeneratedResources.RegisterComponent`); the `Application` is not. At run time
+  `Application.LoadComponent(Uri)` asks that registry first, and with it `Application.StartupUri="MainWindow.xaml"` creates the window with no
+  BAML resource. The registry is empty in an application that does not use the generator: `LoadComponent` then returns to the resource path at once.
+- A `Uri`-typed value is generated as `new Uri("...", UriKind.RelativeOrAbsolute)`.
+
+Not yet: the in-box theme assemblies (`PresentationFramework.Aero2`, `.Fluent`, ...) are still built with the BAML compiler; `Frame.Source` /
+`NavigationService` navigation to a XAML file and `Image Source` pack URIs are not resolved at build time.
 
 ## Which XAML works where
 

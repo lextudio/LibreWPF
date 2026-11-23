@@ -30,6 +30,13 @@ public class HotReloadRegistryTests
     // Only what the generated InitializeComponent and handler use. Dispatcher runs the callback at once and
     // counts it, which is how the test sees which windows were re-initialized.
     private const string WpfStandIns = """
+        namespace System.Windows.Markup
+        {
+            public static class XamlSourceGeneratedResources
+            {
+                public static void RegisterComponent(string assemblyName, string resourcePath, System.Func<object> factory) { }
+            }
+        }
         namespace System.Windows.Threading
         {
             public enum DispatcherPriority { Normal }

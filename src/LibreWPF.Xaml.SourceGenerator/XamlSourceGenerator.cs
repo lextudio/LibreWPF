@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 
 namespace LibreWPF.Xaml.SourceGenerator
@@ -98,11 +99,16 @@ namespace LibreWPF.Xaml.SourceGenerator
             var xamlFiles = context.AdditionalTextsProvider
                 .Where(static t => t.Path.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase));
 
-            context.RegisterSourceOutput(xamlFiles, static (spc, file) =>
+            // The switches of the XSG features arrive as build_property.* (CompilerVisibleProperty, see
+            // ProGPU.Wpf.Sdk.XamlSourceGeneratorFeatures.targets). A host that passes none keeps every feature on.
+            var features = context.AnalyzerConfigOptionsProvider
+                .Select(static (provider, _) => XsgFeatures.From(provider.GlobalOptions));
+
+            context.RegisterSourceOutput(xamlFiles.Combine(features), static (spc, input) =>
             {
                 try
                 {
-                    Generate(spc, file);
+                    Generate(spc, input.Left, input.Right);
                 }
                 catch (Exception ex)
                 {
@@ -119,7 +125,55 @@ namespace LibreWPF.Xaml.SourceGenerator
             });
         }
 
-        private static void Generate(SourceProductionContext spc, AdditionalText file)
+        // The XSG features that can be switched off per project (LibreWpfSimplerXaml, LibreWpfCSharpExpressions).
+        private readonly struct XsgFeatures : IEquatable<XsgFeatures>
+        {
+            public XsgFeatures(bool simplerXaml, bool csharpExpressions)
+            {
+                SimplerXaml = simplerXaml;
+                CSharpExpressions = csharpExpressions;
+            }
+
+            public bool SimplerXaml { get; }
+
+            public bool CSharpExpressions { get; }
+
+            // Absent means on: the generator only runs for a project that chose the XSG path, and a host that does not pass the
+            // properties gets the behaviour the generator always had. Only an explicit false switches a feature off.
+            public static XsgFeatures From(AnalyzerConfigOptions options) =>
+                new XsgFeatures(IsOn(options, "LibreWpfSimplerXaml"), IsOn(options, "LibreWpfCSharpExpressions"));
+
+            private static bool IsOn(AnalyzerConfigOptions options, string name) =>
+                !options.TryGetValue("build_property." + name, out var value)
+                || !string.Equals(value?.Trim(), "false", StringComparison.OrdinalIgnoreCase);
+
+            public bool Equals(XsgFeatures other) => SimplerXaml == other.SimplerXaml && CSharpExpressions == other.CSharpExpressions;
+
+            public override bool Equals(object? obj) => obj is XsgFeatures other && Equals(other);
+
+            public override int GetHashCode() => (SimplerXaml ? 1 : 0) | (CSharpExpressions ? 2 : 0);
+        }
+
+        // This project does not use analyzer release tracking (neither do LWXSG0001/0002 above).
+#pragma warning disable RS2008
+        private static readonly DiagnosticDescriptor s_simplerXamlOff = new DiagnosticDescriptor(
+            "LWXSG0003",
+            "Simpler XAML is switched off",
+            "{0}: the root element declares no xmlns, which needs Simpler XAML (LibreWpfSimplerXaml). Declare the namespaces, or leave LibreWpfSimplerXaml on (it follows UseLibreWpfXamlSourceGenerator).",
+            "LibreWPF.Xaml",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_csharpExpressionsOff = new DiagnosticDescriptor(
+            "LWXSG0004",
+            "C# expressions are switched off",
+            "{0}({1},{2}): '{3}' is a C# expression, which needs LibreWpfCSharpExpressions (it follows UseLibreWpfXamlSourceGenerator)",
+            "LibreWPF.Xaml",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+#pragma warning restore RS2008
+
+        private static void Generate(SourceProductionContext spc, AdditionalText file, XsgFeatures features)
         {
             var text = file.GetText(spc.CancellationToken);
             if (text is null)
@@ -127,10 +181,18 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return;
             }
 
+            var source = text.ToString();
+            var withNamespaces = InjectImplicitXmlns(source);
+            if (!string.Equals(withNamespaces, source, StringComparison.Ordinal) && !features.SimplerXaml)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(s_simplerXamlOff, Location.None, file.Path));
+                return;
+            }
+
             XDocument doc;
             try
             {
-                doc = XDocument.Parse(InjectImplicitXmlns(text.ToString()), LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
+                doc = XDocument.Parse(features.SimplerXaml ? withNamespaces : source, LoadOptions.PreserveWhitespace | LoadOptions.SetLineInfo);
             }
             catch (System.Xml.XmlException ex)
             {
@@ -150,6 +212,11 @@ namespace LibreWPF.Xaml.SourceGenerator
 
             var root = doc.Root;
             if (root is null)
+            {
+                return;
+            }
+
+            if (!features.CSharpExpressions && ReportCSharpExpressions(spc, file.Path, doc))
             {
                 return;
             }
@@ -874,6 +941,31 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return full;
             }
             return null;
+        }
+
+        // With C# expressions switched off a `{cs: ...}` value is an error, reported where it is written; nothing is generated for the file.
+        private static bool ReportCSharpExpressions(SourceProductionContext spc, string path, XDocument doc)
+        {
+            var found = false;
+            foreach (var attribute in doc.Descendants().Attributes())
+            {
+                if (!attribute.Value.TrimStart().StartsWith("{cs:", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var info = (IXmlLineInfo)attribute;
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    s_csharpExpressionsOff,
+                    Location.None,
+                    path,
+                    info.HasLineInfo() ? info.LineNumber : 0,
+                    info.HasLineInfo() ? info.LinePosition : 0,
+                    attribute.Value.Trim()));
+                found = true;
+            }
+
+            return found;
         }
 
         // Simpler XAML: a root start tag with no xmlns declaration gets the default

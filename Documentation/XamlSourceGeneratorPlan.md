@@ -71,6 +71,11 @@ Default: `false` (BAML path). The two paths are mutually exclusive per project.
   `XamlXmlReader` about implicit namespaces was reverted: rebuilding the reader a caller hands to `XamlXmlReader` loses its
   namespace context, which broke every `XamlReader.Parse(text, ParserContext)` template without `xmlns`, e.g. TomsToolbox's.
   `XamlXmlReaderNamespaceContextTests` pins this.)
+- A project has one overall XSG switch (`UseLibreWpfXamlSourceGenerator`) and one switch per XSG feature (`LibreWpfSimplerXaml`,
+  `LibreWpfCSharpExpressions`, ...), each defaulting to the overall switch; see `XamlSourceGeneratorUsage.md`. The switches live in the
+  SDK targets (`ProGPU.Wpf.Sdk.XamlSourceGeneratorFeatures.targets`) and reach the generator as `build_property.*`; nothing is written for
+  the run time. The three project kinds are covered by tests: `XamlSourceGeneratorFeatureTests` (the generator),
+  `XsgFeatureSwitchesMsBuildTests` (MSBuild evaluation) and `XsgFeatureSwitchesBuildTests` (a real build through the whole chain).
 - BAML path remains the default and is never removed
 - Source-gen path must produce identical runtime behavior for supported XAML subset
 - Designers that require BAML (legacy) must still work; source-gen path may have

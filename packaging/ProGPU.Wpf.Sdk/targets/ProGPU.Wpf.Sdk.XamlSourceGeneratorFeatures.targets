@@ -1,0 +1,54 @@
+<Project>
+
+  <!--
+    Switches of the XAML Source Generator (XSG) path.
+
+    BAML (PresentationBuildTasks) and XSG are two compile paths of which a project uses exactly one:
+
+      UseLibreWpfXamlSourceGenerator   the overall switch. Off (default): the project is compiled by the BAML compiler, exactly
+                                       as upstream WPF, and none of the feature switches below does anything.
+                                       On: XAML is compiled by the generator.
+
+    The feature switches belong to the XSG path. Each one follows the overall switch unless the project sets it explicitly,
+    so `UseLibreWpfXamlSourceGenerator=true` alone turns every feature on and any feature can still be turned off:
+
+      LibreWpfSimplerXaml              Simpler XAML: a root element without xmlns gets the default WPF presentation and `x`
+                                       namespaces. Off: such a document is an error (LWXSG0003).
+      LibreWpfCSharpExpressions        C# expressions: `{cs: <expression>}`. Off: a `{cs:}` value is an error (LWXSG0004).
+
+    The values reach the generator as build_property.<name> (CompilerVisibleProperty). A new feature is added here with one
+    property, one CompilerVisibleProperty and one row in _LibreWpfXsgFeatureChecks.
+
+    Nothing here writes anything the run time reads: System.Xaml, shared by every WPF program in a process, stays stock.
+  -->
+
+  <PropertyGroup>
+    <UseLibreWpfXamlSourceGenerator Condition="'$(UseLibreWpfXamlSourceGenerator)' == ''">false</UseLibreWpfXamlSourceGenerator>
+
+    <!-- What the project said itself, before the defaults below: used only to warn about a switch that cannot do anything. -->
+    <_LibreWpfSimplerXamlExplicit>$(LibreWpfSimplerXaml)</_LibreWpfSimplerXamlExplicit>
+    <_LibreWpfCSharpExpressionsExplicit>$(LibreWpfCSharpExpressions)</_LibreWpfCSharpExpressionsExplicit>
+
+    <LibreWpfSimplerXaml Condition="'$(LibreWpfSimplerXaml)' == ''">$(UseLibreWpfXamlSourceGenerator)</LibreWpfSimplerXaml>
+    <LibreWpfCSharpExpressions Condition="'$(LibreWpfCSharpExpressions)' == ''">$(UseLibreWpfXamlSourceGenerator)</LibreWpfCSharpExpressions>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="UseLibreWpfXamlSourceGenerator" />
+    <CompilerVisibleProperty Include="LibreWpfSimplerXaml" />
+    <CompilerVisibleProperty Include="LibreWpfCSharpExpressions" />
+  </ItemGroup>
+
+  <!-- A feature set to true while the overall switch is off does nothing (the BAML compiler has none of these features): say so. -->
+  <Target Name="_LibreWpfXsgFeatureChecks"
+          BeforeTargets="CoreCompile"
+          Condition="'$(UseLibreWpfXamlSourceGenerator)' != 'true'">
+    <Warning Code="LWXSG5001"
+             Condition="'$(_LibreWpfSimplerXamlExplicit)' == 'true'"
+             Text="LibreWpfSimplerXaml=true has no effect: Simpler XAML is a feature of the XAML source generator and UseLibreWpfXamlSourceGenerator is not enabled. The BAML compiler does not support it." />
+    <Warning Code="LWXSG5001"
+             Condition="'$(_LibreWpfCSharpExpressionsExplicit)' == 'true'"
+             Text="LibreWpfCSharpExpressions=true has no effect: C# expressions are a feature of the XAML source generator and UseLibreWpfXamlSourceGenerator is not enabled. The BAML compiler does not support them." />
+  </Target>
+
+</Project>

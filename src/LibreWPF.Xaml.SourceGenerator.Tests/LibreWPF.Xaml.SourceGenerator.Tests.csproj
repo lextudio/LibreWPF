@@ -14,4 +14,9 @@
   <ItemGroup>
     <ProjectReference Include="..\LibreWPF.Xaml.SourceGenerator\LibreWPF.Xaml.SourceGenerator.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The SDK's switches of the XSG path, evaluated by XsgFeatureSwitchesMsBuildTests with the real MSBuild. -->
+    <Content Include="..\..\packaging\ProGPU.Wpf.Sdk\targets\ProGPU.Wpf.Sdk.XamlSourceGeneratorFeatures.targets"
+             Link="XsgFeatures.targets" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

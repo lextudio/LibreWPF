@@ -47,8 +47,9 @@ none keeps every feature on. A new XSG feature is one more property, one more `C
 | `LWXSG0004` | error | a `{cs:}` value is present and `LibreWpfCSharpExpressions` is off |
 | `LWXSG0005` | error | an `x:DataType` names no type the compilation can see |
 | `LWXSG0006` | error | a compiled binding path names a property its type does not have (or cannot be read from the generated code) |
-| `LWXSG0007` | warning | a binding inside an `x:DataType` scope could not be compiled (indexer, attached property, unnameable type): it stays reflective |
-| `LWXSG0008` | warning | a construct the generator does not handle yet is left out of the generated code: a trigger other than `Trigger` (`MultiTrigger`, `DataTrigger`, `EventTrigger`), an `EventSetter`, `Style.Resources` or template resources, a dictionary resource without a key, or a binding property it cannot write (`Source` other than `{StaticResource}`, `Converter` other than `{StaticResource}`, an unparsable `Delay`, an unknown property). It used to be skipped with only a comment in the generated file |
+| `LWXSG0007` | warning | a binding that stays reflective at run time: inside an `x:DataType` scope or behind a `RelativeSource` / `ElementName` it could not be compiled (an indexer, a type that cannot be named, a member that exists only on the run-time type of a base-typed value such as `TemplatedParent.View`) |
+| `LWXSG0008` | warning | a construct the generator cannot generate is left out, or a value is left as text: an `EventSetter`, a resource without `x:Key` or `TargetType`/`DataType`, a binding property it cannot write (`Source` that is not `{StaticResource}`/`{x:Static}`, an unparsable `Delay`, an unknown property), or a text for a value whose type has a `TypeConverter` the generator does not know |
+| `LWXSG0009` | info | a top-level resource of a loose dictionary is left out because `LibreWpfXsgExcludeTargetTypes` names its type |
 | `LWXSG5001` | warning | a feature switch is `true` while `UseLibreWpfXamlSourceGenerator` is off |
 
 ## Compiled bindings
@@ -90,6 +91,12 @@ groups. The in-box themes use all of them, which is why a full `PresentationFram
 Registration is by **assembly name**. `LibreWpfXsgResourceAssemblyName` makes a project register its dictionaries under another assembly's
 name, so an XSG-compiled theme can stand in for `PresentationFramework.Aero2` (`themes/aero2.normalcolor.xaml`): `SystemResources`
 asks the registry by name before it loads the theme assembly, which is what makes themes work under NativeAOT, where that load fails.
+
+`LibreWpfXsgExcludeTargetTypes` (comma-separated type names, simple or full; a `;` would start an `.editorconfig` comment and truncate the list)
+leaves out the top-level resources whose `TargetType` / `DataType` / `x:Key="{x:Type ...}"` names one of them (info `LWXSG0009`). A theme for a
+platform that lacks a control does not style it: the document viewers (`DocumentViewer`, `FlowDocumentReader`, `FlowDocumentScrollViewer`,
+`FlowDocumentPageViewer`, and the `FlowDocument` / `FixedDocument` / `FixedDocumentSequence` templates that create them) need `System.Printing`,
+which is Windows-only, and NativeAOT cannot even compile a method that needs a type the assembly does not have. Empty (the default): nothing is left out.
 
 ## NativeAOT
 

@@ -57,6 +57,60 @@ IL2026 调用目标排行：`TypeDescriptor.GetConverter` **38**、`Assembly.Get
 - Silk.NET 找不到 `.deps.json`，`CodeBase` 不受支持（原生库定位）；
 - `NISC18030.ttf` 格式异常（字体枚举，与 AOT 无关，但在启动路径上）。
 
+## 1.1 进展：真实 Aero2 过生成器（2026-11-23）
+
+把真实的 `Aero2.NormalColor.xaml`（9.6k 行）交给生成器，对真实 `PresentationFramework` 引用编译生成结果：
+
+| | 开始 | 现在 |
+|---|---|---|
+| 生成代码的 C# 编译错误 | 459 | **0** |
+| 未生成构造（LWXSG0008） | 171 | **0**（最后剩下的 `Style.Resources` ×2、`ControlTemplate.Resources` ×1 随后也生成了，见 1.2） |
+| 未编译、保留反射的绑定（LWXSG0007） | 49 | **8**（全是 `TemplatedParent.View` 这类成员只在运行时类型上存在的路径） |
+
+做了什么：Trigger 家族（Trigger / MultiTrigger / DataTrigger / MultiDataTrigger / EventTrigger、`EnterActions`/`ExitActions`、属性元素形式的 `Binding`）；
+按属性类型转换值（含 `Rect`、`KeyTime`、`RepeatBehavior`、`PropertyPath`、`Geometry`、枚举忽略大小写）；集合/子对象属性元素按属性形状处理；
+非字符串资源键（`{x:Type}`、`{x:Static}`、`{ComponentResourceKey}`、`DataTemplateKey`）；绑定在 `RelativeSource` / `ElementName` 的源类型已知时编译，
+依赖属性步骤直接用 `DependencyProperty`（变更通知由 DP 系统负责），`(Owner.Property)` 路径。
+运行时只在 `FrameworkElementFactory` 上加了三个只有生成代码会调用的增量方法：`SetInitializer`（让模板节点能填集合属性和对象属性）、`SetAttacher`
+（`Track.Thumb`、带名字的 `RowDefinition` 仍是真正的模板节点）、`SetCreator`（`new T()`，不用 `Activator`），见 1.2 第 5 点；已在 NativeAOT 二进制里验证。
+
+仍然是反射、且**不可能**在编译期解决的绑定：路径经过基类类型的值再取只有运行时类型才有的成员（如 `TemplatedParent.View`，`View` 属于 `ListView`）。
+AOT 模式下它们应当是错误，由作者改成 `x:DataType` 或具体类型的路径；内置主题里剩下的 8 处需要在主题里改写。
+
+### 1.2 真实 Aero2 在 NativeAOT 二进制里运行（2026-11-23）
+
+示例（`openavalon/samples/XsgNativeAot`）现在用的是**真实的 Aero2.NormalColor.xaml**，由 XSG 编译、没有 BAML。窗口里有 10 个控件，
+`compare-jit-aot.sh` 把它在 JIT（原版 BAML Aero2）和 NativeAOT（XSG Aero2）下的可视树做 diff：**两边都是 129 个元素，类型和尺寸逐个相同**，
+唯一差别是窗口客户区总高度 612 对 608（原生窗口边框，窗口内部没有差别）。构造主题字典时 WPF 会对全部约 215 个模板调用 `Seal()`，也已通过。
+
+这一轮暴露并解决的问题，按出现顺序：
+
+1. `;` 在 .editorconfig 里是注释符，`build_property` 里的分号分隔列表被截断到第一项 → 排除列表改用逗号。
+2. `System.Printing` 的可移植实现 56 个公开类型只有 1 个（上游是 C++/CLI）。ILC 把所有需要 `XpsDocumentWriter` 的方法（文档查看器）替换成抛异常的桩，
+   包括整个主题的 `InitializeComponent`。**按决定 printing 保持 Windows-only**：主题用 `LibreWpfXsgExcludeTargetTypes` 排除 `DocumentViewer`、`FlowDocument*`、`FixedDocument*`。
+3. 生成器把静默的字符串当成值（`Setter.Value` 是 `object`，C# 编译器不会报错）：现在"类型已知但不会转换"会报 LWXSG0008；补上
+   `TextDecorationCollection`、`DoubleCollection`、`PointCollection`、`ICommand`（`NavigationCommands.X`）、`char`。
+4. 模板里局部 `.Resources` 的键（`Grid.Resources`、`Style.Resources`、`ControlTemplate.Resources`）：延迟查找 + 生成时的作用域栈；一个资源看不到自己和排在它后面的同字典资源。
+   （统计：523 个 `StaticResource` 引用全部指向文档里更早的顶层键，没有前向引用，所以顶层按文档顺序即时解析是对的。）
+5. `<Border.Child>` 这类写成属性元素的内容属性，以及 `<Track.Thumb>`、带名字或带 `DynamicResource` 的 `RowDefinition`：必须是**真正的模板节点**（有名字、触发器可引用、`TemplateBinding` 生效），
+   不能是初始化 lambda 里 `new` 出来的对象。运行时因此加了 `FrameworkElementFactory.SetAttacher`；再加 `SetInitializer`（填集合/设对象属性）和 `SetCreator`（`new T()`，
+   不用 `Activator.CreateInstance`）。三个都是增量、只有生成的代码调用。
+6. DataTrigger 的 `Value="True"`：`DefaultValueConverter.GetConverter` 经 BAML 已知类型表用 `Activator` 创建 `BooleanConverter`。仅在 NativeAOT 下
+   （`RuntimeFeature.IsDynamicCodeSupported` 为 false）先用 `TypeDescriptor` 的内置转换器，JIT 路径不变。
+
+仍然开放：
+
+- ILC 还列出 `ProGPU.Wpf` 里 13 个"必定抛异常"的方法：调用了 PresentationCore 里不存在的成员（`GlyphRun` 的构造函数和 `FontSize`/`GlyphIndices`、
+  `DrawingContext(ProGPU.Scene.DrawingContext)`、`DashStyle(double[], double)`、`FontFamily.NativeFont`、`BitmapSource.GpuTexture`）。哪些在真实渲染路径上，要靠像素验证才知道。
+- 8 个绑定（`TemplatedParent.View` 之类，成员只在运行时类型上存在）按设计保留反射，AOT 模式应当报错。
+- 其余内置主题（Classic、Fluent、AeroLite、Luna、Royale）还没有跑；每个主题的"排除哪些平台不支持的控件"需要各自一份清单。
+- 屏幕像素：已验证。示例用进程自己的窗口截图（`MacWindowCapture`，进程可以不经录屏权限抓自己的窗口；`screencapture`、别的进程、DevFlow 的
+  `ui/screenshot`（走 `RenderTargetBitmap`，需要 Windows 独有的 `wpfgfx`）都不行）。JIT（原版 BAML Aero2）与 AOT（XSG Aero2）的窗口内容区**任何通道的差异都不超过 1/255**；
+  标题栏不同是因为 macOS 按可执行文件链接的 SDK 版本画窗口边框（JIT 的 apphost 是 SDK 15.5，AOT 可执行文件是 SDK 27.0），不是 LibreWPF 的问题。
+  文字能正常画出来，说明 ILC 列出的 `GlyphRun` 相关"必抛异常"方法不在这条渲染路径上；其余几个（`BitmapSource.GpuTexture`、`DashStyle` 构造函数等）还没有被走到。
+- DevFlow 代理（`LeXtudio.DevFlow.Agent.LibreWpf`）在 NativeAOT 下 HTTP 服务能起来，但所有请求失败：`System.Text.Json` 反射序列化被禁用（需要 source-generated 的 JSON 上下文）。
+  它自己还不是 NativeAOT 兼容的；JIT 下可视树和动作都可用，只有 `ui/screenshot` 在 macOS 上不可用。
+
 ## 2. 架构原则
 
 1. **AOT 应用只有一条 XAML 路径：XSG。** BAML、System.Xaml、`PresentationBuildTasks` 保留给 JIT 应用和设计器，不删除也不改语义。运行时用 feature switch 把 BAML/XAML 加载路径裁掉，而不是让它们在 AOT 下"尽量能用"。

@@ -1234,6 +1234,7 @@
     <Compile Include="System\Windows\Markup\XamlPoint3DCollectionSerializer.cs" />
     <Compile Include="System\Windows\Markup\XamlPointCollectionSerializer.cs" />
     <Compile Include="System\Windows\Markup\XamlReader.cs" />
+    <Compile Include="System\Windows\Markup\XamlSourceGeneratedResources.cs" />
     <Compile Include="System\Windows\Markup\XamlReaderConstants.cs" />
     <Compile Include="System\Windows\Markup\XamlSerializer.cs" />
     <Compile Include="System\Windows\Markup\XamlSerializerUtil.cs" />

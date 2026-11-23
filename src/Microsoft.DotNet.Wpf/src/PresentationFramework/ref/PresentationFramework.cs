@@ -11558,6 +11558,13 @@ namespace System.Windows.Markup
         public override void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context) { }
 #pragma warning restore CS0672 // Member overrides obsolete member
     }
+    public static partial class XamlSourceGeneratedResources
+    {
+        public static void RegisterDictionary(System.Reflection.Assembly assembly, string resourcePath, System.Func<System.Windows.ResourceDictionary> factory) { }
+        public static void RegisterDictionary(string assemblyName, string resourcePath, System.Func<System.Windows.ResourceDictionary> factory) { }
+        public static bool TryCreateDictionary(System.Reflection.Assembly assembly, string resourcePath, out System.Windows.ResourceDictionary dictionary) { throw null; }
+        public static bool TryCreateDictionary(string assemblyName, string resourcePath, out System.Windows.ResourceDictionary dictionary) { throw null; }
+    }
     public partial class XamlReader
     {
         public XamlReader() { }

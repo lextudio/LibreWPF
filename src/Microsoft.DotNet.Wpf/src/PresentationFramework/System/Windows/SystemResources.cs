@@ -626,18 +626,15 @@ namespace System.Windows
                             dictionaryAssemblyName = _assemblyName;
                         }
 
+                        dictionary = LoadDictionaryOrGenerated(_themedDictionaryAssembly, dictionaryAssemblyName, ThemedResourceName, isTraceEnabled, out _themedDictionarySourceUri);
                         if (_themedDictionaryAssembly != null)
                         {
-                            dictionary = LoadDictionary(_themedDictionaryAssembly, dictionaryAssemblyName, ThemedResourceName, isTraceEnabled, out _themedDictionarySourceUri);
                             if ((dictionary == null) && !external)
                             {
                                 // Themed resources should have been inside the source assembly, but failed to load.
                                 // Try falling back to external in case this is a theme that shipped later.
                                 LoadExternalAssembly(false /* classic */, false /* generic */, out _themedDictionaryAssembly, out dictionaryAssemblyName);
-                                if (_themedDictionaryAssembly != null)
-                                {
-                                    dictionary = LoadDictionary(_themedDictionaryAssembly, dictionaryAssemblyName, ThemedResourceName, isTraceEnabled, out _themedDictionarySourceUri);
-                                }
+                                dictionary = LoadDictionaryOrGenerated(_themedDictionaryAssembly, dictionaryAssemblyName, ThemedResourceName, isTraceEnabled, out _themedDictionarySourceUri);
                             }
                         }
 
@@ -654,10 +651,7 @@ namespace System.Windows
                                 dictionaryAssemblyName = _assemblyName;
                             }
 
-                            if (_themedDictionaryAssembly != null)
-                            {
-                                dictionary = LoadDictionary(_themedDictionaryAssembly, dictionaryAssemblyName, ClassicResourceName, isTraceEnabled, out _themedDictionarySourceUri);
-                            }
+                            dictionary = LoadDictionaryOrGenerated(_themedDictionaryAssembly, dictionaryAssemblyName, ClassicResourceName, isTraceEnabled, out _themedDictionarySourceUri);
                         }
 
                         _themedDictionary = dictionary;
@@ -713,10 +707,7 @@ namespace System.Windows
                             dictionaryAssemblyName = _assemblyName;
                         }
 
-                        if (_genericDictionaryAssembly != null)
-                        {
-                            dictionary = LoadDictionary(_genericDictionaryAssembly, dictionaryAssemblyName, GenericResourceName, isTraceEnabled, out _genericDictionarySourceUri);
-                        }
+                        dictionary = LoadDictionaryOrGenerated(_genericDictionaryAssembly, dictionaryAssemblyName, GenericResourceName, isTraceEnabled, out _genericDictionarySourceUri);
 
                         _genericDictionary = dictionary;
                         _genericLoaded = true;
@@ -874,6 +865,25 @@ namespace System.Windows
                 {
                     return new ResourceDictionaryInfo(_assembly, _themedDictionaryAssembly, _themedDictionary, _themedDictionarySourceUri);
                 }
+            }
+
+            /// <summary>
+            ///     A dictionary compiled by the XAML source generator and registered under the assembly name and resource path (it
+            ///     needs no BAML and, under NativeAOT, no loadable theme assembly), else the BAML resource of the assembly.
+            /// </summary>
+            private ResourceDictionary LoadDictionaryOrGenerated(Assembly assembly, string assemblyName, string resourceName, bool isTraceEnabled, out Uri dictionarySourceUri)
+            {
+                dictionarySourceUri = null;
+                string path = $"{resourceName}.xaml";
+                ResourceDictionary generated;
+                if (assembly != null
+                    ? System.Windows.Markup.XamlSourceGeneratedResources.TryCreateDictionary(assembly, path, out generated)
+                    : (assemblyName != null && System.Windows.Markup.XamlSourceGeneratedResources.TryCreateDictionary(assemblyName, path, out generated)))
+                {
+                    return generated;
+                }
+
+                return assembly != null ? LoadDictionary(assembly, assemblyName, resourceName, isTraceEnabled, out dictionarySourceUri) : null;
             }
 
             /// <summary>

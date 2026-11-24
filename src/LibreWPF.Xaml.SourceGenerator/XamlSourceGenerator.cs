@@ -654,6 +654,12 @@ namespace LibreWPF.Xaml.SourceGenerator
                         "Visibility" => "global::System.Windows.Visibility",
                         _ => null,
                     };
+                    // Any other property: the cast is the property's own type when the compilation knows it (MultiBinding.Converter, ...).
+                    if (castType is null && FindClrProperty(TypeSymbol(typeName), attrLocal) is { } clrProperty
+                        && clrProperty.Type.SpecialType != SpecialType.System_Object && IsNameable(clrProperty.Type))
+                    {
+                        castType = clrProperty.Type.ToDisplayString(s_typeFormat);
+                    }
                     if (castType is not null)
                     {
                         sb.AppendLine($"{pad}{varName}.{attrLocal} = ({castType})this.FindResource(\"{key}\");");
@@ -755,6 +761,12 @@ namespace LibreWPF.Xaml.SourceGenerator
                 var nameLiteral = EscapeString(nameAttr.Value);
                 sb.AppendLine($"{pad}if ((object){varName} is global::System.Windows.FrameworkElement __fe_{varName}) __fe_{varName}.Name = \"{nameLiteral}\";");
                 sb.AppendLine($"{pad}else if ((object){varName} is global::System.Windows.FrameworkContentElement __fce_{varName}) __fce_{varName}.Name = \"{nameLiteral}\";");
+                // VisualState, VisualStateGroup and the like are neither: their Name is a plain property (the RuntimeNameProperty), which
+                // VisualStateManager.GoToState searches by.
+                if (!IsFrameworkElementOrContentElement(typeName) && FindClrProperty(TypeSymbol(typeName), "Name") is { Type.SpecialType: SpecialType.System_String, SetMethod.DeclaredAccessibility: Accessibility.Public })
+                {
+                    sb.AppendLine($"{pad}{varName}.Name = \"{nameLiteral}\";");
+                }
                 sb.AppendLine($"{pad}if ((object)this is global::System.Windows.DependencyObject __scopeRoot_{varName})");
                 sb.AppendLine($"{pad}{{");
                 sb.AppendLine($"{pad}    var __scope_{varName} = global::System.Windows.NameScope.GetNameScope(__scopeRoot_{varName});");
@@ -893,14 +905,16 @@ namespace LibreWPF.Xaml.SourceGenerator
             return varName;
         }
 
-        private static bool HasSetResourceReference(string typeName)
+        private static bool IsFrameworkElementOrContentElement(string typeName)
         {
             for (var t = TypeSymbol(typeName); t != null; t = t.BaseType)
             {
                 if (t.ToDisplayString() is "System.Windows.FrameworkElement" or "System.Windows.FrameworkContentElement") return true;
             }
-            return TypeSymbol(typeName) == null; // unknown type (not in the compilation): the previous behaviour
+            return false;
         }
+
+        private static bool HasSetResourceReference(string typeName) => IsFrameworkElementOrContentElement(typeName) || TypeSymbol(typeName) == null; // unknown type: the previous behaviour
 
         private static string? ResolveTypeName(XElement el, string defaultNs)
         {

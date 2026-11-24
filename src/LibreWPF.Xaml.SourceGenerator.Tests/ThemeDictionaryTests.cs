@@ -38,6 +38,7 @@ public class ThemeDictionaryTests
             public class Window : System.Windows.Controls.ContentControl { }
             public class SystemColors { public static object WindowBrushKey => null; }
         }
+        namespace System.Windows { public class VisualState { public string Name { get; set; } } }
         namespace System.Windows.Markup
         {
             [System.AttributeUsage(System.AttributeTargets.Class)]
@@ -724,6 +725,23 @@ public class ThemeDictionaryTests
         var (_, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfCompiledBindings", "true"));
 
         Assert.Contains(diagnostics, d => d.Id == "LWXSG0006");
+    }
+
+    [Fact]
+    public void AnXNameOnAVisualState_IsItsNameProperty()
+    {
+        var xaml = """
+            <Border x:Class="T.C" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+              <Border.Tag>
+                <VisualState x:Name="Normal" />
+              </Border.Tag>
+            </Border>
+            """;
+
+        var (code, _) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"));
+
+        // A line of its own that assigns the object's Name (the FrameworkElement branches above it assign the casts' Name).
+        Assert.Matches(@"(?m)^\s*__VisualState_\d+\.Name = ""Normal"";", code);
     }
 
     private sealed class Options(Dictionary<string, string> global) : AnalyzerConfigOptionsProvider

@@ -315,3 +315,14 @@ bin/Release/net10.0-windows/osx-arm64/publish/XsgAot check   # 输出 PASS/FAIL
 
 - 新语法 `x:DataType` / `x:CompileBindings` **不会**使 OpenDevelop 的 WPF 设计器打不开文档：设计器用自己的 XamlDom 解析器，它跳过 XAML 命名空间里除 `x:Name` 以外的所有属性；运行时的 System.Xaml 则会拒绝它们（"Cannot set unknown member"），所以不能把设计器的行为推断给运行时，也不能反过来。语言服务同样不报告这两个指令。两条结论都有回归测试（OpenDevelop 的 `XsgProject_CompiledBindingDirectives_DoNotStopTheDesigner`，WinAppVSCE 的 `CompiledBindingDirectiveTests`）。
 - 设计器和语言服务对 XSG 专用特性（Simpler XAML、`{cs:}`、编译绑定指令）的处理原则：只在项目启用了 XSG 且对应功能开关为开时才放宽，BAML 项目保持原样；运行时 System.Xaml 保持原版。
+
+## 附录 D：状态（2026-11-24，macOS arm64，均未发布）
+
+示例 `samples/XsgNativeAot` 在 JIT 与 NativeAOT 下各有 20 项自检，输出一致；JIT 与 AOT 的主窗口和画廊视觉树逐元素相同（135 / 236 个元素）。
+
+- **SDK**：`ProGPU.Wpf.Sdk.XamlSourceGeneratorNativeAot.targets`（`_SuppressWpfTrimError`、给所有项目引用加 `TrimmerRootAssembly`、`LibreWpfXsgAotStrict`、rd.xml）和 `...XamlSourceGeneratorResources.targets`（`<Resource>` → `.g.resources`）。`PublishAot` 下 LWXSG0007/0008 是错误。
+- **生成器**补齐：Aero2 的 LWXSG0007/0008 为 0（`TemplatedParent.View.*` 经唯一链路编译；内部类型的括号路径按名字查）；`<Binding.ValidationRules>`、非元素上的 `{Binding}`、`x:Name` 到 `VisualState.Name`、`Source` 绑定、矩阵文本的 Transform、带前缀的附加属性；AeroLite 与 Aero 可编译并在 NativeAOT 下运行，Luna/Royale/Classic 还不行（内部依赖属性 `ComboBox.IsSelectionBoxHighlighted`、`x:Shared=false`）。
+- **运行时**（只对注册过组件的应用生效）：`Frame.Source`/`NavigationService`、`Application.LoadComponent`、`SystemResources` 按名字查找、`XamlSourceGeneratedResources.SetDynamicResource`。
+- **D2 的 13 个“必抛”方法**：原因是构建而不是 NativeAOT：`ProGPU.Wpf` 编译在 `src/ProGPU.Compatibility/PresentationCore` 上，部署的便携 `PresentationCore` 没有那些成员，它们在这条通道里是死代码；文字、虚线、`ImageBrush`、几何、投影效果等公开 API 在 JIT 与 AOT 下都不会触达（示例的 `drawing context` 检查）。未覆盖：手工 `GlyphRun` 的 `DrawGlyphRun`、`ShaderEffect` 采样器、`Viewport3D` 纹理。
+- **PresentationFramework.Tests 基线**：把本系列对 PresentationFramework 的运行时改动和三个新测试文件撤回到系列之前后运行：467 个测试，15 失败；现在 502 个，15 失败（失败名单逐项相同：`RichTextBoxTests` ×10、`PortableFlowDocumentTests` ×4、`PortableWindowActivationServiceTests` ×1），新增的 35 个全部通过。所以这 15 个是原有的，与本系列无关。
+- **仍然开放**：Windows/Linux 未验证（D3）；生成器对每次编译变化都重新生成全部 XAML（编译绑定要解析类型，无法简单按文件缓存）；约 300 条运行时 AOT 警告（都在 NativeAOT 用不到的 XAML/BAML 路径上）；DevFlow 代理在 NativeAOT 下（见 wpf-labs 的 `docs/devflow/sync-roadmap.md`）；示例仍靠 `prepare.sh` 与 `XsgLocal.targets`，要等新 SDK 包发布。

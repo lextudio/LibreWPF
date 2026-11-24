@@ -38,4 +38,36 @@ public class SystemResourcesGeneratedDictionaryTests
         dictionary.Should().NotBeNull();
         dictionary[typeof(Probe)].Should().Be("generated");
     }
+
+    private static (ResourceDictionary? Dictionary, object?[] Args) LoadByName(string assemblyName, string resourceName)
+    {
+        // The assembly could not be loaded (NativeAOT: a theme assembly has no metadata), so only its name is known: assembly == null.
+        var method = typeof(SystemResources.ResourceDictionaries).GetMethod("LoadDictionaryOrGenerated",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        var instance = new SystemResources.ResourceDictionaries(typeof(Probe).Assembly);
+        var args = new object?[] { null, assemblyName, resourceName, false, null };
+        var result = (ResourceDictionary?)method.Invoke(instance, args);
+        return (result, args);
+    }
+
+    [Fact]
+    public void ByName_WhenTheAssemblyCannotBeLoaded_TheRegisteredDictionaryIsFound()
+    {
+        const string name = "Test.NativeAot.Theme";
+        XamlSourceGeneratedResources.RegisterDictionary(name, "themes/byname.xaml", () => new ResourceDictionary { ["k"] = "by name" });
+
+        var (dictionary, args) = LoadByName(name, "themes/byname");
+
+        dictionary.Should().NotBeNull();
+        dictionary!["k"].Should().Be("by name");
+        args[4].Should().BeNull("a generated dictionary has no BAML source URI");
+    }
+
+    [Fact]
+    public void ByName_WhenNothingIsRegistered_AndNoAssembly_TheAnswerIsNoDictionary_WithoutThrowing()
+    {
+        var (dictionary, _) = LoadByName("Test.NativeAot.Unregistered", "themes/none");
+
+        dictionary.Should().BeNull();
+    }
 }

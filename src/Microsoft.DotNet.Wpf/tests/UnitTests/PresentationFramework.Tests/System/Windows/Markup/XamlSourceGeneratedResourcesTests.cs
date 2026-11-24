@@ -271,4 +271,19 @@ public class XamlSourceGeneratedResourcesTests
         noTarget.Should().Throw<ArgumentNullException>();
         noKey.Should().Throw<ArgumentNullException>();
     }
+
+    [Fact]
+    public void AFrameNavigatingToARegisteredComponent_ShowsIt_WithoutAResourceStream()
+    {
+        // Frame.Source / NavigationService read a pack URI through a web request and parse BAML; a registered component has neither.
+        string assembly = UniqueName();
+        var page = new System.Windows.Controls.Page { Title = "generated" };
+        XamlSourceGeneratedResources.RegisterComponent(assembly, "nav.xaml", () => page);
+
+        var frame = new System.Windows.Controls.Frame();
+        frame.Navigate(new Uri($"pack://application:,,,/{assembly};component/nav.xaml"));
+        frame.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() => { }));
+
+        frame.Content.Should().BeSameAs(page);
+    }
 }

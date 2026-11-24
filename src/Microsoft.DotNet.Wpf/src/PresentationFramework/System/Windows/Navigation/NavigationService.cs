@@ -2607,6 +2607,15 @@ namespace System.Windows.Navigation
             WebResponse response = null;
             try
             {
+                // A page compiled by the XAML source generator has no BAML resource to read: its root object is created by registered
+                // code. Nothing is registered (and this returns at once) in every application that does not use the generator.
+                if (_request is PackWebRequest
+                    && System.Windows.Markup.XamlSourceGeneratedResources.TryCreateComponent(source, out object generatedContent))
+                {
+                    ((IContentContainer)this).OnContentReady(MimeTypeMapper.BamlMime, generatedContent, source, navState);
+                    return;
+                }
+
                 if (_request is PackWebRequest)
                 {
                     response = WpfWebRequestHelper.GetResponse(_request);

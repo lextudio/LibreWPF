@@ -50,6 +50,8 @@
     <CompilerVisibleProperty Include="LibreWpfXsgResourceAssemblyName" />
     <!-- Optional: comma-separated types whose styles a generated theme leaves out (the document viewers where System.Printing is not available). -->
     <CompilerVisibleProperty Include="LibreWpfXsgExcludeTargetTypes" />
+    <!-- Optional: LibreWpfLazyDictionaries=false builds every entry of a generated resource dictionary up front (default: each entry is created when first asked for). -->
+    <CompilerVisibleProperty Include="LibreWpfLazyDictionaries" />
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Link" />
   </ItemGroup>
 

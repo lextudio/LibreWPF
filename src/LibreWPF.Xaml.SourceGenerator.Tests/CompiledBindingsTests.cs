@@ -313,6 +313,12 @@ public class CompiledBindingsTests
             {
                 public System.Collections.Generic.List<ResourceDictionary> MergedDictionaries { get; } = new();
                 public bool Contains(object key) => ContainsKey(key);
+                public new object this[object key]
+                {
+                    get { var v = base[key]; OnGettingValue(key, ref v, out var canCache); if (canCache) base[key] = v; return v; }
+                    set => base[key] = value;
+                }
+                protected virtual void OnGettingValue(object key, ref object value, out bool canCache) { canCache = false; }
             }
             public class Application { public static Application Current => null; public object TryFindResource(object key) => null; }
             public class ResourceReferenceKeyNotFoundException : System.Exception { public ResourceReferenceKeyNotFoundException(string m, object k) : base(m) { } }
@@ -335,6 +341,82 @@ public class CompiledBindingsTests
         }
         """;
 
+    private const string LazyXaml = """
+        <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+          <SolidColorBrush x:Key="Accent" Color="Red" />
+          <Button x:Key="Uses" Content="{StaticResource Accent}" />
+          <Button x:Key="Later" Content="{StaticResource Accent}" />
+          <Button x:Key="LoopA" Content="{StaticResource LoopB}" />
+          <Button x:Key="LoopB" Content="{StaticResource LoopA}" />
+        </ResourceDictionary>
+        """;
+
+    private const string ButtonStandIn = """
+        namespace System.Windows.Controls { public class Button { public object Content { get; set; } } }
+        """;
+
+    [Fact]
+    public void ALazyEntry_ResolvesStaticResources_AndACycleEndsAsAnUnresolvedReference()
+    {
+        var context = new AssemblyLoadContext("xsg-lazy", isCollectible: true);
+        try
+        {
+            var assembly = context.LoadFromStream(new MemoryStream(Compile(LazyXaml, DictionaryStandIns + ButtonStandIn, "/src/Lib/Themes/Generic.xaml", ("MSBuildProjectDirectory", "/src/Lib"))));
+            RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
+            var registered = (IDictionary)assembly.GetType("System.Windows.Markup.XamlSourceGeneratedResources")!.GetField("Registered")!.GetValue(null)!;
+            var dictionary = ((Delegate)registered["themes/generic.xaml"]!).DynamicInvoke()!;
+            var indexer = dictionary.GetType().GetProperty("Item", [typeof(object)])!;
+
+            var accent = indexer.GetValue(dictionary, ["Accent"])!;
+            var uses = indexer.GetValue(dictionary, ["Uses"])!;
+            Assert.Same(accent, uses.GetType().GetProperty("Content")!.GetValue(uses));
+            // A cached entry is the same instance the next time.
+            Assert.Same(uses, indexer.GetValue(dictionary, ["Uses"]));
+
+            // A cycle ends as an unresolved reference, as when the entries were built in order (the key being created is not found in this dictionary).
+            var loop = Assert.Throws<TargetInvocationException>(() => indexer.GetValue(dictionary, ["LoopA"]));
+            Assert.Equal("ResourceReferenceKeyNotFoundException", loop.InnerException!.GetType().Name);
+        }
+        finally
+        {
+            context.Unload();
+        }
+    }
+
+    [Fact]
+    public void ARootResourceDictionaryWithAClass_IsNotLazy()
+    {
+        const string xaml = """
+            <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                x:Class="Sample.Res">
+              <SolidColorBrush x:Key="Accent" Color="Red" />
+            </ResourceDictionary>
+            """;
+        var (code, diagnostics) = Generate(xaml, path: "/src/Res.xaml", properties: [("MSBuildProjectDirectory", "/src")]);
+        Assert.Empty(diagnostics);
+        Assert.DoesNotContain("__XsgLazyEntry", code);
+        Assert.DoesNotContain("OnGettingValue", code);
+        Assert.Contains("this[\"Accent\"] = ", code);
+    }
+
+    [Fact]
+    public void ALooseResourceDictionary_CreatesItsEntriesLazily_UnlessSwitchedOff()
+    {
+        var (lazy, lazyDiagnostics) = Generate(Generic, path: "/src/Lib/Themes/Generic.xaml", properties: [("MSBuildProjectDirectory", "/src/Lib")]);
+        Assert.Empty(lazyDiagnostics);
+        Assert.Contains("override void OnGettingValue(", lazy);
+        Assert.Contains("private object __Create_", lazy);
+        Assert.Contains("new __XsgLazyEntry(", lazy);
+
+        var (eager, eagerDiagnostics) = Generate(Generic, path: "/src/Lib/Themes/Generic.xaml", properties: [("MSBuildProjectDirectory", "/src/Lib"), ("LibreWpfLazyDictionaries", "false")]);
+        Assert.Empty(eagerDiagnostics);
+        Assert.DoesNotContain("OnGettingValue", eager);
+        Assert.DoesNotContain("__XsgLazyEntry", eager);
+        Assert.Contains("this[\"Accent\"] = ", eager);
+    }
+
     [Fact]
     public void ALooseResourceDictionary_IsGeneratedAndRegisteredUnderItsThemePath()
     {
@@ -351,8 +433,10 @@ public class CompiledBindingsTests
             RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
             var registered = (IDictionary)assembly.GetType("System.Windows.Markup.XamlSourceGeneratedResources")!.GetField("Registered")!.GetValue(null)!;
             var factory = (Delegate)registered["themes/generic.xaml"]!;
-            var dictionary = (IDictionary)factory.DynamicInvoke()!;
-            Assert.Equal("System.Windows.Media.SolidColorBrush", dictionary["Accent"]!.GetType().FullName);
+            var dictionary = factory.DynamicInvoke()!;
+            // The stand-in's indexer (like the real ResourceDictionary's) creates a lazily registered entry on first access.
+            var indexer = dictionary.GetType().GetProperty("Item", [typeof(object)])!;
+            Assert.Equal("System.Windows.Media.SolidColorBrush", indexer.GetValue(dictionary, ["Accent"])!.GetType().FullName);
         }
         finally
         {

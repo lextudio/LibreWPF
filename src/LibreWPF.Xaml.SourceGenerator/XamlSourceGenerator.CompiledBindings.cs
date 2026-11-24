@@ -48,6 +48,9 @@ namespace LibreWPF.Xaml.SourceGenerator
             // A loose ResourceDictionary: generated into a class that has no x:Name fields.
             public bool LooseDictionary { get; set; }
 
+            // The methods that create the entries of a loose dictionary lazily (LibreWpfLazyDictionaries), appended to the class.
+            public StringBuilder LazyMethods { get; } = new StringBuilder();
+
             // The resource path of the XAML file being generated (themes/generic.xaml, mainwindow.xaml): what a relative Source URI is resolved against.
             public string ResourcePath { get; set; } = string.Empty;
 
@@ -1164,11 +1167,14 @@ namespace LibreWPF.Xaml.SourceGenerator
             sb.AppendLine("        // The dictionaries of Style/template/element .Resources being built, innermost last (see EmitResourceChildren).");
             sb.AppendLine("        private readonly global::System.Collections.Generic.List<global::System.Windows.ResourceDictionary> __scopes = new global::System.Collections.Generic.List<global::System.Windows.ResourceDictionary>();");
             sb.AppendLine();
+            sb.AppendLine("        // The keys of the lazily created entries that are being created right now (the dictionary's own lazy creation).");
+            sb.AppendLine("        private global::System.Collections.Generic.HashSet<object>? __creating;");
+            sb.AppendLine();
             sb.AppendLine("        // StaticResource inside the dictionary: the .Resources being built, then what this dictionary already holds, else the application's resources.");
             sb.AppendLine("        private object FindResource(object key)");
             sb.AppendLine("        {");
             sb.AppendLine("            for (var i = __scopes.Count - 1; i >= 0; i--) if (__scopes[i].Contains(key)) return global::System.Windows.Markup.XamlSourceGeneratedResources.ResolveEntry(__scopes[i][key], this);");
-            sb.AppendLine("            if (this.Contains(key)) return global::System.Windows.Markup.XamlSourceGeneratedResources.ResolveEntry(this[key], this);");
+            sb.AppendLine("            if (this.Contains(key) && !(__creating?.Contains(key) ?? false)) return global::System.Windows.Markup.XamlSourceGeneratedResources.ResolveEntry(this[key], this);");
             sb.AppendLine("            var app = global::System.Windows.Application.Current?.TryFindResource(key);");
             sb.AppendLine("            return app ?? throw new global::System.Windows.ResourceReferenceKeyNotFoundException(\"Cannot find resource named '\" + key + \"'.\", key);");
             sb.AppendLine("        }");
@@ -1177,6 +1183,34 @@ namespace LibreWPF.Xaml.SourceGenerator
             sb.AppendLine("        {");
             sb.Append(bodyText);
             sb.AppendLine("        }");
+            if (s_context.LazyMethods.Length > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("        // An entry that is created when it is first asked for: the dictionary holds this marker until then.");
+                sb.AppendLine("        private sealed class __XsgLazyEntry");
+                sb.AppendLine("        {");
+                sb.AppendLine("            private readonly global::System.Func<object> _create;");
+                sb.AppendLine("            public __XsgLazyEntry(global::System.Func<object> create) => _create = create;");
+                sb.AppendLine("            public object Create() => _create();");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        protected override void OnGettingValue(object key, ref object value, out bool canCache)");
+                sb.AppendLine("        {");
+                sb.AppendLine("            if (value is __XsgLazyEntry lazy)");
+                sb.AppendLine("            {");
+                sb.AppendLine("                // The marker stays in the dictionary until the entry is created: while it is being created FindResource must not find it (as when every entry was built in order,");
+                sb.AppendLine("                // a StaticResource to the key being defined, such as a style based on the same type from outside, goes on to the outer resources).");
+                sb.AppendLine("                (__creating ??= new global::System.Collections.Generic.HashSet<object>()).Add(key);");
+                sb.AppendLine("                try { value = lazy.Create(); }");
+                sb.AppendLine("                finally { __creating!.Remove(key); }");
+                sb.AppendLine("                canCache = true;");
+                sb.AppendLine("                return;");
+                sb.AppendLine("            }");
+                sb.AppendLine("            base.OnGettingValue(key, ref value, out canCache);");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.Append(s_context.LazyMethods.ToString().Replace("global::System.Windows.FrameworkElement.FindResource(", "this.FindResource("));
+            }
             AppendCompiledPropertyHelperIfUsed(sb);
             AppendDictionaryLoaderIfUsed(sb);
             sb.AppendLine("    }");
@@ -1246,6 +1280,23 @@ namespace LibreWPF.Xaml.SourceGenerator
 
                 if (IsExcludedResource(child, defaultNs))
                 {
+                    continue;
+                }
+
+                if (s_context is { LooseDictionary: true, Features.LazyDictionaries: true }
+                    && ((child.Attribute(XName.Get("Key", XamlNamespace)) ?? child.Attribute("Key")) is not null || (child.Attribute("TargetType") ?? child.Attribute("DataType")) is not null))
+                {
+                    // One method per entry: JIT-compiled only when the entry is asked for (see the OnGettingValue override of the generated class).
+                    var method = $"__Create_{++localId}";
+                    var methodBody = new StringBuilder();
+                    var created = GenerateElement(methodBody, child, defaultNs, sourcePath, 12, ref localId);
+                    s_context.LazyMethods.AppendLine($"        private object {method}()");
+                    s_context.LazyMethods.AppendLine("        {");
+                    s_context.LazyMethods.Append(methodBody);
+                    s_context.LazyMethods.AppendLine($"            return {created};");
+                    s_context.LazyMethods.AppendLine("        }");
+                    s_context.LazyMethods.AppendLine();
+                    EmitKeyedResource(sb, "this", child, $"new __XsgLazyEntry({method})", defaultNs, pad);
                     continue;
                 }
 

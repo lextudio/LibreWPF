@@ -229,3 +229,11 @@ process and compares keys, styles, templates (the trees they instantiate), trigg
 equivalent except one understood difference: a `MenuItem` made as a `FrameworkElementFactory` node has no `LogicalParent`, so `MenuItem.Role` is `SubmenuItem` where BAML gives
 `TopLevelItem` (the menus in the `NavigationWindow`/`Frame` chrome). Still to do before the default changes: the full OpenDevelop CI on a closure built this way, and the
 regression run of the JIT theme lookup on Windows.
+
+
+### Lazy resource dictionaries
+
+A generated loose `ResourceDictionary` (a theme, `Generic.xaml`) creates each top-level keyed entry the first time it is asked for, in a method of its own, through the protected
+`ResourceDictionary.OnGettingValue` hook (the revised value is cached by the stock `ResourceDictionary`; no runtime change). Building a theme eagerly was one huge method whose JIT cost
+dominated startup. Measured first load of the dictionary, macOS arm64 JIT: Aero2 49 ms (eager XSG 463-635 ms, BAML 220 ms), Luna 66 ms (BAML 205 ms); all 7 in-box themes stay
+equivalent to BAML. `LibreWpfLazyDictionaries=false` restores the eager form. Merged dictionaries stay eager.

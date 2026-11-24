@@ -142,8 +142,9 @@ namespace LibreWPF.Xaml.SourceGenerator
         // The XSG features that can be switched off per project (LibreWpfSimplerXaml, LibreWpfCSharpExpressions).
         private readonly struct XsgFeatures : IEquatable<XsgFeatures>
         {
-            public XsgFeatures(bool simplerXaml, bool csharpExpressions, bool compiledBindings, string? resourceAssemblyName = null, string? excludedTargetTypes = null, bool aotStrict = false)
+            public XsgFeatures(bool simplerXaml, bool csharpExpressions, bool compiledBindings, string? resourceAssemblyName = null, string? excludedTargetTypes = null, bool aotStrict = false, bool lazyDictionaries = true)
             {
+                LazyDictionaries = lazyDictionaries;
                 AotStrict = aotStrict;
                 ResourceAssemblyName = resourceAssemblyName;
                 ExcludedTargetTypes = excludedTargetTypes ?? string.Empty;
@@ -153,6 +154,10 @@ namespace LibreWPF.Xaml.SourceGenerator
             }
 
             public bool CompiledBindings { get; }
+
+            // LibreWpfLazyDictionaries (default on): the entries of a generated resource dictionary (a theme, a Generic.xaml) are created when first asked for, each by a
+            // method of its own, instead of all at once: the cost of a large theme is the JIT of one huge method, and a window uses a handful of its styles.
+            public bool LazyDictionaries { get; }
 
             // LibreWpfXsgAotStrict (true when the project publishes with NativeAOT, see the SDK's NativeAot targets): a binding that is not compiled
             // (LWXSG0007) and a construct that is not generated (LWXSG0008) are errors, because there is no reflection or BAML fallback to run them.
@@ -178,7 +183,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                     IsOn(options, "LibreWpfCompiledBindings"),
                     options.TryGetValue("build_property.LibreWpfXsgResourceAssemblyName", out var assemblyName) && !string.IsNullOrWhiteSpace(assemblyName) ? assemblyName.Trim() : null,
                     options.TryGetValue("build_property.LibreWpfXsgExcludeTargetTypes", out var excluded) ? excluded.Trim() : null,
-                    options.TryGetValue("build_property.LibreWpfXsgAotStrict", out var strict) && string.Equals(strict?.Trim(), "true", StringComparison.OrdinalIgnoreCase));
+                    options.TryGetValue("build_property.LibreWpfXsgAotStrict", out var strict) && string.Equals(strict?.Trim(), "true", StringComparison.OrdinalIgnoreCase),
+                    IsOn(options, "LibreWpfLazyDictionaries"));
 
             private static bool IsOn(AnalyzerConfigOptions options, string name) =>
                 !options.TryGetValue("build_property." + name, out var value)
@@ -186,7 +192,7 @@ namespace LibreWPF.Xaml.SourceGenerator
 
             public bool Equals(XsgFeatures other) => SimplerXaml == other.SimplerXaml && CSharpExpressions == other.CSharpExpressions
                 && CompiledBindings == other.CompiledBindings && ResourceAssemblyName == other.ResourceAssemblyName
-                && ExcludedTargetTypes == other.ExcludedTargetTypes && AotStrict == other.AotStrict;
+                && ExcludedTargetTypes == other.ExcludedTargetTypes && AotStrict == other.AotStrict && LazyDictionaries == other.LazyDictionaries;
 
             public override bool Equals(object? obj) => obj is XsgFeatures other && Equals(other);
 

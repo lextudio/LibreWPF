@@ -487,9 +487,30 @@ public class CompiledBindingsTests
 
         var (code, diagnostics) = Generate(xaml, "/src/Theme/Themes/Generic.xaml", [("MSBuildProjectDirectory", "/src/Theme")]);
 
-        Assert.Contains("__XsgStaticPath(\"System.Globalization.GlobalizationMode, System.Private.CoreLib\", \"Invariant\")", code);
+        Assert.Contains("__XsgStaticPath(\"System.Globalization.GlobalizationMode, System.Private.CoreLib\", \"Invariant\", \"(g:GlobalizationMode.Invariant)\")", code);
         Assert.Contains("private static global::System.Windows.PropertyPath __XsgStaticPath(", code);
         Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+    }
+
+    [Fact]
+    public void AParenthesizedPathWhoseAssemblyIsNotReferenced_IsStillReported()
+    {
+        var xaml = """
+            <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:n="clr-namespace:Nowhere;assembly=Not.Referenced">
+              <Style TargetType="{x:Type Border}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Path=(n:Missing.Flag)}" Value="false" />
+                </Style.Triggers>
+              </Style>
+            </ResourceDictionary>
+            """;
+
+        var (code, diagnostics) = Generate(xaml, "/src/Theme/Themes/Generic.xaml", [("MSBuildProjectDirectory", "/src/Theme")]);
+
+        Assert.Contains(diagnostics, d => d.Id == "LWXSG0008" && d.GetMessage().Contains("(n:Missing.Flag)"));
+        Assert.DoesNotContain("__XsgStaticPath(", code);
     }
 
     [Fact]

@@ -520,8 +520,15 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return null;
             }
 
+            // The assembly must be one the compilation references: an internal type is invisible in metadata, but a name that points nowhere stays an error.
+            if (!context.Compilation.ReferencedAssemblyNames.Any(r => string.Equals(r.Name, assembly, StringComparison.OrdinalIgnoreCase)))
+            {
+                return null;
+            }
+
             context.UsesStaticLookup = true;
-            return $"__XsgStaticPath(\"{EscapeString(parts[0].Trim())}.{ownerWritten.Substring(colon + 1)}, {EscapeString(assembly)}\", \"{name}\")";
+            var typeName = $"{parts[0].Trim()}.{ownerWritten.Substring(colon + 1)}, {assembly}";
+            return $"__XsgStaticPath(\"{EscapeString(typeName)}\", \"{EscapeString(name)}\", \"{EscapeString($"({ownerWritten}.{name})")}\")";
         }
 
         /// <summary>
@@ -963,12 +970,12 @@ namespace LibreWPF.Xaml.SourceGenerator
             {
                 sb.AppendLine("""
                             [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
-                            private static global::System.Windows.PropertyPath __XsgStaticPath(string typeName, string member)
+                            private static global::System.Windows.PropertyPath __XsgStaticPath(string typeName, string member, string written)
                             {
                                 var property = global::System.Type.GetType(typeName)?.GetProperty(member,
                                     global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.NonPublic | global::System.Reflection.BindingFlags.Static);
-                                // A type that cannot be found leaves the binding unresolved, as it was.
-                                return property is null ? new global::System.Windows.PropertyPath(member) : new global::System.Windows.PropertyPath("(0)", property);
+                                // A type that cannot be found leaves the binding unresolved, exactly as the text did before: the path as written.
+                                return property is null ? new global::System.Windows.PropertyPath(written) : new global::System.Windows.PropertyPath("(0)", property);
                             }
                     """);
             }

@@ -54,4 +54,7 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>
+
+  <!-- -p:LibreWpfXsgThemes=true compiles this theme's XAML with the XAML source generator instead of the BAML compiler. -->
+  <Import Project="$(WpfSourceDir)Themes\Shared\LibreWPF.XsgThemes.targets" />
 </Project>

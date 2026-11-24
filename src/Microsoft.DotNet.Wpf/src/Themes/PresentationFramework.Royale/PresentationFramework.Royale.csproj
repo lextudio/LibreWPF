@@ -48,4 +48,11 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>
+
+  <!-- TopLevelHeaderTemplateKey in Royale.NormalColor.xaml binds ElementName=SubMenuBorder, which that template's namescope does not declare (other templates of the file do; the binding is dead in BAML too): the generator reports it, which must not fail this build. -->
+  <PropertyGroup>
+    <LibreWpfXsgAotStrict>false</LibreWpfXsgAotStrict>
+  </PropertyGroup>
+  <!-- -p:LibreWpfXsgThemes=true compiles this theme's XAML with the XAML source generator instead of the BAML compiler. -->
+  <Import Project="$(WpfSourceDir)Themes\Shared\LibreWPF.XsgThemes.targets" />
 </Project>

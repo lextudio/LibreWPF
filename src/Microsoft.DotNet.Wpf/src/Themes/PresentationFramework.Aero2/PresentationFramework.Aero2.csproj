@@ -50,4 +50,7 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>
+
+  <!-- -p:LibreWpfXsgThemes=true compiles Themes\Aero2.NormalColor.xaml with the XAML source generator instead of the BAML compiler. -->
+  <Import Project="$(WpfSourceDir)Themes\Shared\LibreWPF.XsgThemes.targets" />
 </Project>

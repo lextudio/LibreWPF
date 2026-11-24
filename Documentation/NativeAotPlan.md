@@ -326,3 +326,14 @@ bin/Release/net10.0-windows/osx-arm64/publish/XsgAot check   # 输出 PASS/FAIL
 - **D2 的 13 个“必抛”方法**：原因是构建而不是 NativeAOT：`ProGPU.Wpf` 编译在 `src/ProGPU.Compatibility/PresentationCore` 上，部署的便携 `PresentationCore` 没有那些成员，它们在这条通道里是死代码；文字、虚线、`ImageBrush`、几何、投影效果等公开 API 在 JIT 与 AOT 下都不会触达（示例的 `drawing context` 检查）。未覆盖：手工 `GlyphRun` 的 `DrawGlyphRun`、`ShaderEffect` 采样器、`Viewport3D` 纹理。
 - **PresentationFramework.Tests 基线**：把本系列对 PresentationFramework 的运行时改动和三个新测试文件撤回到系列之前后运行：467 个测试，15 失败；现在 502 个，15 失败（失败名单逐项相同：`RichTextBoxTests` ×10、`PortableFlowDocumentTests` ×4、`PortableWindowActivationServiceTests` ×1），新增的 35 个全部通过。所以这 15 个是原有的，与本系列无关。
 - **仍然开放**：Windows/Linux 未验证（D3）；生成器对每次编译变化都重新生成全部 XAML（编译绑定要解析类型，无法简单按文件缓存）；约 300 条运行时 AOT 警告（都在 NativeAOT 用不到的 XAML/BAML 路径上）；DevFlow 代理在 NativeAOT 下（见 wpf-labs 的 `docs/devflow/sync-roadmap.md`）；示例仍靠 `prepare.sh` 与 `XsgLocal.targets`，要等新 SDK 包发布。
+
+## 附录 E：D1 选方案 A（内置主题由 XSG 在 LibreWPF 自己的构建里编译）的状态（2026-11-24）
+
+决定：选方案 A，长期方案。已做的（均未发布，开关默认关）：
+
+- `src/Microsoft.DotNet.Wpf/src/Themes/Shared/LibreWPF.XsgThemes.targets`，七个主题项目（Aero2、Aero、AeroLite、Classic、Luna、Royale、Fluent）在末尾导入。`-p:LibreWpfXsgThemes=true`：主题 XAML 作为 `AdditionalFiles` 交给生成器，不产生 BAML，主题程序集在模块初始化器里按自己的名字注册字典。**不加属性时构建结果与以前完全相同**（Aero2 仍是 244736 字节、含 `g.resources`）。
+- 七个主题在 arcade 构建里都 0 错误地编译（生成代码在主题程序集内部，所以能用 `InternalsVisibleTo` 的内部成员和按名字找私有依赖属性；程序集大小约为 BAML 版的两倍：Aero2 512 KB 对 245 KB）。
+- **门槛 ① BAML↔XSG 等价**：`samples/XsgNativeAot/ThemeEquivalence`。七个主题、12 个字典文件逐个比较（键、Style、模板实例化出的树、触发器、绑定、资源引用），全部等价，仅有一个已解释的差异（`MenuItem.Role`：FEF 节点没有 `LogicalParent`；NavigationWindow/Frame 外壳的菜单）。比较中发现并修好了 8 个生成器/运行时缺口（`DynamicResource` 条目曾静默变成 null、`UIElement` 类型的属性元素、私有依赖属性、`x:Shared`、矩阵 Transform 等）。
+- **门槛 ② 内置主题的真实加载路径**：示例应用把 arcade 构建的 XSG 版 `PresentationFramework.Aero2.dll` 换进包里（`prepare.sh inbox-xsg-aero2`，`-p:UseInBoxXsgTheme=true`），JIT 与 NativeAOT 各 20 项自检通过（主题经 `SystemResources` 按程序集名加载，不是示例自己的主题项目）。
+- **门槛 ③ 还没做**：OpenDevelop 全量 CI 在这样构建的 closure 上通过之前，不能把默认值改成 true；Windows 上 JIT 主题查找的回归也要跑。切换本身只是 `LibreWPF.XsgThemes.targets` 里默认值的一行改动。
+- 要留意：`KnownTypeHelper`（BAML 加载主题类型用）仍在程序集里，方案 A 全面切换后可以删；XSG 版程序集更大，是否值得做延迟创建（BAML 有 deferred content，生成代码目前即时构建整个字典）要在切换前测启动时间。

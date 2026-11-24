@@ -1,0 +1,55 @@
+<Project>
+
+  <!--
+    In-box themes compiled by the XAML source generator (XSG) instead of BAML (NativeAotPlan decision D1, option A).
+
+    Off (the default): nothing here applies and the theme project is built exactly as before, with the BAML compiler.
+    On (-p:LibreWpfXsgThemes=true): the theme's XAML (the project's Page items) goes to the generator as AdditionalFiles, no BAML is produced, and the
+    theme assembly registers its dictionary under its own name from a module initializer (System.Windows.Markup.XamlSourceGeneratedResources), which
+    SystemResources asks first. The generated code is compiled INSIDE the theme assembly, so it can use what only that assembly sees (MS.Internal and
+    System.Windows internals of PresentationFramework and WindowsBase through InternalsVisibleTo).
+
+    Import this file at the END of the theme project (after its Page items).
+  -->
+
+  <PropertyGroup>
+    <LibreWpfXsgThemes Condition="'$(LibreWpfXsgThemes)' == ''">false</LibreWpfXsgThemes>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(LibreWpfXsgThemes)' == 'true'">
+    <InternalMarkupCompilation>false</InternalMarkupCompilation>
+    <UseLibreWpfXamlSourceGenerator>true</UseLibreWpfXamlSourceGenerator>
+    <LibreWpfCompiledBindings>true</LibreWpfCompiledBindings>
+    <LibreWpfSimplerXaml>false</LibreWpfSimplerXaml>
+    <LibreWpfCSharpExpressions>false</LibreWpfCSharpExpressions>
+    <!-- Printing is Windows-only (System.Printing is C++/CLI): the document viewers' styles are left out on the portable lane. -->
+    <LibreWpfXsgExcludeTargetTypes Condition="'$(LibreWpfXsgExcludeTargetTypes)' == ''">DocumentViewer,FlowDocumentReader,FlowDocumentScrollViewer,FlowDocumentPageViewer,FlowDocument,FixedDocument,FixedDocumentSequence</LibreWpfXsgExcludeTargetTypes>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(LibreWpfXsgThemes)' == 'true'">
+    <!-- The theme XAML, with the project-relative path the generator turns into the resource path the theme lookup asks for. -->
+    <AdditionalFiles Include="@(Page)">
+      <Link>%(Identity)</Link>
+    </AdditionalFiles>
+    <Page Remove="@(Page)" />
+
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\..\..\LibreWPF.Xaml.SourceGenerator\LibreWPF.Xaml.SourceGenerator.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" SetConfiguration="Configuration=Release" SetPlatform="Platform=AnyCPU" />
+
+    <CompilerVisibleProperty Include="UseLibreWpfXamlSourceGenerator" />
+    <CompilerVisibleProperty Include="LibreWpfSimplerXaml" />
+    <CompilerVisibleProperty Include="LibreWpfCSharpExpressions" />
+    <CompilerVisibleProperty Include="LibreWpfCompiledBindings" />
+    <CompilerVisibleProperty Include="MSBuildProjectDirectory" />
+    <CompilerVisibleProperty Include="LibreWpfXsgResourceAssemblyName" />
+    <CompilerVisibleProperty Include="LibreWpfXsgExcludeTargetTypes" />
+    <CompilerVisibleProperty Include="LibreWpfXsgAotStrict" />
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="Link" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(LibreWpfXsgThemes)' == 'true'">
+    <!-- A theme that does not build with the generator is a build error, never a theme with a style quietly missing. -->
+    <LibreWpfXsgAotStrict Condition="'$(LibreWpfXsgAotStrict)' == ''">true</LibreWpfXsgAotStrict>
+  </PropertyGroup>
+
+</Project>

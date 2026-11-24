@@ -210,3 +210,22 @@ No source changes required.
 - Generated code is compiled directly; C# compiler errors point at the generated
   `.g.cs` file. Use `#line` directives (planned) to improve mapping.
 - Set `LIBREWPF_USE_XSG=0` to fall back to BAML for comparison.
+
+## The in-box themes (decision D1, option A)
+
+LibreWPF can compile its own theme assemblies (`PresentationFramework.Aero2`, `.Aero`, `.AeroLite`, `.Classic`, `.Luna`, `.Royale`, `.Fluent`) with the generator
+instead of the BAML compiler: build a theme project with `-p:LibreWpfXsgThemes=true` (`src/Microsoft.DotNet.Wpf/src/Themes/Shared/LibreWPF.XsgThemes.targets`, imported by each
+theme project). The theme XAML goes to the generator as `AdditionalFiles`, **no BAML** is produced, and the assembly registers its dictionaries under its own name from a
+module initializer; `SystemResources` asks that registry first, so the same assembly serves JIT and NativeAOT applications. The generated code is compiled *inside* the theme
+assembly, so it can use what only that assembly sees (internal types and switches of PresentationFramework and WindowsBase through `InternalsVisibleTo`, private dependency properties by
+name). The switch is **off by default**: without the property the projects build exactly as before (the same BAML: the 244736-byte Aero2 assembly with its `g.resources`).
+
+Under the switch `LibreWpfXsgAotStrict` is true: a binding that cannot be compiled or a construct that is left out fails the theme build (`Royale` sets it to false: its
+the `TopLevelHeaderTemplateKey` template of `Royale.NormalColor.xaml` binds `ElementName=SubMenuBorder`, which that template's namescope does not declare, in BAML too). The document viewers' styles are left out (`LibreWpfXsgExcludeTargetTypes`:
+printing is Windows-only).
+
+The gate for switching the default is the equivalence harness in openavalon's `samples/XsgNativeAot/ThemeEquivalence`: it loads the BAML dictionary and the XSG one in one JIT
+process and compares keys, styles, templates (the trees they instantiate), triggers, bindings and resource references. Measured (macOS arm64): every in-box theme file is
+equivalent except one understood difference: a `MenuItem` made as a `FrameworkElementFactory` node has no `LogicalParent`, so `MenuItem.Role` is `SubmenuItem` where BAML gives
+`TopLevelItem` (the menus in the `NavigationWindow`/`Frame` chrome). Still to do before the default changes: the full OpenDevelop CI on a closure built this way, and the
+regression run of the JIT theme lookup on Windows.

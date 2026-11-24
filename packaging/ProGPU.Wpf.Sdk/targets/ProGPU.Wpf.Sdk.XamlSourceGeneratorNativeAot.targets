@@ -16,6 +16,11 @@
     <_SuppressWpfTrimError Condition="'$(_SuppressWpfTrimError)' == ''">true</_SuppressWpfTrimError>
   </PropertyGroup>
 
+  <!-- The members the generated themes still read by reflection (see the file). -->
+  <ItemGroup Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(PublishAot)' == 'true'">
+    <RdXmlFile Include="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.XamlSourceGeneratorNativeAotRoots.rd.xml" />
+  </ItemGroup>
+
   <Target Name="_LibreWpfXsgRootProjectReferences"
           BeforeTargets="WriteIlcRspFileForCompilation"
           Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(PublishAot)' == 'true'">

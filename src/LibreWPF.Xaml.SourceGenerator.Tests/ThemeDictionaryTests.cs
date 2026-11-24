@@ -28,6 +28,8 @@ public class ThemeDictionaryTests
             public class UIElement : DependencyObject { public static readonly DependencyProperty IsMouseOverProperty = new(); public bool IsMouseOver { get; } }
             public class FrameworkElement : UIElement
             {
+                public static readonly DependencyProperty TagProperty = new();
+                public object Tag { get; set; }
                 public static readonly DependencyProperty MarginProperty = new();
                 public Thickness Margin { get; set; }
                 public static readonly DependencyProperty HorizontalAlignmentProperty = new();
@@ -80,6 +82,19 @@ public class ThemeDictionaryTests
                 public RowDefinitionCollection RowDefinitions { get; } = new();
                 public ColumnDefinitionCollection ColumnDefinitions { get; } = new();
             }
+            public class ViewBase : System.Windows.DependencyObject { }
+            public class GridViewColumnCollection : System.Collections.Generic.List<object> { }
+            public class GridView : ViewBase
+            {
+                public GridViewColumnCollection Columns { get; } = new();
+                public string Caption { get; set; }
+                public string Shared { get; set; }
+                public static readonly System.Windows.DependencyProperty ModeProperty = new();
+                public string Mode { get; set; }
+            }
+            public class TileView : ViewBase { public string Shared { get; set; } }
+            public class ListView : Control { public ViewBase View { get; set; } }
+            public class ScrollViewer : ContentControl { }
             public class Thumb : FrameworkElement { }
             public class Track : FrameworkElement { public Thumb Thumb { get; set; } }
             public class Button : ContentControl { }
@@ -632,6 +647,83 @@ public class ThemeDictionaryTests
         var (_, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfCompiledBindings", "true"));
 
         Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0006");
+    }
+
+    [Fact]
+    public void AMemberOfASubclass_IsCompiledAgainstTheOnlyClassThatHasIt()
+    {
+        // The source is the templated ListView; View is a ViewBase, and Columns exists only on GridView, the one subclass that has it:
+        // the path is compiled (the descriptor answers UnsetValue for any other View), not left to reflection.
+        var xaml = Header + """
+              <ControlTemplate x:Key="list" TargetType="{x:Type ListView}">
+                <Border Tag="{Binding Path=View.Columns, RelativeSource={RelativeSource TemplatedParent}}" />
+              </ControlTemplate>
+            </ResourceDictionary>
+            """;
+
+        var (code, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfCompiledBindings", "true"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0007");
+        Assert.Contains("__XsgCompiledProperty<global::System.Windows.Controls.GridView, global::System.Windows.Controls.GridViewColumnCollection>(\"Columns\"", code);
+    }
+
+    [Fact]
+    public void AWritableMemberOfASubclass_KeepsItsSetter()
+    {
+        var xaml = Header + """
+              <ControlTemplate x:Key="list" TargetType="{x:Type ListView}">
+                <Border Tag="{Binding Path=View.Caption, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" />
+              </ControlTemplate>
+            </ResourceDictionary>
+            """;
+
+        var (code, _) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfCompiledBindings", "true"));
+
+        Assert.Contains("__XsgCompiledProperty<global::System.Windows.Controls.GridView, string>(\"Caption\", static o => o.Caption!, static (o, v) => o.Caption = v)", code);
+    }
+
+    private static string ListViewTagBinding(string path) => Header + """
+          <ControlTemplate x:Key="list" TargetType="{x:Type ListView}">
+            <Border Tag="{Binding Path=@PATH@, RelativeSource={RelativeSource TemplatedParent}}" />
+          </ControlTemplate>
+        </ResourceDictionary>
+        """.Replace("@PATH@", path);
+
+    [Fact]
+    public void ADependencyPropertyOfASubclass_IsTheDependencyPropertyItself()
+    {
+        var (code, _) = GenerateXaml(ListViewTagBinding("View.Mode"), ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfCompiledBindings", "true"));
+
+        Assert.Contains("global::System.Windows.Controls.GridView.ModeProperty", code);
+        Assert.DoesNotContain("__XsgCompiledProperty<global::System.Windows.Controls.GridView, string>(\"Mode\"", code);
+    }
+
+    [Fact]
+    public void AMemberOfSeveralSubclasses_OrOfNone_StaysReflective_AndIsReported()
+    {
+        // Shared is on GridView and on TileView; Nope is nowhere: no class can be chosen, so the binding keeps its reflective path (LWXSG0007).
+        foreach (var path in new[] { "View.Shared", "View.Nope" })
+        {
+            var (code, diagnostics) = GenerateXaml(ListViewTagBinding(path), ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfCompiledBindings", "true"));
+
+            Assert.Contains(diagnostics, d => d.Id == "LWXSG0007");
+            Assert.DoesNotContain("__XsgCompiledProperty<global::System.Windows.Controls.GridView", code);
+        }
+    }
+
+    [Fact]
+    public void AMemberMissingBehindAnXDataType_IsStillAnError()
+    {
+        var xaml = Header + """
+              <ControlTemplate x:Key="list" TargetType="{x:Type ListView}" x:DataType="local:Nothing">
+                <Border Tag="{Binding Path=View.Columns}" />
+              </ControlTemplate>
+            </ResourceDictionary>
+            """.Replace("x:DataType=\"local:Nothing\"", "x:DataType=\"ListView\"");
+
+        var (_, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfCompiledBindings", "true"));
+
+        Assert.Contains(diagnostics, d => d.Id == "LWXSG0006");
     }
 
     private sealed class Options(Dictionary<string, string> global) : AnalyzerConfigOptionsProvider

@@ -618,6 +618,25 @@ namespace LibreWPF.Xaml.SourceGenerator
                     // only on the run-time type: that is reflection by nature, not a mistake. Behind x:DataType it is a mistake.
                     if (i > 0 && KnownSourceType(parts, owner) is not null)
                     {
+                        // ListView.View is a ViewBase; Columns is declared only by GridView, its one subclass that has it. Such a member is
+                        // compiled against that subclass: the descriptor answers UnsetValue for any other run-time type. (Only the base type's own
+                        // assembly is searched: a subclass of another assembly that has the same member is not reached, as it was reflectively.)
+                        if (UniqueDerivedWithProperty(current, name, context) is { } narrow && IsNameable(narrow.Property.Type) && IsNameable(narrow.Owner))
+                        {
+                            // A dependency property goes in as the DependencyProperty itself (its change notification), as below.
+                            if (FindDependencyPropertyField(narrow.Owner, name) is { } narrowDependencyProperty)
+                            {
+                                steps.Add($"{narrowDependencyProperty.ContainingType.ToDisplayString(s_typeFormat)}.{name}Property");
+                                current = narrow.Property.Type;
+                                continue;
+                            }
+                            var narrowWritable = narrow.Property.SetMethod is { IsInitOnly: false } narrowSetter && narrow.Owner.IsReferenceType && IsAccessible(narrowSetter, context);
+                            var narrowSetterCode = narrowWritable ? $"static (o, v) => o.{name} = v" : "null";
+                            steps.Add($"new __XsgCompiledProperty<{narrow.Owner.ToDisplayString(s_typeFormat)}, {narrow.Property.Type.ToDisplayString(s_typeFormat)}>(\"{name}\", static o => o.{name}!, {narrowSetterCode})");
+                            context.UsesCompiledProperty = true;
+                            current = narrow.Property.Type;
+                            continue;
+                        }
                         Report(context, s_bindingNotCompiled, owner, markup, $"'{name}' is a member of the run-time type of a '{current.ToDisplayString()}' value");
                         return null;
                     }
@@ -733,6 +752,47 @@ namespace LibreWPF.Xaml.SourceGenerator
             }
 
             return compilation.GetTypeByMetadataName(metadataName) ?? compilation.GetTypeByMetadataName(text);
+        }
+
+        /// <summary>
+        /// The one public, non-abstract class of <paramref name="baseType"/>'s own assembly that derives from it and has a public readable
+        /// instance property <paramref name="name"/>; null when there is none or more than one.
+        /// </summary>
+        private static (INamedTypeSymbol Owner, IPropertySymbol Property)? UniqueDerivedWithProperty(ITypeSymbol baseType, string name, GenerationContext context)
+        {
+            if (baseType.ContainingAssembly is null || baseType.TypeKind != TypeKind.Class)
+            {
+                return null;
+            }
+
+            (INamedTypeSymbol, IPropertySymbol)? found = null;
+            var count = 0;
+            void Visit(INamespaceOrTypeSymbol container)
+            {
+                foreach (var member in container.GetMembers())
+                {
+                    if (member is INamespaceSymbol childNamespace)
+                    {
+                        Visit(childNamespace);
+                        continue;
+                    }
+                    if (member is not INamedTypeSymbol type)
+                    {
+                        continue;
+                    }
+                    if (type is { DeclaredAccessibility: Accessibility.Public, IsAbstract: false, TypeKind: TypeKind.Class, IsGenericType: false }
+                        && !SymbolEqualityComparer.Default.Equals(type, baseType)
+                        && BaseTypesAndSelf(type).Any(b => SymbolEqualityComparer.Default.Equals(b, baseType))
+                        && FindProperty(type, name, context) is { } property)
+                    {
+                        found = (type, property);
+                        count++;
+                    }
+                    Visit(type);
+                }
+            }
+            Visit(baseType.ContainingAssembly.GlobalNamespace);
+            return count == 1 ? found : null;
         }
 
         private static IPropertySymbol? FindProperty(ITypeSymbol type, string name, GenerationContext context)

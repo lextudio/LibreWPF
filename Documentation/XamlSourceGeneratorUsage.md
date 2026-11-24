@@ -104,6 +104,17 @@ A prototype that publishes and runs with `PublishAot=true` on macOS is in openav
 compiled bindings (no reflection over view models), an XSG theme registered as `PresentationFramework.Aero2` and rooted with
 `TrimmerRootAssembly` (NativeAOT runs module initializers only of assemblies in the image), and `_SuppressWpfTrimError=true`. Since `XamlSourceGeneratorNativeAot.targets` the SDK does both for an XSG project with `PublishAot` (it roots every project reference); only a package that carries XSG output must root itself.
 
+What a NativeAOT application has to know (found with a gallery of Menu, ToolBar, TabControl, TreeView, ListView, DataGrid, Calendar, ...):
+
+- Bindings without a compiled path are reflection over the run-time type, and NativeAOT removes members nothing references. Give every
+  scope its `x:DataType`: the root, and the row type for a `GridViewColumn`, `DataGridTextColumn` and so on (`x:DataType` is accepted on any element).
+- The SDK targets add an rd.xml (`ProGPU.Wpf.Sdk.XamlSourceGeneratorNativeAotRoots.rd.xml`) that keeps the public members of `ListView` and
+  `GridView`, which the in-box themes bind by name (`TemplatedParent.View.Columns`, reported as LWXSG0007).
+- A `DataGrid` over a collection does not offer the new-row placeholder under NativeAOT (it needs the item type's default constructor by reflection):
+  set `CanUserAddRows="False"` for the same behaviour in JIT and AOT.
+- A member that exists only on a subclass of the declared type (`View.Columns`: `ViewBase` has no `Columns`, `GridView` does) is compiled against the
+  one class of that assembly that has it.
+
 ### Application, `StartupUri` and `Source`
 
 With no BAML, nothing can be loaded from a resource at run time, so what BAML resolves at run time is resolved at build time:

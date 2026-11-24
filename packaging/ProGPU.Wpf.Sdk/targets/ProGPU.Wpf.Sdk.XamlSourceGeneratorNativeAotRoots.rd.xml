@@ -1,0 +1,13 @@
+<Directives xmlns="http://schemas.microsoft.com/netfx/2013/01/metadata">
+  <!--
+    Members that a generated theme still reads by name at run time (a binding path the generator cannot type: its source is the
+    templated parent of a template that another template applies, so only the run-time type is known). The generator reports each
+    such binding as LWXSG0007. NativeAOT removes a property nothing references; this keeps the public surface of these two types.
+  -->
+  <Application>
+    <Assembly Name="PresentationFramework">
+      <Type Name="System.Windows.Controls.ListView" Dynamic="Required All" />
+      <Type Name="System.Windows.Controls.GridView" Dynamic="Required All" />
+    </Assembly>
+  </Application>
+</Directives>

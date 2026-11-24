@@ -113,6 +113,8 @@ What a NativeAOT application has to know (found with a gallery of Menu, ToolBar,
   is reflection at run time: keep the types it reaches with an rd.xml entry of your own.
 - A `DataGrid` over a collection does not offer the new-row placeholder under NativeAOT (it needs the item type's default constructor by reflection):
   set `CanUserAddRows="False"` for the same behaviour in JIT and AOT.
+- With `PublishAot` the SDK sets `LibreWpfXsgAotStrict=true`: a binding the generator cannot compile (LWXSG0007) and a construct it leaves out (LWXSG0008) are build **errors**,
+  since nothing falls back to reflection or BAML there. Set `LibreWpfXsgAotStrict=false` to keep them warnings.
 - `CollectionView` sorts, groups and filters by property name (`SortDescription.PropertyName`, `GroupDescription`) with reflection over the item type, which
   NativeAOT has trimmed: without help the list is silently unsorted. Keep the item type with an rd.xml entry (`<Type Name="App.Item" Dynamic="Required All" />` in an
   `RdXmlFile`), as `samples/XsgNativeAot/rd.xml` does. A `ValidationRule` needs nothing (it is called through its virtual method). `<Binding.ValidationRules>` of a `<Binding>` element is generated; inside a data condition (`DataTrigger.Binding`) it is still reported as LWXSG0008.

@@ -54,12 +54,12 @@ cat > "$work/aot.proj" <<P
   <ItemGroup><ReferencePath Include="/x/Theme.dll" ReferenceSourceTarget="ProjectReference" /><ReferencePath Include="/x/Other.dll" ReferenceSourceTarget="ResolveAssemblyReference" /></ItemGroup>
   <Target Name="WriteIlcRspFileForCompilation" />
   <Import Project="$aot" />
-  <Target Name="Run" DependsOnTargets="WriteIlcRspFileForCompilation"><Message Importance="high" Text="TRIM=\$(_SuppressWpfTrimError) ROOT=@(TrimmerRootAssembly) RD=@(RdXmlFile->'%(Filename)')" /></Target>
+  <Target Name="Run" DependsOnTargets="WriteIlcRspFileForCompilation"><Message Importance="high" Text="TRIM=\$(_SuppressWpfTrimError) ROOT=@(TrimmerRootAssembly) RD=@(RdXmlFile->'%(Filename)') STRICT=\$(LibreWpfXsgAotStrict) VISIBLE=@(CompilerVisibleProperty)" /></Target>
 </Project>
 P
 (cd "$work" && "$dotnet_cmd" msbuild aot.proj -nologo 2>&1)
 }
-aotproj true true | grep -q 'TRIM=true ROOT=Theme RD=ProGPU.Wpf.Sdk.XamlSourceGeneratorNativeAotRoots.rd$' || fail "XSG + PublishAot must lift the trim error and root only project references"
-aotproj false true | grep -q 'TRIM= ROOT= RD=$' || fail "BAML project must be untouched"
-aotproj true false | grep -q 'TRIM= ROOT= RD=$' || fail "no PublishAot must be untouched"
+aotproj true true | grep -q 'TRIM=true ROOT=Theme RD=ProGPU.Wpf.Sdk.XamlSourceGeneratorNativeAotRoots.rd STRICT=true VISIBLE=LibreWpfXsgAotStrict$' || fail "XSG + PublishAot must lift the trim error and root only project references"
+aotproj false true | grep -q 'TRIM= ROOT= RD= STRICT= VISIBLE=LibreWpfXsgAotStrict$' || fail "BAML project must be untouched"
+aotproj true false | grep -q 'TRIM= ROOT= RD= STRICT= VISIBLE=LibreWpfXsgAotStrict$' || fail "no PublishAot must be untouched"
 echo PASS-AOT

@@ -14,7 +14,13 @@
 
   <PropertyGroup Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(PublishAot)' == 'true'">
     <_SuppressWpfTrimError Condition="'$(_SuppressWpfTrimError)' == ''">true</_SuppressWpfTrimError>
+    <!-- Under NativeAOT a binding the generator cannot compile (LWXSG0007) or a construct it leaves out (LWXSG0008) has no run-time fallback: errors.
+         A project can set LibreWpfXsgAotStrict=false to keep them warnings. -->
+    <LibreWpfXsgAotStrict Condition="'$(LibreWpfXsgAotStrict)' == ''">true</LibreWpfXsgAotStrict>
   </PropertyGroup>
+  <ItemGroup>
+    <CompilerVisibleProperty Include="LibreWpfXsgAotStrict" />
+  </ItemGroup>
 
   <!-- The members the generated themes still read by reflection (see the file). -->
   <ItemGroup Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(PublishAot)' == 'true'">

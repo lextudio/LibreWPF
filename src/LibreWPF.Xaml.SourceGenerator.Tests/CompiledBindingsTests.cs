@@ -492,6 +492,42 @@ public class CompiledBindingsTests
         Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
     }
 
+    private const string ConditionWithRules = """
+        <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+          <Style TargetType="{x:Type Border}">
+            <Style.Triggers>
+              <DataTrigger Value="1">
+                <DataTrigger.Binding>
+                  <Binding Path="Name"><Binding.ValidationRules><Border /></Binding.ValidationRules></Binding>
+                </DataTrigger.Binding>
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </ResourceDictionary>
+        """;
+
+    [Fact]
+    public void ALeftOutConstruct_IsAWarning_AndAnErrorInAotStrictMode()
+    {
+        var (_, lax) = Generate(ConditionWithRules, "/src/Theme/Themes/Generic.xaml", [("MSBuildProjectDirectory", "/src/Theme")]);
+        var (_, strict) = Generate(ConditionWithRules, "/src/Theme/Themes/Generic.xaml", [("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfXsgAotStrict", "true")]);
+
+        Assert.Contains(lax, d => d.Id == "LWXSG0008" && d.Severity == DiagnosticSeverity.Warning);
+        Assert.Contains(strict, d => d.Id == "LWXSG0008" && d.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ANotCompiledBinding_IsAWarning_AndAnErrorInAotStrictMode()
+    {
+        // A path through a base-typed source whose member no class can be chosen for stays reflective (LWXSG0007).
+        var xaml = Window.Replace("{Binding Path=Person.Age}", "{Binding Path=Nope, RelativeSource={RelativeSource Self}}");
+        var (_, lax) = Generate(xaml, "/src/MainWindow.xaml", [("LibreWpfCompiledBindings", "true")]);
+        var (_, strict) = Generate(xaml, "/src/MainWindow.xaml", [("LibreWpfCompiledBindings", "true"), ("LibreWpfXsgAotStrict", "true")]);
+
+        Assert.DoesNotContain(lax, d => d.Severity == DiagnosticSeverity.Error);
+        Assert.Contains(strict, d => d.Id is "LWXSG0007" or "LWXSG0006" && d.Severity == DiagnosticSeverity.Error);
+    }
+
     [Fact]
     public void AParenthesizedPathWhoseAssemblyIsNotReferenced_IsStillReported()
     {

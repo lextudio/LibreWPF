@@ -922,6 +922,13 @@ namespace LibreWPF.Xaml.SourceGenerator
 
         private static void Report(GenerationContext context, DiagnosticDescriptor descriptor, XObject at, params object[] args)
         {
+            // NativeAOT mode: what would silently fall back to reflection (LWXSG0007) or be left out (LWXSG0008) is an error.
+            if (context.Features.AotStrict && descriptor.DefaultSeverity == DiagnosticSeverity.Warning
+                && (descriptor.Id == s_bindingNotCompiled.Id || descriptor.Id == s_notGenerated.Id))
+            {
+                descriptor = new DiagnosticDescriptor(descriptor.Id, descriptor.Title, descriptor.MessageFormat, descriptor.Category, DiagnosticSeverity.Error, isEnabledByDefault: true);
+            }
+
             var info = (IXmlLineInfo)at;
             var all = new object[args.Length + 3];
             all[0] = context.SourcePath;

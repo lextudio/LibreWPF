@@ -84,6 +84,8 @@ public class ThemeDictionaryTests
                 public HorizontalAlignment HorizontalContentAlignment { get; set; }
             }
             public class ContentControl : Control { }
+            // A read-only dependency property the way ComboBox.IsSelectionBoxHighlighted is: a CLR property, its static field private (absent from a reference assembly).
+            public class Combo : Control { public bool IsHighlighted { get; } }
             [System.Windows.Markup.ContentProperty("Child")]
             public class Border : FrameworkElement
             {
@@ -824,6 +826,87 @@ public class ThemeDictionaryTests
         Assert.Contains("global::Sample.Chrome.Chrome.GlyphProperty, global::Sample.Chrome.GlyphKind.Grip", code);   // the owner through the prefix, the value typed
         Assert.DoesNotContain("global::Chrome.", code);
         Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+    }
+
+    [Fact]
+    public void ADependencyPropertyWithoutAVisibleField_IsFoundByName()
+    {
+        var xaml = Header + """
+              <Style TargetType="{x:Type Combo}">
+                <Style.Triggers>
+                  <Trigger Property="IsHighlighted" Value="true">
+                    <Setter Property="Background" Value="Red" />
+                  </Trigger>
+                </Style.Triggers>
+              </Style>
+            </ResourceDictionary>
+            """;
+
+        var (code, _) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"));
+
+        Assert.Contains("global::System.Windows.DependencyProperty.FromName(\"IsHighlighted\", typeof(global::System.Windows.Controls.Combo))", code);
+        Assert.DoesNotContain("Combo.IsHighlightedProperty", code);
+    }
+
+    [Fact]
+    public void XSharedFalse_IsReportedAsInfo_AndNeverWrittenAsAProperty()
+    {
+        var xaml = Header + """
+              <Border x:Key="shared" x:Shared="false" />
+            </ResourceDictionary>
+            """;
+
+        var (code, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfXsgAotStrict", "true"));
+
+        Assert.Contains(diagnostics, d => d.Id == "LWXSG0010" && d.Severity == DiagnosticSeverity.Info);
+        Assert.DoesNotContain(".Shared", code);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ADynamicResourceElementEntry_IsAReferenceEntry_NotNull()
+    {
+        // Fluent: <DynamicResource x:Key="SystemAccentColorDark2" ResourceKey="{x:Static SystemColors.AccentColorDark2Key}"/>, then StaticResource of that key.
+        var xaml = Header + """
+              <DynamicResource x:Key="alias" ResourceKey="{x:Static SystemColors.WindowBrushKey}" />
+            </ResourceDictionary>
+            """;
+
+        var (code, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"));
+
+        Assert.Contains("XamlSourceGeneratedResources.DynamicResourceEntry(global::System.Windows.SystemColors.WindowBrushKey)", code);
+        Assert.DoesNotContain("null!", code);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+    }
+
+    [Fact]
+    public void AStaticResourceOfADynamicResourceEntry_IsTheDynamicReference()
+    {
+        // The property holds a reference to the aliased key (as in BAML), not a snapshot of what it resolves to now.
+        var xaml = Header + """
+              <DynamicResource x:Key="accent" ResourceKey="{x:Static SystemColors.WindowBrushKey}" />
+              <SolidColorBrush x:Key="brush" Color="{StaticResource accent}" />
+            </ResourceDictionary>
+            """;
+
+        var (code, _) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"));
+
+        Assert.Contains("XamlSourceGeneratedResources.SetDynamicResource(", code);
+        Assert.Contains("SolidColorBrush.ColorProperty, global::System.Windows.SystemColors.WindowBrushKey)", code);
+        Assert.DoesNotContain("FindResource(\"accent\")", code);
+    }
+
+    [Fact]
+    public void AnElementOfAnUnknownType_IsReported_NotSilentlyNull()
+    {
+        var xaml = Header + """
+              <NoSuchElement x:Key="n" />
+            </ResourceDictionary>
+            """;
+
+        var (_, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"));
+
+        Assert.Contains(diagnostics, d => d.Id == "LWXSG0008" && d.GetMessage().Contains("NoSuchElement"));
     }
 
     [Fact]

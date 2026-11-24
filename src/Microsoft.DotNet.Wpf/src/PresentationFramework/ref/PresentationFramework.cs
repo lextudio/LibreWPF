@@ -11571,6 +11571,8 @@ namespace System.Windows.Markup
         public static bool TryCreateDictionary(System.Reflection.Assembly assembly, string resourcePath, out System.Windows.ResourceDictionary dictionary) { throw null; }
         public static bool TryCreateDictionary(string assemblyName, string resourcePath, out System.Windows.ResourceDictionary dictionary) { throw null; }
         public static void RegisterComponent(string assemblyName, string resourcePath, System.Func<object> factory) { }
+        public static object DynamicResourceEntry(object resourceKey) { throw null; }
+        public static object ResolveEntry(object entry, System.Windows.ResourceDictionary scope) { throw null; }
         public static void SetDynamicResource(System.Windows.DependencyObject target, System.Windows.DependencyProperty property, object resourceKey) { }
         public static bool TryCreateComponent(System.Uri resourceLocator, out object component) { throw null; }
     }

@@ -286,4 +286,29 @@ public class XamlSourceGeneratedResourcesTests
 
         frame.Content.Should().BeSameAs(page);
     }
+
+    [Fact]
+    public void ADynamicResourceEntry_IsResolvedInTheScopeFirst_AndFollowsAliases()
+    {
+        var scope = new ResourceDictionary();
+        scope["real"] = System.Windows.Media.Colors.Green;
+        scope["alias"] = XamlSourceGeneratedResources.DynamicResourceEntry("real");
+        scope["alias2"] = XamlSourceGeneratedResources.DynamicResourceEntry("alias");
+
+        XamlSourceGeneratedResources.ResolveEntry(scope["alias2"], scope).Should().Be(System.Windows.Media.Colors.Green);
+        XamlSourceGeneratedResources.ResolveEntry("plain", scope).Should().Be("plain", "anything that is not a dynamic entry is returned as it is");
+    }
+
+    [Fact]
+    public void ADynamicResourceEntry_ForASystemKey_IsResolvedFromTheSystem_AndAnUnknownKeyStaysTheEntry()
+    {
+        var scope = new ResourceDictionary();
+        var system = XamlSourceGeneratedResources.DynamicResourceEntry(SystemColors.WindowBrushKey);
+        var unknown = XamlSourceGeneratedResources.DynamicResourceEntry("no such resource anywhere");
+
+        XamlSourceGeneratedResources.ResolveEntry(system, scope).Should().BeAssignableTo<System.Windows.Media.Brush>();
+        XamlSourceGeneratedResources.ResolveEntry(unknown, scope).Should().BeSameAs(unknown);
+        Action noKey = () => XamlSourceGeneratedResources.DynamicResourceEntry(null!);
+        noKey.Should().Throw<ArgumentNullException>();
+    }
 }

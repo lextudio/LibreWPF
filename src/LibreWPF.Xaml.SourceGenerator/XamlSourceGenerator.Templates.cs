@@ -101,6 +101,13 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
             }
 
+            // No static field is visible (a private or internal one, absent from a reference assembly) but the CLR property is: the dependency property is found by
+            // name, which compiles where DependencyProperty.FromName is accessible (InternalsVisibleTo: the in-box theme assemblies; ComboBox.IsSelectionBoxHighlighted).
+            if (field is null && start is not null && type is not null && dot <= 0 && !name.Contains('.'))
+            {
+                return ($"global::System.Windows.DependencyProperty.FromName(\"{name}\", typeof(global::{owner}))", type, name);
+            }
+
             return ($"global::{declaring}.{name}Property", type, name);
         }
 
@@ -1006,7 +1013,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                     }
 
                     if (ownProperty && clr is { SetMethod: { DeclaredAccessibility: Accessibility.Public } } && !IsDependencyProperty(type, propertyName)
-                        && IsFrameworkElementType(clr.Type.ToDisplayString()) && child.Elements().Count() == 1
+                        && (IsFrameworkElementType(clr.Type.ToDisplayString()) || clr.Type.ToDisplayString() == "System.Windows.UIElement") // BulletDecorator.Bullet is a UIElement
+                        && child.Elements().Count() == 1
                         && IsAssignableChild(child.Elements().First(), clr.Type, defaultNs))
                     {
                         var attached = FactoryNode(sb, child.Elements().First(), defaultNs, sourcePath, pad, ref localId, templateTarget);
@@ -1017,7 +1025,10 @@ namespace LibreWPF.Xaml.SourceGenerator
                         }
                         continue;
                     }
+                    // (An element for a dependency property, MenuItem.Icon: FrameworkElementFactory.SetValue refuses a Visual because one instance cannot serve every
+                    // instantiation of the template; the element is created per instance in the factory's initializer, below.)
                     if (ownProperty && IsDependencyProperty(type, propertyName) && child.Elements().Count() == 1
+                        && !IsFrameworkElementType(ResolveTypeName(child.Elements().First(), defaultNs))
                         && clr is not null && !IsCollectionType(clr.Type) && clr.Type.ToDisplayString() != "System.Windows.ResourceDictionary")
                     {
                         // <Border.Background><SolidColorBrush .../></Border.Background>: a value object for a dependency property, built once and shared.

@@ -329,6 +329,8 @@ public class CompiledBindingsTests
             {
                 public static readonly System.Collections.Generic.Dictionary<string, System.Func<System.Windows.ResourceDictionary>> Registered = new();
                 public static void RegisterDictionary(System.Reflection.Assembly assembly, string path, System.Func<System.Windows.ResourceDictionary> factory) => Registered[path] = factory;
+                public static object DynamicResourceEntry(object resourceKey) => resourceKey;
+                public static object ResolveEntry(object entry, System.Windows.ResourceDictionary scope) => entry;
             }
         }
         """;

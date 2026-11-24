@@ -97,6 +97,15 @@ namespace LibreWPF.Xaml.SourceGenerator
             DiagnosticSeverity.Info,
             isEnabledByDefault: true);
 
+        // x:Shared="false": the generated dictionary holds one instance; for a freezable (a brush) that is the normal, frozen case.
+        private static readonly DiagnosticDescriptor s_notShared = new DiagnosticDescriptor(
+            "LWXSG0010",
+            "x:Shared=\"false\" is treated as shared",
+            "{0}({1},{2}): x:Shared=\"false\" is not supported by a generated dictionary: the resource is created once and shared",
+            "LibreWPF.Xaml",
+            DiagnosticSeverity.Info,
+            isEnabledByDefault: true);
+
         private static readonly DiagnosticDescriptor s_notGenerated = new DiagnosticDescriptor(
             "LWXSG0008",
             "Construct not generated",
@@ -1158,8 +1167,8 @@ namespace LibreWPF.Xaml.SourceGenerator
             sb.AppendLine("        // StaticResource inside the dictionary: the .Resources being built, then what this dictionary already holds, else the application's resources.");
             sb.AppendLine("        private object FindResource(object key)");
             sb.AppendLine("        {");
-            sb.AppendLine("            for (var i = __scopes.Count - 1; i >= 0; i--) if (__scopes[i].Contains(key)) return __scopes[i][key];");
-            sb.AppendLine("            if (this.Contains(key)) return this[key];");
+            sb.AppendLine("            for (var i = __scopes.Count - 1; i >= 0; i--) if (__scopes[i].Contains(key)) return global::System.Windows.Markup.XamlSourceGeneratedResources.ResolveEntry(__scopes[i][key], this);");
+            sb.AppendLine("            if (this.Contains(key)) return global::System.Windows.Markup.XamlSourceGeneratedResources.ResolveEntry(this[key], this);");
             sb.AppendLine("            var app = global::System.Windows.Application.Current?.TryFindResource(key);");
             sb.AppendLine("            return app ?? throw new global::System.Windows.ResourceReferenceKeyNotFoundException(\"Cannot find resource named '\" + key + \"'.\", key);");
             sb.AppendLine("        }");

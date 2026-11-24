@@ -251,6 +251,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return;
             }
 
+            RewriteStaticResourcesOfDynamicEntries(doc);
+
             var root = doc.Root;
             if (root is null)
             {
@@ -514,10 +516,23 @@ namespace LibreWPF.Xaml.SourceGenerator
                 var escapedPath = sourcePath.Replace("\\", "\\\\").Replace("\"", "\\\"");
                 sb.AppendLine($"#line {lineInfo.LineNumber} \"{escapedPath}\"");
             }
+            // <DynamicResource x:Key="K" ResourceKey="{x:Static SystemColors.XKey}"/> as an entry of a dictionary: a reference that is resolved when something asks for K.
+            if (el.Name.LocalName == "DynamicResource" && (el.Name.NamespaceName == PresentationNamespace || el.Name.NamespaceName.Length == 0)
+                && el.Attribute("ResourceKey") is { } dynamicKey && !el.Elements().Any())
+            {
+                var entryVar = $"__DynamicResource_{++localId}";
+                sb.AppendLine($"{pad}var {entryVar} = global::System.Windows.Markup.XamlSourceGeneratedResources.DynamicResourceEntry({ResourceKeyCode(dynamicKey.Value, el, defaultNs)});");
+                return entryVar;
+            }
+
             var typeName = ResolveTypeName(el, defaultNs);
             if (typeName is null)
             {
                 sb.AppendLine($"{pad}// Unknown type: {el.Name.LocalName}");
+                if (s_context is { } unknownContext)
+                {
+                    Report(unknownContext, s_notGenerated, el, $"the element <{el.Name.LocalName}>, whose type is unknown (it became null)");
+                }
                 return "null!";
             }
 
@@ -584,6 +599,20 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
 
                 if (attrNs.Contains("xaml") && (attrLocal == "Class" || attrLocal == "Name" || attrLocal == "Key"))
+                {
+                    continue;
+                }
+                // x:Shared="false" (a new instance per lookup) is not expressible with a ResourceDictionary entry: the resource is shared. Say so, and never write it as a property.
+                if (attrNs == XamlNamespace && attrLocal == "Shared")
+                {
+                    if (string.Equals(attr.Value.Trim(), "false", StringComparison.OrdinalIgnoreCase) && s_context is { } sharedContext)
+                    {
+                        Report(sharedContext, s_notShared, attr);
+                    }
+                    continue;
+                }
+                // The other XAML-language attributes (x:Uid, x:FieldModifier, x:Subclass, ...) are not properties either.
+                if (attrNs == XamlNamespace)
                 {
                     continue;
                 }
@@ -943,6 +972,39 @@ namespace LibreWPF.Xaml.SourceGenerator
         }
 
         private static bool HasSetResourceReference(string typeName) => IsFrameworkElementOrContentElement(typeName) || TypeSymbol(typeName) == null; // unknown type: the previous behaviour
+
+        /// <summary>
+        /// <c>&lt;DynamicResource x:Key="A" ResourceKey="R"/&gt;</c> is an alias: BAML stores a dynamic reference under A, so a property set from
+        /// <c>{StaticResource A}</c> holds that reference (it follows R as it changes, for example the system accent colors of the Fluent theme).
+        /// Within one file, such a use is written as <c>{DynamicResource R}</c>, which the generator already turns into the same reference.
+        /// </summary>
+        private static void RewriteStaticResourcesOfDynamicEntries(XDocument doc)
+        {
+            var aliases = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var entry in doc.Descendants().Where(e => e.Name.LocalName == "DynamicResource" && !e.Elements().Any()))
+            {
+                var key = entry.Attribute(XName.Get("Key", XamlNamespace))?.Value ?? entry.Attribute("Key")?.Value;
+                var target = entry.Attribute("ResourceKey")?.Value;
+                if (key is not null && target is not null)
+                {
+                    aliases[key.Trim()] = target.Trim();
+                }
+            }
+
+            if (aliases.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var attribute in doc.Descendants().Attributes().Where(a => a.Value.Contains("StaticResource")).ToList())
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(attribute.Value.Trim(), @"^\{\s*StaticResource\s+([^\s}]+)\s*\}$");
+                if (match.Success && aliases.TryGetValue(match.Groups[1].Value, out var targetKey))
+                {
+                    attribute.Value = "{DynamicResource " + targetKey + "}";
+                }
+            }
+        }
 
         private static string? ResolveTypeName(XElement el, string defaultNs)
         {

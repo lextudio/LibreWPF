@@ -28,6 +28,38 @@ namespace System.Windows.Markup
             target.SetValue(property, new ResourceReferenceExpression(resourceKey));
         }
 
+        /// <summary>
+        /// The entry that <c>&lt;DynamicResource x:Key="K" ResourceKey="..."/&gt;</c> puts in a dictionary: a reference resolved when something asks for K
+        /// (BAML stores the same expression there). Used by generated code.
+        /// </summary>
+        public static object DynamicResourceEntry(object resourceKey)
+        {
+            ArgumentNullException.ThrowIfNull(resourceKey);
+            return new ResourceReferenceExpression(resourceKey);
+        }
+
+        /// <summary>
+        /// What a StaticResource lookup inside a generated dictionary returns for <paramref name="entry"/>: the entry itself, except that a
+        /// <see cref="DynamicResourceEntry"/> is resolved to the resource it names (in <paramref name="scope"/>, then the application, then the system).
+        /// </summary>
+        public static object ResolveEntry(object entry, ResourceDictionary scope)
+        {
+            for (int depth = 0; entry is ResourceReferenceExpression reference && depth < 16; depth++)
+            {
+                object key = reference.ResourceKey;
+                object resolved = (scope != null && scope.Contains(key)) ? scope[key] : null;
+                resolved ??= Application.Current?.TryFindResource(key);
+                resolved ??= SystemResources.FindResourceInternal(key);
+                if (resolved == null || resolved == DependencyProperty.UnsetValue)
+                {
+                    return entry;
+                }
+                entry = resolved;
+            }
+
+            return entry;
+        }
+
         private static readonly object s_lock = new object();
         private static readonly Dictionary<string, Func<ResourceDictionary>> s_factories = new(StringComparer.OrdinalIgnoreCase);
 

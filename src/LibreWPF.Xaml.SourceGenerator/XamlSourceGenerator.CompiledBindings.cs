@@ -661,7 +661,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                         // ListView.View is a ViewBase; Columns is declared only by GridView, its one subclass that has it. Such a member is
                         // compiled against that subclass: the descriptor answers UnsetValue for any other run-time type. (Only the base type's own
                         // assembly is searched: a subclass of another assembly that has the same member is not reached, as it was reflectively.)
-                        if (UniqueDerivedWithProperty(current, name, context) is { } narrow && IsNameable(narrow.Property.Type) && IsNameable(narrow.Owner))
+                        if (UniqueDerivedWithProperty(current, name, context, segments.Skip(i + 1).Select(x => x.Trim()).ToList()) is { } narrow && IsNameable(narrow.Property.Type) && IsNameable(narrow.Owner))
                         {
                             // A dependency property goes in as the DependencyProperty itself (its change notification), as below.
                             if (FindDependencyPropertyField(narrow.Owner, name) is { } narrowDependencyProperty)
@@ -795,14 +795,25 @@ namespace LibreWPF.Xaml.SourceGenerator
         }
 
         /// <summary>
-        /// The one public, non-abstract class of <paramref name="baseType"/>'s own assembly that derives from it and has a public readable
-        /// instance property <paramref name="name"/>; null when there is none or more than one.
+        /// The one public, non-abstract class deriving from <paramref name="baseType"/> that declares a public readable instance property
+        /// <paramref name="name"/> and, when <paramref name="rest"/> is given, whose value type then resolves the rest of the path (through a unique
+        /// subclass where needed); null when there is none or more than one. The search covers the base type's own assembly and, for a base type of
+        /// the framework's core (DependencyObject), the Presentation* assemblies the compilation references: <c>TemplatedParent.View.Columns</c> reaches
+        /// ListView because it alone has a <c>View</c> whose type leads to <c>Columns</c>.
         /// </summary>
-        private static (INamedTypeSymbol Owner, IPropertySymbol Property)? UniqueDerivedWithProperty(ITypeSymbol baseType, string name, GenerationContext context)
+        private static (INamedTypeSymbol Owner, IPropertySymbol Property)? UniqueDerivedWithProperty(ITypeSymbol baseType, string name, GenerationContext context,
+            IReadOnlyList<string>? rest = null, int depth = 0)
         {
-            if (baseType.ContainingAssembly is null || baseType.TypeKind != TypeKind.Class)
+            if (baseType.ContainingAssembly is null || baseType.TypeKind != TypeKind.Class || depth > 4)
             {
                 return null;
+            }
+
+            var assemblies = new List<IAssemblySymbol> { baseType.ContainingAssembly };
+            if (baseType.ContainingAssembly.Name is "WindowsBase" or "PresentationCore")
+            {
+                assemblies.AddRange(context.Compilation.SourceModule.ReferencedAssemblySymbols.Where(a => a.Name.StartsWith("Presentation", StringComparison.Ordinal)
+                    && !assemblies.Contains(a, SymbolEqualityComparer.Default)));
             }
 
             (INamedTypeSymbol, IPropertySymbol)? found = null;
@@ -823,7 +834,9 @@ namespace LibreWPF.Xaml.SourceGenerator
                     if (type is { DeclaredAccessibility: Accessibility.Public, IsAbstract: false, TypeKind: TypeKind.Class, IsGenericType: false }
                         && !SymbolEqualityComparer.Default.Equals(type, baseType)
                         && BaseTypesAndSelf(type).Any(b => SymbolEqualityComparer.Default.Equals(b, baseType))
-                        && FindProperty(type, name, context) is { } property)
+                        && FindProperty(type, name, context) is { } property
+                        && SymbolEqualityComparer.Default.Equals(property.ContainingType, type)   // declared here, not inherited (a subclass is not a second owner)
+                        && (rest is not { Count: > 0 } || PathResolves(property.Type, rest, context, depth + 1)))
                     {
                         found = (type, property);
                         count++;
@@ -831,8 +844,37 @@ namespace LibreWPF.Xaml.SourceGenerator
                     Visit(type);
                 }
             }
-            Visit(baseType.ContainingAssembly.GlobalNamespace);
+            foreach (var assembly in assemblies)
+            {
+                Visit(assembly.GlobalNamespace);
+            }
             return count == 1 ? found : null;
+        }
+
+        // Whether the segments name properties one after the other from <paramref name="type"/>, a segment missing on the declared type found on its unique subclass.
+        private static bool PathResolves(ITypeSymbol type, IReadOnlyList<string> segments, GenerationContext context, int depth)
+        {
+            for (var i = 0; i < segments.Count; i++)
+            {
+                // (Owner.Property): an attached property is looked up by its owner, not on this type; the chain cannot be followed further, and it is not a reason to refuse.
+                if (s_attachedSegment.IsMatch(segments[i].Trim()))
+                {
+                    return true;
+                }
+
+                var property = FindProperty(type, segments[i], context);
+                if (property is null)
+                {
+                    var narrow = UniqueDerivedWithProperty(type, segments[i], context, segments.Skip(i + 1).ToList(), depth);
+                    if (narrow is null)
+                    {
+                        return false;
+                    }
+                    property = narrow.Value.Property;
+                }
+                type = property.Type;
+            }
+            return true;
         }
 
         private static IPropertySymbol? FindProperty(ITypeSymbol type, string name, GenerationContext context)

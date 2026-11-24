@@ -28,6 +28,7 @@ public class ThemeDictionaryTests
             public class UIElement : DependencyObject { public static readonly DependencyProperty IsMouseOverProperty = new(); public bool IsMouseOver { get; } }
             public class FrameworkElement : UIElement
             {
+                public DependencyObject TemplatedParent { get; }
                 public static readonly DependencyProperty TagProperty = new();
                 public object Tag { get; set; }
                 public static readonly DependencyProperty MarginProperty = new();
@@ -80,6 +81,8 @@ public class ThemeDictionaryTests
             public class RowDefinitionCollection : System.Collections.Generic.List<RowDefinition> { }
             public class Grid : FrameworkElement
             {
+                public static readonly DependencyProperty RowProperty = new();
+                public static int GetRow(DependencyObject element) => 0;
                 public RowDefinitionCollection RowDefinitions { get; } = new();
                 public ColumnDefinitionCollection ColumnDefinitions { get; } = new();
             }
@@ -94,8 +97,12 @@ public class ThemeDictionaryTests
                 public string Mode { get; set; }
             }
             public class TileView : ViewBase { public string Shared { get; set; } }
-            public class ListView : Control { public ViewBase View { get; set; } }
+            public class ListView : Control { public ViewBase View { get; set; } public ViewBase Pane { get; set; } }
+            // A second owner of Pane whose chain resolves as well: the path is ambiguous.
+            public class PaneHost : Control { public ViewBase Pane { get; set; } }
             public class ScrollViewer : ContentControl { }
+            // A second class with a View: only ListView's leads to Columns.
+            public class Viewer : Control { public string View { get; set; } }
             public class Thumb : FrameworkElement { }
             public class Track : FrameworkElement { public Thumb Thumb { get; set; } }
             public class Button : ContentControl { }
@@ -666,6 +673,89 @@ public class ThemeDictionaryTests
 
         Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0007");
         Assert.Contains("__XsgCompiledProperty<global::System.Windows.Controls.GridView, global::System.Windows.Controls.GridViewColumnCollection>(\"Columns\"", code);
+    }
+
+    [Fact]
+    public void ATemplatedParentPathOfAStyle_IsCompiledAgainstTheOnlyTypeWhoseChainResolves()
+    {
+        // As Aero2's ScrollViewer style: the source is the ScrollViewer, its TemplatedParent a DependencyObject. Only ListView has a View whose type
+        // leads to Columns (GridView), so the path is compiled: View against ListView, Columns against GridView. TileView has a View-less hierarchy.
+        var xaml = Header + """
+              <Style TargetType="{x:Type ScrollViewer}">
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ScrollViewer}">
+                      <Border Tag="{Binding Path=TemplatedParent.View.Columns, RelativeSource={RelativeSource TemplatedParent}}" />
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+              </Style>
+            </ResourceDictionary>
+            """;
+
+        var (code, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfCompiledBindings", "true"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0007");
+        Assert.Contains("__XsgCompiledProperty<global::System.Windows.Controls.ListView, global::System.Windows.Controls.ViewBase>(\"View\"", code);
+        Assert.Contains("__XsgCompiledProperty<global::System.Windows.Controls.GridView, global::System.Windows.Controls.GridViewColumnCollection>(\"Columns\"", code);
+    }
+
+    // The framework split: DependencyObject in WindowsBase, everything else in PresentationFramework (the generator widens its search from the one to the other).
+    private static (string Code, ImmutableArray<Diagnostic> Diagnostics) GenerateAcrossAssemblies(string xaml)
+    {
+        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator).Select(p => (MetadataReference)MetadataReference.CreateFromFile(p)).ToList();
+        var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
+        var windowsBase = CSharpCompilation.Create("WindowsBase",
+            [CSharpSyntaxTree.ParseText("namespace System.Windows { public class DependencyProperty { } public class DependencyObject { } }")], references, options);
+        var presentation = CSharpCompilation.Create("PresentationFramework",
+            [CSharpSyntaxTree.ParseText(StandIns.Replace("public class DependencyProperty { }", "").Replace("public class DependencyObject { }", ""))],
+            [.. references, windowsBase.ToMetadataReference()], options);
+        var theme = CSharpCompilation.Create("Theme", [CSharpSyntaxTree.ParseText("")], [.. references, windowsBase.ToMetadataReference(), presentation.ToMetadataReference()], options);
+        var driver = CSharpGeneratorDriver.Create([new XamlSourceGenerator().AsSourceGenerator()],
+            additionalTexts: [new InMemoryText("/src/Theme/Themes/Aero2.NormalColor.xaml", xaml)],
+            optionsProvider: new Options(new Dictionary<string, string> { ["build_property.MSBuildProjectDirectory"] = "/src/Theme", ["build_property.LibreWpfCompiledBindings"] = "true" }));
+        var result = driver.RunGenerators(theme).GetRunResult();
+        return (string.Join("\n", result.GeneratedTrees.Select(t => t.ToString())), result.Diagnostics);
+    }
+
+    private static string ScrollViewerStyleBinding(string path) => Header + """
+          <Style TargetType="{x:Type ScrollViewer}">
+            <Setter Property="Template">
+              <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ScrollViewer}">
+                  <Border Tag="{Binding Path=@PATH@, RelativeSource={RelativeSource TemplatedParent}}" />
+                </ControlTemplate>
+              </Setter.Value>
+            </Setter>
+          </Style>
+        </ResourceDictionary>
+        """.Replace("@PATH@", path);
+
+    [Fact]
+    public void ATemplatedParentPath_ReachesAClassOfAnotherAssembly_ThroughTheOnlyChainThatResolves()
+    {
+        var (code, diagnostics) = GenerateAcrossAssemblies(ScrollViewerStyleBinding("TemplatedParent.View.Columns"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0007");
+        Assert.Contains("__XsgCompiledProperty<global::System.Windows.Controls.ListView, global::System.Windows.Controls.ViewBase>(\"View\"", code);
+    }
+
+    [Fact]
+    public void ATemplatedParentPath_WithTwoOwnersWhoseChainsBothResolve_StaysReflective()
+    {
+        var (code, diagnostics) = GenerateAcrossAssemblies(ScrollViewerStyleBinding("TemplatedParent.Pane.Columns"));
+
+        Assert.Contains(diagnostics, d => d.Id == "LWXSG0007");
+        Assert.DoesNotContain("__XsgCompiledProperty<global::System.Windows.Controls.ListView, global::System.Windows.Controls.ViewBase>(\"Pane\"", code);
+    }
+
+    [Fact]
+    public void AnAttachedSegmentAfterTheNarrowedMember_DoesNotRefuseTheNarrowing()
+    {
+        var (code, diagnostics) = GenerateAcrossAssemblies(ScrollViewerStyleBinding("TemplatedParent.View.Columns.(Grid.Row)"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0007");
+        Assert.Contains("__XsgCompiledProperty<global::System.Windows.Controls.ListView, global::System.Windows.Controls.ViewBase>(\"View\"", code);
     }
 
     [Fact]

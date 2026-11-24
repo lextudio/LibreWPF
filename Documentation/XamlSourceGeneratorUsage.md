@@ -108,8 +108,9 @@ What a NativeAOT application has to know (found with a gallery of Menu, ToolBar,
 
 - Bindings without a compiled path are reflection over the run-time type, and NativeAOT removes members nothing references. Give every
   scope its `x:DataType`: the root, and the row type for a `GridViewColumn`, `DataGridTextColumn` and so on (`x:DataType` is accepted on any element).
-- The SDK targets add an rd.xml (`ProGPU.Wpf.Sdk.XamlSourceGeneratorNativeAotRoots.rd.xml`) that keeps the public members of `ListView` and
-  `GridView`, which the in-box themes bind by name (`TemplatedParent.View.Columns`, reported as LWXSG0007).
+- The SDK targets add an rd.xml (`ProGPU.Wpf.Sdk.XamlSourceGeneratorNativeAotRoots.rd.xml`) that keeps the two internal switch classes the in-box themes read by name
+  (see the parenthesized-path item below). The themes' `TemplatedParent.View.Columns` bindings need nothing: they are compiled. A path of your own that the generator cannot type (LWXSG0007: a member of the run-time type of a base-typed source such as `TemplatedParent.View` alone, which several classes declare)
+  is reflection at run time: keep the types it reaches with an rd.xml entry of your own.
 - A `DataGrid` over a collection does not offer the new-row placeholder under NativeAOT (it needs the item type's default constructor by reflection):
   set `CanUserAddRows="False"` for the same behaviour in JIT and AOT.
 - `CollectionView` sorts, groups and filters by property name (`SortDescription.PropertyName`, `GroupDescription`) with reflection over the item type, which

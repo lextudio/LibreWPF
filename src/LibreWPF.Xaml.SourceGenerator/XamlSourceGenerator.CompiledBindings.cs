@@ -423,7 +423,10 @@ namespace LibreWPF.Xaml.SourceGenerator
             if (parts.TryGetValue("ElementName", out var elementName))
             {
                 var name = Unquote(elementName);
-                var named = owner.AncestorsAndSelf().Last().Descendants().FirstOrDefault(e =>
+                // Names are scoped: a binding inside a template sees the names of that template (a theme file declares "Border" in dozens of them).
+                var nameScope = owner.Ancestors().FirstOrDefault(a => a.Name.LocalName.EndsWith("Template", StringComparison.Ordinal) && !a.Name.LocalName.Contains("."))
+                    ?? owner.AncestorsAndSelf().Last();
+                var named = nameScope.Descendants().FirstOrDefault(e =>
                     !e.Name.LocalName.Contains(".") && (e.Attribute(XName.Get("Name", XamlNamespace)) ?? e.Attribute("Name"))?.Value == name);
                 var type = named is null ? null : TypeSymbol(ResolveTypeName(named, defaultNs));
                 return (type, type is null ? $"no element named '{name}' of a known type is declared in this XAML file" : "ElementName=" + name);

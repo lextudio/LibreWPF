@@ -243,4 +243,32 @@ public class XamlSourceGeneratedResourcesTests
 
         load.Should().Throw<Exception>().And.Should().NotBeOfType<NullReferenceException>();
     }
+
+    [Fact]
+    public void SetDynamicResource_OnAFreezable_StoresAResourceReference_ThatResolvesThroughTheTree()
+    {
+        // A SolidColorBrush has no SetResourceReference: generated code uses this helper for the Color of a brush in a theme.
+        var brush = new System.Windows.Media.SolidColorBrush();
+        XamlSourceGeneratedResources.SetDynamicResource(brush, System.Windows.Media.SolidColorBrush.ColorProperty, "k");
+
+        brush.ReadLocalValue(System.Windows.Media.SolidColorBrush.ColorProperty).Should().BeAssignableTo<Expression>();
+
+        var owner = new System.Windows.Controls.Border();
+        owner.Resources["k"] = System.Windows.Media.Colors.Red;
+        owner.Resources["brush"] = brush;
+        owner.BeginInit();
+        owner.EndInit();
+        ((System.Windows.Media.SolidColorBrush)owner.Resources["brush"]).Color.Should().Be(System.Windows.Media.Colors.Red, "the dynamic reference resolves through the resource tree of the dictionary's owner");
+    }
+
+    [Fact]
+    public void SetDynamicResource_RejectsNull()
+    {
+        var brush = new System.Windows.Media.SolidColorBrush();
+        Action noTarget = () => XamlSourceGeneratedResources.SetDynamicResource(null!, System.Windows.Media.SolidColorBrush.ColorProperty, "k");
+        Action noKey = () => XamlSourceGeneratedResources.SetDynamicResource(brush, System.Windows.Media.SolidColorBrush.ColorProperty, null!);
+
+        noTarget.Should().Throw<ArgumentNullException>();
+        noKey.Should().Throw<ArgumentNullException>();
+    }
 }

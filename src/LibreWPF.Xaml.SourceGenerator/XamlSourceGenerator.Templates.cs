@@ -319,6 +319,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                     return FourDoubles(value, "global::System.Windows.Thickness");
                 case "System.Windows.CornerRadius":
                     return FourDoubles(value, "global::System.Windows.CornerRadius");
+                case "System.Windows.Media.Animation.KeySpline":
+                    return FourDoubles(value, "global::System.Windows.Media.Animation.KeySpline");
                 case "System.Windows.GridLength":
                     if (string.Equals(value, "Auto", StringComparison.OrdinalIgnoreCase)) return "global::System.Windows.GridLength.Auto";
                     if (value.EndsWith("*", StringComparison.Ordinal))
@@ -426,6 +428,11 @@ namespace LibreWPF.Xaml.SourceGenerator
                     return $"\"{EscapeString(value)}\"";
             }
 
+            // "None" is the empty collection; TextDecorations has no member of that name.
+            if (typeName == "System.Windows.TextDecorationCollection" && string.Equals(value.Trim(), "None", StringComparison.OrdinalIgnoreCase))
+            {
+                return "new global::System.Windows.TextDecorationCollection()";
+            }
             if (typeName is not null && s_staticValueClasses.TryGetValue(typeName, out var statics))
             {
                 return $"global::{statics}.{StaticMemberName(statics, value)}";
@@ -1027,6 +1034,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             if (text is not null && !el.Elements().Any())
             {
                 var contentProperty = ContentPropertyOf(type) ?? "Content";
+                if (contentProperty == "Inlines") contentProperty = "Text"; // text in a TextBlock is its Text (Inlines is not a dependency property)
                 var (dp, _, _) = ResolveDependencyProperty(type, contentProperty, el, defaultNs);
                 sb.AppendLine($"{pad}{f}.SetValue({dp}, \"{EscapeString(text.Trim())}\");");
             }
@@ -1128,6 +1136,14 @@ namespace LibreWPF.Xaml.SourceGenerator
         {
             var pad = new string(' ', indent);
             var access = $"{owner}.{property.Name}";
+            // <Foo.X><MultiBinding .../></Foo.X>: the binding is applied to the dependency property; it is not the property's value.
+            if (children.Count == 1 && children[0].Name.LocalName is "Binding" or "MultiBinding" or "PriorityBinding"
+                && FindDependencyPropertyField(property.ContainingType, property.Name) is { } bindingTarget)
+            {
+                var binding = GenerateElement(sb, children[0], defaultNs, sourcePath, indent, ref localId);
+                sb.AppendLine($"{pad}global::System.Windows.Data.BindingOperations.SetBinding({owner}, {bindingTarget.ContainingType.ToDisplayString(s_typeFormat)}.{property.Name}Property, {binding});");
+                return;
+            }
             if (children.Count == 1 && property.SetMethod is { DeclaredAccessibility: Accessibility.Public } && IsAssignableChild(children[0], property.Type, defaultNs))
             {
                 var only = GenerateElement(sb, children[0], defaultNs, sourcePath, indent, ref localId);
@@ -1355,11 +1371,21 @@ namespace LibreWPF.Xaml.SourceGenerator
         // An element with only text and no attributes whose type is a value written in the converter's text form.
         private static string? TextOnlyLiteral(XElement el, string typeName, string defaultNs)
         {
-            if ((!s_textLiteralTypes.Contains(typeName) && TypeSymbol(typeName) is not { TypeKind: TypeKind.Enum }) || el.Elements().Any())
+            var symbol = TypeSymbol(typeName);
+            var primitive = symbol is { SpecialType: SpecialType.System_Boolean or SpecialType.System_Byte or SpecialType.System_Int16
+                or SpecialType.System_Int32 or SpecialType.System_Int64 or SpecialType.System_Single or SpecialType.System_Double
+                or SpecialType.System_String };  // exactly the primitives LiteralCode converts
+            if ((!s_textLiteralTypes.Contains(typeName) && !primitive && symbol is not { TypeKind: TypeKind.Enum }) || el.Elements().Any())
             {
                 return null;
             }
             var text = el.Value.Trim();
+            // <sys:String x:Key="K"/> is the empty string (string has no parameterless constructor).
+            if (text.Length == 0 && symbol is { SpecialType: SpecialType.System_String }
+                && !el.Attributes().Any(a => a.Name.NamespaceName != "http://www.w3.org/2000/xmlns/" && a.Name.LocalName != "xmlns" && a.Name.NamespaceName != XamlNamespace))
+            {
+                return "\"\"";
+            }
             if (text.Length == 0 || el.Attributes().Any(a => a.Name.NamespaceName != "http://www.w3.org/2000/xmlns/" && a.Name.LocalName != "xmlns" && a.Name.NamespaceName != XamlNamespace))
             {
                 return null;

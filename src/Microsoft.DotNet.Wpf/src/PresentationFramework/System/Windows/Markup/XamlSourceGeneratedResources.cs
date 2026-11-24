@@ -15,6 +15,19 @@ namespace System.Windows.Markup
     /// </summary>
     public static class XamlSourceGeneratedResources
     {
+        /// <summary>
+        /// Sets <paramref name="property"/> of <paramref name="target"/> to a dynamic resource reference (<c>{DynamicResource key}</c>). Generated
+        /// code uses this for objects that have no SetResourceReference (a Freezable such as the Color of a SolidColorBrush); a
+        /// FrameworkElement or FrameworkContentElement is set with its own SetResourceReference.
+        /// </summary>
+        public static void SetDynamicResource(DependencyObject target, DependencyProperty property, object resourceKey)
+        {
+            ArgumentNullException.ThrowIfNull(target);
+            ArgumentNullException.ThrowIfNull(property);
+            ArgumentNullException.ThrowIfNull(resourceKey);
+            target.SetValue(property, new ResourceReferenceExpression(resourceKey));
+        }
+
         private static readonly object s_lock = new object();
         private static readonly Dictionary<string, Func<ResourceDictionary>> s_factories = new(StringComparer.OrdinalIgnoreCase);
 

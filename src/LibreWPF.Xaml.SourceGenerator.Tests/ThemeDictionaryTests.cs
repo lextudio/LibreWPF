@@ -43,8 +43,13 @@ public class ThemeDictionaryTests
         }
         namespace System.Windows.Media
         {
-            public class Brush { }
-            public class SolidColorBrush : Brush { }
+            public class Brush : System.Windows.DependencyObject { }
+            public struct Color { }
+            public class SolidColorBrush : Brush
+            {
+                public static readonly System.Windows.DependencyProperty ColorProperty = new();
+                public Color Color { get; set; }
+            }
         }
         namespace System.Windows.Controls
         {
@@ -563,6 +568,70 @@ public class ThemeDictionaryTests
         var (code, _) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"));
 
         Assert.Contains("this[\"plain\"] =", code);
+    }
+
+    [Fact]
+    public void CLRPrimitiveElements_AreValues_NotObjectsWithAContentProperty()
+    {
+        var xaml = """
+            <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:sys="clr-namespace:System;assembly=mscorlib">
+              <sys:Double x:Key="size">16</sys:Double>
+              <sys:Boolean x:Key="flag">True</sys:Boolean>
+              <sys:String x:Key="empty"></sys:String>
+              <sys:String x:Key="text">Hello</sys:String>
+            </ResourceDictionary>
+            """;
+
+        var (code, _) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"));
+
+        Assert.Contains("= 16d;", code);
+        Assert.Contains("= true;", code);
+        Assert.Contains("= \"\";", code);
+        Assert.Contains("= \"Hello\";", code);
+        Assert.DoesNotContain(".Content = ", code);
+        Assert.DoesNotContain("new global::System.String()", code);
+    }
+
+    [Fact]
+    public void ADynamicResourceOnAFreezable_UsesTheRuntimeHelper_AndTheKeyIsGeneratedCode()
+    {
+        var xaml = Header + """
+              <SolidColorBrush x:Key="b" Color="{DynamicResource {x:Static SystemColors.WindowBrushKey}}" />
+            </ResourceDictionary>
+            """;
+
+        var (code, _) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"));
+
+        // SolidColorBrush has no SetResourceReference, and the key is the x:Static value, not the markup text.
+        Assert.Contains("XamlSourceGeneratedResources.SetDynamicResource(", code);
+        Assert.Contains("global::System.Windows.Media.SolidColorBrush.ColorProperty, global::System.Windows.SystemColors.WindowBrushKey)", code);
+        Assert.DoesNotContain("SetResourceReference(global::System.Windows.Media.SolidColorBrush", code);
+        Assert.DoesNotContain("{x:Static", code);
+    }
+
+    [Fact]
+    public void AnElementNameBinding_SeesTheNamesOfItsOwnTemplate()
+    {
+        // Both templates name an element "X": the first a ContentPresenter (no Background), the second a Border. The binding in the second
+        // must read the Border, not the first element of the file called X.
+        var xaml = Header + """
+              <ControlTemplate x:Key="a" TargetType="{x:Type Button}">
+                <ContentPresenter Name="X" />
+              </ControlTemplate>
+              <ControlTemplate x:Key="b" TargetType="{x:Type Button}">
+                <Border>
+                  <Border Name="X" />
+                  <Border x:Name="user" Background="{Binding ElementName=X, Path=Background}" />
+                </Border>
+              </ControlTemplate>
+            </ResourceDictionary>
+            """;
+
+        var (_, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfCompiledBindings", "true"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0006");
     }
 
     private sealed class Options(Dictionary<string, string> global) : AnalyzerConfigOptionsProvider

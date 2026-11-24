@@ -597,7 +597,16 @@ namespace LibreWPF.Xaml.SourceGenerator
                     value.TrimStart().StartsWith("{DynamicResource", StringComparison.Ordinal))
                 {
                     var key = value.Substring(value.IndexOf(' ') + 1).Trim().TrimEnd('}').Trim();
-                    sb.AppendLine($"{pad}{varName}.SetResourceReference(global::{typeName}.{attrLocal}Property, \"{key}\");");
+                    // Only FrameworkElement / FrameworkContentElement have SetResourceReference; a Freezable (a brush's Color) takes the expression itself.
+                    var keyCode = ResourceKeyCode(key, el, defaultNs);
+                    if (HasSetResourceReference(typeName))
+                    {
+                        sb.AppendLine($"{pad}{varName}.SetResourceReference(global::{typeName}.{attrLocal}Property, {keyCode});");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"{pad}global::System.Windows.Markup.XamlSourceGeneratedResources.SetDynamicResource({varName}, global::{typeName}.{attrLocal}Property, {keyCode});");
+                    }
                     continue;
                 }
 
@@ -792,7 +801,16 @@ namespace LibreWPF.Xaml.SourceGenerator
                     else if (peChildren.Count == 1)
                     {
                         var cVar = GenerateElement(sb, peChildren[0], defaultNs, sourcePath, indent, ref localId);
-                        sb.AppendLine($"{pad}{varName}.{propName} = {cVar};");
+                        // A binding object (<Foo.X><MultiBinding/></Foo.X>) is applied to the dependency property, not assigned to the CLR one.
+                        if (peChildren[0].Name.LocalName is "Binding" or "MultiBinding" or "PriorityBinding"
+                            && FindDependencyPropertyField(TypeSymbol(typeName), propName) is { } bindingTarget)
+                        {
+                            sb.AppendLine($"{pad}global::System.Windows.Data.BindingOperations.SetBinding({varName}, {bindingTarget.ContainingType.ToDisplayString(s_typeFormat)}.{propName}Property, {cVar});");
+                        }
+                        else
+                        {
+                            sb.AppendLine($"{pad}{varName}.{propName} = {cVar};");
+                        }
                     }
                     else if (peChildren.Count > 1)
                     {
@@ -873,6 +891,15 @@ namespace LibreWPF.Xaml.SourceGenerator
             }
 
             return varName;
+        }
+
+        private static bool HasSetResourceReference(string typeName)
+        {
+            for (var t = TypeSymbol(typeName); t != null; t = t.BaseType)
+            {
+                if (t.ToDisplayString() is "System.Windows.FrameworkElement" or "System.Windows.FrameworkContentElement") return true;
+            }
+            return TypeSymbol(typeName) == null; // unknown type (not in the compilation): the previous behaviour
         }
 
         private static string? ResolveTypeName(XElement el, string defaultNs)

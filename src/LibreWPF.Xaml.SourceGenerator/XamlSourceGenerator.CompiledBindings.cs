@@ -42,6 +42,9 @@ namespace LibreWPF.Xaml.SourceGenerator
             // Set once a compiled binding is emitted: the generated class then needs its __XsgCompiledProperty helper.
             public bool UsesCompiledProperty { get; set; }
 
+            // Set once a by-name static property path is emitted (an inaccessible type of another assembly): the class then needs __XsgStaticPath.
+            public bool UsesStaticLookup { get; set; }
+
             // A loose ResourceDictionary: generated into a class that has no x:Name fields.
             public bool LooseDictionary { get; set; }
 
@@ -492,11 +495,41 @@ namespace LibreWPF.Xaml.SourceGenerator
         }
 
         /// <summary>
+        /// (base:AccessibilitySwitches.X) where the type is an internal one of another assembly (WindowsBase, PresentationFramework: what the in-box
+        /// themes read): the generated code finds the static property by the type's name when the binding is created. The run-time path parser knows no
+        /// prefix and would drop the binding; reflection works in JIT and, with the type kept (the SDK's rd.xml does so for these), under NativeAOT.
+        /// </summary>
+        private static string? StaticPathByName(string ownerWritten, string name, XElement owner, GenerationContext context)
+        {
+            var colon = ownerWritten.IndexOf(':');
+            if (colon < 0)
+            {
+                return null;
+            }
+
+            var ns = owner.GetNamespaceOfPrefix(ownerWritten.Substring(0, colon))?.NamespaceName;
+            if (ns is null || !ns.StartsWith("clr-namespace:", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            var parts = ns.Substring("clr-namespace:".Length).Split(';');
+            var assembly = parts.Select(p => p.Trim()).FirstOrDefault(p => p.StartsWith("assembly=", StringComparison.Ordinal))?.Substring("assembly=".Length);
+            if (assembly is not { Length: > 0 })
+            {
+                return null;
+            }
+
+            context.UsesStaticLookup = true;
+            return $"__XsgStaticPath(\"{EscapeString(parts[0].Trim())}.{ownerWritten.Substring(colon + 1)}, {EscapeString(assembly)}\", \"{name}\")";
+        }
+
+        /// <summary>
         /// A path that is one parenthesized member, <c>(Owner.Member)</c> or <c>(prefix:Owner.Member)</c>: a dependency property or a static
         /// property, whatever the source of the binding. At run time that text is resolved with the default XAML namespace only, by reflection,
         /// and a prefix (<c>base:</c>, <c>framework:</c>) cannot be resolved at all; here it is resolved against the file's namespaces. A dependency
         /// property is passed as the DependencyProperty, a static property as a static PropertyInfo (what the binding engine treats as a static
-        /// source). Null when the type or member is not found, or not accessible from the generated code (e.g. an internal type of another assembly).
+        /// source). Null when the type or member is not found; for a type that is unknown or not accessible from the generated code (an internal type of another assembly) <see cref="StaticPathByName"/> answers instead.
         /// </summary>
         private static string? ParenthesizedPathCode(string path, XElement? owner)
         {
@@ -517,7 +550,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             var name = match.Groups[2].Value;
             if (ownerType is null || !context.Compilation.IsSymbolAccessibleWithin(ownerType, context.Compilation.Assembly))
             {
-                return null;
+                return StaticPathByName(match.Groups[1].Value, name, owner, context);
             }
 
             if (FindDependencyPropertyField(ownerType, name) is { } dependencyProperty
@@ -926,6 +959,20 @@ namespace LibreWPF.Xaml.SourceGenerator
 
         private static void AppendCompiledPropertyHelperIfUsed(StringBuilder sb)
         {
+            if (s_context is { UsesStaticLookup: true })
+            {
+                sb.AppendLine("""
+                            [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
+                            private static global::System.Windows.PropertyPath __XsgStaticPath(string typeName, string member)
+                            {
+                                var property = global::System.Type.GetType(typeName)?.GetProperty(member,
+                                    global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.NonPublic | global::System.Reflection.BindingFlags.Static);
+                                // A type that cannot be found leaves the binding unresolved, as it was.
+                                return property is null ? new global::System.Windows.PropertyPath(member) : new global::System.Windows.PropertyPath("(0)", property);
+                            }
+                    """);
+            }
+
             if (s_context is not { UsesCompiledProperty: true })
             {
                 return;

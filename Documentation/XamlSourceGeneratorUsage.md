@@ -115,6 +115,8 @@ What a NativeAOT application has to know (found with a gallery of Menu, ToolBar,
 - `CollectionView` sorts, groups and filters by property name (`SortDescription.PropertyName`, `GroupDescription`) with reflection over the item type, which
   NativeAOT has trimmed: without help the list is silently unsorted. Keep the item type with an rd.xml entry (`<Type Name="App.Item" Dynamic="Required All" />` in an
   `RdXmlFile`), as `samples/XsgNativeAot/rd.xml` does. A `ValidationRule` needs nothing (it is called through its virtual method). `<Binding.ValidationRules>` of a `<Binding>` element is generated; inside a data condition (`DataTrigger.Binding`) it is still reported as LWXSG0008.
+- A parenthesized path to an internal type of another assembly (`(base:AccessibilitySwitches.X)`, what the in-box themes read) is resolved by the type's name when
+  the binding is created (`__XsgStaticPath`), because the run-time path parser knows no XML prefix. The SDK's rd.xml keeps the two such types the themes use.
 - A member that exists only on a subclass of the declared type (`View.Columns`: `ViewBase` has no `Columns`, `GridView` does) is compiled against the
   one class of that assembly that has it.
 

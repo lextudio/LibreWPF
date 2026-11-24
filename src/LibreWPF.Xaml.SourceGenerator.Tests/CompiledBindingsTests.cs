@@ -440,6 +440,59 @@ public class CompiledBindingsTests
     }
 
     [Fact]
+    public void AParenthesizedPathToAnInternalTypeOfAnotherAssembly_IsFoundByNameWhenTheBindingIsCreated()
+    {
+        // (g:GlobalizationMode.Invariant): an internal class of System.Private.CoreLib, as the in-box themes read AccessibilitySwitches of
+        // WindowsBase. The run-time path parser knows no prefix, so the generated code resolves the static property itself.
+        var xaml = """
+            <Window x:Class="Sample.MainWindow"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:g="clr-namespace:System.Globalization;assembly=System.Private.CoreLib">
+              <Grid><TextBlock Text="{Binding Path=(g:GlobalizationMode.Invariant)}" /></Grid>
+            </Window>
+            """;
+
+        RunWindow(xaml, (assembly, bindings, _) =>
+        {
+            Assert.Single(bindings);
+            var path = bindings[0]!.GetType().GetProperty("Path")!.GetValue(bindings[0])!;
+            var parameter = ((object[])path.GetType().GetProperty("PathParameters")!.GetValue(path)!).Single();
+            Assert.Equal("Invariant", ((PropertyInfo)parameter).Name);
+            Assert.True(((PropertyInfo)parameter).GetMethod!.IsStatic);
+        });
+        var (_, diagnostics) = Generate(xaml);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+    }
+
+    [Fact]
+    public void AParenthesizedPathInADataCondition_ToAnInternalTypeOfAnotherAssembly_IsFoundByName()
+    {
+        // The real failure site: a condition of a MultiDataTrigger in a theme (Aero2 reads AccessibilitySwitches this way).
+        var xaml = """
+            <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:g="clr-namespace:System.Globalization;assembly=System.Private.CoreLib">
+              <Style TargetType="{x:Type Border}">
+                <Style.Triggers>
+                  <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                      <Condition Binding="{Binding Path=(g:GlobalizationMode.Invariant)}" Value="false" />
+                    </MultiDataTrigger.Conditions>
+                  </MultiDataTrigger>
+                </Style.Triggers>
+              </Style>
+            </ResourceDictionary>
+            """;
+
+        var (code, diagnostics) = Generate(xaml, "/src/Theme/Themes/Generic.xaml", [("MSBuildProjectDirectory", "/src/Theme")]);
+
+        Assert.Contains("__XsgStaticPath(\"System.Globalization.GlobalizationMode, System.Private.CoreLib\", \"Invariant\")", code);
+        Assert.Contains("private static global::System.Windows.PropertyPath __XsgStaticPath(", code);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+    }
+
+    [Fact]
     public void ValidationRulesOfABindingInADataCondition_AreStillReported()
     {
         var xaml = """

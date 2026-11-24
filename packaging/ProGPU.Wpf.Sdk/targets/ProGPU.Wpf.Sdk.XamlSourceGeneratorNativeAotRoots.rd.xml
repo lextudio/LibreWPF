@@ -8,6 +8,11 @@
     <Assembly Name="PresentationFramework">
       <Type Name="System.Windows.Controls.ListView" Dynamic="Required All" />
       <Type Name="System.Windows.Controls.GridView" Dynamic="Required All" />
+      <!-- Read by the in-box themes as (framework:FrameworkAppContextSwitches.X) / (base:AccessibilitySwitches.X): internal, found by name. -->
+      <Type Name="MS.Internal.FrameworkAppContextSwitches" Dynamic="Required All" />
+    </Assembly>
+    <Assembly Name="WindowsBase">
+      <Type Name="System.Windows.AccessibilitySwitches" Dynamic="Required All" />
     </Assembly>
   </Application>
 </Directives>

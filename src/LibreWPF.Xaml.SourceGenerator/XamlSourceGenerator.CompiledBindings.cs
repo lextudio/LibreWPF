@@ -313,10 +313,14 @@ namespace LibreWPF.Xaml.SourceGenerator
                     }
                     return null;
                 case "Source":
-                    // A static resource is the one source that can be named without reflection.
-                    return value.TrimStart().StartsWith("{StaticResource", StringComparison.Ordinal)
-                        ? $"Source = this.FindResource(\"{EscapeString(ResourceKeyOf(value))}\")"
-                        : null;
+                    // A static resource is the one markup source that can be named without reflection; a plain value (Source=abc) is the string itself.
+                    if (value.TrimStart().StartsWith("{StaticResource", StringComparison.Ordinal))
+                    {
+                        return $"Source = this.FindResource(\"{EscapeString(ResourceKeyOf(value))}\")";
+                    }
+                    return value.TrimStart().StartsWith("{", StringComparison.Ordinal) && !value.TrimStart().StartsWith("{}", StringComparison.Ordinal)
+                        ? null
+                        : $"Source = \"{EscapeString(Unquote(value))}\"";
                 case "ConverterCulture":
                     return value.TrimStart().StartsWith("{", StringComparison.Ordinal)
                         ? null

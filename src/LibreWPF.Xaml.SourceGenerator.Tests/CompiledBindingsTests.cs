@@ -695,6 +695,26 @@ public class CompiledBindingsTests
     }
 
     [Fact]
+    public void ALiteralBindingSource_IsTheStringItself()
+    {
+        var (code, diagnostics) = Generate(WindowWith("{Binding Source=abc, Converter={x:Static vm:Conv.Instance}}"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+        Assert.Contains("Source = \"abc\"", code);
+    }
+
+    [Theory]
+    [InlineData("{Binding Source={}{abc}}", "Source = \"{abc}\"")]    // the XAML escape for a literal that starts with a brace
+    [InlineData("{Binding Source='abc'}", "Source = \"abc\"")]
+    public void ALiteralBindingSource_HonoursTheBraceEscapeAndQuotes(string markup, string expected)
+    {
+        var (code, diagnostics) = Generate(WindowWith(markup));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+        Assert.Contains(expected, code);
+    }
+
+    [Fact]
     public void XStaticBindingProperties_AreGenerated_AsTypedStaticMembers()
     {
         var (code, diagnostics) = Generate(WindowWith("{Binding Person.Name, Converter={x:Static vm:Conv.Instance}, ConverterParameter={x:Static vm:Conv.Parameter}}"));

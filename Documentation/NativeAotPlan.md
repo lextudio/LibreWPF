@@ -337,3 +337,4 @@ bin/Release/net10.0-windows/osx-arm64/publish/XsgAot check   # 输出 PASS/FAIL
 - **门槛 ② 内置主题的真实加载路径**：示例应用把 arcade 构建的 XSG 版 `PresentationFramework.Aero2.dll` 换进包里（`prepare.sh inbox-xsg-aero2`，`-p:UseInBoxXsgTheme=true`），JIT 与 NativeAOT 各 20 项自检通过（主题经 `SystemResources` 按程序集名加载，不是示例自己的主题项目）。
 - **门槛 ③ 还没做**：OpenDevelop 全量 CI 在这样构建的 closure 上通过之前，不能把默认值改成 true；Windows 上 JIT 主题查找的回归也要跑。切换本身只是 `LibreWPF.XsgThemes.targets` 里默认值的一行改动。
 - 要留意：`KnownTypeHelper`（BAML 加载主题类型用）仍在程序集里，方案 A 全面切换后可以删；XSG 版程序集更大，是否值得做延迟创建（BAML 有 deferred content，生成代码目前即时构建整个字典）要在切换前测启动时间。
+- **启动时间（切换前必须评估）**：整个字典一次建完，JIT 下首次加载比 BAML 慢也可能更快，视主题而定：Aero2 首次 4350 ms 对 BAML 1949 ms（之后都是几毫秒），Fluent.Light 296 ms 对 782 ms，Luna.NormalColor 543 ms 对 315 ms（macOS arm64 JIT，`ThemeEquivalence --time`）。慢的主要是 JIT 编译巨大的 `InitializeComponent`；NativeAOT 没有这一项。JIT 应用的缓解办法是对主题程序集做 ReadyToRun，或者把字典拆成按控件延迟创建；两者都要在改默认值之前测量。

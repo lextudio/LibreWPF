@@ -25,7 +25,12 @@ public class ThemeDictionaryTests
             public class DataTemplateKey { public DataTemplateKey(object type) { } }
             public enum HorizontalAlignment { Left, Center, Right, Stretch }
             public struct Thickness { public Thickness(double u) { } public Thickness(double l, double t, double r, double b) { } }
-            public class UIElement : DependencyObject { public static readonly DependencyProperty IsMouseOverProperty = new(); public bool IsMouseOver { get; } }
+            public class UIElement : DependencyObject
+            {
+                public static readonly DependencyProperty IsMouseOverProperty = new(); public bool IsMouseOver { get; }
+                public static readonly DependencyProperty RenderTransformProperty = new();
+                public System.Windows.Media.Transform RenderTransform { get; set; }
+            }
             public class FrameworkElement : UIElement
             {
                 public DependencyObject TemplatedParent { get; }
@@ -40,6 +45,16 @@ public class ThemeDictionaryTests
             public class SystemColors { public static object WindowBrushKey => null; }
         }
         namespace System.Windows { public class VisualState { public string Name { get; set; } } }
+        namespace Sample.Chrome
+        {
+            public enum GlyphKind { None, Grip }
+            public static class Chrome
+            {
+                public static readonly System.Windows.DependencyProperty GlyphProperty = new();
+                public static void SetGlyph(System.Windows.DependencyObject element, GlyphKind value) { }
+                public static GlyphKind GetGlyph(System.Windows.DependencyObject element) => GlyphKind.None;
+            }
+        }
         namespace System.Windows.Markup
         {
             [System.AttributeUsage(System.AttributeTargets.Class)]
@@ -48,6 +63,8 @@ public class ThemeDictionaryTests
         namespace System.Windows.Media
         {
             public class Brush : System.Windows.DependencyObject { }
+            public class Transform : System.Windows.DependencyObject { public static readonly Transform Identity = new(); }
+            public class MatrixTransform : Transform { public MatrixTransform(double a, double b, double c, double d, double e, double f) { } }
             public struct Color { }
             public class SolidColorBrush : Brush
             {
@@ -756,6 +773,57 @@ public class ThemeDictionaryTests
 
         Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0007");
         Assert.Contains("__XsgCompiledProperty<global::System.Windows.Controls.ListView, global::System.Windows.Controls.ViewBase>(\"View\"", code);
+    }
+
+    [Fact]
+    public void ATransformWrittenAsAMatrix_IsAMatrixTransform()
+    {
+        var xaml = Header + """
+              <Style TargetType="{x:Type Border}">
+                <Setter Property="RenderTransform" Value="1,0,0,1,0.5,2" />
+              </Style>
+              <Style x:Key="plain" TargetType="{x:Type Border}">
+                <Setter Property="RenderTransform" Value="Identity" />
+              </Style>
+            </ResourceDictionary>
+            """;
+
+        var (code, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"));
+
+        Assert.Contains("new global::System.Windows.Media.MatrixTransform(1d, 0d, 0d, 1d, 0.5d, 2d)", code);
+        Assert.Contains("global::System.Windows.Media.Transform.Identity", code);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+    }
+
+    [Fact]
+    public void AnAttachedPropertyOfAPrefixedNamespaceOnAnElement_ResolvesItsOwnerThroughThatNamespace()
+    {
+        // As Aero's <Thumb theme:ScrollChrome.ScrollGlyph="VerticalGripper"/>: without the prefix the owner became global::Chrome and the file did not compile.
+        var xaml = """
+            <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                xmlns:theme="clr-namespace:Sample.Chrome">
+              <Style TargetType="{x:Type Button}">
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                      <Track>
+                        <Track.Thumb>
+                          <Thumb theme:Chrome.Glyph="Grip" />
+                        </Track.Thumb>
+                      </Track>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+              </Style>
+            </ResourceDictionary>
+            """;
+
+        var (code, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"));
+
+        Assert.Contains("global::Sample.Chrome.Chrome.GlyphProperty, global::Sample.Chrome.GlyphKind.Grip", code);   // the owner through the prefix, the value typed
+        Assert.DoesNotContain("global::Chrome.", code);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
     }
 
     [Fact]

@@ -714,7 +714,11 @@ namespace LibreWPF.Xaml.SourceGenerator
                 if (attr.Name.LocalName.Contains("."))
                 {
                     var parts = attr.Name.LocalName.Split('.');
-                    var ownerType = ResolveTypeNameFromName(parts[0], defaultNs) ?? parts[0];
+                    // theme:ScrollChrome.ScrollGlyph="...": the owner is named through the attribute's own namespace, not the default one.
+                    var attributePrefix = attr.Name.NamespaceName.Length > 0 && attr.Name.NamespaceName.StartsWith("clr-namespace:", StringComparison.Ordinal)
+                        ? el.GetPrefixOfNamespace(attr.Name.Namespace) : null;
+                    var ownerType = (attributePrefix is { Length: > 0 } ? ResolveTypeNameInScope(attributePrefix + ":" + parts[0], el, defaultNs) : null)
+                        ?? ResolveTypeNameFromName(parts[0], defaultNs) ?? parts[0];
                     var propName = parts[1];
                     if (value.TrimStart().StartsWith("{DynamicResource", StringComparison.Ordinal))
                     {

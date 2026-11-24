@@ -319,6 +319,21 @@ namespace LibreWPF.Xaml.SourceGenerator
                     return FourDoubles(value, "global::System.Windows.Thickness");
                 case "System.Windows.CornerRadius":
                     return FourDoubles(value, "global::System.Windows.CornerRadius");
+                case "System.Windows.Media.Transform":
+                case "System.Windows.Media.MatrixTransform":
+                {
+                    // The Transform converter reads "m11,m12,m21,m22,offsetX,offsetY" (a Matrix) and "Identity".
+                    if (string.Equals(value.Trim(), "Identity", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "global::System.Windows.Media.Transform.Identity";
+                    }
+                    var m = value.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (m.Length == 6 && m.All(n => double.TryParse(n, NumberStyles.Float, inv, out _)))
+                    {
+                        return $"new global::System.Windows.Media.MatrixTransform({string.Join(", ", m.Select(n => double.Parse(n, NumberStyles.Float, inv).ToString("R", inv) + "d"))})";
+                    }
+                    break;
+                }
                 case "System.Windows.Media.Animation.KeySpline":
                     return FourDoubles(value, "global::System.Windows.Media.Animation.KeySpline");
                 case "System.Windows.GridLength":
@@ -911,7 +926,10 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
 
                 var value = attr.Value.Trim();
-                var (dp, propertyType, name) = ResolveDependencyProperty(type, local, el, defaultNs);
+                // theme:ScrollChrome.ScrollGlyph="...": an attached property written with a prefix names its owner through that prefix.
+                var written = ns.StartsWith("clr-namespace:", StringComparison.Ordinal) && el.GetPrefixOfNamespace(attr.Name.Namespace) is { Length: > 0 } writtenPrefix
+                    ? writtenPrefix + ":" + local : local;
+                var (dp, propertyType, name) = ResolveDependencyProperty(type, written, el, defaultNs);
                 if (value.StartsWith("{Binding", StringComparison.Ordinal))
                 {
                     sb.AppendLine($"{pad}{f}.SetBinding({dp}, {BindingCode(value, el, name == "DataContext")});");

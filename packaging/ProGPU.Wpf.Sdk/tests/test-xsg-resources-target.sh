@@ -63,3 +63,27 @@ aotproj true true | grep -q 'TRIM=true ROOT=Theme RD=ProGPU.Wpf.Sdk.XamlSourceGe
 aotproj false true | grep -q 'TRIM= ROOT= RD= STRICT= VISIBLE=LibreWpfXsgAotStrict$' || fail "BAML project must be untouched"
 aotproj true false | grep -q 'TRIM= ROOT= RD= STRICT= VISIBLE=LibreWpfXsgAotStrict$' || fail "no PublishAot must be untouched"
 echo PASS-AOT
+
+# ReadyToRun publish: the IL entry that shadows a ReadyToRun image of the same file name is dropped before the copy; without PublishReadyToRun nothing is touched.
+r2r="$here/targets/ProGPU.Wpf.Sdk.PublishReadyToRun.targets"
+r2rproj() {
+cat > "$work/r2r.proj" <<P
+<Project DefaultTargets="_CopyResolvedFilesToPublishPreserveNewest">
+  <PropertyGroup><PublishReadyToRun>$1</PublishReadyToRun></PropertyGroup>
+  <ItemGroup>
+    <ResolvedFileToPublish Include="/x/lib/A.dll"><RelativePath>A.dll</RelativePath></ResolvedFileToPublish>
+    <ResolvedFileToPublish Include="/x/obj/R2R/A.dll"><RelativePath>A.dll</RelativePath></ResolvedFileToPublish>
+    <ResolvedFileToPublish Include="/x/lib/B.dll"><RelativePath>B.dll</RelativePath></ResolvedFileToPublish>
+    <_ResolvedFileToPublishPreserveNewest Include="@(ResolvedFileToPublish)" />
+    <_ResolvedFileToPublishAlways Include="@(ResolvedFileToPublish)" />
+  </ItemGroup>
+  <Import Project="$r2r" />
+  <Target Name="_CopyResolvedFilesToPublishPreserveNewest"><Message Importance="high" Text="COPY=@(_ResolvedFileToPublishPreserveNewest) ALWAYS=@(_ResolvedFileToPublishAlways) ALL=@(ResolvedFileToPublish)" /></Target>
+  <Target Name="_CopyResolvedFilesToPublishAlways" />
+</Project>
+P
+(cd "$work" && "$dotnet_cmd" msbuild r2r.proj -nologo 2>&1)
+}
+r2rproj true | grep -q 'COPY=/x/obj/R2R/A.dll;/x/lib/B.dll ALWAYS=/x/obj/R2R/A.dll;/x/lib/B.dll ALL=/x/obj/R2R/A.dll;/x/lib/B.dll' || fail "ReadyToRun: the shadowing IL entry must be dropped from every list"
+r2rproj false | grep -q 'COPY=/x/lib/A.dll;/x/obj/R2R/A.dll;/x/lib/B.dll' || fail "without PublishReadyToRun nothing is dropped"
+echo PASS-R2R

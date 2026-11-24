@@ -1,0 +1,28 @@
+<Project>
+
+  <!--
+    _ProGpuWpfSdkPublishManagedTransportRuntimeAssets (ProGPU.Wpf.Sdk.targets) adds the transport assemblies that NuGet's framework-conflict resolution left out of the
+    publish list, by full path, before the ReadyToRun step: an assembly the normal list ALSO provides (under another entry) is then listed twice. ReadyToRun replaces one entry with its compiled image
+    and the other, the IL file, is copied after it and overwrites the image (measured: PresentationFramework.dll and PresentationFramework.Aero2.dll stayed
+    IL in a PublishReadyToRun publish). Just before the copy, drop the IL entry whose file name a ReadyToRun image already provides.
+  -->
+  <Target Name="_ProGpuWpfSdkDropShadowedTransportPublishItems"
+          BeforeTargets="_CopyResolvedFilesToPublishPreserveNewest;_CopyResolvedFilesToPublishAlways"
+          Condition="'$(PublishReadyToRun)' == 'true'">
+    <ItemGroup>
+      <_ProGpuWpfReadyToRunImage Include="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(FullPath)').Replace('\', '/').Contains('/R2R/'))" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_ProGpuWpfReadyToRunNames>;@(_ProGpuWpfReadyToRunImage->'%(RelativePath)');</_ProGpuWpfReadyToRunNames>
+    </PropertyGroup>
+    <ItemGroup>
+      <_ProGpuWpfShadowedIl Include="@(ResolvedFileToPublish)"
+                            Condition="!$([System.String]::Copy('%(FullPath)').Replace('\', '/').Contains('/R2R/')) And $(_ProGpuWpfReadyToRunNames.Contains(';%(RelativePath);'))" />
+      <ResolvedFileToPublish Remove="@(_ProGpuWpfShadowedIl)" />
+      <!-- The copy task reads these lists, which the publish targets derived from ResolvedFileToPublish before this point. -->
+      <_ResolvedFileToPublishPreserveNewest Remove="@(_ProGpuWpfShadowedIl)" />
+      <_ResolvedFileToPublishAlways Remove="@(_ProGpuWpfShadowedIl)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

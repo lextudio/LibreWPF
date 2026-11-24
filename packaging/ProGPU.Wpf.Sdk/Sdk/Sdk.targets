@@ -30,6 +30,7 @@
   <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.XamlSourceGeneratorFeatures.targets" />
   <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.XamlSourceGeneratorResources.targets" />
   <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.XamlSourceGeneratorNativeAot.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.PublishReadyToRun.targets" />
   <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.targets" />
 
 </Project>

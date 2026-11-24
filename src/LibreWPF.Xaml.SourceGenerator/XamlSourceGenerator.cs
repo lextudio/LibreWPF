@@ -527,7 +527,19 @@ namespace LibreWPF.Xaml.SourceGenerator
             if (typeName == "System.Windows.Data.Binding")
             {
                 var bindingVar = $"__Binding_{++localId}";
-                sb.AppendLine($"{pad}var {bindingVar} = {BindingCode(ElementAsBindingMarkup(el), el, false)};");
+                sb.AppendLine($"{pad}var {bindingVar} = {BindingCode(ElementAsBindingMarkup(el, rulesAreGenerated: true), el, false)};");
+                // <Binding.ValidationRules><local:Rule/></Binding.ValidationRules>: the rules are objects of their own.
+                foreach (var propertyElement in el.Elements().Where(c => c.Name.LocalName.StartsWith("Binding.", StringComparison.Ordinal)))
+                {
+                    if (propertyElement.Name.LocalName == "Binding.ValidationRules")
+                    {
+                        foreach (var rule in propertyElement.Elements())
+                        {
+                            var ruleVar = GenerateElement(sb, rule, defaultNs, sourcePath, indent, ref localId);
+                            sb.AppendLine($"{pad}{bindingVar}.ValidationRules.Add({ruleVar});");
+                        }
+                    }
+                }
                 return bindingVar;
             }
 
@@ -672,7 +684,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
 
                 // Source property: BitmapImage for Image, Uri for others.
-                if (attrLocal == "Source" && !attr.Name.LocalName.Contains("."))
+                // (A markup extension is not a path: {Binding ...} / {x:Static ...} on CollectionViewSource.Source, ... go the general way.)
+                if (attrLocal == "Source" && !attr.Name.LocalName.Contains(".") && !value.TrimStart().StartsWith("{", StringComparison.Ordinal))
                 {
                     if (typeName.Contains("Image") && !typeName.Contains("ImageSource"))
                     {
@@ -734,9 +747,14 @@ namespace LibreWPF.Xaml.SourceGenerator
                     {
                         sb.AppendLine($"{pad}{varName}.{attrLocal} = {propCode};");
                     }
-                    else
+                    else if (IsFrameworkElementOrContentElement(typeName))
                     {
                         sb.AppendLine($"{pad}{varName}.SetBinding(global::{typeName}.{attrLocal}Property, {propCode});");
+                    }
+                    else
+                    {
+                        // Any other DependencyObject (CollectionViewSource, a Freezable, ...) has no SetBinding of its own.
+                        sb.AppendLine($"{pad}global::System.Windows.Data.BindingOperations.SetBinding({varName}, global::{typeName}.{attrLocal}Property, {propCode});");
                     }
                 }
                 else

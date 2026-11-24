@@ -189,6 +189,7 @@ public class CompiledBindingsTests
             public class FrameworkElement : DependencyObject
             {
                 public static System.Collections.Generic.List<System.Windows.Data.BindingBase> Bindings = new();
+                public static System.Collections.Generic.List<DependencyObject> BoundObjects = new();
                 public void SetBinding(DependencyProperty dp, System.Windows.Data.BindingBase binding) => Bindings.Add(binding);
                 public object FindResource(object key) => null;
             }
@@ -210,6 +211,15 @@ public class CompiledBindingsTests
                 public Binding(string path) { Path = new System.Windows.PropertyPath(path); }
                 public System.Windows.PropertyPath Path { get; set; }
                 public BindingMode Mode { get; set; }
+                public System.Collections.Generic.List<object> ValidationRules { get; } = new();
+            }
+            public static class BindingOperations
+            {
+                public static void SetBinding(System.Windows.DependencyObject target, System.Windows.DependencyProperty dp, BindingBase binding)
+                {
+                    System.Windows.FrameworkElement.Bindings.Add(binding);
+                    System.Windows.FrameworkElement.BoundObjects.Add(target);
+                }
             }
         }
         namespace System.Windows.Controls
@@ -217,7 +227,17 @@ public class CompiledBindingsTests
             public class Panel : FrameworkElement { public System.Collections.Generic.List<object> Children { get; } = new(); }
             public class Grid : Panel { }
             public class TextBlock : FrameworkElement { public static readonly DependencyProperty TextProperty = new(); }
-            public class TextBox : FrameworkElement { public static readonly DependencyProperty TextProperty = new(); }
+            public class TextBox : FrameworkElement { public static readonly DependencyProperty TextProperty = new(); public string Text { get; set; } }
+        }
+        namespace Sample
+        {
+            public class Rule { }
+            // Like CollectionViewSource: a DependencyObject that is not an element, so it has no SetBinding of its own.
+            public class Holder : System.Windows.DependencyObject
+            {
+                public static readonly System.Windows.DependencyProperty SourceProperty = new();
+                public object Source { get; set; }
+            }
         }
         namespace Sample
         {
@@ -358,6 +378,88 @@ public class CompiledBindingsTests
           <Grid><TextBlock Text="{{binding}}" /></Grid>
         </Window>
         """;
+
+    private static void RunWindow(string xaml, Action<Assembly, IList, IList> check)
+    {
+        var context = new AssemblyLoadContext("xsg-generated-xaml", isCollectible: true);
+        try
+        {
+            var assembly = context.LoadFromStream(new MemoryStream(Compile(xaml)));
+            Activator.CreateInstance(assembly.GetType("Sample.MainWindow", throwOnError: true)!);
+            var element = assembly.GetType("System.Windows.FrameworkElement")!;
+            check(assembly, (IList)element.GetField("Bindings")!.GetValue(null)!, (IList)element.GetField("BoundObjects")!.GetValue(null)!);
+        }
+        finally
+        {
+            context.Unload();
+        }
+    }
+
+    private const string WindowStart = """
+        <Window x:Class="Sample.MainWindow"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:sample="clr-namespace:Sample"
+                xmlns:vm="clr-namespace:Sample.Vm"
+                x:DataType="vm:MainVm">
+        """;
+
+    [Fact]
+    public void ValidationRulesOfABindingElement_AreAddedToTheBinding()
+    {
+        RunWindow(WindowStart + """
+              <Grid>
+                <TextBox>
+                  <TextBox.Text>
+                    <Binding Path="Person.Name">
+                      <Binding.ValidationRules><sample:Rule /></Binding.ValidationRules>
+                    </Binding>
+                  </TextBox.Text>
+                </TextBox>
+              </Grid>
+            </Window>
+            """, (assembly, bindings, _) =>
+        {
+            var rules = (IList)bindings[0]!.GetType().GetProperty("ValidationRules")!.GetValue(bindings[0])!;
+            Assert.Single(rules);
+            Assert.Equal("Rule", rules[0]!.GetType().Name);
+        });
+    }
+
+    [Fact]
+    public void ABindingOnAnObjectThatIsNotAnElement_UsesBindingOperations_AndSourceIsNotAUri()
+    {
+        RunWindow(WindowStart + """
+              <Grid><sample:Holder Source="{Binding Person.Name}" /></Grid>
+            </Window>
+            """, (assembly, bindings, bound) =>
+        {
+            Assert.Single(bindings);
+            Assert.Equal("Holder", bound[0]!.GetType().Name);
+        });
+    }
+
+    [Fact]
+    public void ValidationRulesOfABindingInADataCondition_AreStillReported()
+    {
+        var xaml = """
+            <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+              <Style TargetType="{x:Type Border}">
+                <Style.Triggers>
+                  <DataTrigger Value="1">
+                    <DataTrigger.Binding>
+                      <Binding Path="Name"><Binding.ValidationRules><Border /></Binding.ValidationRules></Binding>
+                    </DataTrigger.Binding>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </ResourceDictionary>
+            """;
+
+        var (_, diagnostics) = Generate(xaml, "/src/Theme/Themes/Generic.xaml", [("MSBuildProjectDirectory", "/src/Theme")]);
+
+        Assert.Contains(diagnostics, d => d.Id == "LWXSG0008" && d.GetMessage().Contains("Binding.ValidationRules"));
+    }
 
     [Fact]
     public void ARelativeSourceAncestorTypeWithAPrefix_ResolvesThroughTheElementsNamespaces()

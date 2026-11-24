@@ -487,7 +487,7 @@ namespace LibreWPF.Xaml.SourceGenerator
         }
 
         // <Binding A="x" B="y"/> -> {Binding A=x, B=y}; <Binding.RelativeSource><RelativeSource Mode="Self"/></Binding.RelativeSource> -> RelativeSource={RelativeSource Mode=Self}
-        private static string ElementAsBindingMarkup(XElement el)
+        private static string ElementAsBindingMarkup(XElement el, bool rulesAreGenerated = false)
         {
             var items = el.Attributes()
                 .Where(a => a.Name.NamespaceName.Length == 0 && !a.Name.LocalName.StartsWith("xmlns", StringComparison.Ordinal))
@@ -499,8 +499,9 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     items.Add("RelativeSource={RelativeSource " + string.Join(", ", inner.Attributes().Where(a => a.Name.NamespaceName.Length == 0).Select(a => a.Name.LocalName + "=" + a.Value)) + "}");
                 }
-                else
+                else if (!(rulesAreGenerated && child.Name.LocalName == "Binding.ValidationRules"))
                 {
+                    // (The caller that creates a Binding object adds its ValidationRules itself; the other callers drop them, so they are reported.)
                     ReportNotGenerated(child, child.Name.LocalName);
                 }
             }

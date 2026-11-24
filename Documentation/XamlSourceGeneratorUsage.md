@@ -112,6 +112,9 @@ What a NativeAOT application has to know (found with a gallery of Menu, ToolBar,
   `GridView`, which the in-box themes bind by name (`TemplatedParent.View.Columns`, reported as LWXSG0007).
 - A `DataGrid` over a collection does not offer the new-row placeholder under NativeAOT (it needs the item type's default constructor by reflection):
   set `CanUserAddRows="False"` for the same behaviour in JIT and AOT.
+- `CollectionView` sorts, groups and filters by property name (`SortDescription.PropertyName`, `GroupDescription`) with reflection over the item type, which
+  NativeAOT has trimmed: without help the list is silently unsorted. Keep the item type with an rd.xml entry (`<Type Name="App.Item" Dynamic="Required All" />` in an
+  `RdXmlFile`), as `samples/XsgNativeAot/rd.xml` does. A `ValidationRule` needs nothing (it is called through its virtual method). `<Binding.ValidationRules>` of a `<Binding>` element is generated; inside a data condition (`DataTrigger.Binding`) it is still reported as LWXSG0008.
 - A member that exists only on a subclass of the declared type (`View.Columns`: `ViewBase` has no `Columns`, `GridView` does) is compiled against the
   one class of that assembly that has it.
 

@@ -1,0 +1,68 @@
+<Project>
+
+  <!--
+    Resource items of an XSG project (UseLibreWpfXamlSourceGenerator=true).
+
+    The BAML path embeds them in <AssemblyName>.g.resources (Microsoft.WinFX.targets), which WPF reads at run time for every
+    pack://application:,,,/path URI (images, fonts, XAML): ResourceManager("<AssemblyName>.g"), keyed by the lower-case relative path with '/'.
+    The XSG path does not import those targets, so without this file a <Resource> item is silently not in the assembly and
+    <Image Source="Assets/logo.png"/> fails at run time. This writes the same .g.resources with ResourceWriter (no GenerateResource task, no
+    BAML) and embeds it. Nothing here is read by anything but ResourceManager: it is not specific to NativeAOT (ResourceManager works there).
+  -->
+
+  <UsingTask TaskName="LibreWpfWriteGResources"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <OutputFile ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Resources" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        Directory.CreateDirectory(Path.GetDirectoryName(OutputFile));
+        var names = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+        var temp = OutputFile + ".tmp";
+        using (var writer = new ResourceWriter(temp))
+        {
+            foreach (var file in Files)
+            {
+                var link = file.GetMetadata("Link");
+                var name = (string.IsNullOrEmpty(link) ? file.ItemSpec : link).Replace('\\', '/').TrimStart('/').ToLowerInvariant();
+                if (!names.Add(name))
+                {
+                    Log.LogError("Two Resource items have the resource name '" + name + "'.");
+                    return false;
+                }
+                writer.AddResource(name, new MemoryStream(File.ReadAllBytes(file.ItemSpec)), true);
+            }
+        }
+        // Keep the old file (and its timestamp) when nothing changed: it is an input of CoreCompile, so a rewrite would recompile every build.
+        var newBytes = File.ReadAllBytes(temp);
+        var same = false;
+        if (File.Exists(OutputFile))
+        {
+            var oldBytes = File.ReadAllBytes(OutputFile);
+            same = oldBytes.Length == newBytes.Length;
+            for (var i = 0; same && i < oldBytes.Length; i++) same = oldBytes[i] == newBytes[i];
+        }
+        if (same) File.Delete(temp);
+        else { if (File.Exists(OutputFile)) File.Delete(OutputFile); File.Move(temp, OutputFile); }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="_LibreWpfXsgResources"
+          BeforeTargets="AssignTargetPaths"
+          Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '@(Resource)' != ''">
+    <PropertyGroup>
+      <_LibreWpfGResourcesFile>$(IntermediateOutputPath)$(AssemblyName).g.resources</_LibreWpfGResourcesFile>
+    </PropertyGroup>
+    <LibreWpfWriteGResources Files="@(Resource)" OutputFile="$(_LibreWpfGResourcesFile)" />
+    <ItemGroup>
+      <EmbeddedResource Include="$(_LibreWpfGResourcesFile)" LogicalName="$(AssemblyName).g.resources" WithCulture="false" />
+    </ItemGroup>
+  </Target>
+
+</Project>

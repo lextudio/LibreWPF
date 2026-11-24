@@ -388,6 +388,11 @@ namespace LibreWPF.Xaml.SourceGenerator
                     }
                     return TimeSpan.TryParse(value, inv, out var every) ? $"new {repeat}(global::System.TimeSpan.FromTicks({every.Ticks}))" : $"\"{EscapeString(value)}\"";
                 }
+                case "System.Windows.Media.ImageSource":
+                case "System.Windows.Media.Imaging.BitmapSource":
+                case "System.Windows.Media.Imaging.BitmapImage":
+                    // ImageSourceConverter at build time: an image file addressed by a (pack) URI, read when it is first needed.
+                    return $"new global::System.Windows.Media.Imaging.BitmapImage(new global::System.Uri(\"{EscapeString(value)}\", global::System.UriKind.RelativeOrAbsolute))";
                 case "System.Uri":
                     return $"new global::System.Uri(\"{EscapeString(value)}\", global::System.UriKind.RelativeOrAbsolute)";
                 case "System.Windows.PropertyPath":

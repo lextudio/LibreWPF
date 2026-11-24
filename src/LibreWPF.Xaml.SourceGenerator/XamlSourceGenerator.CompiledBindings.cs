@@ -146,7 +146,12 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
             }
 
-            var pathCode = CompiledPathCode(path, parts, owner, isDataContext, value);
+            var pathCode = CompiledPathCode(path, parts, owner, isDataContext, value) ?? ParenthesizedPathCode(path, owner);
+            if (pathCode is null && owner is not null && path.StartsWith("(", StringComparison.Ordinal) && path.Contains(":"))
+            {
+                // A prefix has a meaning only while the XAML is being read; the run-time path parser has no namespace context, so this one cannot resolve.
+                ReportNotGenerated(owner, $"the binding path '{path}', whose prefixed member cannot be resolved at build time (an inaccessible or unknown type); the run-time path parser does not know the prefix, so the binding will not resolve");
+            }
             string head;
             if (pathCode is not null)
             {
@@ -480,6 +485,50 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
                 return ResolveTypeName(e, defaultNs);
             }
+            return null;
+        }
+
+        /// <summary>
+        /// A path that is one parenthesized member, <c>(Owner.Member)</c> or <c>(prefix:Owner.Member)</c>: a dependency property or a static
+        /// property, whatever the source of the binding. At run time that text is resolved with the default XAML namespace only, by reflection,
+        /// and a prefix (<c>base:</c>, <c>framework:</c>) cannot be resolved at all; here it is resolved against the file's namespaces. A dependency
+        /// property is passed as the DependencyProperty, a static property as a static PropertyInfo (what the binding engine treats as a static
+        /// source). Null when the type or member is not found, or not accessible from the generated code (e.g. an internal type of another assembly).
+        /// </summary>
+        private static string? ParenthesizedPathCode(string path, XElement? owner)
+        {
+            var context = s_context;
+            if (context is null || owner is null || !path.StartsWith("(", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            var match = s_attachedSegment.Match(path.Trim());
+            if (!match.Success)
+            {
+                return null;
+            }
+
+            var defaultNs = owner.GetDefaultNamespace().NamespaceName;
+            var ownerType = TypeSymbol(ResolveTypeNameInScope(match.Groups[1].Value, owner, defaultNs.Length == 0 ? PresentationNamespace : defaultNs));
+            var name = match.Groups[2].Value;
+            if (ownerType is null || !context.Compilation.IsSymbolAccessibleWithin(ownerType, context.Compilation.Assembly))
+            {
+                return null;
+            }
+
+            if (FindDependencyPropertyField(ownerType, name) is { } dependencyProperty
+                && context.Compilation.IsSymbolAccessibleWithin(dependencyProperty, context.Compilation.Assembly))
+            {
+                return $"new global::System.Windows.PropertyPath(\"(0)\", {dependencyProperty.ContainingType.ToDisplayString(s_typeFormat)}.{name}Property)";
+            }
+
+            var staticProperty = ownerType.GetMembers(name).OfType<IPropertySymbol>().FirstOrDefault(p => p.IsStatic && p.GetMethod is { DeclaredAccessibility: Accessibility.Public });
+            if (staticProperty is not null)
+            {
+                return $"new global::System.Windows.PropertyPath(\"(0)\", typeof({ownerType.ToDisplayString(s_typeFormat)}).GetProperty(\"{name}\", global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Static)!)";
+            }
+
             return null;
         }
 

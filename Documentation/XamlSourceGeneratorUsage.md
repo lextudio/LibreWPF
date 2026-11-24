@@ -117,7 +117,17 @@ With no BAML, nothing can be loaded from a resource at run time, so what BAML re
   assembly name and resource path by a module initializer (`XamlSourceGeneratedResources.RegisterComponent`); the `Application` is not. At run time
   `Application.LoadComponent(Uri)` asks that registry first, and with it `Application.StartupUri="MainWindow.xaml"` creates the window with no
   BAML resource. The registry is empty in an application that does not use the generator: `LoadComponent` then returns to the resource path at once.
-- A `Uri`-typed value is generated as `new Uri("...", UriKind.RelativeOrAbsolute)`.
+- A `Uri`-typed value is generated as `new Uri("...", UriKind.RelativeOrAbsolute)`; an `ImageSource`-typed text (`<Image Source="Assets/logo.png"/>`)
+  as `new BitmapImage(new Uri(...))`.
+- **`<Resource Include="..."/>` items** (images, fonts, any file read through `pack://application:,,,/path`): the BAML path embeds them in
+  `<AssemblyName>.g.resources` (`Microsoft.WinFX.targets`), which the XSG path does not import, so a `Resource` item was silently not in the assembly.
+  `ProGPU.Wpf.Sdk.XamlSourceGeneratorResources.targets` writes the same `.g.resources` (an inline `ResourceWriter` task: no `GenerateResource`, no BAML;
+  keys are the lower-case relative paths with `/`, a `Link` metadata overrides the path) and embeds it, when `UseLibreWpfXamlSourceGenerator` is on.
+- **Parenthesized binding paths**, `(Owner.Member)` and `(prefix:Owner.Member)`, are resolved at build time whatever the source of the binding: a
+  dependency property is passed as the `DependencyProperty`, a static property as a static `PropertyInfo` (`typeof(T).GetProperty("M", Public | Static)`, which
+  ILC keeps). At run time such a text is resolved with the default XAML namespace only, by reflection, and a prefix (`base:`, `framework:`) cannot be
+  resolved at all. A type or member the generated code cannot reach (an `internal` type of another assembly, such as
+  `AccessibilitySwitches` / `FrameworkAppContextSwitches`, visible only to the in-box theme assemblies) is reported as `LWXSG0008`.
 
 Not yet: the in-box theme assemblies (`PresentationFramework.Aero2`, `.Fluent`, ...) are still built with the BAML compiler; `Frame.Source` /
 `NavigationService` navigation to a XAML file and `Image Source` pack URIs are not resolved at build time.

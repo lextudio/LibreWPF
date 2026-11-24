@@ -105,6 +105,14 @@ AOT 模式下它们应当是错误，由作者改成 `x:DataType` 或具体类�
    `pack://application:,,,/`、`;component/` 都支持）；`Uri` 值按类型转换。示例现在有 `App.xaml`、`Styles/Brushes.xaml`、`Card.xaml`：自检 11 项通过，
    JIT 与 AOT 可视树 134 个元素一致，窗口内容像素 0 差异。
 
+8. `Resource` 项和图片：XSG 路径不导入 `Microsoft.WinFX.targets`，`<Resource>` 没有被嵌进程序集（`<Image Source="Assets/logo.png"/>` 运行时读不到）。
+   新的 SDK 目标 `ProGPU.Wpf.Sdk.XamlSourceGeneratorResources.targets` 用内联任务（`ResourceWriter`）写出和 BAML 路径相同形状的 `<程序集>.g.resources` 并嵌入；
+   生成器把 `ImageSource` 文本生成为 `new BitmapImage(new Uri(...))`。NativeAOT 下图片解码正常，自检通过（12 项）。
+9. 括号路径 `(Owner.Member)` / `(prefix:Owner.Member)`：运行时的路径解析器只认默认命名空间、靠反射，带前缀的（Aero2 里 9 处 `base:` / `framework:`）直接失败，
+   绑定静默不生效，条件的结果可能和 BAML 不同。现在编译期解析：依赖属性用 `DependencyProperty`，静态属性用静态 `PropertyInfo`（Aero2 里 202 处依赖属性路径、8 处
+   `SystemParameters.HighContrast`）。剩下 9 处指向 `internal` 类型（`AccessibilitySwitches`、`FrameworkAppContextSwitches`，只有内置主题程序集有 `InternalsVisibleTo`），
+   单独的主题项目访问不到：报 LWXSG0008，这是"内置主题程序集本身改由 XSG 编译"（方案 A）的又一个理由。
+
 仍然开放：
 
 - ILC 还列出 `ProGPU.Wpf` 里 13 个"必定抛异常"的方法：调用了 PresentationCore 里不存在的成员（`GlyphRun` 的构造函数和 `FontSize`/`GlyphIndices`、

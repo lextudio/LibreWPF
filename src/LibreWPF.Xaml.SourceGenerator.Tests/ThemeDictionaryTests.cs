@@ -421,6 +421,38 @@ public class ThemeDictionaryTests
             """, ("MSBuildProjectDirectory", "/src/Theme"));
 
     [Fact]
+    public void AParenthesizedDependencyPropertyPath_IsTheDependencyProperty_WhateverTheSource()
+    {
+        // (Owner.Property) is resolved at run time with the default XAML namespace only, by reflection; here it is the DependencyProperty itself.
+        var (code, diagnostics) = Template("<Border Tag=\"{Binding Path=(UIElement.IsMouseOver)}\" />");
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+        Assert.Contains("new global::System.Windows.PropertyPath(\"(0)\", global::System.Windows.UIElement.IsMouseOverProperty)", code);
+        Assert.DoesNotContain("Binding(\"(UIElement.IsMouseOver)\")", code);
+    }
+
+    [Fact]
+    public void AParenthesizedStaticPropertyPath_IsAStaticPropertyInfo()
+    {
+        // The binding engine treats a static PropertyInfo as a static source; ILC keeps the property named by a constant GetProperty call.
+        var (code, diagnostics) = Template("<Border Tag=\"{Binding Path=(SystemColors.WindowBrushKey)}\" />");
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
+        Assert.Contains("typeof(global::System.Windows.SystemColors).GetProperty(\"WindowBrushKey\", global::System.Reflection.BindingFlags.Public | global::System.Reflection.BindingFlags.Static)!", code);
+    }
+
+    [Fact]
+    public void APrefixedPathThatCannotBeResolved_IsReported_BecauseThePrefixMeansNothingAtRunTime()
+    {
+        var (code, diagnostics) = Template("<Border Tag=\"{Binding Path=(base:Hidden.Switch)}\" />");
+
+        var diagnostic = Assert.Single(diagnostics, d => d.Id == "LWXSG0008");
+        Assert.Contains("(base:Hidden.Switch)", diagnostic.GetMessage());
+        Assert.Contains("prefix", diagnostic.GetMessage());
+        Assert.Contains("Binding(\"(base:Hidden.Switch)\")", code); // left as the reflective binding it was
+    }
+
+    [Fact]
     public void AFactoryNode_IsCreatedByCode_NotByActivator()
     {
         var (code, _) = Template("<Border />");

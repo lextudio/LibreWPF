@@ -311,4 +311,102 @@ public class XamlSourceGeneratedResourcesTests
         Action noKey = () => XamlSourceGeneratedResources.DynamicResourceEntry(null!);
         noKey.Should().Throw<ArgumentNullException>();
     }
+    // ---- lazy entries, resource URIs ----------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void ALazyEntry_IsCreatedOnFirstLookup_AndCachedWhenShared()
+    {
+        int created = 0;
+        var dictionary = new ResourceDictionary { ["k"] = new XamlSourceGeneratedResources.LazyEntry(() => { created++; return new object(); }, shared: true) };
+
+        created.Should().Be(0, "nothing is created until the entry is asked for");
+        object first = dictionary["k"];
+        object second = dictionary["k"];
+
+        created.Should().Be(1);
+        first.Should().BeSameAs(second);
+    }
+
+    [Fact]
+    public void ALazyEntry_OfXSharedFalse_IsCreatedAgainForEveryLookup()
+    {
+        int created = 0;
+        var dictionary = new ResourceDictionary { ["k"] = new XamlSourceGeneratedResources.LazyEntry(() => { created++; return new object(); }, shared: false) };
+
+        object first = dictionary["k"];
+        object second = dictionary["k"];
+
+        created.Should().Be(2);
+        first.Should().NotBeSameAs(second);
+    }
+
+    [Fact]
+    public void ALazyEntry_IsBeingCreatedOnlyWhileItsCreateMethodRuns()
+    {
+        var dictionary = new ResourceDictionary();
+        bool duringCreation = false;
+        dictionary["k"] = new XamlSourceGeneratedResources.LazyEntry(() =>
+        {
+            duringCreation = XamlSourceGeneratedResources.IsEntryBeingCreated(dictionary, "k");
+            return new object();
+        }, shared: true);
+        dictionary["plain"] = "value";
+
+        XamlSourceGeneratedResources.IsEntryBeingCreated(dictionary, "k").Should().BeFalse();
+        _ = dictionary["k"];
+
+        duringCreation.Should().BeTrue();
+        XamlSourceGeneratedResources.IsEntryBeingCreated(dictionary, "k").Should().BeFalse();
+        XamlSourceGeneratedResources.IsEntryBeingCreated(dictionary, "plain").Should().BeFalse();
+        XamlSourceGeneratedResources.IsEntryBeingCreated(dictionary, "missing").Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("/{0};component/Lib/Dict.xaml", UriKind.Relative)]
+    [InlineData("/{0};v1.0.0.0;component/Lib/Dict.xaml", UriKind.Relative)]
+    [InlineData("/{0};V1.0.0.0;COMPONENT/lib/dict.xaml", UriKind.Relative)]
+    [InlineData("pack://application:,,,/{0};component/Lib/Dict.xaml", UriKind.Absolute)]
+    [InlineData("pack://application:,,,/{0};v1.0.0.0;component/Lib/Dict.xaml", UriKind.Absolute)]
+    public void AResourceUri_FindsTheDictionaryByAssemblyNameAndPath(string format, UriKind kind)
+    {
+        string name = UniqueName() + kind + format.Length;
+        XamlSourceGeneratedResources.RegisterDictionary(name, "lib/dict.xaml", () => new ResourceDictionary { ["key"] = "value" });
+
+        XamlSourceGeneratedResources.TryCreateDictionary(new Uri(string.Format(format, name), kind), false, out var dictionary).Should().BeTrue();
+
+        dictionary["key"].Should().Be("value");
+    }
+
+    [Fact]
+    public void AResourceUri_OfAnUnknownAssembly_AnswersNo_AndDoesNotThrowOnRepeatedInitializationAttempts()
+    {
+        var uri = new Uri("/No.Such.Assembly." + Guid.NewGuid().ToString("N") + ";component/dict.xaml", UriKind.Relative);
+
+        XamlSourceGeneratedResources.TryCreateDictionary(uri, true, out var first).Should().BeFalse();
+        XamlSourceGeneratedResources.TryCreateDictionary(uri, true, out var second).Should().BeFalse();
+
+        first.Should().BeNull();
+        second.Should().BeNull();
+    }
+
+    [Fact]
+    public void ASourceThatNamesAGeneratedDictionary_LoadsItWithoutCreatingItsLazyEntries()
+    {
+        string name = UniqueName();
+        int created = 0;
+        XamlSourceGeneratedResources.RegisterDictionary(name, "lazy.xaml", () => new ResourceDictionary
+        {
+            ["k"] = new XamlSourceGeneratedResources.LazyEntry(() => { created++; return new object(); }, shared: true),
+            ["fresh"] = new XamlSourceGeneratedResources.LazyEntry(() => new object(), shared: false),
+        });
+
+        var loaded = new ResourceDictionary { Source = new Uri($"/{name};component/lazy.xaml", UriKind.Relative) };
+
+        created.Should().Be(0, "the markers travel with the dictionary a Source loads, and stay lazy");
+        object first = loaded["k"];
+        object second = loaded["k"];
+        created.Should().Be(1);
+        first.Should().BeSameAs(second);
+        loaded["fresh"].Should().NotBeSameAs(loaded["fresh"], "x:Shared=False survives Source");
+    }
 }

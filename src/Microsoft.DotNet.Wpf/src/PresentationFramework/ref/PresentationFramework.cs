@@ -11568,6 +11568,12 @@ namespace System.Windows.Markup
     {
         public static void RegisterDictionary(System.Reflection.Assembly assembly, string resourcePath, System.Func<System.Windows.ResourceDictionary> factory) { }
         public static void RegisterDictionary(string assemblyName, string resourcePath, System.Func<System.Windows.ResourceDictionary> factory) { }
+        public static bool IsEntryBeingCreated(System.Windows.ResourceDictionary dictionary, object key) { throw null; }
+        public sealed partial class LazyEntry
+        {
+            public LazyEntry(System.Func<object> create, bool shared) { }
+            public bool Shared { get { throw null; } }
+        }
         public static bool TryCreateDictionary(System.Reflection.Assembly assembly, string resourcePath, out System.Windows.ResourceDictionary dictionary) { throw null; }
         public static bool TryCreateDictionary(string assemblyName, string resourcePath, out System.Windows.ResourceDictionary dictionary) { throw null; }
         public static void RegisterComponent(string assemblyName, string resourcePath, System.Func<object> factory) { }

@@ -33,6 +33,7 @@ public class ApplicationXamlTests
             public partial class App : System.Windows.Application { public App() { } }
             public partial class NeedsArguments : System.Windows.Window { public NeedsArguments(int unused) { } }
             public abstract partial class Abstract : System.Windows.Window { }
+            public partial class Res : System.Windows.ResourceDictionary { public Res() { } }
         }
         """;
 
@@ -53,6 +54,24 @@ public class ApplicationXamlTests
 
         Assert.Contains("[global::System.Runtime.CompilerServices.ModuleInitializer]", code);
         Assert.Contains("RegisterComponent(\"Sample\", \"mainwindow.xaml\", static () => new global::Sample.MainWindow());", code);
+    }
+
+    [Fact]
+    public void ARootResourceDictionaryWithAClass_IsRegisteredAsAComponentAndAsADictionary()
+    {
+        var (code, _) = Generate($"<ResourceDictionary x:Class=\"Sample.Res\" {Header}><x:String x:Key=\"k\">v</x:String></ResourceDictionary>", "/src/Res.xaml");
+
+        Assert.Contains("RegisterComponent(\"Sample\", \"res.xaml\", static () => new global::Sample.Res());", code);
+        // ResourceDictionary.Source finds it by path, like a loose dictionary.
+        Assert.Contains("RegisterDictionary(\"Sample\", \"res.xaml\", static () => new global::Sample.Res());", code);
+    }
+
+    [Fact]
+    public void AnXClassWindow_IsNotRegisteredAsADictionary()
+    {
+        var (code, _) = Generate($"<Window x:Class=\"Sample.MainWindow\" {Header} />");
+
+        Assert.DoesNotContain("RegisterDictionary", code);
     }
 
     [Fact]
@@ -104,13 +123,14 @@ public class ApplicationXamlTests
         """;
 
     [Fact]
-    public void ASourceDictionary_GetsALoaderThatFailsClearlyWhenTheDictionaryIsNotCompiledIn()
+    public void ASourceDictionary_GetsALoaderThatFallsBackToTheStockSourceWhenTheDictionaryIsNotCompiledIn()
     {
         var (code, diagnostics) = Generate(MergedFrom("Styles/Brushes.xaml"), "/src/App.xaml");
 
         Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0008");
         Assert.Contains("private static global::System.Windows.ResourceDictionary __XsgLoadDictionary(string assembly, string path)", code);
         Assert.Contains("XamlSourceGeneratedResources.TryCreateDictionary(assembly, path, out var dictionary)", code);
+        Assert.Contains("new global::System.Windows.ResourceDictionary { Source = new global::System.Uri(", code);   // a BAML assembly's dictionary
         Assert.Contains("throw new global::System.IO.FileNotFoundException(", code);
     }
 

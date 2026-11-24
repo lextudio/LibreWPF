@@ -164,18 +164,39 @@ namespace System.Windows
 
                 Uri uri = BindUriHelper.GetResolvedUri(_baseUri, sourceUri);
 
-                WebRequest request = WpfWebRequestHelper.CreateRequest(uri);
-                WpfWebRequestHelper.ConfigCachePolicy(request, false);
+                // A dictionary compiled by the XAML source generator (an assembly that registered it, or one a BAML consumer has not touched yet)
+                // has no BAML resource: ask the generated registry before the stream, and again, with the assembly initialized, after it fails.
+                ResourceDictionary loadedRD = null;
+                System.Windows.Markup.XamlReader asyncObjectConverter = null;
+                if (!IsSourcedFromThemeDictionary)
+                {
+                    System.Windows.Markup.XamlSourceGeneratedResources.TryCreateDictionary(uri, false, out loadedRD);
+                }
+
+                WebRequest request = loadedRD == null ? WpfWebRequestHelper.CreateRequest(uri) : null;
+                if (request != null)
+                {
+                    WpfWebRequestHelper.ConfigCachePolicy(request, false);
+                }
+
                 ContentType contentType = null;
                 Stream s = null;
 
                 try
                 {
-                     s = WpfWebRequestHelper.GetResponseStream(request, out contentType);
+                    if (loadedRD == null)
+                    {
+                        s = WpfWebRequestHelper.GetResponseStream(request, out contentType);
+                    }
                 }
                 catch (System.IO.IOException)
                 {
-                    if (IsSourcedFromThemeDictionary)
+                    if (!IsSourcedFromThemeDictionary &&
+                        System.Windows.Markup.XamlSourceGeneratedResources.TryCreateDictionary(uri, true, out loadedRD))
+                    {
+                        // Found now: continue with the generated dictionary below.
+                    }
+                    else if (IsSourcedFromThemeDictionary)
                     {
                         switch (_fallbackState)
                         {
@@ -214,9 +235,11 @@ namespace System.Windows
                 // MimeObjectFactory.GetObjectAndCloseStream will try to find the object converter basing on the mime type.
                 // It can be a sync/async converter. It's the converter's responsiblity to close the stream.
                 // If it fails to find a convert, this call will return null.
-                System.Windows.Markup.XamlReader asyncObjectConverter;
-                ResourceDictionary loadedRD = MimeObjectFactory.GetObjectAndCloseStreamCore(s, contentType, uri, false, false, false /*allowAsync*/, false /*isJournalNavigation*/, out asyncObjectConverter, IsUnsafe)
+                if (loadedRD == null)
+                {
+                    loadedRD = MimeObjectFactory.GetObjectAndCloseStreamCore(s, contentType, uri, false, false, false /*allowAsync*/, false /*isJournalNavigation*/, out asyncObjectConverter, IsUnsafe)
                                             as ResourceDictionary;
+                }
 
                 if (loadedRD == null)
                 {
@@ -1038,7 +1061,16 @@ namespace System.Windows
             // can inflate deferred content and cause nested requests
             ResourceDictionaryDiagnostics.RecordLookupResult(key, this);
 
-            OnGettingValue(key, ref value, out canCache);
+            if (value is System.Windows.Markup.XamlSourceGeneratedResources.LazyEntry lazy)
+            {
+                // A generated dictionary's entry that is created when first asked for (and again for every lookup when x:Shared="False").
+                value = lazy.Create();
+                canCache = lazy.Shared;
+            }
+            else
+            {
+                OnGettingValue(key, ref value, out canCache);
+            }
 
             if (key != null && canCache)
             {
@@ -1053,6 +1085,11 @@ namespace System.Windows
                     _baseDictionary[key] = value;
                 }
             }
+        }
+
+        internal bool IsLazyEntryBeingCreated(object key)
+        {
+            return key != null && _baseDictionary[key] is System.Windows.Markup.XamlSourceGeneratedResources.LazyEntry { IsCreating: true };
         }
 
         protected virtual void OnGettingValue(object key, ref object value, out bool canCache)

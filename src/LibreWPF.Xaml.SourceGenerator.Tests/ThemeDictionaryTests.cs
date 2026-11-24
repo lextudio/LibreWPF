@@ -849,14 +849,33 @@ public class ThemeDictionaryTests
     }
 
     [Fact]
-    public void XSharedFalse_IsReportedAsInfo_AndNeverWrittenAsAProperty()
+    public void XSharedFalse_OfALazyEntry_IsHonoured_AndNeverWrittenAsAProperty()
+    {
+        var xaml = Header + """
+              <Border x:Key="shared" x:Shared="false" />
+              <Border x:Key="once" />
+            </ResourceDictionary>
+            """;
+
+        var (code, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfXsgAotStrict", "true"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0010");
+        Assert.Contains("XamlSourceGeneratedResources.LazyEntry(__Create_", code);
+        Assert.Contains(", false)", code);   // the entry is not cached: every lookup creates it again
+        Assert.Contains(", true)", code);
+        Assert.DoesNotContain(".Shared =", code);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void XSharedFalse_OfAnEagerEntry_IsReportedAsInfo_AndNeverWrittenAsAProperty()
     {
         var xaml = Header + """
               <Border x:Key="shared" x:Shared="false" />
             </ResourceDictionary>
             """;
 
-        var (code, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfXsgAotStrict", "true"));
+        var (code, diagnostics) = GenerateXaml(xaml, ("MSBuildProjectDirectory", "/src/Theme"), ("LibreWpfXsgAotStrict", "true"), ("LibreWpfLazyDictionaries", "false"));
 
         Assert.Contains(diagnostics, d => d.Id == "LWXSG0010" && d.Severity == DiagnosticSeverity.Info);
         Assert.DoesNotContain(".Shared", code);

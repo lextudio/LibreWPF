@@ -60,8 +60,53 @@ namespace System.Windows.Markup
             return entry;
         }
 
+        /// <summary>
+        /// An entry of a generated <see cref="ResourceDictionary"/> that is created when it is first asked for. The dictionary holds this marker until
+        /// then; <see cref="ResourceDictionary"/> itself resolves it, so the marker can be copied with the dictionary (a BAML consumer's
+        /// <see cref="ResourceDictionary.Source"/>) and still be created lazily. <paramref name="shared"/> false is <c>x:Shared="False"</c>: the entry is
+        /// never cached, so every lookup creates it again.
+        /// </summary>
+        public sealed class LazyEntry
+        {
+            private readonly Func<object> _create;
+
+            public LazyEntry(Func<object> create, bool shared)
+            {
+                ArgumentNullException.ThrowIfNull(create);
+                _create = create;
+                Shared = shared;
+            }
+
+            public bool Shared { get; }
+
+            internal bool IsCreating { get; private set; }
+
+            internal object Create()
+            {
+                // While it is being created, the entry must not be found by the StaticResource lookups it makes itself (IsEntryBeingCreated).
+                IsCreating = true;
+                try
+                {
+                    return _create();
+                }
+                finally
+                {
+                    IsCreating = false;
+                }
+            }
+        }
+
+        /// <summary>True while the lazy entry of <paramref name="key"/> in <paramref name="dictionary"/> is being created.</summary>
+        public static bool IsEntryBeingCreated(ResourceDictionary dictionary, object key)
+        {
+            ArgumentNullException.ThrowIfNull(dictionary);
+            return dictionary.IsLazyEntryBeingCreated(key);
+        }
+
         private static readonly object s_lock = new object();
         private static readonly Dictionary<string, Func<ResourceDictionary>> s_factories = new(StringComparer.OrdinalIgnoreCase);
+        private static volatile bool s_hasDictionaries;
+        private static readonly HashSet<string> s_initializedAssemblies = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Registers the factory of a generated dictionary that belongs to <paramref name="assembly"/>.</summary>
         public static void RegisterDictionary(Assembly assembly, string resourcePath, Func<ResourceDictionary> factory)
@@ -83,6 +128,7 @@ namespace System.Windows.Markup
             lock (s_lock)
             {
                 s_factories[Key(assemblyName, resourcePath)] = factory;
+                s_hasDictionaries = true;
             }
         }
 
@@ -115,6 +161,86 @@ namespace System.Windows.Markup
             ArgumentNullException.ThrowIfNull(assembly);
 
             return TryCreateDictionary(assembly.GetName().Name, resourcePath, out dictionary);
+        }
+
+        /// <summary>
+        /// Creates the generated dictionary a resource <see cref="Uri"/> names (<c>/Lib;component/Dict.xaml</c>, <c>pack://application:,,,/Lib;component/Dict.xaml</c>,
+        /// or an application-relative path), for <see cref="ResourceDictionary.Source"/>: a BAML consumer (or code) can then use a dictionary of an
+        /// assembly compiled by the generator. False, at once and without side effects, when nothing was ever registered (every BAML application).
+        /// With <paramref name="initializeAssembly"/> the named assembly is loaded and its module initializer run first, for a library that has
+        /// not been touched yet (a resources-only library is referenced by URI alone, so nothing else would run its initializer).
+        /// </summary>
+        internal static bool TryCreateDictionary(Uri resourceLocator, bool initializeAssembly, out ResourceDictionary dictionary)
+        {
+            dictionary = null;
+            if (resourceLocator == null || (!s_hasDictionaries && !initializeAssembly))
+            {
+                return false;
+            }
+
+            string path = resourceLocator.IsAbsoluteUri ? resourceLocator.AbsolutePath : resourceLocator.OriginalString;
+            path = Uri.UnescapeDataString(path).Replace('\\', '/').TrimStart('/');
+            string assemblyName = null;
+            int marker = path.IndexOf(";component/", StringComparison.OrdinalIgnoreCase);
+            if (marker >= 0)
+            {
+                string assemblyPart = path.Substring(0, marker);
+                int version = assemblyPart.IndexOf(';');
+                assemblyName = version >= 0 ? assemblyPart.Substring(0, version) : assemblyPart;
+                path = path.Substring(marker + ";component/".Length);
+            }
+            else
+            {
+                assemblyName = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name;
+            }
+
+            if (assemblyName == null)
+            {
+                return false;
+            }
+
+            if (TryCreateDictionary(assemblyName, path, out dictionary))
+            {
+                return true;
+            }
+
+            if (initializeAssembly && marker >= 0 && EnsureInitialized(assemblyName))
+            {
+                return TryCreateDictionary(assemblyName, path, out dictionary);
+            }
+
+            return false;
+        }
+
+        // True when the assembly was loaded and initialized by this call (once per name): the runtime runs a module initializer with the first
+        // use of the assembly's code, which an assembly referenced only by resource URIs has not had yet. A load that fails is not remembered,
+        // so a later lookup tries again (the assembly may become loadable).
+        private static bool EnsureInitialized(string assemblyName)
+        {
+            lock (s_lock)
+            {
+                if (s_initializedAssemblies.Contains(assemblyName))
+                {
+                    return false;
+                }
+            }
+
+            try
+            {
+                System.Reflection.Assembly assembly = System.Reflection.Assembly.Load(new System.Reflection.AssemblyName(assemblyName));
+                System.Runtime.CompilerServices.RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
+            }
+            catch (Exception e) when (e is System.IO.IOException || e is BadImageFormatException || e is ArgumentException)
+            {
+                return false;
+            }
+
+            lock (s_lock)
+            {
+                s_initializedAssemblies.Add(assemblyName);
+            }
+
+            return true;
         }
 
         // ---- components (the root objects of XAML files: Window, Page, UserControl) -------------------------------------------------------

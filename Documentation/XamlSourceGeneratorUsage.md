@@ -200,6 +200,23 @@ Generated files appear under `obj/<config>/<tfm>/generated/.../*.g.cs` when
 </PropertyGroup>
 ```
 
+## Mixing XSG-compiled and BAML-compiled assemblies
+
+The generator is a per-project switch, and assemblies of both kinds can be used in one solution, in either direction (an XSG application with
+BAML libraries, a BAML application with XSG libraries, libraries merging each other's dictionaries):
+
+- Types (controls, `x:Class` dictionaries, `Themes/Generic.xaml`, pages through `Application.LoadComponent`) work as always: they are CLR types.
+- `ResourceDictionary Source="/Lib;component/X.xaml"` (XAML or code, any URI form) finds a generated dictionary through the registry and a BAML
+  one through the resource stream. The generated loader falls back to the stock `Source`, and `ResourceDictionary.Source` asks the registry first,
+  loading and initializing the named assembly when nothing has touched it yet (a resources-only library has no other reason to run its module initializer).
+  A BAML application that never loads a generated dictionary pays nothing for this.
+- Entries of a generated dictionary are `XamlSourceGeneratedResources.LazyEntry` markers that `ResourceDictionary` itself creates on first use, so the
+  dictionary a `Source` loads shares the markers: it stays lazy (nothing is created while loading), and `x:Shared="False"` is honoured (a lazy entry is never cached).
+- That holds for loose dictionaries and for `x:Class` root dictionaries (which also get a `FindResource` for `StaticResource` inside them). With
+  `LibreWpfLazyDictionaries=false` the entries are eager: shared, and `x:Shared="False"` is reported as LWXSG0010.
+
+The solution `samples/XsgMixed` (`gen.sh`, then build `AppXsg` and `AppBaml` and run them; `MIX_TOUCH=1` pre-initializes the libraries) checks 49 cases in both directions.
+
 ## Switching back to BAML
 
 Set `UseLibreWpfXamlSourceGenerator=false` (or unset `LIBREWPF_USE_XSG`) and rebuild.
@@ -233,7 +250,8 @@ regression run of the JIT theme lookup on Windows.
 
 ### Lazy resource dictionaries
 
-A generated loose `ResourceDictionary` (a theme, `Generic.xaml`) creates each top-level keyed entry the first time it is asked for, in a method of its own, through the protected
-`ResourceDictionary.OnGettingValue` hook (the revised value is cached by the stock `ResourceDictionary`; no runtime change). Building a theme eagerly was one huge method whose JIT cost
+A generated `ResourceDictionary` (a loose one such as a theme or `Generic.xaml`, or one with `x:Class`) creates each top-level keyed entry the first time it is asked for, in a method of its own.
+The dictionary holds a `XamlSourceGeneratedResources.LazyEntry` marker until then, and `ResourceDictionary` itself resolves the marker (and caches the value, or not for `x:Shared="False"`),
+so the marker travels with the dictionary, for example through `ResourceDictionary.Source`. Building a theme eagerly was one huge method whose JIT cost
 dominated startup. Measured first load of the dictionary, macOS arm64 JIT: Aero2 49 ms (eager XSG 463-635 ms, BAML 220 ms), Luna 66 ms (BAML 205 ms); all 7 in-box themes stay
 equivalent to BAML. `LibreWpfLazyDictionaries=false` restores the eager form. Merged dictionaries stay eager.

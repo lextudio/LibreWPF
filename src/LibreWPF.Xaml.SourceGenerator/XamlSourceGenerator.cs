@@ -400,10 +400,29 @@ namespace LibreWPF.Xaml.SourceGenerator
             // baseline. They must be deterministic: a GUID here makes an unchanged XAML file
             // look like a complete rewrite to Roslyn on every build.
             var localId = 0;
-            GenerateRootElement(sb, root, defaultNs, sourcePath, 12, ref localId);
+            // A ResourceDictionary root with code-behind: like a loose one it has scopes, FindResource and lazy entries.
+            var classDictionary = root.Name.LocalName == "ResourceDictionary" && s_context is not null;
+            if (classDictionary)
+            {
+                s_context!.ClassDictionary = true;
+            }
+            var rootBody = new StringBuilder();
+            GenerateRootElement(rootBody, root, defaultNs, sourcePath, 12, ref localId);
+            // Generated element code can call the (non-existent) static FrameworkElement.FindResource; in a dictionary it means this dictionary.
+            sb.Append(classDictionary ? rootBody.ToString().Replace("global::System.Windows.FrameworkElement.FindResource(", "this.FindResource(") : rootBody.ToString());
 
             sb.AppendLine("            // End generated object graph");
             sb.AppendLine("        }");
+            if (classDictionary)
+            {
+                sb.AppendLine();
+                AppendDictionaryFindResource(sb);
+                if (s_context!.LazyMethods.Length > 0)
+                {
+                    sb.AppendLine();
+                    sb.Append(s_context.LazyMethods.ToString().Replace("global::System.Windows.FrameworkElement.FindResource(", "this.FindResource("));
+                }
+            }
 
             // x:Code: inline C# members (MAUI-style) — emit members only (usings hoisted above).
             if (xCodeMembers.Length > 0)
@@ -427,8 +446,15 @@ namespace LibreWPF.Xaml.SourceGenerator
                 sb.AppendLine($"    internal static class {registrar}");
                 sb.AppendLine("    {");
                 sb.AppendLine("        [global::System.Runtime.CompilerServices.ModuleInitializer]");
-                sb.AppendLine("        internal static void Register() =>");
+                sb.AppendLine("        internal static void Register()");
+                sb.AppendLine("        {");
                 sb.AppendLine($"            global::System.Windows.Markup.XamlSourceGeneratedResources.RegisterComponent(\"{EscapeString(s_context.Compilation.AssemblyName ?? string.Empty)}\", \"{EscapeString(resourcePath)}\", static () => new {globalClassName}());");
+                if (classDictionary)
+                {
+                    // A dictionary with code-behind is also a dictionary: ResourceDictionary.Source and the merged-dictionary loaders find it by path.
+                    sb.AppendLine($"            global::System.Windows.Markup.XamlSourceGeneratedResources.RegisterDictionary(\"{EscapeString(s_context.Compilation.AssemblyName ?? string.Empty)}\", \"{EscapeString(resourcePath)}\", static () => new {globalClassName}());");
+                }
+                sb.AppendLine("        }");
                 sb.AppendLine("    }");
                 sb.AppendLine("    #pragma warning restore CA2255");
             }
@@ -608,10 +634,10 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     continue;
                 }
-                // x:Shared="false" (a new instance per lookup) is not expressible with a ResourceDictionary entry: the resource is shared. Say so, and never write it as a property.
+                // x:Shared="false" (a new instance per lookup) is not expressible with an eager ResourceDictionary entry: the resource is shared (a lazily created entry does honour it: see LazyEntry). Say so, and never write it as a property.
                 if (attrNs == XamlNamespace && attrLocal == "Shared")
                 {
-                    if (string.Equals(attr.Value.Trim(), "false", StringComparison.OrdinalIgnoreCase) && s_context is { } sharedContext)
+                    if (string.Equals(attr.Value.Trim(), "false", StringComparison.OrdinalIgnoreCase) && !ReferenceEquals(el, s_lazyEntry) && s_context is { } sharedContext)
                     {
                         Report(sharedContext, s_notShared, attr);
                     }

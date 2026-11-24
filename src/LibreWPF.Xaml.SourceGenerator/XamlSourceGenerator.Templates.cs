@@ -1273,7 +1273,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             var pad = new string(' ', indent);
             // In a generated theme dictionary the resources being built are visible to the ones after them (BAML's lexical scope): the
             // dictionary class looks them up in __scopes before its own entries.
-            var scoped = s_context is { LooseDictionary: true };
+            var scoped = s_context is { DictionaryScopes: true };
             if (scoped)
             {
                 sb.AppendLine($"{pad}__scopes.Add({dictionary});");

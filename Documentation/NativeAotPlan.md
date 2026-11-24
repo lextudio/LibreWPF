@@ -343,4 +343,4 @@ bin/Release/net10.0-windows/osx-arm64/publish/XsgAot check   # 输出 PASS/FAIL
 
 ### 附录 F：生成的 ResourceDictionary 按键延迟创建
 
-生成类覆写 `OnGettingValue`，顶层带键条目各自一个 `__Create_N()` 方法，首次访问才创建（`LibreWpfLazyDictionaries=false` 可关）。首次加载 Aero2：eager XSG 463–635 ms → 49 ms（BAML 220 ms），Luna 66 ms（BAML 205 ms）；7 个主题的 BAML↔XSG 等价检查仍全部通过。条目创建期间标记仍留在字典里，所以生成的 `FindResource` 在该键创建过程中把它当作“本字典里没有”（与逐条顺序创建时一致：指向正在定义的键的 `{StaticResource}` 继续查外层资源，循环最终是 `ResourceReferenceKeyNotFoundException`，不会栈溢出）；对尚未定义的后面的键，急切模式回退到应用资源，延迟模式能解析到本字典的条目（更宽松）。只有不带 `x:Class` 的松散字典走延迟路径。
+生成类里顶层带键条目各自一个 `__Create_N()` 方法，字典里放 `XamlSourceGeneratedResources.LazyEntry` 标记，由 `ResourceDictionary` 自己在首次访问时创建（标记随字典一起复制，所以 `Source` 加载后仍是懒的；`x:Shared="False"` 的条目不缓存；`x:Class` 根字典同样如此，并获得自己的 `FindResource`）（`LibreWpfLazyDictionaries=false` 可关）。首次加载 Aero2：eager XSG 463–635 ms → 49 ms（BAML 220 ms），Luna 66 ms（BAML 205 ms）；7 个主题的 BAML↔XSG 等价检查仍全部通过。条目创建期间标记仍留在字典里（`LazyEntry.IsCreating`），所以生成的 `FindResource` 在该键创建过程中把它当作“本字典里没有”（与逐条顺序创建时一致：指向正在定义的键的 `{StaticResource}` 继续查外层资源，循环最终是 `ResourceReferenceKeyNotFoundException`，不会栈溢出）；对尚未定义的后面的键，急切模式回退到应用资源，延迟模式能解析到本字典的条目（更宽松）。松散字典和带 `x:Class` 的根字典都走延迟路径；合并字典仍是急切创建。

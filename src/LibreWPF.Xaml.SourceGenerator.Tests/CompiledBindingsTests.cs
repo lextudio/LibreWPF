@@ -315,7 +315,13 @@ public class CompiledBindingsTests
                 public bool Contains(object key) => ContainsKey(key);
                 public new object this[object key]
                 {
-                    get { var v = base[key]; OnGettingValue(key, ref v, out var canCache); if (canCache) base[key] = v; return v; }
+                    get
+                    {
+                        var v = base[key]; var canCache = false;
+                        if (v is System.Windows.Markup.XamlSourceGeneratedResources.LazyEntry lazy) { v = lazy.Create(); canCache = lazy.Shared; }
+                        else OnGettingValue(key, ref v, out canCache);
+                        if (canCache) base[key] = v; return v;
+                    }
                     set => base[key] = value;
                 }
                 protected virtual void OnGettingValue(object key, ref object value, out bool canCache) { canCache = false; }
@@ -337,6 +343,16 @@ public class CompiledBindingsTests
                 public static void RegisterDictionary(System.Reflection.Assembly assembly, string path, System.Func<System.Windows.ResourceDictionary> factory) => Registered[path] = factory;
                 public static object DynamicResourceEntry(object resourceKey) => resourceKey;
                 public static object ResolveEntry(object entry, System.Windows.ResourceDictionary scope) => entry;
+                public sealed class LazyEntry
+                {
+                    private readonly System.Func<object> _create;
+                    public LazyEntry(System.Func<object> create, bool shared) { _create = create; Shared = shared; }
+                    public bool Shared { get; }
+                    public bool IsCreating { get; private set; }
+                    public object Create() { IsCreating = true; try { return _create(); } finally { IsCreating = false; } }
+                }
+                public static bool IsEntryBeingCreated(System.Windows.ResourceDictionary dictionary, object key) =>
+                    ((System.Collections.Generic.Dictionary<object, object>)dictionary).TryGetValue(key, out var v) && v is LazyEntry { IsCreating: true };
             }
         }
         """;
@@ -385,7 +401,26 @@ public class CompiledBindingsTests
     }
 
     [Fact]
-    public void ARootResourceDictionaryWithAClass_IsNotLazy()
+    public void ARootResourceDictionaryWithAClass_IsLazyToo_AndHasItsOwnFindResource()
+    {
+        const string xaml = """
+            <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                x:Class="Sample.Res">
+              <SolidColorBrush x:Key="Accent" Color="Red" />
+              <SolidColorBrush x:Key="Once" x:Shared="False" Color="Red" />
+            </ResourceDictionary>
+            """;
+        var (code, diagnostics) = Generate(xaml, path: "/src/Res.xaml", properties: [("MSBuildProjectDirectory", "/src")]);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "LWXSG0010");   // x:Shared=False of a lazy entry is honoured
+        Assert.Contains("private object FindResource(object key)", code);
+        Assert.Contains("new global::System.Windows.Markup.XamlSourceGeneratedResources.LazyEntry(__Create_", code);
+        Assert.Contains("private object __Create_", code);
+        Assert.Contains(", false)", code);
+    }
+
+    [Fact]
+    public void ARootResourceDictionaryWithAClass_IsEager_WhenLazyDictionariesAreSwitchedOff()
     {
         const string xaml = """
             <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -394,10 +429,9 @@ public class CompiledBindingsTests
               <SolidColorBrush x:Key="Accent" Color="Red" />
             </ResourceDictionary>
             """;
-        var (code, diagnostics) = Generate(xaml, path: "/src/Res.xaml", properties: [("MSBuildProjectDirectory", "/src")]);
+        var (code, diagnostics) = Generate(xaml, path: "/src/Res.xaml", properties: [("MSBuildProjectDirectory", "/src"), ("LibreWpfLazyDictionaries", "false")]);
         Assert.Empty(diagnostics);
-        Assert.DoesNotContain("__XsgLazyEntry", code);
-        Assert.DoesNotContain("OnGettingValue", code);
+        Assert.DoesNotContain("LazyEntry", code);
         Assert.Contains("this[\"Accent\"] = ", code);
     }
 
@@ -406,14 +440,13 @@ public class CompiledBindingsTests
     {
         var (lazy, lazyDiagnostics) = Generate(Generic, path: "/src/Lib/Themes/Generic.xaml", properties: [("MSBuildProjectDirectory", "/src/Lib")]);
         Assert.Empty(lazyDiagnostics);
-        Assert.Contains("override void OnGettingValue(", lazy);
+        Assert.DoesNotContain("OnGettingValue", lazy);   // ResourceDictionary resolves the entries itself
         Assert.Contains("private object __Create_", lazy);
-        Assert.Contains("new __XsgLazyEntry(", lazy);
+        Assert.Contains("new global::System.Windows.Markup.XamlSourceGeneratedResources.LazyEntry(", lazy);
 
         var (eager, eagerDiagnostics) = Generate(Generic, path: "/src/Lib/Themes/Generic.xaml", properties: [("MSBuildProjectDirectory", "/src/Lib"), ("LibreWpfLazyDictionaries", "false")]);
         Assert.Empty(eagerDiagnostics);
-        Assert.DoesNotContain("OnGettingValue", eager);
-        Assert.DoesNotContain("__XsgLazyEntry", eager);
+        Assert.DoesNotContain("LazyEntry", eager);
         Assert.Contains("this[\"Accent\"] = ", eager);
     }
 

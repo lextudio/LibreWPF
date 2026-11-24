@@ -102,7 +102,7 @@ which is Windows-only, and NativeAOT cannot even compile a method that needs a t
 
 A prototype that publishes and runs with `PublishAot=true` on macOS is in openavalon's `samples/XsgNativeAot` (README there). It needs
 compiled bindings (no reflection over view models), an XSG theme registered as `PresentationFramework.Aero2` and rooted with
-`TrimmerRootAssembly` (NativeAOT runs module initializers only of assemblies in the image), and `_SuppressWpfTrimError=true`.
+`TrimmerRootAssembly` (NativeAOT runs module initializers only of assemblies in the image), and `_SuppressWpfTrimError=true`. Since `XamlSourceGeneratorNativeAot.targets` the SDK does both for an XSG project with `PublishAot` (it roots every project reference); only a package that carries XSG output must root itself.
 
 ### Application, `StartupUri` and `Source`
 

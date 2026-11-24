@@ -29,6 +29,7 @@
   <!-- The overall XSG switch and the switches of its features (Simpler XAML, C# expressions, ...). -->
   <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.XamlSourceGeneratorFeatures.targets" />
   <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.XamlSourceGeneratorResources.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.XamlSourceGeneratorNativeAot.targets" />
   <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.targets" />
 
 </Project>

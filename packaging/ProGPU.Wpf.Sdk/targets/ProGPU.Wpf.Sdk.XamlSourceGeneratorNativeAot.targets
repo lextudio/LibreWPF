@@ -1,0 +1,28 @@
+<Project>
+
+  <!--
+    NativeAOT (PublishAot) for a project that uses the XAML Source Generator (UseLibreWpfXamlSourceGenerator=true).
+    Nothing here applies to a BAML project or to a build that does not publish with NativeAOT.
+
+    - The .NET SDK refuses UseWPF together with trimming (NETSDK1175). XSG output has no BAML and no run-time XAML parsing, which is what made
+      that unsupported, so the check is lifted for this combination (_SuppressWpfTrimError is the SDK's own switch for it).
+    - NativeAOT runs a module initializer only of an assembly that is part of the compiled graph. An XSG assembly registers its generated
+      dictionaries and components from one (System.Windows.Markup.XamlSourceGeneratedResources), and a theme assembly that nothing calls
+      into would otherwise be dropped with its registration. Every project reference is therefore rooted. ILC reads TrimmerRootAssembly in WriteIlcRspFileForCompilation (PrepareForILLink belongs to the ILLink package and is not on the NativeAOT path). (A referenced PACKAGE that
+      carries XSG output roots itself with its own TrimmerRootAssembly item.)
+  -->
+
+  <PropertyGroup Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(PublishAot)' == 'true'">
+    <_SuppressWpfTrimError Condition="'$(_SuppressWpfTrimError)' == ''">true</_SuppressWpfTrimError>
+  </PropertyGroup>
+
+  <Target Name="_LibreWpfXsgRootProjectReferences"
+          BeforeTargets="WriteIlcRspFileForCompilation"
+          Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(PublishAot)' == 'true'">
+    <ItemGroup>
+      <TrimmerRootAssembly Include="@(ReferencePath->'%(Filename)')"
+                           Condition="'%(ReferencePath.ReferenceSourceTarget)' == 'ProjectReference'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

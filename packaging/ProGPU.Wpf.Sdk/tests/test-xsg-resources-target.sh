@@ -42,4 +42,24 @@ after=$(stat -f %m "$work/obj/T.g.resources" 2>/dev/null || stat -c %Y "$work/ob
 
 project true '<Resource Include="a/One.txt" Link="X" /><Resource Include="a/Two.txt" Link="x" />'
 run | grep -q "Two Resource items have the resource name 'x'" || fail "duplicate key must be an error"
-echo PASS
+
+
+# NativeAOT targets (the ILC target the SDK reads TrimmerRootAssembly in is WriteIlcRspFileForCompilation; PrepareForILLink is not on that path): trim error lifted and project references rooted, only for XSG + PublishAot.
+aot="$here/targets/ProGPU.Wpf.Sdk.XamlSourceGeneratorNativeAot.targets"
+mkdir -p "$work/lib"
+aotproj() {
+cat > "$work/aot.proj" <<P
+<Project DefaultTargets="Run">
+  <PropertyGroup><UseLibreWpfXamlSourceGenerator>$1</UseLibreWpfXamlSourceGenerator><PublishAot>$2</PublishAot></PropertyGroup>
+  <ItemGroup><ReferencePath Include="/x/Theme.dll" ReferenceSourceTarget="ProjectReference" /><ReferencePath Include="/x/Other.dll" ReferenceSourceTarget="ResolveAssemblyReference" /></ItemGroup>
+  <Target Name="WriteIlcRspFileForCompilation" />
+  <Import Project="$aot" />
+  <Target Name="Run" DependsOnTargets="WriteIlcRspFileForCompilation"><Message Importance="high" Text="TRIM=\$(_SuppressWpfTrimError) ROOT=@(TrimmerRootAssembly)" /></Target>
+</Project>
+P
+(cd "$work" && "$dotnet_cmd" msbuild aot.proj -nologo 2>&1)
+}
+aotproj true true | grep -q 'TRIM=true ROOT=Theme$' || fail "XSG + PublishAot must lift the trim error and root only project references"
+aotproj false true | grep -q 'TRIM= ROOT=$' || fail "BAML project must be untouched"
+aotproj true false | grep -q 'TRIM= ROOT=$' || fail "no PublishAot must be untouched"
+echo PASS-AOT

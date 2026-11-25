@@ -14,7 +14,7 @@ public class XsgFeatureSwitchesBuildTests
     private const string NewStyleWithExpression = """
         <Window x:Class="Sample.MainWindow">
           <Grid>
-            <TextBlock x:Name="Status" Text="{cs: 1 + 1}" />
+            <TextBlock x:Name="Status" Text="{1 + 1}" />
           </Grid>
         </Window>
         """;
@@ -22,7 +22,7 @@ public class XsgFeatureSwitchesBuildTests
     private const string OldStyleWithExpression = """
         <Window x:Class="Sample.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
           <Grid>
-            <TextBlock x:Name="Status" Text="{cs: 1 + 1}" />
+            <TextBlock x:Name="Status" Text="{1 + 1}" />
           </Grid>
         </Window>
         """;

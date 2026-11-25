@@ -216,6 +216,29 @@ namespace LibreWPF.Xaml.SourceGenerator
             "LibreWPF.Xaml",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_asyncLambda = new DiagnosticDescriptor(
+            "LWXSG0011",
+            "Async lambda event handlers are not supported",
+            "{0}({1},{2}): '{3}' is an async lambda; an event expression cannot be async. Use a regular method as the handler.",
+            "LibreWPF.Xaml",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_memberOnPageAndDataContext = new DiagnosticDescriptor(
+            "LWXSG0012",
+            "A name exists on both the page and the DataContext",
+            "{0}({1},{2}): '{3}' uses the name '{4}', a member of both the page ({5}) and the DataContext (x:DataType); write {{this.{4}}} for the page or {{.{4}}} for the DataContext",
+            "LibreWPF.Xaml",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+        private static readonly DiagnosticDescriptor s_leadingDotNotBinding = new DiagnosticDescriptor(
+            "LWXSG0013",
+            "A leading dot is the DataContext and must be a binding",
+            "{0}({1},{2}): '{3}' starts with '.', the DataContext, but is not a simple path on a bindable property or a compound expression over x:DataType names",
+            "LibreWPF.Xaml",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
 #pragma warning restore RS2008
 
         private static void Generate(SourceProductionContext spc, AdditionalText file, XsgFeatures features, string resourcePath)
@@ -265,7 +288,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return;
             }
 
-            if (!features.CSharpExpressions && ReportCSharpExpressions(spc, file.Path, doc))
+            if (ReportExpressionIssues(spc, file.Path, doc, features.CSharpExpressions))
             {
                 return;
             }
@@ -428,6 +451,12 @@ namespace LibreWPF.Xaml.SourceGenerator
             if (xCodeMembers.Length > 0)
             {
                 sb.AppendLine(xCodeMembers.ToString());
+            }
+
+            if (s_context!.ExpressionMembers.Length > 0)
+            {
+                sb.AppendLine();
+                sb.Append(s_context.ExpressionMembers.ToString());
             }
 
             AppendCompiledPropertyHelperIfUsed(sb);
@@ -656,6 +685,13 @@ namespace LibreWPF.Xaml.SourceGenerator
                 // x:Name already collected; skip setting as property
                 if (attrNs.Contains("xaml") && attrLocal == "Name")
                 {
+                    continue;
+                }
+
+                // Event lambda: {(s, e) => ...}. A lambda value means an event, whatever its name.
+                if (!attrLocal.Contains(".") && XamlExpressions.TryGetExpression(attr.Value, out var eventExpression) && XamlExpressions.IsLambda(eventExpression))
+                {
+                    AppendEventLambda(sb, pad, varName, typeName, attrLocal, XamlExpressions.ToCSharp(eventExpression));
                     continue;
                 }
 
@@ -1085,20 +1121,29 @@ namespace LibreWPF.Xaml.SourceGenerator
             return ResolvePresentationTypeSemantically(name);
         }
 
-        // With C# expressions switched off a `{cs: ...}` value is an error, reported where it is written; nothing is generated for the file.
-        private static bool ReportCSharpExpressions(SourceProductionContext spc, string path, XDocument doc)
+        // Problems with C# expressions that stop the file: the feature switched off (every expression is an error, reported where it is
+        // written) and an async lambda. Nothing is generated for the file.
+        private static bool ReportExpressionIssues(SourceProductionContext spc, string path, XDocument doc, bool expressionsOn)
         {
             var found = false;
             foreach (var attribute in doc.Descendants().Attributes())
             {
-                if (!attribute.Value.TrimStart().StartsWith("{cs:", StringComparison.Ordinal))
+                if (!XamlExpressions.TryGetExpression(attribute.Value, out var expression))
+                {
+                    continue;
+                }
+
+                var descriptor = !expressionsOn ? s_csharpExpressionsOff
+                    : XamlExpressions.IsAsyncLambda(expression) ? s_asyncLambda
+                    : null;
+                if (descriptor is null)
                 {
                     continue;
                 }
 
                 var info = (IXmlLineInfo)attribute;
                 spc.ReportDiagnostic(Diagnostic.Create(
-                    s_csharpExpressionsOff,
+                    descriptor,
                     Location.None,
                     path,
                     info.HasLineInfo() ? info.LineNumber : 0,
@@ -1325,18 +1370,115 @@ namespace LibreWPF.Xaml.SourceGenerator
             return "Content";
         }
 
+        // `Click="{(s, e) => Save()}"`. When the event is known to the compilation the lambda is held in a field of the event's delegate type, so a
+        // rerun of InitializeComponent (Hot Reload) removes the handler it added before and the event never fires twice. Without the symbol the lambda is
+        // attached as written, which is right for the fresh element tree every run builds.
+        private static void AppendEventLambda(StringBuilder sb, string pad, string varName, string typeName, string eventName, string lambda)
+        {
+            var delegateType = s_context is null ? null : FindEventDelegateType(TypeSymbol(typeName), eventName);
+            if (delegateType is null || s_context is null)
+            {
+                sb.AppendLine($"{pad}{varName}.{eventName} += {lambda};");
+                return;
+            }
+
+            var field = $"__xsg_event_{s_context.EventLambdaCount++}";
+            s_context.ExpressionMembers.AppendLine($"        private {delegateType}? {field};");
+            sb.AppendLine($"{pad}if (this.{field} is not null) {varName}.{eventName} -= this.{field};");
+            sb.AppendLine($"{pad}this.{field} = {lambda};");
+            sb.AppendLine($"{pad}{varName}.{eventName} += this.{field};");
+        }
+
+        private static string? FindEventDelegateType(INamedTypeSymbol? type, string eventName)
+        {
+            for (var t = type; t is not null; t = t.BaseType)
+            {
+                foreach (var member in t.GetMembers(eventName))
+                {
+                    if (member is IEventSymbol e)
+                    {
+                        return e.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        // MAUI's resolution order for a simple path `{Name}` / `{User.Name}`: a Binding against x:DataType when the target is bindable and the
+        // DataContext type has the first name; `{.Name}` is that binding explicitly (reflective when there is no x:DataType). A name that the page
+        // has as well is an error (LWXSG0012) unless written `{this.Name}` or `{.Name}`. Anything else returns null: plain C#.
+        private static string? BindingExpressionCode(string expression, XElement? owner, string attrLocal, string? elementTypeName)
+        {
+            var context = s_context;
+            if (context is null || owner is null || elementTypeName is null || expression.StartsWith("this.", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            var explicitDataContext = expression.StartsWith(".", StringComparison.Ordinal);
+            var path = explicitDataContext ? expression.Substring(1) : expression;
+            var segments = path.Split('.');
+            if (segments.Length == 0 || segments.Any(segment => !s_identifier.IsMatch(segment)))
+            {
+                return null;
+            }
+
+            // Only a dependency property can take a Binding; a CLR property is assigned the value.
+            if (attrLocal.Contains(".") || FindDependencyPropertyField(TypeSymbol(elementTypeName), attrLocal) is null)
+            {
+                return null;
+            }
+
+            if (!explicitDataContext)
+            {
+                if (FindDataTypeScope(owner, false) is not { } scope
+                    || ResolveDataType(scope.DataType, scope.Element, context.Compilation) is not { } root
+                    || FindProperty(root, segments[0], context) is null)
+                {
+                    return null;
+                }
+
+                if (context.Within is { } page && PageDeclaresMember(page, segments[0]))
+                {
+                    Report(context, s_memberOnPageAndDataContext, owner, expression, segments[0], page.Name);
+                    return null;
+                }
+            }
+
+            return BindingCode("{Binding " + path + "}", owner, false);
+        }
+
+        private static bool PageDeclaresMember(INamedTypeSymbol page, string name)
+        {
+            for (ITypeSymbol? type = page; type is not null && type.SpecialType != SpecialType.System_Object; type = type.BaseType)
+            {
+                if (type.GetMembers(name).Any(member => member is IPropertySymbol or IFieldSymbol or IMethodSymbol { MethodKind: MethodKind.Ordinary }))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private static string? ConvertAttributeValue(string value, string attrNs, string attrLocal, string? elementTypeName = null, XElement? owner = null)
         {
             value = value.Trim();
-            if (value.StartsWith("{cs:", StringComparison.Ordinal))
+            if (XamlExpressions.TryGetExpression(value, out var expression))
             {
-                // extract expression
-                var expr = value.Substring(4).Trim();
-                if (expr.EndsWith("}"))
+                // A C# expression in MAUI's syntax. A simple path that the DataContext type (x:DataType) has is a binding; anything else is
+                // plain C# evaluated once in the generated class (see XamlExpressions).
+                var bound = BindingExpressionCode(expression, owner, attrLocal, elementTypeName)
+                    ?? CompoundBindingCode(expression, owner, attrLocal, elementTypeName);
+                if (bound is null && expression.StartsWith(".", StringComparison.Ordinal) && s_context is { } leadingDotContext && owner is not null)
                 {
-                    expr = expr.Substring(0, expr.Length - 1).Trim();
+                    // `.Name` is the DataContext; it is not C# on its own, so a form that cannot be a binding is reported, not emitted.
+                    Report(leadingDotContext, s_leadingDotNotBinding, owner, expression);
+                    return "default!";
                 }
-                return expr; // embed verbatim
+
+                return bound ?? XamlExpressions.ToCSharp(expression);
             }
 
             if (value.StartsWith("{x:Type ", StringComparison.Ordinal) || value.StartsWith("{x:Type}", StringComparison.Ordinal))

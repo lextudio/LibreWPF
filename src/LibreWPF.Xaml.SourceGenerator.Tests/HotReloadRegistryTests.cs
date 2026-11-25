@@ -22,7 +22,7 @@ public class HotReloadRegistryTests
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
           <Grid>
-            <TextBlock x:Name="Status" Text="{cs: &quot;ready&quot;}" />
+            <TextBlock x:Name="Status" Text="{= 'ready'}" />
           </Grid>
         </Window>
         """;

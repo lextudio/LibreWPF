@@ -19,7 +19,7 @@ public class XamlSourceGeneratorTests
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
           <Grid>
-            <TextBlock x:Name="Status" Text="{cs: &quot;ready&quot;}" />
+            <TextBlock x:Name="Status" Text="{= 'ready'}" />
             <TextBlock x:Name="Other" Text="plain" />
           </Grid>
         </Window>
@@ -87,7 +87,7 @@ public class XamlSourceGeneratorTests
     private const string OldStyleOneLine = """
         <Window x:Class="Sample.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
           <Grid>
-            <TextBlock x:Name="Status" Text="{cs: &quot;ready&quot;}" />
+            <TextBlock x:Name="Status" Text="{= 'ready'}" />
             <TextBlock x:Name="Other" Text="plain" />
           </Grid>
         </Window>
@@ -97,7 +97,7 @@ public class XamlSourceGeneratorTests
     private const string NewStyle = """
         <Window x:Class="Sample.MainWindow">
           <Grid>
-            <TextBlock x:Name="Status" Text="{cs: &quot;ready&quot;}" />
+            <TextBlock x:Name="Status" Text="{= 'ready'}" />
             <TextBlock x:Name="Other" Text="plain" />
           </Grid>
         </Window>

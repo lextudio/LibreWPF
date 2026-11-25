@@ -42,6 +42,9 @@ namespace LibreWPF.Xaml.SourceGenerator
             // Set once a compiled binding is emitted: the generated class then needs its __XsgCompiledProperty helper.
             public bool UsesCompiledProperty { get; set; }
 
+            // Set once a compound C# expression over DataContext names is emitted as a MultiBinding: the class then needs its __XsgExpressionConverter.
+            public bool UsesExpressionConverter { get; set; }
+
             // Set once a by-name static property path is emitted (an inaccessible type of another assembly): the class then needs __XsgStaticPath.
             public bool UsesStaticLookup { get; set; }
 
@@ -61,6 +64,54 @@ namespace LibreWPF.Xaml.SourceGenerator
 
             // Set once a <ResourceDictionary Source="..."> is emitted: the generated class then needs its __XsgLoadDictionary helper.
             public bool UsesDictionaryLoader { get; set; }
+
+            private IReadOnlyList<string>? _globalUsingNamespaces;
+
+            /// <summary>
+            /// The namespaces named by the compilation's own <c>global using</c> directives (the project's, and the SDK's implicit usings that
+            /// MSBuild writes as a source file), in the order written. Aliases and <c>global using static</c> are not namespaces; output of other
+            /// source generators is not in the compilation yet.
+            /// </summary>
+            public IReadOnlyList<string> GlobalUsingNamespaces => _globalUsingNamespaces ??= ReadGlobalUsingNamespaces(Compilation);
+
+            private static IReadOnlyList<string> ReadGlobalUsingNamespaces(Compilation compilation)
+            {
+                var result = new List<string>();
+                foreach (var tree in compilation.SyntaxTrees)
+                {
+                    if (!tree.TryGetRoot(out var root) || root is not Microsoft.CodeAnalysis.CSharp.Syntax.CompilationUnitSyntax unit)
+                    {
+                        continue;
+                    }
+
+                    foreach (var directive in unit.Usings)
+                    {
+                        if (directive.GlobalKeyword.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.None)
+                            || directive.Alias is not null
+                            || !directive.StaticKeyword.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.None)
+                            || directive.Name is not { } name)
+                        {
+                            continue;
+                        }
+
+                        var text = name.ToString();
+                        if (!result.Contains(text))
+                        {
+                            result.Add(text);
+                        }
+                    }
+                }
+
+                return result;
+            }
+
+            // The fields that hold event lambdas ({(s, e) => ...}), appended to the class, and how many were emitted.
+            public StringBuilder ExpressionMembers { get; } = new StringBuilder();
+
+            public int EventLambdaCount { get; set; }
+
+            // How many methods hold the evaluation of a compound C# expression (__XsgExpression_N), in the order written.
+            public int ExpressionMethodCount { get; set; }
 
             public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
         }
@@ -1042,6 +1093,8 @@ namespace LibreWPF.Xaml.SourceGenerator
 
         private static void AppendCompiledPropertyHelperIfUsed(StringBuilder sb)
         {
+            AppendExpressionConverterIfUsed(sb);
+
             if (s_context is { UsesStaticLookup: true })
             {
                 sb.AppendLine("""

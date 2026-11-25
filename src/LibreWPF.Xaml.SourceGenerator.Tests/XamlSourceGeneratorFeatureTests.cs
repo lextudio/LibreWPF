@@ -32,7 +32,7 @@ public class XamlSourceGeneratorFeatureTests
     private const string OldStyleWithExpression = """
         <Window x:Class="Sample.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
           <Grid>
-            <TextBlock x:Name="Status" Text="{cs: &quot;ready&quot;}" />
+            <TextBlock x:Name="Status" Text="{= 'ready'}" />
           </Grid>
         </Window>
         """;
@@ -49,7 +49,7 @@ public class XamlSourceGeneratorFeatureTests
     private const string NewStyleWithExpression = """
         <Window x:Class="Sample.MainWindow">
           <Grid>
-            <TextBlock x:Name="Status" Text="{cs: &quot;ready&quot;}" />
+            <TextBlock x:Name="Status" Text="{= 'ready'}" />
           </Grid>
         </Window>
         """;
@@ -138,7 +138,7 @@ public class XamlSourceGeneratorFeatureTests
         Assert.Equal(["LWXSG0004"], errors);
         var message = diagnostics.Single(d => d.Id == "LWXSG0004").GetMessage();
         Assert.Contains("/src/MainWindow.xaml(3,", message);
-        Assert.Contains("{cs: &quot;ready&quot;}".Replace("&quot;", "\""), message);
+        Assert.Contains("{= 'ready'}".Replace("&quot;", "\""), message);
         Assert.Contains("LibreWpfCSharpExpressions", message);
     }
 
@@ -159,8 +159,8 @@ public class XamlSourceGeneratorFeatureTests
         var xaml = """
             <Window x:Class="Sample.MainWindow">
               <Grid>
-                <TextBlock Text="{cs: 1 + 1}" />
-                <TextBlock Text="{cs: 2 + 2}" />
+                <TextBlock Text="{1 + 1}" />
+                <TextBlock Text="{2 + 2}" />
               </Grid>
             </Window>
             """;

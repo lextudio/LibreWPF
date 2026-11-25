@@ -43,6 +43,16 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
             }
 
+            // Simpler XAML, as in .NET MAUI: a type of the project's own `global using` namespaces needs no xmlns declaration.
+            foreach (var ns in s_context.GlobalUsingNamespaces)
+            {
+                var candidate = ns + "." + localName;
+                if (s_context.Compilation.GetTypeByMetadataName(candidate) is not null)
+                {
+                    return candidate;
+                }
+            }
+
             return null;
         }
 

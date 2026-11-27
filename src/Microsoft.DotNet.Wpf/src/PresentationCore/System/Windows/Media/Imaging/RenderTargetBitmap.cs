@@ -3,6 +3,7 @@
 
 using MS.Internal;
 using MS.Win32.PresentationCore;
+using ProGPU.Wpf.Interop;
 using System.Windows.Media.Composition;
 
 namespace System.Windows.Media.Imaging
@@ -94,6 +95,15 @@ namespace System.Windows.Media.Imaging
             _dpiY = sourceBitmap._dpiY;
             _format = sourceBitmap._format;
 
+            if (sourceBitmap._managedPixelBuffer != null)
+            {
+                // Portable pixel storage: a deep clone is a copy of the pixel buffer.
+                InitializeManagedPixelBuffer(_pixelWidth, _pixelHeight, _dpiX, _dpiY, _format, null,
+                    sourceBitmap.CloneManagedPixelBuffer(), sourceBitmap._managedPixelStride);
+                _bitmapInit.EndInit();
+                return;
+            }
+
             //
             // In order to make a deep clone we need to
             // create a new bitmap with the contents of the
@@ -180,6 +190,12 @@ namespace System.Windows.Media.Imaging
         /// </summary>
         public void Render(Visual visual)
         {
+            if (_managedPixelBuffer != null)
+            {
+                RenderPortable(visual);
+                return;
+            }
+
             BitmapVisualManager bmv = new BitmapVisualManager(this);
             bmv.Render(visual); // Render indirectly calls RenderTargetContentsChanged();
         }
@@ -189,6 +205,17 @@ namespace System.Windows.Media.Imaging
         /// </summary>
         public void Clear()
         {
+            if (_managedPixelBuffer != null)
+            {
+                lock (_syncObject)
+                {
+                    Array.Clear(_managedPixelBuffer);
+                }
+
+                RenderTargetContentsChanged();
+                return;
+            }
+
             HRESULT.Check(MILRenderTargetBitmap.Clear(_renderTargetBitmap));
             RenderTargetContentsChanged();
         }
@@ -226,6 +253,18 @@ namespace System.Windows.Media.Imaging
         ///
         internal override void FinalizeCreation()
         {
+            if (UsesPortablePixelStorage)
+            {
+                // No native MIL: the pixels live in a managed Pbgra32 buffer and Render() goes through the registered
+                // portable visual rasterizer.
+                int stride = checked(_pixelWidth * 4);
+                InitializeManagedPixelBuffer(_pixelWidth, _pixelHeight, _dpiX, _dpiY, _format, null,
+                    new byte[checked(stride * _pixelHeight)], stride);
+                CreationCompleted = true;
+                UpdateCachedSettings();
+                return;
+            }
+
             try
             {
                 using (FactoryMaker myFactory = new FactoryMaker())
@@ -271,6 +310,42 @@ namespace System.Windows.Media.Imaging
                 throw;
             }
 }
+
+        /// <summary>
+        /// Portable Render: the rasterizer returns the visual alone on a transparent background and it is composited onto
+        /// the existing pixels with the "over" operator on premultiplied BGRA, as the native render target does.
+        /// </summary>
+        private void RenderPortable(Visual visual)
+        {
+            ArgumentNullException.ThrowIfNull(visual);
+
+            if (!PortableWpfServiceRegistry.TryGetVisualRasterizer(out IPortableVisualRasterizer rasterizer))
+            {
+                throw new PlatformNotSupportedException(
+                    "RenderTargetBitmap needs a portable visual rasterizer; initialize the portable media services (ProGPU.Wpf) first.");
+            }
+
+            byte[] source = rasterizer.Rasterize(visual, _pixelWidth, _pixelHeight, _dpiX, _dpiY);
+            if (source.Length != _managedPixelBuffer.Length)
+            {
+                throw new InvalidOperationException("The portable visual rasterizer returned a buffer of the wrong size.");
+            }
+
+            lock (_syncObject)
+            {
+                byte[] destination = _managedPixelBuffer;
+                for (int i = 0; i < destination.Length; i += 4)
+                {
+                    int inverse = 255 - source[i + 3];
+                    destination[i] = (byte)(source[i] + (destination[i] * inverse + 127) / 255);
+                    destination[i + 1] = (byte)(source[i + 1] + (destination[i + 1] * inverse + 127) / 255);
+                    destination[i + 2] = (byte)(source[i + 2] + (destination[i + 2] * inverse + 127) / 255);
+                    destination[i + 3] = (byte)(source[i + 3] + (destination[i + 3] * inverse + 127) / 255);
+                }
+            }
+
+            RenderTargetContentsChanged();
+        }
 
         private SafeMILHandle /* IMILRenderTargetBitmap */ _renderTargetBitmap;
 }

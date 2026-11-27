@@ -18,5 +18,6 @@ public static class ProGpuWpfNativeMediaServices
         WpfPortableGeometryOperations.EnsureRegistered();
         WpfPortableTextFormatting.EnsureRegistered();
         WpfPortableDocumentFlow.EnsureRegistered();
+        WpfPortableVisualRasterizer.EnsureRegistered();
     }
 }

@@ -32,6 +32,41 @@ namespace LibreWPF.Xaml.SourceGenerator
 
             public Compilation Compilation { get; }
 
+            private Dictionary<string, List<string>>? _xmlnsDefinitions;
+
+            /// <summary>The CLR namespaces that [XmlnsDefinition] attributes of this assembly and its references map to <paramref name="xmlns"/>.</summary>
+            public IReadOnlyList<string> XmlnsDefinitions(string xmlns)
+            {
+                if (_xmlnsDefinitions is null)
+                {
+                    var map = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+                    var assemblies = new List<IAssemblySymbol> { Compilation.Assembly };
+                    assemblies.AddRange(Compilation.SourceModule.ReferencedAssemblySymbols);
+                    foreach (var assembly in assemblies)
+                    {
+                        foreach (var attribute in assembly.GetAttributes())
+                        {
+                            if (attribute.AttributeClass is not { Name: "XmlnsDefinitionAttribute" } || attribute.ConstructorArguments.Length < 2
+                                || attribute.ConstructorArguments[0].Value is not string uri || attribute.ConstructorArguments[1].Value is not string clr)
+                            {
+                                continue;
+                            }
+
+                            if (!map.TryGetValue(uri, out var list))
+                            {
+                                map[uri] = list = new List<string>();
+                            }
+
+                            list.Add(clr);
+                        }
+                    }
+
+                    _xmlnsDefinitions = map;
+                }
+
+                return _xmlnsDefinitions.TryGetValue(xmlns, out var found) ? found : (IReadOnlyList<string>)Array.Empty<string>();
+            }
+
             public XsgFeatures Features { get; }
 
             public string SourcePath { get; }
@@ -47,6 +82,15 @@ namespace LibreWPF.Xaml.SourceGenerator
 
             // Set once a by-name static property path is emitted (an inaccessible type of another assembly): the class then needs __XsgStaticPath.
             public bool UsesStaticLookup { get; set; }
+
+            // Set once a project's own markup extension is constructed in the generated code: the class then needs __XsgApplyExtension.
+            public bool UsesMarkupExtensions { get; set; }
+
+            // The resource paths of every XAML file of the project (see DictionaryFromSource).
+            public System.Collections.Immutable.ImmutableArray<string> KnownResourcePaths { get; set; }
+
+            // The x:Class root is a FrameworkElement: it registers the x:Name values (RegisterName) in the Visual Basic output.
+            public bool RootIsFrameworkElement { get; set; }
 
             // A loose ResourceDictionary: generated into a class that has no x:Name fields.
             public bool LooseDictionary { get; set; }
@@ -158,6 +202,7 @@ namespace LibreWPF.Xaml.SourceGenerator
 
         // x:Shared="false": the generated dictionary holds one instance; for a freezable (a brush) that is the normal, frozen case.
         // The top-level entry whose x:Shared the lazy dictionary honours itself (no LWXSG0010 for it).
+        [ThreadStatic]
         private static XElement? s_lazyEntry;
 
         private static readonly DiagnosticDescriptor s_notShared = new DiagnosticDescriptor(
@@ -362,20 +407,20 @@ namespace LibreWPF.Xaml.SourceGenerator
                     }
                     if (value.TrimStart().StartsWith("{StaticResource", StringComparison.Ordinal))
                     {
-                        return $"{name} = this.FindResource(\"{EscapeString(ResourceKeyOf(value))}\")";
+                        return $"{name} = {ResourceLookup(ResourceKeyOf(value), owner)}";
                     }
                     return $"{name} = \"{EscapeString(Unquote(value))}\"";
                 case "Converter":
                     if (value.TrimStart().StartsWith("{StaticResource", StringComparison.Ordinal))
                     {
-                        return $"Converter = (global::System.Windows.Data.IValueConverter)this.FindResource(\"{EscapeString(ResourceKeyOf(value))}\")";
+                        return $"Converter = (global::System.Windows.Data.IValueConverter){ResourceLookup(ResourceKeyOf(value), owner)}";
                     }
                     return null;
                 case "Source":
                     // A static resource is the one markup source that can be named without reflection; a plain value (Source=abc) is the string itself.
                     if (value.TrimStart().StartsWith("{StaticResource", StringComparison.Ordinal))
                     {
-                        return $"Source = this.FindResource(\"{EscapeString(ResourceKeyOf(value))}\")";
+                        return $"Source = {ResourceLookup(ResourceKeyOf(value), owner)}";
                     }
                     return value.TrimStart().StartsWith("{", StringComparison.Ordinal) && !value.TrimStart().StartsWith("{}", StringComparison.Ordinal)
                         ? null
@@ -504,9 +549,12 @@ namespace LibreWPF.Xaml.SourceGenerator
                 // Names are scoped: a binding inside a template sees the names of that template (a theme file declares "Border" in dozens of them).
                 var nameScope = owner.Ancestors().FirstOrDefault(a => a.Name.LocalName.EndsWith("Template", StringComparison.Ordinal) && !a.Name.LocalName.Contains("."))
                     ?? owner.AncestorsAndSelf().Last();
-                var named = nameScope.Descendants().FirstOrDefault(e =>
+                var named = nameScope.DescendantsAndSelf().FirstOrDefault(e =>
                     !e.Name.LocalName.Contains(".") && (e.Attribute(XName.Get("Name", XamlNamespace)) ?? e.Attribute("Name"))?.Value == name);
-                var type = named is null ? null : TypeSymbol(ResolveTypeName(named, defaultNs));
+                // The root element named in its own file is the x:Class type (its members are the ones bound), not the base type the tag names.
+                var type = named is null ? null
+                    : named == named.Document?.Root && s_context?.Within is { } rootClass && named.Attribute(XName.Get("Class", XamlNamespace)) is not null ? rootClass
+                    : TypeSymbol(ResolveTypeName(named, defaultNs));
                 return (type, type is null ? $"no element named '{name}' of a known type is declared in this XAML file" : "ElementName=" + name);
             }
 
@@ -731,12 +779,15 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     // Behind an explicit source (RelativeSource, ElementName) a member of a base-typed value (TemplatedParent, Parent, ...) exists
                     // only on the run-time type: that is reflection by nature, not a mistake. Behind x:DataType it is a mistake.
-                    if (i > 0 && KnownSourceType(parts, owner) is not null)
+                    // A member the declared type does not have is not an error when that type is only what is known, not what is declared: the source
+                    // of a RelativeSource / ElementName (TemplatedParent's TargetType, an ancestor) or a plain `object` (DesignItem.Component).
+                    // Those stay reflective bindings, with the warning.
+                    if (KnownSourceType(parts, owner) is not null || current.SpecialType == SpecialType.System_Object)
                     {
                         // ListView.View is a ViewBase; Columns is declared only by GridView, its one subclass that has it. Such a member is
                         // compiled against that subclass: the descriptor answers UnsetValue for any other run-time type. (Only the base type's own
                         // assembly is searched: a subclass of another assembly that has the same member is not reached, as it was reflectively.)
-                        if (UniqueDerivedWithProperty(current, name, context, segments.Skip(i + 1).Select(x => x.Trim()).ToList()) is { } narrow && IsNameable(narrow.Property.Type) && IsNameable(narrow.Owner))
+                        if (current.SpecialType != SpecialType.System_Object && UniqueDerivedWithProperty(current, name, context, segments.Skip(i + 1).Select(x => x.Trim()).ToList()) is { } narrow && IsNameable(narrow.Property.Type) && IsNameable(narrow.Owner))
                         {
                             // A dependency property goes in as the DependencyProperty itself (its change notification), as below.
                             if (FindDependencyPropertyField(narrow.Owner, name) is { } narrowDependencyProperty)
@@ -860,6 +911,10 @@ namespace LibreWPF.Xaml.SourceGenerator
             else if (ns is not null && ns.StartsWith("using:", StringComparison.Ordinal))
             {
                 metadataName = ns.Substring("using:".Length) + "." + local;
+            }
+            else if (ns is not null && ResolveXmlnsDefinitionType(ns, local) is { } mappedName)
+            {
+                metadataName = mappedName;
             }
             else
             {
@@ -1068,6 +1123,13 @@ namespace LibreWPF.Xaml.SourceGenerator
         {
             var context = s_context!;
             var (assembly, path) = ResolveResourceUri(source, context.ResourcePath);
+            // F# has no module initializer to register dictionaries at start-up: a dictionary of this project is constructed by its generated class
+            // (the tool generates loose dictionaries too). Visual Basic generates no loose dictionaries yet.
+            if (context.Features.TargetsFSharp && assembly is null && !context.KnownResourcePaths.IsDefault && context.KnownResourcePaths.Contains(path))
+            {
+                return "new global::LibreWPF.Xaml.Generated.__XsgResourceDictionary_" + Regex.Replace(path, "[^A-Za-z0-9_]", "_") + "()";
+            }
+
             context.UsesDictionaryLoader = true;
             var assemblyName = assembly ?? context.Features.ResourceAssemblyName ?? context.Compilation.AssemblyName ?? string.Empty;
             return $"__XsgLoadDictionary(\"{EscapeString(assemblyName)}\", \"{EscapeString(path)}\")";
@@ -1094,6 +1156,7 @@ namespace LibreWPF.Xaml.SourceGenerator
         private static void AppendCompiledPropertyHelperIfUsed(StringBuilder sb)
         {
             AppendExpressionConverterIfUsed(sb);
+            AppendMarkupExtensionHelperIfUsed(sb);
 
             if (s_context is { UsesStaticLookup: true })
             {
@@ -1347,6 +1410,12 @@ namespace LibreWPF.Xaml.SourceGenerator
                     s_context.LazyMethods.AppendLine($"        private object {method}()");
                     s_context.LazyMethods.AppendLine("        {");
                     s_context.LazyMethods.Append(methodBody);
+                    // A markup extension written as a resource (<x:StaticExtension x:Key=.../>) holds what it provides.
+                    if (TypeSymbol(ResolveTypeName(child, defaultNs)) is { } lazyExtension && DerivesFrom(lazyExtension, "System.Windows.Markup.MarkupExtension"))
+                    {
+                        s_context.UsesMarkupExtensions = true;
+                        created = $"__XsgProvideValue({created})";
+                    }
                     s_context.LazyMethods.AppendLine($"            return {created};");
                     s_context.LazyMethods.AppendLine("        }");
                     s_context.LazyMethods.AppendLine();
@@ -1373,6 +1442,10 @@ namespace LibreWPF.Xaml.SourceGenerator
                     if (semi >= 0) clrNs = clrNs.Substring(0, semi);
                     // An empty CLR namespace is the global namespace: no leading dot.
                     return clrNs.Length == 0 ? local : clrNs + "." + local;
+                }
+                if (ns is not null && ResolveXmlnsDefinitionType(ns, local) is { } mapped)
+                {
+                    return mapped;
                 }
                 return ResolveTypeNameFromName(local, defaultNs) ?? local;
             }

@@ -115,7 +115,15 @@ namespace LibreWPF.Xaml.SourceGenerator
             // name, which compiles where DependencyProperty.FromName is accessible (InternalsVisibleTo: the in-box theme assemblies; ComboBox.IsSelectionBoxHighlighted).
             if (field is null && start is not null && type is not null && dot <= 0 && !name.Contains('.'))
             {
-                return ($"global::System.Windows.DependencyProperty.FromName(\"{name}\", typeof(global::{owner}))", type, name);
+                // Accessible (InternalsVisibleTo) here: the direct call; elsewhere the public descriptor API finds the same property.
+                var fromName = s_context?.Compilation.GetTypeByMetadataName("System.Windows.DependencyProperty")?.GetMembers("FromName").OfType<IMethodSymbol>().FirstOrDefault();
+                var hasDescriptor = s_context?.Compilation.GetTypeByMetadataName("System.ComponentModel.DependencyPropertyDescriptor") is not null;
+                // The class the code is generated in, or (no code-behind: a loose dictionary) this assembly.
+                if (!hasDescriptor || (fromName is not null && s_context!.Compilation.IsSymbolAccessibleWithin(fromName, (ISymbol?)s_context.Within ?? s_context.Compilation.Assembly)))
+                {
+                    return ($"global::System.Windows.DependencyProperty.FromName(\"{name}\", typeof(global::{owner}))", type, name);
+                }
+                return ($"global::System.ComponentModel.DependencyPropertyDescriptor.FromName(\"{name}\", typeof(global::{owner}), typeof(global::{owner}))!.DependencyProperty", type, name);
             }
 
             return ($"global::{declaring}.{name}Property", type, name);
@@ -208,6 +216,10 @@ namespace LibreWPF.Xaml.SourceGenerator
                         : $"this.FindResource({ResourceKeyCode(arg, scope, defaultNs)})";
                 case "TemplateBinding":
                 {
+                    if (SplitTopLevel(arg).Count > 1)
+                    {
+                        return TemplateBindingWithOptions(arg, templateTarget ?? "System.Windows.Controls.Control", scope, defaultNs);
+                    }
                     var property = arg.StartsWith("Property=", StringComparison.Ordinal) ? arg.Substring("Property=".Length) : arg;
                     var (code, _, _) = ResolveDependencyProperty(templateTarget ?? "System.Windows.Controls.Control", property, scope, defaultNs);
                     return $"new global::System.Windows.TemplateBindingExtension({code})";
@@ -299,6 +311,14 @@ namespace LibreWPF.Xaml.SourceGenerator
                         return type.SpecialType == SpecialType.System_Single ? "float.NaN" : "double.NaN";
                     }
                     if (value == "Infinity") return "double.PositiveInfinity";
+                    // WPF's length units: 14pt, 1in, 2.54cm, 10px (device-independent pixels, 96 per inch).
+                    foreach (var (unit, factor) in new[] { ("px", 1d), ("in", 96d), ("cm", 96d / 2.54), ("pt", 96d / 72) })
+                    {
+                        if (value.EndsWith(unit, StringComparison.OrdinalIgnoreCase) && double.TryParse(value.Substring(0, value.Length - 2), NumberStyles.Float, inv, out var measured))
+                        {
+                            return (measured * factor).ToString("R", inv) + suffix;
+                        }
+                    }
                     return double.TryParse(value, NumberStyles.Float, inv, out var d) ? d.ToString("R", inv) + suffix : $"\"{EscapeString(value)}\"";
                 }
                 case SpecialType.System_Int32:
@@ -470,6 +490,14 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return $"global::{statics}.{StaticMemberName(statics, value)}";
             }
 
+            // A type with its own [TypeConverter] (DataGridLength, KeyGesture...): converted when the code runs, as the XAML reader does.
+            if (type is not null && type.SpecialType is not (SpecialType.System_Object or SpecialType.System_String) && !value.StartsWith("{", StringComparison.Ordinal)
+                && HasTypeConverter(type))
+            {
+                var display = type.ToDisplayString(s_typeFormat);
+                return $"({display})global::System.ComponentModel.TypeDescriptor.GetConverter(typeof({display})).ConvertFromInvariantString(\"{EscapeString(value)}\")!";
+            }
+
             // A text for a value of a type this generator cannot convert would be assigned as a string and fail when the style is sealed
             // (or worse, silently): say so at the line.
             if (type is not null && type.SpecialType is not (SpecialType.System_Object or SpecialType.System_String))
@@ -498,9 +526,71 @@ namespace LibreWPF.Xaml.SourceGenerator
         }
 
         // {TemplateBinding P} for an object the template factory does not create: Binding(RelativeSource TemplatedParent, Path = P).
+        // {TemplateBinding Level, Converter={StaticResource C}, ConverterParameter=x}: a one-way Binding to the templated parent with the options.
+        private static string TemplateBindingWithOptions(string arguments, string target, XElement scope, string defaultNs)
+        {
+            var parts = SplitTopLevel(arguments);
+            // Named arguments come in any order: the property is the one written Property=..., else the positional (no '=') one.
+            var propertyIndex = parts.FindIndex(p => p.TrimStart().StartsWith("Property=", StringComparison.Ordinal));
+            if (propertyIndex < 0)
+            {
+                propertyIndex = parts.FindIndex(p => p.IndexOf('=') < 0);
+            }
+            if (propertyIndex < 0)
+            {
+                ReportNotGenerated(scope, $"the TemplateBinding '{arguments}' names no property");
+                return "null";
+            }
+            var property = parts[propertyIndex].Trim().StartsWith("Property=", StringComparison.Ordinal) ? parts[propertyIndex].Trim().Substring("Property=".Length) : parts[propertyIndex];
+            var source = ResolveDependencyProperty(target, property.Trim(), scope, defaultNs).Code;
+            var options = new List<string>
+            {
+                "RelativeSource = global::System.Windows.Data.RelativeSource.TemplatedParent",
+                "Path = new global::System.Windows.PropertyPath(" + source + ")",
+                "Mode = global::System.Windows.Data.BindingMode.OneWay",
+            };
+            foreach (var part in parts.Where((_, i) => i != propertyIndex))
+            {
+                var eq = part.IndexOf('=');
+                if (eq <= 0)
+                {
+                    continue;
+                }
+
+                var key = part.Substring(0, eq).Trim();
+                var v = part.Substring(eq + 1).Trim();
+                if (key == "Converter" && v.StartsWith("{StaticResource", StringComparison.Ordinal))
+                {
+                    var converterKey = v.Substring("{StaticResource".Length).TrimOneBrace();
+                    // A converter of the template's own .Resources is looked up on the template, not on the page.
+                    options.Add($"Converter = (global::System.Windows.Data.IValueConverter){(converterKey.StartsWith("{", StringComparison.Ordinal) ? "this.FindResource(" + ResourceKeyCode(converterKey, scope, defaultNs) + ")" : ResourceLookup(converterKey, scope))}");
+                }
+                else if (key == "ConverterParameter" && v.StartsWith("{StaticResource", StringComparison.Ordinal))
+                {
+                    var parameterKey = v.Substring("{StaticResource".Length).TrimOneBrace();
+                    options.Add($"ConverterParameter = {(parameterKey.StartsWith("{", StringComparison.Ordinal) ? "this.FindResource(" + ResourceKeyCode(parameterKey, scope, defaultNs) + ")" : ResourceLookup(parameterKey, scope))}");
+                }
+                else if (key == "ConverterParameter" && !v.StartsWith("{", StringComparison.Ordinal))
+                {
+                    options.Add($"ConverterParameter = \"{EscapeString(Unquote(v))}\"");
+                }
+                else
+                {
+                    // Not dropped silently: the XAML reader honours it, so say it is not generated.
+                    ReportNotGenerated(scope, $"the option {key}={v} of a TemplateBinding with a converter");
+                }
+            }
+
+            return "new global::System.Windows.Data.Binding { " + string.Join(", ", options) + " }";
+        }
+
         private static string TemplateBindingAsBinding(string markup, XElement scope, string defaultNs)
         {
             var inner = markup.Trim().TrimStart('{').TrimEnd('}').Trim().Substring("TemplateBinding".Length).Trim();
+            if (SplitTopLevel(inner).Count > 1)
+            {
+                return TemplateBindingWithOptions(inner, TemplateTargetOf(scope, defaultNs), scope, defaultNs);
+            }
             if (inner.StartsWith("Property=", StringComparison.Ordinal))
             {
                 inner = inner.Substring("Property=".Length);
@@ -589,6 +679,7 @@ namespace LibreWPF.Xaml.SourceGenerator
         {
             var pad = new string(' ', indent);
             var v = $"__Style_{++localId}";
+            ElementVars[el] = v;
             sb.AppendLine($"{pad}var {v} = new global::System.Windows.Style();");
 
             var targetType = "System.Windows.FrameworkElement";
@@ -840,6 +931,7 @@ namespace LibreWPF.Xaml.SourceGenerator
         {
             var pad = new string(' ', indent);
             var v = $"__{el.Name.LocalName}_{++localId}";
+            ElementVars[el] = v;
             sb.AppendLine($"{pad}var {v} = new global::{typeName}();");
 
             string? templateTarget = null;
@@ -943,6 +1035,21 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
 
                 var value = attr.Value.Trim();
+                // An event handler on a node of the template (`<StackPanel MouseLeftButtonDown="OnClick">`): a routed event is added to the factory,
+                // the handler being a method of the class the template is generated in.
+                if (!local.Contains(".") && !value.StartsWith("{", StringComparison.Ordinal) && FindRoutedEvent(TypeSymbol(type), local) is { } routed)
+                {
+                    sb.AppendLine($"{pad}{f}.AddHandler({routed.Field.ContainingType.ToDisplayString(s_typeFormat)}.{routed.Field.Name}, new {routed.Delegate.ToDisplayString(s_typeFormat)}(this.{value}));");
+                    continue;
+                }
+                // A CLR event that is not routed cannot be attached to a template node (a FrameworkElementFactory takes routed events only; WPF itself fails
+                // at load): say so at the line instead of generating a property assignment that does not compile.
+                if (!local.Contains(".") && !value.StartsWith("{", StringComparison.Ordinal) && IsClrEvent(type, local))
+                {
+                    sb.AppendLine($"{pad}// {local}=\"{value}\": not a routed event, cannot be attached in a template");
+                    ReportNotGenerated(el, $"the event {local}=\"{value}\" of a template node: it is not a routed event");
+                    continue;
+                }
                 // theme:ScrollChrome.ScrollGlyph="...": an attached property written with a prefix names its owner through that prefix.
                 var written = ns.StartsWith("clr-namespace:", StringComparison.Ordinal) && el.GetPrefixOfNamespace(attr.Name.Namespace) is { Length: > 0 } writtenPrefix
                     ? writtenPrefix + ":" + local : local;
@@ -1120,6 +1227,58 @@ namespace LibreWPF.Xaml.SourceGenerator
         // ---- members by shape --------------------------------------------------------------------------------------------------
 
         // The static XProperty field declared on the type or a base type, or null.
+        // The CLR event `name` of the type (or a base) together with its RoutedEvent field `<name>Event`; null for an event that is not routed.
+        private static (IFieldSymbol Field, ITypeSymbol Delegate)? FindRoutedEvent(ITypeSymbol? type, string name)
+        {
+            IEventSymbol? clrEvent = null;
+            for (var t = type; t is not null && clrEvent is null; t = t.BaseType)
+            {
+                clrEvent = t.GetMembers(name).OfType<IEventSymbol>().FirstOrDefault();
+            }
+
+            if (clrEvent is null)
+            {
+                return null;
+            }
+
+            for (var t = type; t is not null; t = t.BaseType)
+            {
+                if (t.GetMembers(name + "Event").OfType<IFieldSymbol>().FirstOrDefault(f => f.IsStatic) is { } field)
+                {
+                    return (field, clrEvent.Type);
+                }
+            }
+
+            return null;
+        }
+
+        private static bool HasTypeConverter(ITypeSymbol type)
+        {
+            for (var t = type; t is not null; t = t.BaseType)
+            {
+                if (t.GetAttributes().Any(a => a.AttributeClass?.Name == "TypeConverterAttribute"))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // The type a collection's Add takes (its single parameter), for a cast; object when it cannot be told.
+        private static string ElementTypeOf(ITypeSymbol collection)
+        {
+            for (var t = collection; t is not null; t = t.BaseType)
+            {
+                if (t.GetMembers("Add").OfType<IMethodSymbol>().FirstOrDefault(m => m.Parameters.Length == 1) is { } add)
+                {
+                    return add.Parameters[0].Type.ToDisplayString(s_typeFormat);
+                }
+            }
+
+            return "object";
+        }
+
         private static IFieldSymbol? FindDependencyPropertyField(ITypeSymbol? type, string name)
         {
             for (var t = type; t is not null; t = t.BaseType)
@@ -1167,7 +1326,7 @@ namespace LibreWPF.Xaml.SourceGenerator
         private static bool IsAssignableChild(XElement child, ITypeSymbol propertyType, string defaultNs)
         {
             var childType = TypeSymbol(ResolveTypeName(child, defaultNs));
-            return childType is not null && s_context!.Compilation is Microsoft.CodeAnalysis.CSharp.CSharpCompilation csharp && csharp.ClassifyConversion(childType, propertyType).IsImplicit;
+            return childType is not null && s_context!.Compilation.ClassifyCommonConversion(childType, propertyType).IsImplicit;
         }
 
         /// <summary>Child elements put into a property: its collection filled with Add (cleared first so a re-run is idempotent), or the single value assigned.</summary>
@@ -1191,6 +1350,15 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return;
             }
 
+            // <Border.Resources><ResourceDictionary>...</ResourceDictionary></Border.Resources>: the dictionary is the value, not an entry of the property's dictionary.
+            if (children.Count == 1 && property.SetMethod is not null && property.Type.ToDisplayString() == "System.Windows.ResourceDictionary"
+                && ResolveTypeName(children[0], defaultNs) == "System.Windows.ResourceDictionary")
+            {
+                var dictionary = GenerateElement(sb, children[0], defaultNs, sourcePath, indent, ref localId);
+                sb.AppendLine($"{pad}{access} = {dictionary};");
+                return;
+            }
+
             if (IsCollectionType(property.Type))
             {
                 if (HasMethod(property.Type, "Clear", 0))
@@ -1200,6 +1368,14 @@ namespace LibreWPF.Xaml.SourceGenerator
                 foreach (var child in children)
                 {
                     var childVar = GenerateElement(sb, child, defaultNs, sourcePath, indent, ref localId);
+                    // A markup extension written as an element (<MultiBinding><sd:Localize .../>): the collection gets its value, as the XAML reader does.
+                    if (TypeSymbol(ResolveTypeName(child, defaultNs)) is { } childSymbol && DerivesFrom(childSymbol, "System.Windows.Markup.MarkupExtension")
+                        && s_context is { } extensionContext)
+                    {
+                        extensionContext.UsesMarkupExtensions = true;
+                        sb.AppendLine($"{pad}{access}.Add(({ElementTypeOf(property.Type)})__XsgProvideValue({childVar}, {owner}, {access}));");
+                        continue;
+                    }
                     sb.AppendLine($"{pad}{access}.Add({childVar});");
                 }
                 return;
@@ -1217,6 +1393,13 @@ namespace LibreWPF.Xaml.SourceGenerator
             string sourcePath, int indent, ref int localId)
         {
             var name = propertyElement.Name.LocalName;
+            // <i:Interaction.Triggers>: the part before the dot names another type, so this is that type's attached property, not a member of the element.
+            if (name.LastIndexOf('.') is var ownerDot and > 0 && TypeSymbol(ResolvePropertyElementOwner(propertyElement, defaultNs)) is { } attachedOwner
+                && !IsSameOrBase(TypeSymbol(elementType), attachedOwner)
+                && TryEmitAttachedPropertyElement(sb, owner, propertyElement, defaultNs, sourcePath, indent, ref localId))
+            {
+                return true;
+            }
             var property = FindClrProperty(TypeSymbol(elementType), name.Substring(name.LastIndexOf('.') + 1));
             if (property is null)
             {
@@ -1306,6 +1489,14 @@ namespace LibreWPF.Xaml.SourceGenerator
         /// </summary>
         private static void EmitKeyedResource(StringBuilder sb, string dictionary, XElement child, string value, string defaultNs, string pad)
         {
+            // <x:StaticExtension x:Key="K" Member="LeftToRight"/> and other markup extensions written as resources: the dictionary holds what the extension provides.
+            if (TypeSymbol(ResolveTypeName(child, defaultNs)) is { } extensionType && DerivesFrom(extensionType, "System.Windows.Markup.MarkupExtension") && s_context is { } extensionContext
+                && !value.StartsWith("new global::System.Windows.Markup.XamlSourceGeneratedResources.LazyEntry", StringComparison.Ordinal))
+            {
+                extensionContext.UsesMarkupExtensions = true;
+                value = $"__XsgProvideValue({value})";
+            }
+
             var key = child.Attribute(XName.Get("Key", XamlNamespace)) ?? child.Attribute("Key");
             if (key is not null)
             {
@@ -1328,12 +1519,47 @@ namespace LibreWPF.Xaml.SourceGenerator
                 : $"{pad}{dictionary}[typeof(global::{resolved})] = {value};");
         }
 
+        // The type named before the dot of <b:Interaction.Triggers>, in the xmlns the element was written with (its prefix is part of the element's name, not of LocalName).
+        private static string? ResolvePropertyElementOwner(XElement propertyElement, string defaultNs)
+        {
+            var local = propertyElement.Name.LocalName;
+            var dot = local.LastIndexOf('.');
+            if (dot <= 0)
+            {
+                return null;
+            }
+
+            var owner = local.Substring(0, dot);
+            var ns = propertyElement.Name.NamespaceName;
+            if (ns.Length > 0 && ns != PresentationNamespace)
+            {
+                if (propertyElement.GetPrefixOfNamespace(propertyElement.Name.Namespace) is { Length: > 0 } prefix)
+                {
+                    return ResolveTypeNameInScope(prefix + ":" + owner, propertyElement, defaultNs);
+                }
+
+                if (ns.StartsWith("clr-namespace:", StringComparison.Ordinal))
+                {
+                    var clr = ns.Substring("clr-namespace:".Length);
+                    var semi = clr.IndexOf(';');
+                    return (semi >= 0 ? clr.Substring(0, semi) : clr) + "." + owner;
+                }
+
+                if (ResolveXmlnsDefinitionType(ns, owner) is { } mapped)
+                {
+                    return mapped;
+                }
+            }
+
+            return ResolveTypeNameInScope(owner, propertyElement, defaultNs);
+        }
+
         // <VisualStateManager.VisualStateGroups>: the collection the static Get{Prop} returns gets the children added, or Set{Prop} gets the value.
         private static bool TryEmitAttachedPropertyElement(StringBuilder sb, string owner, XElement propertyElement, string defaultNs, string sourcePath, int indent, ref int localId)
         {
             var local = propertyElement.Name.LocalName;
             var dot = local.LastIndexOf('.');
-            var ownerType = TypeSymbol(ResolveTypeNameInScope(local.Substring(0, dot), propertyElement, defaultNs));
+            var ownerType = TypeSymbol(ResolvePropertyElementOwner(propertyElement, defaultNs));
             var name = local.Substring(dot + 1);
             if (ownerType is null)
             {

@@ -38,6 +38,60 @@
     <LibreWpfCompiledBindings Condition="'$(LibreWpfCompiledBindings)' == ''">$(UseLibreWpfXamlSourceGenerator)</LibreWpfCompiledBindings>
   </PropertyGroup>
 
+  <!--
+    The generator itself. UseLibreWpfXamlSourceGenerator=true is enough: the SDK references the generator package, so a project (or an IDE that builds
+    other people's projects) needs no PackageReference of its own. LibreWpfXsgAutoReference=false keeps the project's own reference (a locally built
+    generator, a different version); a project that already references the package is left alone.
+
+    One package serves C# and Visual Basic (it runs as a Roslyn generator in both). Languages whose compiler has no generators (F#) get their own
+    package and an MSBuild task, selected here by $(Language) as they appear.
+  -->
+  <PropertyGroup>
+    <LibreWpfXsgAutoReference Condition="'$(LibreWpfXsgAutoReference)' == ''">true</LibreWpfXsgAutoReference>
+    <!-- The project file's extension, not $(Language): it is known before the language targets are imported. -->
+    <_LibreWpfXsgGeneratorLanguage Condition="'$(MSBuildProjectExtension)' == '.csproj' Or '$(MSBuildProjectExtension)' == '.vbproj'">true</_LibreWpfXsgGeneratorLanguage>
+  </PropertyGroup>
+
+  <!-- The project's own reference, whatever the case of the id (Remove and Exclude compare item specs ignoring case). -->
+  <ItemGroup>
+    <_LibreWpfXsgProvider Include="@(PackageReference);@(ProjectReference->'%(Filename)');@(Analyzer->'%(Filename)')" />
+    <_LibreWpfXsgOther Include="@(_LibreWpfXsgProvider)" />
+    <_LibreWpfXsgOther Remove="LibreWPF.Xaml.SourceGenerator" />
+    <_LibreWpfXsgExistingReference Include="@(_LibreWpfXsgProvider)" Exclude="@(_LibreWpfXsgOther)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(LibreWpfXsgAutoReference)' == 'true' And '$(_LibreWpfXsgGeneratorLanguage)' == 'true' And '@(_LibreWpfXsgExistingReference)' == '' And '$(ManagePackageVersionsCentrally)' != 'true'">
+    <PackageReference Include="LibreWPF.Xaml.SourceGenerator" Version="$(ProGpuPackageVersion)" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(LibreWpfXsgAutoReference)' == 'true' And '$(_LibreWpfXsgGeneratorLanguage)' == 'true' And '@(_LibreWpfXsgExistingReference)' == '' And '$(ManagePackageVersionsCentrally)' == 'true'">
+    <PackageReference Include="LibreWPF.Xaml.SourceGenerator" VersionOverride="$(ProGpuPackageVersion)" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!--
+    PresentationFramework.Aero, Aero2, AeroLite, Luna, Royale and Classic declare the same Microsoft.Windows.Themes types (BulletChrome, ButtonChrome,
+    SystemDropShadowChrome, ...). The BAML compiler picks one through the assembly in the xmlns (`clr-namespace:Microsoft.Windows.Themes;assembly=
+    PresentationFramework.Aero`); the generated C# names the type without any assembly, and with all of them referenced the compiler stops with CS0433.
+    Under the generator, when Aero is referenced, only the Aero reference stays in the compile references (the others are still copied and loaded at run time).
+    LibreWpfXsgKeepThemeReferences=true keeps them all, for a project that names them through an extern alias of its own.
+  -->
+  <Target Name="_LibreWpfXsgDropDuplicateThemeReferences"
+          BeforeTargets="CoreCompile"
+          Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(LibreWpfXsgKeepThemeReferences)' != 'true'">
+    <ItemGroup>
+      <_LibreWpfXsgAeroReference Include="@(ReferencePathWithRefAssemblies)" Condition="'%(Filename)' == 'PresentationFramework.Aero'" />
+      <_LibreWpfXsgAeroReference Include="@(ReferencePath)" Condition="'%(Filename)' == 'PresentationFramework.Aero'" />
+    </ItemGroup>
+    <!-- Only when Aero itself is referenced: a project that references just Aero2 or AeroLite keeps the types it has. -->
+    <ItemGroup Condition="'@(_LibreWpfXsgAeroReference)' != ''">
+      <_LibreWpfXsgThemeDuplicate Include="@(ReferencePathWithRefAssemblies);@(ReferencePath)"
+                                  Condition="'%(Filename)' == 'PresentationFramework.Aero2' Or '%(Filename)' == 'PresentationFramework.AeroLite' Or '%(Filename)' == 'PresentationFramework.Luna' Or '%(Filename)' == 'PresentationFramework.Royale' Or '%(Filename)' == 'PresentationFramework.Classic'" />
+      <!-- Both items: the compiler takes ReferencePathWithRefAssemblies, but tasks and analyzers that run before it read ReferencePath. -->
+      <ReferencePathWithRefAssemblies Remove="@(_LibreWpfXsgThemeDuplicate)" />
+      <ReferencePath Remove="@(_LibreWpfXsgThemeDuplicate)" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <CompilerVisibleProperty Include="UseLibreWpfXamlSourceGenerator" />
     <CompilerVisibleProperty Include="LibreWpfSimplerXaml" />

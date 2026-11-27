@@ -19,7 +19,7 @@ namespace LibreWPF.Xaml.SourceGenerator
     /// mirroring the MAUI/WXSG approach. Enabled via MSBuild property
     /// <c>UseLibreWpfXamlSourceGenerator</c> or env var <c>LIBREWPF_USE_XSG</c>.
     /// </summary>
-    [Generator]
+    [Generator(LanguageNames.CSharp, LanguageNames.VisualBasic)]
     public sealed partial class XamlSourceGenerator : IIncrementalGenerator
     {
         // Common WPF presentation-namespace type -> fully qualified CLR type.
@@ -109,11 +109,26 @@ namespace LibreWPF.Xaml.SourceGenerator
                 .Select(static (input, _) => (File: input.Left, ResourcePath: ResourcePathOf(input.Left, input.Right)));
 
             // Compiled bindings resolve x:DataType and binding paths against the compilation.
-            context.RegisterSourceOutput(files.Combine(features).Combine(context.CompilationProvider), static (spc, input) =>
+            // The resource paths of every XAML file of the project: translated output (VB, F#) has no module initializer to register dictionaries, so a
+            // Source="x.xaml" of a dictionary of this project is constructed directly.
+            var allPaths = files.Select(static (f, _) => f.ResourcePath).Collect();
+            context.RegisterSourceOutput(files.Combine(features).Combine(context.CompilationProvider).Combine(allPaths), static (spc, combined) =>
             {
+                var input = combined.Left;
+                var knownPaths = combined.Right;
                 try
                 {
-                    s_context = new GenerationContext(input.Right, input.Left.Right, input.Left.Left.File.Path);
+                    // Visual Basic: the graph is translated from the C# the generator builds; C# expressions and compiled bindings (typed accessors and
+                    // lambdas) have no Visual Basic form yet and are off.
+                    var projectFeatures = input.Left.Right;
+                    if (input.Right.Language == LanguageNames.VisualBasic || projectFeatures.TargetsFSharp)
+                    {
+                        // F# gets compiled bindings (the typed accessors are plain generic code); neither language gets C# expressions.
+                        projectFeatures = new XsgFeatures(projectFeatures.SimplerXaml, false, projectFeatures.TargetsFSharp && projectFeatures.CompiledBindings, projectFeatures.ResourceAssemblyName,
+                            projectFeatures.ExcludedTargetTypes, projectFeatures.AotStrict, projectFeatures.LazyDictionaries, projectFeatures.TargetsFSharp);
+                    }
+                    s_context = new GenerationContext(input.Right, projectFeatures, input.Left.Left.File.Path);
+                    s_context.KnownResourcePaths = knownPaths;
                     Generate(spc, input.Left.Left.File, input.Left.Right, input.Left.Left.ResourcePath);
                     foreach (var diagnostic in s_context.Diagnostics)
                     {
@@ -135,6 +150,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                 finally
                 {
                     s_context = null;
+                    // The variables of this file's elements: not kept for the next file (nor, through the XElements, its document) on this thread.
+                    s_threadElementVars?.Clear();
                 }
             });
         }
@@ -142,8 +159,9 @@ namespace LibreWPF.Xaml.SourceGenerator
         // The XSG features that can be switched off per project (LibreWpfSimplerXaml, LibreWpfCSharpExpressions).
         private readonly struct XsgFeatures : IEquatable<XsgFeatures>
         {
-            public XsgFeatures(bool simplerXaml, bool csharpExpressions, bool compiledBindings, string? resourceAssemblyName = null, string? excludedTargetTypes = null, bool aotStrict = false, bool lazyDictionaries = true)
+            public XsgFeatures(bool simplerXaml, bool csharpExpressions, bool compiledBindings, string? resourceAssemblyName = null, string? excludedTargetTypes = null, bool aotStrict = false, bool lazyDictionaries = true, bool targetsFSharp = false)
             {
+                TargetsFSharp = targetsFSharp;
                 LazyDictionaries = lazyDictionaries;
                 AotStrict = aotStrict;
                 ResourceAssemblyName = resourceAssemblyName;
@@ -176,6 +194,10 @@ namespace LibreWPF.Xaml.SourceGenerator
 
             public bool CSharpExpressions { get; }
 
+            // LibreWpfXsgOutputLanguage=FSharp: the F# tool runs this generator over a C# compilation of the project's references and prints its C# as F#
+            // (the F# compiler has no source generators). Same restrictions as Visual Basic output.
+            public bool TargetsFSharp { get; }
+
             // Absent means on: the generator only runs for a project that chose the XSG path, and a host that does not pass the
             // properties gets the behaviour the generator always had. Only an explicit false switches a feature off.
             public static XsgFeatures From(AnalyzerConfigOptions options) =>
@@ -184,7 +206,8 @@ namespace LibreWPF.Xaml.SourceGenerator
                     options.TryGetValue("build_property.LibreWpfXsgResourceAssemblyName", out var assemblyName) && !string.IsNullOrWhiteSpace(assemblyName) ? assemblyName.Trim() : null,
                     options.TryGetValue("build_property.LibreWpfXsgExcludeTargetTypes", out var excluded) ? excluded.Trim() : null,
                     options.TryGetValue("build_property.LibreWpfXsgAotStrict", out var strict) && string.Equals(strict?.Trim(), "true", StringComparison.OrdinalIgnoreCase),
-                    IsOn(options, "LibreWpfLazyDictionaries"));
+                    IsOn(options, "LibreWpfLazyDictionaries"),
+                    options.TryGetValue("build_property.LibreWpfXsgOutputLanguage", out var outputLanguage) && string.Equals(outputLanguage?.Trim(), "FSharp", StringComparison.OrdinalIgnoreCase));
 
             private static bool IsOn(AnalyzerConfigOptions options, string name) =>
                 !options.TryGetValue("build_property." + name, out var value)
@@ -192,7 +215,7 @@ namespace LibreWPF.Xaml.SourceGenerator
 
             public bool Equals(XsgFeatures other) => SimplerXaml == other.SimplerXaml && CSharpExpressions == other.CSharpExpressions
                 && CompiledBindings == other.CompiledBindings && ResourceAssemblyName == other.ResourceAssemblyName
-                && ExcludedTargetTypes == other.ExcludedTargetTypes && AotStrict == other.AotStrict && LazyDictionaries == other.LazyDictionaries;
+                && ExcludedTargetTypes == other.ExcludedTargetTypes && AotStrict == other.AotStrict && LazyDictionaries == other.LazyDictionaries && TargetsFSharp == other.TargetsFSharp;
 
             public override bool Equals(object? obj) => obj is XsgFeatures other && Equals(other);
 
@@ -320,6 +343,14 @@ namespace LibreWPF.Xaml.SourceGenerator
             var ns = lastDot >= 0 ? fullClassName.Substring(0, lastDot) : string.Empty;
             var className = lastDot >= 0 ? fullClassName.Substring(lastDot + 1) : fullClassName;
             s_context!.Within = s_context.Compilation.GetTypeByMetadataName(fullClassName);
+            if (IsVisualBasic && s_context.Within is null && FindVisualBasicClass(fullClassName) is { } vbClass)
+            {
+                // Visual Basic writes x:Class relative to the project's root namespace (OptionPanels.ProjectImports): the class is the one found there.
+                s_context.Within = vbClass;
+                fullClassName = vbClass.ToDisplayString();
+                ns = vbClass.ContainingNamespace.IsGlobalNamespace ? string.Empty : vbClass.ContainingNamespace.ToDisplayString();
+                className = vbClass.Name;
+            }
 
             // x:Code: collect inline C# (MAUI-style) before generating the class.
             var xCodeUsings = new List<string>();
@@ -361,8 +392,11 @@ namespace LibreWPF.Xaml.SourceGenerator
                 defaultNs = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
             }
 
+            s_context.RootIsFrameworkElement = IsFrameworkElementOrContentElement(ResolveTypeName(root, defaultNs) ?? string.Empty);
+
             // Collect x:Name values (with their element type for typed fields).
             var nameTypes = new Dictionary<string, string>(StringComparer.Ordinal);
+            var fieldModifiers = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var el in root.DescendantsAndSelf())
             {
                 var na = el.Attributes().FirstOrDefault(a => a.Name.LocalName == "Name" && a.Name.NamespaceName.Contains("xaml"));
@@ -380,6 +414,15 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
                 var t = ResolveTypeName(el, defaultNs) ?? "System.Windows.FrameworkElement";
                 nameTypes[na.Value] = t;
+                // x:FieldModifier: public, internal (the default, as in BAML), protected, private, protected internal.
+                fieldModifiers[na.Value] = el.Attribute(XName.Get("FieldModifier", XamlNamespace))?.Value.Trim().ToLowerInvariant() switch
+                {
+                    "public" => "public",
+                    "private" => "private",
+                    "protected" => "protected",
+                    "protected internal" or "protectedinternal" => "protected internal",
+                    _ => "internal",
+                };
             }
 
             var sb = new StringBuilder();
@@ -399,20 +442,64 @@ namespace LibreWPF.Xaml.SourceGenerator
                 sb.AppendLine("{");
             }
 
-            sb.AppendLine($"    public partial class {className}");
+            // BAML's generated part named the root element's type as the base; the generator's part does too when no other part of the class does,
+            // so a code-behind written as `partial class Foo` (the BAML shape) still has its base. Another part that names a base is left alone.
+            var baseClause = string.Empty;
+            // No code-behind class at all (BAML generated the whole class): the same, the generated part is the only one.
+            if ((s_context.Within is null || s_context.Within is { BaseType.SpecialType: SpecialType.System_Object, TypeKind: TypeKind.Class }) && ResolveTypeName(root, defaultNs) is { } rootType)
+            {
+                baseClause = $" : global::{rootType}";
+            }
+            // The accessibility the code-behind chose (an `internal partial class` dialog): two parts of one class must agree, and BAML's part never
+            // contradicted the code-behind.
+            var classModifier = root.Attribute(XName.Get("ClassModifier", XamlNamespace))?.Value.Trim();
+            var accessibility = s_context.Within?.DeclaredAccessibility == Accessibility.Internal
+                || (s_context.Within is null && string.Equals(classModifier, "internal", StringComparison.OrdinalIgnoreCase)) ? "internal" : "public";
+            sb.AppendLine($"    {accessibility} partial class {className}{baseClause}");
             sb.AppendLine("    {");
+            sb.AppendLine("        // What the BAML compiler's generated part declared, for code-behind written against it (Application.LoadComponent patterns).");
+            if (s_context.Within?.GetMembers("_contentLoaded").Any() != true)
+            {
+                // True from the start in C#: code written for BAML (WpfDesigner's SpecialInitializeComponent: `if (!_contentLoaded) { _contentLoaded = true;
+                // Application.LoadComponent(this, uri); } InitializeComponent();`) then skips the BAML load, which an XSG project has none of, and goes
+                // to InitializeComponent, which builds the tree. The generated InitializeComponent does not read it (a hot reload runs it again).
+                if (IsTranslatedOutput)
+                {
+                    sb.AppendLine("        private bool _contentLoaded;");
+                }
+                else
+                {
+                    // Only written here unless the project's own code reads it: no CS0414 in a TreatWarningsAsErrors project.
+                    sb.AppendLine("#pragma warning disable CS0414");
+                    sb.AppendLine("        private bool _contentLoaded = true;");
+                    sb.AppendLine("#pragma warning restore CS0414");
+                }
+            }
             foreach (var kvp in nameTypes)
             {
-                sb.AppendLine($"        private global::{kvp.Value}? {kvp.Key};");
+                // A field the code-behind declares itself (the BAML part did not clash with it either: x:Name only declared what was missing).
+                if (s_context.Within?.GetMembers(kvp.Key).Any() == true)
+                {
+                    continue;
+                }
+
+                sb.AppendLine($"        {fieldModifiers[kvp.Key]} global::{kvp.Value}? {FieldIdentifier(kvp.Key)};");
             }
             sb.AppendLine();
-            AppendHotReloadHandler(sb, className);
+            AppendHotReloadHandler(sb, className, TypeSymbol(ResolveTypeName(root, defaultNs)) is { } rootSymbol && DerivesFrom(rootSymbol, "System.Windows.ResourceDictionary"));
             sb.AppendLine();
-            sb.AppendLine("        private void InitializeComponent()");
+            sb.AppendLine("        public void InitializeComponent()");
             sb.AppendLine("        {");
             sb.AppendLine("#if DEBUG");
             sb.AppendLine("            __XsgHotReload.Register(this);");
             sb.AppendLine("#endif");
+            sb.AppendLine("            _contentLoaded = true;");
+            sb.AppendLine("            global::System.Action? __xsgDeferred = null; // name references to elements declared later in the file (Label.Target=\"box\")");
+            if (IsTranslatedOutput && s_context.RootIsFrameworkElement)
+            {
+                // The translated output registers x:Name through RegisterName, which needs the root's NameScope (a Window has one, a UserControl does not).
+                sb.AppendLine("            if (global::System.Windows.NameScope.GetNameScope(this) == null) global::System.Windows.NameScope.SetNameScope(this, new global::System.Windows.NameScope());");
+            }
             sb.AppendLine("            // Begin generated object graph");
 
             var sourcePath = file.Path;
@@ -434,6 +521,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             // Generated element code can call the (non-existent) static FrameworkElement.FindResource; in a dictionary it means this dictionary.
             sb.Append(classDictionary ? rootBody.ToString().Replace("global::System.Windows.FrameworkElement.FindResource(", "this.FindResource(") : rootBody.ToString());
 
+            sb.AppendLine("            __xsgDeferred?.Invoke();");
             sb.AppendLine("            // End generated object graph");
             sb.AppendLine("        }");
             if (classDictionary)
@@ -494,6 +582,18 @@ namespace LibreWPF.Xaml.SourceGenerator
             }
 
             var hintName = fullClassName.Replace('.', '_') + ".g.cs";
+            if (IsVisualBasic)
+            {
+                if (TryTranslateToVisualBasic(sb.ToString(), out var visualBasic, out var vbError))
+                {
+                    spc.AddSource(fullClassName.Replace('.', '_') + ".g.vb", SourceText.From(visualBasic, Encoding.UTF8));
+                }
+                else
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(s_notTranslatableToVb, Location.None, file.Path, vbError));
+                }
+                return;
+            }
             spc.AddSource(hintName, SourceText.From(sb.ToString(), Encoding.UTF8));
         }
 
@@ -503,7 +603,7 @@ namespace LibreWPF.Xaml.SourceGenerator
         /// instance's own dispatcher. Instances are held weakly and registered by InitializeComponent
         /// itself, so no tree walk is needed and off-tree instances are covered.
         /// </summary>
-        private static void AppendHotReloadHandler(StringBuilder sb, string className)
+        private static void AppendHotReloadHandler(StringBuilder sb, string className, bool noDispatcher = false)
         {
             sb.AppendLine("#if DEBUG");
             sb.AppendLine("        internal static class __XsgHotReload");
@@ -558,7 +658,9 @@ namespace LibreWPF.Xaml.SourceGenerator
             sb.AppendLine("                foreach (var target in targets)");
             sb.AppendLine("                {");
             sb.AppendLine("                    var instance = target;");
-            sb.AppendLine("                    instance.Dispatcher.BeginInvoke(global::System.Windows.Threading.DispatcherPriority.Normal, (global::System.Action)(() => instance.InitializeComponent()));");
+            sb.AppendLine(noDispatcher
+                    ? "                    instance.InitializeComponent();"
+                    : "                    instance.Dispatcher.BeginInvoke(global::System.Windows.Threading.DispatcherPriority.Normal, (global::System.Action)(() => instance.InitializeComponent()));");
             sb.AppendLine("                }");
             sb.AppendLine("            }");
             sb.AppendLine("        }");
@@ -605,6 +707,16 @@ namespace LibreWPF.Xaml.SourceGenerator
                 return dictionaryVar;
             }
 
+            // <Brush x:Key="B">#DADFEA</Brush>: text for a type that is made by its TypeConverter (an abstract Brush cannot be constructed).
+            if (!el.Elements().Any() && el.Value.Trim() is { Length: > 0 } converterText && TypeSymbol(typeName) is { } converted
+                && (converted.IsAbstract || converted.IsValueType || (ContentPropertyOf(typeName) is null && HasTypeConverter(converted) && !IsFrameworkElementOrContentElement(typeName))) && HasTypeConverter(converted) && !el.Attributes().Any(a => a.Name.NamespaceName.Length == 0 && !a.IsNamespaceDeclaration))
+            {
+                var convertedVar = $"__{el.Name.LocalName}_{++localId}";
+                var display = converted.ToDisplayString(s_typeFormat);
+                sb.AppendLine($"{pad}var {convertedVar} = ({display})global::System.ComponentModel.TypeDescriptor.GetConverter(typeof({display})).ConvertFromInvariantString(\"{EscapeString(converterText)}\")!;");
+                return convertedVar;
+            }
+
             // <Binding Path="..." RelativeSource="{...}" /> (inside a MultiBinding): the same code as the {Binding ...} markup.
             if (typeName == "System.Windows.Data.Binding")
             {
@@ -645,7 +757,15 @@ namespace LibreWPF.Xaml.SourceGenerator
             }
 
             var varName = $"__{el.Name.LocalName}_{++localId}";
+            ElementVars[el] = varName;
             sb.AppendLine($"{pad}var {varName} = new global::{typeName}();");
+            // The XAML reader brackets an ISupportInitialize object (not an element: those initialize themselves when they enter a tree) with BeginInit and
+            // EndInit; some set up in EndInit what the properties said (WpfDesigner's VersionedAssemblyResourceDictionary sets its Source there).
+            var supportsInitialize = SupportsInitialize(typeName);
+            if (supportsInitialize)
+            {
+                sb.AppendLine($"{pad}((global::System.ComponentModel.ISupportInitialize){varName}).BeginInit();");
+            }
 
             // Properties from attributes (excluding xmlns, x:Class, x:Name)
             foreach (var attr in el.Attributes())
@@ -654,7 +774,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                 var attrLocal = attr.Name.LocalName;
 
                 // Skip namespace declarations (xmlns, xmlns:x, ...).
-                if (attrNs == "http://www.w3.org/2000/xmlns/" || attrLocal == "xmlns" || IsCompiledBindingDirective(attr))
+                if (attrNs == "http://www.w3.org/2000/xmlns/" || attrLocal == "xmlns" || IsCompiledBindingDirective(attr) || IsMarkupCompatibilityAttribute(attr))
                 {
                     continue;
                 }
@@ -696,7 +816,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
 
                 // Event wiring (idempotent: -= then +=).
-                if (s_knownEvents.Contains(attrLocal) && !attr.Value.StartsWith("{", StringComparison.Ordinal))
+                if ((s_knownEvents.Contains(attrLocal) || IsClrEvent(typeName, attrLocal)) && !attr.Value.StartsWith("{", StringComparison.Ordinal))
                 {
                     sb.AppendLine($"{pad}{varName}.{attrLocal} -= this.{attr.Value};");
                     sb.AppendLine($"{pad}{varName}.{attrLocal} += this.{attr.Value};");
@@ -711,7 +831,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                 if (!attr.Name.LocalName.Contains(".") &&
                     value.TrimStart().StartsWith("{DynamicResource", StringComparison.Ordinal))
                 {
-                    var key = value.Substring(value.IndexOf(' ') + 1).Trim().TrimEnd('}').Trim();
+                    var key = value.Substring(value.IndexOf(' ') + 1).TrimOneBrace();
                     // Only FrameworkElement / FrameworkContentElement have SetResourceReference; a Freezable (a brush's Color) takes the expression itself.
                     var keyCode = ResourceKeyCode(key, el, defaultNs);
                     if (HasSetResourceReference(typeName))
@@ -736,11 +856,33 @@ namespace LibreWPF.Xaml.SourceGenerator
                 // {StaticResource K} where K is defined in a .Resources of an enclosing element: it exists on the instance only, so a
                 // dependency property takes it as a resource reference resolved through the tree.
                 if (!attr.Name.LocalName.Contains(".") && value.TrimStart().StartsWith("{StaticResource", StringComparison.Ordinal)
-                    && IsLocalResourceKey(value.Trim().Substring("{StaticResource".Length).TrimEnd('}').Trim(), el)
+                    && IsLocalResourceKey(value.Trim().Substring("{StaticResource".Length).TrimOneBrace(), el)
+                    && HasSetResourceReference(typeName)
                     && FindDependencyPropertyField(TypeSymbol(typeName), attrLocal) is { } localReference)
                 {
-                    var referenceKey = value.Trim().Substring("{StaticResource".Length).TrimEnd('}').Trim();
+                    var referenceKey = value.Trim().Substring("{StaticResource".Length).TrimOneBrace();
                     sb.AppendLine($"{pad}{varName}.SetResourceReference({localReference.ContainingType.ToDisplayString(s_typeFormat)}.{attrLocal}Property, {ResourceKeyCode(referenceKey, el, defaultNs)});");
+                    continue;
+                }
+
+                // Label.Target="box": a property that holds an element, written as the element's x:Name; the element may be declared later in the file.
+                // (Not in a lazily created dictionary entry or a loose dictionary: there is no InitializeComponent local to defer to, and no field to name.)
+                if (s_lazyEntry is null && s_context is not { LooseDictionary: true }
+                    && !attr.Name.LocalName.Contains(".") && !value.StartsWith("{", StringComparison.Ordinal)
+                    && FindClrProperty(TypeSymbol(typeName), attrLocal) is { SetMethod: not null } elementProperty
+                    && elementProperty.Type.SpecialType == SpecialType.None && (DerivesFrom(elementProperty.Type, "System.Windows.UIElement") || DerivesFrom(elementProperty.Type, "System.Windows.ContentElement"))
+                    && el.Document?.Root?.DescendantsAndSelf().Any(n => (n.Attribute(XName.Get("Name", XamlNamespace)) ?? n.Attribute("Name"))?.Value == value) == true)
+                {
+                    sb.AppendLine($"{pad}__xsgDeferred += () => {varName}.{attrLocal} = this.{FieldIdentifier(value)};");
+                    continue;
+                }
+
+                // A project's own markup extension: constructed here, its value applied at run time (a binding it returns is set as one).
+                if (!attr.Name.LocalName.Contains(".") && CustomMarkupExtensionCode(value, el) is { } extensionCode)
+                {
+                    var extensionProperty = FindDependencyPropertyField(TypeSymbol(typeName), attrLocal) is { } extensionField
+                        ? $"{extensionField.ContainingType.ToDisplayString(s_typeFormat)}.{attrLocal}Property" : "null";
+                    sb.AppendLine($"{pad}__XsgApplyExtension({varName}, {extensionProperty}, \"{attrLocal}\", {extensionCode});");
                     continue;
                 }
 
@@ -756,7 +898,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                 if (!attr.Name.LocalName.Contains(".") &&
                     value.TrimStart().StartsWith("{StaticResource", StringComparison.Ordinal))
                 {
-                    var key = value.Substring(value.IndexOf(' ') + 1).Trim().TrimEnd('}').Trim();
+                    var key = value.Substring(value.IndexOf(' ') + 1).TrimOneBrace();
                     var castType = attrLocal switch
                     {
                         "Style" or "ItemContainerStyle" or "ItemContainerStyleSelector" => "global::System.Windows.Style",
@@ -775,14 +917,10 @@ namespace LibreWPF.Xaml.SourceGenerator
                     {
                         castType = clrProperty.Type.ToDisplayString(s_typeFormat);
                     }
-                    if (castType is not null)
-                    {
-                        sb.AppendLine($"{pad}{varName}.{attrLocal} = ({castType})this.FindResource(\"{key}\");");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"{pad}{varName}.{attrLocal} = this.FindResource(\"{key}\");");
-                    }
+                    var lookup = ResourceLookup(key, el);
+                    sb.AppendLine(castType is not null
+                        ? $"{pad}{varName}.{attrLocal} = ({castType}){lookup};"
+                        : $"{pad}{varName}.{attrLocal} = {lookup};");
                     continue;
                 }
 
@@ -812,20 +950,26 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     var parts = attr.Name.LocalName.Split('.');
                     // theme:ScrollChrome.ScrollGlyph="...": the owner is named through the attribute's own namespace, not the default one.
-                    var attributePrefix = attr.Name.NamespaceName.Length > 0 && attr.Name.NamespaceName.StartsWith("clr-namespace:", StringComparison.Ordinal)
+                    var attributePrefix = attr.Name.NamespaceName.Length > 0 && attr.Name.NamespaceName != PresentationNamespace && attr.Name.NamespaceName != XamlNamespace
                         ? el.GetPrefixOfNamespace(attr.Name.Namespace) : null;
                     var ownerType = (attributePrefix is { Length: > 0 } ? ResolveTypeNameInScope(attributePrefix + ":" + parts[0], el, defaultNs) : null)
                         ?? ResolveTypeNameFromName(parts[0], defaultNs) ?? parts[0];
                     var propName = parts[1];
+                    // Owner.Event="Handler" (ButtonBase.Click on a ToolBar, TextBoxBase.TextChanged on a ComboBox): a routed event added to the element.
+                    if (!value.StartsWith("{", StringComparison.Ordinal) && FindRoutedEvent(TypeSymbol(ownerType), propName) is { } attachedEvent)
+                    {
+                        sb.AppendLine($"{pad}((global::System.Windows.{EventSourceBase(typeName)}){varName}).AddHandler({attachedEvent.Field.ContainingType.ToDisplayString(s_typeFormat)}.{attachedEvent.Field.Name}, new {attachedEvent.Delegate.ToDisplayString(s_typeFormat)}(this.{value}));");
+                        continue;
+                    }
                     if (value.TrimStart().StartsWith("{DynamicResource", StringComparison.Ordinal))
                     {
-                        var key = value.Substring(value.IndexOf(' ') + 1).Trim().TrimEnd('}').Trim();
-                        sb.AppendLine($"{pad}{varName}.SetValue(global::{ownerType}.{propName}Property, {varName}.FindResource(\"{key}\"));");
+                        var key = value.Substring(value.IndexOf(' ') + 1).TrimOneBrace();
+                        sb.AppendLine($"{pad}{varName}.SetValue(global::{ownerType}.{propName}Property, {varName}.FindResource({ResourceKeyCode(key, el, defaultNs)}));");
                     }
                     else if (value.TrimStart().StartsWith("{StaticResource", StringComparison.Ordinal))
                     {
-                        var key = value.Substring(value.IndexOf(' ') + 1).Trim().TrimEnd('}').Trim();
-                        sb.AppendLine($"{pad}global::{ownerType}.Set{propName}({varName}, this.FindResource(\"{key}\"));");
+                        var key = value.Substring(value.IndexOf(' ') + 1).TrimOneBrace();
+                        sb.AppendLine($"{pad}global::{ownerType}.Set{propName}({varName}, this.FindResource({ResourceKeyCode(key, el, defaultNs)}));");
                     }
                     else if (value.TrimStart().StartsWith("{Binding", StringComparison.Ordinal))
                     {
@@ -835,7 +979,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                     else
                     {
                         // The attached property's value type is the second parameter of its static Set method.
-                        var attachedSetter = TypeSymbol(ownerType)?.GetMembers("Set" + propName).OfType<IMethodSymbol>().FirstOrDefault(m => m.IsStatic && m.Parameters.Length == 2);
+                        var attachedSetter = FindStaticSetter(TypeSymbol(ownerType), propName);
                         var attachedCode = attachedSetter is not null
                             ? ValueCode(value, attachedSetter.Parameters[1].Type, el, defaultNs, null)
                             : ConvertAttributeValue(value, attrNs, propName, typeName);
@@ -879,26 +1023,42 @@ namespace LibreWPF.Xaml.SourceGenerator
             // A loose ResourceDictionary has no fields: a plain Name (VisualState.Name, ...) is only the property assigned above.
             if (nameAttr != null && s_context is not { LooseDictionary: true })
             {
-                sb.AppendLine($"{pad}this.{nameAttr.Value} = {varName};");
+                sb.AppendLine($"{pad}this.{FieldIdentifier(nameAttr.Value)} = {varName};");
                 // As BAML does: x:Name is also the element's Name and an entry in the root's
                 // NameScope, so FindName, ElementName bindings and tooling lookups by name work.
                 // Unregister first: Hot Reload re-runs InitializeComponent on the live instance.
                 var nameLiteral = EscapeString(nameAttr.Value);
-                sb.AppendLine($"{pad}if ((object){varName} is global::System.Windows.FrameworkElement __fe_{varName}) __fe_{varName}.Name = \"{nameLiteral}\";");
-                sb.AppendLine($"{pad}else if ((object){varName} is global::System.Windows.FrameworkContentElement __fce_{varName}) __fce_{varName}.Name = \"{nameLiteral}\";");
-                // VisualState, VisualStateGroup and the like are neither: their Name is a plain property (the RuntimeNameProperty), which
-                // VisualStateManager.GoToState searches by.
-                if (!IsFrameworkElementOrContentElement(typeName) && FindClrProperty(TypeSymbol(typeName), "Name") is { Type.SpecialType: SpecialType.System_String, SetMethod.DeclaredAccessibility: Accessibility.Public })
+                if (IsTranslatedOutput)
                 {
-                    sb.AppendLine($"{pad}{varName}.Name = \"{nameLiteral}\";");
+                    // No pattern matching in Visual Basic or F#: the static type decides, and the root (a FrameworkElement) registers the name.
+                    if (IsFrameworkElementOrContentElement(typeName) || FindClrProperty(TypeSymbol(typeName), "Name") is { Type.SpecialType: SpecialType.System_String, SetMethod.DeclaredAccessibility: Accessibility.Public })
+                    {
+                        sb.AppendLine($"{pad}{varName}.Name = \"{nameLiteral}\";");
+                    }
+                    if (s_context is { RootIsFrameworkElement: true })
+                    {
+                        sb.AppendLine($"{pad}if (this.FindName(\"{nameLiteral}\") != null) this.UnregisterName(\"{nameLiteral}\");");
+                        sb.AppendLine($"{pad}this.RegisterName(\"{nameLiteral}\", {varName});");
+                    }
                 }
-                sb.AppendLine($"{pad}if ((object)this is global::System.Windows.DependencyObject __scopeRoot_{varName})");
-                sb.AppendLine($"{pad}{{");
-                sb.AppendLine($"{pad}    var __scope_{varName} = global::System.Windows.NameScope.GetNameScope(__scopeRoot_{varName});");
-                sb.AppendLine($"{pad}    if (__scope_{varName} is null) global::System.Windows.NameScope.SetNameScope(__scopeRoot_{varName}, __scope_{varName} = new global::System.Windows.NameScope());");
-                sb.AppendLine($"{pad}    if (__scope_{varName}.FindName(\"{nameLiteral}\") is not null) __scope_{varName}.UnregisterName(\"{nameLiteral}\");");
-                sb.AppendLine($"{pad}    __scope_{varName}.RegisterName(\"{nameLiteral}\", {varName});");
-                sb.AppendLine($"{pad}}}");
+                else
+                {
+                    sb.AppendLine($"{pad}if ((object){varName} is global::System.Windows.FrameworkElement __fe_{varName}) __fe_{varName}.Name = \"{nameLiteral}\";");
+                    sb.AppendLine($"{pad}else if ((object){varName} is global::System.Windows.FrameworkContentElement __fce_{varName}) __fce_{varName}.Name = \"{nameLiteral}\";");
+                    // VisualState, VisualStateGroup and the like are neither: their Name is a plain property (the RuntimeNameProperty), which
+                    // VisualStateManager.GoToState searches by.
+                    if (!IsFrameworkElementOrContentElement(typeName) && FindClrProperty(TypeSymbol(typeName), "Name") is { Type.SpecialType: SpecialType.System_String, SetMethod.DeclaredAccessibility: Accessibility.Public })
+                    {
+                        sb.AppendLine($"{pad}{varName}.Name = \"{nameLiteral}\";");
+                    }
+                    sb.AppendLine($"{pad}if ((object)this is global::System.Windows.DependencyObject __scopeRoot_{varName})");
+                    sb.AppendLine($"{pad}{{");
+                    sb.AppendLine($"{pad}    var __scope_{varName} = global::System.Windows.NameScope.GetNameScope(__scopeRoot_{varName});");
+                    sb.AppendLine($"{pad}    if (__scope_{varName} is null) global::System.Windows.NameScope.SetNameScope(__scopeRoot_{varName}, __scope_{varName} = new global::System.Windows.NameScope());");
+                    sb.AppendLine($"{pad}    if (__scope_{varName}.FindName(\"{nameLiteral}\") is not null) __scope_{varName}.UnregisterName(\"{nameLiteral}\");");
+                    sb.AppendLine($"{pad}    __scope_{varName}.RegisterName(\"{nameLiteral}\", {varName});");
+                    sb.AppendLine($"{pad}}}");
+                            }
             }
 
             // Content / children (exclude x:Code, handled separately)
@@ -926,7 +1086,7 @@ namespace LibreWPF.Xaml.SourceGenerator
                             sb.AppendLine($"{pad}{varName}.MergedDictionaries.Add({mdVar});");
                         }
                     }
-                    else if (IsCollectionProperty(propName) && peChildren.Count > 0)
+                    else if (IsCollectionProperty(propName) && peChildren.Count > 0 && !(peChildren.Count == 1 && peChildren[0].Name.LocalName == "ResourceDictionary"))
                     {
                         sb.AppendLine($"{pad}{varName}.{propName}.Clear();");
                         foreach (var c in peChildren)
@@ -1013,7 +1173,11 @@ namespace LibreWPF.Xaml.SourceGenerator
             }
 
             // Text content
-            var textContent = el.Value?.Trim();
+            // XAML collapses runs of XML white space (space, tab, CR, LF; not U+00A0) to one space and trims, unless xml:space="preserve" holds for the element.
+            var preserveSpace = el.AncestorsAndSelf().Select(e => e.Attribute(XNamespace.Xml + "space")?.Value).FirstOrDefault(v => v is not null) == "preserve";
+            var textContent = el.Value is null ? null
+                : preserveSpace ? el.Value
+                : System.Text.RegularExpressions.Regex.Replace(el.Value.Trim(' ', '\t', '\r', '\n'), "[ \t\r\n]+", " ");
             if (!string.IsNullOrEmpty(textContent) && contentElements.Count == 0)
             {
                 var cp = InferContentProperty(typeName);
@@ -1021,14 +1185,34 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     sb.AppendLine($"{pad}{varName}.Text = \"{EscapeString(textContent)}\";");
                 }
+                else if (ContentPropertyOf(typeName) == "Inlines" && TypeSymbol("System.Windows.Documents.Run") is not null)
+                {
+                    // <Hyperlink>text</Hyperlink>, <Span>text</Span>: the text is a Run of the inlines.
+                    sb.AppendLine($"{pad}{varName}.Inlines.Add(new global::System.Windows.Documents.Run(\"{EscapeString(textContent)}\"));");
+                }
                 else
                 {
                     sb.AppendLine($"{pad}{varName}.Content = \"{EscapeString(textContent)}\";");
                 }
             }
 
+            if (supportsInitialize)
+            {
+                sb.AppendLine($"{pad}((global::System.ComponentModel.ISupportInitialize){varName}).EndInit();");
+            }
+
             return varName;
         }
+
+        // <ResourceDictionary> with no attribute (Source, x:Key, ...) and no property element (MergedDictionaries): nothing but entries.
+        private static bool IsPlainDictionaryOfEntries(XElement dictionary) =>
+            !dictionary.Attributes().Any(a => !a.IsNamespaceDeclaration)
+            && !dictionary.Elements().Any(e => e.Name.LocalName.Contains('.'))
+            && dictionary.Elements().Any();
+
+        private static bool SupportsInitialize(string typeName) =>
+            TypeSymbol(typeName) is { } type && !IsFrameworkElementOrContentElement(typeName)
+            && type.AllInterfaces.Any(i => i.ToDisplayString() == "System.ComponentModel.ISupportInitialize");
 
         private static bool IsFrameworkElementOrContentElement(string typeName)
         {
@@ -1079,8 +1263,8 @@ namespace LibreWPF.Xaml.SourceGenerator
             var name = el.Name;
             string prefix = name.NamespaceName == defaultNs ? string.Empty : GetPrefix(el, name.NamespaceName);
             // For simplicity, use local name lookup in presentation types
-            if (defaultNs == "http://schemas.microsoft.com/winfx/2006/xaml/presentation" ||
-                name.NamespaceName == "http://schemas.microsoft.com/winfx/2006/xaml/presentation")
+            // The element's own namespace decides: <b:EventTrigger> of another xmlns is not WPF's EventTrigger because the file's default xmlns is WPF's.
+            if (name.NamespaceName == "http://schemas.microsoft.com/winfx/2006/xaml/presentation")
             {
                 if (s_presentationTypes.TryGetValue(name.LocalName, out var full))
                 {
@@ -1107,6 +1291,96 @@ namespace LibreWPF.Xaml.SourceGenerator
             {
                 var clrNs = name.NamespaceName.Substring("using:".Length);
                 return $"{clrNs}.{name.LocalName}";
+            }
+
+            return ResolveXmlnsDefinitionType(name.NamespaceName, name.LocalName);
+        }
+
+        // An event the type (or a base) declares: the fixed list of well-known event names misses the control-specific ones (TextChanged, SelectionChanged, ...).
+        private static bool IsClrEvent(string typeName, string name)
+        {
+            for (var t = TypeSymbol(typeName); t is not null; t = t.BaseType)
+            {
+                if (t.GetMembers(name).Any(m => m is IEventSymbol))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // The static Set<Name>(element, value) of an attached property, declared by the owner or a base (VirtualizingStackPanel.IsVirtualizing is VirtualizingPanel's).
+        private static IMethodSymbol? FindStaticSetter(ITypeSymbol? owner, string name)
+        {
+            for (var t = owner; t is not null; t = t.BaseType)
+            {
+                if (t.GetMembers("Set" + name).OfType<IMethodSymbol>().FirstOrDefault(m => m.IsStatic && m.Parameters.Length == 2) is { } setter)
+                {
+                    return setter;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsSameOrBase(ITypeSymbol? type, ITypeSymbol candidate)
+        {
+            for (var t = type; t is not null; t = t.BaseType)
+            {
+                if (SymbolEqualityComparer.Default.Equals(t, candidate))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // mc:Ignorable and the designer attributes it names (d:DesignWidth, d:DataContext, ...): no run-time meaning, never properties.
+        private static bool IsMarkupCompatibilityAttribute(XAttribute attr)
+        {
+            var ns = attr.Name.NamespaceName;
+            if (ns is "http://schemas.openxmlformats.org/markup-compatibility/2006" or "http://schemas.microsoft.com/expression/blend/2008")
+            {
+                return true;
+            }
+
+            var root = attr.Parent?.Document?.Root;
+            var ignorable = root?.Attributes().FirstOrDefault(a => a.Name.LocalName == "Ignorable" && a.Name.NamespaceName == "http://schemas.openxmlformats.org/markup-compatibility/2006")?.Value;
+            if (ignorable is null || ns.Length == 0)
+            {
+                return false;
+            }
+
+            var prefix = attr.Parent!.GetPrefixOfNamespace(attr.Name.Namespace);
+            return prefix is not null && ignorable.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).Contains(prefix);
+        }
+
+        // A C# identifier for an x:Name: a keyword (x:Name="this", "event") is escaped, as the field and its assignment both use it.
+        private static string FieldIdentifier(string name) =>
+            Microsoft.CodeAnalysis.CSharp.SyntaxFacts.GetKeywordKind(name) != Microsoft.CodeAnalysis.CSharp.SyntaxKind.None ? "@" + name : name;
+
+        /// <summary>
+        /// A type of an XML namespace that is declared by [XmlnsDefinition] attributes of the referenced assemblies or of this one (a URN such as
+        /// <c>urn:TomsToolbox.Wpf.Styles</c>): the first CLR namespace mapped to <paramref name="xmlns"/> that holds <paramref name="local"/>.
+        /// Null when no mapping has the type.
+        /// </summary>
+        private static string? ResolveXmlnsDefinitionType(string xmlns, string local)
+        {
+            var context = s_context;
+            if (context is null || xmlns.Length == 0)
+            {
+                return null;
+            }
+
+            foreach (var clrNs in context.XmlnsDefinitions(xmlns))
+            {
+                var metadataName = clrNs.Length == 0 ? local : clrNs + "." + local;
+                if (context.Compilation.GetTypeByMetadataName(metadataName) is not null)
+                {
+                    return metadataName;
+                }
             }
 
             return null;
@@ -1230,7 +1504,7 @@ namespace LibreWPF.Xaml.SourceGenerator
             {
                 var attrNs = attr.Name.NamespaceName;
                 var attrLocal = attr.Name.LocalName;
-                if (attrNs == "http://www.w3.org/2000/xmlns/" || attrLocal == "xmlns" || IsCompiledBindingDirective(attr))
+                if (attrNs == "http://www.w3.org/2000/xmlns/" || attrLocal == "xmlns" || IsCompiledBindingDirective(attr) || IsMarkupCompatibilityAttribute(attr))
                 {
                     continue;
                 }
@@ -1238,12 +1512,57 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     continue;
                 }
+                // x:ClassModifier, x:Subclass, x:FieldModifier, x:Uid ... are directives of the XAML language, not properties of the root.
+                if (attrNs == XamlNamespace)
+                {
+                    continue;
+                }
                 var value = attr.Value;
+
+                // Event handlers, attached properties and a project's own markup extensions on the root element, as on any other element.
+                if (!value.StartsWith("{", StringComparison.Ordinal) && !attrLocal.Contains(".") && (s_knownEvents.Contains(attrLocal) || IsClrEvent(typeName ?? string.Empty, attrLocal)))
+                {
+                    sb.AppendLine($"{pad}this.{attrLocal} -= this.{value};");
+                    sb.AppendLine($"{pad}this.{attrLocal} += this.{value};");
+                    continue;
+                }
+                if (attrLocal.Contains("."))
+                {
+                    var rootParts = attrLocal.Split('.');
+                    var rootPrefix = attrNs.Length > 0 && attrNs != PresentationNamespace ? el.GetPrefixOfNamespace(attr.Name.Namespace) : null;
+                    var rootOwner = (rootPrefix is { Length: > 0 } ? ResolveTypeNameInScope(rootPrefix + ":" + rootParts[0], el, defaultNs) : null)
+                        ?? ResolveTypeNameFromName(rootParts[0], defaultNs) ?? rootParts[0];
+                    var rootOwnerSymbol = TypeSymbol(rootOwner);
+                    if (!value.StartsWith("{", StringComparison.Ordinal) && FindRoutedEvent(rootOwnerSymbol, rootParts[1]) is { } rootEvent)
+                    {
+                        sb.AppendLine($"{pad}((global::System.Windows.{EventSourceBase(typeName ?? string.Empty)})this).AddHandler({rootEvent.Field.ContainingType.ToDisplayString(s_typeFormat)}.{rootEvent.Field.Name}, new {rootEvent.Delegate.ToDisplayString(s_typeFormat)}(this.{value}));");
+                        continue;
+                    }
+                    // FocusManager.FocusedElement="{Binding ElementName=box}": a binding to the attached property's DependencyProperty.
+                    if (value.TrimStart().StartsWith("{Binding", StringComparison.Ordinal) && FindDependencyPropertyField(rootOwnerSymbol, rootParts[1]) is { } rootBound
+                        && ConvertAttributeValue(value, attrNs, rootParts[1], typeName, el) is { } rootBinding)
+                    {
+                        sb.AppendLine($"{pad}this.SetBinding({rootBound.ContainingType.ToDisplayString(s_typeFormat)}.{rootParts[1]}Property, {rootBinding});");
+                        continue;
+                    }
+                    var rootSetter = FindStaticSetter(rootOwnerSymbol, rootParts[1]);
+                    if (rootSetter is not null && !value.StartsWith("{", StringComparison.Ordinal))
+                    {
+                        sb.AppendLine($"{pad}global::{rootOwner}.Set{rootParts[1]}(this, {ValueCode(value, rootSetter.Parameters[1].Type, el, defaultNs, null)});");
+                        continue;
+                    }
+                }
+                if (!attrLocal.Contains(".") && CustomMarkupExtensionCode(value, el) is { } rootExtension)
+                {
+                    var rootField = FindDependencyPropertyField(TypeSymbol(typeName), attrLocal);
+                    sb.AppendLine($"{pad}__XsgApplyExtension(this, {(rootField is null ? "null" : $"{rootField.ContainingType.ToDisplayString(s_typeFormat)}.{attrLocal}Property")}, \"{attrLocal}\", {rootExtension});");
+                    continue;
+                }
 
                 if (value.TrimStart().StartsWith("{DynamicResource", StringComparison.Ordinal))
                 {
-                    var key = value.Substring(value.IndexOf(' ') + 1).Trim().TrimEnd('}').Trim();
-                    sb.AppendLine($"{pad}this.SetResourceReference(global::{typeName ?? "System.Windows.FrameworkElement"}.{attrLocal}Property, \"{key}\");");
+                    var key = value.Substring(value.IndexOf(' ') + 1).TrimOneBrace();
+                    sb.AppendLine($"{pad}this.SetResourceReference(global::{typeName ?? "System.Windows.FrameworkElement"}.{attrLocal}Property, {ResourceKeyCode(key, el, defaultNs)});");
                     continue;
                 }
 
@@ -1289,16 +1608,44 @@ namespace LibreWPF.Xaml.SourceGenerator
                 {
                     var propName = pe.Name.LocalName.Split('.').Last();
                     var peChildren = pe.Elements().ToList();
-                    if (peChildren.Count == 1 && peChildren[0].Name.LocalName == "ResourceDictionary")
+                    // <i:Interaction.Triggers> on the root: an attached property of another type, not a member of the root's.
+                    if (pe.Name.LocalName.LastIndexOf('.') is var ownerDot and > 0 && peChildren.Count > 0
+                        && TypeSymbol(ResolvePropertyElementOwner(pe, defaultNs)) is { } attachedOwner
+                        && !IsSameOrBase(TypeSymbol(typeName), attachedOwner)
+                        && TryEmitAttachedPropertyElement(sb, "this", pe, defaultNs, sourcePath, indent, ref localId))
+                    {
+                        continue;
+                    }
+                    // <Grid.RowDefinitions> on the root: the property of the root's type, filled as on any other element (it is no ResourceDictionary).
+                    if (peChildren.Count > 0 && FindClrProperty(TypeSymbol(typeName), propName) is { } rootProperty
+                        && rootProperty.Type.ToDisplayString() != "System.Windows.ResourceDictionary"
+                        && (IsCollectionType(rootProperty.Type) || (peChildren.Count == 1 && (IsAssignableChild(peChildren[0], rootProperty.Type, defaultNs)
+                            || peChildren[0].Name.LocalName is "Binding" or "MultiBinding" or "PriorityBinding"))))
+                    {
+                        EmitIntoProperty(sb, "this", rootProperty, peChildren, defaultNs, sourcePath, indent, ref localId);
+                    }
+                    else if (peChildren.Count == 1 && peChildren[0].Name.LocalName == "ResourceDictionary"
+                        && !(propName == "Resources" && IsPlainDictionaryOfEntries(peChildren[0])))
                     {
                         var rdVar = GenerateElement(sb, peChildren[0], defaultNs, sourcePath, indent, ref localId);
                         sb.AppendLine($"{pad}this.{propName} = {rdVar};");
                     }
                     else if (peChildren.Count > 0)
                     {
-                        // Implicit ResourceDictionary (e.g. Page.Resources containing loose resources).
+                        // Implicit ResourceDictionary (e.g. Page.Resources containing loose resources). <Window.Resources><ResourceDictionary> with only
+                        // entries in it is the same dictionary: its entries are built the same way, on a dictionary the root already has.
+                        if (peChildren.Count == 1 && peChildren[0].Name.LocalName == "ResourceDictionary" && IsPlainDictionaryOfEntries(peChildren[0]))
+                        {
+                            peChildren = peChildren[0].Elements().ToList();
+                        }
                         var rdVar = $"__rd_{++localId}";
                         sb.AppendLine($"{pad}var {rdVar} = new global::System.Windows.ResourceDictionary();");
+                        // The root's own Resources is in place while its entries are built: a StaticResource of one entry on an earlier one
+                        // (a DataTemplate using a converter declared above it) is looked up on the root.
+                        if (propName == "Resources")
+                        {
+                            sb.AppendLine($"{pad}this.{propName} = {rdVar};");
+                        }
                         foreach (var c in peChildren)
                         {
                             var cVar = GenerateElement(sb, c, defaultNs, sourcePath, indent, ref localId);
@@ -1310,7 +1657,11 @@ namespace LibreWPF.Xaml.SourceGenerator
 
                 if (childElements.Count > 0)
                 {
-                if (contentProp == "Children")
+                if (TryEmitSymbolContent(sb, "this", typeName ?? string.Empty, childElements, defaultNs, sourcePath, indent, ref localId))
+                {
+                    // generated from the root type's [ContentProperty] (Popup.Child, a project's own base class, ...)
+                }
+                else if (contentProp == "Children")
                 {
                     sb.AppendLine($"{pad}this.Children.Clear();");
                     foreach (var child in childElements)
@@ -1350,6 +1701,10 @@ namespace LibreWPF.Xaml.SourceGenerator
 
         private static string InferContentProperty(string typeName)
         {
+            if (ContentPropertyOf(typeName) is { } declared && declared is "Children" or "Content" or "Items" or "Text" or "Resources")
+            {
+                return declared;
+            }
             if (typeName.EndsWith("TextBlock") || typeName.EndsWith("Label"))
             {
                 return "Text";
@@ -1507,7 +1862,7 @@ namespace LibreWPF.Xaml.SourceGenerator
 
             if (value.StartsWith("{DynamicResource ", StringComparison.Ordinal))
             {
-                var key = value.Substring("{DynamicResource".Length).Trim().TrimEnd('}').Trim();
+                var key = value.Substring("{DynamicResource".Length).TrimOneBrace();
                 // SetResourceReference is emitted separately; here we return a marker handled by caller.
                 // For property assignment we use FindResource at load (no auto-update). Prefer SetResourceReference
                 // for DependencyProperty targets, which is handled below in GenerateElement.
@@ -1724,9 +2079,59 @@ namespace LibreWPF.Xaml.SourceGenerator
             return $"\"{EscapeString(value)}\"";
         }
 
+        // The class that has AddHandler for an element of this type: ContentElement for a Hyperlink / Run / FlowDocument, UIElement otherwise.
+        private static string EventSourceBase(string typeName) =>
+            TypeSymbol(typeName) is { } type && DerivesFrom(type, "System.Windows.ContentElement") && !DerivesFrom(type, "System.Windows.UIElement") ? "ContentElement" : "UIElement";
+
+        // The generated variable of each element of the file being generated: a resource of <ListView.Resources> is looked up on that ListView.
+        [ThreadStatic]
+        private static Dictionary<XElement, string>? s_threadElementVars;
+
+        private static Dictionary<XElement, string> ElementVars => s_threadElementVars ??= new Dictionary<XElement, string>();
+
+        // The C# that finds the resource <paramref name="key"/> for an element: `this.FindResource` for the page's own and inherited resources, the
+        // generated variable of the nearest ancestor whose .Resources declares it otherwise (a ListView's, a ControlTemplate's or Style's): a
+        // StaticResource on a non-element (GridViewColumn.CellTemplate) or inside a template is searched from where the resource is, not from the page.
+        private static string ResourceLookup(string key, XElement? el)
+        {
+            // A key that is itself markup ({x:Static SystemColors.WindowBrushKey}) is code; only a plain key is a literal and can be searched in .Resources.
+            if (key.StartsWith("{", StringComparison.Ordinal) && el is not null)
+            {
+                return $"this.FindResource({ResourceKeyCode(key, el, PresentationNamespace)})";
+            }
+
+            var literal = "\"" + EscapeString(key) + "\"";
+            for (var ancestor = el?.Parent; ancestor is not null; ancestor = ancestor.Parent)
+            {
+                var declares = ancestor.Elements().Any(r => r.Name.LocalName.EndsWith(".Resources", StringComparison.Ordinal)
+                    && r.Elements().Any(e => (e.Attribute(XName.Get("Key", XamlNamespace)) ?? e.Attribute("Key"))?.Value == key));
+                if (!declares)
+                {
+                    continue;
+                }
+
+                if (ancestor.Parent is null || !ElementVars.TryGetValue(ancestor, out var variable))
+                {
+                    return $"this.FindResource({literal})";
+                }
+
+                // A variable declared outside the lazily created entry that holds this element is out of scope in its method.
+                if (s_lazyEntry is not null && !ReferenceEquals(ancestor, s_lazyEntry) && !ancestor.Ancestors().Any(a => ReferenceEquals(a, s_lazyEntry)))
+                {
+                    return $"this.FindResource({literal})";
+                }
+
+                return IsFrameworkElementOrContentElement(ResolveTypeName(ancestor, PresentationNamespace) ?? string.Empty)
+                    ? $"{variable}.FindResource({literal})"
+                    : $"{variable}.Resources[{literal}]";
+            }
+
+            return $"this.FindResource({literal})";
+        }
+
         private static string EscapeString(string s)
         {
-            return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
         }
 
         private static string GetPrefix(XElement el, string nsUri)
@@ -1743,6 +2148,16 @@ namespace LibreWPF.Xaml.SourceGenerator
                 }
             }
             return string.Empty;
+        }
+    }
+
+    // The closing brace of a markup extension, once: `{StaticResource {x:Static SystemColors.WindowBrushKey}}` has the key `{x:Static ...}` (TrimEnd('}') took both).
+    internal static class XsgMarkupText
+    {
+        public static string TrimOneBrace(this string text)
+        {
+            text = text.Trim();
+            return (text.EndsWith("}", System.StringComparison.Ordinal) ? text.Substring(0, text.Length - 1) : text).Trim();
         }
     }
 }

@@ -41,6 +41,8 @@ public class XsgFeatureSwitchesBuildTests
                     <TargetFramework>net10.0</TargetFramework>
                     <ImplicitUsings>disable</ImplicitUsings>
                     <NuGetAudit>false</NuGetAudit>
+                    <!-- The probe names the generator as an Analyzer itself: no package to reference. -->
+                    <LibreWpfXsgAutoReference>false</LibreWpfXsgAutoReference>
                     {properties}
                   </PropertyGroup>
                   <ItemGroup>

@@ -59,6 +59,8 @@ public class ThemeDictionaryTests
         {
             [System.AttributeUsage(System.AttributeTargets.Class)]
             public sealed class ContentPropertyAttribute : System.Attribute { public ContentPropertyAttribute(string name) { } }
+            public abstract class MarkupExtension { public abstract object ProvideValue(System.IServiceProvider serviceProvider); }
+            public class HelloExtension : MarkupExtension { public override object ProvideValue(System.IServiceProvider serviceProvider) => null; }
         }
         namespace System.Windows.Media
         {
@@ -166,6 +168,17 @@ public class ThemeDictionaryTests
             additionalTexts: [new InMemoryText("/src/Theme/Themes/Aero2.NormalColor.xaml", xaml)], optionsProvider: options);
         var result = driver.RunGenerators(compilation).GetRunResult();
         return (string.Join("\n", result.GeneratedTrees.Select(t => t.ToString())), result.Diagnostics);
+    }
+
+    [Fact]
+    public void AMarkupExtensionResource_OfALooseDictionary_HoldsWhatItProvides_AndTheHelperIsThere()
+    {
+        var (code, _) = GenerateXaml(Header + """
+              <HelloExtension x:Key="K" />
+            </ResourceDictionary>
+            """, ("MSBuildProjectDirectory", "/src/Theme"));
+        Assert.True(code.Contains("return __XsgProvideValue("), code);
+        Assert.Contains("private static object? __XsgProvideValue(", code);
     }
 
     [Fact]

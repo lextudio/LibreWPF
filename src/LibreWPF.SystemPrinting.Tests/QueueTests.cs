@@ -95,6 +95,53 @@ public class QueueTests
     }
 
     [Fact]
+    public void CurrentJobSettingsKeepsTheDescriptionForTheNextJob()
+    {
+        Use(Info("a", "A"));
+        var queue = new PrintQueue(new PrintServer(), "A");
+
+        var settings = queue.CurrentJobSettings;
+        Assert.Same(settings, queue.CurrentJobSettings);
+        Assert.Equal(string.Empty, settings.Description);
+        Assert.Null(settings.CurrentPrintTicket);
+
+        settings.Description = "Quarterly report";
+
+        Assert.Equal("Quarterly report", queue.CurrentJobSettings.Description);
+    }
+
+    [Fact]
+    public void JobNameUsesTheCurrentJobSettingsDescriptionAndFallsBackToDocument()
+    {
+        Use(Info("a", "A"));
+        var queue = new PrintQueue(new PrintServer(), "A");
+        var jobName = typeof(PrintQueue).Assembly.GetType("System.Printing.QueuePrinter", throwOnError: true)!
+            .GetMethod("JobName", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+
+        Assert.Equal("Document", jobName.Invoke(null, new object[] { queue }));
+        queue.CurrentJobSettings.Description = "Quarterly report";
+        Assert.Equal("Quarterly report", jobName.Invoke(null, new object[] { queue }));
+        queue.CurrentJobSettings.Description = "   ";
+        Assert.Equal("Document", jobName.Invoke(null, new object[] { queue }));
+    }
+
+    [Fact]
+    public void UnsupportedTicketPageSizeFallsBackToTheQueueDefault()
+    {
+        var capabilities = CoreCapabilities.CreateDefault();
+        var defaults = new PrintTicketModel(CommonPageMediaSizes.Letter);
+        var model = new PrintTicketModel(new PageMediaSize("NoSuchSize", 1d, 1d));
+        var ensure = typeof(PrintQueue).Assembly.GetType("System.Printing.QueuePrinter", throwOnError: true)!
+            .GetMethod("EnsureSupportedPageSize", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+
+        ensure.Invoke(null, new object[] { model, capabilities, defaults });
+
+        Assert.Equal("Letter", model.PageMediaSize.Name);
+    }
+
+
+
+    [Fact]
     public void CollectionAddsAndEnumerates()
     {
         Use(Info("a", "A"), Info("b", "B"));

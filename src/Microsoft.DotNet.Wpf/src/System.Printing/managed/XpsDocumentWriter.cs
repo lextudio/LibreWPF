@@ -1,4 +1,5 @@
 using System.Windows.Documents;
+using System.Windows.Documents.Serialization;
 using System.Windows.Media;
 using System.Windows.Xps.Packaging;
 using System.Windows.Xps.Serialization;
@@ -53,6 +54,12 @@ public partial class XpsDocumentWriter
 
     public void Write(string documentPath, XpsDocumentNotificationLevel notificationLevel) => Write(documentPath);
 
+    /// <summary>The print ticket the caller (PrintDialog) wants the next document to use.</summary>
+    public override event WritingPrintTicketRequiredEventHandler? WritingPrintTicketRequired;
+
+    public virtual void raise_WritingPrintTicketRequired(object sender, WritingPrintTicketRequiredEventArgs e) =>
+        WritingPrintTicketRequired?.Invoke(sender, e);
+
     private void WriteCore(object content, Printing.PrintTicket? printTicket)
     {
         ArgumentNullException.ThrowIfNull(content);
@@ -61,18 +68,25 @@ public partial class XpsDocumentWriter
             throw new XpsWriterException("This XpsDocumentWriter has already written its document.");
         }
 
-        if (printTicket is not null)
-        {
-            throw new PlatformNotSupportedException("Writing with a print ticket is not implemented.");
-        }
-
         if (_destinationDocument is null)
         {
+            // PrintDialog supplies its ticket through this event (PrintTicketLevel.FixedDocumentSequencePrintTicket), not by
+            // writing a ticket on the overload; CurrentJobSettings is the caller's fallback.
+            var ticket = printTicket ?? _destinationQueue!.CurrentJobSettings.CurrentPrintTicket;
+            var args = new WritingPrintTicketRequiredEventArgs(PrintTicketLevel.FixedDocumentSequencePrintTicket, 1);
+            raise_WritingPrintTicketRequired(this, args);
+            ticket = args.CurrentPrintTicket ?? ticket;
+
             // Only a successful submission uses the writer up: after a failure (no submitter, queue error) the caller sees that
             // error again on a retry rather than a misleading "already written".
-            Printing.QueuePrinter.Print(_destinationQueue!, content);
+            Printing.QueuePrinter.Print(_destinationQueue!, content, ticket);
             _done = true;
             return;
+        }
+
+        if (printTicket is not null)
+        {
+            throw new PlatformNotSupportedException("Writing with a print ticket to an XPS document is not implemented.");
         }
 
         _done = true;

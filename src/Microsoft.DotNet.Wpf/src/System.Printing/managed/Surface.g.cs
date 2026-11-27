@@ -95,8 +95,6 @@ namespace System.Printing
     public partial class PrintJobSettings
     {
         internal PrintJobSettings() { }
-        public System.Printing.PrintTicket CurrentPrintTicket { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } set { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public string Description { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } set { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
     }
     [System.FlagsAttribute]
     public enum PrintJobStatus
@@ -141,7 +139,6 @@ namespace System.Printing
     {
         public virtual int AveragePagesPerMinute { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
         public int ClientPrintSchemaVersion { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public System.Printing.PrintJobSettings CurrentJobSettings { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
         public virtual int DefaultPriority { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } set { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
         public bool HasPaperProblem { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
         public bool HasToner { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
@@ -667,14 +664,12 @@ namespace System.Windows.Xps
     {
         public override event System.Windows.Documents.Serialization.WritingCancelledEventHandler WritingCancelled { add { } remove { } }
         public override event System.Windows.Documents.Serialization.WritingCompletedEventHandler WritingCompleted { add { } remove { } }
-        public override event System.Windows.Documents.Serialization.WritingPrintTicketRequiredEventHandler WritingPrintTicketRequired { add { } remove { } }
         public override event System.Windows.Documents.Serialization.WritingProgressChangedEventHandler WritingProgressChanged { add { } remove { } }
         public override void CancelAsync() { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public override System.Windows.Documents.Serialization.SerializerWriterCollator CreateVisualsCollator() { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public override System.Windows.Documents.Serialization.SerializerWriterCollator CreateVisualsCollator(System.Printing.PrintTicket documentSequencePrintTicket, System.Printing.PrintTicket documentPrintTicket) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public virtual void raise_WritingCancelled(object sender, System.Windows.Documents.Serialization.WritingCancelledEventArgs args) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public virtual void raise_WritingCompleted(object sender, System.Windows.Documents.Serialization.WritingCompletedEventArgs e) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public virtual void raise_WritingPrintTicketRequired(object sender, System.Windows.Documents.Serialization.WritingPrintTicketRequiredEventArgs e) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public virtual void raise_WritingProgressChanged(object sender, System.Windows.Documents.Serialization.WritingProgressChangedEventArgs e) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public void WriteAsync(string documentPath) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public void WriteAsync(string documentPath, System.Windows.Xps.XpsDocumentNotificationLevel notificationLevel) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }

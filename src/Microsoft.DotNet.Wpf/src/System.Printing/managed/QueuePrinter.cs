@@ -18,14 +18,15 @@ internal static class QueuePrinter
     private const double PdfDpi = 200d;
     private const double DipsPerPoint = DipsPerInch / 72d;
 
-    internal static void Print(PrintQueue queue, object content)
+    internal static void Print(PrintQueue queue, object content, PrintTicket? printTicket = null)
     {
         if (PrintBackend.Adapter is not IPrintDocumentSubmitter submitter)
         {
             throw new PlatformNotSupportedException("This print backend cannot submit a prepared document to a queue.");
         }
 
-        var pageSize = DefaultPageSize(queue);
+        var ticket = ResolveTicket(queue, printTicket);
+        var pageSize = new Size(ticket.PageMediaSize.Width * DipsPerPoint, ticket.PageMediaSize.Height * DipsPerPoint);
         var pages = Pages(content, pageSize);
         if (pages.Count == 0)
         {
@@ -44,15 +45,42 @@ internal static class QueuePrinter
             pdf.AddPage(size.Width * 72d / DipsPerInch, size.Height * 72d / DipsPerInch, width, height, pixels);
         }
 
-        submitter.SubmitDocumentAsync(queue.Info.Id, pdf.ToArray(), "application/pdf", "Document").GetAwaiter().GetResult();
+        submitter.SubmitDocumentAsync(queue.Info.Id, pdf.ToArray(), "application/pdf", JobName(queue), ticket).GetAwaiter().GetResult();
     }
 
-    /// <summary>The queue's default page in device-independent units; content that has no page of its own is placed on it.</summary>
-    private static Size DefaultPageSize(PrintQueue queue)
+    /// <summary>
+    /// The ticket model for this job. A ticket that names a size this queue does not have is replaced by the queue default,
+    /// exactly as PrintQueue.Capabilities does: PrintSchema.Apply leaves a 1x1 placeholder so validation can report it, and
+    /// rendering a real job on that placeholder would produce a 1pt page.
+    /// </summary>
+    internal static PrintTicketModel ResolveTicket(PrintQueue queue, PrintTicket? printTicket)
     {
         var capabilities = PrintBackend.Adapter.GetCapabilitiesAsync(queue.Info.Id, null).GetAwaiter().GetResult();
-        var size = capabilities.GetDefaultPageMediaSize() ?? CommonPageMediaSizes.Letter;
-        return new Size(size.Width * DipsPerPoint, size.Height * DipsPerPoint);
+        var defaults = PrintSchema.Defaults(capabilities);
+        var model = PrintSchema.Apply(printTicket ?? queue.CurrentJobSettings.CurrentPrintTicket, defaults, capabilities);
+        EnsureSupportedPageSize(model, capabilities, defaults);
+        return model;
+    }
+
+    /// <summary>Replaces a ticket page size this queue does not have with the queue's default.</summary>
+    internal static void EnsureSupportedPageSize(PrintTicketModel model, PrintingTools.Core.PrintCapabilities capabilities, PrintTicketModel defaults)
+    {
+        foreach (var info in capabilities.PageMediaSizes)
+        {
+            if (info.Size.Equals(model.PageMediaSize))
+            {
+                return;
+            }
+        }
+
+        model.PageMediaSize = defaults.PageMediaSize;
+    }
+
+    /// <summary>The backend's job name; PrintDialog sets the description before it creates the writer.</summary>
+    internal static string JobName(PrintQueue queue)
+    {
+        var description = queue.CurrentJobSettings.Description;
+        return string.IsNullOrWhiteSpace(description) ? "Document" : description;
     }
 
     private static List<(Visual Visual, Size Size)> Pages(object content, Size defaultPage)

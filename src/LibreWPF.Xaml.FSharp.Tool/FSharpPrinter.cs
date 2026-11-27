@@ -391,6 +391,8 @@ internal sealed class FSharpPrinter
                 return $"LibreWPF.Xaml.Generated.XsgSupport.provideValueFor({Arguments(call.ArgumentList)})";
             case InvocationExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: var helper } } call when s_supportFunctions.ContainsKey(helper):
                 return $"{s_supportFunctions[helper]}({Arguments(call.ArgumentList)})";
+            case InvocationExpressionSyntax call when IsByteColorFactory(call):
+                return $"{Expression(call.Expression)}({string.Join(", ", call.ArgumentList.Arguments.Select(a => "(byte (" + Argument(a.Expression) + "))"))})";
             case InvocationExpressionSyntax call:
                 return $"{Expression(call.Expression)}({Arguments(call.ArgumentList)})";
             case ElementAccessExpressionSyntax element:
@@ -502,6 +504,12 @@ internal sealed class FSharpPrinter
 
         return $"{Type(creation.Type)}({string.Join(", ", arguments)})";
     }
+
+    // Color.FromArgb/FromRgb take bytes; the generated C# writes integer literals, which F# will not implicitly narrow.
+    private static bool IsByteColorFactory(InvocationExpressionSyntax call) =>
+        call.Expression is MemberAccessExpressionSyntax { Name.Identifier.Text: "FromArgb" or "FromRgb" } member
+        && member.Expression.ToString().EndsWith("System.Windows.Media.Color", StringComparison.Ordinal)
+        && call.ArgumentList.Arguments.Count is 3 or 4;
 
     private string Arguments(BaseArgumentListSyntax list) => string.Join(", ", list.Arguments.Select(a => Argument(a.Expression)));
 

@@ -25,6 +25,8 @@
   <PropertyGroup Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(MSBuildProjectExtension)' == '.fsproj'">
     <LibreWpfXsgFSharpTool Condition="'$(LibreWpfXsgFSharpTool)' == ''">$(MSBuildThisFileDirectory)..\tools\xsg-fsharp\LibreWPF.Xaml.FSharp.Tool.dll</LibreWpfXsgFSharpTool>
     <_LibreWpfXsgFSharpOut>$(BaseIntermediateOutputPath)xsg/</_LibreWpfXsgFSharpOut>
+    <!-- The generator options are a file, not an argument per property: the tool forwards each name as build_property.name. -->
+    <_LibreWpfXsgFSharpSettingsFile>$(IntermediateOutputPath)xsg-fsharp.properties</_LibreWpfXsgFSharpSettingsFile>
   </PropertyGroup>
 
   <!-- The WPF SDK's default Page items are C# and VB conventions: an F# project gets the same *.xaml globbing (EnableDefaultPageItems=false turns it off). -->
@@ -32,11 +34,30 @@
     <Page Include="**/*.xaml" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);@(Page);@(ApplicationDefinition)" />
   </ItemGroup>
 
+  <!-- The feature and theme switches the F# tool would otherwise not see; write only when they change, so generation stays incremental. -->
+  <Target Name="_LibreWpfXsgFSharpWriteProperties"
+          Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(MSBuildProjectExtension)' == '.fsproj'">
+    <ItemGroup>
+      <_LibreWpfXsgFSharpProperty Include="LibreWpfSimplerXaml=$(LibreWpfSimplerXaml)" />
+      <_LibreWpfXsgFSharpProperty Include="LibreWpfCSharpExpressions=$(LibreWpfCSharpExpressions)" />
+      <_LibreWpfXsgFSharpProperty Include="LibreWpfCompiledBindings=$(LibreWpfCompiledBindings)" />
+      <_LibreWpfXsgFSharpProperty Include="LibreWpfLazyDictionaries=$(LibreWpfLazyDictionaries)" />
+      <_LibreWpfXsgFSharpProperty Include="LibreWpfXsgResourceAssemblyName=$(LibreWpfXsgResourceAssemblyName)" />
+      <_LibreWpfXsgFSharpProperty Include="LibreWpfXsgExcludeTargetTypes=$(LibreWpfXsgExcludeTargetTypes)" />
+      <_LibreWpfXsgFSharpProperty Include="LibreWpfXsgAotStrict=$(LibreWpfXsgAotStrict)" />
+    </ItemGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <WriteLinesToFile File="$(_LibreWpfXsgFSharpSettingsFile)"
+                      Lines="@(_LibreWpfXsgFSharpProperty)"
+                      Overwrite="true"
+                      WriteOnlyWhenDifferent="true" />
+  </Target>
+
   <Target Name="_LibreWpfXsgFSharpGenerate"
           BeforeTargets="CoreCompile"
-          DependsOnTargets="ResolveAssemblyReferences"
+          DependsOnTargets="ResolveAssemblyReferences;_LibreWpfXsgFSharpWriteProperties"
           Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(MSBuildProjectExtension)' == '.fsproj'"
-          Inputs="@(Page);@(ApplicationDefinition);$(LibreWpfXsgFSharpTool);@(ReferencePath)"
+          Inputs="@(Page);@(ApplicationDefinition);$(LibreWpfXsgFSharpTool);$(_LibreWpfXsgFSharpSettingsFile);@(ReferencePath)"
           Outputs="$(_LibreWpfXsgFSharpOut)stamp">
     <ItemGroup>
       <_LibreWpfXsgXamlRaw Include="@(Page);@(ApplicationDefinition)" />
@@ -50,7 +71,7 @@
     </PropertyGroup>
     <RemoveDir Directories="$(_LibreWpfXsgFSharpOut)" />
     <WriteLinesToFile File="$(_LibreWpfXsgFSharpOut)references.txt" Lines="@(ReferencePath->'%(FullPath)')" Overwrite="true" />
-    <Exec Command="&quot;$(DOTNET_HOST_PATH)&quot; &quot;$(LibreWpfXsgFSharpTool)&quot; --out &quot;$(_LibreWpfXsgFSharpOut)&quot; --references &quot;$(_LibreWpfXsgFSharpOut)references.txt&quot; --assembly &quot;$(AssemblyName)&quot; --project-dir &quot;$(MSBuildProjectDirectory)&quot; $(_LibreWpfXsgFSharpBootstrapArg) @(_LibreWpfXsgXaml->'&quot;%(FullPath)&quot;', ' ')" />
+    <Exec Command="&quot;$(DOTNET_HOST_PATH)&quot; &quot;$(LibreWpfXsgFSharpTool)&quot; --out &quot;$(_LibreWpfXsgFSharpOut)&quot; --references &quot;$(_LibreWpfXsgFSharpOut)references.txt&quot; --assembly &quot;$(AssemblyName)&quot; --project-dir &quot;$(MSBuildProjectDirectory)&quot; --properties &quot;$(_LibreWpfXsgFSharpSettingsFile)&quot; $(_LibreWpfXsgFSharpBootstrapArg) @(_LibreWpfXsgXaml->'&quot;%(FullPath)&quot;', ' ')" />
     <Touch Files="$(_LibreWpfXsgFSharpOut)stamp" AlwaysCreate="true" />
   </Target>
 

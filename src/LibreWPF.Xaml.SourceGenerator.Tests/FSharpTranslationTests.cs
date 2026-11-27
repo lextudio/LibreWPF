@@ -46,7 +46,11 @@ public class FSharpTranslationTests
         Assert.DoesNotContain("__XsgComponent_", fs);
     }
 
-    private static (int Exit, string Dir) RunTool(params string[] xamlTexts)
+    private static (int Exit, string Dir) RunTool(params string[] xamlTexts) => RunToolCore(null, xamlTexts);
+
+    private static (int Exit, string Dir) RunToolWithProperties(IReadOnlyDictionary<string, string> properties, params string[] xamlTexts) => RunToolCore(properties, xamlTexts);
+
+    private static (int Exit, string Dir) RunToolCore(IReadOnlyDictionary<string, string>? properties, string[] xamlTexts)
     {
         var dir = Path.Combine(Path.GetTempPath(), "xsgfs-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
@@ -60,6 +64,14 @@ public class FSharpTranslationTests
         using (var stream = File.Create(stub)) { Assert.True(compilation.Emit(stream).Success); }
         File.WriteAllText(references, typeof(object).Assembly.Location + "\n" + stub + "\n");
         var args = new List<string> { "--out", Path.Combine(dir, "out"), "--references", references };
+        if (properties is not null)
+        {
+            var propertiesPath = Path.Combine(dir, "properties.txt");
+            File.WriteAllLines(propertiesPath, properties.Select(p => p.Key + "=" + p.Value));
+            args.Add("--properties");
+            args.Add(propertiesPath);
+        }
+
         for (var i = 0; i < xamlTexts.Length; i++)
         {
             var file = Path.Combine(dir, $"p{i}.xaml");
@@ -118,6 +130,27 @@ public class FSharpTranslationTests
         Assert.Contains("(this.FindResource(\"k\") :?> global.System.Windows.Style)", fs);
         Assert.Contains("if (not (isNull (this.FindName(\"n\")))) then", fs);
         Assert.Contains("global.System.Windows.Thickness(Left = 1.0)", fs);
+    }
+
+    [Fact]
+    public void TheTool_ForwardsTheXsgResourceAssemblyName()
+    {
+        var (exit, dir) = RunToolWithProperties(
+            new Dictionary<string, string> { ["LibreWpfXsgResourceAssemblyName"] = "PresentationFramework.Aero2" },
+            "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" xmlns:sys=\"clr-namespace:System;assembly=System.Runtime\"><sys:String x:Key=\"A\">x</sys:String></ResourceDictionary>");
+        Assert.Equal(0, exit);
+        var fs = File.ReadAllText(Path.Combine(dir, "__XsgResourceDictionary_p0_xaml.g.fs"));
+        Assert.Contains("[<LibreWPF.Xaml.Generated.XsgComponent(\"PresentationFramework.Aero2\", \"p0.xaml\", true, false)>]", fs);
+    }
+
+    [Fact]
+    public void ByteColorFactories_CastTheirArguments()
+    {
+        var fs = Print("var c = global::System.Windows.Media.Color.FromArgb(255, 5, 7, 13);");
+        Assert.Contains("Color.FromArgb((byte (255)), (byte (5)), (byte (7)), (byte (13)))", fs);
+
+        var rgb = Print("var c = global::System.Windows.Media.Color.FromRgb(1, 2, 3);");
+        Assert.Contains("Color.FromRgb((byte (1)), (byte (2)), (byte (3)))", rgb);
     }
 
     [Fact]

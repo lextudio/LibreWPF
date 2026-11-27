@@ -9,8 +9,9 @@ namespace LibreWPF.Xaml.FSharp;
 // F# has no source generators: this tool runs the XAML generator over a C# compilation made of the project's references (no C# source of the project
 // is needed: the x:Class type comes out of the generator) and prints the C# it generates as F#.
 //
-//   LibreWPF.Xaml.FSharp.Tool --out <dir> --references <file with one assembly path per line> [--assembly <name>] [--project-dir <dir>] [--bootstrap] <file.xaml>...
+//   LibreWPF.Xaml.FSharp.Tool --out <dir> --references <file with one assembly path per line> [--assembly <name>] [--project-dir <dir>] [--properties <file>] [--bootstrap] <file.xaml>...
 //   --bootstrap: the project is an executable with the SDK's F# bootstrap; generated classes call ProGpu.Wpf.Sdk.PortableBootstrap.ensure first.
+//   --properties: one name=value per line, forwarded as build_property.name to the generator (the SDK writes the XSG feature and theme properties).
 //
 // One <full class name>.g.fs per x:Class (a type name two files share is an error); no XAML file is fine (only the support file); errors and warnings are written as MSBuild canonical lines. Exit code 1 when there is an error.
 internal static class Program
@@ -23,10 +24,11 @@ internal static class Program
         var keepCSharp = false;
         var assemblyName = "XsgFSharp";
         string? projectDirectory = null;
+        string? propertiesFile = null;
         var xaml = new List<string>();
         for (var i = 0; i < args.Length; i++)
         {
-            if (args[i] is "--out" or "--references" or "--assembly" or "--project-dir" && i + 1 >= args.Length)
+            if ((args[i] is "--out" or "--references" or "--assembly" or "--project-dir" or "--properties") && i + 1 >= args.Length)
             {
                 Console.Error.WriteLine($"{args[i]} needs a value");
                 return 2;
@@ -40,6 +42,7 @@ internal static class Program
                 case "--keep-csharp": keepCSharp = true; break;
                 case "--assembly": assemblyName = args[++i]; break;
                 case "--project-dir": projectDirectory = args[++i]; break;
+                case "--properties": propertiesFile = args[++i]; break;
                 default: xaml.Add(args[i]); break;
             }
         }
@@ -51,13 +54,32 @@ internal static class Program
         }
 
         Directory.CreateDirectory(output);
+        var properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (propertiesFile is not null)
+        {
+            if (!File.Exists(propertiesFile))
+            {
+                Console.Error.WriteLine($"the properties file {propertiesFile} does not exist");
+                return 2;
+            }
+
+            foreach (var line in File.ReadAllLines(propertiesFile))
+            {
+                var separator = line.IndexOf('=');
+                if (separator > 0)
+                {
+                    properties[line[..separator].Trim()] = line[(separator + 1)..].Trim();
+                }
+            }
+        }
+
         var metadata = File.ReadAllLines(references).Where(l => l.Trim().Length > 0).Select(l => (MetadataReference)MetadataReference.CreateFromFile(l.Trim())).ToList();
         var compilation = CSharpCompilation.Create(assemblyName, Array.Empty<SyntaxTree>(), metadata, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         var driver = CSharpGeneratorDriver.Create(
             generators: new[] { new XamlSourceGenerator().AsSourceGenerator() },
             additionalTexts: xaml.Select(f => (AdditionalText)new FileText(Path.GetFullPath(f))).ToArray(),
             parseOptions: null,
-            optionsProvider: new Options(projectDirectory));
+            optionsProvider: new Options(projectDirectory, properties));
         var result = driver.RunGenerators(compilation).GetRunResult();
 
         var failed = false;
@@ -128,13 +150,21 @@ internal static class Program
     {
         private readonly Values _global;
 
-        public Options(string? projectDirectory)
+        public Options(string? projectDirectory, IReadOnlyDictionary<string, string> properties)
         {
-            var values = new Dictionary<string, string>
+            var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (name, value) in properties)
             {
-                ["build_property.LibreWpfXsgOutputLanguage"] = "FSharp",
-                ["build_property.UseLibreWpfXamlSourceGenerator"] = "true",
-            };
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    values["build_property." + name.Trim()] = value;
+                }
+            }
+
+            values["build_property.LibreWpfXsgOutputLanguage"] = "FSharp";
+            values["build_property.UseLibreWpfXamlSourceGenerator"] = "true";
+
             if (projectDirectory is not null)
             {
                 values["build_property.MSBuildProjectDirectory"] = projectDirectory;

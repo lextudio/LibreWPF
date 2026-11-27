@@ -1695,11 +1695,13 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
     {
         if (_isDisposed)
         {
+            ProGpuWpfWindowHost.TraceInputEvent("activation dropped (disposed)", e);
             return;
         }
 
         if (e.Kind != WpfInputEventKind.MouseCancel && !PortableModalInputScope.AllowsInput(Window))
         {
+            ProGpuWpfWindowHost.TraceInputEvent("activation dropped (another window is modal)", e);
             RetireDeferredHostInput();
             _pressedMouseButtons.Clear();
             e.Handled = true;
@@ -1719,6 +1721,7 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
 
         if (TryDeferHostInput(e))
         {
+            ProGpuWpfWindowHost.TraceInputEvent("activation deferred", e);
             ScheduleDeferredHostInput();
             return;
         }
@@ -1730,6 +1733,8 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
     {
         if (_isDisposed || (deferred != null && !IsDeferredHostInputCurrent(deferred)))
         {
+            ProGpuWpfWindowHost.TraceInputEvent(
+                _isDisposed ? "dispatch dropped (disposed)" : "dispatch dropped (stale deferred input)", e);
             return;
         }
 
@@ -1829,16 +1834,19 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
 
         if (eatInput)
         {
+            ProGpuWpfWindowHost.TraceInputEvent("process eaten (WM_MOUSEACTIVATE hook)", e);
             e.Handled = true;
             return;
         }
 
         if (Host.TryProcessPortablePopupInput(e))
         {
+            ProGpuWpfWindowHost.TraceInputEvent("process consumed by a portable popup", e);
             return;
         }
 
-        TryForwardInputToWindow(Window, e);
+        bool forwarded = TryForwardInputToWindow(Window, e);
+        ProGpuWpfWindowHost.TraceInputEvent(forwarded ? "process forwarded" : "process not forwarded (no route)", e);
     }
 
     private bool TryDispatchPortableMouseActivateHook(WpfInputEventArgs e, out bool eatInput)

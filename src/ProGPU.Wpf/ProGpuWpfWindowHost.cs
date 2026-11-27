@@ -3522,6 +3522,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _nativeMilCompiledPopupVersion != _nativeMilPopupVersion ||
             _target.WpfInvalidationTracker.IsDirty ||
             _forceFullWpfReplay;
+        if (s_recordPresentReasons)
+        {
+            _presentSceneReason = !update ? "native MIL, scene unchanged" :
+                "native MIL, scene update (" + string.Join(",", new[] {
+                    rasterPolicyChanged ? "raster policy" : null,
+                    !_nativeMilSession.IsInitialized ? "session init" : null,
+                    !ReferenceEquals(_nativeMilCompiledRootVisual, rootVisual) ? "root" : null,
+                    _nativeMilCompiledPixelWidth != pixelWidth || _nativeMilCompiledPixelHeight != pixelHeight ? "size" : null,
+                    _nativeMilCompiledPopupVersion != _nativeMilPopupVersion ? "popup" : null,
+                    _target.WpfInvalidationTracker.IsDirty ? "visual dirty" : null,
+                    _forceFullWpfReplay ? "forced replay" : null,
+                }.Where(part => part != null)) + ")";
+        }
         double sourceUpdateMs = 0;
         if (update)
         {
@@ -4566,6 +4579,46 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         LastPresentedFrameState = frameState;
         Interlocked.Increment(ref _presentedFrameCount);
         Volatile.Write(ref _hasPresentedFrame, true);
+        if (s_recordPresentReasons)
+        {
+            string scene = _presentSceneReason ?? "managed path";
+            string requester = Interlocked.Exchange(ref _presentRequestedBy, null) ?? "no explicit request";
+            string reason = scene + "; requested by " + requester;
+            lock (_presentReasonCounts)
+            {
+                _presentReasonCounts.TryGetValue(reason, out long count);
+                _presentReasonCounts[reason] = count + 1;
+            }
+        }
+        _presentSceneReason = null;
+    }
+
+    /// <summary>
+    /// Diagnostics: while enabled, every presented frame is counted under a reason: what made its scene
+    /// change (or that it did not) and which request asked for it. Off by default; the caller-name probe
+    /// costs a stack frame per explicit render request.
+    /// </summary>
+    internal static volatile bool s_recordPresentReasons;
+    private readonly Dictionary<string, long> _presentReasonCounts = new(StringComparer.Ordinal);
+    private string? _presentRequestedBy;
+    private string? _presentSceneReason;
+
+    internal IReadOnlyDictionary<string, long> GetPresentReasonCounts(bool reset)
+    {
+        lock (_presentReasonCounts)
+        {
+            var copy = new Dictionary<string, long>(_presentReasonCounts, StringComparer.Ordinal);
+            if (reset) _presentReasonCounts.Clear();
+            return copy;
+        }
+    }
+
+    private void NotePresentRequest(string requester)
+    {
+        if (s_recordPresentReasons)
+        {
+            Volatile.Write(ref _presentRequestedBy, requester);
+        }
     }
 
     private bool HasExplicitFrameCallbacks => Draw != null || WpfDraw != null || Render != null;
@@ -5118,6 +5171,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _isInNativeWindowCloseCallback ||
             !IsPlatformEventForCurrentWindow(sender))
         {
+            TraceInputEvent(
+                _isDisposed ? "dropped (host disposed)" :
+                _isInNativeWindowCloseCallback ? "dropped (window closing)" :
+                "dropped (event from another window)", e);
             return;
         }
 
@@ -5180,7 +5237,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         OnPlatformInputReceived(null, input);
     }
 
-    private static void TraceInputEvent(string stage, WpfInputEventArgs input)
+    internal static void TraceInputEvent(string stage, WpfInputEventArgs input)
     {
         if (!s_traceInput)
         {
@@ -5674,6 +5731,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             // Any explicit host or visual invalidation upgrades a coalesced
             // MediaContext wakeup into a presentation request.
+            if (s_recordPresentReasons)
+            {
+                NotePresentRequest(new StackFrame(1, false).GetMethod()?.Name ?? "unknown");
+            }
             Volatile.Write(ref _pendingRenderRequestIsWakeOnly, 0);
             WpfRenderScheduler.RequestRender();
         }
@@ -5727,6 +5788,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             InvalidateWpfSourceForPortableRender(invalidatedSource);
             RequestRenderAndWakeNativeLoop();
+            NotePresentRequest("MediaContext invalidation of " + invalidatedSource.GetType().Name);
             return;
         }
 
@@ -5791,6 +5853,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             // that still needs presenting. Upgrade wake-only ticks even when
             // the scene itself is unchanged. Retry through the host scheduler,
             // never recursively acquire or block the render/event thread.
+            NotePresentRequest("presentation retry");
             Volatile.Write(ref _pendingRenderRequestIsWakeOnly, 0);
             if (WpfRenderScheduler is IWpfDelayedRenderScheduler delayedScheduler)
             {
@@ -5826,6 +5889,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             // Native MIL phase advancement changes the compiled scene even
             // when WPF retained state is unchanged. It must therefore upgrade
             // any coalesced wake-only request into a presentation request.
+            NotePresentRequest("native MIL continuation (" + delay.TotalMilliseconds.ToString("0") + " ms)");
             Volatile.Write(ref _pendingRenderRequestIsWakeOnly, 0);
             if (WpfRenderScheduler is IWpfDelayedRenderScheduler delayedScheduler)
             {

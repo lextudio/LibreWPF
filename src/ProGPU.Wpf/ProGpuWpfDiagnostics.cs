@@ -150,6 +150,26 @@ public static partial class ProGpuWpfDiagnostics
             host.TryGetRenderActivitySnapshot(out snapshot);
     }
 
+    /// <summary>
+    /// Turns per-frame present-reason counting on or off for every window host. Diagnostics only:
+    /// it costs a stack frame per explicit render request while on.
+    /// </summary>
+    public static void SetPresentReasonRecording(bool enabled) =>
+        ProGpuWpfWindowHost.s_recordPresentReasons = enabled;
+
+    /// <summary>
+    /// Reads how many frames the window presented under each reason (scene change kind plus the request that
+    /// asked for the frame) since recording started or the last reset.
+    /// </summary>
+    public static bool TryGetPresentReasonCounts(
+        object? window, bool reset, out IReadOnlyDictionary<string, long> counts)
+    {
+        counts = new Dictionary<string, long>();
+        if (!TryGetWindowHost(window, out var host) || host is null) return false;
+        counts = host.GetPresentReasonCounts(reset);
+        return true;
+    }
+
     public readonly record struct NativePresentationCheckpoint(
         NativePerformanceSnapshot PresentedFrame,
         global::ProGPU.Backend.Native.NativeSubmissionToken Submission);

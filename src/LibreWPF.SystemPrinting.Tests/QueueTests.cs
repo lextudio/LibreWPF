@@ -13,7 +13,7 @@ public class QueueTests
 
         public Task<IReadOnlyList<PrinterInfo>> GetPrintersAsync(CancellationToken cancellationToken = default) => Task.FromResult(Printers);
 
-        public Task<CoreCapabilities> GetCapabilitiesAsync(PrinterId printerId, PrintTicketModel? baseTicket = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<CoreCapabilities> GetCapabilitiesAsync(PrinterId printerId, PrintTicketModel? baseTicket = null, CancellationToken cancellationToken = default) => Task.FromResult(CoreCapabilities.CreateDefault());
 
         public Task<PrintSession> CreateSessionAsync(PrintRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
@@ -91,7 +91,7 @@ public class QueueTests
         Assert.Throws<PlatformNotSupportedException>(() => queue.IsBusy);
         Assert.Throws<PlatformNotSupportedException>(() => queue.DefaultPriority);
         Assert.Throws<PlatformNotSupportedException>(() => queue.Comment = "x");
-        Assert.Throws<PlatformNotSupportedException>(() => queue.GetPrintCapabilities());
+        Assert.Throws<PlatformNotSupportedException>(() => queue.AddJob("job"));
     }
 
     [Fact]
@@ -178,5 +178,21 @@ public class QueueTests
         Assert.True(queue.IsFinal);
         Assert.Equal(typeof(PrintServer), server.DeclaringType);
         Assert.Equal(typeof(PrintQueue), queue.DeclaringType);
+    }
+
+    [Fact]
+    public void QueueCapabilitiesAsXmlComeFromTheBackendsCapabilities()
+    {
+        Use(Info("a", "A"));
+        var queue = new PrintQueue(new PrintServer(), "A");
+
+        using var reader = new StreamReader(queue.GetPrintCapabilitiesAsXml());
+        var xml = reader.ReadToEnd();
+
+        // The fake backend answers PrintCapabilities.CreateDefault(): Letter, A4, Legal and Tabloid, both orientations, duplex.
+        foreach (var keyword in new[] { "NorthAmericaLetter", "ISOA4", "NorthAmericaLegal", "NorthAmericaTabloid", "Landscape", "TwoSidedLongEdge", "TwoSidedShortEdge" })
+        {
+            Assert.Contains("psk:" + keyword, xml);
+        }
     }
 }

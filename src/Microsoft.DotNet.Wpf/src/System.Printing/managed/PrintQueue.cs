@@ -87,6 +87,76 @@ public partial class PrintQueue
 
     public bool IsOffline => !_info.IsOnline;
 
+    public virtual PrintTicket DefaultPrintTicket
+    {
+        get
+        {
+            var capabilities = Capabilities(null);
+            return TicketFrom(PrintSchema.Defaults(capabilities), capabilities);
+        }
+        set => throw new PlatformNotSupportedException("Changing the queue's default print ticket is not supported.");
+    }
+
+    public virtual PrintTicket UserPrintTicket
+    {
+        get => DefaultPrintTicket;
+        set => throw new PlatformNotSupportedException("Changing the user print ticket is not supported.");
+    }
+
+    public PrintCapabilities GetPrintCapabilities() => new(GetPrintCapabilitiesAsXml());
+
+    public PrintCapabilities GetPrintCapabilities(PrintTicket printTicket) => new(GetPrintCapabilitiesAsXml(printTicket));
+
+    public MemoryStream GetPrintCapabilitiesAsXml() => PrintSchema.CapabilitiesXml(Capabilities(null));
+
+    public MemoryStream GetPrintCapabilitiesAsXml(PrintTicket printTicket)
+    {
+        ArgumentNullException.ThrowIfNull(printTicket);
+        return PrintSchema.CapabilitiesXml(Capabilities(printTicket));
+    }
+
+    public ValidationResult MergeAndValidatePrintTicket(PrintTicket basePrintTicket, PrintTicket deltaPrintTicket) =>
+        MergeAndValidatePrintTicket(basePrintTicket, deltaPrintTicket, PrintTicketScope.JobScope);
+
+    public ValidationResult MergeAndValidatePrintTicket(PrintTicket basePrintTicket, PrintTicket deltaPrintTicket, PrintTicketScope scope)
+    {
+        // A null base ticket means "the queue's defaults", as in WPF; the delta is required.
+        ArgumentNullException.ThrowIfNull(deltaPrintTicket);
+        var capabilities = Capabilities(null);
+        var requested = PrintSchema.Apply(deltaPrintTicket, PrintSchema.Apply(basePrintTicket, PrintSchema.Defaults(capabilities), capabilities), capabilities);
+
+        // MergeWithCapabilities replaces what the queue cannot do with a supported value and records a warning for each.
+        var validated = requested.MergeWithCapabilities(capabilities);
+        var status = validated.Warnings.Count == 0 ? ConflictStatus.NoConflict : ConflictStatus.ConflictResolved;
+        return new ValidationResult(PrintSchema.TicketXml(validated, includePageSize: PrintSchema.ListsPageSizes(capabilities)), status);
+    }
+
+    private PrintingTools.Core.PrintCapabilities Capabilities(PrintTicket? baseTicket)
+    {
+        var adapter = PrintBackend.Adapter;
+        var queueCapabilities = adapter.GetCapabilitiesAsync(_info.Id, null).GetAwaiter().GetResult();
+        if (baseTicket is null)
+        {
+            return queueCapabilities;
+        }
+
+        // Capabilities can depend on the ticket (a paper size can change what is available). The ticket's page size is resolved
+        // against this queue's own sizes, not against a generic list.
+        var defaults = PrintSchema.Defaults(queueCapabilities);
+        var model = PrintSchema.Apply(baseTicket, defaults, queueCapabilities);
+        if (!queueCapabilities.PageMediaSizes.Any(info => info.Size.Equals(model.PageMediaSize)))
+        {
+            // The ticket named a size this queue does not have (Apply marked it with a placeholder so that validation can
+            // report it). The adapter must only ever see a real size: ask with the queue's default.
+            model.PageMediaSize = defaults.PageMediaSize;
+        }
+
+        return adapter.GetCapabilitiesAsync(_info.Id, model).GetAwaiter().GetResult();
+    }
+
+    private static PrintTicket TicketFrom(PrintingTools.Core.PrintTicketModel model, PrintingTools.Core.PrintCapabilities capabilities) =>
+        new(PrintSchema.TicketXml(model, includePageSize: PrintSchema.ListsPageSizes(capabilities)));
+
     // No property of a queue is writable (the setters throw), so there is never anything pending to commit.
     public override void Commit()
     {

@@ -19,7 +19,8 @@ IMPLEMENTED = {
     "PrintServer": [r"PrintServer\(", r"GetPrintQueues\(", r"override void (Commit|Refresh)\(\)", r"string Name"],  # Name: sealed override in PrintServer.cs
     "LocalPrintServer": [r"LocalPrintServer\(", r"DefaultPrintQueue", r"GetDefaultPrintQueue\(", r"override void (Commit|Refresh)\(\)"],
     "PrintQueue": [r"PrintQueue\(System.Printing.PrintServer", r"string (FullName|Description|Comment|Location)\b",
-                   r"PrintServer HostingPrintServer", r"string Name\b", r"override void (Commit|Refresh)\(\)", r"bool IsOffline"],
+                   r"PrintServer HostingPrintServer", r"string Name\b", r"override void (Commit|Refresh)\(\)", r"bool IsOffline",
+                   r"PrintTicket (DefaultPrintTicket|UserPrintTicket)\b", r"GetPrintCapabilities(AsXml)?\(", r"MergeAndValidatePrintTicket\("],
     "XpsDocumentWriter": [r"XpsDocumentWriter\(", r"void Write\("],
     "PrintQueueCollection": [r"PrintQueueCollection\(", r"void Add\(", r"GetEnumerator\(\)", r"GetNonGenericEnumerator\(\)", r"SyncRoot"],
 }

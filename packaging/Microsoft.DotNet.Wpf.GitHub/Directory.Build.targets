@@ -184,7 +184,13 @@
     </PropertyGroup>
 
     <!-- The managed System.Printing is not part of Microsoft.Dotnet.Wpf.sln; build it (and what it references) here,
-         always: an incremental build is cheap, and an "only if missing" build would pack stale bits after a source change. -->
+         always: an incremental build is cheap, and an "only if missing" build would pack stale bits after a source change.
+         It is also not in the pack project's restore graph, so a clean CI checkout has no project.assets.json for it;
+         restore before the explicit build instead of relying on an earlier test or developer build. -->
+    <MSBuild Projects="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'src', 'Microsoft.DotNet.Wpf', 'src', 'System.Printing', 'managed', 'System.Printing.Managed.csproj'))"
+             Targets="Restore"
+             Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework)"
+             RemoveProperties="Platform;RuntimeIdentifier;TargetFrameworks" />
     <MSBuild Projects="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'src', 'Microsoft.DotNet.Wpf', 'src', 'System.Printing', 'managed', 'System.Printing.Managed.csproj'))"
              Targets="Build"
              Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework)"

@@ -193,11 +193,26 @@
     </Copy>
   </Target>
 
-  <ItemGroup Condition="'$(_ProGpuWpfSdkBootstrap)' == 'true'">
+  <ItemGroup Condition="'$(_ProGpuWpfSdkBootstrap)' == 'true' And '$(MSBuildProjectExtension)' != '.fsproj'">
     <Compile Remove="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs"
              Link="ProGPU.Wpf.Sdk.PortableBootstrap.cs"
              Visible="false" />
+  </ItemGroup>
+  <!-- F#: the same work in ProGPU.Wpf.Sdk.PortableBootstrap.fs, as ensure (): F# has no module initializer attribute and does not run a library's file initializers when it
+       starts. The file is first in the compile order so that generated classes (which call ensure () before they build their tree) can see it; a program that
+       creates windows in code calls ProGpu.Wpf.Sdk.PortableBootstrap.ensure () first in main. -->
+  <Target Name="_ProGpuWpfSdkFSharpBootstrap" BeforeTargets="CoreCompile"
+          Condition="'$(_ProGpuWpfSdkBootstrap)' == 'true' And '$(MSBuildProjectExtension)' == '.fsproj'">
+    <ItemGroup>
+      <_ProGpuWpfSdkUserCompile Include="@(Compile)" />
+      <Compile Remove="@(Compile)" />
+      <Compile Include="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.fs" Link="ProGPU.Wpf.Sdk.PortableBootstrap.fs" Visible="false" />
+      <!-- Not twice when the XSG F# target (which also orders the bootstrap first) ran before this one. -->
+      <Compile Include="@(_ProGpuWpfSdkUserCompile)" Exclude="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.fs" />
+    </ItemGroup>
+  </Target>
+  <ItemGroup Condition="'$(_ProGpuWpfSdkBootstrap)' == 'true'">
     <RuntimeHostConfigurationOption Include="LibreWPF.RequestedRendererMode" Value="$(ProGpuWpfRendererMode)" />
   </ItemGroup>
 

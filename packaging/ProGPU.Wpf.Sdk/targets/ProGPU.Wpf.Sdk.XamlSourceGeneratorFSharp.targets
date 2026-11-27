@@ -1,0 +1,77 @@
+<Project>
+
+  <!--
+    XAML source generation for F# projects (UseLibreWpfXamlSourceGenerator=true in a .fsproj).
+
+    The F# compiler has no source generators and no partial classes, so the generator cannot run inside it. Before CoreCompile a tool
+    (LibreWPF.Xaml.FSharp.Tool) runs the same XAML generator over a C# compilation made of the project's references, prints what it generates as F#
+    and the SDK puts the generated files in front of the project's own Compile items (F# is order sensitive). Each x:Class becomes a class of its own that
+    inherits the root element's type, declares the x:Name fields and builds the tree in its constructor. Event handlers named in the XAML are looked up
+    by name on the object's run-time type: write them in a subclass.
+
+      LibreWpfXsgFSharpTool   path of LibreWPF.Xaml.FSharp.Tool.dll (default: tools/xsg-fsharp next to the targets)
+
+    Registration by resource path (Application.StartupUri, LoadComponent(Uri), ResourceDictionary.Source of a dictionary of this assembly) happens when the first
+    generated class of the assembly is constructed (C# registers from a module initializer, which F# does not have): create the Application (or any generated
+    object) of an assembly before something looks one of its resources up by path.
+
+    Not available in F# output: C# expressions in XAML and hot reload.
+
+    An executable also gets the SDK's bootstrap (ProGPU.Wpf.Sdk.PortableBootstrap.fs, the F# form of the C# module initializer; ProGpuWpfEnablePortableBootstrap=
+    false switches it off). F# starts nothing by itself: the generated classes call ProGpu.Wpf.Sdk.PortableBootstrap.ensure() before they build their tree,
+    and a program that creates windows in code calls it first in main.
+  -->
+
+  <PropertyGroup Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(MSBuildProjectExtension)' == '.fsproj'">
+    <LibreWpfXsgFSharpTool Condition="'$(LibreWpfXsgFSharpTool)' == ''">$(MSBuildThisFileDirectory)..\tools\xsg-fsharp\LibreWPF.Xaml.FSharp.Tool.dll</LibreWpfXsgFSharpTool>
+    <_LibreWpfXsgFSharpOut>$(BaseIntermediateOutputPath)xsg/</_LibreWpfXsgFSharpOut>
+  </PropertyGroup>
+
+  <!-- The WPF SDK's default Page items are C# and VB conventions: an F# project gets the same *.xaml globbing (EnableDefaultPageItems=false turns it off). -->
+  <ItemGroup Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(MSBuildProjectExtension)' == '.fsproj' And '$(EnableDefaultPageItems)' != 'false'">
+    <Page Include="**/*.xaml" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);@(Page);@(ApplicationDefinition)" />
+  </ItemGroup>
+
+  <Target Name="_LibreWpfXsgFSharpGenerate"
+          BeforeTargets="CoreCompile"
+          DependsOnTargets="ResolveAssemblyReferences"
+          Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(MSBuildProjectExtension)' == '.fsproj'"
+          Inputs="@(Page);@(ApplicationDefinition);$(LibreWpfXsgFSharpTool);@(ReferencePath)"
+          Outputs="$(_LibreWpfXsgFSharpOut)stamp">
+    <ItemGroup>
+      <_LibreWpfXsgXamlRaw Include="@(Page);@(ApplicationDefinition)" />
+    </ItemGroup>
+    <RemoveDuplicates Inputs="@(_LibreWpfXsgXamlRaw)">
+      <Output TaskParameter="Filtered" ItemName="_LibreWpfXsgXaml" />
+    </RemoveDuplicates>
+    <PropertyGroup>
+      <!-- Decided here: _ProGpuWpfSdkBootstrap is set by a targets file imported after this one. -->
+      <_LibreWpfXsgFSharpBootstrapArg Condition="'$(_ProGpuWpfSdkBootstrap)' == 'true'">--bootstrap</_LibreWpfXsgFSharpBootstrapArg>
+    </PropertyGroup>
+    <RemoveDir Directories="$(_LibreWpfXsgFSharpOut)" />
+    <WriteLinesToFile File="$(_LibreWpfXsgFSharpOut)references.txt" Lines="@(ReferencePath->'%(FullPath)')" Overwrite="true" />
+    <Exec Command="&quot;$(DOTNET_HOST_PATH)&quot; &quot;$(LibreWpfXsgFSharpTool)&quot; --out &quot;$(_LibreWpfXsgFSharpOut)&quot; --references &quot;$(_LibreWpfXsgFSharpOut)references.txt&quot; --assembly &quot;$(AssemblyName)&quot; --project-dir &quot;$(MSBuildProjectDirectory)&quot; $(_LibreWpfXsgFSharpBootstrapArg) @(_LibreWpfXsgXaml->'&quot;%(FullPath)&quot;', ' ')" />
+    <Touch Files="$(_LibreWpfXsgFSharpOut)stamp" AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="_LibreWpfXsgFSharpAddGenerated"
+          BeforeTargets="CoreCompile"
+          AfterTargets="_LibreWpfXsgFSharpGenerate"
+          Condition="'$(UseLibreWpfXamlSourceGenerator)' == 'true' And '$(MSBuildProjectExtension)' == '.fsproj'">
+    <!-- compile.txt: the tool's order (support, loose dictionaries, classes). -->
+    <ReadLinesFromFile File="$(_LibreWpfXsgFSharpOut)compile.txt">
+      <Output TaskParameter="Lines" ItemName="_LibreWpfXsgGeneratedName" />
+    </ReadLinesFromFile>
+    <ItemGroup>
+      <_LibreWpfXsgGenerated Include="@(_LibreWpfXsgGeneratedName->'$(_LibreWpfXsgFSharpOut)%(Identity)')" />
+      <_LibreWpfXsgAllCompile Include="@(Compile)" />
+      <!-- The SDK's F# bootstrap (_ProGpuWpfSdkFSharpBootstrap, another target before CoreCompile) goes first whichever of the two targets runs first:
+           the generated classes call ProGpu.Wpf.Sdk.PortableBootstrap.ensure, and F# needs the definition above the use. -->
+      <_LibreWpfXsgBootstrapCompile Include="@(_LibreWpfXsgAllCompile)" Condition="'%(Filename)%(Extension)' == 'ProGPU.Wpf.Sdk.PortableBootstrap.fs'" />
+      <_LibreWpfXsgUserCompile Include="@(_LibreWpfXsgAllCompile)" Exclude="@(_LibreWpfXsgBootstrapCompile)" />
+      <Compile Remove="@(Compile)" />
+      <Compile Include="@(_LibreWpfXsgBootstrapCompile);@(_LibreWpfXsgGenerated);@(_LibreWpfXsgUserCompile)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

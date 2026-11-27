@@ -38,6 +38,11 @@
           Pack="true"
           PackagePath="tools\net472"
           Visible="false" />
+    <!-- F# has no source generators: this tool runs the XAML generator ahead of the F# compiler (ProGPU.Wpf.Sdk.XamlSourceGeneratorFSharp.targets). -->
+    <None Include="$(ArtifactsBinDir)LibreWPF.Xaml.FSharp.Tool\$(Configuration)\net10.0\**\*"
+          Pack="true"
+          PackagePath="tools\xsg-fsharp"
+          Visible="false" />
   </ItemGroup>
 
   <Target Name="_GenerateLibreWpfSdkVersionProps" BeforeTargets="_GetPackageFiles">
@@ -65,6 +70,9 @@
   </Target>
 
   <ItemGroup>
+    <ProjectReference Include="$(RepoRoot)src/LibreWPF.Xaml.FSharp.Tool/LibreWPF.Xaml.FSharp.Tool.csproj"
+                      ReferenceOutputAssembly="false"
+                      SkipGetTargetFrameworkProperties="true" />
     <ProjectReference Include="$(RepoRoot)src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj"
                       ReferenceOutputAssembly="false"
                       SkipGetTargetFrameworkProperties="true" />

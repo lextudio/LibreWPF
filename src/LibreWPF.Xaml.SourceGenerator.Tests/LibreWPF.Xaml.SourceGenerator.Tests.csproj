@@ -14,6 +14,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LibreWPF.Xaml.SourceGenerator\LibreWPF.Xaml.SourceGenerator.csproj" />
+    <ProjectReference Include="..\LibreWPF.Xaml.FSharp.Tool\LibreWPF.Xaml.FSharp.Tool.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- The SDK's switches of the XSG path, evaluated by XsgFeatureSwitchesMsBuildTests with the real MSBuild. -->

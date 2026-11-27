@@ -61,9 +61,9 @@ public sealed class WpfManagedProjectGraphTests
 
     private static void AssertWindowsNativePassiveIdleWorkflow(string workflow)
     {
-        Assert.Equal(13, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        // Thirteen checkout refs plus nineteen exact-head artifact producer/consumer names.
-        Assert.Equal(32, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(12, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        // Twelve checkout refs plus seventeen exact-head artifact producer/consumer names.
+        Assert.Equal(29, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
         foreach (string architecture in new[] { "x64", "arm64" })
         {
             string jobName = architecture == "x64" ? "windows-native-mil-showcase" : "windows-arm64-native-mil-showcase";
@@ -96,9 +96,9 @@ public sealed class WpfManagedProjectGraphTests
     public void ShowcaseFailureArchiveStaysSeparateFromQualifiedPackages()
     {
         string workflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
-        Assert.Equal(13, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        Assert.Equal(32, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
-        Assert.Equal(19, workflow.Split('\n').Count(line =>
+        Assert.Equal(12, workflow.Split("ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(29, workflow.Split("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringSplitOptions.None).Length - 1);
+        Assert.Equal(17, workflow.Split('\n').Count(line =>
             line.TrimStart().StartsWith("name: ", StringComparison.Ordinal) &&
             line.Contains("${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}", StringComparison.Ordinal)));
         Assert.Contains("name: Validate Showcase failure archive controls", workflow, StringComparison.Ordinal);
@@ -122,7 +122,7 @@ public sealed class WpfManagedProjectGraphTests
         string workflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
         int start = workflow.IndexOf("  portable-source-contracts:\n", StringComparison.Ordinal);
         Assert.True(start >= 0, "Missing independent portable source contract job.");
-        int end = workflow.IndexOf("\n  windows-managed-runtime:", start, StringComparison.Ordinal);
+        int end = workflow.IndexOf("\n  sdk-smoke:", start, StringComparison.Ordinal);
         Assert.True(end > start, "Missing job boundary after portable source contracts.");
         string job = workflow[start..end];
         Assert.Contains("runs-on: ubuntu-24.04", job, StringComparison.Ordinal);
@@ -544,12 +544,11 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
-    public void SdkPackingAndAuditShareWindowsPayloadSelection()
+    public void SdkPackingNoLongerSelectsAWindowsManagedPayload()
     {
         string script = File.ReadAllText(FindRepoPath("eng", "progpu-wpf-sdk-ci.sh"));
-        Assert.Contains("Conflicting Windows managed payload directories were supplied.", script, StringComparison.Ordinal);
-        Assert.Contains("export LIBREWPF_WINDOWS_MANAGED_PAYLOAD_DIR=\"${LibreWpfWindowsManagedPayloadDir}\"", script, StringComparison.Ordinal);
-        AssertGuardBefore(script, "export LIBREWPF_WINDOWS_MANAGED_PAYLOAD_DIR=", "pack_wpf_projects");
+        Assert.DoesNotContain("LIBREWPF_WINDOWS_MANAGED_PAYLOAD_DIR", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("LibreWpfWindowsManagedPayloadDir", script, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -884,7 +883,7 @@ public sealed class WpfManagedProjectGraphTests
     [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj")]
     [InlineData("src/Microsoft.DotNet.Wpf/src/ReachFramework/ReachFramework.csproj")]
     [InlineData("src/Microsoft.DotNet.Wpf/tests/UnitTests/PresentationFramework.Tests/PresentationFramework.Tests.csproj")]
-    public void DirectWriteForwarderReferenceIsWindowsOnly(string relativeProjectPath)
+    public void DirectWriteForwarderReferenceIsOptIn(string relativeProjectPath)
     {
         var projectPath = FindRepoPath(relativeProjectPath.Split('/'));
         var document = XDocument.Load(projectPath);
@@ -897,8 +896,17 @@ public sealed class WpfManagedProjectGraphTests
                 return include?.EndsWith(@"DirectWriteForwarder\DirectWriteForwarder.vcxproj", StringComparison.OrdinalIgnoreCase) == true;
             });
 
-        Assert.Equal("'$(OS)' == 'Windows_NT'", reference.Attribute("Condition")?.Value);
+        Assert.Equal("'$(LibreWpfUseCppCli)' == 'true'", reference.Attribute("Condition")?.Value);
         Assert.Equal("TargetFramework;TargetFrameworks", reference.Element("UndefineProperties")?.Value);
+    }
+
+    [Fact]
+    public void CppCliProjectsAreOptInAndOffByDefault()
+    {
+        var props = XDocument.Load(FindRepoPath("Directory.Build.props"));
+        var property = Assert.Single(props.Descendants("LibreWpfUseCppCli"));
+        Assert.Equal("false", property.Value);
+        Assert.Equal("'$(LibreWpfUseCppCli)' == ''", property.Attribute("Condition")?.Value);
     }
 
     [Fact]
@@ -969,11 +977,10 @@ public sealed class WpfManagedProjectGraphTests
 
     [Theory]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontFace.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontFace.cs")]
-    [InlineData(@"external\ProGPU\src\ProGPU.Text\ArabicFallbackData.Generated.cs", @"MS\Internal\Text\TextInterface\ProGPU\ArabicFallbackData.Generated.cs")]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontContainer.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontContainer.cs")]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntSimpleGlyphShaper.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntSimpleGlyphShaper.cs")]
     [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontSubsetter.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontSubsetter.cs")]
-    public void PresentationCoreIncludesProGpuTextSourceOnNonWindows(string sourcePath, string linkPath)
+    public void PresentationCoreIncludesProGpuTextSourceWithoutCppCli(string sourcePath, string linkPath)
     {
         var projectPath = FindRepoPath("src", "Microsoft.DotNet.Wpf", "src", "PresentationCore", "PresentationCore.csproj");
         var document = XDocument.Load(projectPath);
@@ -986,12 +993,12 @@ public sealed class WpfManagedProjectGraphTests
                 return include?.EndsWith(sourcePath, StringComparison.OrdinalIgnoreCase) == true;
             });
 
-        Assert.Equal("'$(OS)' != 'Windows_NT'", compileItem.Attribute("Condition")?.Value);
+        Assert.Equal("'$(LibreWpfUseCppCli)' != 'true'", compileItem.Attribute("Condition")?.Value);
 
         Assert.Contains(
             document.Descendants("NoWarn"),
             item => item.Value.Contains("CA1859", StringComparison.Ordinal)
-                && item.Attribute("Condition")?.Value == "'$(OS)' != 'Windows_NT'");
+                && item.Attribute("Condition")?.Value == "'$(LibreWpfUseCppCli)' != 'true'");
         Assert.Equal(linkPath, compileItem.Attribute("Link")?.Value);
     }
 
@@ -13736,7 +13743,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("--app $AppHost --evidence-parent $evidence", nativeIdleGate, StringComparison.Ordinal);
         Assert.DoesNotContain("librewpf-ci-packages-${{ github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("librewpf-windows-managed-runtime-${{ github.sha }}", sdkCiWorkflow, StringComparison.Ordinal);
-        Assert.Equal(4, sdkCiWorkflow.Split("submodules: true", StringSplitOptions.None).Length - 1);
+        Assert.Equal(3, sdkCiWorkflow.Split("submodules: true", StringSplitOptions.None).Length - 1);
         Assert.Contains("submodules: recursive", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("./eng/progpu-wpf-canonical-winforms-integration.sh", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("find \"${canonical_package_output}\" -maxdepth 1 -type f", canonicalWinFormsIntegrationScript, StringComparison.Ordinal);
@@ -13763,9 +13770,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("README.md", docsWorkflow, StringComparison.Ordinal);
         Assert.Contains("docs/**", docsWorkflow, StringComparison.Ordinal);
         Assert.Contains("name: LibreWPF Release", releaseWorkflow, StringComparison.Ordinal);
-        Assert.Equal(1, releaseWorkflow.Split("submodules: true", StringSplitOptions.None).Length - 1);
+        Assert.Equal(0, releaseWorkflow.Split("submodules: true", StringSplitOptions.None).Length - 1);
         Assert.Equal(1, releaseWorkflow.Split("submodules: recursive", StringSplitOptions.None).Length - 1);
-        Assert.Contains("needs: windows-managed-runtime", releaseWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("windows-managed-runtime", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_DEV_PACKAGE_VERSION", releaseWorkflow, StringComparison.Ordinal);
         Assert.Equal(1, releaseWorkflow.Split("default: 0.1.0-preview.69", StringSplitOptions.None).Length - 1);
         Assert.Contains("progpu_version=\"${version}\"", releaseWorkflow, StringComparison.Ordinal);
@@ -20160,7 +20167,7 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
-    public void PresentationUiUsesManagedPrintingReferenceForNonWindowsBringup()
+    public void PresentationUiUsesManagedPrintingReferenceUnlessCppCliIsRequested()
     {
         var presentationUiProjectPath = FindRepoPath(
             "src",
@@ -20173,13 +20180,13 @@ public sealed class WpfManagedProjectGraphTests
         var nativePrintingReference = AssertProjectReference(
             presentationUiProject,
             @"System.Printing\System.Printing.vcxproj");
-        Assert.Equal("'$(OS)' == 'Windows_NT'", nativePrintingReference.Attribute("Condition")?.Value);
+        Assert.Equal("'$(LibreWpfUseCppCli)' == 'true'", nativePrintingReference.Attribute("Condition")?.Value);
         Assert.Equal("TargetFramework;TargetFrameworks", nativePrintingReference.Element("UndefineProperties")?.Value);
 
         var managedPrintingReference = AssertProjectReference(
             presentationUiProject,
             @"System.Printing\ref\System.Printing-ref.csproj");
-        Assert.Equal("'$(OS)' != 'Windows_NT'", managedPrintingReference.Attribute("Condition")?.Value);
+        Assert.Equal("'$(LibreWpfUseCppCli)' != 'true'", managedPrintingReference.Attribute("Condition")?.Value);
     }
 
     [Fact]

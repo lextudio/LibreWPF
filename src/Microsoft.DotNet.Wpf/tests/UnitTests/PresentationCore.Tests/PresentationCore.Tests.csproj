@@ -22,10 +22,13 @@
 
   <ItemGroup>
     <ProjectReference Include="$(WpfSourceDir)DirectWriteForwarder\DirectWriteForwarder.vcxproj"
-                      Condition="'$(OS)' == 'Windows_NT'">
+                      Condition="'$(LibreWpfUseCppCli)' == 'true'">
       <UndefineProperties>TargetFramework;TargetFrameworks</UndefineProperties>
     </ProjectReference>
     <ProjectReference Include="$(WpfSourceDir)PresentationCore\PresentationCore.csproj" />
+    <ProjectReference Include="$(WpfSourceDir)..\..\..\external\ProGPU\src\ProGPU.Text.Shaping\ProGPU.Text.Shaping.csproj" Condition="'$(LibreWpfUseCppCli)' != 'true'" />
+    <!-- Exercises the portable ProGPU shaping path, which LibreWpfUseCppCli=true replaces with DirectWrite. -->
+    <Compile Remove="System\Windows\Media\PortableOpenTypeShapingTests.cs" Condition="'$(LibreWpfUseCppCli)' == 'true'" />
     <ProjectReference Include="$(WpfSourceDir)WindowsBase\WindowsBase.csproj" />
     <ProjectReference Include="$(WpfSourceDir)System.Xaml\System.Xaml.csproj" />
     <ProjectReference Include="$(WpfSourceDir)System.Windows.Primitives\System.Windows.Primitives.csproj" />

@@ -248,14 +248,13 @@ public partial class MainWindow : Window
             throw "LibreWPF Windows AnyCPU build output is missing PresentationFramework.dll."
         }
 
-        $directWriteForwarderAsset = Get-ChildItem -Path $configurationOutput -Filter "DirectWriteForwarder.dll" -Recurse | Select-Object -First 1
-        if ($null -eq $directWriteForwarderAsset) {
-            throw "LibreWPF Windows AnyCPU build output is missing DirectWriteForwarder.dll."
-        }
-
-        $ijwHostAsset = Get-ChildItem -Path $configurationOutput -Filter "ijwhost.dll" -Recurse | Select-Object -First 1
-        if ($null -eq $ijwHostAsset) {
-            throw "LibreWPF Windows AnyCPU build output is missing ijwhost.dll."
+        # PresentationCore is one portable assembly; the C++/CLI DirectWriteForwarder and its IJW host
+        # are no longer part of the package.
+        foreach ($removedAsset in @("DirectWriteForwarder.dll", "ijwhost.dll")) {
+            $leftover = Get-ChildItem -Path $configurationOutput -Filter $removedAsset -Recurse | Select-Object -First 1
+            if ($null -ne $leftover) {
+                throw "LibreWPF Windows AnyCPU build output unexpectedly contains $removedAsset."
+            }
         }
 
         $dependencyFile = Get-ChildItem -Path $configurationOutput -Filter "AnyCpuSmoke.deps.json" -Recurse | Select-Object -First 1
@@ -268,12 +267,10 @@ public partial class MainWindow : Window
             throw "LibreWPF Windows AnyCPU dependency file does not contain PresentationFramework.dll."
         }
 
-        if (!$dependencyText.Contains('DirectWriteForwarder.dll', [StringComparison]::Ordinal)) {
-            throw "LibreWPF Windows AnyCPU dependency file does not contain DirectWriteForwarder.dll."
-        }
-
-        if (!$dependencyText.Contains('ijwhost.dll', [StringComparison]::Ordinal)) {
-            throw "LibreWPF Windows AnyCPU dependency file does not contain ijwhost.dll."
+        foreach ($removedAsset in @("DirectWriteForwarder.dll", "ijwhost.dll")) {
+            if ($dependencyText.Contains($removedAsset, [StringComparison]::Ordinal)) {
+                throw "LibreWPF Windows AnyCPU dependency file unexpectedly contains $removedAsset."
+            }
         }
 
         if (!$BuildOnly) {

@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="$(WpfSourceDir)DirectWriteForwarder\DirectWriteForwarder.vcxproj"
-                      Condition="'$(OS)' == 'Windows_NT'">
+                      Condition="'$(LibreWpfUseCppCli)' == 'true'">
       <UndefineProperties>TargetFramework;TargetFrameworks</UndefineProperties>
     </ProjectReference>
     <ProjectReference Include="$(WpfSourceDir)PresentationCore\PresentationCore.csproj" />

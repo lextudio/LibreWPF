@@ -9,7 +9,7 @@
     <!-- ProGPU.Text is source-linked below on portable hosts. Its public API intentionally
          returns IReadOnlyList while its private builder returns List, which trips CA1859
          only when recompiled under WPF's stricter analyzer policy. -->
-    <NoWarn Condition="'$(OS)' != 'Windows_NT'">$(NoWarn);CA1859</NoWarn>
+    <NoWarn Condition="'$(LibreWpfUseCppCli)' != 'true'">$(NoWarn);CA1859</NoWarn>
     <EnablePInvokeAnalyzer>false</EnablePInvokeAnalyzer>
     <GenerateResourcesSRNamespace>MS.Internal.PresentationCore</GenerateResourcesSRNamespace>
     <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
@@ -280,25 +280,22 @@
     <Compile Include="MS\internal\Text\TextInterface\DWriteLoader.cs" />
     <Compile Include="MS\internal\Text\TextInterface\DWriteUtil.cs" />
     <Compile Include="MS\internal\Text\TextInterface\Factory.cs"
-             Condition="'$(OS)' == 'Windows_NT'" />
+             Condition="'$(LibreWpfUseCppCli)' == 'true'" />
     <Compile Include="MS\internal\Text\TextInterface\FontCollectionLoader.cs"
-             Condition="'$(OS)' == 'Windows_NT'" />
+             Condition="'$(LibreWpfUseCppCli)' == 'true'" />
     <Compile Include="MS\internal\Text\TextInterface\IFontSourceCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\SfntFontFace.cs"
              Link="MS\Internal\Text\TextInterface\ProGPU\SfntFontFace.cs"
-             Condition="'$(OS)' != 'Windows_NT'" />
-    <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\ArabicFallbackData.Generated.cs"
-             Link="MS\Internal\Text\TextInterface\ProGPU\ArabicFallbackData.Generated.cs"
-             Condition="'$(OS)' != 'Windows_NT'" />
+             Condition="'$(LibreWpfUseCppCli)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\SfntFontContainer.cs"
              Link="MS\Internal\Text\TextInterface\ProGPU\SfntFontContainer.cs"
-             Condition="'$(OS)' != 'Windows_NT'" />
+             Condition="'$(LibreWpfUseCppCli)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\SfntSimpleGlyphShaper.cs"
              Link="MS\Internal\Text\TextInterface\ProGPU\SfntSimpleGlyphShaper.cs"
-             Condition="'$(OS)' != 'Windows_NT'" />
+             Condition="'$(LibreWpfUseCppCli)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\SfntFontSubsetter.cs"
              Link="MS\Internal\Text\TextInterface\ProGPU\SfntFontSubsetter.cs"
-             Condition="'$(OS)' != 'Windows_NT'" />
+             Condition="'$(LibreWpfUseCppCli)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\DashPattern.cs"
              Link="MS\Internal\Media\ProGPU\DashPattern.cs" />
     <Compile Include="MS\internal\Media\ProGPU\ProGpuVectorStrokeContracts.cs" />
@@ -321,7 +318,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\TransformMetrics.cs"
              Link="MS\Internal\Media\ProGPU\TransformMetrics.cs" />
     <Compile Include="MS\internal\Text\TextInterface\PortableTextInterface.cs"
-             Condition="'$(OS)' != 'Windows_NT'" />
+             Condition="'$(LibreWpfUseCppCli)' != 'true'" />
+    <Compile Include="MS\internal\Text\TextInterface\PortableOpenTypeShaping.cs"
+             Condition="'$(LibreWpfUseCppCli)' != 'true'" />
     <Compile Include="MS\internal\TextFormatting\Bidi.cs" />
     <Compile Include="MS\internal\TextFormatting\CultureMapper.cs" />
     <Compile Include="MS\internal\TextFormatting\DrawingState.cs" />
@@ -1476,7 +1475,7 @@
     <!-- required for internals access -->
     <ProjectReference Include="$(WpfSourceDir)WindowsBase\WindowsBase.csproj" />
     <ProjectReference Include="$(WpfSourceDir)DirectWriteForwarder\DirectWriteForwarder.vcxproj"
-                      Condition="'$(OS)' == 'Windows_NT'">
+                      Condition="'$(LibreWpfUseCppCli)' == 'true'">
       <UndefineProperties>TargetFramework;TargetFrameworks</UndefineProperties>
     </ProjectReference>
     <ProjectReference Include="$(WpfSourceDir)System.Xaml\System.Xaml.csproj" />
@@ -1485,6 +1484,9 @@
     <ProjectReference Include="$(WpfSourceDir)UIAutomation\UIAutomationTypes\UIAutomationTypes.csproj" />
     <ProjectReference Include="$(WpfSourceDir)UIAutomation\UIAutomationProvider\UIAutomationProvider.csproj" />
     <ProjectReference Include="..\..\..\..\external\ProGPU\src\ProGPU.WinRT\ProGPU.WinRT.csproj" />
+    <!-- Renderer-independent OpenType shaping engine used by the portable text backend. -->
+    <ProjectReference Include="..\..\..\..\external\ProGPU\src\ProGPU.Text.Shaping\ProGPU.Text.Shaping.csproj"
+                      Condition="'$(LibreWpfUseCppCli)' != 'true'" />
     <ProjectReference Include="..\..\..\..\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj" />
     <ProjectReference Include="$(WpfSourceDir)PresentationCore\ref\PresentationCore-ref.csproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>

@@ -110,18 +110,10 @@ files. Use ProGPU's required SDK when running from its checkout, and retain the
 full package gate after freeze. See the
 [native payload build contract](../external/ProGPU/docs/native-mil-build-only-payloads.md).
 
-Produce Windows managed/IJW inputs in a Windows checkout using PowerShell 7:
-
-```powershell
-./eng/progpu-wpf-windows-managed-runtime.ps1
-```
-
-This restores/builds PresentationCore and DirectWriteForwarder for win-x86,
-win-x64 and win-arm64 and stages their matching IJW hosts. It uses the repository's
-pinned SDK, installing it locally when missing. SDK installation clears Arcade's
-runtime-only default rather than passing the unsupported `-Runtime sdk` option.
-The SDK build host is x64 even on ARM64 Windows, matching Arcade's pinned x64
-runtime restoration into that root; all three output architectures remain.
+There are no Windows managed/IJW inputs to produce any more: PresentationCore is a single portable
+assembly (text goes through `ProGPU.Text.Shaping` on every OS), so the package is built on one host.
+The C++/CLI projects (DirectWriteForwarder, System.Printing) remain in the tree behind
+`-p:LibreWpfUseCppCli=true` and need Visual Studio with the C++/CLI workload.
 An incompatible existing repository SDK host is rejected before installation.
 Use a clean checkout or preserve/move that generated SDK directory explicitly;
 do not overlay a different host architecture. Visual Studio MSBuild must meet
@@ -249,6 +241,3 @@ architecture-stamped exception.
   `PresentationFramework.dll` — the API-cycle stub from the bootstrap build — because packing
   happened an hour *before* the real 6 MB assembly was produced. A stub is a plausible-looking file
   of the wrong size; assert sizes, not just presence.
-- **`eng/progpu-wpf-windows-managed-runtime.ps1` stages with `WARNING ... skipping`.** When build
-  output is missing it warns and continues, so the script exits 0 having staged 2 of 22 assemblies.
-  Treat a low staged count as a failure.

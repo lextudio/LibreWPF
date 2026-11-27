@@ -1,6 +1,9 @@
 <Project>
 
   <PropertyGroup>
+    <!-- The two C++/CLI projects (DirectWriteForwarder, System.Printing) are opt-in. By default every OS
+         builds the same portable text stack (ProGPU.Text.Shaping) and the managed System.Printing surface. -->
+    <LibreWpfUseCppCli Condition="'$(LibreWpfUseCppCli)' == ''">false</LibreWpfUseCppCli>
     <LibreWinFormsSourceRoot Condition="'$(LibreWinFormsSourceRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)external/LibreWinForms'))</LibreWinFormsSourceRoot>
     <ProGpuSourceRoot Condition="'$(ProGpuSourceRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)external/ProGPU'))</ProGpuSourceRoot>
     <RepositoryName>wpf</RepositoryName>

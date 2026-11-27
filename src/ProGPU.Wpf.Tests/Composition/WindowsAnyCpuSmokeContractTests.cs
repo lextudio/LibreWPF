@@ -66,105 +66,34 @@ public sealed class WindowsAnyCpuSmokeContractTests
         Assert.Contains("-Filter \"AnyCpuSmoke.deps.json\"", script, StringComparison.Ordinal);
         Assert.Contains("lib/net10.0/PresentationFramework.dll", script, StringComparison.Ordinal);
         Assert.Contains("dependency file does not contain PresentationFramework.dll", script, StringComparison.Ordinal);
-        Assert.Contains("-Filter \"DirectWriteForwarder.dll\"", script, StringComparison.Ordinal);
-        Assert.Contains("build output is missing DirectWriteForwarder.dll", script, StringComparison.Ordinal);
-        Assert.Contains("dependency file does not contain DirectWriteForwarder.dll", script, StringComparison.Ordinal);
-        Assert.Contains("-Filter \"ijwhost.dll\"", script, StringComparison.Ordinal);
-        Assert.Contains("build output is missing ijwhost.dll", script, StringComparison.Ordinal);
-        Assert.Contains("dependency file does not contain ijwhost.dll", script, StringComparison.Ordinal);
+        foreach (string removed in new[] { "DirectWriteForwarder.dll", "ijwhost.dll" })
+        {
+            Assert.Contains($"build output unexpectedly contains {removed}", script.Replace("$removedAsset", removed), StringComparison.Ordinal);
+        }
+        Assert.Contains("dependency file unexpectedly contains", script, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void TransportPackagesWindowsBuiltPresentationCoreAsRidRuntimeAssets()
+    public void TransportShipsOnePortablePresentationCoreWithoutRidManagedAssets()
     {
-        var projectPath = FindRepoPath(
+        var project = File.ReadAllText(FindRepoPath(
             "packaging",
             "Microsoft.DotNet.Wpf.GitHub",
-            "Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj");
-        var buildScriptPath = FindRepoPath("eng", "progpu-wpf-windows-managed-runtime.ps1");
-        var auditPath = FindRepoPath("eng", "progpu-preview-package-audit.sh");
-        var ciWorkflowPath = FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml");
-        var releaseWorkflowPath = FindRepoPath(".github", "workflows", "progpu-wpf-release.yml");
-        var presentationBuildTasksTargetsPath = FindRepoPath("eng", "WpfArcadeSdk", "tools", "Pbt.targets");
+            "Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj"));
+        var audit = File.ReadAllText(FindRepoPath("eng", "progpu-preview-package-audit.sh"));
+        var sdkWorkflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-sdk.yml"));
+        var releaseWorkflow = File.ReadAllText(FindRepoPath(".github", "workflows", "progpu-wpf-release.yml"));
 
-        var project = File.ReadAllText(projectPath);
-        var buildScript = File.ReadAllText(buildScriptPath);
-        var audit = File.ReadAllText(auditPath);
-        var ciWorkflow = File.ReadAllText(ciWorkflowPath);
-        var releaseWorkflow = File.ReadAllText(releaseWorkflowPath);
-        var presentationBuildTasksTargets = File.ReadAllText(presentationBuildTasksTargetsPath);
-
-        Assert.Contains("LibreWpfWindowsManagedPayloadDir", project, StringComparison.Ordinal);
-        Assert.Contains("runtimes/win-x86/lib/net10.0", project, StringComparison.Ordinal);
-        Assert.Contains("runtimes/win-x64/lib/net10.0", project, StringComparison.Ordinal);
-        Assert.Contains("runtimes/win-arm64/lib/net10.0", project, StringComparison.Ordinal);
-        Assert.Contains("PresentationCore.dll", buildScript, StringComparison.Ordinal);
-        Assert.Contains("PresentationBuildTasks.csproj", buildScript, StringComparison.Ordinal);
-        Assert.Contains("#Requires -Version 7.0", buildScript, StringComparison.Ordinal);
-        Assert.Contains("if (-not $IsWindows)", buildScript, StringComparison.Ordinal);
-        Assert.Contains("eng/common/build.ps1", buildScript, StringComparison.Ordinal);
-        Assert.Contains("Join-Path $PSHOME \"pwsh.exe\"", buildScript, StringComparison.Ordinal);
-        Assert.Contains("& $buildPowerShell -NoProfile -NonInteractive -File $buildCommand", buildScript, StringComparison.Ordinal);
-        Assert.Contains("[switch] $Rebuild", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$buildAction = @(\"-restore\", \"-build\")", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$buildAction = @(\"-restore\", \"-rebuild\")", buildScript, StringComparison.Ordinal);
-        Assert.Contains("if ($Rebuild)", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$buildAction `", buildScript, StringComparison.Ordinal);
-        Assert.Contains("'-warnAsError:$false'", buildScript, StringComparison.Ordinal);
-        Assert.Contains("if ($LASTEXITCODE -ne 0)", buildScript, StringComparison.Ordinal);
-        Assert.DoesNotContain("build.cmd", buildScript, StringComparison.Ordinal);
-        Assert.DoesNotContain("-ExecutionPolicy", buildScript, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Set-ExecutionPolicy", buildScript, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("[ValidateSet(\"vs\", \"dotnet\")]", buildScript, StringComparison.Ordinal);
-        Assert.Contains("[string] $MSBuildEngine = \"vs\"", buildScript, StringComparison.Ordinal);
-        Assert.Contains("-msbuildEngine $MSBuildEngine", buildScript, StringComparison.Ordinal);
-        Assert.Contains("function Initialize-BuildSdk", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$globalJson.sdk.version", buildScript, StringComparison.Ordinal);
-        Assert.Contains(".dotnet/sdk/$sdkVersion", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$effectiveSdkVersion", buildScript, StringComparison.Ordinal);
-        Assert.Contains("Push-Location $repoRoot", buildScript, StringComparison.Ordinal);
-        Assert.Contains("eng/common/dotnet-install.ps1", buildScript, StringComparison.Ordinal);
-        Assert.Contains("& $dotnetInstall -version $sdkVersion -architecture x64 -runtime ''", buildScript, StringComparison.Ordinal);
-        Assert.DoesNotContain("-runtime sdk", buildScript, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("function Test-X64DotNetHost", buildScript, StringComparison.Ordinal);
-        Assert.Contains("Test-X64DotNetHost $localDotnetHost", buildScript, StringComparison.Ordinal);
-        Assert.Contains("Test-X64DotNetHost $dotnetCommand.Source", buildScript, StringComparison.Ordinal);
-        Assert.Contains("Test-X64DotNetHost (Join-Path $dotnetRoot \"dotnet.exe\")", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$reader.ReadUInt16() -eq 0x8664", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$env:DOTNET_HOST_PATH = Join-Path $dotnetRoot \"dotnet.exe\"", buildScript, StringComparison.Ordinal);
-        Assert.DoesNotContain("$env:DOTNET_HOST_PATH = $dotnetRoot", buildScript, StringComparison.Ordinal);
-        Assert.Contains("/p:BuildWithNetFrameworkHostedCompiler=false", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$env:MSBuildSDKsPath = $sdkResolverPath", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$env:MSBuildEnableWorkloadResolver = \"false\"", buildScript, StringComparison.Ordinal);
-        Assert.Contains("[switch] $NativeToolsOnMachine", buildScript, StringComparison.Ordinal);
-        Assert.Contains("if ($NativeToolsOnMachine)", buildScript, StringComparison.Ordinal);
-        Assert.Contains("-nativeToolsOnMachine", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$nativeToolsArgument", buildScript, StringComparison.Ordinal);
-        Assert.Contains("\"win-x86\" = \"x86\"", buildScript, StringComparison.Ordinal);
-        Assert.Contains("\"win-x64\" = \"x64\"", buildScript, StringComparison.Ordinal);
-        Assert.Contains("\"win-arm64\" = \"arm64\"", buildScript, StringComparison.Ordinal);
-        Assert.Contains("Get-Command perl.exe", buildScript, StringComparison.Ordinal);
-        Assert.Contains("-ErrorAction SilentlyContinue", buildScript, StringComparison.Ordinal);
-        Assert.Contains("$globalJson.'native-tools'.'strawberry-perl'", buildScript, StringComparison.Ordinal);
-        Assert.Contains(".tools/native/bin/strawberry-perl", buildScript, StringComparison.Ordinal);
-        Assert.Contains("/p:PerlCommand=$perlCommand", buildScript, StringComparison.Ordinal);
-        Assert.Contains("/p:RuntimeIdentifier=$runtimeIdentifier", buildScript, StringComparison.Ordinal);
-        Assert.Contains("Microsoft.NETCore.App.Host.$_", buildScript, StringComparison.Ordinal);
-        Assert.Contains("/p:IjwHostSourcePath=$ijwHostSourcePath", buildScript, StringComparison.Ordinal);
-        Assert.Contains("net10.0/$runtimeIdentifier/PresentationCore.dll", buildScript, StringComparison.Ordinal);
-        Assert.Contains("artifacts/bin/DirectWriteForwarder", buildScript, StringComparison.Ordinal);
-        Assert.Contains("DirectWriteForwarder.dll", buildScript, StringComparison.Ordinal);
-        Assert.Contains("_LibreWpfWinX64DirectWriteForwarder", project, StringComparison.Ordinal);
-        Assert.Contains("runtimes/${rid}/lib/${transport_target_framework}/DirectWriteForwarder.dll", audit, StringComparison.Ordinal);
-        Assert.Contains("$runtimeIdentifier/native", buildScript, StringComparison.Ordinal);
-        Assert.Contains("_LibreWpfWinX64IjwHost", project, StringComparison.Ordinal);
-        Assert.Contains("runtimes/${rid}/native/ijwhost.dll", audit, StringComparison.Ordinal);
-        Assert.Contains("RemoveProperties=\"RuntimeIdentifier\"", presentationBuildTasksTargets, StringComparison.Ordinal);
-        Assert.Contains("require_entry_sha256 LibreWPF.Transport", audit, StringComparison.Ordinal);
-        Assert.Contains("windows-managed-runtime:", ciWorkflow, StringComparison.Ordinal);
-        Assert.Contains("needs:\n      - canonical-winforms-integration\n      - windows-managed-runtime", ciWorkflow, StringComparison.Ordinal);
-        Assert.Contains("windows-managed-runtime:", releaseWorkflow, StringComparison.Ordinal);
-        Assert.Contains("needs: windows-managed-runtime", releaseWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("DirectWriteForwarder", project.Replace("DirectWriteForwarder.dll", string.Empty), StringComparison.Ordinal);
+        Assert.DoesNotContain("LibreWpfWindowsManagedPayloadDir", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("IjwHost", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("runtimes/win-x64/lib", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("runtimes/win-arm64/lib", project, StringComparison.Ordinal);
+        Assert.Contains("runtimes/win-x64/native", project, StringComparison.Ordinal);
+        Assert.Contains("runtimes/win-arm64/native", project, StringComparison.Ordinal);
+        Assert.Contains("^runtimes/[^/]+/lib/", audit, StringComparison.Ordinal);
+        Assert.DoesNotContain("windows-managed-runtime", sdkWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("windows-managed-runtime", releaseWorkflow, StringComparison.Ordinal);
     }
 
     private static string FindRepoPath(params string[] pathSegments)

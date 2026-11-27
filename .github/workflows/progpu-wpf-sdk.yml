@@ -219,47 +219,10 @@ jobs:
       - name: Validate portable popup source dismissal
         run: bash ./eng/progpu-wpf-popup-dismissal-source.sh
 
-  windows-managed-runtime:
-    name: Windows managed runtime payload
-    runs-on: windows-2025
-    timeout-minutes: 90
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
-          submodules: true
-
-      - name: Prepare exact framework source dependencies
-        shell: bash
-        run: |
-          python3 external/ProGPU/eng/progpu-prepare-framework-sources.py
-          echo "ProGpuSourceRoot=${GITHUB_WORKSPACE}/external/ProGPU/" >> "${GITHUB_ENV}"
-          echo "LibreWpfSourceRoot=${GITHUB_WORKSPACE}/" >> "${GITHUB_ENV}"
-          echo "LibreWinFormsSourceRoot=${GITHUB_WORKSPACE}/external/LibreWinForms/" >> "${GITHUB_ENV}"
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-
-      - name: Build Windows PresentationCore
-        shell: pwsh
-        run: ./eng/progpu-wpf-windows-managed-runtime.ps1
-
-      - name: Upload Windows managed runtime
-        uses: actions/upload-artifact@v4
-        with:
-          name: librewpf-windows-managed-runtime-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
-          path: artifacts/windows-managed-runtime/**/*
-          if-no-files-found: error
-
   sdk-smoke:
     name: SDK package and no-source-change smoke
     needs:
       - canonical-winforms-integration
-      - windows-managed-runtime
     # The exact ProGPU native Build currently targets macOS 26. Run its
     # source/native application gate on the same supported host release.
     runs-on: macos-26
@@ -284,12 +247,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-
-      - name: Download Windows managed runtime
-        uses: actions/download-artifact@v4
-        with:
-          name: librewpf-windows-managed-runtime-${{ env.PROGPU_WPF_QUALIFIED_COMMIT }}
-          path: artifacts/windows-managed-runtime
 
       - name: Download canonical LibreWinForms package closure
         uses: actions/download-artifact@v4

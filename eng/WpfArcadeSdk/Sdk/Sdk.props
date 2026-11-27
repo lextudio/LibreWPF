@@ -45,10 +45,10 @@
     genuinely architecture-specific.
 
     Deliberately a whitelist rather than a blanket rule for every .csproj:
-      - DirectWriteForwarder and System.Printing are C++/CLI (.vcxproj), cannot be AnyCPU, and are
-        unaffected by this property - they stay per-RID.
+      - DirectWriteForwarder and System.Printing are C++/CLI (.vcxproj) and only build with
+        -p:LibreWpfUseCppCli=true; they cannot be AnyCPU and are unaffected by this property.
       - PresentationBuildTasks is excluded on purpose: it is an MSBuild task assembly the build
-        deliberately produces as x86 (see eng/progpu-wpf-windows-managed-runtime.ps1).
+        deliberately produces as x86.
       - Test and harness projects are left alone so their architecture-targeted runs keep working.
 
     Microsoft.Win32.SystemEvents belongs on the list for a reason worth spelling out: it is pure

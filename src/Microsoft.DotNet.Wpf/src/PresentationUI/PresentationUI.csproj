@@ -172,11 +172,11 @@
     <ProjectReference Include="$(WpfSourceDir)PresentationFramework\PresentationFramework.csproj" />
     <ProjectReference Include="$(WpfSourceDir)WindowsBase\WindowsBase.csproj" />
     <ProjectReference Include="$(WpfSourceDir)System.Printing\System.Printing.vcxproj"
-                      Condition="'$(OS)' == 'Windows_NT'">
+                      Condition="'$(LibreWpfUseCppCli)' == 'true'">
       <UndefineProperties>TargetFramework;TargetFrameworks</UndefineProperties>
     </ProjectReference>
     <ProjectReference Include="$(WpfSourceDir)System.Printing\ref\System.Printing-ref.csproj"
-                      Condition="'$(OS)' != 'Windows_NT'" />
+                      Condition="'$(LibreWpfUseCppCli)' != 'true'" />
     <ProjectReference Include="$(WpfSourceDir)ReachFramework\ReachFramework.csproj" />
     <ProjectReference Include="$(WpfSourceDir)UIAutomation\UIAutomationProvider\UIAutomationProvider.csproj" />
     <ProjectReference Include="$(WpfSourceDir)UIAutomation\UIAutomationTypes\UIAutomationTypes.csproj" />

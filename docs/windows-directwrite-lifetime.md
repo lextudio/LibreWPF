@@ -1,3 +1,6 @@
+> **Historical.** The default build no longer uses DirectWriteForwarder (see `LibreWpfUseCppCli`); this
+> note applies only to builds that opt back in.
+
 # Windows DirectWrite module lifetime
 
 PresentationCore retains its original `NativeLibrary.Load` reference to

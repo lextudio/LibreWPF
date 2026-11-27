@@ -292,59 +292,24 @@ transport_entries=(
   "notices/LibreWPF.FluentSymbols/licenses/FluentSystemIcons-MIT.txt"
   "notices/LibreWPF.FluentSymbols/licenses/WPF-Samples-MIT.txt"
   "notices/Microsoft.WindowsDesktop.App.Runtime/LICENSE"
-  "runtimes/win-x86/native/PresentationNative_cor3.dll"
   "runtimes/win-x64/native/PresentationNative_cor3.dll"
   "runtimes/win-arm64/native/PresentationNative_cor3.dll"
-  "runtimes/win-x86/native/wpfgfx_cor3.dll"
   "runtimes/win-x64/native/wpfgfx_cor3.dll"
   "runtimes/win-arm64/native/wpfgfx_cor3.dll"
-  "runtimes/win-x86/native/ijwhost.dll"
-  "runtimes/win-x64/native/ijwhost.dll"
-  "runtimes/win-arm64/native/ijwhost.dll"
-  "runtimes/win-x86/lib/${transport_target_framework}/PresentationCore.dll"
-  "runtimes/win-x64/lib/${transport_target_framework}/PresentationCore.dll"
-  "runtimes/win-arm64/lib/${transport_target_framework}/PresentationCore.dll"
-  "runtimes/win-x86/lib/${transport_target_framework}/DirectWriteForwarder.dll"
-  "runtimes/win-x64/lib/${transport_target_framework}/DirectWriteForwarder.dll"
-  "runtimes/win-arm64/lib/${transport_target_framework}/DirectWriteForwarder.dll"
 )
 
 for entry in "${transport_entries[@]}"; do
   require_entry LibreWPF.Transport "${entry}"
 done
 
-windows_managed_payload_dir="${LIBREWPF_WINDOWS_MANAGED_PAYLOAD_DIR:-${repo_root}/artifacts/windows-managed-runtime}"
-for rid in win-x86 win-x64 win-arm64; do
-  windows_presentation_core="${windows_managed_payload_dir}/${rid}/${transport_target_framework}/PresentationCore.dll"
-  if [[ ! -f "${windows_presentation_core}" ]]; then
-    echo "Windows-built PresentationCore payload is missing at ${windows_presentation_core}." >&2
-    exit 1
-  fi
-  windows_presentation_core_hash="$(sha256_stdin < "${windows_presentation_core}")"
-  require_entry_sha256 LibreWPF.Transport \
-    "runtimes/${rid}/lib/${transport_target_framework}/PresentationCore.dll" \
-    "${windows_presentation_core_hash}"
-
-  windows_direct_write_forwarder="${windows_managed_payload_dir}/${rid}/${transport_target_framework}/DirectWriteForwarder.dll"
-  if [[ ! -f "${windows_direct_write_forwarder}" ]]; then
-    echo "Windows-built DirectWriteForwarder payload is missing at ${windows_direct_write_forwarder}." >&2
-    exit 1
-  fi
-  windows_direct_write_forwarder_hash="$(sha256_stdin < "${windows_direct_write_forwarder}")"
-  require_entry_sha256 LibreWPF.Transport \
-    "runtimes/${rid}/lib/${transport_target_framework}/DirectWriteForwarder.dll" \
-    "${windows_direct_write_forwarder_hash}"
-
-  windows_ijw_host="${windows_managed_payload_dir}/${rid}/native/ijwhost.dll"
-  if [[ ! -f "${windows_ijw_host}" ]]; then
-    echo "Windows IJW host payload is missing at ${windows_ijw_host}." >&2
-    exit 1
-  fi
-  windows_ijw_host_hash="$(sha256_stdin < "${windows_ijw_host}")"
-  require_entry_sha256 LibreWPF.Transport \
-    "runtimes/${rid}/native/ijwhost.dll" \
-    "${windows_ijw_host_hash}"
-done
+# PresentationCore is one portable assembly (lib/<tfm>); the package no longer carries a per-RID
+# mixed-mode PresentationCore, DirectWriteForwarder or the IJW host.
+transport_listing="$(unzip -Z1 "$(package_path LibreWPF.Transport)")"
+if grep -Eq '(^|/)(DirectWriteForwarder\.dll|ijwhost\.dll)$|^runtimes/[^/]+/lib/' <<<"${transport_listing}"; then
+  echo "LibreWPF.Transport still carries C++/CLI era payload (DirectWriteForwarder, ijwhost or runtimes/<rid>/lib):" >&2
+  grep -E '(^|/)(DirectWriteForwarder\.dll|ijwhost\.dll)$|^runtimes/[^/]+/lib/' <<<"${transport_listing}" >&2
+  exit 1
+fi
 
 symbol_manifest_entry="notices/LibreWPF.FluentSymbols/SOURCE-MANIFEST.json"
 symbol_manifest_json="$(unzip -p "$(package_path LibreWPF.Transport)" "${symbol_manifest_entry}")"

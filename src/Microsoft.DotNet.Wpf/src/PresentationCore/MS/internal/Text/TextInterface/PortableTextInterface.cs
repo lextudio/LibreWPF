@@ -9,6 +9,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Media;
 using ProGpuSfntFontFace = ProGPU.Text.SfntFontFace;
+using ProGpuOpenTypeScriptResolver = ProGPU.Text.OpenTypeScriptResolver;
+using ProGpuOpenTypeTag = ProGPU.Text.Shaping.OpenTypeTag;
+using ProGpuUnicodeShapingProperties = ProGPU.Text.UnicodeShapingProperties;
 using ProGpuSfntGlyphBounds = ProGPU.Text.SfntGlyphBounds;
 using ProGpuSfntFontSubsetter = ProGPU.Text.SfntFontSubsetter;
 using ProGpuSfntHorizontalGlyphMetrics = ProGPU.Text.SfntHorizontalGlyphMetrics;
@@ -475,6 +478,12 @@ namespace MS.Internal.Text.TextInterface
             else if (OperatingSystem.IsWindows())
             {
                 yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts");
+                // Fonts installed for the current user only (Windows 10 1809+).
+                yield return Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft",
+                    "Windows",
+                    "Fonts");
             }
         }
     }
@@ -1192,6 +1201,8 @@ namespace MS.Internal.Text.TextInterface
                 ? glyphIndex
                 : (ushort)0;
         }
+
+        internal ProGpuSfntFontFace SfntFace => GetSfntFace();
 
         internal GlyphMetrics GetGlyphMetrics(ushort glyphIndex)
         {
@@ -2147,10 +2158,88 @@ namespace MS.Internal.Text.TextInterface
             GetNumberSubstitutionList getNumberSubstitutionList,
             CreateTextAnalysisSource createTextAnalysisSource)
         {
-            return new List<MS.Internal.Span>
+            return ItemizeByScript(text, checked((int)length), numberCulture);
+        }
+
+        // Splits the text into runs of one OpenType script (UAX #24 style): Common and Inherited
+        // characters (spaces, punctuation, digits, combining marks) join the preceding script run,
+        // and a leading Common run joins the first real script that follows.
+        private static IList<MS.Internal.Span> ItemizeByScript(char* text, int length, CultureInfo numberCulture)
+        {
+            var spans = new List<MS.Internal.Span>();
+            if (length == 0)
             {
-                new MS.Internal.Span(new ItemProps(numberCulture), checked((int)length))
-            };
+                return spans;
+            }
+
+            // Line formatting itemizes every paragraph, so keep the per-character scratch off the heap
+            // for ordinary run lengths.
+            Span<ProGpuOpenTypeTag> scripts = length <= 256 ? stackalloc ProGpuOpenTypeTag[length] : new ProGpuOpenTypeTag[length];
+            Span<bool> marks = length <= 256 ? stackalloc bool[length] : new bool[length];
+            int firstReal = -1;
+            ProGpuOpenTypeTag previous = ProGpuOpenTypeTag.DefaultScript;
+            for (int i = 0; i < length;)
+            {
+                int unitCount = 1;
+                uint codePoint = text[i];
+                if (char.IsHighSurrogate(text[i]) && i + 1 < length && char.IsLowSurrogate(text[i + 1]))
+                {
+                    codePoint = (uint)char.ConvertToUtf32(text[i], text[i + 1]);
+                    unitCount = 2;
+                }
+
+                ProGpuOpenTypeTag script = ProGpuOpenTypeScriptResolver.GetScript(codePoint);
+                bool isMark = ProGpuUnicodeShapingProperties.IsMark(codePoint);
+                if (script == ProGpuOpenTypeTag.DefaultScript)
+                {
+                    script = previous;
+                }
+                else if (firstReal < 0)
+                {
+                    firstReal = i;
+                }
+
+                previous = script;
+                for (int k = 0; k < unitCount; k++)
+                {
+                    scripts[i + k] = script;
+                    marks[i + k] = isMark;
+                }
+
+                i += unitCount;
+            }
+
+            if (firstReal > 0)
+            {
+                // Leading Common characters take the first real script.
+                for (int i = 0; i < firstReal; i++)
+                {
+                    scripts[i] = scripts[firstReal];
+                }
+            }
+
+            int runStart = 0;
+            bool runHasMark = marks[0];
+            for (int i = 1; i <= length; i++)
+            {
+                if (i == length || scripts[i] != scripts[runStart])
+                {
+                    spans.Add(new MS.Internal.Span(
+                        new ItemProps(numberCulture, scripts[runStart], runHasMark),
+                        i - runStart));
+                    if (i < length)
+                    {
+                        runStart = i;
+                        runHasMark = marks[i];
+                    }
+                }
+                else
+                {
+                    runHasMark |= marks[i];
+                }
+            }
+
+            return spans;
         }
 
         internal void GetGlyphsAndTheirPlacements(
@@ -2174,6 +2263,20 @@ namespace MS.Internal.Text.TextInterface
             out GlyphOffset[] glyphOffsets)
         {
             ArgumentNullException.ThrowIfNull(font);
+
+            PortableShapedRun shaped = isSideways
+                ? null
+                : PortableOpenTypeShaping.Shape(
+                    textString, textLength, font, blankGlyphIndex, isRightToLeft, cultureInfo, itemProps,
+                    features, featureRangeLengths, fontEmSize, scalingFactor);
+            if (shaped != null)
+            {
+                clusterMap = shaped.ClusterMap;
+                glyphIndices = shaped.GlyphIndices;
+                glyphAdvances = shaped.Advances;
+                glyphOffsets = shaped.Offsets;
+                return;
+            }
 
             ProGpuSfntSimpleGlyphRun glyphRun = ProGpuSfntSimpleGlyphShaper.CreateGlyphRun(
                 new ReadOnlySpan<char>(textString, checked((int)textLength)),
@@ -2220,6 +2323,52 @@ namespace MS.Internal.Text.TextInterface
             out uint actualGlyphCount)
         {
             ArgumentNullException.ThrowIfNull(font);
+
+            PortableShapedRun shaped = isSideways
+                ? null
+                : PortableOpenTypeShaping.Shape(
+                    textString, textLength, font, blankGlyphIndex, isRightToLeft, cultureInfo, itemProps,
+                    features, featureRangeLengths, 0, 0);
+            if (shaped != null)
+            {
+                actualGlyphCount = checked((uint)shaped.GlyphIndices.Length);
+                for (uint i = 0; i < textLength; i++)
+                {
+                    if (clusterMap != null)
+                    {
+                        clusterMap[i] = shaped.ClusterMap[i];
+                    }
+
+                    if (textProps != null)
+                    {
+                        textProps[i] = 0;
+                    }
+
+                    if (pfCanGlyphAlone != null)
+                    {
+                        pfCanGlyphAlone[i] = shaped.CanGlyphAlone[i] ? 1 : 0;
+                    }
+                }
+
+                // Line Services protocol (see LineServicesCallbacks.GetGlyphsRedefined): when the glyph count
+                // exceeds the buffers, the caller sees actualGlyphCount > maxGlyphCount, marks the buffers
+                // unused and calls again with larger ones, so the glyph arrays are intentionally left alone.
+                if (actualGlyphCount > maxGlyphCount)
+                {
+                    return;
+                }
+
+                for (uint i = 0; i < actualGlyphCount; i++)
+                {
+                    glyphIndices[i] = shaped.GlyphIndices[i];
+                    if (glyphProps != null)
+                    {
+                        glyphProps[i] = 0;
+                    }
+                }
+
+                return;
+            }
 
             ProGpuSfntSimpleGlyphRun glyphRun = ProGpuSfntSimpleGlyphShaper.CreateGlyphRun(
                 new ReadOnlySpan<char>(textString, checked((int)textLength)),
@@ -2284,6 +2433,37 @@ namespace MS.Internal.Text.TextInterface
             out GlyphOffset[] glyphOffsets)
         {
             ArgumentNullException.ThrowIfNull(font);
+
+            // Placement is a second pass over the same text: reshape with the same inputs and use the
+            // result when it lines up with the glyphs the caller already holds.
+            PortableShapedRun shaped = isSideways
+                ? null
+                : PortableOpenTypeShaping.Shape(
+                    textString, textLength, font, 0, isRightToLeft, cultureInfo, itemProps,
+                    features, featureRangeLengths, fontEmSize, scalingFactor);
+            if (shaped != null && shaped.GlyphIndices.Length == glyphCount)
+            {
+                // Accept the reshaped placements only when they describe the glyphs the caller holds.
+                // This API has no blank-glyph argument (the reshape above uses 0), so glyphs this layer
+                // substituted - controls, default-ignorables, soft hyphen, flagged IsSubstitute - are
+                // skipped in the comparison; all other glyphs must match exactly.
+                bool sameGlyphs = true;
+                for (uint i = 0; i < glyphCount && sameGlyphs; i++)
+                {
+                    sameGlyphs = shaped.IsSubstitute[i] || shaped.GlyphIndices[i] == glyphIndices[i];
+                }
+
+                if (sameGlyphs)
+                {
+                    for (uint i = 0; i < glyphCount; i++)
+                    {
+                        glyphAdvances[i] = shaped.Advances[i];
+                    }
+
+                    glyphOffsets = shaped.Offsets;
+                    return;
+                }
+            }
 
             glyphOffsets = new GlyphOffset[glyphCount];
             FillGlyphPlacements(
@@ -2384,8 +2564,19 @@ namespace MS.Internal.Text.TextInterface
         }
 
         internal ItemProps(CultureInfo digitCulture)
+            : this(digitCulture, ProGpuOpenTypeTag.DefaultScript, false)
+        {
+        }
+
+        internal ItemProps(CultureInfo digitCulture, ProGpuOpenTypeTag script, bool hasCombiningMark)
         {
             DigitCulture = digitCulture ?? CultureInfo.InvariantCulture;
+            Script = script;
+            HasCombiningMark = hasCombiningMark;
+            // Computed once per run: the script resolver compares tag strings, and these flags are
+            // read repeatedly by line formatting.
+            IsIndic = ProGpuOpenTypeScriptResolver.UsesUniversalShapingEngine(script);
+            IsLatin = script == ProGpuOpenTypeTag.DefaultScript || script == LatinScript;
         }
 
         internal void* NumberSubstitutionNoAddRef => null;
@@ -2394,19 +2585,25 @@ namespace MS.Internal.Text.TextInterface
 
         internal CultureInfo DigitCulture { get; }
 
-        internal bool HasExtendedCharacter => false;
+        /// <summary>OpenType script tag of the run; DFLT when the script could not be determined.</summary>
+        internal ProGpuOpenTypeTag Script { get; }
 
-        internal bool NeedsCaretInfo => false;
+        // Runs that shape beyond one-glyph-per-character need cluster-aware caret movement.
+        internal bool HasExtendedCharacter => HasCombiningMark || !IsLatin;
 
-        internal bool IsIndic => false;
+        internal bool NeedsCaretInfo => HasCombiningMark || IsIndic || !IsLatin;
 
-        internal bool IsLatin => true;
+        internal bool IsIndic { get; }
 
-        internal bool HasCombiningMark => false;
+        internal bool IsLatin { get; }
+
+        internal bool HasCombiningMark { get; }
+
+        private static readonly ProGpuOpenTypeTag LatinScript = new ProGpuOpenTypeTag("latn");
 
         internal bool CanShapeTogether(ItemProps other)
         {
-            return other != null && Equals(DigitCulture, other.DigitCulture);
+            return other != null && Equals(DigitCulture, other.DigitCulture) && Script == other.Script;
         }
     }
 }

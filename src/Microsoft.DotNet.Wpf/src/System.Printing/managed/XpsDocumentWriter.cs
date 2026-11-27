@@ -6,13 +6,16 @@ using System.Windows.Xps.Serialization;
 namespace System.Windows.Xps;
 
 /// <summary>
-/// Synchronous XPS writing into an <see cref="XpsDocument"/> through ReachFramework's serialization manager, as the
-/// C++/CLI writer did. Writing to a print queue, asynchronous writing, collators and print tickets are not implemented
-/// and throw <see cref="PlatformNotSupportedException"/>.
+/// Synchronous writing. Into an <see cref="XpsDocument"/> it uses ReachFramework's serialization manager, as the C++/CLI writer
+/// did. To a print queue it renders the pages to bitmaps and submits a PDF through the backend's document submitter (see
+/// <c>QueuePrinter</c>); that needs a backend that can take a PDF (CUPS), the Win32 spooler path is not implemented.
+/// Asynchronous writing, collators, print tickets and copying an XPS file to a queue are not implemented and throw
+/// <see cref="PlatformNotSupportedException"/>.
 /// </summary>
 public partial class XpsDocumentWriter
 {
     private readonly XpsDocument? _destinationDocument;
+    private readonly Printing.PrintQueue? _destinationQueue;
     private bool _done;
 
     internal XpsDocumentWriter(XpsDocument document)
@@ -22,9 +25,7 @@ public partial class XpsDocumentWriter
 
     internal XpsDocumentWriter(Printing.PrintQueue printQueue)
     {
-        ArgumentNullException.ThrowIfNull(printQueue);
-        // A queue needs the XPS bytes handed to the backend: the Win32 spooler takes XPS, CUPS takes PDF and there is no
-        // XPS to PDF conversion yet. Refuse at the first Write rather than pretending.
+        _destinationQueue = printQueue ?? throw new ArgumentNullException(nameof(printQueue));
     }
 
     public override void Write(Visual visual) => WriteCore(visual, null);
@@ -67,7 +68,11 @@ public partial class XpsDocumentWriter
 
         if (_destinationDocument is null)
         {
-            throw new PlatformNotSupportedException("Writing XPS to a print queue is not implemented.");
+            // Only a successful submission uses the writer up: after a failure (no submitter, queue error) the caller sees that
+            // error again on a retry rather than a misleading "already written".
+            Printing.QueuePrinter.Print(_destinationQueue!, content);
+            _done = true;
+            return;
         }
 
         _done = true;

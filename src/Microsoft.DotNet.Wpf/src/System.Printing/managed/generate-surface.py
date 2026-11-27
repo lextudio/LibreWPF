@@ -20,7 +20,7 @@ IMPLEMENTED = {
     "LocalPrintServer": [r"LocalPrintServer\(", r"DefaultPrintQueue", r"GetDefaultPrintQueue\(", r"override void (Commit|Refresh)\(\)"],
     "PrintQueue": [r"PrintQueue\(System.Printing.PrintServer", r"string (FullName|Description|Comment|Location)\b",
                    r"PrintServer HostingPrintServer", r"string Name\b", r"override void (Commit|Refresh)\(\)", r"bool IsOffline",
-                   r"PrintTicket (DefaultPrintTicket|UserPrintTicket)\b", r"GetPrintCapabilities(AsXml)?\(", r"MergeAndValidatePrintTicket\("],
+                   r"XpsDocumentWriter CreateXpsDocumentWriter\(System.Printing.PrintQueue printQueue\)", r"PrintTicket (DefaultPrintTicket|UserPrintTicket)\b", r"GetPrintCapabilities(AsXml)?\(", r"MergeAndValidatePrintTicket\("],
     "XpsDocumentWriter": [r"XpsDocumentWriter\(", r"void Write\("],
     "PrintQueueCollection": [r"PrintQueueCollection\(", r"void Add\(", r"GetEnumerator\(\)", r"GetNonGenericEnumerator\(\)", r"SyncRoot"],
 }

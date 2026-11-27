@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <Compile Include="*.cs" />
+    <!-- The raster PDF writer PrintingTools.Wpf already has (and tests); queue printing renders pages to bitmaps and sends a PDF. -->
+    <Compile Include="$(PrintingToolsDir)PrintingTools.Wpf/RasterPdfWriter.cs" Link="RasterPdfWriter.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,7 +32,11 @@
     <ProjectReference Include="$(WpfSourceDir)WindowsBase\ref\WindowsBase-ref.csproj" />
     <ProjectReference Include="$(WpfSourceDir)System.Xaml\ref\System.Xaml-ref.csproj" />
     <!-- The same references the C++/CLI project has (System.Printing.vcxproj). -->
-    <ProjectReference Include="$(WpfCycleBreakersDir)PresentationFramework\PresentationFramework-System.Printing-impl-cycle.csproj" />
+    <!-- The reference assembly, not the C++/CLI project's impl-cycle stub: writing documents to a queue needs the real members of
+         FixedDocument, FixedDocumentSequence, FixedPage and DocumentPaginator. A reference assembly adds no project cycle. -->
+    <ProjectReference Include="$(WpfSourceDir)PresentationFramework\ref\PresentationFramework-ref.csproj" />
+    <!-- The WPF reference assemblies mention these portable seam interfaces in their signatures (as PrintingTools.Wpf does). -->
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../../../../ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj" />
     <ProjectReference Include="$(WpfSourceDir)ReachFramework\ReachFramework.csproj" />
   </ItemGroup>
 

@@ -87,6 +87,13 @@ public partial class PrintQueue
 
     public bool IsOffline => !_info.IsOnline;
 
+    /// <summary>A writer that renders what it is given to a document and submits it to <paramref name="printQueue"/>.</summary>
+    public static System.Windows.Xps.XpsDocumentWriter CreateXpsDocumentWriter(PrintQueue printQueue)
+    {
+        ArgumentNullException.ThrowIfNull(printQueue);
+        return new System.Windows.Xps.XpsDocumentWriter(printQueue);
+    }
+
     public virtual PrintTicket DefaultPrintTicket
     {
         get

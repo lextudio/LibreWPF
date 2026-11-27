@@ -6,3 +6,7 @@
 	path = external/LibreWinForms
 	url = ../librewinforms
 	branch = librewinforms-progpu-port
+[submodule "external/PrintingTools"]
+	path = external/PrintingTools
+	url = ../PrintingTools
+	branch = claude/neutral-core

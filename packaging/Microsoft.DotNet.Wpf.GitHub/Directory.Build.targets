@@ -179,21 +179,35 @@
     <PropertyGroup>
       <_ManagedWpfTransportLibRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\$(TargetFramework)</_ManagedWpfTransportLibRoot>
       <_ManagedWpfTransportRefRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\ref\$(TargetFramework)</_ManagedWpfTransportRefRoot>
-      <_SystemPrintingRuntimeRoot>$(ArtifactsDir)bin\System.Printing-PresentationFramework-api-cycle\$(Configuration)\$(TargetFramework)</_SystemPrintingRuntimeRoot>
+      <_SystemPrintingRuntimeRoot>$(ArtifactsDir)bin\System.Printing.Managed\$(Configuration)\$(TargetFramework)</_SystemPrintingRuntimeRoot>
       <_SystemPrintingRefRoot>$(ArtifactsReferenceAssemblyDir)System.Printing\$(Configuration)\$(TargetFramework)</_SystemPrintingRefRoot>
     </PropertyGroup>
 
+    <!-- The managed System.Printing is not part of Microsoft.Dotnet.Wpf.sln; build it (and what it references) here,
+         always: an incremental build is cheap, and an "only if missing" build would pack stale bits after a source change. -->
+    <MSBuild Projects="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'src', 'Microsoft.DotNet.Wpf', 'src', 'System.Printing', 'managed', 'System.Printing.Managed.csproj'))"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework)"
+             RemoveProperties="Platform;RuntimeIdentifier;TargetFrameworks" />
+
     <Error
         Condition="!Exists('$(_SystemPrintingRuntimeRoot)\System.Printing.dll')"
-        Text="The portable WPF transport package requires '$(_SystemPrintingRuntimeRoot)\System.Printing.dll'. Build System.Printing-PresentationFramework-api-cycle before packing $(PackageName)." />
+        Text="The portable WPF transport package requires '$(_SystemPrintingRuntimeRoot)\System.Printing.dll'. Build System.Printing.Managed before packing $(PackageName)." />
     <Error
         Condition="!Exists('$(_SystemPrintingRefRoot)\System.Printing.dll')"
         Text="The portable WPF transport package requires '$(_SystemPrintingRefRoot)\System.Printing.dll'. Build System.Printing-ref before packing $(PackageName)." />
+
+    <!-- System.Printing loads these at run time; a pack without them would type-load-fail, so no wildcard here. -->
+    <Error
+        Condition="!Exists('$(_SystemPrintingRuntimeRoot)\PrintingTools.Core.dll') Or !Exists('$(_SystemPrintingRuntimeRoot)\PrintingTools.Windows.dll') Or !Exists('$(_SystemPrintingRuntimeRoot)\PrintingTools.Cups.dll')"
+        Text="The managed System.Printing output '$(_SystemPrintingRuntimeRoot)' is missing PrintingTools.Core/Windows/Cups.dll. Rebuild System.Printing.Managed (without --no-dependencies) before packing $(PackageName)." />
 
     <ItemGroup>
       <_ManagedWpfTransportSystemPrintingRuntimePayload Include="$(_SystemPrintingRuntimeRoot)\System.Printing.dll" />
       <_ManagedWpfTransportSystemPrintingRuntimePayload Include="$(_SystemPrintingRuntimeRoot)\System.Printing.pdb"
                                                         Condition="Exists('$(_SystemPrintingRuntimeRoot)\System.Printing.pdb')" />
+      <!-- The managed System.Printing sits on the PrintingTools layers, which ship next to it. -->
+      <_ManagedWpfTransportSystemPrintingRuntimePayload Include="$(_SystemPrintingRuntimeRoot)\PrintingTools.Core.dll;$(_SystemPrintingRuntimeRoot)\PrintingTools.Windows.dll;$(_SystemPrintingRuntimeRoot)\PrintingTools.Cups.dll" />
       <_ManagedWpfTransportSystemPrintingRefPayload Include="$(_SystemPrintingRefRoot)\System.Printing.dll" />
       <_ManagedWpfTransportSystemPrintingRefPayload Include="$(_SystemPrintingRefRoot)\System.Printing.xml"
                                                     Condition="Exists('$(_SystemPrintingRefRoot)\System.Printing.xml')" />

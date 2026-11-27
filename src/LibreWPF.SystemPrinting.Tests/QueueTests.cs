@@ -7,7 +7,45 @@ namespace LibreWPF.SystemPrinting.Tests;
 
 public class QueueTests
 {
-    private sealed class FakeAdapter : IPrintAdapter
+    private sealed class FakeAdapter : IPrintAdapter, IPrintJobAdapter
+    {
+        public IReadOnlyList<PrinterInfo> Printers { get; init; } = Array.Empty<PrinterInfo>();
+
+        public Dictionary<int, PrintJobInfo> Jobs { get; } = new();
+
+        public List<int> Cancelled { get; } = new();
+
+        public Task<IReadOnlyList<PrinterInfo>> GetPrintersAsync(CancellationToken cancellationToken = default) => Task.FromResult(Printers);
+
+        public Task<CoreCapabilities> GetCapabilitiesAsync(PrinterId printerId, PrintTicketModel? baseTicket = null, CancellationToken cancellationToken = default) => Task.FromResult(CoreCapabilities.CreateDefault());
+
+        public Task<PrintSession> CreateSessionAsync(PrintRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task PrintAsync(PrintSession session, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<PrintPreviewModel> CreatePreviewAsync(PrintSession session, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<PrintJobInfo>> GetJobsAsync(PrinterId printerId, bool includeCompleted = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<PrintJobInfo>>(Jobs.Values
+                .Where(j => includeCompleted || j.State is not (PrintJobState.Completed or PrintJobState.Canceled or PrintJobState.Aborted))
+                .ToArray());
+
+        public Task<PrintJobInfo?> GetJobAsync(PrinterId printerId, int jobId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Jobs.TryGetValue(jobId, out var job) ? job : null);
+
+        public Task CancelJobAsync(PrinterId printerId, int jobId, CancellationToken cancellationToken = default)
+        {
+            Cancelled.Add(jobId);
+            if (Jobs.TryGetValue(jobId, out var job))
+            {
+                Jobs[jobId] = new PrintJobInfo(job.Id, job.Name, PrintJobState.Canceled, job.User, job.PagesPrinted, job.TotalPages, job.Position, job.SubmittedAt, job.StateReasons);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class PrintOnlyAdapter : IPrintAdapter
     {
         public IReadOnlyList<PrinterInfo> Printers { get; init; } = Array.Empty<PrinterInfo>();
 
@@ -123,6 +161,124 @@ public class QueueTests
         Assert.Equal("Quarterly report", jobName.Invoke(null, new object[] { queue }));
         queue.CurrentJobSettings.Description = "   ";
         Assert.Equal("Document", jobName.Invoke(null, new object[] { queue }));
+    }
+
+    [Fact]
+    public void GetJobMapsTheBackendJobAndCancelUpdatesIt()
+    {
+        var submitted = new DateTimeOffset(2026, 11, 27, 10, 0, 0, TimeSpan.Zero);
+        var adapter = new FakeAdapter { Printers = new[] { Info("a", "A") } };
+        adapter.Jobs[7] = new PrintJobInfo(7, "Report", PrintJobState.Processing, "ada", 2, 5, 1, submitted);
+        PrintBackendAccess.Use(adapter);
+        var queue = new PrintQueue(new PrintServer(), "A");
+
+        var job = queue.GetJob(7);
+
+        Assert.Equal(7, job.JobIdentifier);
+        Assert.Equal("Report", job.JobName);
+        Assert.Equal(PrintJobStatus.Printing, job.JobStatus);
+        Assert.True(job.IsPrinting);
+        Assert.Equal(5, job.NumberOfPages);
+        Assert.Equal(2, job.NumberOfPagesPrinted);
+        Assert.Equal(1, job.PositionInPrintQueue);
+        Assert.Equal("ada", job.Submitter);
+        Assert.Equal(submitted.LocalDateTime, job.TimeJobSubmitted);
+        Assert.Same(queue, job.HostingPrintQueue);
+        Assert.Same(queue.HostingPrintServer, job.HostingPrintServer);
+
+        job.Cancel();
+
+        Assert.Contains(7, adapter.Cancelled);
+        Assert.True(job.IsDeleted);
+        Assert.Equal(PrintJobStatus.Deleted, job.JobStatus);
+    }
+
+    [Theory]
+    [InlineData(PrintJobState.Pending, PrintJobStatus.Spooling)]
+    [InlineData(PrintJobState.PendingHeld, PrintJobStatus.Paused)]
+    [InlineData(PrintJobState.Processing, PrintJobStatus.Printing)]
+    [InlineData(PrintJobState.Stopped, PrintJobStatus.Error | PrintJobStatus.UserIntervention)]
+    [InlineData(PrintJobState.Canceled, PrintJobStatus.Deleted)]
+    [InlineData(PrintJobState.Aborted, PrintJobStatus.Error)]
+    [InlineData(PrintJobState.Completed, PrintJobStatus.Printed | PrintJobStatus.Completed)]
+    public void JobStatusMapsEveryBackendState(PrintJobState state, PrintJobStatus expected)
+    {
+        var adapter = new FakeAdapter { Printers = new[] { Info("a", "A") } };
+        adapter.Jobs[1] = new PrintJobInfo(1, "Job", state);
+        PrintBackendAccess.Use(adapter);
+        var queue = new PrintQueue(new PrintServer(), "A");
+
+        Assert.Equal(expected, queue.GetJob(1).JobStatus);
+    }
+
+    [Fact]
+    public void CancelKeepsTheCanceledStateWhenTheBackendPurgesTheJob()
+    {
+        var adapter = new FakeAdapter { Printers = new[] { Info("a", "A") } };
+        adapter.Jobs[7] = new PrintJobInfo(7, "Report", PrintJobState.Processing);
+        PrintBackendAccess.Use(adapter);
+        var job = new PrintQueue(new PrintServer(), "A").GetJob(7);
+
+        adapter.Jobs.Remove(7);
+        job.Cancel();
+
+        Assert.True(job.IsDeleted);
+        Assert.Equal(PrintJobStatus.Deleted, job.JobStatus);
+    }
+
+    [Fact]
+    public void RefreshKeepsTheLastStateWhenTheBackendPurgesTheJob()
+    {
+        var adapter = new FakeAdapter { Printers = new[] { Info("a", "A") } };
+        adapter.Jobs[7] = new PrintJobInfo(7, "Report", PrintJobState.Processing);
+        PrintBackendAccess.Use(adapter);
+        var job = new PrintQueue(new PrintServer(), "A").GetJob(7);
+
+        adapter.Jobs.Remove(7);
+        job.Refresh();
+
+        Assert.Equal("Report", job.JobName);
+        Assert.True(job.IsPrinting);
+    }
+
+    [Fact]
+    public void CommitIsNotSupported()
+    {
+        var adapter = new FakeAdapter { Printers = new[] { Info("a", "A") } };
+        adapter.Jobs[7] = new PrintJobInfo(7, "Report", PrintJobState.Processing);
+        PrintBackendAccess.Use(adapter);
+
+        Assert.Throws<PlatformNotSupportedException>(() => new PrintQueue(new PrintServer(), "A").GetJob(7).Commit());
+    }
+
+    [Fact]
+    public void OfflineQueueAddsOfflineToTheJobStatus()
+    {
+        var adapter = new FakeAdapter { Printers = new[] { Info("a", "A", online: false) } };
+        adapter.Jobs[1] = new PrintJobInfo(1, "Job", PrintJobState.Processing);
+        PrintBackendAccess.Use(adapter);
+        var job = new PrintQueue(new PrintServer(), "A").GetJob(1);
+
+        Assert.Equal(PrintJobStatus.Printing | PrintJobStatus.Offline, job.JobStatus);
+        Assert.True(job.IsOffline);
+    }
+
+    [Fact]
+    public void GetJobWithoutAJobAdapterIsNotSupported()
+    {
+        PrintBackendAccess.Use(new PrintOnlyAdapter { Printers = new[] { Info("a", "A") } });
+        var queue = new PrintQueue(new PrintServer(), "A");
+
+        Assert.Throws<PlatformNotSupportedException>(() => queue.GetJob(1));
+    }
+
+    [Fact]
+    public void UnknownJobIsAnError()
+    {
+        Use(Info("a", "A"));
+        var queue = new PrintQueue(new PrintServer(), "A");
+
+        Assert.Throws<InvalidOperationException>(() => queue.GetJob(99));
     }
 
     [Fact]

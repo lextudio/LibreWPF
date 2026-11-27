@@ -92,6 +92,19 @@ public partial class PrintQueue
     /// <summary>The description and ticket the next job created through this queue uses.</summary>
     public PrintJobSettings CurrentJobSettings => _currentJobSettings ??= new PrintJobSettings();
 
+    /// <summary>Reads one job from the queue's backend.</summary>
+    public PrintSystemJobInfo GetJob(int jobId)
+    {
+        if (PrintBackend.Adapter is not IPrintJobAdapter jobs)
+        {
+            throw new PlatformNotSupportedException("This print backend does not expose print jobs.");
+        }
+
+        var info = jobs.GetJobAsync(_info.Id, jobId).GetAwaiter().GetResult()
+                   ?? throw new InvalidOperationException($"The print queue '{Name}' has no job {jobId}.");
+        return new PrintSystemJobInfo(this, info);
+    }
+
     /// <summary>A writer that renders what it is given to a document and submits it to <paramref name="printQueue"/>.</summary>
     public static System.Windows.Xps.XpsDocumentWriter CreateXpsDocumentWriter(PrintQueue printQueue)
     {

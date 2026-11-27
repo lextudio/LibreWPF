@@ -199,7 +199,6 @@ namespace System.Printing
         public static System.Windows.Xps.XpsDocumentWriter CreateXpsDocumentWriter(ref System.Printing.PrintDocumentImageableArea documentImageableArea, ref System.Windows.Controls.PageRangeSelection pageRangeSelection, ref System.Windows.Controls.PageRange pageRange) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public static System.Windows.Xps.XpsDocumentWriter CreateXpsDocumentWriter(string jobDescription, ref System.Printing.PrintDocumentImageableArea documentImageableArea) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public static System.Windows.Xps.XpsDocumentWriter CreateXpsDocumentWriter(string jobDescription, ref System.Printing.PrintDocumentImageableArea documentImageableArea, ref System.Windows.Controls.PageRangeSelection pageRangeSelection, ref System.Windows.Controls.PageRange pageRange) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public System.Printing.PrintSystemJobInfo GetJob(int jobId) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public System.Printing.PrintJobInfoCollection GetPrintJobInfoCollection() { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         protected sealed override void InternalDispose(bool disposing) { }
         public virtual void Pause() { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
@@ -376,42 +375,14 @@ namespace System.Printing
     public partial class PrintSystemJobInfo : System.Printing.PrintSystemObject
     {
         internal PrintSystemJobInfo() { }
-        public System.Printing.PrintQueue HostingPrintQueue { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public System.Printing.PrintServer HostingPrintServer { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsBlocked { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsCompleted { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsDeleted { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsDeleting { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsInError { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsOffline { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsPaperOut { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsPaused { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsPrinted { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsPrinting { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsRestarted { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsRetained { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsSpooling { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public bool IsUserInterventionRequired { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public int JobIdentifier { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public string JobName { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } set { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
         public int JobSize { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public System.Printing.PrintJobStatus JobStatus { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
         public System.IO.Stream JobStream { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public int NumberOfPages { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public int NumberOfPagesPrinted { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public int PositionInPrintQueue { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
         public System.Printing.PrintJobPriority Priority { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
         public int StartTimeOfDay { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public string Submitter { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public System.DateTime TimeJobSubmitted { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
         public int TimeSinceStartedPrinting { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
         public int UntilTimeOfDay { get { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); } }
-        public void Cancel() { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Commit() { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public static System.Printing.PrintSystemJobInfo Get(System.Printing.PrintQueue printQueue, int jobIdentifier) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         protected sealed override void InternalDispose(bool disposing) { }
         public void Pause() { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Refresh() { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public void Restart() { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public void Resume() { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
     }

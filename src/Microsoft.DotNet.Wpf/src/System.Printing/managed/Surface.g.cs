@@ -674,7 +674,6 @@ namespace System.Windows.Xps
     }
     public partial class XpsDocumentWriter : System.Windows.Documents.Serialization.SerializerWriter
     {
-        internal XpsDocumentWriter() { }
         public override event System.Windows.Documents.Serialization.WritingCancelledEventHandler WritingCancelled { add { } remove { } }
         public override event System.Windows.Documents.Serialization.WritingCompletedEventHandler WritingCompleted { add { } remove { } }
         public override event System.Windows.Documents.Serialization.WritingPrintTicketRequiredEventHandler WritingPrintTicketRequired { add { } remove { } }
@@ -686,18 +685,6 @@ namespace System.Windows.Xps
         public virtual void raise_WritingCompleted(object sender, System.Windows.Documents.Serialization.WritingCompletedEventArgs e) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public virtual void raise_WritingPrintTicketRequired(object sender, System.Windows.Documents.Serialization.WritingPrintTicketRequiredEventArgs e) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public virtual void raise_WritingProgressChanged(object sender, System.Windows.Documents.Serialization.WritingProgressChangedEventArgs e) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public void Write(string documentPath) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public void Write(string documentPath, System.Windows.Xps.XpsDocumentNotificationLevel notificationLevel) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Write(System.Windows.Documents.DocumentPaginator documentPaginator) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Write(System.Windows.Documents.DocumentPaginator documentPaginator, System.Printing.PrintTicket printTicket) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Write(System.Windows.Documents.FixedDocument fixedDocument) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Write(System.Windows.Documents.FixedDocument fixedDocument, System.Printing.PrintTicket printTicket) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Write(System.Windows.Documents.FixedDocumentSequence fixedDocumentSequence) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Write(System.Windows.Documents.FixedDocumentSequence fixedDocumentSequence, System.Printing.PrintTicket printTicket) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Write(System.Windows.Documents.FixedPage fixedPage) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Write(System.Windows.Documents.FixedPage fixedPage, System.Printing.PrintTicket printTicket) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Write(System.Windows.Media.Visual visual) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
-        public override void Write(System.Windows.Media.Visual visual, System.Printing.PrintTicket printTicket) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public void WriteAsync(string documentPath) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public void WriteAsync(string documentPath, System.Windows.Xps.XpsDocumentNotificationLevel notificationLevel) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }
         public override void WriteAsync(System.Windows.Documents.DocumentPaginator documentPaginator) { throw new System.PlatformNotSupportedException("Not implemented by the managed System.Printing."); }

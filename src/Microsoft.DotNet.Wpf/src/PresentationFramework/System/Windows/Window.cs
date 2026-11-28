@@ -2038,6 +2038,13 @@ namespace System.Windows
             // Window content should respect Window's Max/Min size
             // setting in a SizeToContent Window.
 
+            // Entering or leaving macOS full screen resizes the window; the host answers an unchanged
+            // request from its cache, so this only changes CaptionInsets when the state really changed.
+            if (IsPortableWindowActive && MacWindow.GetExtendsContentIntoTitleBar(this))
+            {
+                UpdatePortableMacWindow();
+            }
+
             WindowMinMax mm = GetWindowMinMax();
 
             arrangeBounds.Width  = Math.Max(mm.minWidth,  Math.Min(arrangeBounds.Width, mm.maxWidth));

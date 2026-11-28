@@ -615,13 +615,30 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return null;
         }
 
-        return WpfMacWindowIntegration.Apply(
+        // Layout re-sends the unchanged request so the caption insets follow full-screen changes; an
+        // unchanged request on an unchanged full-screen state is answered from the last result
+        // instead of rebuilding the material on every arrange.
+        bool fullScreen = WpfMacWindowIntegration.IsFullScreen(_windowController);
+        if (_lastMacResult is { } cached && request == _lastMacRequest && fullScreen == _lastMacFullScreen)
+        {
+            return cached;
+        }
+
+        var result = WpfMacWindowIntegration.Apply(
             _windowController,
             _options.TransparentFramebuffer,
             request,
             ref _macBackdropApplied,
             ref _macEffectView);
+        _lastMacRequest = request;
+        _lastMacFullScreen = fullScreen;
+        _lastMacResult = result;
+        return result;
     }
+
+    private PortableMacWindowRequest _lastMacRequest;
+    private bool _lastMacFullScreen;
+    private PortableMacWindowResult? _lastMacResult;
 
     public long SkippedFrameCount { get; private set; }
 

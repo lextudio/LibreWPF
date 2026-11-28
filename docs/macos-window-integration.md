@@ -227,7 +227,14 @@ second press within 500 ms and 4 px counts as the double click. The user's title
 setting (minimise or nothing) is not read yet, and AppKit logs a harmless "Window move completed
 without beginning" because the first press of the pair already began a native drag.
 
-Not verified yet: full-screen
-(insets should drop to zero), live appearance changes, the NativeMilWgpu renderer,
+Full screen: the host used to read the full-screen state only when a request was applied, so
+`CaptionInsets` stayed 71,22 inside a full-screen window. `Window.ArrangeOverride` now re-sends the
+unchanged request for a fused window (entering or leaving full screen resizes it), and
+`ProGpuWpfWindowHost.ApplyMacWindow` answers an unchanged request on an unchanged full-screen state
+from its cached result, so the material is not rebuilt on every arrange. Verified on a real window
+(`styleMask` read back): windowed 71,22; full screen 0,0; restored 71,22.
+
+Not verified yet:
+live appearance changes, the NativeMilWgpu renderer,
 `CaptionInsets` after a bar-height change, and a `Backdrop` change after creation from `None`
 (reports `None`, as designed).

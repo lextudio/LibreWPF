@@ -103,6 +103,45 @@ public class PortableMacWindowTests
         });
     }
 
+    [PortableInputFact]
+    public void CaptionInsetsFollowAFullScreenChangeOnTheNextArrange()
+    {
+        RunInUiApartment(() =>
+        {
+            using IPortablePresentationSourceHost host = PortablePresentationSourceHost.Create();
+            bool fullScreen = false;
+            PortableWindowActivationService.Register(
+                activate: value => value,
+                getHandle: value => host.Handle,
+                applyMacWindow: (activation, request) => fullScreen
+                    ? new PortableMacWindowResult(0, 0d, 0d)
+                    : new PortableMacWindowResult(0, 71d, 52d));
+            try
+            {
+                var window = new Window { Width = 400, Height = 300 };
+                MacWindow.SetExtendsContentIntoTitleBar(window, true);
+                window.Show();
+                host.RootVisual = window;
+                host.SetClientSize(400, 300);
+                Assert.Equal(52d, MacWindow.GetCaptionInsets(window).Top);
+
+                fullScreen = true;
+                window.InvalidateArrange();
+                window.UpdateLayout();
+                Assert.Equal(0d, MacWindow.GetCaptionInsets(window).Top);
+
+                fullScreen = false;
+                window.InvalidateArrange();
+                window.UpdateLayout();
+                Assert.Equal(71d, MacWindow.GetCaptionInsets(window).Left);
+            }
+            finally
+            {
+                PortableWindowActivationService.Clear();
+            }
+        });
+    }
+
     [Fact]
     public void ChromeHitTestVisibilityIsInheritedFromAncestorsAndSurvivesContentElements()
     {

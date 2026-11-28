@@ -177,6 +177,14 @@ internal static partial class WpfMacWindowIntegration
     private static bool IsFullScreen(nint nsWindow) =>
         nsWindow != 0 && (SendUnsigned(nsWindow, Selector("styleMask")) & StyleMaskFullScreen) != 0;
 
+    /// <summary>Whether the controller's Cocoa window is in macOS full screen (false off macOS).</summary>
+    internal static bool IsFullScreen(SilkWindowController? controller) =>
+        OperatingSystem.IsMacOS() &&
+        controller != null &&
+        controller.Handle.Kind == NativeWindowKind.Cocoa &&
+        controller.Handle.IsValid &&
+        IsFullScreen(controller.Handle.Handle);
+
     /// <summary>
     /// The right edge of the zoom button plus the standard gap, measured from the live button frame
     /// rather than assumed (the buttons moved between macOS releases).

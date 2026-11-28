@@ -7505,12 +7505,63 @@ namespace System.Windows
             }
         }
 
-        internal bool TryBeginPortableChromeDrag(Point mousePosition)
+        /// <summary>
+        /// A fused macOS window (MacWindow.ExtendsContentIntoTitleBar) has no system title bar to drag
+        /// by, so a press inside the fused bar starts a window drag unless the element under the
+        /// pointer, or one of its ancestors, is marked WindowChrome.IsHitTestVisibleInChrome.
+        /// </summary>
+        /// <summary>
+        /// Whether the element, or any ancestor, is marked WindowChrome.IsHitTestVisibleInChrome. A hit
+        /// can be a ContentElement (for example a Run), which has no visual parent: it continues
+        /// through its logical parent instead.
+        /// </summary>
+        internal static bool IsInHitTestVisibleChrome(DependencyObject element)
         {
-            if (!IsPortableWindowActive || !_hasPortableCustomChrome ||
-                WindowState != WindowState.Normal)
+            while (element != null)
+            {
+                if (element is IInputElement input && Shell.WindowChrome.GetIsHitTestVisibleInChrome(input))
+                {
+                    return true;
+                }
+
+                element = element is Visual || element is Media.Media3D.Visual3D
+                    ? VisualTreeHelper.GetParent(element)
+                    : LogicalTreeHelper.GetParent(element);
+            }
+
+            return false;
+        }
+
+        private bool TryBeginPortableMacCaptionDrag(Point mousePosition)
+        {
+            double barHeight = MacWindow.GetCaptionInsets(this).Top;
+            if (!MacWindow.GetExtendsContentIntoTitleBar(this) ||
+                !(barHeight > 0.0) ||
+                !double.IsFinite(mousePosition.X) || !double.IsFinite(mousePosition.Y) ||
+                mousePosition.X < 0.0 || mousePosition.X >= ActualWidth ||
+                mousePosition.Y < 0.0 || mousePosition.Y >= barHeight)
             {
                 return false;
+            }
+
+            if (IsInHitTestVisibleChrome(InputHitTest(mousePosition) as DependencyObject))
+            {
+                return false;
+            }
+
+            return PortableWindowActivationService.TryDragMove(_portableWindowActivation);
+        }
+
+        internal bool TryBeginPortableChromeDrag(Point mousePosition)
+        {
+            if (!IsPortableWindowActive || WindowState != WindowState.Normal)
+            {
+                return false;
+            }
+
+            if (!_hasPortableCustomChrome)
+            {
+                return TryBeginPortableMacCaptionDrag(mousePosition);
             }
 
             Shell.WindowChromeWorker chromeWorker = Shell.WindowChromeWorker.GetWindowChromeWorker(this);

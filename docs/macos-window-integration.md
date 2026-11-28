@@ -209,7 +209,19 @@ frame view, **below** the content view. The proper fix belongs in the ProGPU rep
 (`MacOsNativeWindowPlatform.SetBackdrop`); it needs a ProGPU commit and pointer bump, which is
 held until it can be published in order.
 
-Not verified yet: window drag from the fused bar and the double-click action, clicks on controls
-inside the top bar region, full-screen (insets should drop to zero), live appearance changes,
-the NativeMilWgpu renderer, `CaptionInsets` after a bar-height change, and a `Backdrop` change
-after creation from `None` (reports `None`, as designed).
+Added after the first cut: **window drag from the fused bar**. A fused window has no system title
+bar to drag by and, measured with `hitTest:` on the frame view, the whole bar except the traffic
+lights is the layer-hosting content view, so clicks reach WPF content. `Window` now starts a drag
+(`TryBeginPortableMacCaptionDrag`, called from the existing `TryBeginPortableChromeDrag`) for a
+left press inside `CaptionInsets.Top` unless the element under the pointer or one of its
+ancestors has `WindowChrome.IsHitTestVisibleInChrome`; custom-chrome windows keep their own
+path. Verified end to end with synthetic HID events on a fused window: a press at the bar and a
+drag moved the native window by the dragged distance (frame x 50 to 199, y down 99). Unit tests:
+`PressInTheFusedBarStartsAWindowDragOnlyInsideTheBar` (WPF layer) and a source contract for the
+ancestor walk (hit testing itself needs the ProGPU geometry provider, which the WPF-layer test
+host does not register).
+
+Not verified yet: the double-click action (zoom or minimise per the user's setting), full-screen
+(insets should drop to zero), live appearance changes, the NativeMilWgpu renderer,
+`CaptionInsets` after a bar-height change, and a `Backdrop` change after creation from `None`
+(reports `None`, as designed).

@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Windows.Platform.MacOS;
 using ProGPU.Wpf.Interop;
@@ -100,6 +101,81 @@ public class PortableMacWindowTests
                 PortableWindowActivationService.Clear();
             }
         });
+    }
+
+    [Fact]
+    public void ChromeHitTestVisibilityIsInheritedFromAncestorsAndSurvivesContentElements()
+    {
+        RunInUiApartment(() =>
+        {
+            var marked = new System.Windows.Controls.Border();
+            var inner = new System.Windows.Controls.Border();
+            marked.Child = inner;
+            System.Windows.Shell.WindowChrome.SetIsHitTestVisibleInChrome(marked, true);
+            var unmarked = new System.Windows.Controls.Border { Child = new System.Windows.Controls.Border() };
+
+            Assert.True(Window.IsInHitTestVisibleChrome(marked));
+            Assert.True(Window.IsInHitTestVisibleChrome(inner));
+            Assert.False(Window.IsInHitTestVisibleChrome(unmarked));
+            Assert.False(Window.IsInHitTestVisibleChrome(unmarked.Child));
+            Assert.False(Window.IsInHitTestVisibleChrome(null));
+
+            // A Run is a ContentElement: it has no visual parent, so the walk must use the logical tree.
+            var run = new System.Windows.Documents.Run("x");
+            var block = new System.Windows.Controls.TextBlock();
+            block.Inlines.Add(run);
+            Assert.False(Window.IsInHitTestVisibleChrome(run));
+            System.Windows.Shell.WindowChrome.SetIsHitTestVisibleInChrome(block, true);
+            Assert.True(Window.IsInHitTestVisibleChrome(run));
+        });
+    }
+
+    [PortableInputFact]
+    public void PressInTheFusedBarStartsAWindowDragOnlyInsideTheBar()
+    {
+        RunInUiApartment(() =>
+        {
+            using IPortablePresentationSourceHost host = PortablePresentationSourceHost.Create();
+            int drags = 0;
+            PortableWindowActivationService.Register(
+                activate: value => value,
+                getHandle: value => host.Handle,
+                dragMove: activation => { drags++; return true; },
+                applyMacWindow: (activation, request) => new PortableMacWindowResult(0, 71d, 52d));
+            try
+            {
+                var window = new Window { Width = 400, Height = 300 };
+                MacWindow.SetExtendsContentIntoTitleBar(window, true);
+                window.Show();
+                host.RootVisual = window;
+                host.SetClientSize(400, 300);
+
+                Assert.Equal(52d, MacWindow.GetCaptionInsets(window).Top);
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(300, 10)));
+                Assert.Equal(1, drags);
+                Assert.False(window.TryBeginPortableChromeDrag(new Point(300, 80)));
+                Assert.False(window.TryBeginPortableChromeDrag(new Point(-1, 10)));
+                Assert.False(window.TryBeginPortableChromeDrag(new Point(401, 10)));
+                Assert.Equal(1, drags);
+
+                MacWindow.SetExtendsContentIntoTitleBar(window, false);
+                Assert.False(window.TryBeginPortableChromeDrag(new Point(300, 10)));
+                Assert.Equal(1, drags);
+            }
+            finally
+            {
+                PortableWindowActivationService.Clear();
+            }
+        });
+    }
+
+    private sealed class PortableInputFactAttribute : FactAttribute
+    {
+        public PortableInputFactAttribute([CallerFilePath] string? path = null, [CallerLineNumber] int line = 0) : base(path, line)
+        {
+            if (PortableWpfRuntime.ConfiguredMediaBackend != PortableWpfMediaBackend.Portable)
+                Skip = "Requires portable media selected before input-manager construction, including on Windows.";
+        }
     }
 
     private static void RunInUiApartment(Action action)

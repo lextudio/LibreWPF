@@ -96,6 +96,18 @@ public sealed class WpfMacWindowIntegrationTests
         Assert.Contains("request.Backdrop >= 2 ? NativeWindowBackdrop.Transparent", integration, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TheFusedBarDragSkipsElementsMarkedHitTestVisibleInChromeIncludingAncestors()
+    {
+        string window = File.ReadAllText(FindRepoPath(
+            "src", "Microsoft.DotNet.Wpf", "src", "PresentationFramework", "System", "Windows", "Window.cs"));
+
+        Assert.Contains("private bool TryBeginPortableMacCaptionDrag(Point mousePosition)", window, StringComparison.Ordinal);
+        Assert.Contains("IsInHitTestVisibleChrome(InputHitTest(mousePosition) as DependencyObject)", window, StringComparison.Ordinal);
+        // Custom chrome keeps its own drag path untouched.
+        Assert.Contains("if (!_hasPortableCustomChrome)", window, StringComparison.Ordinal);
+    }
+
     private static string FindRepoPath(params string[] parts)
     {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);

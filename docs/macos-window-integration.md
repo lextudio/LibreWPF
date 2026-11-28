@@ -273,8 +273,20 @@ activation is posted to the UI dispatcher and runs the WPF command there.
 access-key stripping, collapsed items omitted, separators kept, `IsEnabled` and `IsChecked`
 (only when checkable), key equivalents from the command's `KeyGesture` first and from
 `Cmd+Shift+1` style `InputGestureText` second, header-based role fallback, unique ids that
-resolve back to the WPF item. Covered by `MacMenuMapperTests`. The public `MacMenu` class, the
-host, the native menu and the rebuild logic are not built.
+resolve back to the WPF item. Covered by `MacMenuMapperTests`.
+
+**Built so far (step 2, the Cocoa host, not wired to WPF yet).** `WpfMacMenuHost` in `ProGPU.Wpf`
+(temporary placement, see above): builds the generated application menu (About, Services, Hide
+`h`, Hide Others, Show All, Quit `q`, all titled with the app's name) plus the mapped model as
+`NSMenu`/`NSMenuItem` (titles, key equivalents and modifier masks, enabled, checked state,
+separators, submenus, `setWindowsMenu:`/`setHelpMenu:` for the Window and Help roles) and
+installs it with `setMainMenu:`. Items target one native class registered once with an
+`[UnmanagedCallersOnly]` action; activation reports the item id through a single callback and
+Quit reports a reserved id so the WPF layer can close windows cancellably. Covered by
+`WpfMacMenuHostTests`, which build the bar headlessly, read it back through the Objective-C
+runtime and trigger items with `performActionForItemAtIndex:`. Not built: the public `MacMenu`
+class and attached properties, registration, the dispatcher hop for activation, the Quit
+sequence, rebuild on change, key-window switching, the Edit items and the Dock menu.
 
 **Verification plan.** Pure mapping tests (table above, gestures, access keys, recognised
 roles, collapsed and disabled items). A recording platform double for the rebuild coalescing

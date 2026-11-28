@@ -7541,12 +7541,19 @@ namespace System.Windows
 
         private const long MacCaptionDoubleClickMilliseconds = 500;
         private const double MacCaptionDoubleClickSlop = 4.0;
-        private const long MacCaptionClickHoldMilliseconds = 300;
         private long _macCaptionPressTick;
         private Point _macCaptionPressPoint;
 
         private bool IsPortableMacCaptionDoubleClick(Point mousePosition, int clickCount)
         {
+            // The window system's own count is authoritative: it honours the user's double-click
+            // interval and distance and never counts a drag.
+            int native = PortableWindowActivationService.GetPointerClickCount(_portableWindowActivation);
+            if (native > 0)
+            {
+                return native == 2;
+            }
+
             long now = Environment.TickCount64;
             bool isDouble = clickCount == 2 ||
                 (clickCount < 2 && _macCaptionPressTick != 0 &&
@@ -7579,8 +7586,8 @@ namespace System.Windows
 
             // A double click on the bar zooms the window, the macOS default for a title bar. (The user's
             // "double-click a window's title bar" choice of minimise or nothing is not honoured yet.)
-            // Plain host mouse events carry no click count, so a second press close in time and place
-            // to the previous one counts as the double click.
+            // Without a native click count from the host, a second press close in time and place to
+            // the previous one counts as the double click.
             if (IsPortableMacCaptionDoubleClick(mousePosition, clickCount))
             {
                 WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
@@ -7593,19 +7600,7 @@ namespace System.Windows
                 return false;
             }
 
-            double left = Left, top = Top;
-            long startTick = Environment.TickCount64;
-            bool started = PortableWindowActivationService.TryDragMove(_portableWindowActivation);
-
-            // The native drag runs until release; if the window moved, or the press was held, it was a
-            // drag and not the first click of a double click.
-            if (!Left.Equals(left) || !Top.Equals(top) ||
-                Environment.TickCount64 - startTick > MacCaptionClickHoldMilliseconds)
-            {
-                _macCaptionPressTick = 0;
-            }
-
-            return started;
+            return PortableWindowActivationService.TryDragMove(_portableWindowActivation);
         }
 
         internal bool TryBeginPortableChromeDrag(Point mousePosition, int clickCount = 1)

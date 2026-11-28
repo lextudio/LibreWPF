@@ -222,8 +222,11 @@ ancestor walk (hit testing itself needs the ProGPU geometry provider, which the 
 host does not register).
 
 Double click on the fused bar zooms the window (verified on a real window: frame 900x560 to the
-screen size, `isZoomed` 1, `WindowState` Maximized). Host mouse events carry no click count, so a
-second press within 500 ms and 4 px counts as the double click. The user's title-bar double-click
+screen size, `isZoomed` 1, `WindowState` Maximized). The count comes from the window system:
+`PortableWindowActivationCallbacks.GetPointerClickCount` reads `NSApplication.currentEvent.clickCount`,
+which honours the user's double-click interval and distance and does not count a drag. Verified: a
+real double click zooms, and a drag followed at once by a single click does not. A host without
+that callback falls back to a second press within 500 ms and 4 px. The user's title-bar double-click
 setting (minimise or nothing) is not read yet, and AppKit logs a harmless "Window move completed
 without beginning" because the first press of the pair already began a native drag.
 

@@ -176,17 +176,16 @@ public class PortableMacWindowTests
         {
             using IPortablePresentationSourceHost host = PortablePresentationSourceHost.Create();
             int drags = 0;
-            bool moveOnDrag = false;
-            Window? target = null;
+            int nativeClickCount = 0;
             PortableWindowActivationService.Register(
                 activate: value => value,
                 getHandle: value => host.Handle,
-                dragMove: activation => { drags++; if (moveOnDrag) target!.Left += 50; return true; },
+                dragMove: activation => { drags++; return true; },
+                getPointerClickCount: activation => nativeClickCount,
                 applyMacWindow: (activation, request) => new PortableMacWindowResult(0, 71d, 52d));
             try
             {
                 var window = new Window { Width = 400, Height = 300 };
-                target = window;
                 MacWindow.SetExtendsContentIntoTitleBar(window, true);
                 window.Show();
                 host.RootVisual = window;
@@ -227,15 +226,24 @@ public class PortableMacWindowTests
                 Assert.True(window.TryBeginPortableChromeDrag(new Point(300, 10), clickCount: 3));
                 Assert.Equal(WindowState.Normal, window.WindowState);
 
-                // A drag that moved the window is not the first click of a double click.
-                window.Left = 100;
-                moveOnDrag = true;
+                // With a native click count the host is authoritative, whatever the timing: a quick
+                // second press that the window system counts as a new click (after a drag) only drags.
+                nativeClickCount = 1;
                 int before = drags;
                 Assert.True(window.TryBeginPortableChromeDrag(new Point(150, 10)));
                 Assert.True(window.TryBeginPortableChromeDrag(new Point(150, 10)));
                 Assert.Equal(WindowState.Normal, window.WindowState);
                 Assert.Equal(before + 2, drags);
-                moveOnDrag = false;
+                nativeClickCount = 2;
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(150, 10)));
+                Assert.Equal(WindowState.Maximized, window.WindowState);
+                nativeClickCount = 3;
+                Assert.False(window.TryBeginPortableChromeDrag(new Point(150, 10)));
+                Assert.Equal(WindowState.Maximized, window.WindowState);
+                nativeClickCount = 2;
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(150, 10)));
+                Assert.Equal(WindowState.Normal, window.WindowState);
+                nativeClickCount = 0;
 
                 MacWindow.SetExtendsContentIntoTitleBar(window, false);
                 Assert.False(window.TryBeginPortableChromeDrag(new Point(300, 10)));

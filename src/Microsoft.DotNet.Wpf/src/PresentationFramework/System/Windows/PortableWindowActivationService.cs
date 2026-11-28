@@ -41,6 +41,7 @@ namespace System.Windows
         private static Func<object, double, double, bool> _showSystemMenu;
         private static Func<object, PortableWindowFrameInsets?> _getFrameInsets;
         private static Func<object, PortableMacWindowRequest, PortableMacWindowResult?> _applyMacWindow;
+        private static Func<object, int> _getPointerClickCount;
 
         internal static bool IsEnabled
         {
@@ -112,7 +113,8 @@ namespace System.Windows
             Action<object, object> setOwner = null,
             Action<object, Action> releaseDialog = null,
             Func<object, PortableWindowFrameInsets?> getFrameInsets = null,
-            Func<object, PortableMacWindowRequest, PortableMacWindowResult?> applyMacWindow = null)
+            Func<object, PortableMacWindowRequest, PortableMacWindowResult?> applyMacWindow = null,
+            Func<object, int> getPointerClickCount = null)
         {
             ArgumentNullException.ThrowIfNull(activate);
 
@@ -139,6 +141,7 @@ namespace System.Windows
             Volatile.Write(ref _showSystemMenu, showSystemMenu);
             Volatile.Write(ref _getFrameInsets, getFrameInsets);
             Volatile.Write(ref _applyMacWindow, applyMacWindow);
+            Volatile.Write(ref _getPointerClickCount, getPointerClickCount);
             Volatile.Write(ref _activate, activate);
         }
 
@@ -149,6 +152,7 @@ namespace System.Windows
             Volatile.Write(ref _showSystemMenu, null);
             Volatile.Write(ref _getFrameInsets, null);
             Volatile.Write(ref _applyMacWindow, null);
+            Volatile.Write(ref _getPointerClickCount, null);
             Volatile.Write(ref _show, null);
             Volatile.Write(ref _hide, null);
             Volatile.Write(ref _setWindowState, null);
@@ -237,6 +241,12 @@ namespace System.Windows
         internal static void SetClientSize(object activation, double width, double height)
         {
             Volatile.Read(ref _setClientSize)?.Invoke(activation, width, height);
+        }
+
+        /// <summary>The native click count of the press being dispatched; 0 when the host cannot say.</summary>
+        internal static int GetPointerClickCount(object activation)
+        {
+            return activation == null ? 0 : Math.Max(0, Volatile.Read(ref _getPointerClickCount)?.Invoke(activation) ?? 0);
         }
 
         internal static bool TryApplyMacWindow(object activation, PortableMacWindowRequest request, out PortableMacWindowResult result)
@@ -1385,7 +1395,8 @@ namespace System.Windows
                     callbacks.SetOwner,
                     callbacks.ReleaseDialog,
                     callbacks.GetFrameInsets,
-                    callbacks.ApplyMacWindow);
+                    callbacks.ApplyMacWindow,
+                    callbacks.GetPointerClickCount);
             }
 
             public bool TryRegisterMediaContextRenderService(

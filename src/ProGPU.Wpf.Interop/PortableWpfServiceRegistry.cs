@@ -572,6 +572,13 @@ public sealed class PortableWindowActivationCallbacks
     /// </summary>
     public Func<object, PortableMacWindowRequest, PortableMacWindowResult?>? ApplyMacWindow { get; init; }
 
+    /// <summary>
+    /// The click count of the pointer press being dispatched, as the native window system counts it
+    /// (system double-click interval and distance, never counting a drag). Zero or null means the
+    /// host cannot say, and consumers fall back to their own timing.
+    /// </summary>
+    public Func<object, int>? GetPointerClickCount { get; init; }
+
     public Action<object, double, double>? SetPosition { get; }
 
     public Action<object, bool>? SetTopmost { get; }

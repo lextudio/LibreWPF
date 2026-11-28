@@ -174,6 +174,22 @@ internal static partial class WpfMacWindowIntegration
         }
     }
 
+    /// <summary>
+    /// The click count AppKit assigned to the mouse event being dispatched (the system double-click
+    /// interval and distance apply, and a drag does not count), or 0 off macOS or without an event.
+    /// </summary>
+    internal static int GetCurrentClickCount()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return 0;
+        }
+
+        nint application = SendObject(GetClass("NSApplication"), Selector("sharedApplication"));
+        nint current = application == 0 ? 0 : SendObject(application, Selector("currentEvent"));
+        return current == 0 ? 0 : (int)Math.Clamp((long)SendUnsigned(current, Selector("clickCount")), 0L, int.MaxValue);
+    }
+
     private static bool IsFullScreen(nint nsWindow) =>
         nsWindow != 0 && (SendUnsigned(nsWindow, Selector("styleMask")) & StyleMaskFullScreen) != 0;
 

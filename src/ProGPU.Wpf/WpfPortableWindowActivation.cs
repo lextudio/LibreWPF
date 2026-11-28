@@ -196,7 +196,8 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
             ReleaseDialog = (activation, completed) => ((WpfPortableWindowActivation)activation).Host.ReleaseNativeDialog(completed),
             SetOwner = (activation, owner) => ((WpfPortableWindowActivation)activation).SetOwner(owner),
             GetFrameInsets = activation => ((WpfPortableWindowActivation)activation).Host.GetLogicalNativeFrameInsets(),
-            ApplyMacWindow = (activation, request) => ((WpfPortableWindowActivation)activation).Host.ApplyMacWindow(request)
+            ApplyMacWindow = (activation, request) => ((WpfPortableWindowActivation)activation).Host.ApplyMacWindow(request),
+            GetPointerClickCount = activation => WpfMacWindowIntegration.GetCurrentClickCount()
         };
     }
 

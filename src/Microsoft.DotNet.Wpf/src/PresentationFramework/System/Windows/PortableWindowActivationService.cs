@@ -40,6 +40,7 @@ namespace System.Windows
         private static Func<object, bool> _requestActivation;
         private static Func<object, double, double, bool> _showSystemMenu;
         private static Func<object, PortableWindowFrameInsets?> _getFrameInsets;
+        private static Func<object, PortableMacWindowRequest, PortableMacWindowResult?> _applyMacWindow;
 
         internal static bool IsEnabled
         {
@@ -110,7 +111,8 @@ namespace System.Windows
             Action<object, Func<bool>> runDialog = null,
             Action<object, object> setOwner = null,
             Action<object, Action> releaseDialog = null,
-            Func<object, PortableWindowFrameInsets?> getFrameInsets = null)
+            Func<object, PortableWindowFrameInsets?> getFrameInsets = null,
+            Func<object, PortableMacWindowRequest, PortableMacWindowResult?> applyMacWindow = null)
         {
             ArgumentNullException.ThrowIfNull(activate);
 
@@ -136,6 +138,7 @@ namespace System.Windows
             Volatile.Write(ref _createHidden, createHidden);
             Volatile.Write(ref _showSystemMenu, showSystemMenu);
             Volatile.Write(ref _getFrameInsets, getFrameInsets);
+            Volatile.Write(ref _applyMacWindow, applyMacWindow);
             Volatile.Write(ref _activate, activate);
         }
 
@@ -145,6 +148,7 @@ namespace System.Windows
             Volatile.Write(ref _createHidden, null);
             Volatile.Write(ref _showSystemMenu, null);
             Volatile.Write(ref _getFrameInsets, null);
+            Volatile.Write(ref _applyMacWindow, null);
             Volatile.Write(ref _show, null);
             Volatile.Write(ref _hide, null);
             Volatile.Write(ref _setWindowState, null);
@@ -233,6 +237,19 @@ namespace System.Windows
         internal static void SetClientSize(object activation, double width, double height)
         {
             Volatile.Read(ref _setClientSize)?.Invoke(activation, width, height);
+        }
+
+        internal static bool TryApplyMacWindow(object activation, PortableMacWindowRequest request, out PortableMacWindowResult result)
+        {
+            result = default;
+            if (activation == null ||
+                Volatile.Read(ref _applyMacWindow)?.Invoke(activation, request) is not { } applied)
+            {
+                return false;
+            }
+
+            result = applied;
+            return true;
         }
 
         internal static bool TryGetFrameInsets(object activation, out PortableWindowFrameInsets frame)
@@ -1367,7 +1384,8 @@ namespace System.Windows
                     callbacks.RunDialog,
                     callbacks.SetOwner,
                     callbacks.ReleaseDialog,
-                    callbacks.GetFrameInsets);
+                    callbacks.GetFrameInsets,
+                    callbacks.ApplyMacWindow);
             }
 
             public bool TryRegisterMediaContextRenderService(

@@ -195,7 +195,8 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
             RunDialog = (activation, continueRunning) => ((WpfPortableWindowActivation)activation).RunCore(continueRunning),
             ReleaseDialog = (activation, completed) => ((WpfPortableWindowActivation)activation).Host.ReleaseNativeDialog(completed),
             SetOwner = (activation, owner) => ((WpfPortableWindowActivation)activation).SetOwner(owner),
-            GetFrameInsets = activation => ((WpfPortableWindowActivation)activation).Host.GetLogicalNativeFrameInsets()
+            GetFrameInsets = activation => ((WpfPortableWindowActivation)activation).Host.GetLogicalNativeFrameInsets(),
+            ApplyMacWindow = (activation, request) => ((WpfPortableWindowActivation)activation).Host.ApplyMacWindow(request)
         };
     }
 
@@ -1173,6 +1174,13 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
         if (state.HasAllowsTransparency)
         {
             options.TransparentFramebuffer = state.AllowsTransparency;
+        }
+
+        // A macOS backdrop material needs the framebuffer to be transparent from creation; it does not
+        // require WindowStyle.None, so the native title bar and traffic lights stay available.
+        if (state.HasMacWindow && WpfMacWindowIntegration.RequiresTransparentFramebuffer(state.MacBackdrop))
+        {
+            options.TransparentFramebuffer = true;
         }
 
         options.WindowBorder = ResolveWindowBorder(state, options.WindowBorder);

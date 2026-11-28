@@ -1,6 +1,6 @@
 # macOS window integration: title bar fusion, backdrop, appearance, native menu
 
-Status: design, with phase A in implementation. Written after reading the LibreWPF/ProGPU
+Status: phase A implemented (section 7); phase B is design only. Written after reading the LibreWPF/ProGPU
 sources, the Avalonia and Uno Platform documentation, and Apple's HIG.
 
 ## 1. Why
@@ -93,13 +93,15 @@ render path unless set.
 | Property | Type / default | Meaning |
 | --- | --- | --- |
 | `ExtendsContentIntoTitleBar` | bool / false | `NSWindowStyleMaskFullSizeContentView`, transparent title bar, traffic lights kept. Content is laid out from the top of the window. |
-| `ShowsTitle` | bool / true | Whether the system title text is drawn when the bar is fused (`titleVisibility`). |
 | `TitleBarHeight` | double / NaN (system default) | Height of the fused bar the traffic lights are centred in (`ExtendedTitleBarHeight`); also the drag height when `WindowChrome` is absent. |
 | `CaptionInsets` | Thickness, read-only | `Left` = space the traffic lights occupy, `Top` = bar height. Updated on fullscreen and appearance changes. Layout binds to it. |
 | `Backdrop` | `MacBackdrop` / `None` | Requested material: `None`, `Transparent`, `WindowBackground`, `ContentBackground`, `UnderWindowBackground`, `UnderPageBackground`. |
 | `ActualBackdrop` | `MacBackdrop`, read-only | What the host applied (falls back to `None` when unsupported). |
-| `BackdropFallback` | Brush | Painted over the window when `ActualBackdrop` is `None`; ignored otherwise. |
 | `Appearance` | `System` / `Light` / `Dark` | `NSWindow.appearance`; `System` follows macOS. |
+
+Deferred from the first cut (they can be added without breaking anything): `ShowsTitle` (a fused
+bar always hides the system title text, as Uno does) and `BackdropFallback` (an app that wants a
+solid colour when `ActualBackdrop` is `None` sets `Window.Background` from that property).
 
 `MacBackdrop` names are the macOS materials, not Windows names: Mica and Acrylic describe
 Windows materials and map to different macOS ones. The four non-trivial values are exactly what
@@ -135,8 +137,8 @@ transparency from `Backdrop` before the native window is created and must not re
 ```text
 MacWindow attached properties (WPF layer, PresentationFramework)
   -> Window : IPortableWindowStateSource.TryGetPortableWindowState
-  -> PortableWindowState { HasMacWindow, ExtendsContentIntoTitleBar, ShowsTitle, TitleBarHeight,
-                           Backdrop, Appearance }                 (ProGPU.Wpf.Interop)
+  -> PortableWindowState { HasMacWindow, MacBackdrop }          (creation: framebuffer transparency)
+  -> PortableWindowActivationService.TryApplyMacWindow(PortableMacWindowRequest)   (live updates)
   -> WpfPortableWindowActivation.ApplyPortableWindowState (options: TransparentFramebuffer from Backdrop)
   -> ProGpuWpfWindowHost (after the native window exists)
        controller.SetClientAreaExtension / SetTitleBarHeight / SetTheme / SetBackdrop
@@ -180,3 +182,34 @@ after each style change, not hard-coded.
   Dark, plus a drag/double-click check; `CaptionInsets` compared with the real button frames.
 - Pulse consumes it only after a published closure contains it; until then an overlay build
   demonstrates it in JIT.
+
+## 7. Phase A: what was built and measured
+
+Built: `MacWindow` (`System.Windows.Platform.MacOS`, public, in the reference assembly),
+`PortableMacWindowRequest`/`Result` and `PortableWindowActivationCallbacks.ApplyMacWindow`
+(Interop), `PortableWindowActivationService.TryApplyMacWindow`, `Window.UpdatePortableMacWindow`
+(called on property change and once after the activation exists), and
+`WpfMacWindowIntegration` + `ProGpuWpfWindowHost.ApplyMacWindow` (ProGPU.Wpf). The activation
+makes the framebuffer transparent for any backdrop other than `None` without forcing
+`WindowStyle.None`.
+
+Measured on macOS (Apple silicon, managed renderer, Pulse overlay build):
+`ExtendsContentIntoTitleBar` + `UnderWindowBackground` fused the title bar with floating traffic
+lights over the content and drew the material behind it; `ActualBackdrop` reported
+`UnderWindowBackground` and `CaptionInsets` was `71, 22` (left = zoom button right edge + 8 pt,
+top = the system default bar height). Tests: 4 `PortableMacWindowTests` (WPF layer through the
+activation service) and 27 `WpfMacWindowIntegrationTests` (mapping, no-controller, plumbing
+contract).
+
+Finding (a backend defect, deliberately not fixed here): the backend's `SetBackdrop` adds its
+`NSVisualEffectView` as a subview of the content view. The content view layer-hosts the rendered
+frame, so the material covered all window content in a first attempt (a blank grey window). The
+host therefore asks the controller only for `Transparent` and adds its own effect view to the
+frame view, **below** the content view. The proper fix belongs in the ProGPU repository
+(`MacOsNativeWindowPlatform.SetBackdrop`); it needs a ProGPU commit and pointer bump, which is
+held until it can be published in order.
+
+Not verified yet: window drag from the fused bar and the double-click action, clicks on controls
+inside the top bar region, full-screen (insets should drop to zero), live appearance changes,
+the NativeMilWgpu renderer, `CaptionInsets` after a bar-height change, and a `Backdrop` change
+after creation from `None` (reports `None`, as designed).

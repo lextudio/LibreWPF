@@ -19,6 +19,7 @@ using MS.Internal.Interop;
 using MS.Internal.KnownBoxes;
 using MS.Win32;
 using ProGPU.Wpf.Interop;
+using System.Windows.Platform.MacOS;
 using System.Diagnostics.CodeAnalysis;
 
 using BuildInfo = MS.Internal.PresentationFramework.BuildInfo;
@@ -139,6 +140,8 @@ namespace System.Windows
                 ShowActivated = ShowActivated,
                 HasAllowsTransparency = true,
                 AllowsTransparency = AllowsTransparency,
+                HasMacWindow = true,
+                MacBackdrop = (int)MacWindow.GetBackdrop(this),
                 HasOwner = Owner != null,
                 Owner = Owner
             };
@@ -7458,6 +7461,33 @@ namespace System.Windows
             }
         }
 
+        /// <summary>
+        /// Sends the macOS title bar fusion, backdrop and appearance request to the live native
+        /// window and publishes what the host actually applied. A window without a portable
+        /// activation (or on a host with no macOS window) reports no backdrop and zero insets.
+        /// </summary>
+        internal void UpdatePortableMacWindow()
+        {
+            var request = new PortableMacWindowRequest(
+                MacWindow.GetExtendsContentIntoTitleBar(this),
+                MacWindow.GetTitleBarHeight(this),
+                (int)MacWindow.GetBackdrop(this),
+                (int)MacWindow.GetAppearance(this));
+
+            if (_portableWindowActivation != null &&
+                PortableWindowActivationService.TryApplyMacWindow(_portableWindowActivation, request, out var result))
+            {
+                MacWindow.SetActual(
+                    this,
+                    Enum.IsDefined(typeof(MacBackdrop), result.ActualBackdrop) ? (MacBackdrop)result.ActualBackdrop : MacBackdrop.None,
+                    new Thickness(result.CaptionInsetLeft, result.CaptionInsetTop, 0d, 0d));
+            }
+            else
+            {
+                MacWindow.SetActual(this, MacBackdrop.None, default);
+            }
+        }
+
         internal void SetPortableCustomChrome(bool enabled)
         {
             if (_hasPortableCustomChrome == enabled)
@@ -7741,6 +7771,8 @@ namespace System.Windows
                     ResizeMode,
                     GetPortableWindowStyle());
             }
+
+            UpdatePortableMacWindow();
 
             OnSourceInitialized(EventArgs.Empty);
             return true;

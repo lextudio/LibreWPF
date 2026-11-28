@@ -565,6 +565,13 @@ public sealed class PortableWindowActivationCallbacks
     /// </summary>
     public Func<object, PortableWindowFrameInsets?>? GetFrameInsets { get; init; }
 
+    /// <summary>
+    /// Applies the macOS title bar fusion, backdrop and appearance request to the live native
+    /// window and returns what was actually applied. Null means the host has no macOS window
+    /// (other platform, or not yet attached); consumers then report no backdrop and zero insets.
+    /// </summary>
+    public Func<object, PortableMacWindowRequest, PortableMacWindowResult?>? ApplyMacWindow { get; init; }
+
     public Action<object, double, double>? SetPosition { get; }
 
     public Action<object, bool>? SetTopmost { get; }

@@ -93,6 +93,15 @@ public sealed class PortableWindowState
 
     public bool AllowsTransparency { get; set; }
 
+    /// <summary>
+    /// Whether <see cref="MacBackdrop"/> carries the source window's requested macOS backdrop
+    /// (see <see cref="PortableMacWindowRequest"/> for the codes). A backdrop other than 0
+    /// requires a transparent framebuffer, which hosts must decide before creating the native window.
+    /// </summary>
+    public bool HasMacWindow { get; set; }
+
+    public int MacBackdrop { get; set; }
+
     public bool HasOwner { get; set; }
 
     public object? Owner { get; set; }

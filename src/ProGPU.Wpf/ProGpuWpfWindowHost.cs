@@ -601,6 +601,28 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return logical.IsValid ? logical : null;
     }
 
+    private int _macBackdropApplied;
+    private nint _macEffectView;
+
+    /// <summary>
+    /// Applies the macOS title bar fusion, backdrop and appearance request to the native window.
+    /// Null when there is no macOS window to apply it to.
+    /// </summary>
+    public PortableMacWindowResult? ApplyMacWindow(PortableMacWindowRequest request)
+    {
+        if (_window?.IsInitialized != true)
+        {
+            return null;
+        }
+
+        return WpfMacWindowIntegration.Apply(
+            _windowController,
+            _options.TransparentFramebuffer,
+            request,
+            ref _macBackdropApplied,
+            ref _macEffectView);
+    }
+
     public long SkippedFrameCount { get; private set; }
 
     public long RetainedWpfReplaySkipCount { get; private set; }

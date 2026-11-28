@@ -12464,6 +12464,43 @@ namespace System.Windows.Shapes
         protected override void OnRender(System.Windows.Media.DrawingContext drawingContext) { }
     }
 }
+namespace System.Windows.Platform.MacOS
+{
+    public enum MacAppearance
+    {
+        System = 0,
+        Light = 1,
+        Dark = 2,
+    }
+    public enum MacBackdrop
+    {
+        None = 0,
+        Transparent = 1,
+        WindowBackground = 2,
+        ContentBackground = 3,
+        UnderWindowBackground = 4,
+        UnderPageBackground = 5,
+    }
+    public static partial class MacWindow
+    {
+        public static readonly System.Windows.DependencyProperty ActualBackdropProperty;
+        public static readonly System.Windows.DependencyProperty AppearanceProperty;
+        public static readonly System.Windows.DependencyProperty BackdropProperty;
+        public static readonly System.Windows.DependencyProperty CaptionInsetsProperty;
+        public static readonly System.Windows.DependencyProperty ExtendsContentIntoTitleBarProperty;
+        public static readonly System.Windows.DependencyProperty TitleBarHeightProperty;
+        public static System.Windows.Platform.MacOS.MacBackdrop GetActualBackdrop(System.Windows.Window window) { throw null; }
+        public static System.Windows.Platform.MacOS.MacAppearance GetAppearance(System.Windows.Window window) { throw null; }
+        public static System.Windows.Platform.MacOS.MacBackdrop GetBackdrop(System.Windows.Window window) { throw null; }
+        public static System.Windows.Thickness GetCaptionInsets(System.Windows.Window window) { throw null; }
+        public static bool GetExtendsContentIntoTitleBar(System.Windows.Window window) { throw null; }
+        public static double GetTitleBarHeight(System.Windows.Window window) { throw null; }
+        public static void SetAppearance(System.Windows.Window window, System.Windows.Platform.MacOS.MacAppearance value) { }
+        public static void SetBackdrop(System.Windows.Window window, System.Windows.Platform.MacOS.MacBackdrop value) { }
+        public static void SetExtendsContentIntoTitleBar(System.Windows.Window window, bool value) { }
+        public static void SetTitleBarHeight(System.Windows.Window window, double value) { }
+    }
+}
 namespace System.Windows.Shell
 {
     public abstract partial class JumpItem

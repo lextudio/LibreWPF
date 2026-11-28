@@ -233,6 +233,98 @@ public class MacMenuMapperTests
         }
     }
 
+    [PortableInputFact]
+    public void NativeMenuBarRebuildsWhenWhatTheModelReadsChanges()
+    {
+        RunInUiApartment(() =>
+        {
+            PortableMenuItem[]? model = null;
+            int installs = 0;
+            PortableWindowActivationService.Register(
+                activate: value => value,
+                installMenuBar: (appName, items, callback) =>
+                {
+                    model = items;
+                    installs++;
+                    return true;
+                });
+            void Flush()
+            {
+                Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+                Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+            }
+
+            try
+            {
+                var vitals = new MenuItem { Header = "Vitals" };
+                var separator = new Separator();
+                var silicon = new MenuItem { Header = "Silicon", IsCheckable = true };
+                var view = new MenuItem { Header = "View" };
+                view.Items.Add(vitals);
+                view.Items.Add(separator);
+                view.Items.Add(silicon);
+                var menu = new Menu();
+                menu.Items.Add(view);
+
+                MacMenu.SetUsesNativeMenuBar(menu, true);
+                menu.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+                Flush();
+                Assert.NotNull(model);
+                int baseline = installs;
+                Assert.Equal(3, model![0].Children.Length);
+
+                vitals.Header = "_Overview";
+                Flush();
+                Assert.Equal("Overview", model![0].Children[0].Title);
+
+                silicon.IsChecked = true;
+                Flush();
+                Assert.True(model![0].Children[2].IsChecked);
+
+                vitals.IsEnabled = false;
+                Flush();
+                Assert.False(model![0].Children[0].IsEnabled);
+
+                vitals.InputGestureText = "Cmd+1";
+                Flush();
+                Assert.Equal("1", model![0].Children[0].KeyEquivalent);
+
+                separator.Visibility = Visibility.Collapsed;
+                Flush();
+                Assert.Equal(2, model![0].Children.Length);
+
+                // A nested item added later is itself watched.
+                var added = new MenuItem { Header = "Proof" };
+                view.Items.Add(added);
+                Flush();
+                Assert.Equal("Proof", model![0].Children[2].Title);
+                added.Header = "Facts";
+                Flush();
+                Assert.Equal("Facts", model![0].Children[2].Title);
+
+                // Several changes in one turn coalesce into one install.
+                int before = installs;
+                vitals.Header = "A";
+                silicon.Header = "B";
+                added.Header = "C";
+                Flush();
+                Assert.Equal(before + 1, installs);
+
+                // Detached watches stop reacting.
+                MacMenu.SetUsesNativeMenuBar(menu, false);
+                int after = installs;
+                vitals.Header = "Z";
+                Flush();
+                Assert.Equal(after, installs);
+                Assert.True(installs > baseline);
+            }
+            finally
+            {
+                PortableWindowActivationService.Clear();
+            }
+        });
+    }
+
     [Fact]
     public void NullMenuMapsToNothing()
     {

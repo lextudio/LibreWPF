@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Reflection;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -43,9 +44,10 @@ namespace System.Windows.Platform.MacOS
             s_isNativeMenuBarActivePropertyKey.DependencyProperty;
 
         private static readonly List<Menu> s_registered = new List<Menu>();
+        private static readonly Dictionary<Menu, MenuWatch> s_watches = new Dictionary<Menu, MenuWatch>();
         private static MacMenuMapper s_mapper = new MacMenuMapper();
         private static Menu s_installed;
-        private static bool s_refreshPending;
+        private static DispatcherOperation s_pendingRebuild;
 
         /// <summary>The name used by the generated About, Hide and Quit items; defaults to the entry assembly name.</summary>
         public static string ApplicationName { get; set; }
@@ -59,7 +61,8 @@ namespace System.Windows.Platform.MacOS
         /// <summary>Rebuilds the installed menu bar now (for example after a header or gesture changed).</summary>
         public static void Refresh()
         {
-            s_refreshPending = false;
+            s_pendingRebuild?.Abort();
+            s_pendingRebuild = null;
             Rebuild();
         }
 
@@ -102,7 +105,9 @@ namespace System.Windows.Platform.MacOS
             if (!s_registered.Contains(menu))
             {
                 s_registered.Add(menu);
-                ((INotifyCollectionChanged)menu.Items).CollectionChanged += OnItemsChanged;
+                var watch = new MenuWatch(menu, () => ScheduleRebuild(menu));
+                s_watches[menu] = watch;
+                watch.Attach();
 
                 // Activation is also when the key window changes (the bar follows it) and when the
                 // host finishes launching, which replaces any menu bar installed before that.
@@ -120,7 +125,11 @@ namespace System.Windows.Platform.MacOS
         {
             if (s_registered.Remove(menu))
             {
-                ((INotifyCollectionChanged)menu.Items).CollectionChanged -= OnItemsChanged;
+                if (s_watches.Remove(menu, out MenuWatch watch))
+                {
+                    watch.Detach();
+                }
+
                 Window window = Window.GetWindow(menu);
                 if (window != null)
                 {
@@ -139,34 +148,23 @@ namespace System.Windows.Platform.MacOS
             }
         }
 
-        private static void OnItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            foreach (Menu menu in s_registered)
-            {
-                if (ReferenceEquals(menu.Items, sender))
-                {
-                    ScheduleRebuild(menu);
-                    return;
-                }
-            }
-        }
-
-        /// <summary>Coalesces rebuilds to one per dispatcher turn.</summary>
+        /// <summary>
+        /// Coalesces rebuilds to one per dispatcher turn. Pending is the live operation, not a flag,
+        /// so a dispatcher that shut down with a rebuild queued cannot block later ones.
+        /// </summary>
         private static void ScheduleRebuild(DispatcherObject source)
         {
-            if (s_refreshPending)
+            if (s_pendingRebuild != null &&
+                s_pendingRebuild.Status == DispatcherOperationStatus.Pending &&
+                ReferenceEquals(s_pendingRebuild.Dispatcher, source.Dispatcher))
             {
                 return;
             }
 
-            s_refreshPending = true;
-            source.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+            s_pendingRebuild = source.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
             {
-                if (s_refreshPending)
-                {
-                    s_refreshPending = false;
-                    Rebuild();
-                }
+                s_pendingRebuild = null;
+                Rebuild();
             }));
         }
 
@@ -310,6 +308,103 @@ namespace System.Windows.Platform.MacOS
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Watches everything the mapped model reads: item collections at every level, and per item
+        /// Header, Command, CommandParameter, InputGestureText, IsEnabled, IsChecked, IsCheckable and
+        /// Visibility (separators included). A change to a collection re-walks the tree so new items
+        /// are watched; any change asks for one coalesced rebuild. (Changes to the gestures inside a
+        /// RoutedCommand are not observable and need MacMenu.Refresh.)
+        /// </summary>
+        private sealed class MenuWatch
+        {
+            private static readonly DependencyProperty[] s_itemProperties =
+            {
+                HeaderedItemsControl.HeaderProperty,
+                MenuItem.CommandProperty,
+                MenuItem.CommandParameterProperty,
+                MenuItem.InputGestureTextProperty,
+                UIElement.IsEnabledProperty,
+                MenuItem.IsCheckedProperty,
+                MenuItem.IsCheckableProperty,
+                UIElement.VisibilityProperty,
+            };
+
+            private readonly Menu _menu;
+            private readonly Action _changed;
+            private readonly List<ItemCollection> _collections = new List<ItemCollection>();
+            private readonly List<MenuItem> _items = new List<MenuItem>();
+            private readonly List<UIElement> _separators = new List<UIElement>();
+            private readonly EventHandler _onPropertyChanged;
+            private readonly NotifyCollectionChangedEventHandler _onCollectionChanged;
+
+            internal MenuWatch(Menu menu, Action changed)
+            {
+                _menu = menu;
+                _changed = changed;
+                _onPropertyChanged = (sender, e) => _changed();
+                _onCollectionChanged = (sender, e) =>
+                {
+                    Detach();
+                    Attach();
+                    _changed();
+                };
+            }
+
+            internal void Attach()
+            {
+                Walk(_menu.Items);
+            }
+
+            internal void Detach()
+            {
+                foreach (ItemCollection collection in _collections)
+                {
+                    ((INotifyCollectionChanged)collection).CollectionChanged -= _onCollectionChanged;
+                }
+
+                foreach (MenuItem item in _items)
+                {
+                    foreach (DependencyProperty property in s_itemProperties)
+                    {
+                        DependencyPropertyDescriptor.FromProperty(property, typeof(MenuItem))?.RemoveValueChanged(item, _onPropertyChanged);
+                    }
+                }
+
+                foreach (UIElement separator in _separators)
+                {
+                    DependencyPropertyDescriptor.FromProperty(UIElement.VisibilityProperty, typeof(UIElement))?.RemoveValueChanged(separator, _onPropertyChanged);
+                }
+
+                _collections.Clear();
+                _items.Clear();
+                _separators.Clear();
+            }
+
+            private void Walk(ItemCollection items)
+            {
+                ((INotifyCollectionChanged)items).CollectionChanged += _onCollectionChanged;
+                _collections.Add(items);
+                for (int i = 0; i < items.Count; i++)
+                {
+                    if (items[i] is MenuItem item)
+                    {
+                        foreach (DependencyProperty property in s_itemProperties)
+                        {
+                            DependencyPropertyDescriptor.FromProperty(property, typeof(MenuItem))?.AddValueChanged(item, _onPropertyChanged);
+                        }
+
+                        _items.Add(item);
+                        Walk(item.Items);
+                    }
+                    else if (items[i] is Separator separator)
+                    {
+                        DependencyPropertyDescriptor.FromProperty(UIElement.VisibilityProperty, typeof(UIElement))?.AddValueChanged(separator, _onPropertyChanged);
+                        _separators.Add(separator);
+                    }
+                }
+            }
         }
     }
 }

@@ -306,10 +306,17 @@ Command+1 (synthetic HID key events) raised the item's `Click`; a real Command+Q
 window's `Closing` and the process exited. This answers open question 1 only for a plain window:
 Command shortcuts reached the menu with a WPF window key, not yet with a focused text element.
 
-Not built: `MacMenu.Role` and `MacMenu.AboutCommand`/`ApplicationMenuItems`/`DockMenu`, rebuilds
-on header, command, gesture, enabled, checked or visibility changes (only the top-level `Items`
-collection and `Refresh()` rebuild today), the Edit items and the text-key requirement, the Dock
-menu.
+**Rebuild triggers (step 4).** Each registered menu is watched at every level: the item
+collections, and per item `Header`, `Command`, `CommandParameter`, `InputGestureText`,
+`IsEnabled`, `IsChecked`, `IsCheckable` and `Visibility` (separators included). A collection
+change re-walks the tree so new items are watched too, and any change asks for one coalesced
+rebuild (the pending rebuild is the live dispatcher operation, so a dispatcher that shut down with
+one queued cannot block later ones). Gestures added to or removed from a `RoutedCommand` are not
+observable; `MacMenu.Refresh()` covers that. Covered by a unit test over header, checked,
+enabled, gesture text, separator visibility, a nested item added later, coalescing and detaching.
+
+Not built: `MacMenu.Role` and `MacMenu.AboutCommand`/`ApplicationMenuItems`/`DockMenu`, the Edit
+items and the text-key requirement, the Dock menu.
 
 **Verification plan.** Pure mapping tests (table above, gestures, access keys, recognised
 roles, collapsed and disabled items). A recording platform double for the rebuild coalescing

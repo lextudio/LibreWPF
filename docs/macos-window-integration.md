@@ -250,20 +250,31 @@ activation is posted to the UI dispatcher and runs the WPF command there.
   question 3.
 - Quit and Hide always exist, even with no `Menu`.
 
-**Open questions, to measure before building.**
+**Measured (spike on a running window, macOS with the GLFW host).**
+
+- The host already installs a menu bar: an application menu (About, Services, Hide `h`, Hide
+  Others, Show All, Quit `q`, all titled with the process name) and a Window menu (Minimize `m`,
+  Zoom, Bring All to Front, Enter Full Screen `f` listed twice, then the window list).
+- `[NSApp setMainMenu:]` after the window is shown is honoured, and it replaces the whole bar:
+  the default Quit, Hide and window list disappear. So the generated application menu is
+  required, titled with the app's own name, and `setWindowsMenu:` must be called again.
+
+**Open questions, still to measure before building the host.**
 
 0. What the standard About panel shows for an unbundled .NET process, and which option keys
    (`ApplicationName`, `ApplicationVersion`, `Copyright`) are needed to make it correct.
-
-1. Whether the GLFW host leaves its own default menu bar in place. GLFW creates one at init unless
-   told not to, so the integration must replace or merge it; the first spike reads
-   `NSApp.mainMenu` on a running window and records its items.
-2. Whether `[NSApp setMainMenu:]` after the first window is shown is honoured without an app
-   delegate round trip.
-3. How `performKeyEquivalent:` reaches the menu when the key window's content view is the
+1. How `performKeyEquivalent:` reaches the menu when the key window's content view is the
    GLFW layer-hosting view (Command+Q and Command+1 must work with focus in any WPF element).
-4. The Dock menu needs `applicationDockMenu:` on the application delegate, which GLFW owns; if it
+2. The Dock menu needs `applicationDockMenu:` on the application delegate, which GLFW owns; if it
    cannot be added without replacing the delegate it is deferred.
+
+**Built so far (step 1, no public API yet).** `PortableMenuItem` (neutral model, in
+`ProGPU.Wpf.Interop`) and the internal pure `MacMenuMapper` that turns a `Menu` tree into it:
+access-key stripping, collapsed items omitted, separators kept, `IsEnabled` and `IsChecked`
+(only when checkable), key equivalents from the command's `KeyGesture` first and from
+`Cmd+Shift+1` style `InputGestureText` second, header-based role fallback, unique ids that
+resolve back to the WPF item. Covered by `MacMenuMapperTests`. The public `MacMenu` class, the
+host, the native menu and the rebuild logic are not built.
 
 **Verification plan.** Pure mapping tests (table above, gestures, access keys, recognised
 roles, collapsed and disabled items). A recording platform double for the rebuild coalescing

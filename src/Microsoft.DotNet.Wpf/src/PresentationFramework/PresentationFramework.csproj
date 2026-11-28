@@ -1317,6 +1317,7 @@
     <Compile Include="System\Windows\Shapes\Rectangle.cs" />
     <Compile Include="System\Windows\Shapes\Shape.cs" />
     <Compile Include="System\Windows\SharedDp.cs" />
+    <Compile Include="System\Windows\Platform\MacOS\MacMenuMapper.cs" />
     <Compile Include="System\Windows\Platform\MacOS\MacWindow.cs" />
     <Compile Include="System\Windows\Shell\JumpItem.cs" />
     <Compile Include="System\Windows\Shell\JumpList.cs" />

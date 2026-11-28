@@ -221,7 +221,13 @@ drag moved the native window by the dragged distance (frame x 50 to 199, y down 
 ancestor walk (hit testing itself needs the ProGPU geometry provider, which the WPF-layer test
 host does not register).
 
-Not verified yet: the double-click action (zoom or minimise per the user's setting), full-screen
+Double click on the fused bar zooms the window (verified on a real window: frame 900x560 to the
+screen size, `isZoomed` 1, `WindowState` Maximized). Host mouse events carry no click count, so a
+second press within 500 ms and 4 px counts as the double click. The user's title-bar double-click
+setting (minimise or nothing) is not read yet, and AppKit logs a harmless "Window move completed
+without beginning" because the first press of the pair already began a native drag.
+
+Not verified yet: full-screen
 (insets should drop to zero), live appearance changes, the NativeMilWgpu renderer,
 `CaptionInsets` after a bar-height change, and a `Backdrop` change after creation from `None`
 (reports `None`, as designed).

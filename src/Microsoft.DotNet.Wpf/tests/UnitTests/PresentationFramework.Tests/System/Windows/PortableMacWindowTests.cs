@@ -137,14 +137,17 @@ public class PortableMacWindowTests
         {
             using IPortablePresentationSourceHost host = PortablePresentationSourceHost.Create();
             int drags = 0;
+            bool moveOnDrag = false;
+            Window? target = null;
             PortableWindowActivationService.Register(
                 activate: value => value,
                 getHandle: value => host.Handle,
-                dragMove: activation => { drags++; return true; },
+                dragMove: activation => { drags++; if (moveOnDrag) target!.Left += 50; return true; },
                 applyMacWindow: (activation, request) => new PortableMacWindowResult(0, 71d, 52d));
             try
             {
                 var window = new Window { Width = 400, Height = 300 };
+                target = window;
                 MacWindow.SetExtendsContentIntoTitleBar(window, true);
                 window.Show();
                 host.RootVisual = window;
@@ -158,9 +161,47 @@ public class PortableMacWindowTests
                 Assert.False(window.TryBeginPortableChromeDrag(new Point(401, 10)));
                 Assert.Equal(1, drags);
 
+                // A double click zooms and back instead of dragging, and only inside the bar.
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(300, 10), clickCount: 2));
+                Assert.Equal(WindowState.Maximized, window.WindowState);
+                Assert.False(window.TryBeginPortableChromeDrag(new Point(300, 10)));
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(300, 10), clickCount: 2));
+                Assert.Equal(WindowState.Normal, window.WindowState);
+                Assert.False(window.TryBeginPortableChromeDrag(new Point(300, 80), clickCount: 2));
+                Assert.Equal(1, drags);
+
+                // Without a host click count, two quick presses at the same spot are a double click.
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(200, 10)));
+                Assert.Equal(2, drags);
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(201, 11)));
+                Assert.Equal(WindowState.Maximized, window.WindowState);
+                Assert.Equal(2, drags);
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(201, 11), clickCount: 2));
+                Assert.Equal(WindowState.Normal, window.WindowState);
+                // A press far from the previous one is a new drag, not a double click.
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(100, 10)));
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(300, 10)));
+                Assert.Equal(WindowState.Normal, window.WindowState);
+                Assert.Equal(4, drags);
+
+                // A host click count of 3 is not a second zoom toggle.
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(300, 10), clickCount: 3));
+                Assert.Equal(WindowState.Normal, window.WindowState);
+
+                // A drag that moved the window is not the first click of a double click.
+                window.Left = 100;
+                moveOnDrag = true;
+                int before = drags;
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(150, 10)));
+                Assert.True(window.TryBeginPortableChromeDrag(new Point(150, 10)));
+                Assert.Equal(WindowState.Normal, window.WindowState);
+                Assert.Equal(before + 2, drags);
+                moveOnDrag = false;
+
                 MacWindow.SetExtendsContentIntoTitleBar(window, false);
                 Assert.False(window.TryBeginPortableChromeDrag(new Point(300, 10)));
-                Assert.Equal(1, drags);
+                Assert.False(window.TryBeginPortableChromeDrag(new Point(300, 10), clickCount: 2));
+                Assert.Equal(7, drags);
             }
             finally
             {

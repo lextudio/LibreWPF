@@ -568,7 +568,7 @@ namespace System.Windows
                 case PortableInputEventKind.MouseDown:
                     if (input.Button == PortableMouseButton.Left &&
                         rootHitTestElement is Window window &&
-                        window.TryBeginPortableChromeDrag(mouseRootPoint))
+                        window.TryBeginPortableChromeDrag(mouseRootPoint, input.NativePointer?.ClickCount ?? 1))
                     {
                         return true;
                     }

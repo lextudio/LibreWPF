@@ -3309,7 +3309,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source.GetInputProvider(typeof(MouseDevice))?.NotifyDeactivate()", activationService, StringComparison.Ordinal);
         Assert.Contains("window.HandleActivate(isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void ProcessInput(Window window, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
-        Assert.Contains("window.TryBeginPortableChromeDrag(mouseRootPoint)", activationService, StringComparison.Ordinal);
+        Assert.Contains("window.TryBeginPortableChromeDrag(mouseRootPoint, input.NativePointer?.ClickCount ?? 1)", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryIsCurrentApplicationMainWindow(object window, out bool isMainWindow)", activationService, StringComparison.Ordinal);
         Assert.Contains("!ReferenceEquals(application.Dispatcher, typedWindow.Dispatcher)", activationService, StringComparison.Ordinal);
         Assert.Contains("!application.Dispatcher.CheckAccess()", activationService, StringComparison.Ordinal);
@@ -3380,7 +3380,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void UpdatePortablePositionOnTopLeftChange(double leftLogicalUnits, double topLogicalUnits)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetTopmost(_portableWindowActivation, topmost)", window, StringComparison.Ordinal);
         Assert.Contains("internal void SetPortableCustomChrome(bool enabled)", window, StringComparison.Ordinal);
-        Assert.Contains("internal bool TryBeginPortableChromeDrag(Point mousePosition)", window, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryBeginPortableChromeDrag(Point mousePosition, int clickCount = 1)", window, StringComparison.Ordinal);
         Assert.Contains("chromeWorker.IsPortableCaptionHit(mousePosition)", window, StringComparison.Ordinal);
         Assert.Contains("internal bool IsPortableCaptionHit(Point mousePosition)", windowChromeWorker, StringComparison.Ordinal);
         Assert.Contains("WindowChrome.GetIsHitTestVisibleInChrome(inputElement)", windowChromeWorker, StringComparison.Ordinal);

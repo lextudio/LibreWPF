@@ -102,7 +102,7 @@ public sealed class WpfMacWindowIntegrationTests
         string window = File.ReadAllText(FindRepoPath(
             "src", "Microsoft.DotNet.Wpf", "src", "PresentationFramework", "System", "Windows", "Window.cs"));
 
-        Assert.Contains("private bool TryBeginPortableMacCaptionDrag(Point mousePosition)", window, StringComparison.Ordinal);
+        Assert.Contains("private bool TryBeginPortableMacCaptionDrag(Point mousePosition, int clickCount)", window, StringComparison.Ordinal);
         Assert.Contains("IsInHitTestVisibleChrome(InputHitTest(mousePosition) as DependencyObject)", window, StringComparison.Ordinal);
         // Custom chrome keeps its own drag path untouched.
         Assert.Contains("if (!_hasPortableCustomChrome)", window, StringComparison.Ordinal);

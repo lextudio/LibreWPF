@@ -7532,7 +7532,28 @@ namespace System.Windows
             return false;
         }
 
-        private bool TryBeginPortableMacCaptionDrag(Point mousePosition)
+        private const long MacCaptionDoubleClickMilliseconds = 500;
+        private const double MacCaptionDoubleClickSlop = 4.0;
+        private const long MacCaptionClickHoldMilliseconds = 300;
+        private long _macCaptionPressTick;
+        private Point _macCaptionPressPoint;
+
+        private bool IsPortableMacCaptionDoubleClick(Point mousePosition, int clickCount)
+        {
+            long now = Environment.TickCount64;
+            bool isDouble = clickCount == 2 ||
+                (clickCount < 2 && _macCaptionPressTick != 0 &&
+                 now - _macCaptionPressTick <= MacCaptionDoubleClickMilliseconds &&
+                 Math.Abs(mousePosition.X - _macCaptionPressPoint.X) <= MacCaptionDoubleClickSlop &&
+                 Math.Abs(mousePosition.Y - _macCaptionPressPoint.Y) <= MacCaptionDoubleClickSlop);
+
+            // A double click is consumed so a third press starts a new sequence.
+            _macCaptionPressTick = isDouble ? 0 : now;
+            _macCaptionPressPoint = mousePosition;
+            return isDouble;
+        }
+
+        private bool TryBeginPortableMacCaptionDrag(Point mousePosition, int clickCount)
         {
             double barHeight = MacWindow.GetCaptionInsets(this).Top;
             if (!MacWindow.GetExtendsContentIntoTitleBar(this) ||
@@ -7549,19 +7570,52 @@ namespace System.Windows
                 return false;
             }
 
-            return PortableWindowActivationService.TryDragMove(_portableWindowActivation);
+            // A double click on the bar zooms the window, the macOS default for a title bar. (The user's
+            // "double-click a window's title bar" choice of minimise or nothing is not honoured yet.)
+            // Plain host mouse events carry no click count, so a second press close in time and place
+            // to the previous one counts as the double click.
+            if (IsPortableMacCaptionDoubleClick(mousePosition, clickCount))
+            {
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+                return true;
+            }
+
+            // A zoomed window is not dragged by its bar.
+            if (WindowState != WindowState.Normal)
+            {
+                return false;
+            }
+
+            double left = Left, top = Top;
+            long startTick = Environment.TickCount64;
+            bool started = PortableWindowActivationService.TryDragMove(_portableWindowActivation);
+
+            // The native drag runs until release; if the window moved, or the press was held, it was a
+            // drag and not the first click of a double click.
+            if (!Left.Equals(left) || !Top.Equals(top) ||
+                Environment.TickCount64 - startTick > MacCaptionClickHoldMilliseconds)
+            {
+                _macCaptionPressTick = 0;
+            }
+
+            return started;
         }
 
-        internal bool TryBeginPortableChromeDrag(Point mousePosition)
+        internal bool TryBeginPortableChromeDrag(Point mousePosition, int clickCount = 1)
         {
-            if (!IsPortableWindowActive || WindowState != WindowState.Normal)
+            if (!IsPortableWindowActive)
             {
                 return false;
             }
 
             if (!_hasPortableCustomChrome)
             {
-                return TryBeginPortableMacCaptionDrag(mousePosition);
+                return TryBeginPortableMacCaptionDrag(mousePosition, clickCount);
+            }
+
+            if (WindowState != WindowState.Normal)
+            {
+                return false;
             }
 
             Shell.WindowChromeWorker chromeWorker = Shell.WindowChromeWorker.GetWindowChromeWorker(this);

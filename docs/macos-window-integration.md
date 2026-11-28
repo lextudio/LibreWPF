@@ -152,14 +152,129 @@ title, state and border. Left inset comes from the standard window buttons' fram
 (`standardWindowButton:` for close/miniaturize/zoom) plus the standard 8 pt gap; it is queried
 after each style change, not hard-coded.
 
-### 4.6 Phase B (separate design, same principles)
+### 4.6 Phase B: native menu bar (design only, nothing built)
 
-- `MacMenu`: `NativeMenu`-shaped attached property (`MacMenu.Menu` on `Window`/`Application`,
-  `MenuItem` tree and `InputBindings` reused, `Gesture` command key mapped to Command, disabled
-  without a command, "Edit"/"Window"/"Help" recognised, application menu with About/Hide/Quit,
-  Dock menu).
-- `MacWindow.UnifiedToolbar` (`NSToolbar` thick bar) and more materials (backend enum
-  extension in ProGPU).
+Same principles as phase A: reuse WPF concepts where they match, an explicit macOS-namespaced
+opt-in where they do not, request and actual, no platform checks in app code.
+
+**Model.** The menu is an ordinary WPF `Menu`/`MenuItem` tree. Nothing new to learn and the same
+XAML renders as a normal in-window menu on Windows and Linux.
+
+```xml
+<Menu x:Name="MainMenu" macos:MacMenu.UsesNativeMenuBar="True">
+  <MenuItem Header="_View">
+    <MenuItem Header="Vitals"  Command="{Binding ShowVitals}"  InputGestureText="Cmd+1"/>
+    <MenuItem Header="Silicon" Command="{Binding ShowSilicon}" />
+    <Separator/>
+    <MenuItem Header="Appearance"> ... IsCheckable, grouped ... </MenuItem>
+  </MenuItem>
+</Menu>
+```
+
+**API** (`System.Windows.Platform.MacOS`, static class `MacMenu`):
+
+- `MacMenu.UsesNativeMenuBar` (attached, on `Menu`, default false): on macOS the tree becomes the
+  application menu bar and the in-window `Menu` collapses (takes no layout); elsewhere it is
+  ignored. Read-only `MacMenu.IsNativeMenuBarActive` is per `Menu` instance (a read-only attached
+  property, like `ActualBackdrop` in phase A) and reports whether that menu is the one currently
+  installed as the application menu bar.
+- `MacMenu.Role` (attached enum `MacMenuRole` on `MenuItem`: `None`, `Edit`, `Window`, `Help`):
+  the primary way a top-level item is recognised; the English header is only a
+  fallback when the role is `None`.
+- Application-wide settings are static members of `MacMenu`, not attached properties, because
+  WPF's `Application` is not a `DependencyObject`: `MacMenu.AboutCommand` (static `ICommand`, run
+  by "About <app>").
+  Without it, the standard About panel (`orderFrontStandardAboutPanelWithOptions:`) is shown with
+  options filled from the entry assembly (name, version, copyright); that mapping is an open
+  question below until measured, since the panel otherwise reads bundle metadata.
+- Standard application menu is generated, not authored: About, Services, Hide, Hide Others, Show
+  All, Quit. Quit does not shut down immediately (`Application.Shutdown` tears the dispatcher
+  down with no cancellable handshake): it calls `Close()` on each live window in turn, non-main windows first and
+  `Application.MainWindow` last, and stops at the first window that cancels (`Close()` is void, so a cancel is detected by the
+  window still being in `Application.Windows` after the call), leaving the
+  application running. Once every window has closed without cancellation it calls
+  `Application.Shutdown()` itself, so the result does not depend on `ShutdownMode`
+  (`OnMainWindowClose` would otherwise shut down before later windows could cancel, and
+  `OnExplicitShutdown` would never exit). Authored items only add to the generated menu
+  through `MacMenu.ApplicationMenuItems` (static collection of `MenuItem`, for example Preferences,
+  inserted after About).
+- Recognised by header, as in Avalonia: "Edit" (system selectors `undo:`, `cut:`, `copy:`,
+  `paste:`, `selectAll:` are appended when the menu has none of its own), "Window" (handed to
+  `setWindowsMenu:` so macOS adds minimise, zoom and the window list), "Help" (`setHelpMenu:`,
+  search field). Recognition uses `MacMenu.Role` first and the English header only as a fallback,
+  so localisation does not break it.
+- `MacMenu.DockMenu` (static `Menu`): used for the Dock icon menu.
+
+**Item mapping** (pure functions, tested without a window):
+
+| WPF | NSMenuItem |
+|---|---|
+| `Header` with `_` access key | title with the underscore removed (macOS has no access keys) |
+| `Command` / `CommandParameter` | enabled state from `CanExecute` evaluated when the menu opens (`menuNeedsUpdate:`), not polled |
+| activation | invokes the item through its public `MenuItemAutomationPeer` `IInvokeProvider`, which runs the command and raises `Click`. Activation is asynchronous and not user-initiated:
+`MenuItem` queues both through the dispatcher at Render priority and passes `userInitiated=false`
+(a mouse click passes true), so anything that gates on user initiation sees a programmatic
+invoke, and tests must pump the dispatcher before asserting. There is no handler detection (WPF has no public API for it), so a command-less, handler-less item is enabled and does nothing, as in WPF |
+| `IsCheckable`/`IsChecked` | `state` on/off; `GroupName` radio behaviour is the app's, as in WPF |
+| `Command.InputGestures` or `InputGestureText` key gesture | key equivalent; `ModifierKeys.Windows` is Command, `Control` stays Control, `Alt` is Option |
+| `Separator` | separator |
+| `Icon` | ignored in the first cut |
+| nested `MenuItem` | submenu |
+| `Visibility.Collapsed` | omitted; `IsEnabled=false` greyed |
+
+**Where the Cocoa code lives.** The preferred home is the ProGPU backend, as a neutral model
+(`NativeApplicationMenu` with a tree of id, title, key, modifiers, enabled, checked, children, and a
+single activation callback by id) so WinUI and Avalonia hosts can reuse it; this is what the
+repository guidance asks for popups and system menus. That needs a ProGPU commit and a pointer
+bump, so it follows the publish order. A first cut may live in `ProGPU.Wpf` next to
+`WpfMacWindowIntegration` (as phase A did), as a temporary placement owned by the same change: it
+moves to ProGPU when the backend commit lands, and the exit condition is that the next published
+ProGPU pointer contains `NativeApplicationMenu`. The WPF-side model, mapping and tests do not
+change. The action target is a native class registered once with an `[UnmanagedCallersOnly]`
+action and validate function (no reflection, no managed delegate marshalling per item);
+activation is posted to the UI dispatcher and runs the WPF command there.
+
+**Behaviour rules.**
+
+- One menu bar for the application. Every `Menu` with `UsesNativeMenuBar` registers while it is
+  loaded in a window and unregisters on unload. The installed bar is the registered menu of the
+  key window; a key window with none keeps the menu of `Application.MainWindow` (else the most
+  recently registered one), and with no registered menu only the generated application menu
+  exists. The bar is swapped when the key window changes, never rebuilt just to switch.
+- Items are rebuilt when the `Items` tree, `Header`, `Command`, `CommandParameter`,
+  `InputGestureText`, the command's `InputGestures`, `IsEnabled`, `IsChecked` or `Visibility`
+  change, coalesced to one rebuild per dispatcher turn; unchanged state is not re-applied.
+- Requirement, not yet a rule: a text-editing key equivalent (Edit items) must not steal the key
+  from a focused WPF text element, so a `TextBox` keeps its own undo. Cocoa normally offers the
+  main menu a key equivalent before the responder chain, so how to honour this is open
+  question 3.
+- Quit and Hide always exist, even with no `Menu`.
+
+**Open questions, to measure before building.**
+
+0. What the standard About panel shows for an unbundled .NET process, and which option keys
+   (`ApplicationName`, `ApplicationVersion`, `Copyright`) are needed to make it correct.
+
+1. Whether the GLFW host leaves its own default menu bar in place. GLFW creates one at init unless
+   told not to, so the integration must replace or merge it; the first spike reads
+   `NSApp.mainMenu` on a running window and records its items.
+2. Whether `[NSApp setMainMenu:]` after the first window is shown is honoured without an app
+   delegate round trip.
+3. How `performKeyEquivalent:` reaches the menu when the key window's content view is the
+   GLFW layer-hosting view (Command+Q and Command+1 must work with focus in any WPF element).
+4. The Dock menu needs `applicationDockMenu:` on the application delegate, which GLFW owns; if it
+   cannot be added without replacing the delegate it is deferred.
+
+**Verification plan.** Pure mapping tests (table above, gestures, access keys, recognised
+roles, collapsed and disabled items). A recording platform double for the rebuild coalescing
+and the activation path. On a real window: read `NSApp.mainMenu`, check titles, key equivalents
+and enabled state, then run `performActionForItemAtIndex:` and send a real Command+1 with
+synthetic HID events, asserting the bound command ran. Pulse adopts it with a View menu
+(Vitals, Silicon, Proof on Command+1/2/3) and an Appearance submenu (Auto, Light, Dark),
+only after a published closure contains it.
+
+- `MacWindow.UnifiedToolbar` (`NSToolbar` thick bar) and more materials (backend enum extension in
+  ProGPU) remain separate and later.
 
 ## 5. Risks
 

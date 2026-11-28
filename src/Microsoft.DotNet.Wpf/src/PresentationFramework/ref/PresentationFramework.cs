@@ -12481,6 +12481,16 @@ namespace System.Windows.Platform.MacOS
         UnderWindowBackground = 4,
         UnderPageBackground = 5,
     }
+    public static partial class MacMenu
+    {
+        public static readonly System.Windows.DependencyProperty IsNativeMenuBarActiveProperty;
+        public static readonly System.Windows.DependencyProperty UsesNativeMenuBarProperty;
+        public static string ApplicationName { get { throw null; } set { } }
+        public static bool GetIsNativeMenuBarActive(System.Windows.Controls.Menu menu) { throw null; }
+        public static bool GetUsesNativeMenuBar(System.Windows.Controls.Menu menu) { throw null; }
+        public static void Refresh() { }
+        public static void SetUsesNativeMenuBar(System.Windows.Controls.Menu menu, bool value) { }
+    }
     public static partial class MacWindow
     {
         public static readonly System.Windows.DependencyProperty ActualBackdropProperty;

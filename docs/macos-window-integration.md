@@ -288,6 +288,29 @@ runtime and trigger items with `performActionForItemAtIndex:`. Not built: the pu
 class and attached properties, registration, the dispatcher hop for activation, the Quit
 sequence, rebuild on change, key-window switching, the Edit items and the Dock menu.
 
+**Built so far (step 3, wired to WPF).** Public `MacMenu` (`System.Windows.Platform.MacOS`):
+`UsesNativeMenuBar` (attached, on `Menu`), read-only `IsNativeMenuBarActive`, `ApplicationName`
+(default the entry assembly name) and `Refresh()`. A menu registers while loaded; the installed
+bar is the active window's menu, else the main window's, else the most recent; the in-window
+menu collapses while installed (restored when it is not, and left alone on a host with no native
+bar). The host gets the model through the new `InstallMenuBar` callback; activation hops to the
+menu's dispatcher and clicks the item through its public `MenuItemAutomationPeer` (asynchronous,
+as documented); Quit closes non-main windows first and the main window last, stops at the first
+cancel, then calls `Application.Shutdown()`. Rebuilds are coalesced to one per dispatcher turn at
+Normal priority (Background priority was starved by the render loop for seconds) and also run on
+`Window.Activated`, so the bar follows the active window.
+
+Measured on a real window (a fused Pulse dashboard plus a second window hosting the menu): the
+bar is installed automatically with the app's name and View menu and stays installed; a real
+Command+1 (synthetic HID key events) raised the item's `Click`; a real Command+Q raised the
+window's `Closing` and the process exited. This answers open question 1 only for a plain window:
+Command shortcuts reached the menu with a WPF window key, not yet with a focused text element.
+
+Not built: `MacMenu.Role` and `MacMenu.AboutCommand`/`ApplicationMenuItems`/`DockMenu`, rebuilds
+on header, command, gesture, enabled, checked or visibility changes (only the top-level `Items`
+collection and `Refresh()` rebuild today), the Edit items and the text-key requirement, the Dock
+menu.
+
 **Verification plan.** Pure mapping tests (table above, gestures, access keys, recognised
 roles, collapsed and disabled items). A recording platform double for the rebuild coalescing
 and the activation path. On a real window: read `NSApp.mainMenu`, check titles, key equivalents

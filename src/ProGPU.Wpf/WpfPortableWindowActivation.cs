@@ -197,7 +197,8 @@ public sealed partial class WpfPortableWindowActivation : IDisposable, INativeWi
             SetOwner = (activation, owner) => ((WpfPortableWindowActivation)activation).SetOwner(owner),
             GetFrameInsets = activation => ((WpfPortableWindowActivation)activation).Host.GetLogicalNativeFrameInsets(),
             ApplyMacWindow = (activation, request) => ((WpfPortableWindowActivation)activation).Host.ApplyMacWindow(request),
-            GetPointerClickCount = activation => WpfMacWindowIntegration.GetCurrentClickCount()
+            GetPointerClickCount = activation => WpfMacWindowIntegration.GetCurrentClickCount(),
+            InstallMenuBar = WpfMacMenuHost.Install
         };
     }
 

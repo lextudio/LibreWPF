@@ -579,6 +579,13 @@ public sealed class PortableWindowActivationCallbacks
     /// </summary>
     public Func<object, int>? GetPointerClickCount { get; init; }
 
+    /// <summary>
+    /// Installs the application menu bar: (application name, model, activation callback by item id).
+    /// The callback may run on the native UI thread; Quit is reported with id -1. Returns false when
+    /// the host has no native menu bar (other platform), and the caller keeps its in-window menu.
+    /// </summary>
+    public Func<string, PortableMenuItem[], Action<int>, bool>? InstallMenuBar { get; init; }
+
     public Action<object, double, double>? SetPosition { get; }
 
     public Action<object, bool>? SetTopmost { get; }

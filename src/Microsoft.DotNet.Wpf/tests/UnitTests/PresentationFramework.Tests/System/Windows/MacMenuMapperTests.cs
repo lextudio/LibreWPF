@@ -1,7 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Windows.Threading;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Platform.MacOS;
@@ -158,6 +160,77 @@ public class MacMenuMapperTests
         public event EventHandler? CanExecuteChanged { add { } remove { } }
         public bool CanExecute(object? parameter) => true;
         public void Execute(object? parameter) { }
+    }
+
+    [PortableInputFact]
+    public void NativeMenuBarIsInstalledCollapsesTheMenuAndRoutesActivations()
+    {
+        RunInUiApartment(() =>
+        {
+            string? name = null;
+            PortableMenuItem[]? model = null;
+            Action<int>? activate = null;
+            bool accept = true;
+            PortableWindowActivationService.Register(
+                activate: value => value,
+                installMenuBar: (appName, items, callback) =>
+                {
+                    name = appName;
+                    model = items;
+                    activate = callback;
+                    return accept;
+                });
+            try
+            {
+                int runs = 0;
+                var vitals = new MenuItem { Header = "_Vitals" };
+                vitals.Click += (_, _) => runs++;
+                var view = new MenuItem { Header = "View" };
+                view.Items.Add(vitals);
+                var menu = new Menu();
+                menu.Items.Add(view);
+
+                MacMenu.ApplicationName = "Pulse";
+                MacMenu.SetUsesNativeMenuBar(menu, true);
+                menu.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+                MacMenu.Refresh();
+
+                Assert.Equal("Pulse", name);
+                Assert.Equal("View", model![0].Title);
+                Assert.Equal("Vitals", model[0].Children[0].Title);
+                Assert.True(MacMenu.GetIsNativeMenuBarActive(menu));
+                Assert.Equal(Visibility.Collapsed, menu.Visibility);
+
+                // Activating the item through the host callback raises its Click once the dispatcher turns.
+                activate!(model[0].Children[0].Id);
+                Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+                Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+                Assert.True(runs >= 1);
+
+                // A host without a native bar leaves the in-window menu alone.
+                accept = false;
+                MacMenu.Refresh();
+                Assert.False(MacMenu.GetIsNativeMenuBarActive(menu));
+                Assert.Equal(Visibility.Visible, menu.Visibility);
+
+                MacMenu.SetUsesNativeMenuBar(menu, false);
+                Assert.False(MacMenu.GetIsNativeMenuBarActive(menu));
+            }
+            finally
+            {
+                MacMenu.ApplicationName = null!;
+                PortableWindowActivationService.Clear();
+            }
+        });
+    }
+
+    private sealed class PortableInputFactAttribute : FactAttribute
+    {
+        public PortableInputFactAttribute([CallerFilePath] string? path = null, [CallerLineNumber] int line = 0) : base(path, line)
+        {
+            if (PortableWpfRuntime.ConfiguredMediaBackend != PortableWpfMediaBackend.Portable)
+                Skip = "Requires portable media selected before input-manager construction, including on Windows.";
+        }
     }
 
     [Fact]

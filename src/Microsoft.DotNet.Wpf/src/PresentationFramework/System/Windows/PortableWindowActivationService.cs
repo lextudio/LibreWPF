@@ -42,6 +42,7 @@ namespace System.Windows
         private static Func<object, PortableWindowFrameInsets?> _getFrameInsets;
         private static Func<object, PortableMacWindowRequest, PortableMacWindowResult?> _applyMacWindow;
         private static Func<object, int> _getPointerClickCount;
+        private static Func<string, PortableMenuItem[], Action<int>, bool> _installMenuBar;
 
         internal static bool IsEnabled
         {
@@ -114,7 +115,8 @@ namespace System.Windows
             Action<object, Action> releaseDialog = null,
             Func<object, PortableWindowFrameInsets?> getFrameInsets = null,
             Func<object, PortableMacWindowRequest, PortableMacWindowResult?> applyMacWindow = null,
-            Func<object, int> getPointerClickCount = null)
+            Func<object, int> getPointerClickCount = null,
+            Func<string, PortableMenuItem[], Action<int>, bool> installMenuBar = null)
         {
             ArgumentNullException.ThrowIfNull(activate);
 
@@ -142,6 +144,7 @@ namespace System.Windows
             Volatile.Write(ref _getFrameInsets, getFrameInsets);
             Volatile.Write(ref _applyMacWindow, applyMacWindow);
             Volatile.Write(ref _getPointerClickCount, getPointerClickCount);
+            Volatile.Write(ref _installMenuBar, installMenuBar);
             Volatile.Write(ref _activate, activate);
         }
 
@@ -153,6 +156,7 @@ namespace System.Windows
             Volatile.Write(ref _getFrameInsets, null);
             Volatile.Write(ref _applyMacWindow, null);
             Volatile.Write(ref _getPointerClickCount, null);
+            Volatile.Write(ref _installMenuBar, null);
             Volatile.Write(ref _show, null);
             Volatile.Write(ref _hide, null);
             Volatile.Write(ref _setWindowState, null);
@@ -241,6 +245,12 @@ namespace System.Windows
         internal static void SetClientSize(object activation, double width, double height)
         {
             Volatile.Read(ref _setClientSize)?.Invoke(activation, width, height);
+        }
+
+        /// <summary>Installs the application menu bar through the host; false when it has none.</summary>
+        internal static bool TryInstallMenuBar(string applicationName, PortableMenuItem[] items, Action<int> activate)
+        {
+            return Volatile.Read(ref _installMenuBar)?.Invoke(applicationName, items, activate) ?? false;
         }
 
         /// <summary>The native click count of the press being dispatched; 0 when the host cannot say.</summary>
@@ -1396,7 +1406,8 @@ namespace System.Windows
                     callbacks.ReleaseDialog,
                     callbacks.GetFrameInsets,
                     callbacks.ApplyMacWindow,
-                    callbacks.GetPointerClickCount);
+                    callbacks.GetPointerClickCount,
+                    callbacks.InstallMenuBar);
             }
 
             public bool TryRegisterMediaContextRenderService(

@@ -321,6 +321,8 @@
              Condition="'$(LibreWpfUseCppCli)' != 'true'" />
     <Compile Include="MS\internal\Text\TextInterface\PortableOpenTypeShaping.cs"
              Condition="'$(LibreWpfUseCppCli)' != 'true'" />
+    <Compile Include="MS\internal\Text\TextInterface\VariableFontInstancer.cs"
+             Condition="'$(LibreWpfUseCppCli)' != 'true'" />
     <Compile Include="MS\internal\TextFormatting\Bidi.cs" />
     <Compile Include="MS\internal\TextFormatting\CultureMapper.cs" />
     <Compile Include="MS\internal\TextFormatting\DrawingState.cs" />

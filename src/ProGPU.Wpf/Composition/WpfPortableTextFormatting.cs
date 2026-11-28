@@ -19,7 +19,11 @@ internal sealed partial class WpfPortableTextFormatting : IPortableFloatingTextF
         internal NativeTextShapingContext Context => _context.Value;
     }
     private readonly ConditionalWeakTable<PortableTextFont, FontState> _fonts = new();
-    internal static void EnsureRegistered() => PortableWpfServiceRegistry.EnsureTextFormatting(Default);
+    internal static void EnsureRegistered()
+    {
+        PortableWpfServiceRegistry.EnsureTextFormatting(Default);
+        WpfVariableFontInstancer.EnsureRegistered();
+    }
 
     public uint ResolveLanguage(string ietfLanguageTag)
     {

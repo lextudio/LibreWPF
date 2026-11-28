@@ -179,7 +179,7 @@ namespace MS.Internal.FontFace
                         nextValid = invalid;
                     }
 
-                    return new GlyphTypeface(font);
+                    return new GlyphTypeface(_family.ApplyVariableWeight(font, (Text.TextInterface.FontWeight)weight.ToOpenTypeWeight()));
                 }
                 else
                 {
@@ -201,7 +201,7 @@ namespace MS.Internal.FontFace
             advance = 0;
             nextValid = smallestInvalid;
             Debug.Assert(bestStyleTypeface != null);
-            return new GlyphTypeface(bestStyleTypeface);
+            return new GlyphTypeface(_family.ApplyVariableWeight(bestStyleTypeface, (Text.TextInterface.FontWeight)weight.ToOpenTypeWeight()));
         }
 
         /// <summary>

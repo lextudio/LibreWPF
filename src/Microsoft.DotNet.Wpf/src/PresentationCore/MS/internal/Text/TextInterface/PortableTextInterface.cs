@@ -679,6 +679,7 @@ namespace MS.Internal.Text.TextInterface
     internal sealed class FontFamily : IEnumerable<Font>
     {
         private readonly IReadOnlyList<Font> _fonts;
+        private readonly Dictionary<PortableFontData, Font> _weightFonts = new Dictionary<PortableFontData, Font>();
 
         internal FontFamily(string ordinalName, LocalizedStrings familyNames, IReadOnlyList<Font> fonts)
         {
@@ -727,7 +728,56 @@ namespace MS.Internal.Text.TextInterface
                 }
             }
 
-            return bestFont;
+            return ApplyVariableWeight(bestFont, weight);
+        }
+
+        /// <summary>
+        /// Returns the static weight instance of <paramref name="font"/> when it is a variable font and
+        /// <paramref name="weight"/> is not its default instance; otherwise the font itself. Callers that
+        /// pick a face themselves (character mapping) must route the result through here.
+        /// </summary>
+        internal Font ApplyVariableWeight(Font font, FontWeight weight)
+        {
+            // This is an enhancement: if the weight instance cannot be selected, written or built (source
+            // font gone, read-only cache directory, unusual font), keep the default instance rather than
+            // failing text layout. Failures are remembered per instance so they are not retried per run.
+            PortableFontData instanceData;
+            try
+            {
+                instanceData = font.FontData.GetWeightInstance((int)weight);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                System.Diagnostics.Trace.TraceWarning("Variable font weight instance unavailable: " + ex.Message);
+                return font;
+            }
+
+            if (instanceData == null)
+            {
+                return font;
+            }
+
+            lock (_weightFonts)
+            {
+                if (!_weightFonts.TryGetValue(instanceData, out Font instanceFont))
+                {
+                    try
+                    {
+                        instanceData.EnsureMaterialized();
+                        instanceFont = new Font(instanceData, font.SimulationFlags);
+                        instanceFont.SetFamily(this);
+                    }
+                    catch (Exception ex) when (ex is not OutOfMemoryException)
+                    {
+                        System.Diagnostics.Trace.TraceWarning("Variable font weight instance unavailable: " + ex.Message);
+                        instanceFont = null;
+                    }
+
+                    _weightFonts.Add(instanceData, instanceFont);
+                }
+
+                return instanceFont ?? font;
+            }
         }
 
         public IEnumerator<Font> GetEnumerator()
@@ -852,6 +902,7 @@ namespace MS.Internal.Text.TextInterface
 
         internal FontFile GetFileZero()
         {
+            _fontData.EnsureMaterialized();
             return new FontFile(_fontData.SourceUri);
         }
 
@@ -936,6 +987,7 @@ namespace MS.Internal.Text.TextInterface
         private const uint TagOs2 = 0x4F532F32;
         private const uint TagPost = 0x706F7374;
         private const uint TagCff = 0x43464620;
+        private const uint TagFvar = 0x66766172;
 
         private byte[] _data;
         private volatile ProGpuSfntFontFace _sfntFace;
@@ -945,6 +997,10 @@ namespace MS.Internal.Text.TextInterface
         private readonly Dictionary<ushort, LocalizedStrings> _nameStrings = new Dictionary<ushort, LocalizedStrings>();
         private readonly uint _faceOffset;
         private readonly bool _isCollection;
+
+        // Set only for a generated weight instance of a variable font (VariableFontInstancer).
+        private readonly string _variableSourcePath;
+        private readonly int _instanceWeight;
 
         private PortableFontData(
             byte[] data,
@@ -1022,6 +1078,118 @@ namespace MS.Internal.Text.TextInterface
             GlyphCount = metadata.GlyphCount;
             IsSymbolFont = metadata.IsSymbolFont;
             Version = metadata.Version;
+        }
+
+        private PortableFontData(PortableFontData source, int weight, string sourcePath, string instancePath)
+        {
+            SourceUri = new Uri(instancePath);
+            FaceIndex = 0;
+            _faceOffset = 0;
+            _isCollection = false;
+            _fontSource = null;
+            _variableSourcePath = sourcePath;
+            _instanceWeight = weight;
+
+            // The instance file lays its tables out differently, so table records are not copied;
+            // table access goes through the sfnt face loaded from the instance file.
+            foreach (KeyValuePair<ushort, LocalizedStrings> name in source._nameStrings)
+            {
+                _nameStrings.Add(name.Key, name.Value);
+            }
+
+            FamilyName = source.FamilyName;
+            FaceName = VariableFontInstancer.GetFaceName(weight);
+            FullName = string.Concat(source.FamilyName, " ", FaceName).Trim();
+            Metrics = source.Metrics;
+            Weight = (FontWeight)weight;
+            Stretch = source.Stretch;
+            Style = source.Style;
+            FaceType = source.FaceType;
+            GlyphCount = source.GlyphCount;
+            IsSymbolFont = source.IsSymbolFont;
+            Version = source.Version;
+        }
+
+        private readonly object _weightInstanceLock = new object();
+        private Dictionary<int, PortableFontData> _weightInstances;
+        private bool _hasWeightAxis;
+        private bool _weightAxisKnown;
+        private int _weightAxisMinimum;
+        private int _weightAxisMaximum;
+        private int _weightAxisDefault;
+
+        /// <summary>
+        /// For a variable font with a weight axis, returns the static face for the standard weight
+        /// nearest <paramref name="requestedWeight"/>, so weight matching selects a real weight
+        /// instead of simulating bold on the default instance. Returns null when this face is not
+        /// variable or the default instance is already the right weight. The instance file is
+        /// generated on first use (see <see cref="EnsureMaterialized"/>).
+        /// </summary>
+        internal PortableFontData GetWeightInstance(int requestedWeight)
+        {
+            if (_variableSourcePath != null
+                || _isCollection
+                || FaceIndex != 0
+                || FaceType != FontFaceType.TrueType
+                || _fontSource != null && !_fontSource.IsFile
+                || !SourceUri.IsFile
+                || !_tables.ContainsKey(TagFvar))
+            {
+                return null;
+            }
+
+            lock (_weightInstanceLock)
+            {
+                if (!_weightAxisKnown)
+                {
+                    bool found = VariableFontInstancer.TryGetWeightRange(
+                        SourceUri.LocalPath, out int minimum, out int maximum, out int defaultWeight, out bool serviceAvailable);
+                    if (!serviceAvailable)
+                    {
+                        // The instancer registers with the first portable window; ask again later.
+                        return null;
+                    }
+
+                    _hasWeightAxis = found;
+                    _weightAxisMinimum = minimum;
+                    _weightAxisMaximum = maximum;
+                    _weightAxisDefault = defaultWeight;
+                    _weightAxisKnown = true;
+                }
+
+                if (!_hasWeightAxis)
+                {
+                    return null;
+                }
+
+                // The default instance is the file itself, and it is only reused when the file reports
+                // that weight; otherwise the file's own weight class would misdescribe it.
+                int weight = VariableFontInstancer.SelectInstanceWeight(
+                    requestedWeight, _weightAxisMinimum, _weightAxisMaximum, _weightAxisDefault, (int)Weight);
+                if (weight == 0)
+                {
+                    return null;
+                }
+
+                _weightInstances ??= new Dictionary<int, PortableFontData>();
+                if (!_weightInstances.TryGetValue(weight, out PortableFontData instance))
+                {
+                    string path = SourceUri.LocalPath;
+                    instance = new PortableFontData(this, weight, path, VariableFontInstancer.GetCachePath(path, weight));
+                    _weightInstances.Add(weight, instance);
+                }
+
+                return instance;
+            }
+        }
+
+        /// <summary>Creates the weight instance file on first use; no-op for ordinary faces.</summary>
+        internal void EnsureMaterialized()
+        {
+            if (_variableSourcePath != null)
+            {
+                VariableFontInstancer.EnsureInstance(_variableSourcePath, _instanceWeight, SourceUri.LocalPath);
+            }
         }
 
         internal Uri SourceUri { get; }
@@ -1688,6 +1856,7 @@ namespace MS.Internal.Text.TextInterface
                 sfntFace = _sfntFace;
                 if (sfntFace == null)
                 {
+                    EnsureMaterialized();
                     byte[] data = ReadFontBytes(SourceUri, _fontSource);
                     sfntFace = ProGpuSfntFontFace.Load(data, checked((int)FaceIndex));
                     _data = data;

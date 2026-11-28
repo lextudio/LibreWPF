@@ -42,7 +42,7 @@ namespace System.Windows
         private static Func<object, PortableWindowFrameInsets?> _getFrameInsets;
         private static Func<object, PortableMacWindowRequest, PortableMacWindowResult?> _applyMacWindow;
         private static Func<object, int> _getPointerClickCount;
-        private static Func<string, PortableMenuItem[], Action<int>, bool> _installMenuBar;
+        private static Func<PortableApplicationMenu, PortableMenuItem[], PortableMenuCallbacks, bool> _installMenuBar;
 
         internal static bool IsEnabled
         {
@@ -116,7 +116,7 @@ namespace System.Windows
             Func<object, PortableWindowFrameInsets?> getFrameInsets = null,
             Func<object, PortableMacWindowRequest, PortableMacWindowResult?> applyMacWindow = null,
             Func<object, int> getPointerClickCount = null,
-            Func<string, PortableMenuItem[], Action<int>, bool> installMenuBar = null)
+            Func<PortableApplicationMenu, PortableMenuItem[], PortableMenuCallbacks, bool> installMenuBar = null)
         {
             ArgumentNullException.ThrowIfNull(activate);
 
@@ -248,9 +248,9 @@ namespace System.Windows
         }
 
         /// <summary>Installs the application menu bar through the host; false when it has none.</summary>
-        internal static bool TryInstallMenuBar(string applicationName, PortableMenuItem[] items, Action<int> activate)
+        internal static bool TryInstallMenuBar(PortableApplicationMenu application, PortableMenuItem[] items, PortableMenuCallbacks callbacks)
         {
-            return Volatile.Read(ref _installMenuBar)?.Invoke(applicationName, items, activate) ?? false;
+            return Volatile.Read(ref _installMenuBar)?.Invoke(application, items, callbacks) ?? false;
         }
 
         /// <summary>The native click count of the press being dispatched; 0 when the host cannot say.</summary>

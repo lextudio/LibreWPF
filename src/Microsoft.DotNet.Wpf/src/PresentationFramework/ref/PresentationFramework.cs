@@ -12481,14 +12481,27 @@ namespace System.Windows.Platform.MacOS
         UnderWindowBackground = 4,
         UnderPageBackground = 5,
     }
+    public enum MacMenuRole
+    {
+        None = 0,
+        Edit = 1,
+        Window = 2,
+        Help = 3,
+    }
     public static partial class MacMenu
     {
         public static readonly System.Windows.DependencyProperty IsNativeMenuBarActiveProperty;
+        public static readonly System.Windows.DependencyProperty RoleProperty;
         public static readonly System.Windows.DependencyProperty UsesNativeMenuBarProperty;
+        public static System.Windows.Input.ICommand AboutCommand { get { throw null; } set { } }
         public static string ApplicationName { get { throw null; } set { } }
+        public static System.Collections.ObjectModel.ObservableCollection<System.Windows.Controls.MenuItem> ApplicationMenuItems { get { throw null; } }
+        public static System.Windows.Controls.Menu DockMenu { get { throw null; } set { } }
         public static bool GetIsNativeMenuBarActive(System.Windows.Controls.Menu menu) { throw null; }
+        public static System.Windows.Platform.MacOS.MacMenuRole GetRole(System.Windows.Controls.MenuItem item) { throw null; }
         public static bool GetUsesNativeMenuBar(System.Windows.Controls.Menu menu) { throw null; }
         public static void Refresh() { }
+        public static void SetRole(System.Windows.Controls.MenuItem item, System.Windows.Platform.MacOS.MacMenuRole value) { }
         public static void SetUsesNativeMenuBar(System.Windows.Controls.Menu menu, bool value) { }
     }
     public static partial class MacWindow

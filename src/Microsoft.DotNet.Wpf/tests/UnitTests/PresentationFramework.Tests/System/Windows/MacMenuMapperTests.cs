@@ -173,11 +173,11 @@ public class MacMenuMapperTests
             bool accept = true;
             PortableWindowActivationService.Register(
                 activate: value => value,
-                installMenuBar: (appName, items, callback) =>
+                installMenuBar: (application, items, callbacks) =>
                 {
-                    name = appName;
+                    name = application.ApplicationName;
                     model = items;
-                    activate = callback;
+                    activate = callbacks.Activate;
                     return accept;
                 });
             try
@@ -242,7 +242,7 @@ public class MacMenuMapperTests
             int installs = 0;
             PortableWindowActivationService.Register(
                 activate: value => value,
-                installMenuBar: (appName, items, callback) =>
+                installMenuBar: (application, items, callbacks) =>
                 {
                     model = items;
                     installs++;
@@ -310,8 +310,22 @@ public class MacMenuMapperTests
                 Flush();
                 Assert.Equal(before + 1, installs);
 
+                // The Role attached property is a model input too: changing it rebuilds with the Edit items.
+                var edit = new MenuItem { Header = "Bearbeiten" };
+                menu.Items.Add(edit);
+                Flush();
+                int beforeRole = installs;
+                Assert.Empty(model![1].Children);
+                MacMenu.SetRole(edit, MacMenuRole.Edit);
+                Flush();
+                Assert.Equal(beforeRole + 1, installs);
+                Assert.Equal(8, model![1].Children.Length);
+
                 // Detached watches stop reacting.
                 MacMenu.SetUsesNativeMenuBar(menu, false);
+                // Unregistering replaces the installed bar with the generated menu alone, once.
+                Flush();
+                Assert.Empty(model!);
                 int after = installs;
                 vitals.Header = "Z";
                 Flush();
@@ -323,6 +337,268 @@ public class MacMenuMapperTests
                 PortableWindowActivationService.Clear();
             }
         });
+    }
+
+    [Fact]
+    public void ExplicitRoleBeatsTheHeaderAndAnEmptyEditMenuGetsTheStandardItems()
+    {
+        RunInUiApartment(() =>
+        {
+            var edit = new MenuItem { Header = "Bearbeiten" };
+            MacMenu.SetRole(edit, MacMenuRole.Edit);
+            var window = new MenuItem { Header = "Fenster" };
+            MacMenu.SetRole(window, MacMenuRole.Window);
+            var english = new MenuItem { Header = "Edit" };
+            var own = new MenuItem { Header = "Edit" };
+            own.Items.Add(new MenuItem { Header = "Mine" });
+            var menu = new Menu();
+            menu.Items.Add(edit);
+            menu.Items.Add(window);
+            menu.Items.Add(english);
+            menu.Items.Add(own);
+
+            var mapper = new MacMenuMapper();
+            PortableMenuItem[] top = mapper.Map(menu);
+
+            Assert.Equal(new[] { 1, 2, 1, 1 }, Array.ConvertAll(top, t => t.Role));
+            string[] titles = Array.ConvertAll(top[0].Children, c => c.Title);
+            Assert.Equal(new[] { "Undo", "Redo", "", "Cut", "Copy", "Paste", "", "Select All" }, titles);
+            Assert.Equal("z", top[0].Children[1].KeyEquivalent);
+            Assert.Equal(MacMenuMapper.ModifierCommand | MacMenuMapper.ModifierShift, top[0].Children[1].Modifiers);
+            Assert.Equal("c", top[0].Children[4].KeyEquivalent);
+            Assert.Equal(8, top[2].Children.Length);
+            // Items the app collapsed still count as its own: nothing is generated in their place.
+            var hiddenOnly = new MenuItem { Header = "Edit" };
+            hiddenOnly.Items.Add(new MenuItem { Header = "Hidden", Visibility = Visibility.Collapsed });
+            menu.Items.Add(hiddenOnly);
+            top = mapper.Map(menu);
+            Assert.Empty(top[4].Children);
+
+            // An Edit menu with items of its own keeps them and gets nothing added.
+            Assert.Equal(new[] { "Mine" }, Array.ConvertAll(top[3].Children, c => c.Title));
+        });
+    }
+
+    [Fact]
+    public void RoutedCommandItemsAreEvaluatedAndRunAgainstTheirTargetNotTheDetachedMenuItem()
+    {
+        RunInUiApartment(() =>
+        {
+            int executed = 0;
+            bool allowed = false;
+            var command = new RoutedCommand("Probe", typeof(MacMenuMapperTests));
+            var target = new Border();
+            target.CommandBindings.Add(new CommandBinding(
+                command,
+                (_, _) => executed++,
+                (_, e) => { e.CanExecute = allowed; e.Handled = true; }));
+            int clicks = 0;
+            var item = new MenuItem { Header = "Probe", Command = command, CommandTarget = target };
+            item.Click += (_, _) => clicks++;
+            var disabled = new MenuItem { Header = "Off", Command = command, CommandTarget = target, IsEnabled = false };
+            var top = new MenuItem { Header = "Top" };
+            top.Items.Add(item);
+            top.Items.Add(disabled);
+            var menu = new Menu();
+            menu.Items.Add(top);
+
+            var mapper = new MacMenuMapper();
+            PortableMenuItem[] model = mapper.Map(menu);
+            int id = model[0].Children[0].Id;
+            int offId = model[0].Children[1].Id;
+
+            Assert.False(model[0].Children[0].IsEnabled);
+            Assert.False(mapper.IsEnabledNow(id));
+            Assert.True(mapper.TryExecute(id));
+            Assert.Equal(0, executed);
+
+            allowed = true;
+            Assert.True(mapper.IsEnabledNow(id));
+            Assert.True(mapper.TryExecute(id));
+            Assert.Equal(1, executed);
+            Assert.Equal(1, clicks);
+
+            // An explicitly disabled item stays disabled whatever the command says.
+            Assert.False(mapper.IsEnabledNow(offId));
+            Assert.True(mapper.TryExecute(offId));
+            Assert.Equal(1, executed);
+
+            // An app-bound false is honoured even though the command could run, and so is a disabled parent.
+            var gate = new GateStub { Enabled = false };
+            var bound = new MenuItem { Header = "Bound", Command = command, CommandTarget = target };
+            bound.SetBinding(UIElement.IsEnabledProperty, new System.Windows.Data.Binding(nameof(GateStub.Enabled)) { Source = gate });
+            var holder = new MenuItem { Header = "Holder", IsEnabled = false };
+            var child = new MenuItem { Header = "Child", Command = command, CommandTarget = target };
+            holder.Items.Add(child);
+            top.Items.Add(bound);
+            top.Items.Add(holder);
+            model = mapper.Map(menu);
+            int boundId = model[0].Children[2].Id;
+            int childId = model[0].Children[3].Children[0].Id;
+            Assert.False(mapper.IsEnabledNow(boundId));
+            Assert.False(model[0].Children[2].IsEnabled);
+            Assert.False(mapper.IsEnabledNow(childId));
+            int ran = executed;
+            Assert.True(mapper.TryExecute(boundId));
+            Assert.True(mapper.TryExecute(childId));
+            Assert.Equal(ran, executed);
+            gate.Enabled = true;
+            Assert.True(mapper.IsEnabledNow(boundId));
+
+            // A checkable routed-command item toggles when run.
+            var check = new MenuItem { Header = "Check", Command = command, CommandTarget = target, IsCheckable = true };
+            top.Items.Add(check);
+            model = mapper.Map(menu);
+            int checkId = model[0].Children[4].Id;
+            Assert.False(check.IsChecked);
+            Assert.True(mapper.TryExecute(checkId));
+            Assert.True(check.IsChecked);
+            Assert.True(mapper.TryExecute(checkId));
+            Assert.False(check.IsChecked);
+
+            // An item with no routed command is left for the caller to click.
+            var plain = new MenuItem { Header = "Plain" };
+            top.Items.Add(plain);
+            model = mapper.Map(menu);
+            Assert.False(mapper.TryExecute(model[0].Children[5].Id));
+        });
+    }
+
+    [PortableInputFact]
+    public void ApplicationMenuItemsAboutCommandAndDockMenuReachTheHost()
+    {
+        RunInUiApartment(() =>
+        {
+            PortableApplicationMenu? application = null;
+            PortableMenuItem[]? model = null;
+            PortableMenuCallbacks? callbacks = null;
+            int installs = 0;
+            PortableWindowActivationService.Register(
+                activate: value => value,
+                installMenuBar: (app, items, cb) =>
+                {
+                    application = app;
+                    model = items;
+                    callbacks = cb;
+                    installs++;
+                    return true;
+                });
+            void Flush()
+            {
+                Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+                Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+            }
+
+            var menu = new Menu();
+            menu.Items.Add(new MenuItem { Header = "View" });
+            int about = 0;
+            int preferences = 0;
+            var preferencesItem = new MenuItem { Header = "Preferences" };
+            preferencesItem.Click += (_, _) => preferences++;
+            try
+            {
+                MacMenu.ApplicationName = "Pulse";
+                MacMenu.SetUsesNativeMenuBar(menu, true);
+                menu.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+                Flush();
+                Assert.False(application!.HasCustomAbout);
+                Assert.Empty(application.ApplicationItems);
+                Assert.Empty(application.DockItems);
+
+                MacMenu.AboutCommand = new RelayCommand(() => about++);
+                MacMenu.ApplicationMenuItems.Add(preferencesItem);
+                var dock = new Menu();
+                int dockClicks = 0;
+                var dockItem = new MenuItem { Header = "New Window" };
+                dockItem.Click += (_, _) => dockClicks++;
+                dock.Items.Add(dockItem);
+                MacMenu.DockMenu = dock;
+                Flush();
+
+                Assert.True(application!.HasCustomAbout);
+                Assert.Equal(new[] { "Preferences" }, Array.ConvertAll(application.ApplicationItems, i => i.Title));
+                Assert.Equal(new[] { "New Window" }, Array.ConvertAll(application.DockItems, i => i.Title));
+                Assert.Equal(new[] { "View" }, Array.ConvertAll(model!, i => i.Title));
+
+                // The application items are real model items with distinct ids.
+                Assert.NotEqual(model![0].Id, application.ApplicationItems[0].Id);
+                callbacks!.Activate(application.ApplicationItems[0].Id);
+                callbacks.Activate(-2);
+                Flush();
+                Flush();
+                Assert.Equal(1, about);
+                Assert.True(preferences >= 1);
+                // A Dock item is clicked through its automation peer even though it sits in no visual tree.
+                callbacks.Activate(application.DockItems[0].Id);
+                Flush();
+                Flush();
+                Assert.True(dockClicks >= 1);
+                Assert.True(callbacks.Validate(application.ApplicationItems[0].Id));
+
+                // Editing an application item rebuilds.
+                int before = installs;
+                preferencesItem.Header = "Settings";
+                Flush();
+                Assert.Equal(before + 1, installs);
+                Assert.Equal("Settings", application!.ApplicationItems[0].Title);
+
+                // Removing everything replaces the installed bar with the generated menu alone: no
+                // old items stay live and the Dock menu is cleared.
+                MacMenu.SetUsesNativeMenuBar(menu, false);
+                MacMenu.AboutCommand = null!;
+                MacMenu.ApplicationMenuItems.Clear();
+                MacMenu.DockMenu = null!;
+                int beforeClear = installs;
+                MacMenu.Refresh();
+                Assert.Equal(beforeClear + 1, installs);
+                Assert.Empty(model!);
+                Assert.Empty(application!.ApplicationItems);
+                Assert.Empty(application.DockItems);
+                Assert.False(application.HasCustomAbout);
+                int afterClear = installs;
+                MacMenu.Refresh();
+                Assert.Equal(afterClear, installs);
+            }
+            finally
+            {
+                MacMenu.SetUsesNativeMenuBar(menu, false);
+                MacMenu.AboutCommand = null!;
+                MacMenu.ApplicationMenuItems.Clear();
+                MacMenu.DockMenu = null!;
+                MacMenu.ApplicationName = null!;
+                PortableWindowActivationService.Clear();
+            }
+        });
+    }
+
+    private sealed class GateStub : System.ComponentModel.INotifyPropertyChanged
+    {
+        private bool _enabled;
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+        public bool Enabled
+        {
+            get => _enabled;
+            set
+            {
+                _enabled = value;
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(Enabled)));
+            }
+        }
+    }
+
+    private sealed class RelayCommand : ICommand
+    {
+        private readonly Action _execute;
+
+        public RelayCommand(Action execute) => _execute = execute;
+
+        public event EventHandler? CanExecuteChanged { add { } remove { } }
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => _execute();
     }
 
     [Fact]

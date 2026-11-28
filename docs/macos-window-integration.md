@@ -259,14 +259,26 @@ activation is posted to the UI dispatcher and runs the WPF command there.
   the default Quit, Hide and window list disappear. So the generated application menu is
   required, titled with the app's own name, and `setWindowsMenu:` must be called again.
 
-**Open questions, still to measure before building the host.**
+**Open questions, answered (step 5, measured on a real window).**
 
-0. What the standard About panel shows for an unbundled .NET process, and which option keys
-   (`ApplicationName`, `ApplicationVersion`, `Copyright`) are needed to make it correct.
-1. How `performKeyEquivalent:` reaches the menu when the key window's content view is the
-   GLFW layer-hosting view (Command+Q and Command+1 must work with focus in any WPF element).
-2. The Dock menu needs `applicationDockMenu:` on the application delegate, which GLFW owns; if it
-   cannot be added without replacing the delegate it is deferred.
+0. The standard About panel for an unbundled process shows the process icon (a generic folder),
+   the app name and the version only if the host passes options. The host now calls
+   `orderFrontStandardAboutPanelWithOptions:` with `ApplicationName`, `ApplicationVersion` (the
+   entry assembly's informational version without the `+` build suffix, else its version) and
+   `Copyright` (`AssemblyCopyright`); measured: "Pulse", "Version 1.0.0". The icon is the bundle's
+   (`Info.plist`), so an unbundled run keeps the generic one.
+1. Command shortcuts reach the menu with a WPF text box focused: Command+A, C, X and V through the
+   Edit items selected, copied (clipboard "hello"), pasted over the selection ("world") and cut
+   (text emptied) in a focused `TextBox`. Undo stays disabled there, correctly: measured in
+   process, after a cut the `TextBox` reports `CanUndo` false, `ApplicationCommands.Undo.CanExecute`
+   false and `Undo()` false, so the text box in this build does not record that edit (a `TextBox`
+   limitation, not the menu, whose Undo item simply follows `CanExecute`). Plain typed keys
+   could not be checked: synthetic key events without Command never produced text in the text
+   box in this harness, with or without the menu, so that is untested rather than working.
+2. The Dock menu works without replacing the delegate: the host adds `applicationDockMenu:` to the
+   existing delegate's class (GLFW's has none) and `[delegate applicationDockMenu:]` returned the
+   menu with the right items; the real Dock display itself was not exercised. With no delegate at
+   all, the menu target becomes the delegate.
 
 **Built so far (step 1, no public API yet).** `PortableMenuItem` (neutral model, in
 `ProGPU.Wpf.Interop`) and the internal pure `MacMenuMapper` that turns a `Menu` tree into it:
@@ -315,8 +327,42 @@ one queued cannot block later ones). Gestures added to or removed from a `Routed
 observable; `MacMenu.Refresh()` covers that. Covered by a unit test over header, checked,
 enabled, gesture text, separator visibility, a nested item added later, coalescing and detaching.
 
-Not built: `MacMenu.Role` and `MacMenu.AboutCommand`/`ApplicationMenuItems`/`DockMenu`, the Edit
-items and the text-key requirement, the Dock menu.
+**Remaining API and Edit/text behaviour (step 5).**
+
+- `MacMenu.Role` (attached, `MacMenuRole` None/Edit/Window/Help on a top-level `MenuItem`) is the
+  primary recognition; the English header is the fallback.
+- `MacMenu.AboutCommand` (static `ICommand`): About runs it (reported as id -2); without one the
+  host shows the standard panel with the name, version and copyright above.
+- `MacMenu.ApplicationMenuItems` (static `ObservableCollection<MenuItem>`): inserted after About in
+  the application menu, watched like any menu (so editing one rebuilds).
+- `MacMenu.DockMenu` (static `Menu`): the Dock icon menu.
+- An Edit-role menu with no items of its own gets Undo, Redo (Shift+Cmd+Z), Cut, Copy, Paste and
+  Select All. They run the WPF editing commands against the keyboard focus (the native responder
+  chain has no text view for `undo:`/`copy:`), enabled by the focused element's `CanExecute`.
+- Enabled state is asked when a native menu opens (`validateMenuItem:` on the item target, called
+  synchronously on the native UI thread, answered on the dispatcher): a routed-command item is
+  evaluated against the keyboard focus and not against the detached menu item (which always
+  reports false); an item the app disabled (locally, by binding, style or a disabled parent) stays
+  disabled: an uncoerced `IsEnabled` is taken as is, and only a coerced false, which can only come from a
+  command that cannot execute, is re-evaluated against the focus. Activating a routed-command item
+  executes it against the focus (or its `CommandTarget`) and raises `Click`; any other item is
+  clicked through its automation peer.
+- The text-key requirement is met by construction: a shortcut such as Command+C is an Edit item that
+  runs the command on the focused element, so a `TextBox` keeps its editing keys; an app-authored
+  item with the same key takes precedence, as in native Mac apps.
+
+The bar is installed only on AppKit's main thread (`setMainMenu:` off it throws and kills the
+process, found while testing): off the main thread `Install` returns false and the in-window menu
+stays. When every menu and application-level part is removed after an install, the next rebuild
+replaces the bar with the generated application menu alone (and clears the Dock menu) instead of
+leaving the old items live. The Dock menu is extended onto the existing delegate once; a later
+install recognises the class it extended, and a failure to extend is reported by
+`DockMenuInstalled` while the bar itself still installs. Menus built by an install are released once AppKit owns them, and the previous Dock menu is
+released when replaced.
+
+Not built: icon for the About panel, the Window menu's own items beyond what macOS adds, menu
+bar installation when only application-level parts (no `Menu`) exist is supported but untested on a
+real window, and a live Dock display check.
 
 **Verification plan.** Pure mapping tests (table above, gestures, access keys, recognised
 roles, collapsed and disabled items). A recording platform double for the rebuild coalescing

@@ -1,7 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Reflection;
@@ -9,11 +11,27 @@ using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 using ProGPU.Wpf.Interop;
 
 namespace System.Windows.Platform.MacOS
 {
+    /// <summary>Which standard macOS menu a top-level menu item is (None: recognised from its English header).</summary>
+    public enum MacMenuRole
+    {
+        None = 0,
+
+        /// <summary>The Edit menu: with no items of its own it gets Undo, Redo, Cut, Copy, Paste and Select All.</summary>
+        Edit = 1,
+
+        /// <summary>The Window menu: macOS adds Minimize, Zoom and the window list.</summary>
+        Window = 2,
+
+        /// <summary>The Help menu: macOS adds its search field.</summary>
+        Help = 3,
+    }
+
     /// <summary>
     /// Opt-in native macOS menu bar for an ordinary WPF <see cref="Menu"/> (see
     /// docs/macos-window-integration.md section 4.6). On macOS a menu with
@@ -23,6 +41,7 @@ namespace System.Windows.Platform.MacOS
     public static class MacMenu
     {
         private const int QuitId = -1;
+        private const int AboutId = -2;
 
         /// <summary>Makes this menu the application menu bar on macOS.</summary>
         public static readonly DependencyProperty UsesNativeMenuBarProperty =
@@ -31,6 +50,14 @@ namespace System.Windows.Platform.MacOS
                 typeof(bool),
                 typeof(MacMenu),
                 new PropertyMetadata(false, OnUsesNativeMenuBarChanged));
+
+        /// <summary>The standard menu role of a top-level menu item.</summary>
+        public static readonly DependencyProperty RoleProperty =
+            DependencyProperty.RegisterAttached(
+                "Role",
+                typeof(MacMenuRole),
+                typeof(MacMenu),
+                new PropertyMetadata(MacMenuRole.None, (d, e) => ScheduleApplicationRebuild()));
 
         private static readonly DependencyPropertyKey s_isNativeMenuBarActivePropertyKey =
             DependencyProperty.RegisterAttachedReadOnly(
@@ -45,12 +72,63 @@ namespace System.Windows.Platform.MacOS
 
         private static readonly List<Menu> s_registered = new List<Menu>();
         private static readonly Dictionary<Menu, MenuWatch> s_watches = new Dictionary<Menu, MenuWatch>();
-        private static MacMenuMapper s_mapper = new MacMenuMapper();
+        private static readonly ObservableCollection<MenuItem> s_applicationMenuItems = new ObservableCollection<MenuItem>();
+        private static MenuWatch s_applicationItemsWatch;
+        private static MenuWatch s_dockWatch;
+        private static ICommand s_aboutCommand;
+        private static Menu s_dockMenu;
         private static Menu s_installed;
+        private static bool s_nativeInstalled;
         private static DispatcherOperation s_pendingRebuild;
+
+        static MacMenu()
+        {
+            s_applicationItemsWatch = new MenuWatch(s_applicationMenuItems, ScheduleApplicationRebuild);
+            s_applicationItemsWatch.Attach();
+        }
 
         /// <summary>The name used by the generated About, Hide and Quit items; defaults to the entry assembly name.</summary>
         public static string ApplicationName { get; set; }
+
+        public static MacMenuRole GetRole(MenuItem item) => (MacMenuRole)ValidateItem(item).GetValue(RoleProperty);
+
+        public static void SetRole(MenuItem item, MacMenuRole value) => ValidateItem(item).SetValue(RoleProperty, value);
+
+        /// <summary>
+        /// The command run by "About &lt;app&gt;". Without one the standard About panel is shown with the
+        /// application name, version and copyright of the entry assembly.
+        /// </summary>
+        public static ICommand AboutCommand
+        {
+            get => s_aboutCommand;
+            set
+            {
+                s_aboutCommand = value;
+                ScheduleApplicationRebuild();
+            }
+        }
+
+        /// <summary>Items added to the application menu after About (for example Preferences).</summary>
+        public static ObservableCollection<MenuItem> ApplicationMenuItems => s_applicationMenuItems;
+
+        /// <summary>The menu shown from the Dock icon.</summary>
+        public static Menu DockMenu
+        {
+            get => s_dockMenu;
+            set
+            {
+                s_dockWatch?.Detach();
+                s_dockWatch = null;
+                s_dockMenu = value;
+                if (value != null)
+                {
+                    s_dockWatch = new MenuWatch(value.Items, ScheduleApplicationRebuild);
+                    s_dockWatch.Attach();
+                }
+
+                ScheduleApplicationRebuild();
+            }
+        }
 
         public static bool GetUsesNativeMenuBar(Menu menu) => (bool)ValidateMenu(menu).GetValue(UsesNativeMenuBarProperty);
 
@@ -64,6 +142,12 @@ namespace System.Windows.Platform.MacOS
             s_pendingRebuild?.Abort();
             s_pendingRebuild = null;
             Rebuild();
+        }
+
+        private static MenuItem ValidateItem(MenuItem item)
+        {
+            ArgumentNullException.ThrowIfNull(item);
+            return item;
         }
 
         private static Menu ValidateMenu(Menu menu)
@@ -105,7 +189,7 @@ namespace System.Windows.Platform.MacOS
             if (!s_registered.Contains(menu))
             {
                 s_registered.Add(menu);
-                var watch = new MenuWatch(menu, () => ScheduleRebuild(menu));
+                var watch = new MenuWatch(menu.Items, () => ScheduleRebuild(menu));
                 s_watches[menu] = watch;
                 watch.Attach();
 
@@ -152,16 +236,18 @@ namespace System.Windows.Platform.MacOS
         /// Coalesces rebuilds to one per dispatcher turn. Pending is the live operation, not a flag,
         /// so a dispatcher that shut down with a rebuild queued cannot block later ones.
         /// </summary>
-        private static void ScheduleRebuild(DispatcherObject source)
+        private static void ScheduleRebuild(DispatcherObject source) => ScheduleRebuild(source.Dispatcher);
+
+        private static void ScheduleRebuild(Dispatcher dispatcher)
         {
             if (s_pendingRebuild != null &&
                 s_pendingRebuild.Status == DispatcherOperationStatus.Pending &&
-                ReferenceEquals(s_pendingRebuild.Dispatcher, source.Dispatcher))
+                ReferenceEquals(s_pendingRebuild.Dispatcher, dispatcher))
             {
                 return;
             }
 
-            s_pendingRebuild = source.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+            s_pendingRebuild = dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
             {
                 s_pendingRebuild = null;
                 Rebuild();
@@ -198,22 +284,48 @@ namespace System.Windows.Platform.MacOS
         private static void Rebuild()
         {
             Menu chosen = ChooseMenu();
-            if (chosen == null)
+            bool hasApplicationParts = s_applicationMenuItems.Count > 0 || s_aboutCommand != null || s_dockMenu != null;
+            // With nothing left to show, an installed bar is replaced by the generated application menu
+            // alone (and no Dock menu) rather than left live with its old items.
+            if (chosen == null && !hasApplicationParts && !s_nativeInstalled)
             {
                 SetInstalled(null);
                 return;
             }
 
             var mapper = new MacMenuMapper();
-            PortableMenuItem[] model = mapper.Map(chosen);
-            Dispatcher dispatcher = chosen.Dispatcher;
-            bool installed = PortableWindowActivationService.TryInstallMenuBar(
+            PortableMenuItem[] model = chosen != null ? mapper.Map(chosen) : mapper.Map(null);
+            PortableMenuItem[] applicationItems = mapper.MapItems(s_applicationMenuItems);
+            PortableMenuItem[] dockItems = s_dockMenu != null ? mapper.MapItems(s_dockMenu.Items) : Array.Empty<PortableMenuItem>();
+            Dispatcher dispatcher = chosen != null ? chosen.Dispatcher : ApplicationDispatcher();
+            var application = new PortableApplicationMenu(
                 ResolveApplicationName(),
-                model,
-                id => dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() => Activate(id))));
+                ResolveApplicationVersion(),
+                ResolveCopyright(),
+                s_aboutCommand != null,
+                applicationItems,
+                dockItems);
+            var callbacks = new PortableMenuCallbacks(
+                id => dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() => Activate(id, mapper))),
+                id => dispatcher.CheckAccess() ? mapper.IsEnabledNow(id) : dispatcher.Invoke(() => mapper.IsEnabledNow(id)));
 
-            s_mapper = mapper;
+            bool installed = PortableWindowActivationService.TryInstallMenuBar(application, model, callbacks);
+            if (installed)
+            {
+                // The last successful install: a refused one (for example off the main thread) leaves
+                // the previous native bar in place and must not forget that it is there.
+                s_nativeInstalled = chosen != null || hasApplicationParts;
+            }
+
             SetInstalled(installed ? chosen : null);
+        }
+
+        private static Dispatcher ApplicationDispatcher() => Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+
+        /// <summary>The application-level parts have no menu of their own to schedule from.</summary>
+        private static void ScheduleApplicationRebuild()
+        {
+            ScheduleRebuild(s_registered.Count > 0 ? s_registered[0].Dispatcher : ApplicationDispatcher());
         }
 
         private static void SetInstalled(Menu menu)
@@ -237,11 +349,31 @@ namespace System.Windows.Platform.MacOS
             }
         }
 
+        private static string ResolveApplicationVersion()
+        {
+            Assembly entry = Assembly.GetEntryAssembly();
+            string informational = entry?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrEmpty(informational))
+            {
+                int plus = informational.IndexOf('+');
+                return plus >= 0 ? informational.Substring(0, plus) : informational;
+            }
+
+            return entry?.GetName().Version?.ToString() ?? string.Empty;
+        }
+
+        private static string ResolveCopyright() =>
+            Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? string.Empty;
+
         private static string ResolveApplicationName() =>
             !string.IsNullOrEmpty(ApplicationName) ? ApplicationName : Assembly.GetEntryAssembly()?.GetName().Name ?? "Application";
 
-        /// <summary>Runs on the dispatcher: an activated native item, or Quit.</summary>
-        private static void Activate(int id)
+        /// <summary>
+        /// Runs on the dispatcher: an activated native item, Quit or a custom About. The mapper is the
+        /// one that built the installed bar, so a rebuild between the click and this hop cannot
+        /// resolve the id to a different item.
+        /// </summary>
+        private static void Activate(int id, MacMenuMapper mapper)
         {
             if (id == QuitId)
             {
@@ -249,7 +381,24 @@ namespace System.Windows.Platform.MacOS
                 return;
             }
 
-            MenuItem item = s_mapper.GetItem(id);
+            if (id == AboutId)
+            {
+                ICommand about = s_aboutCommand;
+                if (about != null && about.CanExecute(null))
+                {
+                    about.Execute(null);
+                }
+
+                return;
+            }
+
+            // Routed commands run against the keyboard focus, so Copy reaches the focused text box.
+            if (mapper.TryExecute(id))
+            {
+                return;
+            }
+
+            MenuItem item = mapper.GetItem(id);
             if (item != null && item.IsEnabled)
             {
                 // The public peer is the supported way to click a MenuItem: it runs the command and
@@ -331,17 +480,17 @@ namespace System.Windows.Platform.MacOS
                 UIElement.VisibilityProperty,
             };
 
-            private readonly Menu _menu;
+            private readonly IList _root;
             private readonly Action _changed;
-            private readonly List<ItemCollection> _collections = new List<ItemCollection>();
+            private readonly List<IList> _collections = new List<IList>();
             private readonly List<MenuItem> _items = new List<MenuItem>();
             private readonly List<UIElement> _separators = new List<UIElement>();
             private readonly EventHandler _onPropertyChanged;
             private readonly NotifyCollectionChangedEventHandler _onCollectionChanged;
 
-            internal MenuWatch(Menu menu, Action changed)
+            internal MenuWatch(IList root, Action changed)
             {
-                _menu = menu;
+                _root = root;
                 _changed = changed;
                 _onPropertyChanged = (sender, e) => _changed();
                 _onCollectionChanged = (sender, e) =>
@@ -354,12 +503,12 @@ namespace System.Windows.Platform.MacOS
 
             internal void Attach()
             {
-                Walk(_menu.Items);
+                Walk(_root);
             }
 
             internal void Detach()
             {
-                foreach (ItemCollection collection in _collections)
+                foreach (IList collection in _collections)
                 {
                     ((INotifyCollectionChanged)collection).CollectionChanged -= _onCollectionChanged;
                 }
@@ -382,7 +531,7 @@ namespace System.Windows.Platform.MacOS
                 _separators.Clear();
             }
 
-            private void Walk(ItemCollection items)
+            private void Walk(IList items)
             {
                 ((INotifyCollectionChanged)items).CollectionChanged += _onCollectionChanged;
                 _collections.Add(items);

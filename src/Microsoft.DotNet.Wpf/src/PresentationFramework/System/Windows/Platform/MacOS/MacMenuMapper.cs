@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows.Controls;
@@ -21,6 +22,7 @@ namespace System.Windows.Platform.MacOS
         internal const int ModifierControl = 8;
 
         private readonly Dictionary<int, MenuItem> _items = new Dictionary<int, MenuItem>();
+        private readonly Dictionary<int, RoutedCommand> _commands = new Dictionary<int, RoutedCommand>();
         private int _nextId = 1;
 
         /// <summary>The WPF item behind an Id of the last mapped model, or null.</summary>
@@ -29,11 +31,94 @@ namespace System.Windows.Platform.MacOS
         internal PortableMenuItem[] Map(Menu menu)
         {
             _items.Clear();
+            _commands.Clear();
             _nextId = 1;
             return menu == null ? Array.Empty<PortableMenuItem>() : MapChildren(menu.Items, topLevel: true);
         }
 
-        private PortableMenuItem[] MapChildren(ItemCollection items, bool topLevel)
+        /// <summary>Maps further items (application menu items, the Dock menu) with ids continuing after Map.</summary>
+        internal PortableMenuItem[] MapItems(IList items) => MapChildren(items, topLevel: false);
+
+        /// <summary>The element a command is run against: the keyboard focus, else the main window.</summary>
+        private static IInputElement CommandTarget() => Keyboard.FocusedElement ?? Application.Current?.MainWindow;
+
+        private static bool CanExecute(RoutedCommand command, object parameter, IInputElement target, IInputElement fallback)
+        {
+            IInputElement element = target ?? CommandTarget() ?? fallback;
+            return element != null && command.CanExecute(parameter, element);
+        }
+
+        private static bool ItemEnabled(MenuItem item)
+        {
+            // An uncoerced value is exact, whether it is local, bound, styled or inherited: a false the
+            // app set stays false. Coercion only ever turns a true into a false (a command that cannot
+            // execute, or a disabled parent), so only that case needs the command re-evaluated.
+            if (!DependencyPropertyHelper.GetValueSource(item, UIElement.IsEnabledProperty).IsCoerced)
+            {
+                return item.IsEnabled;
+            }
+
+            if (ItemsControl.ItemsControlFromItemContainer(item) is { IsEnabled: false })
+            {
+                return false;
+            }
+
+            // A routed command is evaluated against the keyboard focus, not the detached menu item,
+            // which would always report false.
+            return item.Command is RoutedCommand routed
+                ? CanExecute(routed, item.CommandParameter, item.CommandTarget, item)
+                : item.IsEnabled;
+        }
+
+        /// <summary>Whether the item with this id is enabled right now (asked when the native menu opens).</summary>
+        internal bool IsEnabledNow(int id)
+        {
+            if (_commands.TryGetValue(id, out RoutedCommand command))
+            {
+                return CanExecute(command, null, null, null);
+            }
+
+            return !_items.TryGetValue(id, out MenuItem item) || ItemEnabled(item);
+        }
+
+        /// <summary>
+        /// Runs a routed command item or a generated Edit item against the keyboard focus. False when
+        /// the id is an ordinary item the caller should click through its automation peer.
+        /// </summary>
+        internal bool TryExecute(int id)
+        {
+            if (_commands.TryGetValue(id, out RoutedCommand command))
+            {
+                IInputElement target = CommandTarget();
+                if (target != null && command.CanExecute(null, target))
+                {
+                    command.Execute(null, target);
+                }
+
+                return true;
+            }
+
+            if (_items.TryGetValue(id, out MenuItem item) && item.Command is RoutedCommand routed)
+            {
+                IInputElement target = item.CommandTarget ?? CommandTarget() ?? item;
+                if (ItemEnabled(item))
+                {
+                    if (item.IsCheckable)
+                    {
+                        item.IsChecked = !item.IsChecked;
+                    }
+
+                    routed.Execute(item.CommandParameter, target);
+                    item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, item));
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private PortableMenuItem[] MapChildren(IList items, bool topLevel)
         {
             var result = new List<PortableMenuItem>(items.Count);
             for (int i = 0; i < items.Count; i++)
@@ -61,16 +146,61 @@ namespace System.Windows.Platform.MacOS
             _items[id] = item;
             string title = StripAccessKey(HeaderText(item.Header));
             TryGetKeyEquivalent(item, out string key, out int modifiers);
+            int role = !topLevel ? 0 : MacMenu.GetRole(item) != MacMenuRole.None ? (int)MacMenu.GetRole(item) : RoleFromHeader(title);
+            PortableMenuItem[] children = MapChildren(item.Items, topLevel: false);
+            // Only a menu with no items of its own gets the standard ones: items the app collapsed are
+            // still its own and are not replaced by commands it deliberately hid.
+            if (role == 1 && item.Items.Count == 0)
+            {
+                children = EditItems();
+            }
+
             return new PortableMenuItem(
                 id,
                 title,
                 key,
                 modifiers,
                 false,
-                item.IsEnabled,
+                ItemEnabled(item),
                 item.IsCheckable && item.IsChecked,
-                topLevel ? RoleFromHeader(title) : 0,
-                MapChildren(item.Items, topLevel: false));
+                role,
+                children);
+        }
+
+        private static readonly (string Title, RoutedCommand Command, string Key, int Modifiers)[] s_editItems =
+        {
+            ("Undo", ApplicationCommands.Undo, "z", ModifierCommand),
+            ("Redo", ApplicationCommands.Redo, "z", ModifierCommand | ModifierShift),
+            (null, null, null, 0),
+            ("Cut", ApplicationCommands.Cut, "x", ModifierCommand),
+            ("Copy", ApplicationCommands.Copy, "c", ModifierCommand),
+            ("Paste", ApplicationCommands.Paste, "v", ModifierCommand),
+            (null, null, null, 0),
+            ("Select All", ApplicationCommands.SelectAll, "a", ModifierCommand),
+        };
+
+        /// <summary>
+        /// The standard Edit items for an Edit menu with none of its own. They run the WPF editing
+        /// commands against the keyboard focus (the native responder chain has no text view to send
+        /// undo: or copy: to), and are enabled by the focused element's CanExecute.
+        /// </summary>
+        private PortableMenuItem[] EditItems()
+        {
+            var result = new List<PortableMenuItem>();
+            foreach ((string title, RoutedCommand command, string key, int modifiers) in s_editItems)
+            {
+                int id = _nextId++;
+                if (command == null)
+                {
+                    result.Add(new PortableMenuItem(id, string.Empty, string.Empty, 0, true, false, false, 0, Array.Empty<PortableMenuItem>()));
+                    continue;
+                }
+
+                _commands[id] = command;
+                result.Add(new PortableMenuItem(id, title, key, modifiers, false, false, false, 0, Array.Empty<PortableMenuItem>()));
+            }
+
+            return result.ToArray();
         }
 
         /// <summary>A header is text only when it is a string or a non-visual value; an element has no title.</summary>
@@ -107,7 +237,7 @@ namespace System.Windows.Platform.MacOS
             return builder.ToString();
         }
 
-        /// <summary>Header fallback only; an explicit role attached property is a later step.</summary>
+        /// <summary>Header fallback for an item with no MacMenu.Role.</summary>
         internal static int RoleFromHeader(string title) => title switch
         {
             "Edit" => 1,
